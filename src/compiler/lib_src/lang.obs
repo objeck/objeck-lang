@@ -1,0 +1,1051 @@
+#~~
+# System classes.
+# Copyright (c) 2009, 2010 Randy Hollines 
+#
+# note: this file is a system file and can only be compiled using -D_SYSTEM option
+~~#	
+
+bundle System {
+	#~~
+	# Boolean class support
+	~~#	
+	class $Bool {
+		function : native : Print(b : Bool), Nil {
+			STD_OUT_BOOL;
+		}
+
+		function : native : PrintLine(b : Bool), Nil {
+			STD_OUT_BOOL;
+			'\n'->Print();
+		}
+
+		function : native : GetSize(b : Bool[]), Int {
+			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToString(b : Bool), String {
+			string : String;
+
+			if(b = true) {
+				string := "true";
+			}
+			else {
+			 	string := "false";
+			};
+
+			return string;			
+		}
+	}
+
+	#~~
+	# Byte class support
+	~~#	
+	class $Byte {
+		function : native : Min(l : Byte, r : Byte), Byte {
+			if(l < r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Max(l : Byte, r : Byte), Byte {
+			if(l > r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Abs(v : Byte), Byte {
+			if(v < 0) {
+				return v * -1;
+			};
+
+			return v;
+		}
+
+		function : native : Print(b : Byte), Nil {
+			STD_OUT_BYTE;
+		}
+
+		function : native : PrintLine(b : Byte), Nil {
+			STD_OUT_BYTE;
+			'\n'->Print();
+		}
+
+		function : native : GetSize(b : Byte[]), Int {
+			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToString(b : Byte), String {
+			string : String := String->New();
+			
+			if(b = 0) {
+				string->Append(48->As(Char));
+				return string;
+			};
+
+			if(b < 0) {
+				string->Append(45->As(Char));
+				b := b * -1;
+			};		
+		
+			result : Int := b / 100;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			b := b % 100;
+			if(b = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := b / 10;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			b := b % 10;
+			if(b = 0) {
+				string->Append(48->As(Char));
+			};
+						
+			if(b <> 0) {
+				string->Append((b + 48)->As(Char));
+			};
+
+			return string;
+		}
+	}
+
+	#~~
+	# Character class support
+	~~#	
+	class $Char {
+		function : native : IsDigit(c : Char), Bool {
+			if(c >= '0' & c <= '9') {
+				return true;
+			};
+			
+			return false;
+		}
+
+		function : native : IsChar(c : Char), Bool {
+			if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z')) {
+				return true;
+			};
+			
+			return false;
+		}
+		
+		function : native : Min(l : Char, r : Char), Char {
+			if(l < r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Max(l : Char, r : Char), Char {
+			if(l > r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Print(c : Char), Nil {
+			STD_OUT_CHAR;
+		}
+
+		function : native : PrintLine(c : Char), Nil {
+			STD_OUT_CHAR;
+			'\n'->Print();
+		}
+
+		function : native :  Print(c : Char[]), Nil {
+			STD_OUT_CHAR_ARY;
+		}
+
+		function : native :  PrintLine(c : Char[]), Nil {
+			STD_OUT_CHAR_ARY;
+			'\n'->Print();
+		}
+
+		function : native : GetSize(c : Char[]), Int {
+			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToString(c : Char), String {
+			string : String := String->New();
+			string->Append(c);
+			
+			return string;
+		}
+	}
+
+	#~~
+	# Int class support
+	~~#	
+	class $Int {
+		function : native : Min(l : Int, r : Int), Int {
+			if(l < r) {
+				return l;
+			};
+
+			return r;
+		}
+	
+		function : native : Max(l : Int, r : Int), Int {
+			if(l > r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Abs(v : Int), Int {
+			if(v < 0) {
+				return v * -1;
+			};
+
+			return v;
+		}
+
+		function : native : Print(i : Int), Nil {
+			STD_OUT_INT;
+		}
+
+		function : native : PrintLine(i : Int), Nil {
+			STD_OUT_INT;
+			'\n'->Print();
+		}
+
+		function : native : GetSize(i : Int[]), Int {
+			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToString(i : Int), String {
+			string : String := String->New();
+			
+			if(i = 0) {
+				string->Append(48->As(Char));
+				return string;
+			};
+
+			if(i < 0) {
+				string->Append(45->As(Char));
+				i := i * -1;
+			};
+
+			result : Int := i / 10000000;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 1000000;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};		
+		
+			result := i / 1000000;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 1000000;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := i / 100000;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 100000;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := i / 10000;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 10000;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := i / 1000;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 1000;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := i / 100;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 100;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+
+			result := i / 10;
+			if(result > 0 & result < 10) {
+				string->Append((result + 48)->As(Char));
+			};
+			i := i % 10;
+			if(i = 0) {
+				string->Append(48->As(Char));
+			};
+						
+			if(i <> 0) {
+				string->Append((i + 48)->As(Char));
+			};
+
+			return string;
+		}
+	}
+
+	#~~
+	# Float class support
+	~~#	
+	class $Float {
+		function : native : Pi(), Float {
+			return 3.14159265;
+		}
+		
+		function : native : Min(l : Float, r : Float), Float {
+			if(l < r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Max(l : Float, r : Float), Float {
+			if(l > r) {
+				return l;
+			};
+
+			return r;
+		}
+
+		function : native : Abs(v : Float), Float {
+			if(v < 0) {
+				return v * -1;
+			};
+
+			return v;
+		}
+		
+		function : Floor(f : Float), Float {
+			FLOR_FLOAT;
+		}
+
+		function : Ceiling(f : Float), Float {
+			CEIL_FLOAT;
+		}
+
+		function : native : Print(f : Float), Nil {
+			STD_OUT_FLOAT;
+		}
+
+		function : native : PrintLine(f : Float), Nil {
+			STD_OUT_FLOAT;
+			'\n'->Print();
+		}
+
+		function : native : GetSize(f : Float[]), Int {
+			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToString(f : Float), String {
+			value : Float := f;
+			string : String := String->New();
+			
+			digit : Int;
+			result : Float := value / 1000000.0;
+			if(result > 0.99 & result < 10.0) {
+				# 1000.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 1000000.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value / 100000.0;
+			if(result > 0.99 & result < 10.0) {
+				# 1000.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 100000.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value / 10000.0;
+			if(result > 0.99 & result < 10.0) {
+				# 1000.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 10000.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value / 1000.0;
+			if(result > 0.99 & result < 10.0) {
+				# 1000.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 1000.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value / 100.0;
+			if(result > 0.99 & result < 10.0) {
+				# 100.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 100.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value / 10.0;
+			if(result > 0.99 & result < 10.0) {
+				# 10.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 10.0;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value;
+			if(result > 0.99 & result < 10.0) {
+				# 1.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			string->Append('.');
+			
+			result := value * 10.0;
+			if(result > 0.99 & result < 10.0) {
+				# 10.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+				value := value - digit * 0.1;
+			}
+			else if(result < 0.99 & value < f) {
+				string->Append('0');
+			};
+
+			result := value * 100.1;
+			if(result > 0.99 & result < 10.0) {
+				# 10.00
+				digit := result->Floor();
+				string->Append((digit + 48)->As(Char));
+			}
+			else if(result = 0.0 & value < f) {
+				string->Append('0');
+			};
+			
+			return string;
+		}
+	}
+
+	#~~
+	# Array class support
+	~~#	
+	class $BaseArray {
+		function : native : GetSize(f : System.Base[]), Int {
+			LOAD_ARY_SIZE;
+		}
+	}
+
+	#~~
+	# Class identifier
+	~~#	
+	enum ClassID {
+	}
+
+	#~~
+	# Provides useful base class functionality
+	~~#	
+	class Base {
+		New() {
+		}
+
+		method : public : native : GetClassID(), ClassID {
+			LOAD_CLS_INST_ID;
+		}
+	}
+	
+	#~~
+	# Provides useful base class functionality
+	~~#	
+	class Compare from System.Base {
+		New() {
+			Parent();
+		}
+
+		#~~
+		# Compares two objects.
+		# @return 1 if greater, -1 if less, otherwise 0
+		~~#
+		method : virtual : public : Compare(rhs : System.Compare), Int;
+	}
+	
+	#~~
+	# Provides useful base class functionality
+	
+	class Hash from Compare {
+		method : virtual : public : Compare(rhs : Compare), Int;
+		method : virtual : public : Hash(), Int;
+	}
+	~~#	
+	
+	#~~
+	# Character string class
+	~~#	
+	class String from Compare {
+		@string : Char[];
+		@max : Int;
+		@pos : Int;
+
+		New() {
+			Parent();
+
+			@max := 8;
+			@string := Char->New[@max + 1];
+			@pos := 0;
+		}
+
+		New(string : String) {
+			Parent();
+
+			@max := 8;
+			@string := Char->New[@max + 1];
+			@pos := 0;
+			
+			Append(string->ToCharArray());
+		}
+					
+		New(array : Char[]) {
+			Parent();
+			
+			if(array->GetSize() < 8) {
+				@max := 8;
+			}
+			else {
+				@max := array->GetSize();
+			};
+			
+			@string := Char->New[@max + 1];
+			@pos := 0;
+
+			Append(array);
+		}
+
+		method : public : native : ToCharArray(), Char[] {
+			array : Char[] := Char->New[@pos + 1];
+			for(i : Int := 0; i < @pos; i := i + 1;) {
+				array[i] := @string[i];
+			};
+
+			return array;
+		}
+
+		method : public : native : Append(i : Int), Nil {
+			Append(i->ToString()->ToCharArray());
+		}
+
+		method : public : native : Append(f : Float), Nil {
+			Append(f->ToString()->ToCharArray());
+		}
+
+		method : public : native : Append(str : String), Nil {
+			Append(str->ToCharArray());
+		}
+		
+		method : public : native : Append(array : Char[]), Nil {
+			if(@pos + array->GetSize() >= @max) {
+				# expand string
+				@max := (@max + array->GetSize()) * 2;
+				tmp : Char[] := Char->New[@max + 1];
+				# copy elements
+				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+					tmp[i] := @string[i];	
+				};
+				@string := tmp;
+			};
+			
+			for(i : Int := 0; i < array->GetSize() & array[i] <> '\0'; i := i + 1;) {
+				@string[@pos] := array[i];
+				@pos := @pos + 1;
+			};
+		}
+
+		method : public : native : Append(c : Char), Nil {
+			if(@pos >= @max) {
+				# expand string
+                		@max := @max * 3;
+                		tmp : Char[] := Char->New[@max + 1];
+                		# copy elements
+                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                        		tmp[i] := @string[i];
+                		};
+                		@string := tmp;
+			};
+
+			@string[@pos] := c;
+			@pos := @pos + 1;
+		}
+
+		method : public : native : GetIndex(c : Char), Int {
+			for(i : Int := 0; i < @pos; i := i + 1;) {
+				if(@string[i] = c) {
+					return i;
+				};
+			};		
+			
+			return -1;			
+		}
+
+		method : public : native : GetSize(), Int {
+			return @pos;			
+		}
+
+		method : public : native : GetChar(index : Int), Char {
+			if(index < @pos) {
+				return @string[index];
+			};
+
+			return '\0';
+		}
+		
+		method : public : native : ToInt(), Int {
+			if(@string->GetSize() > 0) {
+				is_neg : Bool := false;
+				if(@string[0] = '-') {
+					is_neg := true;
+				};
+
+				end : Int;
+				if(is_neg) {
+					end := 0;
+				}
+				else {
+					end := -1;
+				};
+
+				val : Int := 0;
+				mag : Int := 1;
+				for(i : Int := @pos - 1; i > end; i := i - 1;) {
+					pos_val : Int := @string[i] - 48;
+					if(pos_val < 0 | pos_val > 9) {
+						return 0;
+					};
+
+					if(mag = 1) {
+						val := pos_val;
+					}
+					else {
+						val := val + pos_val * mag;	
+					};
+					# update
+					mag := mag * 10;
+				};
+
+				if(is_neg) {
+					return val * -1;
+				}
+				else {
+					return val;
+				};
+			};
+
+			return 0;
+		}
+
+		method : public : native : ToFloat(), Float {
+			if(@string->GetSize() > 0) {
+				val : Float := 0;
+				is_neg : Bool := false;
+				if(@string[0] = '-') {
+					is_neg := true;
+				};
+
+				end : Int;
+				if(is_neg) {
+					end := 0.0;
+				}
+				else {
+					end := -1.0;
+				};
+
+				# find decimal point
+				dec_index : Int := -1;
+				i : Int := 0;
+				while(dec_index = -1 & i < @pos) {
+					if(@string[i] = '.') {
+						dec_index := i;
+					};
+					i := i + 1;
+				};
+
+				# calculate decimal number 
+				if(dec_index <> -1) {
+					mag : Float := .1;
+					dec_index := dec_index + 1;
+					
+					for(j : Int := dec_index; j < @pos; j := j + 1;) {
+						pos_val : Int := @string[j] - 48;
+						if(pos_val < 0 | pos_val > 9) {
+							return 0;
+						};
+
+						if(mag = 1) {
+							val := pos_val;
+						}
+						else {
+							val := val + pos_val * mag;	
+						};
+						# update
+						mag := mag * .1;
+					};
+					
+					dec_index := dec_index - 1;
+					mag := 1.0;
+					for(j : Int := dec_index - 1; j > end; j := j - 1;) {
+						pos_val : Int := @string[j] - 48;
+						if(pos_val < 0 | pos_val > 9) {
+							return 0;
+						};
+
+						if(mag = 1) {
+							val := val + pos_val;
+						}
+						else {
+							val := val + pos_val * mag;	
+						};
+						# update
+						mag := mag * 10.0;
+					};
+				}
+				# calculate non-decimal number 
+				else {
+					mag : Int := 1;
+					for(j : Int := @pos - 1; j > end; j := j - 1;) {
+						pos_val : Int := @string[j] - 48;
+						if(pos_val < 0 | pos_val > 9) {
+							return 0.0;
+						};
+
+						if(mag = 1) {
+							val := pos_val;
+						}
+						else {
+							val := val + pos_val * mag;	
+						};
+						# update
+						mag := mag * 10.0;
+					};
+				};
+
+				if(is_neg) {
+					return val * -1.0;
+				}
+				else {
+					return val;
+				};
+			};
+
+			return 0.0;
+		}
+
+		method : public : native : Trim(), String {
+			# copy elements
+            tmp : Char[] := Char->New[@max + 1];
+			@pos := 0;
+            for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+				c : Char := @string[i];
+				if(c < 127 & c > 31) {
+                       			tmp[i] := @string[i];
+					@pos := @pos + 1;
+				};
+            };
+            
+            return String->New(tmp);
+		}
+
+		method : public : SubString(offset : Int), String {
+			return SubString(0, offset);
+		}
+
+		method : public : SubString(offset : Int, length : Int), String {
+			if(offset < 0 | offset > @pos) {
+				return Nil;
+			};
+
+			end : Int := length + offset;
+			if(end < 0 | end > @pos) {
+				return Nil;
+			};
+
+			array : Char[] := Char->New[length];
+			for(i : Int := offset; i < end; i := i + 1;) {
+				array[i] := @string[i];
+			};
+
+			return String->New(array);
+		}
+	
+		method : public : Equals(rhs : String), Bool {
+			return Compare(rhs->As(System.Compare)) = 0;
+		}
+
+	    	method : public : Compare(rhs : System.Compare), Int {
+			if(GetClassID() = rhs->GetClassID()) {
+				right_string : String := rhs->As(String);
+				for(i : Int := 0; i < @pos; i := i + 1;) {
+					left : Char := @string[i];
+					right : Char := right_string->GetChar(i);
+					if(left > right) {
+						return 1;
+					}
+					else if(left < right) {
+						return -1;
+					};
+				};
+
+				return 0;
+			};
+
+			return -1;
+		}
+
+		method : public : native : Print(), Nil {
+			@string->Print();
+		}
+
+		method : public : native : PrintLine(), Nil {
+			@string->PrintLine();
+		}
+	}
+}
+
+#------------ I/O ------------
+bundle IO {
+ 	class Console {
+		@console : static : Console;
+
+		New: private () {
+		}
+
+		function : GetInstance(), Console {
+			if(@console <> Nil) {
+				@console := Console->New();
+			};
+
+			return @console;
+		}
+
+		method : public : ReadString(), System.String {
+			buffer : Char[] := Char->New[256];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]), Nil {
+			STD_IN_STRING;
+		}
+		
+		method : public : Print(b : Byte), Console {
+			b->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(b : Byte), Console {
+			b->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(c : Char), Console {
+			c->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(c : Char), Console {
+			c->PrintLine();
+			return @console;
+		}
+
+		method : public : Print(i : Int), Console {
+			i->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(i : Int), Console {
+			i->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(f : Float), Console {
+			f->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(f : Float), Console {
+			f->PrintLine();
+			return @console;
+		}
+
+		method : public : Print(cc : Char[]), Console {
+			cc->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(cc : Char[]), Console {
+			cc->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(s : System.String), Console {
+			s->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(s : System.String), Console {
+			s->PrintLine();
+			return @console;
+		}
+	}
+	
+	class File {
+		@handle : Int;
+		@name : System.String;
+		
+		New(name : System.String) {
+			@name := name;
+		}
+		
+		method : public : IsOpen(), Bool {
+			FILE_OPEN;
+		}
+
+		method : public : Seek(p : Int), Bool {
+			FILE_SEEK;
+		}
+		
+		method : public : Rewind(), Nil {
+			FILE_REWIND;
+		}
+
+		method : public : IsEOF(), Bool {
+			FILE_EOF;
+		}
+		
+		function : GetSize(n : System.String), Int {
+			FILE_SIZE;
+		}		
+		
+		function : Delete(n : System.String), Bool {
+			FILE_DELETE;
+		}
+		
+		function : Exists(n : System.String), Bool {
+			FILE_EXISTS;
+		}
+		
+		function : Rename(o : System.String, n : System.String), Bool {
+			FILE_RENAME;
+		}
+	}
+
+	class FileReader from File {
+		New(name : System.String) {
+			Parent(name);
+			FILE_OPEN_READ;
+		}	
+		
+		method : public : Close(), Nil {
+			FILE_CLOSE;
+		}
+
+		method : public : ReadByte(), Byte {
+			FILE_IN_BYTE;
+		}
+
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+			FILE_IN_BYTE_ARY;
+		}
+
+		method : public : ReadString(), System.String {
+			buffer : Char[] := Char->New[256];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]), Nil {
+			FILE_IN_STRING;
+		}
+	}
+	
+	class FileWriter from File {
+		New(name : System.String) {
+			Parent(name);
+			FILE_OPEN_WRITE;
+		}	
+		
+		method : public : Close(), Nil {
+			FILE_CLOSE;
+		}
+
+		method : public : WriteByte(b : Int), Bool {
+			FILE_OUT_BYTE;
+		}
+
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+			FILE_OUT_BYTE_ARY;
+		}
+		
+		method : public : WriteString(str : System.String), Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]), Nil {
+			FILE_OUT_STRING;
+		}
+	}
+	
+	class Directory {
+		function : Create(n : System.String), Bool {
+			DIR_CREATE;
+		}
+		
+		function : Exists(n : System.String), Bool {
+			DIR_EXISTS;
+		}
+		
+		function : List(n : System.String), System.String[] {
+			DIR_LIST;
+		}
+	}
+}
