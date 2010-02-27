@@ -1,0 +1,9 @@
+bundle Default {
+	class Hello {
+		function : Main(args : System.String[]), Nil {
+			for(i := 0; i < 10; i := i + 1;) {
+				"Hello World!"->PrintLine();
+			};
+		}
+	}
+}
