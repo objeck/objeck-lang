@@ -1110,11 +1110,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" + 
-		   mthd_name + "(..)'\n\tEnsure calling parameters properly casted\n\tVerify that the method signature is fully qualified");
+		   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" + 
-		   var_name + "(..)'\n\tEnsure calling parameters properly casted\n\tVerify that the method signature is fully qualified");
+		   var_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
   }
 }
@@ -1197,11 +1197,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), 
-		   "Undefined function/method call: '" + mthd_name + "(..)'\n\tEnsure calling parameters properly casted\n\tVerify that the method signature is fully qualified");
+		   "Undefined function/method call: '" + mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), 
-		   "Undefined function/method call: '" + var_name + "(..)'\n\tEnsure calling parameters properly casted\n\tVerify that the method signature is fully qualified");
+		   "Undefined function/method call: '" + var_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
   }
 }
