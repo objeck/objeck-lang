@@ -1,0 +1,157 @@
+/***************************************************************************
+ * VM memory manager. Implements a simple "mark and sweep" collection algorithm.
+ *
+ * Copyright (c) 2007, 2008, Randy Hollines
+ * All rights reserved.
+ *CollectMemory(o
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright 
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright 
+ * notice, this list of conditions and the following disclaimer in 
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the StackVM Team nor the names of its 
+ * contributors may be used to endorse or promote products derived 
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
+
+#ifndef __MEM_MGR_H__
+#define __MEM_MGR_H__
+
+#include "common.h"
+
+// basic vm tuning parameters
+#define MEM_MAX 1024
+#define UNCOLLECTED_COUNT 4
+#define COLLECTED_COUNT 8
+
+class ClassMethodId {
+  long* self;
+  long* mem;
+  long cls_id;
+  long mthd_id;
+  
+ public:
+  ClassMethodId(long* s, long* v, long c, long m) {
+    self = s;
+    mem = v;
+    cls_id = c;
+    mthd_id = m;
+  }
+
+  ~ClassMethodId() {
+  }
+
+  long* GetSelf() { return self; }
+  long* GetMemory() { return mem; }
+  long GetClassId() { return cls_id; }
+  long GetMethodId() { return mthd_id; }
+};
+
+class MemoryManager {
+  static MemoryManager* instance;
+  static StackProgram* prgm;
+  static list<ClassMethodId*> jit_roots;
+  static list<StackFrame*> pda_roots; // deleted elsewhere
+  static map<long*, long> allocated_memory;
+  static vector<long*> marked_memory;
+  static long allocation_size;
+  static long mem_max_size;
+  static long uncollected_count;
+  static long collected_count;
+  
+  MemoryManager() {    
+  }
+  
+  // if return true, trace memory otherwise do not
+  static inline bool MarkMemory(long* mem);
+  
+ public:
+  static void Initialize(StackProgram* p);
+  static MemoryManager* Instance();
+
+  static void Clear() {
+    while(!jit_roots.empty()) {
+      ClassMethodId* tmp = jit_roots.front();
+      jit_roots.erase(jit_roots.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+
+    map<long*, long>::iterator iter;
+    for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
+      long* temp = iter->first;
+
+      --temp;
+      free(temp);
+      temp = NULL;
+    }
+    allocated_memory.clear();
+
+    delete instance;
+    instance = NULL;
+  }
+
+  // add and remove jit roots
+  static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);
+  static void RemoveJitMethodRoot(long* mem);
+
+  // add and remove pda roots
+  void AddPdaMethodRoot(StackFrame* frame);
+  void RemovePdaMethodRoot(StackFrame* frame);
+
+  // recover memory
+  void CollectMemory(long* op_stack, long stack_pos);
+  void CheckStack(long* op_stack, long stack_pos);
+  void CheckJitRoots();
+  void CheckPdaRoots();
+  void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
+  void CheckObject(long* mem, bool is_obj, const long depth);
+
+  // memory allocation
+  long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
+  long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
+
+  // object verification
+  long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);  
+  inline long GetObjectID(long* mem) {
+    map<long*, long>::iterator result = allocated_memory.find(mem);
+    if(result != allocated_memory.end()) {
+      return -result->second;
+    }
+    else {
+      return -1;
+    }
+  }
+
+  inline StackClass* GetClass(long* mem) {
+    if(mem) {
+      map<long*, long>::iterator result = allocated_memory.find(mem);
+      if(result != allocated_memory.end()) {
+        return prgm->GetClass(-result->second);
+      }
+    }
+
+    return NULL;
+  }
+
+  ~MemoryManager() {
+  }
+};
+
+#endif

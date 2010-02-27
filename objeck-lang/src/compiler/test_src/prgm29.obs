@@ -1,0 +1,48 @@
+bundle Default {
+  class Foo {
+    @blah : Blah;
+    
+    New(blah : Blah) {
+      @blah := blah;  
+    }
+
+    method : public : GetValue(), Int {
+      return @blah->GetValue();
+    }
+  }
+  
+  class Blah {
+    @value : static : Int;
+    New() {
+      if(@value = 0) {
+        @value := 17;
+        "not set"->PrintLine();
+      }
+      else {
+        "set"->PrintLine();
+        f : Foo := Foo->New(@self);
+        (f->GetValue() + 3)->PrintLine();
+      };
+    }
+
+    method : public : GetValue(), Int {
+      return @value;
+    }
+  }
+
+  class Test {
+    function : Main(args : System.String[]), Nil {
+      DoStuff();
+    }
+      
+    function : native : DoStuff(), Nil {
+      b : Blah := Blah->New();
+      b->GetValue()->PrintLine();
+
+      bb : Blah := Blah->New();
+      bb->GetValue()->PrintLine();
+
+      "Fin"->PrintLine();
+    }
+  }
+}
