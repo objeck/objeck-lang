@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -38,7 +38,8 @@ using namespace backend;
  ****************************/
 IntermediateFactory* IntermediateFactory::instance;
 
-IntermediateFactory* IntermediateFactory::Instance() {
+IntermediateFactory* IntermediateFactory::Instance()
+{
   if(!instance) {
     instance = new IntermediateFactory;
   }
@@ -50,7 +51,8 @@ IntermediateFactory* IntermediateFactory::Instance() {
  * Writes target code to an
  * output file.
  ****************************/
-void TargetEmitter::Emit() {
+void TargetEmitter::Emit()
+{
 #ifdef _DEBUG
   cout << "\n--------- Emitting Target Code ---------" << endl;
   program->Debug();
@@ -62,8 +64,7 @@ void TargetEmitter::Emit() {
       cerr << "Error: Libraries must end in '.obl'" << endl;
       exit(1);
     }
-  }
-  else {
+  } else {
     // TODO: better error handling
     if(file_name.rfind(".obe") == string::npos) {
       cerr << "Error: Executables must end in '.obe'" << endl;
@@ -74,9 +75,9 @@ void TargetEmitter::Emit() {
   ofstream* file_out = new ofstream(file_name.c_str(), ofstream::binary);
   program->Write(file_out, is_lib);
   file_out->close();
-  
+
   cout << "Target file: '" << file_name << "'" << endl;
-  
+
   delete file_out;
   file_out = NULL;
 }
