@@ -49,15 +49,6 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_ICON1               ICON                    "C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\images\\Gear.ico"
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // Version
 //
 
@@ -78,14 +69,14 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Objeck Lanuage Compiler"
+            VALUE "Comments", "Objeck Lanuage Runtime"
             VALUE "CompanyName", "Randy Hollines"
-            VALUE "FileDescription", "Objeck Compiler"
+            VALUE "FileDescription", "Objeck Lanuage Runtime"
             VALUE "FileVersion", "0, 9, 5, 0"
-            VALUE "InternalName", "obc"
+            VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2008-2010"
-            VALUE "OriginalFilename", "obc.exe"
-            VALUE "ProductName", "Objeck Compiler"
+            VALUE "OriginalFilename", "vm.exe"
+            VALUE "ProductName", "Objeck Lanuage Runtime"
             VALUE "ProductVersion", "0, 9, 5, 0"
         END
     END
@@ -95,6 +86,15 @@ BEGIN
     END
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\images\\Gear.ico"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
