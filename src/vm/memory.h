@@ -4,28 +4,28 @@
  * Copyright (c) 2007, 2008, Randy Hollines
  * All rights reserved.
  *CollectMemory(o
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -44,8 +44,8 @@ class ClassMethodId {
   long* mem;
   long cls_id;
   long mthd_id;
-  
- public:
+
+public:
   ClassMethodId(long* s, long* v, long c, long m) {
     self = s;
     mem = v;
@@ -56,10 +56,18 @@ class ClassMethodId {
   ~ClassMethodId() {
   }
 
-  long* GetSelf() { return self; }
-  long* GetMemory() { return mem; }
-  long GetClassId() { return cls_id; }
-  long GetMethodId() { return mthd_id; }
+  long* GetSelf() {
+    return self;
+  }
+  long* GetMemory() {
+    return mem;
+  }
+  long GetClassId() {
+    return cls_id;
+  }
+  long GetMethodId() {
+    return mthd_id;
+  }
 };
 
 class MemoryManager {
@@ -73,14 +81,14 @@ class MemoryManager {
   static long mem_max_size;
   static long uncollected_count;
   static long collected_count;
-  
-  MemoryManager() {    
+
+  MemoryManager() {
   }
-  
+
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(long* mem);
-  
- public:
+
+public:
   static void Initialize(StackProgram* p);
   static MemoryManager* Instance();
 
@@ -128,13 +136,12 @@ class MemoryManager {
   long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
 
   // object verification
-  long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);  
+  long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
   inline long GetObjectID(long* mem) {
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       return -result->second;
-    }
-    else {
+    } else {
       return -1;
     }
   }

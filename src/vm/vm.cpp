@@ -40,7 +40,8 @@
 #include "interpreter.h"
 #include "time.h"
 
-int main(const int argc, char* argv[]) {
+int main(const int argc, char* argv[])
+{
   if(argc > 1) {
 
 #ifdef _MEMCHECK
@@ -55,7 +56,7 @@ int main(const int argc, char* argv[]) {
     long* op_stack = new long[STACK_SIZE];
     long* stack_pos = new long;
     (*stack_pos) = 0;
-   
+
 #ifdef _TIMING
     long start = clock();
 #endif
@@ -69,7 +70,7 @@ int main(const int argc, char* argv[]) {
 #endif
 
 #ifdef _DEBUG
-		cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
 #endif
 
     // clean up
@@ -80,8 +81,7 @@ int main(const int argc, char* argv[]) {
     stack_pos = NULL;
 
     MemoryManager::Instance()->Clear();
-  }
-  else {
+  } else {
     string usage = "Copyright (c) 2007-2010, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";

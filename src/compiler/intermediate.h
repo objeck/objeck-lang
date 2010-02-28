@@ -5,28 +5,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -42,7 +42,7 @@ using namespace backend;
 class IntermediateEmitter;
 
 /****************************
- * Creates a binary search tree 
+ * Creates a binary search tree
  * for case statements.
  * Searches are log2(n).
  ****************************/
@@ -59,7 +59,7 @@ class SelectNode {
   SelectNode* left;
   SelectNode* right;
 
- public:	
+public:
   SelectNode(int i, int v) {
     id = i;
     value = v;
@@ -67,7 +67,7 @@ class SelectNode {
     left = NULL;
     right = NULL;
   }
-	
+
   SelectNode(int i, int v, SelectOperation o, SelectNode* l, SelectNode* r) {
     id = i;
     operation = o;
@@ -86,7 +86,7 @@ class SelectNode {
       delete right;
       right = NULL;
     }
-  }  
+  }
 
   int GetId() {
     return id;
@@ -95,7 +95,7 @@ class SelectNode {
   int GetValue() {
     return value;
   }
-  
+
   SelectOperation GetOperation() {
     return operation;
   }
@@ -116,13 +116,13 @@ class SelectArrayTree {
   map<int, int> value_label_map;
   Select* select;
   int other_label;
-  
+
   SelectNode* divide(int start, int end);
   void Emit(SelectNode* node, int end_label);
-  
- public:
+
+public:
   SelectArrayTree(Select* s, IntermediateEmitter* e);
-  
+
   ~SelectArrayTree() {
     delete[] values;
     values = NULL;
@@ -135,7 +135,7 @@ class SelectArrayTree {
 };
 
 /****************************
- * Translates a parse tree 
+ * Translates a parse tree
  * into intermediate code. Also
  * identifies basic bloks
  * for optimization.
@@ -155,7 +155,7 @@ class IntermediateEmitter {
   bool is_lib;
   friend class SelectArrayTree;
   bool is_new_inst;
-  
+
   // emit operations
   void EmitStrings();
   void EmitLibraries(Linker* linker);
@@ -182,10 +182,10 @@ class IntermediateEmitter {
   void EmitMethodCallParameters(MethodCall* method_call);
   void EmitMethodCall(MethodCall* method_call, bool is_nested, bool is_cast);
   void EmitSystemDirective(SystemStatement* statement);
-  int CalculateEntrySpace(SymbolTable* table, int &index, 
-			  IntermediateDeclarations* parameters, bool is_static);
+  int CalculateEntrySpace(SymbolTable* table, int &index,
+                          IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
-  
+
   int OrphanReturn(MethodCall* method_call) {
     if(!method_call) {
       return -1;
@@ -194,33 +194,31 @@ class IntermediateEmitter {
     if(method_call->GetCallType() == ENUM_CALL) {
       return 0;
     }
-    
+
     Type* rtrn = NULL;
     if(method_call->GetMethod()) {
       rtrn = method_call->GetMethod()->GetReturn();
-    }
-    else if(method_call->GetLibraryMethod()) {
+    } else if(method_call->GetLibraryMethod()) {
       rtrn = method_call->GetLibraryMethod()->GetReturn();
     }
 
     if(rtrn) {
       if(rtrn->GetType() != frontend::NIL_TYPE) {
-	if(rtrn->GetDimension() > 0) {
-	  return 0;
-	}
-	else {
-	  switch(rtrn->GetType()) {
-	  case frontend::BOOLEAN_TYPE:
-	  case frontend::BYTE_TYPE:
-	  case frontend::CHAR_TYPE:
-	  case frontend::INT_TYPE:
-	  case frontend::CLASS_TYPE:
-	    return 0;
-	      
-	  case frontend::FLOAT_TYPE:
-	    return 1;
-	  }
-	}
+        if(rtrn->GetDimension() > 0) {
+          return 0;
+        } else {
+          switch(rtrn->GetType()) {
+          case frontend::BOOLEAN_TYPE:
+          case frontend::BYTE_TYPE:
+          case frontend::CHAR_TYPE:
+          case frontend::INT_TYPE:
+          case frontend::CLASS_TYPE:
+            return 0;
+
+          case frontend::FLOAT_TYPE:
+            return 1;
+          }
+        }
       }
     }
 
@@ -270,49 +268,48 @@ class IntermediateEmitter {
     str << v;
     return str.str();
   }
-  
+
   string ToString(double d) {
     ostringstream str;
     str << d;
     return str.str();
   }
-  
+
   // creates a new basic block
   void NewBlock() {
     // new basic block
     imm_block = new IntermediateBlock;
     if(current_method) {
       imm_method->AddBlock(imm_block);
-    }
-    else {
+    } else {
       imm_klass->AddBlock(imm_block);
     }
   }
-  
- public:
+
+public:
   IntermediateEmitter(ParsedProgram* p, bool l) {
     parsed_program = p;
     is_lib = l;
     // TODO: use an unsigned integer
-    // note: negative numbers are used 
+    // note: negative numbers are used
     // for method inlining in VM
     imm_program = new IntermediateProgram;
     // 1,073,741,824 conditional labels
     conditional_label = -1;
     // 1,073,741,824 unconditional labels
-    unconditional_label = (2 << 29) - 1; 
+    unconditional_label = (2 << 29) - 1;
     is_new_inst = false;
   }
-  
+
   ~IntermediateEmitter() {
   }
-  
+
   void Translate();
-  
+
   IntermediateProgram* GetProgram() {
     return imm_program;
   }
-  
+
   int GetUnconditionalLabel() {
     return unconditional_label;
   }

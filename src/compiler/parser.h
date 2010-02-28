@@ -4,28 +4,28 @@
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -49,11 +49,11 @@ class Parser {
   Class* current_class;
   Method* current_method;
   Scanner* scanner;
-  SymbolTableManager* symbol_table; 
+  SymbolTableManager* symbol_table;
   map<TokenType, string> error_msgs;
   map<int, string> errors;
   string src_path;
-  
+
   inline void NextToken() {
     scanner->NextToken();
   }
@@ -74,7 +74,7 @@ class Parser {
 
     return false;
   }
-  
+
   inline TokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
   }
@@ -91,14 +91,13 @@ class Parser {
     string scope_name;
     if(current_method) {
       scope_name = current_method->GetName() + ":" + ident;
-    }
-    else {
+    } else {
       scope_name = current_class->GetName() + ":" + ident;
     }
-    
+
     return scope_name;
   }
-  
+
   void Show(const string &msg, int depth) {
     cout << setw(4) << GetLineNumber() << ": ";
     for(int i = 0; i < depth; i++) {
@@ -117,18 +116,17 @@ class Parser {
     string name;
     if(Match(TOKEN_IDENT)) {
       while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-	name += scanner->GetToken()->GetIdentifier();
-	NextToken();
-	if(Match(TOKEN_PERIOD)) {
-	  name += '.';
-	  NextToken();
-	}
+        name += scanner->GetToken()->GetIdentifier();
+        NextToken();
+        if(Match(TOKEN_PERIOD)) {
+          name += '.';
+          NextToken();
+        }
       }
-    }
-    else {
+    } else {
       ProcessError(TOKEN_IDENT);
     }
-    
+
     return name;
   }
 
@@ -138,7 +136,7 @@ class Parser {
   void ProcessError(const string &msg);
   void ProcessError(const string &msg, const TokenType sync);
   bool CheckErrors();
-  
+
   // parsing operations
   void ParseFile(const string& file_name);
   void ParseBundle(int depth);
@@ -161,8 +159,8 @@ class Parser {
   Return* ParseReturn(int depth);
   Declaration* ParseDeclaration(const string &ident, bool allow_assign, int depth);
   DeclarationList* ParseDecelerationList(int depth);
-  ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN, 
-				      TokenType close = TOKEN_CLOSED_PAREN);
+  ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN,
+                                      TokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
   void ParseCast(Expression* expression, int depth);
   Type* ParseType(int depth);
@@ -172,8 +170,8 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
-  
- public:
+
+public:
   Parser(const string &p) {
     src_path = p;
     program = new ParsedProgram;
@@ -181,12 +179,12 @@ class Parser {
     current_class = NULL;
     current_method = NULL;
   }
-  
+
   ~Parser() {
   }
 
   bool Parse();
-  
+
   ParsedProgram* GetProgram() {
     return program;
   }

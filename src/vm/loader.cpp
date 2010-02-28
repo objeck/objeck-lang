@@ -4,41 +4,41 @@
  * Copyright (c) 2008-2009, Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
 #include "loader.h"
 #include "common.h"
 
-void Loader::Load() {
+void Loader::Load()
+{
   int magic_num = ReadInt();
   if(magic_num == 0xddde) {
     cerr << "Unable to use execute shared library '" << filename << "'." << endl;
     exit(1);
-  }
-  else if(magic_num != 0xdddd) {
+  } else if(magic_num != 0xdddd) {
     cerr << "Unable to execute invalid program file '" << filename << "'." << endl;
     exit(1);
   }
@@ -62,7 +62,7 @@ void Loader::Load() {
 #endif
     char_strings[i] = char_string;
   }
-  
+
   // copy command line params
   for(unsigned int j = 0; j < arguments.size(); i++, j++) {
     char_strings[i] = (BYTE_VALUE*)strdup(arguments[j].c_str());
@@ -80,10 +80,10 @@ void Loader::Load() {
   start_class_id = ReadInt();
   start_method_id = ReadInt();
 #ifdef _DEBUG
-  cout << "Program starting point: " << start_class_id << "," 
+  cout << "Program starting point: " << start_class_id << ","
        << start_method_id << endl;
 #endif
-  
+
   LoadEnums();
   LoadClasses();
 
@@ -92,14 +92,15 @@ void Loader::Load() {
   dclrs[0] = new StackDclr;
   dclrs[0]->type = OBJ_ARY_PARM;
   dclrs[0]->id = string_cls_id;
-  
+
   init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
   program->SetStringClassId(string_cls_id);
 }
 
-void Loader::LoadEnums() {
+void Loader::LoadEnums()
+{
   const int number = ReadInt();
   for(int i = 0; i < number; i++) {
     // read enum
@@ -121,15 +122,16 @@ void Loader::LoadEnums() {
   }
 }
 
-void Loader::LoadClasses() {
+void Loader::LoadClasses()
+{
   const int number = ReadInt();
   int* cls_hierarchy = new int[number];
   StackClass** classes = new StackClass*[number];
-  
+
 #ifdef _DEBUG
   cout << "Reading " << number << " classe(s)..." << endl;
 #endif
-  
+
   for(int i = 0; i < number; i++) {
     const int id = ReadInt();
     string name = ReadString();
@@ -140,7 +142,7 @@ void Loader::LoadClasses() {
     // space
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
-    // read type parameters 
+    // read type parameters
     const int num_dclrs = ReadInt();
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
@@ -156,23 +158,23 @@ void Loader::LoadClasses() {
         break;
       }
     }
-    
+
     cls_hierarchy[id] = pid;
-    StackClass* cls = new StackClass(id, name, pid, is_virtual, dclrs, 
-				     num_dclrs, cls_space, inst_space);
+    StackClass* cls = new StackClass(id, name, pid, is_virtual, dclrs,
+                                     num_dclrs, cls_space, inst_space);
 
     if(string_cls_id < 0 && name == "System.String") {
       string_cls_id = id;
     }
 
 #ifdef _DEBUG
-    cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='" 
-	 << parent_name << "'; class_bytes=" << cls_space << "'; instance_bytes=" 
-	 << inst_space << endl;
+    cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='"
+         << parent_name << "'; class_bytes=" << cls_space << "'; instance_bytes="
+         << inst_space << endl;
 #endif
-    
+
     // load methods
-    LoadMethods(cls);    
+    LoadMethods(cls);
     // add class
 #ifdef _DEBUG
     assert(id < number);
@@ -184,13 +186,14 @@ void Loader::LoadClasses() {
   program->SetHierarchy(cls_hierarchy);
 }
 
-void Loader::LoadMethods(StackClass* cls) {
+void Loader::LoadMethods(StackClass* cls)
+{
   const int number = ReadInt();
 #ifdef _DEBUG
   cout << "Reading " << number << " method(s)..." << endl;
 #endif
-  
-  StackMethod** methods = new StackMethod*[number];  
+
+  StackMethod** methods = new StackMethod*[number];
   for(int i = 0; i < number; i++) {
     // id
     const int id = ReadInt();
@@ -212,7 +215,7 @@ void Loader::LoadMethods(StackClass* cls) {
     const int params = ReadInt();
     // space
     const int mem_size = ReadInt();
-    // read type parameters 
+    // read type parameters
     const int num_dclrs = ReadInt();
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
@@ -228,7 +231,7 @@ void Loader::LoadMethods(StackClass* cls) {
         break;
       }
     }
-    
+
     // parse return
     MemoryType rtrn_type;
     switch(rtrn_name[0]) {
@@ -238,38 +241,37 @@ void Loader::LoadMethods(StackClass* cls) {
     case 'i': // int
     case 'o': // object
       rtrn_type = INT_TYPE;
-      break;  
-  
+      break;
+
     case 'f': // float
       if(rtrn_name.size() > 1) {
-	rtrn_type = INT_TYPE;
-      }
-      else {
-	rtrn_type = FLOAT_TYPE;
+        rtrn_type = INT_TYPE;
+      } else {
+        rtrn_type = FLOAT_TYPE;
       }
       break;
 
     case 'n': // nil
       rtrn_type = NIL_TYPE;
       break;
-      
+
     default:
       cerr << ">>> unknown type <<<" << endl;
       exit(1);
       break;
     }
-    
-    StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs, 
-					num_dclrs, params, mem_size, rtrn_type, cls);
+
+    StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
+                                        num_dclrs, params, mem_size, rtrn_type, cls);
 
 #ifdef _DEBUG
-    cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" << rtrn_name 
-	 << "'; params=" << params << "; bytes=" << mem_size << endl;
+    cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" << rtrn_name
+         << "'; params=" << params << "; bytes=" << mem_size << endl;
 #endif
 
     // load statements
     LoadStatements(mthd);
-    
+
     // add method
 #ifdef _DEBUG
     assert(id < number);
@@ -279,7 +281,8 @@ void Loader::LoadMethods(StackClass* cls) {
   cls->SetMethods(methods, number);
 }
 
-void Loader::LoadInitializationCode(StackMethod* method) {
+void Loader::LoadInitializationCode(StackMethod* method)
+{
   method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)arguments.size()));
   method->AddInstruction(new StackInstr(NEW_INT_ARY, (long)1));
   method->AddInstruction(new StackInstr(STOR_INT_VAR, 0L, LOCL));
@@ -290,7 +293,7 @@ void Loader::LoadInitializationCode(StackMethod* method) {
     method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)(num_char_strings + i)));
     method->AddInstruction(new StackInstr(LOAD_INT_LIT, -3998L));
     method->AddInstruction(new StackInstr(TRAP_RTRN, 3L));
-    
+
     method->AddInstruction(new StackInstr(NEW_OBJ_INST, (long)string_cls_id));
     // note: method ID is position dependant
     method->AddInstruction(new StackInstr(MTHD_CALL, (long)string_cls_id, 2L, 0L));
@@ -306,7 +309,8 @@ void Loader::LoadInitializationCode(StackMethod* method) {
   method->AddInstruction(new StackInstr(RTRN));
 }
 
-void Loader::LoadStatements(StackMethod* method) {
+void Loader::LoadStatements(StackMethod* method)
+{
   int index = 0;
 
   int type = ReadInt();
@@ -323,155 +327,155 @@ void Loader::LoadStatements(StackMethod* method) {
     case SHR_INT:
       method->AddInstruction(new StackInstr(SHR_INT, (long)ReadInt()));
       break;
-      
+
     case LOAD_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_INT_VAR, id, mem_context));
     }
-      break;
-      
+    break;
+
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_FLOAT_VAR, id, mem_context));
     }
-      break;
+    break;
 
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_INT_VAR, id, mem_context));
     }
-      break;
+    break;
 
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
       method->AddInstruction(new StackInstr(STOR_FLOAT_VAR, id, mem_context));
     }
-      break;
+    break;
 
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(COPY_INT_VAR, id, mem_context));
     }
-      break;
+    break;
 
     case COPY_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(COPY_FLOAT_VAR, id, mem_context));
     }
-      break;
+    break;
 
     case LOAD_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
-      break;
+    break;
 
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_INT_ARY_ELM, dim, mem_context));
     }
-      break;
-      
+    break;
+
     case LOAD_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
-      break;
+    break;
 
     case STOR_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_BYTE_ARY_ELM, dim, mem_context));
     }
-      break;
+    break;
 
     case STOR_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_INT_ARY_ELM, dim, mem_context));
     }
-      break;
+    break;
 
     case STOR_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       long mem_context = ReadInt();
       method->AddInstruction(new StackInstr(STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
-      break;
+    break;
 
     case NEW_FLOAT_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_FLOAT_ARY, dim));
     }
-      break;
+    break;
 
     case NEW_INT_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_INT_ARY, dim));
     }
-      break;
-      
+    break;
+
     case NEW_BYTE_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_BYTE_ARY, dim));
 
     }
-      break;
-      
+    break;
+
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
       method->AddInstruction(new StackInstr(NEW_OBJ_INST, obj_id));
     }
-      break;
-      
+    break;
+
     case MTHD_CALL: {
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
       method->AddInstruction(new StackInstr(MTHD_CALL, cls_id, mthd_id, is_native));
     }
-      break;
+    break;
 
     case LIB_OBJ_INST_CAST:
       cerr << ">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
       exit(1);
-      
+
     case LIB_NEW_OBJ_INST:
       cerr << ">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << endl;
       exit(1);
-      
+
     case LIB_MTHD_CALL:
       cerr << ">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << endl;
       exit(1);
-      
+
     case JMP: {
       long label = ReadInt();
       long cond = ReadInt();
       method->AddInstruction(new StackInstr(JMP, label, cond));
     }
-      break;
+    break;
 
     case LBL: {
       long id = ReadInt();
       method->AddInstruction(new StackInstr(LBL, id));
       method->AddLabel(id, index);
     }
-      break;
+    break;
 
     case OBJ_INST_CAST: {
       long to = ReadInt();
       method->AddInstruction(new StackInstr(OBJ_INST_CAST, to));
     }
-      break;
+    break;
 
     case OR_INT:
       method->AddInstruction(new StackInstr(OR_INT));
@@ -480,7 +484,7 @@ void Loader::LoadStatements(StackMethod* method) {
     case AND_INT:
       method->AddInstruction(new StackInstr(AND_INT));
       break;
-      
+
     case ADD_INT:
       method->AddInstruction(new StackInstr(ADD_INT));
       break;
@@ -488,15 +492,15 @@ void Loader::LoadStatements(StackMethod* method) {
     case CEIL_FLOAT:
       method->AddInstruction(new StackInstr(CEIL_FLOAT));
       break;
-      
+
     case FLOR_FLOAT:
       method->AddInstruction(new StackInstr(FLOR_FLOAT));
       break;
-      
+
     case F2I:
       method->AddInstruction(new StackInstr(F2I));
       break;
-      
+
     case I2F:
       method->AddInstruction(new StackInstr(I2F));
       break;
@@ -504,7 +508,7 @@ void Loader::LoadStatements(StackMethod* method) {
     case POP_INT:
       method->AddInstruction(new StackInstr(POP_INT));
       break;
-      
+
     case POP_FLOAT:
       method->AddInstruction(new StackInstr(POP_FLOAT));
       break;
@@ -512,43 +516,43 @@ void Loader::LoadStatements(StackMethod* method) {
     case LOAD_CLS_MEM:
       method->AddInstruction(new StackInstr(LOAD_CLS_MEM));
       break;
-      
+
     case LOAD_INST_MEM:
       method->AddInstruction (new StackInstr(LOAD_INST_MEM));
       break;
-      
+
     case SUB_INT:
       method->AddInstruction(new StackInstr(SUB_INT));
       break;
-      
+
     case MUL_INT:
       method->AddInstruction(new StackInstr(MUL_INT));
       break;
-      
+
     case DIV_INT:
       method->AddInstruction(new StackInstr(DIV_INT));
       break;
-      
+
     case MOD_INT:
       method->AddInstruction(new StackInstr(MOD_INT));
       break;
-      
+
     case EQL_INT:
       method->AddInstruction(new StackInstr(EQL_INT));
       break;
-      
+
     case NEQL_INT:
       method->AddInstruction(new StackInstr(NEQL_INT));
       break;
-      
+
     case LES_INT:
       method->AddInstruction(new StackInstr(LES_INT));
       break;
-      
+
     case GTR_INT:
       method->AddInstruction(new StackInstr(GTR_INT));
       break;
-      
+
     case LES_EQL_INT:
       method->AddInstruction(new StackInstr(LES_EQL_INT));
       break;
@@ -556,7 +560,7 @@ void Loader::LoadStatements(StackMethod* method) {
     case LES_EQL_FLOAT:
       method->AddInstruction(new StackInstr(LES_EQL_FLOAT));
       break;
-      
+
     case GTR_EQL_INT:
       method->AddInstruction(new StackInstr(GTR_EQL_INT));
       break;
@@ -564,60 +568,60 @@ void Loader::LoadStatements(StackMethod* method) {
     case GTR_EQL_FLOAT:
       method->AddInstruction(new StackInstr(GTR_EQL_FLOAT));
       break;
-      
+
     case ADD_FLOAT:
       method->AddInstruction(new StackInstr(ADD_FLOAT));
       break;
-      
+
     case SUB_FLOAT:
       method->AddInstruction(new StackInstr(SUB_FLOAT));
       break;
-      
+
     case MUL_FLOAT:
       method->AddInstruction(new StackInstr(MUL_FLOAT));
       break;
-      
+
     case DIV_FLOAT:
       method->AddInstruction(new StackInstr(DIV_FLOAT));
       break;
-        
+
     case EQL_FLOAT:
       method->AddInstruction(new StackInstr(EQL_FLOAT));
       break;
-      
+
     case NEQL_FLOAT:
       method->AddInstruction(new StackInstr(NEQL_FLOAT));
       break;
-      
+
     case LES_FLOAT:
       method->AddInstruction(new StackInstr(LES_FLOAT));
       break;
-      
+
     case GTR_FLOAT:
       method->AddInstruction(new StackInstr(GTR_FLOAT));
       break;
-      
+
     case LOAD_FLOAT_LIT:
-      method->AddInstruction(new StackInstr(LOAD_FLOAT_LIT, 
-					    ReadDouble()));
+      method->AddInstruction(new StackInstr(LOAD_FLOAT_LIT,
+                                            ReadDouble()));
       break;
 
     case RTRN:
       method->AddInstruction(new StackInstr(RTRN));
       break;
-      
+
     case TRAP: {
       long args = ReadInt();
       method->AddInstruction(new StackInstr(TRAP, args));
     }
-      break;
+    break;
 
     case TRAP_RTRN: {
       long args = ReadInt();
       method->AddInstruction(new StackInstr(TRAP_RTRN, args));
     }
-      break;
-      
+    break;
+
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;
@@ -625,11 +629,11 @@ void Loader::LoadStatements(StackMethod* method) {
 #endif
       exit(1);
     }
-      break;
-    
+    break;
+
     }
     // update
-    type = ReadInt(); 
+    type = ReadInt();
     index++;
   }
 }

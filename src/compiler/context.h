@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -55,7 +55,7 @@ class ContextAnalyzer {
   bool main_found;
   bool is_lib_target;
   int char_str_index;
-    
+
   void Show(const string &msg, const int line_num, int depth) {
     cout << setw(4) << line_num << ": ";
     for(int i = 0; i < depth; i++) {
@@ -79,18 +79,17 @@ class ContextAnalyzer {
     if(type && type->GetDimension() > 0) {
       ExpressionList* indices = NULL;
       if(expression->GetExpressionType() == VAR_EXPR) {
-	indices = static_cast<Variable*>(expression)->GetIndices();
+        indices = static_cast<Variable*>(expression)->GetIndices();
+      } else {
+        return false;
       }
-      else {
-	return false;
-      }
-      
+
       return indices != NULL;
     }
-    
+
     return true;
   }
-  
+
   // returns true if expression is of boolean type
   inline bool IsBooleanExpression(Expression* expression) {
     while(expression->GetMethodCall()) {
@@ -110,22 +109,22 @@ class ContextAnalyzer {
       expression = expression->GetMethodCall();
     }
     Type* eval_type = expression->GetEvalType();
-    if(eval_type) {      
+    if(eval_type) {
       if(eval_type->GetType() == CLASS_TYPE) {
-	// program
-	if(program->GetEnum(eval_type->GetClassName())) {
-	  return true;
-	}
-	// library
-	if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
-	  return true;
-	}
+        // program
+        if(program->GetEnum(eval_type->GetClassName())) {
+          return true;
+        }
+        // library
+        if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
+          return true;
+        }
       }
     }
 
     return false;
   }
-  
+
   // returns true if expression is of integer or enum type
   inline bool IsIntegerExpression(Expression* expression) {
     while(expression->GetMethodCall()) {
@@ -135,151 +134,147 @@ class ContextAnalyzer {
     if(eval_type) {
       // integer types
       if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE) {
-	return true;
+        return true;
       }
       // enum types
       if(eval_type->GetType() == CLASS_TYPE) {
-	// program
-	if(program->GetEnum(eval_type->GetClassName())) {
-	  return true;
-	}
-	// library
-	if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
-	  return true;
-	}
+        // program
+        if(program->GetEnum(eval_type->GetClassName())) {
+          return true;
+        }
+        // library
+        if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
+          return true;
+        }
       }
     }
-    
+
     return false;
   }
-  
+
   // returns true if entry static cotext is not valid
   inline bool InvalidStatic(SymbolEntry* entry) {
     return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
   }
-  
+
   // returns true if a duplicate value is found in the list
   inline bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value) {
     map<int, StatementList*>::iterator result = label_statements.find(value);
     if(result != label_statements.end()) {
       return true;
     }
-    
+
     return false;
   }
 
   // returns true if method static cotext is not valid
   inline bool InvalidStatic(MethodCall* method_call, Method* method) {
-    // same class, calling method static and called method not static, 
+    // same class, calling method static and called method not static,
     // called method not new, called method not from a varaible
-    if(current_class == method->GetClass() && current_method->IsStatic() && 
-       !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
-       method->GetMethodType() != NEW_PRIVATE_METHOD) {
+    if(current_class == method->GetClass() && current_method->IsStatic() &&
+        !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
+        method->GetMethodType() != NEW_PRIVATE_METHOD) {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
       if(entry && entry->IsLocal()) {
-	return false;
+        return false;
       }
-      
+
       Variable* variable = method_call->GetVariable();
       if(variable) {
-	entry = variable->GetEntry();
-	if(entry && entry->IsLocal()) {
-	  return false;
-	}
-      } 
-      
+        entry = variable->GetEntry();
+        if(entry && entry->IsLocal()) {
+          return false;
+        }
+      }
+
       return true;
-    }    
+    }
 
     return false;
   }
 
   // returns true if method static cotext is not valid
   inline bool InvalidStatic(MethodCall* method_call, LibraryMethod* method) {
-    // same class, calling method static and called method not static, 
+    // same class, calling method static and called method not static,
     // called method not new, called method not from a varaible
-    if(current_method->IsStatic() && !method->IsStatic() && 
-       method->GetMethodType() != NEW_PUBLIC_METHOD && 
-       method->GetMethodType() != NEW_PRIVATE_METHOD) {
+    if(current_method->IsStatic() && !method->IsStatic() &&
+        method->GetMethodType() != NEW_PUBLIC_METHOD &&
+        method->GetMethodType() != NEW_PRIVATE_METHOD) {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
       if(entry && entry->IsLocal()) {
-	return false;
+        return false;
       }
-      
+
       Variable* variable = method_call->GetVariable();
       if(variable) {
-	entry = variable->GetEntry();
-	if(entry && entry->IsLocal()) {
-	  return false;
-	}
-      } 
-      
+        entry = variable->GetEntry();
+        if(entry && entry->IsLocal()) {
+          return false;
+        }
+      }
+
       return true;
-    }    
+    }
 
     return false;
   }
-  
+
   SymbolEntry* GetEntry(string name) {
     // check locally
     SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + ":" + name);
     if(entry) {
       return entry;
-    }
-    else {
+    } else {
       // check class
       SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
       entry = table->GetEntry(current_class->GetName() + ":" + name);
       if(entry) {
-	return entry;
-      }
-      else {
-	// check parents
-	Class* parent = bundle->GetClass(current_class->GetParentName());
-	while(parent && !entry) {
-	  SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-	  entry = table->GetEntry(parent->GetName() + ":" + name);
-	  if(entry) {
-	    return entry;
-	  }
-	  parent = bundle->GetClass(parent->GetParentName());
-	}
+        return entry;
+      } else {
+        // check parents
+        Class* parent = bundle->GetClass(current_class->GetParentName());
+        while(parent && !entry) {
+          SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
+          entry = table->GetEntry(parent->GetName() + ":" + name);
+          if(entry) {
+            return entry;
+          }
+          parent = bundle->GetClass(parent->GetParentName());
+        }
       }
     }
-  
+
     return NULL;
   }
-  
+
   SymbolEntry* GetEntry(MethodCall* method_call, const string &variable_name, int depth) {
     SymbolEntry* entry;
     if(method_call->GetVariable()) {
       Variable* variable = method_call->GetVariable();
       AnalyzeVariable(variable, depth);
       entry = variable->GetEntry();
-    }
-    else {
+    } else {
       entry = GetEntry(variable_name);
       if(entry) {
-	method_call->SetEntry(entry);
+        method_call->SetEntry(entry);
       }
     }
-    
+
     return entry;
   }
-  
+
   Type* GetExpressionType(Expression* expression, int depth) {
     Type* type;
     MethodCall* mthd_call = expression->GetMethodCall();
     if(mthd_call) {
       while(mthd_call) {
-	AnalyzeExpressionMethodCall(mthd_call, depth + 1);
-	type = mthd_call->GetEvalType();
-	mthd_call = mthd_call->GetMethodCall();
+        AnalyzeExpressionMethodCall(mthd_call, depth + 1);
+        type = mthd_call->GetEvalType();
+        mthd_call = mthd_call->GetMethodCall();
       }
-    }
-    else {
+    } else {
       type = expression->GetEvalType();
     }
 
@@ -291,55 +286,53 @@ class ContextAnalyzer {
       // get cast name
       string cast_name;
       if(class_tmp) {
-	cast_name = class_tmp->GetName();
+        cast_name = class_tmp->GetName();
+      } else if(lib_class_tmp) {
+        cast_name = lib_class_tmp->GetName();
       }
-      else if(lib_class_tmp) {
-	cast_name = lib_class_tmp->GetName();
-      }
-	
+
       // check names
       if(cls_name == cast_name) {
-	return true;
+        return true;
       }
 
       // upate
       if(class_tmp) {
-	if(class_tmp->GetParent()) {	  
-	  class_tmp = class_tmp->GetParent();
-	  lib_class_tmp = NULL;
-	}
-	else {
-	  lib_class_tmp = class_tmp->GetLibraryParent();
-	  class_tmp = NULL;
-	}
+        if(class_tmp->GetParent()) {
+          class_tmp = class_tmp->GetParent();
+          lib_class_tmp = NULL;
+        } else {
+          lib_class_tmp = class_tmp->GetLibraryParent();
+          class_tmp = NULL;
+        }
 
       }
       // library parent
       else {
-	lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetUses());
-	class_tmp = NULL;
+        lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetUses());
+        class_tmp = NULL;
       }
     }
-    
+
     return false;
   }
-  
+
   bool ValidUpCast(const string &to, Class* from_klass) {
     if(to == from_klass->GetName()) {
       return true;
     }
-    
+
     // updates
     vector<Class*> children = from_klass->GetChildren();
     for(unsigned int i = 0; i < children.size(); i++) {
       if(ValidUpCast(to, children[i])) {
-	return true;
+        return true;
       }
     }
-    
+
     return false;
   }
-  
+
   bool ValidUpCast(const string &to, LibraryClass* from_klass) {
     if(to == from_klass->GetName()) {
       return true;
@@ -349,7 +342,7 @@ class ContextAnalyzer {
     vector<LibraryClass*> children = from_klass->GetLibraryChildren();
     for(unsigned int i = 0; i < children.size(); i++) {
       if(ValidUpCast(to, children[i])) {
-	return true;
+        return true;
       }
     }
 
@@ -357,10 +350,10 @@ class ContextAnalyzer {
     vector<frontend::ParseNode*> lib_children = from_klass->GetChildren();
     for(unsigned int i = 0; i < lib_children.size(); i++) {
       if(ValidUpCast(to, static_cast<Class*>(lib_children[i]))) {
-	return true;
+        return true;
       }
     }
-    
+
     return false;
   }
 
@@ -395,12 +388,12 @@ class ContextAnalyzer {
 
     return eenum;
   }
-  
+
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
   void ProcessError(const string &msg);
   bool CheckErrors();
-  
+
   // context operations
   void AnalyzeEnum(Enum* eenum, int depth);
   void AnalyzeClass(Class* klass, int id, int depth);
@@ -429,26 +422,26 @@ class ContextAnalyzer {
   void AnalyzeEntries(ParseNode* node, const string &scope, int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, int depth);
-  bool AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding, 
-				   Class* &klass, LibraryClass* &lib_klass);
-  bool AnalyzeExpressionMethodCall(Expression* expression, string &encoding, 
-				   Class* &klass, LibraryClass* &lib_klass);
-  bool AnalyzeExpressionMethodCall(Type* type, const int dimension, string &encoding, 
-				   Class* &klass, LibraryClass* &lib_klass);
+  bool AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,
+                                   Class* &klass, LibraryClass* &lib_klass);
+  bool AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
+                                   Class* &klass, LibraryClass* &lib_klass);
+  bool AnalyzeExpressionMethodCall(Type* type, const int dimension, string &encoding,
+                                   Class* &klass, LibraryClass* &lib_klass);
   void AnalyzeMethodCall(MethodCall* method_call, int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, int depth);
   void AnalyzeParentCall(MethodCall* method_call, int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-			 bool is_expr, string &encoding, int depth);
+                         bool is_expr, string &encoding, int depth);
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-			 bool is_expr, string &encoding, bool is_parent, int depth);
-  void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call, 
-			 bool is_virtual, bool is_expr, int depth);
+                         bool is_expr, string &encoding, bool is_parent, int depth);
+  void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
+                         bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
-  
- public:
+
+public:
   ContextAnalyzer(ParsedProgram* p, string lib_path, bool l) {
     program = p;
     is_lib_target = l;
@@ -457,7 +450,7 @@ class ContextAnalyzer {
     linker = new Linker(lib_path);
     program->SetLinker(linker);
     char_str_index = 0;
-    
+
     // setup type map
     type_map["$Byte"] = BYTE_TYPE;
     type_map["$Char"] = CHAR_TYPE;
@@ -465,7 +458,7 @@ class ContextAnalyzer {
     type_map["$Float"] = FLOAT_TYPE;
     type_map["$Bool"] = BOOLEAN_TYPE;
   }
-  
+
   ~ContextAnalyzer() {
   }
 
