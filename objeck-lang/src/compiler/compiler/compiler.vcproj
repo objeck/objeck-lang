@@ -199,6 +199,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\obc.exe"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -636,6 +637,10 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath="..\..\..\images\Gear.ico"
+			>
+		</File>
 		<File
 			RelativePath=".\objeck.rc"
 			>
