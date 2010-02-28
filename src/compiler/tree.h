@@ -1598,7 +1598,7 @@ namespace frontend {
     }
 
     void AssociateMethods() {
-      for(int i = 0; i < method_list.size(); i++) {
+      for(unsigned int i = 0; i < method_list.size(); i++) {
 	Method* method = method_list[i];
 	methods.insert(pair<string, Method*>(method->GetEncodedName(), method));
       }
