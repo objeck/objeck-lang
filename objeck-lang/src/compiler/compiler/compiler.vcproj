@@ -616,6 +616,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\resource.h"
+				>
+			</File>
+			<File
 				RelativePath="..\scanner.h"
 				>
 			</File>
@@ -632,6 +636,10 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\objeck.rc"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
