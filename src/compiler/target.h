@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -54,1116 +54,1113 @@ using namespace std;
 using namespace instructions;
 
 namespace backend {
-  class IntermediateClass;
+class IntermediateClass;
 
-  /****************************
-   * Intermediate class
-   ****************************/
-  class Intermediate {
+/****************************
+ * Intermediate class
+ ****************************/
+class Intermediate {
 
-  public:
-    Intermediate() {
-    }
-  
-    virtual ~Intermediate() {
-    }
+public:
+  Intermediate() {
+  }
 
-  protected:
-    void WriteString(const string &value, ofstream* file_out) {
-      int size = (int)value.size();
-      file_out->write((char*)&size, sizeof(size));
-      file_out->write(value.c_str(), value.size());
-    }
+  virtual ~Intermediate() {
+  }
 
-    void WriteInt(int value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
-    }
-  
-    void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
-    }
-  };
+protected:
+  void WriteString(const string &value, ofstream* file_out) {
+    int size = (int)value.size();
+    file_out->write((char*)&size, sizeof(size));
+    file_out->write(value.c_str(), value.size());
+  }
 
-  /****************************
-   * IntermediateInstruction 
-   * class
-   ****************************/
-  class IntermediateInstruction : public Intermediate {
-    friend class IntermediateFactory;
-    InstructionType type;
-    int operand;
-    int operand2;
-    int operand3;
-    FLOAT_VALUE operand4;
-    string operand5;
-    string operand6;
-    
-    IntermediateInstruction(InstructionType t) {
-      type = t;
-    }
+  void WriteInt(int value, ofstream* file_out) {
+    file_out->write((char*)&value, sizeof(value));
+  }
 
-    IntermediateInstruction(InstructionType t, int o1) {
-      type = t;
-      operand = o1;
-    }
+  void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
+    file_out->write((char*)&value, sizeof(value));
+  }
+};
 
-    IntermediateInstruction(InstructionType t, int o1, int o2) {
-      type = t;
-      operand = o1;
-      operand2 = o2;
-    }
+/****************************
+ * IntermediateInstruction
+ * class
+ ****************************/
+class IntermediateInstruction : public Intermediate {
+  friend class IntermediateFactory;
+  InstructionType type;
+  int operand;
+  int operand2;
+  int operand3;
+  FLOAT_VALUE operand4;
+  string operand5;
+  string operand6;
 
-    IntermediateInstruction(InstructionType t, int o1, int o2, int o3) {
-      type = t;
-      operand = o1;
-      operand2 = o2;
-      operand3 = o3;
-    }
-    
-    IntermediateInstruction(InstructionType t, FLOAT_VALUE o4) {
-      type = t;
-      operand4 = o4;
-    }
+  IntermediateInstruction(InstructionType t) {
+    type = t;
+  }
 
-    IntermediateInstruction(InstructionType t, string o5) {
-      type = t;
-      operand5 = o5;
-    }
-    
-    IntermediateInstruction(InstructionType t, int o3, string o5, string o6) {
-      type = t;
-      operand3 = o3;
-      operand5 = o5;
-      operand6 = o6;
-    }
-    
-    IntermediateInstruction(LibraryInstr* lib_instr) {
-      type = lib_instr->GetType();
-      operand = lib_instr->GetOperand();
-      operand2 = lib_instr->GetOperand2();
-      operand3 = lib_instr->GetOperand3();
-      operand4 = lib_instr->GetOperand4();
-      operand5 = lib_instr->GetOperand5();
-      operand6 = lib_instr->GetOperand6();
-    }
-    
-    ~IntermediateInstruction() {
-    }
-    
-  public: 
-    InstructionType GetType() {
-      return type;
-    }
+  IntermediateInstruction(InstructionType t, int o1) {
+    type = t;
+    operand = o1;
+  }
 
-    int GetOperand() {
-      return operand;
-    }
+  IntermediateInstruction(InstructionType t, int o1, int o2) {
+    type = t;
+    operand = o1;
+    operand2 = o2;
+  }
 
-    int GetOperand2() {
-      return operand2;
-    }
+  IntermediateInstruction(InstructionType t, int o1, int o2, int o3) {
+    type = t;
+    operand = o1;
+    operand2 = o2;
+    operand3 = o3;
+  }
 
-    FLOAT_VALUE GetOperand4() {
-      return operand4; 
-    }
-    
-    void Write(ofstream* file_out) {
-      WriteInt((int)type, file_out);
-      switch(type) {
-      case SHL_INT:
-      case SHR_INT:
-      case LOAD_INT_LIT:
-      case NEW_FLOAT_ARY:
-      case NEW_INT_ARY:
-      case NEW_BYTE_ARY:
-      case NEW_OBJ_INST:
-      case OBJ_INST_CAST:
-      case TRAP:
-      case TRAP_RTRN:
-	WriteInt(operand, file_out);
-	break;
+  IntermediateInstruction(InstructionType t, FLOAT_VALUE o4) {
+    type = t;
+    operand4 = o4;
+  }
 
-      case MTHD_CALL:
-	WriteInt(operand, file_out);
-	WriteInt(operand2, file_out);
-	WriteInt(operand3, file_out);
-	break;
-	
-      case LIB_NEW_OBJ_INST:
-      case LIB_OBJ_INST_CAST:
-	WriteString(operand5, file_out);
-	break;
-	
-      case LIB_MTHD_CALL:
-	WriteInt(operand3, file_out);
-	WriteString(operand5, file_out);
-	WriteString(operand6, file_out);
-	break;
-	
-      case JMP:	
-      case LOAD_INT_VAR:
-      case LOAD_FLOAT_VAR:
-      case STOR_INT_VAR:
-      case STOR_FLOAT_VAR:
-      case COPY_INT_VAR:
-      case COPY_FLOAT_VAR:
-      case LOAD_BYTE_ARY_ELM:
-      case LOAD_INT_ARY_ELM:
-      case LOAD_FLOAT_ARY_ELM:
-      case STOR_BYTE_ARY_ELM:
-      case STOR_INT_ARY_ELM:
-      case STOR_FLOAT_ARY_ELM:
-	WriteInt(operand, file_out);
-	WriteInt(operand2, file_out);
-	break;
-      
-      case LOAD_FLOAT_LIT:
-	WriteDouble(operand4, file_out);
-	break;
-      
-      case LBL:
-	WriteInt(operand, file_out);
-	break;
+  IntermediateInstruction(InstructionType t, string o5) {
+    type = t;
+    operand5 = o5;
+  }
+
+  IntermediateInstruction(InstructionType t, int o3, string o5, string o6) {
+    type = t;
+    operand3 = o3;
+    operand5 = o5;
+    operand6 = o6;
+  }
+
+  IntermediateInstruction(LibraryInstr* lib_instr) {
+    type = lib_instr->GetType();
+    operand = lib_instr->GetOperand();
+    operand2 = lib_instr->GetOperand2();
+    operand3 = lib_instr->GetOperand3();
+    operand4 = lib_instr->GetOperand4();
+    operand5 = lib_instr->GetOperand5();
+    operand6 = lib_instr->GetOperand6();
+  }
+
+  ~IntermediateInstruction() {
+  }
+
+public:
+  InstructionType GetType() {
+    return type;
+  }
+
+  int GetOperand() {
+    return operand;
+  }
+
+  int GetOperand2() {
+    return operand2;
+  }
+
+  FLOAT_VALUE GetOperand4() {
+    return operand4;
+  }
+
+  void Write(ofstream* file_out) {
+    WriteInt((int)type, file_out);
+    switch(type) {
+    case SHL_INT:
+    case SHR_INT:
+    case LOAD_INT_LIT:
+    case NEW_FLOAT_ARY:
+    case NEW_INT_ARY:
+    case NEW_BYTE_ARY:
+    case NEW_OBJ_INST:
+    case OBJ_INST_CAST:
+    case TRAP:
+    case TRAP_RTRN:
+      WriteInt(operand, file_out);
+      break;
+
+    case MTHD_CALL:
+      WriteInt(operand, file_out);
+      WriteInt(operand2, file_out);
+      WriteInt(operand3, file_out);
+      break;
+
+    case LIB_NEW_OBJ_INST:
+    case LIB_OBJ_INST_CAST:
+      WriteString(operand5, file_out);
+      break;
+
+    case LIB_MTHD_CALL:
+      WriteInt(operand3, file_out);
+      WriteString(operand5, file_out);
+      WriteString(operand6, file_out);
+      break;
+
+    case JMP:
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case STOR_INT_VAR:
+    case STOR_FLOAT_VAR:
+    case COPY_INT_VAR:
+    case COPY_FLOAT_VAR:
+    case LOAD_BYTE_ARY_ELM:
+    case LOAD_INT_ARY_ELM:
+    case LOAD_FLOAT_ARY_ELM:
+    case STOR_BYTE_ARY_ELM:
+    case STOR_INT_ARY_ELM:
+    case STOR_FLOAT_ARY_ELM:
+      WriteInt(operand, file_out);
+      WriteInt(operand2, file_out);
+      break;
+
+    case LOAD_FLOAT_LIT:
+      WriteDouble(operand4, file_out);
+      break;
+
+    case LBL:
+      WriteInt(operand, file_out);
+      break;
+    }
+  }
+
+  void Debug() {
+    switch(type) {
+    case POP_INT:
+      cout << "POP_INT" << endl;
+      break;
+
+    case POP_FLOAT:
+      cout << "POP_FLOAT" << endl;
+      break;
+
+    case LOAD_INT_LIT:
+      cout << "LOAD_INT_LIT: value=" << operand << endl;
+      break;
+
+    case SHL_INT:
+      cout << "SHL_INT: value=" << operand << endl;
+      break;
+
+    case SHR_INT:
+      cout << "SHR_INT: value=" << operand << endl;
+      break;
+
+    case LOAD_FLOAT_LIT:
+      cout << "LOAD_FLOAT_LIT: value=" << operand4 << endl;
+      break;
+
+    case LOAD_INT_VAR:
+      cout << "LOAD_INT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case LOAD_FLOAT_VAR:
+      cout << "LOAD_FLOAT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case LOAD_BYTE_ARY_ELM:
+      cout << "LOAD_BYTE_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case LOAD_INT_ARY_ELM:
+      cout << "LOAD_INT_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case LOAD_FLOAT_ARY_ELM:
+      cout << "LOAD_FLOAT_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case LOAD_CLS_MEM:
+      cout << "LOAD_CLS_MEM" << endl;
+      break;
+
+    case LOAD_INST_MEM:
+      cout << "LOAD_INST_MEM" << endl;
+      break;
+
+    case STOR_INT_VAR:
+      cout << "STOR_INT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case STOR_FLOAT_VAR:
+      cout << "STOR_FLOAT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case COPY_INT_VAR:
+      cout << "COPY_INT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case COPY_FLOAT_VAR:
+      cout << "COPY_FLOAT_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case STOR_BYTE_ARY_ELM:
+      cout << "STOR_BYTE_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case STOR_INT_ARY_ELM:
+      cout << "STOR_INT_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case STOR_FLOAT_ARY_ELM:
+      cout << "STOR_FLOAT_ARY_ELM: dimension=" << operand
+           << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case AND_INT:
+      cout << "AND_INT" << endl;
+      break;
+
+    case OR_INT:
+      cout << "OR_INT" << endl;
+      break;
+
+    case ADD_INT:
+      cout << "ADD_INT" << endl;
+      break;
+
+    case SUB_INT:
+      cout << "SUB_INT" << endl;
+      break;
+
+    case MUL_INT:
+      cout << "MUL_INT" << endl;
+      break;
+
+    case DIV_INT:
+      cout << "DIV_INT" << endl;
+      break;
+
+    case MOD_INT:
+      cout << "MOD_INT" << endl;
+      break;
+
+    case EQL_INT:
+      cout << "EQL_INT" << endl;
+      break;
+
+    case NEQL_INT:
+      cout << "NEQL_INT" << endl;
+      break;
+
+    case LES_INT:
+      cout << "LES_INT" << endl;
+      break;
+
+    case GTR_INT:
+      cout << "GTR_INT" << endl;
+      break;
+
+    case LES_EQL_INT:
+      cout << "LES_EQL_INT" << endl;
+      break;
+
+    case GTR_EQL_INT:
+      cout << "GTR_EQL_INT" << endl;
+      break;
+
+    case ADD_FLOAT:
+      cout << "ADD_FLOAT" << endl;
+      break;
+
+    case SUB_FLOAT:
+      cout << "SUB_FLOAT" << endl;
+      break;
+
+    case MUL_FLOAT:
+      cout << "MUL_FLOAT" << endl;
+      break;
+
+    case DIV_FLOAT:
+      cout << "DIV_FLOAT" << endl;
+      break;
+
+    case EQL_FLOAT:
+      cout << "EQL_FLOAT" << endl;
+      break;
+
+    case NEQL_FLOAT:
+      cout << "NEQL_FLOAT" << endl;
+      break;
+
+    case LES_FLOAT:
+      cout << "LES_FLOAT" << endl;
+      break;
+
+    case GTR_FLOAT:
+      cout << "GTR_FLOAT" << endl;
+      break;
+
+    case instructions::FLOR_FLOAT:
+      cout << "FLOR_FLOAT" << endl;
+      break;
+
+    case instructions::CEIL_FLOAT:
+      cout << "CEIL_FLOAT" << endl;
+      break;
+
+    case I2F:
+      cout << "I2F" << endl;
+      break;
+
+    case F2I:
+      cout << "F2I" << endl;
+      break;
+
+    case RTRN:
+      cout << "RTRN" << endl;
+      break;
+
+    case MTHD_CALL:
+      cout << "MTHD_CALL: class=" << operand << ", method="
+           << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
+      break;
+
+    case LIB_NEW_OBJ_INST:
+      cout << "LIB_NEW_OBJ_INST: class='" << operand5 << "'" << endl;
+      break;
+
+    case LIB_OBJ_INST_CAST:
+      cout << "LIB_OBJ_INST_CAST: to_class='" << operand5 << "'" << endl;
+      break;
+
+    case LIB_MTHD_CALL:
+      cout << "LIB_MTHD_CALL: class='" << operand5 << "', method='"
+           << operand6 << "'; native=" << (operand3 ? "true" : "false") << endl;
+      break;
+
+    case LBL:
+      cout << "LBL: id=" << operand << endl;
+      break;
+
+    case JMP:
+      if(operand2 == -1) {
+        cout << "JMP: id=" << operand << endl;
+      } else {
+        cout << "JMP: id=" << operand << " conditional="
+             << (operand2 ? "true" : "false") << endl;
       }
+      break;
+
+    case OBJ_INST_CAST:
+      cout << "OBJ_INST_CAST: to=" << operand << endl;
+      break;
+
+    case NEW_FLOAT_ARY:
+      cout << "NEW_FLOAT_ARY: dimension=" << operand << endl;
+      break;
+
+    case NEW_INT_ARY:
+      cout << "NEW_INT_ARY: dimension=" << operand << endl;
+      break;
+
+    case NEW_BYTE_ARY:
+      cout << "NEW_BYTE_ARY: dimension=" << operand << endl;
+      break;
+
+    case NEW_OBJ_INST:
+      cout << "NEW_OBJ_INST: class=" << operand << endl;
+      break;
+
+    case TRAP:
+      cout << "TRAP: args=" << operand << endl;
+      break;
+
+    case TRAP_RTRN:
+      cout << "TRAP_RTRN: args=" << operand << endl;
+      break;
     }
-    
-    void Debug() {
-      switch(type) {
-      case POP_INT:
-	cout << "POP_INT" << endl;
-	break;
-	
-      case POP_FLOAT:
-	cout << "POP_FLOAT" << endl;
-	break;
+  }
+};
 
-      case LOAD_INT_LIT:
-	cout << "LOAD_INT_LIT: value=" << operand << endl;
-	break;
+/****************************
+ * IntermediateFactory
+ * class
+ ****************************/
+class IntermediateFactory {
+  static IntermediateFactory* instance;
+  vector<IntermediateInstruction*> instructions;
 
-  case SHL_INT:
-	cout << "SHL_INT: value=" << operand << endl;
-	break;
+public:
+  static IntermediateFactory* Instance();
 
-  case SHR_INT:
-	cout << "SHR_INT: value=" << operand << endl;
-	break;
-      
-      case LOAD_FLOAT_LIT:
-	cout << "LOAD_FLOAT_LIT: value=" << operand4 << endl;
-	break;
-      
-      case LOAD_INT_VAR:
-	cout << "LOAD_INT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case LOAD_FLOAT_VAR:
-	cout << "LOAD_FLOAT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-      
-      case LOAD_BYTE_ARY_ELM:
-	cout << "LOAD_BYTE_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case LOAD_INT_ARY_ELM:
-	cout << "LOAD_INT_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case LOAD_FLOAT_ARY_ELM:
-	cout << "LOAD_FLOAT_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case LOAD_CLS_MEM:
-	cout << "LOAD_CLS_MEM" << endl;
-	break;
-      
-      case LOAD_INST_MEM:
-	cout << "LOAD_INST_MEM" << endl;
-	break;
-      
-      case STOR_INT_VAR:
-	cout << "STOR_INT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case STOR_FLOAT_VAR:
-	cout << "STOR_FLOAT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case COPY_INT_VAR:
-	cout << "COPY_INT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case COPY_FLOAT_VAR:
-	cout << "COPY_FLOAT_VAR: id=" << operand << ", local=" 
-	     << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case STOR_BYTE_ARY_ELM:
-	cout << "STOR_BYTE_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case STOR_INT_ARY_ELM:
-	cout << "STOR_INT_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case STOR_FLOAT_ARY_ELM:
-	cout << "STOR_FLOAT_ARY_ELM: dimension=" << operand 
-	     << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
-	break;
-
-      case AND_INT:
-	cout << "AND_INT" << endl;
-	break;
-
-      case OR_INT:
-	cout << "OR_INT" << endl;
-	break;
-
-      case ADD_INT:
-	cout << "ADD_INT" << endl;
-	break;
-
-      case SUB_INT:
-	cout << "SUB_INT" << endl;
-	break;
-
-      case MUL_INT:
-	cout << "MUL_INT" << endl;
-	break;
-      
-      case DIV_INT:
-	cout << "DIV_INT" << endl;
-	break;
-      
-      case MOD_INT:
-	cout << "MOD_INT" << endl;
-	break;
-
-      case EQL_INT:
-	cout << "EQL_INT" << endl;
-	break;
-      
-      case NEQL_INT:
-	cout << "NEQL_INT" << endl;
-	break;
-
-      case LES_INT:
-	cout << "LES_INT" << endl;
-	break;
-
-      case GTR_INT:
-	cout << "GTR_INT" << endl;
-	break;
-
-      case LES_EQL_INT:
-	cout << "LES_EQL_INT" << endl;
-	break;
-	
-      case GTR_EQL_INT:
-	cout << "GTR_EQL_INT" << endl;
-	break;
-	
-      case ADD_FLOAT:
-	cout << "ADD_FLOAT" << endl;
-	break;
-
-      case SUB_FLOAT:
-	cout << "SUB_FLOAT" << endl;
-	break;
-
-      case MUL_FLOAT:
-	cout << "MUL_FLOAT" << endl;
-	break;
-
-      case DIV_FLOAT:
-	cout << "DIV_FLOAT" << endl;
-	break;
-
-      case EQL_FLOAT:
-	cout << "EQL_FLOAT" << endl;
-	break;
-
-      case NEQL_FLOAT:
-	cout << "NEQL_FLOAT" << endl;
-	break;
-
-      case LES_FLOAT:
-	cout << "LES_FLOAT" << endl;
-	break;
-
-      case GTR_FLOAT:
-	cout << "GTR_FLOAT" << endl;
-	break;
-
-      case instructions::FLOR_FLOAT:
-  	cout << "FLOR_FLOAT" << endl;
-	break;
-	
-      case instructions::CEIL_FLOAT:
-	cout << "CEIL_FLOAT" << endl;
-	break;
-
-      case I2F:
-	cout << "I2F" << endl;
-	break;
-
-      case F2I:
-	cout << "F2I" << endl;
-	break;
-
-      case RTRN:
-	cout << "RTRN" << endl;
-	break;
-
-      case MTHD_CALL:
-	cout << "MTHD_CALL: class=" << operand << ", method=" 
-	     << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
-	break;
-	
-      case LIB_NEW_OBJ_INST:
-	cout << "LIB_NEW_OBJ_INST: class='" << operand5 << "'" << endl;
-	break;
-
-      case LIB_OBJ_INST_CAST:
-	cout << "LIB_OBJ_INST_CAST: to_class='" << operand5 << "'" << endl;
-	break;
-	
-      case LIB_MTHD_CALL:
-	cout << "LIB_MTHD_CALL: class='" << operand5 << "', method='" 
-	     << operand6 << "'; native=" << (operand3 ? "true" : "false") << endl;
-	break;
-
-      case LBL:
-	cout << "LBL: id=" << operand << endl;
-	break;
-
-      case JMP:
-	if(operand2 == -1) {
-	  cout << "JMP: id=" << operand << endl;
-	}
-	else {
-	  cout << "JMP: id=" << operand << " conditional=" 
-	       << (operand2 ? "true" : "false") << endl;
-	}
-	break;
-	
-      case OBJ_INST_CAST:
-	cout << "OBJ_INST_CAST: to=" << operand << endl;
-	break;
-
-      case NEW_FLOAT_ARY:
-	cout << "NEW_FLOAT_ARY: dimension=" << operand << endl;
-	break;
-
-      case NEW_INT_ARY:
-	cout << "NEW_INT_ARY: dimension=" << operand << endl;
-	break;
-
-      case NEW_BYTE_ARY:
-	cout << "NEW_BYTE_ARY: dimension=" << operand << endl;
-	break;
-	
-      case NEW_OBJ_INST:
-	cout << "NEW_OBJ_INST: class=" << operand << endl;
-	break;
-
-      case TRAP:
-	cout << "TRAP: args=" << operand << endl;
-	break;	
-
-      case TRAP_RTRN:
-	cout << "TRAP_RTRN: args=" << operand << endl;
-	break;
-      }
-    }
-  };
-
-  /****************************
-   * IntermediateFactory
-   * class
-   ****************************/
-  class IntermediateFactory {
-    static IntermediateFactory* instance;
-    vector<IntermediateInstruction*> instructions;
-  
-  public:
-    static IntermediateFactory* Instance();
-
-    void Clear() {
-      while(!instructions.empty()) {
-	IntermediateInstruction* tmp = instructions.front();
-	instructions.erase(instructions.begin());
-	// delete
-        delete tmp;
-	tmp = NULL;
-      }
-
-      delete instance;
-      instance = NULL;
+  void Clear() {
+    while(!instructions.empty()) {
+      IntermediateInstruction* tmp = instructions.front();
+      instructions.erase(instructions.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    IntermediateInstruction* MakeInstruction(InstructionType t) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t);
-      instructions.push_back(tmp);
-      return tmp;
-    }
+    delete instance;
+    instance = NULL;
+  }
 
-    IntermediateInstruction* MakeInstruction(InstructionType t, int o1) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o1);
-      instructions.push_back(tmp);
-      return tmp;
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2);
-      instructions.push_back(tmp);
-      return tmp;
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t, int o1) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2, int o3) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2, o3);
-      instructions.push_back(tmp);
-      return tmp;
-    }
-    
-    IntermediateInstruction* MakeInstruction(InstructionType t, FLOAT_VALUE o4) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o4);
-      instructions.push_back(tmp);
-      return tmp;
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    IntermediateInstruction* MakeInstruction(InstructionType t, string o5) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o5);
-      instructions.push_back(tmp);
-      return tmp;
-    }
-    
-    IntermediateInstruction* MakeInstruction(InstructionType t, int o3, string o5, string o6) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(t, o3, o5, o6);
-      instructions.push_back(tmp);
-      return tmp;
-    }
-    
-    IntermediateInstruction* MakeInstruction(LibraryInstr* lib_instr) {
-      IntermediateInstruction* tmp = new IntermediateInstruction(lib_instr);
-      instructions.push_back(tmp);
-      return tmp;
-    }
-  };
+  IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2, int o3) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2, o3);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-  /****************************
-   * IntermediateBlock class
-   ****************************/
-  class IntermediateBlock : public Intermediate {
-    vector<IntermediateInstruction*> instructions;
-  
-  public:
-    IntermediateBlock() {
-    }
-  
-    ~IntermediateBlock() {
-    }
-  
-    void AddInstruction(IntermediateInstruction* i) {
-      instructions.push_back(i);
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t, FLOAT_VALUE o4) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o4);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    vector<IntermediateInstruction*> GetInstructions() {
-      return instructions;
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t, string o5) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o5);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    int GetSize() {
-      return instructions.size();
-    }
+  IntermediateInstruction* MakeInstruction(InstructionType t, int o3, string o5, string o6) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(t, o3, o5, o6);
+    instructions.push_back(tmp);
+    return tmp;
+  }
 
-    void Clear() {
-      instructions.clear();
-    }
+  IntermediateInstruction* MakeInstruction(LibraryInstr* lib_instr) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(lib_instr);
+    instructions.push_back(tmp);
+    return tmp;
+  }
+};
 
-    bool IsEmpty() {
-      return instructions.size() == 0;
-    }
+/****************************
+ * IntermediateBlock class
+ ****************************/
+class IntermediateBlock : public Intermediate {
+  vector<IntermediateInstruction*> instructions;
 
-    void Write(ofstream* file_out) {
+public:
+  IntermediateBlock() {
+  }
+
+  ~IntermediateBlock() {
+  }
+
+  void AddInstruction(IntermediateInstruction* i) {
+    instructions.push_back(i);
+  }
+
+  vector<IntermediateInstruction*> GetInstructions() {
+    return instructions;
+  }
+
+  int GetSize() {
+    return instructions.size();
+  }
+
+  void Clear() {
+    instructions.clear();
+  }
+
+  bool IsEmpty() {
+    return instructions.size() == 0;
+  }
+
+  void Write(ofstream* file_out) {
+    for(unsigned int i = 0; i < instructions.size(); i++) {
+      instructions[i]->Write(file_out);
+    }
+  }
+
+  void Debug() {
+    if(instructions.size() > 0) {
       for(unsigned int i = 0; i < instructions.size(); i++) {
-	instructions[i]->Write(file_out);
+        instructions[i]->Debug();
       }
+      cout << "--" << endl;
     }
-  
-    void Debug() {
-      if(instructions.size() > 0) {
-	for(unsigned int i = 0; i < instructions.size(); i++) {
-	  instructions[i]->Debug();
-	}
-	cout << "--" << endl;
-      }
-    }
-  };
+  }
+};
 
-  /****************************
-   * IntermediateMethod class
-   ****************************/
-  class IntermediateMethod : public Intermediate {
-    int id;
-    string name;
-    string rtrn_name;
-    int space;
-    int params;
-    frontend::MethodType type;
-    bool is_native;
-    bool is_function;
-    bool is_lib;
-    bool is_virtual;
-    bool has_and_or;
-    int instr_count;
-    vector<IntermediateBlock*> blocks;
-    IntermediateDeclarations* entries;
-    IntermediateClass* klass;
-    
-  public:
-    IntermediateMethod(int i, const string &n, bool v, bool h, const string &r, 
-		       frontend::MethodType t, bool nt, bool f, int c, int p, 
-		       IntermediateDeclarations* e, IntermediateClass* k) {
-      id = i;
-      name = n;
-      is_virtual = v;
-      has_and_or = h;
-      rtrn_name = r;    
-      type = t;
-      is_native = nt;
-      is_function = f;
-      space = c;
-      params = p;
-      entries = e;
-      is_lib = false;
-      klass = k;
-      instr_count = 0;
+/****************************
+ * IntermediateMethod class
+ ****************************/
+class IntermediateMethod : public Intermediate {
+  int id;
+  string name;
+  string rtrn_name;
+  int space;
+  int params;
+  frontend::MethodType type;
+  bool is_native;
+  bool is_function;
+  bool is_lib;
+  bool is_virtual;
+  bool has_and_or;
+  int instr_count;
+  vector<IntermediateBlock*> blocks;
+  IntermediateDeclarations* entries;
+  IntermediateClass* klass;
+
+public:
+  IntermediateMethod(int i, const string &n, bool v, bool h, const string &r,
+                     frontend::MethodType t, bool nt, bool f, int c, int p,
+                     IntermediateDeclarations* e, IntermediateClass* k) {
+    id = i;
+    name = n;
+    is_virtual = v;
+    has_and_or = h;
+    rtrn_name = r;
+    type = t;
+    is_native = nt;
+    is_function = f;
+    space = c;
+    params = p;
+    entries = e;
+    is_lib = false;
+    klass = k;
+    instr_count = 0;
+  }
+
+  IntermediateMethod(LibraryMethod* lib_method, IntermediateClass* k) {
+    // set attributes
+    id = lib_method->GetId();
+    name = lib_method->GetName();
+    is_virtual = lib_method->IsVirtual();
+    has_and_or = lib_method->HasAndOr();
+    rtrn_name = lib_method->GetEncodedReturn();
+    type = lib_method->GetMethodType();
+    is_native = lib_method->IsNative();
+    is_function = lib_method->IsStatic();
+    space = lib_method->GetSpace();
+    params = lib_method->GetNumParams();
+    entries = lib_method->GetEntries();
+    is_lib = true;
+    instr_count = 0;
+    klass = k;
+    // process instructions
+    IntermediateBlock* block = new IntermediateBlock;
+    vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
+    for(unsigned int i = 0; i < lib_instructions.size(); i++) {
+      block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(lib_instructions[i]));
     }
-    
-    IntermediateMethod(LibraryMethod* lib_method, IntermediateClass* k) {
-      // set attributes
-      id = lib_method->GetId(); 
-      name = lib_method->GetName();
-      is_virtual = lib_method->IsVirtual();
-      has_and_or = lib_method->HasAndOr();
-      rtrn_name = lib_method->GetEncodedReturn();
-      type = lib_method->GetMethodType();
-      is_native = lib_method->IsNative();
-      is_function = lib_method->IsStatic();
-      space = lib_method->GetSpace();
-      params = lib_method->GetNumParams();
-      entries = lib_method->GetEntries();
-      is_lib = true;
-      instr_count = 0;
-      klass = k;
-      // process instructions
-      IntermediateBlock* block = new IntermediateBlock;
-      vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
-      for(unsigned int i = 0; i < lib_instructions.size(); i++) { 
-	block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(lib_instructions[i]));
-      }
-      AddBlock(block);
-    }
-    
-    ~IntermediateMethod() {
-      // clean up
-      while(!blocks.empty()) {
-	IntermediateBlock* tmp = blocks.front();
-	blocks.erase(blocks.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      
-      if(entries) {
-        delete entries;
-        entries = NULL;
-      }
+    AddBlock(block);
+  }
+
+  ~IntermediateMethod() {
+    // clean up
+    while(!blocks.empty()) {
+      IntermediateBlock* tmp = blocks.front();
+      blocks.erase(blocks.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    int GetId() {
-      return id;
+    if(entries) {
+      delete entries;
+      entries = NULL;
     }
+  }
 
-    IntermediateClass* GetClass() {
-      return klass;
-    }
+  int GetId() {
+    return id;
+  }
 
-    int GetSpace() {
-      return space;
-    }
+  IntermediateClass* GetClass() {
+    return klass;
+  }
 
-    void SetSpace(int s) {
-      space = s;
-    }
+  int GetSpace() {
+    return space;
+  }
 
-    string GetName() {
-      return name;
-    }
+  void SetSpace(int s) {
+    space = s;
+  }
 
-    bool IsVirtual() {
-      return is_virtual;
-    }
-    
-    bool IsLibrary() {
-      return is_lib;
-    }
-    
-    void AddBlock(IntermediateBlock* b) {
-      instr_count += b->GetSize();
-      blocks.push_back(b);
-    }
+  string GetName() {
+    return name;
+  }
 
-    int GetInstructionCount() {
-      return instr_count;
-    }
-    
-    vector<IntermediateBlock*> GetBlocks() {
-      return blocks;
-    }
-    
-    void SetBlocks(vector<IntermediateBlock*> b) {
-      blocks = b;
-    }
-    
-    void Write(ofstream* file_out) {
-      // write attributes
-      WriteInt(id, file_out);
-      WriteInt(type, file_out);
-      WriteInt(is_virtual, file_out);
-      WriteInt(has_and_or, file_out);
-      WriteInt(is_native, file_out);
-      WriteInt(is_function, file_out);
-      WriteString(name, file_out);
-      WriteString(rtrn_name, file_out);
-      
-      // write local space size
-      WriteInt(params, file_out);
-      WriteInt(space, file_out);
-      entries->Write(file_out);
+  bool IsVirtual() {
+    return is_virtual;
+  }
 
-      // write statements
-      for(unsigned int i = 0; i < blocks.size(); i++) {
-	blocks[i]->Write(file_out);
-      }
-      WriteInt(END_STMTS, file_out);
-    }
-  
-    void Debug() {
-      cout << "---------------------------------------------------------" << endl;
-      cout << "Method: id=" << id << "; name='" << name << "'; return='" << rtrn_name 
-	   << "';\n  blocks=" << blocks.size() << "; is_function=" << is_function << "; num_params=" 
-	   << params << "; mem_size=" << space << endl;
-      cout << "---------------------------------------------------------" << endl;
-      for(unsigned int i = 0; i < blocks.size(); i++) {
-	blocks[i]->Debug();
-      }
-    }
-  };
+  bool IsLibrary() {
+    return is_lib;
+  }
 
-  /****************************
-   * IntermediateClass class
-   ****************************/
-  class IntermediateClass : public Intermediate {
-    int id;
-    string name;
-    int pid;
-    string parent_name;    
-    int cls_space;
-    int inst_space;
-    vector<IntermediateBlock*> blocks;
-    vector<IntermediateMethod*> methods;
-    map<int, IntermediateMethod*> method_map;
-    IntermediateDeclarations* entries;
-    bool is_lib;
-    bool is_virtual;
-    
-  public:
-    IntermediateClass(int i, const string &n, int pi, const string &p, 
-		      bool v, int cs, int is, IntermediateDeclarations* e) {
-      id = i;
-      name = n;
-      pid = pi;
-      parent_name = p;
-      is_virtual = v;
-      cls_space = cs;
-      inst_space = is;
-      entries = e;
-      is_lib = false;
-    }
+  void AddBlock(IntermediateBlock* b) {
+    instr_count += b->GetSize();
+    blocks.push_back(b);
+  }
 
-    IntermediateClass(LibraryClass* lib_klass) {
-      // set attributes
-      id = lib_klass->GetId();
-      name = lib_klass->GetName();
-      pid = -1;
-      parent_name = lib_klass->GetParentName();
-      is_virtual = lib_klass->IsVirtual();
-      cls_space = lib_klass->GetClassSpace();
-      inst_space = lib_klass->GetInstanceSpace();
-      entries = lib_klass->GetEntries();
-      // process methods
-      map<const string, LibraryMethod*> lib_methods = lib_klass->GetMethods();
-      map<const string, LibraryMethod*>::iterator mthd_iter;
-      for(mthd_iter = lib_methods.begin(); mthd_iter != lib_methods.end(); mthd_iter++) {
-	LibraryMethod* lib_method = mthd_iter->second;
-	IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
-	AddMethod(imm_method);
-      }
-      is_lib = true;
-    }
-    
-    ~IntermediateClass() {
-      // clean up
-      while(!blocks.empty()) {
-	IntermediateBlock* tmp = blocks.front();
-	blocks.erase(blocks.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      // clean up
-      while(!methods.empty()) {
-	IntermediateMethod* tmp = methods.front();
-	methods.erase(methods.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      // clean up
-      if(entries) {
-        delete entries;
-        entries = NULL;
-      }
-    }
+  int GetInstructionCount() {
+    return instr_count;
+  }
 
-    int GetId() {
-      return id;
-    }
+  vector<IntermediateBlock*> GetBlocks() {
+    return blocks;
+  }
 
-    bool IsLibrary() {
-      return is_lib;
-    }
+  void SetBlocks(vector<IntermediateBlock*> b) {
+    blocks = b;
+  }
 
-    int GetInstanceSpace() {
-      return inst_space;
-    }
-    
-    void AddMethod(IntermediateMethod* m) {
-      methods.push_back(m);
-      method_map.insert(pair<int, IntermediateMethod*>(m->GetId(), m));
-    }
+  void Write(ofstream* file_out) {
+    // write attributes
+    WriteInt(id, file_out);
+    WriteInt(type, file_out);
+    WriteInt(is_virtual, file_out);
+    WriteInt(has_and_or, file_out);
+    WriteInt(is_native, file_out);
+    WriteInt(is_function, file_out);
+    WriteString(name, file_out);
+    WriteString(rtrn_name, file_out);
 
-    void AddBlock(IntermediateBlock* b) {
-      blocks.push_back(b);
-    }
+    // write local space size
+    WriteInt(params, file_out);
+    WriteInt(space, file_out);
+    entries->Write(file_out);
 
-    IntermediateMethod* GetMethod(int id) {
-      map<int, IntermediateMethod*>::iterator result = method_map.find(id);
+    // write statements
+    for(unsigned int i = 0; i < blocks.size(); i++) {
+      blocks[i]->Write(file_out);
+    }
+    WriteInt(END_STMTS, file_out);
+  }
+
+  void Debug() {
+    cout << "---------------------------------------------------------" << endl;
+    cout << "Method: id=" << id << "; name='" << name << "'; return='" << rtrn_name
+         << "';\n  blocks=" << blocks.size() << "; is_function=" << is_function << "; num_params="
+         << params << "; mem_size=" << space << endl;
+    cout << "---------------------------------------------------------" << endl;
+    for(unsigned int i = 0; i < blocks.size(); i++) {
+      blocks[i]->Debug();
+    }
+  }
+};
+
+/****************************
+ * IntermediateClass class
+ ****************************/
+class IntermediateClass : public Intermediate {
+  int id;
+  string name;
+  int pid;
+  string parent_name;
+  int cls_space;
+  int inst_space;
+  vector<IntermediateBlock*> blocks;
+  vector<IntermediateMethod*> methods;
+  map<int, IntermediateMethod*> method_map;
+  IntermediateDeclarations* entries;
+  bool is_lib;
+  bool is_virtual;
+
+public:
+  IntermediateClass(int i, const string &n, int pi, const string &p,
+                    bool v, int cs, int is, IntermediateDeclarations* e) {
+    id = i;
+    name = n;
+    pid = pi;
+    parent_name = p;
+    is_virtual = v;
+    cls_space = cs;
+    inst_space = is;
+    entries = e;
+    is_lib = false;
+  }
+
+  IntermediateClass(LibraryClass* lib_klass) {
+    // set attributes
+    id = lib_klass->GetId();
+    name = lib_klass->GetName();
+    pid = -1;
+    parent_name = lib_klass->GetParentName();
+    is_virtual = lib_klass->IsVirtual();
+    cls_space = lib_klass->GetClassSpace();
+    inst_space = lib_klass->GetInstanceSpace();
+    entries = lib_klass->GetEntries();
+    // process methods
+    map<const string, LibraryMethod*> lib_methods = lib_klass->GetMethods();
+    map<const string, LibraryMethod*>::iterator mthd_iter;
+    for(mthd_iter = lib_methods.begin(); mthd_iter != lib_methods.end(); mthd_iter++) {
+      LibraryMethod* lib_method = mthd_iter->second;
+      IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
+      AddMethod(imm_method);
+    }
+    is_lib = true;
+  }
+
+  ~IntermediateClass() {
+    // clean up
+    while(!blocks.empty()) {
+      IntermediateBlock* tmp = blocks.front();
+      blocks.erase(blocks.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+    // clean up
+    while(!methods.empty()) {
+      IntermediateMethod* tmp = methods.front();
+      methods.erase(methods.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+    // clean up
+    if(entries) {
+      delete entries;
+      entries = NULL;
+    }
+  }
+
+  int GetId() {
+    return id;
+  }
+
+  bool IsLibrary() {
+    return is_lib;
+  }
+
+  int GetInstanceSpace() {
+    return inst_space;
+  }
+
+  void AddMethod(IntermediateMethod* m) {
+    methods.push_back(m);
+    method_map.insert(pair<int, IntermediateMethod*>(m->GetId(), m));
+  }
+
+  void AddBlock(IntermediateBlock* b) {
+    blocks.push_back(b);
+  }
+
+  IntermediateMethod* GetMethod(int id) {
+    map<int, IntermediateMethod*>::iterator result = method_map.find(id);
 #ifdef _DEBUG
-      assert(result != method_map.end());
+    assert(result != method_map.end());
 #endif
-      return result->second;
+    return result->second;
+  }
+
+  vector<IntermediateMethod*> GetMethods() {
+    return methods;
+  }
+
+  void Write(ofstream* file_out) {
+    // write id and name
+    WriteInt(id, file_out);
+    WriteString(name, file_out);
+    WriteInt(pid, file_out);
+    WriteString(parent_name, file_out);
+    WriteInt(is_virtual, file_out);
+    // write local space size
+    WriteInt(cls_space, file_out);
+    WriteInt(inst_space, file_out);
+    entries->Write(file_out);
+
+    // write methods
+    WriteInt((int)methods.size(), file_out);
+    for(unsigned int i = 0; i < methods.size(); i++) {
+      methods[i]->Write(file_out);
+    }
+  }
+
+  void Debug() {
+    cout << "=========================================================" << endl;
+    cout << "Class: id=" << id << "; name='" << name << "'; parent='" << parent_name
+         << "'; pid=" << pid << "; virtual=" << is_virtual << ";\n  num_methods="
+         << methods.size() << "; class_mem_size=" << cls_space
+         << "; instance_mem_size=" << inst_space << endl;
+    cout << "=========================================================" << endl;
+    for(unsigned int i = 0; i < blocks.size(); i++) {
+      blocks[i]->Debug();
     }
 
-    vector<IntermediateMethod*> GetMethods() {
-      return methods;
+    for(unsigned int i = 0; i < methods.size(); i++) {
+      methods[i]->Debug();
     }
-    
-    void Write(ofstream* file_out) {
-      // write id and name
-      WriteInt(id, file_out);
-      WriteString(name, file_out);
-      WriteInt(pid, file_out);
-      WriteString(parent_name, file_out);
-      WriteInt(is_virtual, file_out);
-      // write local space size
-      WriteInt(cls_space, file_out);
-      WriteInt(inst_space, file_out);
-      entries->Write(file_out);
+  }
+};
 
-      // write methods
-      WriteInt((int)methods.size(), file_out);
-      for(unsigned int i = 0; i < methods.size(); i++) {
-	methods[i]->Write(file_out);
-      }
-    }
+/****************************
+ * IntermediateEnumItem class
+ ****************************/
+class IntermediateEnumItem : public Intermediate {
+  string name;
+  INT_VALUE id;
 
-    void Debug() {
-      cout << "=========================================================" << endl;
-      cout << "Class: id=" << id << "; name='" << name << "'; parent='" << parent_name 
-	   << "'; pid=" << pid << "; virtual=" << is_virtual << ";\n  num_methods=" 
-	   << methods.size() << "; class_mem_size=" << cls_space 
-	   << "; instance_mem_size=" << inst_space << endl;
-      cout << "=========================================================" << endl;
-      for(unsigned int i = 0; i < blocks.size(); i++) {
-	blocks[i]->Debug();
-      }
-    
-      for(unsigned int i = 0; i < methods.size(); i++) {
-	methods[i]->Debug();
-      }
-    }
-  };
+public:
+  IntermediateEnumItem(const string &n, const INT_VALUE i) {
+    name = n;
+    id = i;
+  }
 
-  /****************************
-   * IntermediateEnumItem class
-   ****************************/
-  class IntermediateEnumItem : public Intermediate {
-    string name;
-    INT_VALUE id;
+  IntermediateEnumItem(LibraryEnumItem* i) {
+    name = i->GetName();
+    id = i->GetId();
+  }
 
-  public:
-    IntermediateEnumItem(const string &n, const INT_VALUE i) {
-      name = n;
-      id = i;
-    }
+  void Write(ofstream* file_out) {
+    WriteString(name, file_out);
+    WriteInt(id, file_out);
+  }
 
-    IntermediateEnumItem(LibraryEnumItem* i) {
-      name = i->GetName();
-      id = i->GetId();
-    }
-    
-    void Write(ofstream* file_out) {
-      WriteString(name, file_out);
-      WriteInt(id, file_out);
-    }
-    
-    void Debug() {
-      cout << "Item: name='" << name << "'; id='" << id << endl;
-    }
-  };
+  void Debug() {
+    cout << "Item: name='" << name << "'; id='" << id << endl;
+  }
+};
 
-  /****************************
-   * IntermediateEnum class
-   ****************************/
-  class IntermediateEnum : public Intermediate {
-    string name;
-    INT_VALUE offset;
-    vector<IntermediateEnumItem*> items;
-    
-  public:
-    IntermediateEnum(const string &n, const INT_VALUE o) {
-      name = n;
-      offset = o;
-    }
+/****************************
+ * IntermediateEnum class
+ ****************************/
+class IntermediateEnum : public Intermediate {
+  string name;
+  INT_VALUE offset;
+  vector<IntermediateEnumItem*> items;
 
-    IntermediateEnum(LibraryEnum* e) {
-      name = e->GetName();
-      offset = e->GetOffset();
-      // write items
-      map<const string, LibraryEnumItem*> items = e->GetItems();
-      map<const string, LibraryEnumItem*>::iterator iter;
-      for(iter = items.begin(); iter != items.end(); iter++) {
-        LibraryEnumItem* lib_enum_item = iter->second;
-	IntermediateEnumItem* imm_enum_item = new IntermediateEnumItem(lib_enum_item);
-	AddItem(imm_enum_item);
-      }
-    }
+public:
+  IntermediateEnum(const string &n, const INT_VALUE o) {
+    name = n;
+    offset = o;
+  }
 
-    void AddItem(IntermediateEnumItem* i) {
-      items.push_back(i);
+  IntermediateEnum(LibraryEnum* e) {
+    name = e->GetName();
+    offset = e->GetOffset();
+    // write items
+    map<const string, LibraryEnumItem*> items = e->GetItems();
+    map<const string, LibraryEnumItem*>::iterator iter;
+    for(iter = items.begin(); iter != items.end(); iter++) {
+      LibraryEnumItem* lib_enum_item = iter->second;
+      IntermediateEnumItem* imm_enum_item = new IntermediateEnumItem(lib_enum_item);
+      AddItem(imm_enum_item);
     }
-    
-    void Write(ofstream* file_out) {
-      WriteString(name, file_out);
-      WriteInt(offset, file_out);
-      // write items
-      WriteInt((int)items.size(), file_out);
-      for(unsigned int i = 0; i < items.size(); i++) {
-	items[i]->Write(file_out);
-      }
-    }
+  }
 
-    void Debug() {
-      cout << "=========================================================" << endl;
-      cout << "Enum: name='" << name << "'; items=" << items.size() << endl;	   
-      cout << "=========================================================" << endl;
-      
-      for(unsigned int i = 0; i < items.size(); i++) {
-	items[i]->Debug();
-      }
-    }
-  };
+  void AddItem(IntermediateEnumItem* i) {
+    items.push_back(i);
+  }
 
-  /****************************
-   * IntermediateProgram class
-   ****************************/
-  class IntermediateProgram : public Intermediate {
-    int class_id;
-    int method_id;
-    vector<IntermediateEnum*> enums;
-    vector<IntermediateClass*> classes;
-    map<int, IntermediateClass*> class_map;
-    vector<string> char_strings;
-    vector<string> bundle_names;
-    int num_src_classes;
-    int num_lib_classes;
-    
-  public:
-    IntermediateProgram() {
-      num_src_classes = num_lib_classes = 0;
+  void Write(ofstream* file_out) {
+    WriteString(name, file_out);
+    WriteInt(offset, file_out);
+    // write items
+    WriteInt((int)items.size(), file_out);
+    for(unsigned int i = 0; i < items.size(); i++) {
+      items[i]->Write(file_out);
     }
-  
-    ~IntermediateProgram() {
-      // clean up
-      while(!enums.empty()) {
-	IntermediateEnum* tmp = enums.front();
-	enums.erase(enums.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
+  }
 
-      while(!classes.empty()) {
-	IntermediateClass* tmp = classes.front();
-	classes.erase(classes.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      
-      IntermediateFactory::Instance()->Clear();      
+  void Debug() {
+    cout << "=========================================================" << endl;
+    cout << "Enum: name='" << name << "'; items=" << items.size() << endl;
+    cout << "=========================================================" << endl;
+
+    for(unsigned int i = 0; i < items.size(); i++) {
+      items[i]->Debug();
+    }
+  }
+};
+
+/****************************
+ * IntermediateProgram class
+ ****************************/
+class IntermediateProgram : public Intermediate {
+  int class_id;
+  int method_id;
+  vector<IntermediateEnum*> enums;
+  vector<IntermediateClass*> classes;
+  map<int, IntermediateClass*> class_map;
+  vector<string> char_strings;
+  vector<string> bundle_names;
+  int num_src_classes;
+  int num_lib_classes;
+
+public:
+  IntermediateProgram() {
+    num_src_classes = num_lib_classes = 0;
+  }
+
+  ~IntermediateProgram() {
+    // clean up
+    while(!enums.empty()) {
+      IntermediateEnum* tmp = enums.front();
+      enums.erase(enums.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    void AddClass(IntermediateClass* c) {
-      classes.push_back(c);
-      class_map.insert(pair<int, IntermediateClass*>(c->GetId(), c));
+    while(!classes.empty()) {
+      IntermediateClass* tmp = classes.front();
+      classes.erase(classes.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    IntermediateClass* GetClass(int id) {
-      map<int, IntermediateClass*>::iterator result = class_map.find(id);
+    IntermediateFactory::Instance()->Clear();
+  }
+
+  void AddClass(IntermediateClass* c) {
+    classes.push_back(c);
+    class_map.insert(pair<int, IntermediateClass*>(c->GetId(), c));
+  }
+
+  IntermediateClass* GetClass(int id) {
+    map<int, IntermediateClass*>::iterator result = class_map.find(id);
 #ifdef _DEBUG
-      assert(result != class_map.end());
+    assert(result != class_map.end());
 #endif
-      return result->second;
-    }
-    
-    void AddEnum(IntermediateEnum* e) {
-      enums.push_back(e);
+    return result->second;
+  }
+
+  void AddEnum(IntermediateEnum* e) {
+    enums.push_back(e);
+  }
+
+  vector<IntermediateClass*> GetClasses() {
+    return classes;
+  }
+
+  void SetCharStrings(vector<string> s) {
+    char_strings = s;
+  }
+
+  void SetStartIds(int c, int m) {
+    class_id = c;
+    method_id = m;
+  }
+
+  void SetBundleNames(vector<string> n) {
+    bundle_names = n;
+  }
+
+  void Write(ofstream* file_out, bool is_lib) {
+    // magic number
+    if(is_lib) {
+      WriteInt(0xddde, file_out);
+    } else {
+      WriteInt(0xdddd, file_out);
     }
 
-    vector<IntermediateClass*> GetClasses() {
-      return classes;
+    // write program strings
+    WriteInt((int)char_strings.size(), file_out);
+    for(unsigned int i = 0; i < char_strings.size(); i++) {
+      WriteString(char_strings[i], file_out);
     }
-    
-    void SetCharStrings(vector<string> s) {
-      char_strings = s;
-    }
-    
-    void SetStartIds(int c, int m) {
-      class_id = c;
-      method_id = m;
-    }
-    
-    void SetBundleNames(vector<string> n) {
-      bundle_names = n;
-    }
-    
-    void Write(ofstream* file_out, bool is_lib) {
-      // magic number
-      if(is_lib) {
-	WriteInt(0xddde, file_out);
+
+    // write bundle names
+    if(is_lib) {
+      WriteInt((int)bundle_names.size(), file_out);
+      for(unsigned int i = 0; i < bundle_names.size(); i++) {
+        WriteString(bundle_names[i], file_out);
       }
-      else {
-	WriteInt(0xdddd, file_out);
+    }
+
+    // program start
+    if(!is_lib) {
+      WriteInt(class_id, file_out);
+      WriteInt(method_id, file_out);
+    }
+    // program enums
+    WriteInt((int)enums.size(), file_out);
+    for(unsigned int i = 0; i < enums.size(); i++) {
+      enums[i]->Write(file_out);
+    }
+    // program classes
+    WriteInt((int)classes.size(), file_out);
+    for(unsigned int i = 0; i < classes.size(); i++) {
+      if(classes[i]->IsLibrary()) {
+        num_lib_classes++;
+      } else {
+        num_src_classes++;
       }
 
-      // write program strings
-      WriteInt((int)char_strings.size(), file_out);
-      for(unsigned int i = 0; i < char_strings.size(); i++) {
-        WriteString(char_strings[i], file_out);
-      }
+      classes[i]->Write(file_out);
+    }
 
-      // write bundle names
-      if(is_lib) {
-	WriteInt((int)bundle_names.size(), file_out);
-	for(unsigned int i = 0; i < bundle_names.size(); i++) {
-	  WriteString(bundle_names[i], file_out);
-	}
-      }
-      
-      // program start
-      if(!is_lib) {
-	WriteInt(class_id, file_out);
-	WriteInt(method_id, file_out);
-      }
-      // program enums
-      WriteInt((int)enums.size(), file_out);
-      for(unsigned int i = 0; i < enums.size(); i++) {
-	enums[i]->Write(file_out);
-      }
-      // program classes
-      WriteInt((int)classes.size(), file_out);
-      for(unsigned int i = 0; i < classes.size(); i++) {
-	if(classes[i]->IsLibrary()) {
-	  num_lib_classes++;
-	}
-	else {
-	  num_src_classes++;
-	}
-	
-	classes[i]->Write(file_out);
-      }
-      
-      cout << "Compiled " << num_src_classes 
-	   << (num_src_classes > 1 ? " source classes." : " source class.")  << endl;
-      cout << "Linked " << num_lib_classes 
-	       << (num_lib_classes > 1 ? " library classes." : " library class.")  << endl;
-    }
-  
-    void Debug() {
-      cout << "Strings:" << endl;
-      for(unsigned int i = 0; i < char_strings.size(); i++) {
-	cout << "string id=" << i << ", value='" << char_strings[i] << "'" << endl;
-      }
-      cout << endl;
-      
-      cout << "Program: enums=" << enums.size() << ", classes=" 
-	   << classes.size() << "; start=" << class_id << "," << method_id << endl;
-      // enums
-      for(unsigned int i = 0; i < enums.size(); i++) {
-	enums[i]->Debug();
-      }
-      // classes
-      for(unsigned int i = 0; i < classes.size(); i++) {
-	classes[i]->Debug();
-      }
-    }
-  };
+    cout << "Compiled " << num_src_classes
+         << (num_src_classes > 1 ? " source classes." : " source class.")  << endl;
+    cout << "Linked " << num_lib_classes
+         << (num_lib_classes > 1 ? " library classes." : " library class.")  << endl;
+  }
 
-  /****************************
-   * TargetEmitter class
-   ****************************/
-  class TargetEmitter {
-    IntermediateProgram* program;
-    string file_name;
-    bool is_lib;
-  
-  public:
-    TargetEmitter(IntermediateProgram* p, bool l, const string &n) {
-      program = p;
-      is_lib = l;
-      file_name = n;
+  void Debug() {
+    cout << "Strings:" << endl;
+    for(unsigned int i = 0; i < char_strings.size(); i++) {
+      cout << "string id=" << i << ", value='" << char_strings[i] << "'" << endl;
     }
-    
-    ~TargetEmitter() {
-      delete program;
-      program = NULL;
+    cout << endl;
+
+    cout << "Program: enums=" << enums.size() << ", classes="
+         << classes.size() << "; start=" << class_id << "," << method_id << endl;
+    // enums
+    for(unsigned int i = 0; i < enums.size(); i++) {
+      enums[i]->Debug();
     }
-  
-    void Emit();
-  };
+    // classes
+    for(unsigned int i = 0; i < classes.size(); i++) {
+      classes[i]->Debug();
+    }
+  }
+};
+
+/****************************
+ * TargetEmitter class
+ ****************************/
+class TargetEmitter {
+  IntermediateProgram* program;
+  string file_name;
+  bool is_lib;
+
+public:
+  TargetEmitter(IntermediateProgram* p, bool l, const string &n) {
+    program = p;
+    is_lib = l;
+    file_name = n;
+  }
+
+  ~TargetEmitter() {
+    delete program;
+    program = NULL;
+  }
+
+  void Emit();
+};
 }
 
 #endif

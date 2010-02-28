@@ -4,28 +4,28 @@
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -36,7 +36,8 @@
 /****************************
 * Scanner constructor
 ****************************/
-Scanner::Scanner(string f) {
+Scanner::Scanner(string f)
+{
   // copy file name
   filename = f;
   // create tokens
@@ -54,7 +55,8 @@ Scanner::Scanner(string f) {
 /****************************
 * Scanner destructor
 ****************************/
-Scanner::~Scanner() {
+Scanner::~Scanner()
+{
   // delete buffer
   if(buffer) {
     delete[] buffer;
@@ -70,7 +72,8 @@ Scanner::~Scanner() {
 /****************************
 * Loads language keywords
 ****************************/
-void Scanner::LoadKeywords() {
+void Scanner::LoadKeywords()
+{
   ident_map["virtual"] = TOKEN_VIRTUAL_ID;
   ident_map["if"] = TOKEN_IF_ID;
   ident_map["else"] = TOKEN_ELSE_ID;
@@ -143,10 +146,11 @@ void Scanner::LoadKeywords() {
 }
 
 /****************************
-* Processes language 
+* Processes language
 * identifies
 ****************************/
-void Scanner::CheckIdentifier(int index) {
+void Scanner::CheckIdentifier(int index)
+{
   // copy string
   const int length = end_pos - start_pos;
   string ident(buffer, start_pos, length);
@@ -185,7 +189,7 @@ void Scanner::CheckIdentifier(int index) {
   case TOKEN_NEW_ID:
   case TOKEN_NIL_ID:
 #ifdef _SYSTEM
-  case FLOR_FLOAT:    
+  case FLOR_FLOAT:
   case CEIL_FLOAT:
   case LOAD_CLS_INST_ID:
   case STD_OUT_BOOL:
@@ -232,9 +236,10 @@ void Scanner::CheckIdentifier(int index) {
 /****************************
 * Reads a source input file
 ****************************/
-void Scanner::ReadFile() {
+void Scanner::ReadFile()
+{
   buffer_pos = 0;
-  buffer = LoadFileBuffer(filename, buffer_size);  
+  buffer = LoadFileBuffer(filename, buffer_size);
 #ifdef _DEBUG
   cout << "---------- Source ---------" << endl;
   cout << buffer << endl;
@@ -244,14 +249,14 @@ void Scanner::ReadFile() {
 /****************************
 * Processes the next token
 ****************************/
-void Scanner::NextToken() {
+void Scanner::NextToken()
+{
   if(buffer_pos == 0) {
     NextChar();
     for(int i = 0; i < LOOK_AHEAD; i++) {
       ParseToken(i);
     }
-  }
-  else {
+  } else {
     int i = 1;
     for(; i < LOOK_AHEAD; i++) {
       tokens[i - 1]->Copy(tokens[i]);
@@ -263,7 +268,8 @@ void Scanner::NextToken() {
 /****************************
 * Gets the current token
 ****************************/
-Token* Scanner::GetToken(int index) {
+Token* Scanner::GetToken(int index)
+{
   if(index < LOOK_AHEAD) {
     return tokens[index];
   }
@@ -274,7 +280,8 @@ Token* Scanner::GetToken(int index) {
 /****************************
 * Gets the next character
 ****************************/
-void Scanner::NextChar() {
+void Scanner::NextChar()
+{
   if(buffer_pos < buffer_size) {
     // line number
     if(cur_char == '\n') {
@@ -308,9 +315,10 @@ void Scanner::NextChar() {
 /****************************
 * Processes white space
 ****************************/
-void Scanner::Whitespace() {
+void Scanner::Whitespace()
+{
   while(WHITE_SPACE && cur_char != EOB) {
-    
+
     NextChar();
   }
 }
@@ -318,7 +326,8 @@ void Scanner::Whitespace() {
 /****************************
 * Parses a token
 ****************************/
-void Scanner::ParseToken(int index) {
+void Scanner::ParseToken(int index)
+{
   // unable to load buffer
   if(!buffer) {
     tokens[index]->SetType(TOKEN_NO_INPUT);
@@ -333,7 +342,7 @@ void Scanner::ParseToken(int index) {
     if(cur_char == EXTENDED_COMMENT) {
       NextChar();
       while(!(cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) && cur_char != EOB) {
-	NextChar();
+        NextChar();
       }
       NextChar();
       NextChar();
@@ -341,7 +350,7 @@ void Scanner::ParseToken(int index) {
     // line comment
     else {
       while(cur_char != '\n' && cur_char != EOB) {
-	NextChar();
+        NextChar();
       }
     }
     Whitespace();
@@ -367,7 +376,7 @@ void Scanner::ParseToken(int index) {
         case 'r':
           break;
 
-	      case 't':
+        case 't':
           break;
 
         case '0':
@@ -400,7 +409,7 @@ void Scanner::ParseToken(int index) {
       if(cur_char == 'u') {
         NextChar();
         start_pos = buffer_pos - 1;
-        while(isdigit(cur_char) || (cur_char >= 'a' && cur_char <= 'f') || 
+        while(isdigit(cur_char) || (cur_char >= 'a' && cur_char <= 'f') ||
               (cur_char >= 'A' && cur_char <= 'F')) {
           NextChar();
         }
@@ -467,8 +476,7 @@ void Scanner::ParseToken(int index) {
         NextChar();
         return;
       }
-    }
-    else {
+    } else {
       // error
       if(nxt_char != '\'') {
         tokens[index]->SetType(TOKEN_UNKNOWN);
@@ -476,8 +484,7 @@ void Scanner::ParseToken(int index) {
         tokens[index]->SetFileName(filename);
         NextChar();
         return;
-      }
-      else {
+      } else {
         tokens[index]->SetType(TOKEN_CHAR_LIT);
         tokens[index]->SetCharLit(cur_char);
         tokens[index]->SetLineNbr(line_nbr);
@@ -502,7 +509,7 @@ void Scanner::ParseToken(int index) {
 #else
     while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || cur_char == '@') && cur_char != EOB) {
 #endif
-        NextChar();
+      NextChar();
     }
     // mark
     end_pos = buffer_pos - 1;
@@ -517,44 +524,42 @@ void Scanner::ParseToken(int index) {
     // mark
     start_pos = buffer_pos - 1;
     while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || cur_char == 'x' ||
-      (cur_char >= 'a' && cur_char <= 'f') || 
-      (cur_char >= 'A' && cur_char <= 'F')) {
-        // decimal double
-        if(cur_char == '.') {
-          // error
-          if(is_double) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
-            NextChar();
-            break;
-          }
-          is_double = true;
+          (cur_char >= 'a' && cur_char <= 'f') ||
+          (cur_char >= 'A' && cur_char <= 'F')) {
+      // decimal double
+      if(cur_char == '.') {
+        // error
+        if(is_double) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+          break;
         }
-        // hex integer/double
-        if(cur_char == 'x') {
-          // error
-          if(is_hex) {
-            tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
-            NextChar();
-            break;
-          }
-          is_hex = true;
+        is_double = true;
+      }
+      // hex integer/double
+      if(cur_char == 'x') {
+        // error
+        if(is_hex) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+          break;
         }
-        // next character
-        NextChar();
+        is_hex = true;
+      }
+      // next character
+      NextChar();
     }
     // mark
     end_pos = buffer_pos - 1;
     if(is_double) {
       ParseDouble(index);
-    }
-    else if(is_hex) {
+    } else if(is_hex) {
       ParseInteger(index, 16);
-    }
-    else {
+    } else {
       ParseInteger(index);
     }
     return;
@@ -566,11 +571,10 @@ void Scanner::ParseToken(int index) {
       if(nxt_char == '=') {
         NextChar();
         tokens[index]->SetType(TOKEN_ASSIGN);
-        tokens[index]->SetLineNbr(line_nbr);    
+        tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      }
-      else {
+      } else {
         tokens[index]->SetType(TOKEN_COLON);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
@@ -583,11 +587,10 @@ void Scanner::ParseToken(int index) {
       if(nxt_char == '>') {
         NextChar();
         tokens[index]->SetType(TOKEN_ASSESSOR);
-        tokens[index]->SetLineNbr(line_nbr);    
+        tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      }
-      else {
+      } else {
         tokens[index]->SetType(TOKEN_SUB);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
@@ -595,21 +598,21 @@ void Scanner::ParseToken(int index) {
         NextChar();
       }
       break;
-      
+
     case '{':
       tokens[index]->SetType(TOKEN_OPEN_BRACE);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case '.':
       tokens[index]->SetType(TOKEN_PERIOD);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case '}':
       tokens[index]->SetType(TOKEN_CLOSED_BRACE);
       tokens[index]->SetLineNbr(line_nbr);
@@ -623,28 +626,28 @@ void Scanner::ParseToken(int index) {
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case ']':
       tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case '(':
       tokens[index]->SetType(TOKEN_OPEN_PAREN);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case ')':
       tokens[index]->SetType(TOKEN_CLOSED_PAREN);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case ',':
       tokens[index]->SetType(TOKEN_COMMA);
       tokens[index]->SetLineNbr(line_nbr);
@@ -684,38 +687,35 @@ void Scanner::ParseToken(int index) {
       if(nxt_char == '>') {
         NextChar();
         tokens[index]->SetType(TOKEN_NEQL);
-        tokens[index]->SetLineNbr(line_nbr);    
+        tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      }
-      else if(nxt_char == '=') {
+      } else if(nxt_char == '=') {
         NextChar();
         tokens[index]->SetType(TOKEN_LEQL);
-        tokens[index]->SetLineNbr(line_nbr);    
+        tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      }
-      else {
+      } else {
         tokens[index]->SetType(TOKEN_LES);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
       }
       break;
-      
+
     case '>':
       if(nxt_char == '=') {
         NextChar();
         tokens[index]->SetType(TOKEN_GEQL);
-        tokens[index]->SetLineNbr(line_nbr);    
+        tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      }
-      else {
-	tokens[index]->SetType(TOKEN_GTR);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
+      } else {
+        tokens[index]->SetType(TOKEN_GTR);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
       }
       break;
 
@@ -739,18 +739,18 @@ void Scanner::ParseToken(int index) {
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case '%':
       tokens[index]->SetType(TOKEN_MOD);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
       NextChar();
       break;
-      
+
     case EOB:
       tokens[index]->SetType(TOKEN_END_OF_STREAM);
       break;
-      
+
     default:
       ProcessWarning();
       tokens[index]->SetType(TOKEN_UNKNOWN);

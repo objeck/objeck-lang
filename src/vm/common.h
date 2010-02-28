@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -75,7 +75,8 @@ using namespace instructions;
 
 class StackClass;
 
-inline string IntToString(int v) {
+inline string IntToString(int v)
+{
   ostringstream str;
   str << v;
   return str.str();
@@ -99,8 +100,8 @@ class StackInstr {
   long operand3;
   FLOAT_VALUE float_operand;
   long native_offset;
-  
- public:    
+
+public:
   StackInstr(InstructionType t) {
     type = t;
     operand = native_offset = 0;
@@ -111,7 +112,7 @@ class StackInstr {
     operand = o;
     native_offset = 0;
   }
-  
+
   StackInstr(InstructionType t, FLOAT_VALUE fo) {
     type = t;
     float_operand = fo;
@@ -132,10 +133,10 @@ class StackInstr {
     operand3 = o3;
     native_offset = 0;
   }
-  
+
   ~StackInstr() {
   }
-  
+
   inline InstructionType GetType() {
     return type;
   }
@@ -155,7 +156,7 @@ class StackInstr {
   inline long GetOperand3() {
     return operand3;
   }
-  
+
   inline void SetOperand(long o) {
     operand = o;
   }
@@ -175,7 +176,7 @@ class StackInstr {
   inline long GetOffset() {
     return native_offset;
   }
-  
+
   inline void SetOffset(long o) {
     native_offset = o;
   }
@@ -188,26 +189,26 @@ class NativeCode {
   BYTE_VALUE* code;
   long size;
   FLOAT_VALUE* floats;
-    
- public:
+
+public:
   NativeCode(BYTE_VALUE* c, long s, FLOAT_VALUE* f) {
     code = c;
     size = s;
     floats = f;
   }
-  
+
   ~NativeCode() {
-#ifdef _WIN32  
+#ifdef _WIN32
     // TODO: needs to be fixed... hard to debug
     free(code);
     code = NULL;
 #endif
 
-#ifdef _X64  
+#ifdef _X64
     free(code);
     code = NULL;
 #endif
-    
+
 #ifndef _WIN32
     free(floats);
 #else
@@ -216,9 +217,15 @@ class NativeCode {
     floats = NULL;
   }
 
-  BYTE_VALUE* GetCode() { return code; }
-  long GetSize() { return size; }
-  FLOAT_VALUE* GetFloats() { return floats; }
+  BYTE_VALUE* GetCode() {
+    return code;
+  }
+  long GetSize() {
+    return size;
+  }
+  FLOAT_VALUE* GetFloats() {
+    return floats;
+  }
 };
 
 /********************************
@@ -238,130 +245,130 @@ class StackMethod {
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
-  
+
   const string ParseName(const string &name) {
     int state;
     unsigned int index = name.find_last_of(':');
     if(index > 0) {
       string params_name = name.substr(index + 1);
-      
+
       // check return type
       index = 0;
       while(index < params_name.size()) {
-	ParamType param;
-	switch(params_name[index]) {
-	case 'l':
-	  param = INT_PARM;
-	  state = 0;
-	  index++;
-	  break;
-      
-	case 'b':
-	  param = INT_PARM;
-	  state = 1;
-	  index++;
-	  break;
-      
-	case 'i':
-	  param = INT_PARM;
-	  state = 2;
-	  index++;
-	  break;
-      
-	case 'f':
-	  param = FLOAT_PARM;
-	  state = 3;
-	  index++;
-	  break;
-      
-	case 'c':
-	  param = INT_PARM;
-	  state = 4;
-	  index++;
-	  break;
-    	  
-	case 'o':
-	  param = OBJ_PARM;
-	  state = 5;
-	  index++;
-	  while(index < params_name.size() && params_name[index] != ',') {
-	    index++;
-	  }
-	  break; 
-	}
-	
-	// check array
-	int dimension = 0;
-	while(index < params_name.size() && params_name[index] == '*') {
-	  dimension++;
-	  index++;
-	}
-	
-	if(dimension) {
-	  switch(state) {
-	  case 1:
-	    param = BYTE_ARY_PARM;
-	    break;
+        ParamType param;
+        switch(params_name[index]) {
+        case 'l':
+          param = INT_PARM;
+          state = 0;
+          index++;
+          break;
 
-	  case 0:
-	  case 2:
-	  case 4:
-	    param = INT_ARY_PARM;
-	    break;
+        case 'b':
+          param = INT_PARM;
+          state = 1;
+          index++;
+          break;
 
-	  case 3:
-	    param = FLOAT_ARY_PARM;
-	    break;
+        case 'i':
+          param = INT_PARM;
+          state = 2;
+          index++;
+          break;
 
-	  case 5:
-	    param = OBJ_ARY_PARM;
-	    break;
-	  }
-	}
-	
+        case 'f':
+          param = FLOAT_PARM;
+          state = 3;
+          index++;
+          break;
+
+        case 'c':
+          param = INT_PARM;
+          state = 4;
+          index++;
+          break;
+
+        case 'o':
+          param = OBJ_PARM;
+          state = 5;
+          index++;
+          while(index < params_name.size() && params_name[index] != ',') {
+            index++;
+          }
+          break;
+        }
+
+        // check array
+        int dimension = 0;
+        while(index < params_name.size() && params_name[index] == '*') {
+          dimension++;
+          index++;
+        }
+
+        if(dimension) {
+          switch(state) {
+          case 1:
+            param = BYTE_ARY_PARM;
+            break;
+
+          case 0:
+          case 2:
+          case 4:
+            param = INT_ARY_PARM;
+            break;
+
+          case 3:
+            param = FLOAT_ARY_PARM;
+            break;
+
+          case 5:
+            param = OBJ_ARY_PARM;
+            break;
+          }
+        }
+
 #ifdef _DEBUG
-	switch(param) {
-	case INT_PARM:
-	  cout << "  INT_PARM" << endl;
-	  break;
+        switch(param) {
+        case INT_PARM:
+          cout << "  INT_PARM" << endl;
+          break;
 
-	case FLOAT_PARM:
-	  cout << "  FLOAT_PARM" << endl;
-	  break;
-	  
-	case BYTE_ARY_PARM:
-	  cout << "  BYTE_ARY_PARM" << endl;
-	  break;
+        case FLOAT_PARM:
+          cout << "  FLOAT_PARM" << endl;
+          break;
 
-	case INT_ARY_PARM:
-	  cout << "  INT_ARY_PARM" << endl;
-	  break;
+        case BYTE_ARY_PARM:
+          cout << "  BYTE_ARY_PARM" << endl;
+          break;
 
-	case FLOAT_ARY_PARM:
-	  cout << "  FLOAT_ARY_PARM" << endl;
-	  break;
-    
-	case OBJ_PARM:
-	  cout << "  OBJ_PARM" << endl;
-	  break;
+        case INT_ARY_PARM:
+          cout << "  INT_ARY_PARM" << endl;
+          break;
 
-	case OBJ_ARY_PARM:
-	  cout << "  OBJ_ARY_PARM" << endl;
-	  break;
-	}
-#endif	
-	
-	// match ','
-	index++;
+        case FLOAT_ARY_PARM:
+          cout << "  FLOAT_ARY_PARM" << endl;
+          break;
+
+        case OBJ_PARM:
+          cout << "  OBJ_PARM" << endl;
+          break;
+
+        case OBJ_ARY_PARM:
+          cout << "  OBJ_ARY_PARM" << endl;
+          break;
+        }
+#endif
+
+        // match ','
+        index++;
       }
     }
-    
+
     return name;
   }
-  
- public:
-  StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd, 
-	      long p, long m, MemoryType r, StackClass* k) {
+
+public:
+  StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
+              long p, long m, MemoryType r, StackClass* k) {
     id = i;
     name = ParseName(n);
     is_virtual = v;
@@ -375,9 +382,9 @@ class StackMethod {
     rtrn_type = r;
     cls = k;
   }
-  
+
   ~StackMethod() {
-    // clean up   
+    // clean up
     if(dclrs) {
       for(int i = 0; i < num_dclrs; i++) {
         StackDclr* tmp = dclrs[i];
@@ -388,7 +395,7 @@ class StackMethod {
       dclrs = NULL;
     }
 
-    // clean up   
+    // clean up
     if(native_code) {
       delete native_code;
       native_code = NULL;
@@ -419,15 +426,15 @@ class StackMethod {
   inline StackClass* GetClass() {
     return cls;
   }
-  
-  inline StackDclr** GetDeclarations() { 
-    return dclrs; 
+
+  inline StackDclr** GetDeclarations() {
+    return dclrs;
   }
-  
-  inline const int GetNumberDeclarations() { 
-    return num_dclrs; 
+
+  inline const int GetNumberDeclarations() {
+    return num_dclrs;
   }
-  
+
   void SetNativeCode(NativeCode* c) {
     native_code = c;
   }
@@ -439,25 +446,25 @@ class StackMethod {
   MemoryType GetReturn() {
     return rtrn_type;
   }
-  
+
   void AddLabel(long label_id, long index) {
     jump_table[label_id] = index;
   }
-  
+
   inline long GetLabelIndex(long label_id) {
     map<long, long>::iterator result = jump_table.find(label_id);
     // not found
     if(result == jump_table.end()) {
       return -1;
     }
-    
+
     return result->second;
   }
 
   void SetInstructions(vector<StackInstr*> i) {
     instrs = i;
   }
-  
+
   void AddInstruction(StackInstr* i) {
     instrs.push_back(i);
   }
@@ -469,7 +476,7 @@ class StackMethod {
   long GetParamCount() {
     return param_count;
   }
-  
+
   void SetParamCount(long c) {
     param_count = c;
   }
@@ -479,18 +486,18 @@ class StackMethod {
     const long size = mem_size + 1;
     long* mem = new long[size];
     memset(mem, 0, size * sizeof(long));
-    
+
     return mem;
   }
 
   long GetMemorySize() {
     return mem_size;
   }
-  
+
   long GetInstructionCount() {
     return instrs.size();
   }
-  
+
   StackInstr* GetInstruction(long i) {
     return instrs[i];
   }
@@ -512,19 +519,19 @@ class StackClass {
   StackDclr** dclrs;
   long num_dclrs;
   long* cls_mem;
-  
+
   map<const string, StackMethod*> method_name_map;
 
   long InitMemory(long size) {
     cls_mem = new long[size];
     memset(cls_mem, 0, size * sizeof(long));
-    
+
     return size;
   }
-  
- public:
-  StackClass(long i, const string ne, long p, bool v, 
-	     StackDclr** d, long n, long cs, long is) {
+
+public:
+  StackClass(long i, const string ne, long p, bool v,
+             StackDclr** d, long n, long cs, long is) {
     id = i;
     name = ne;
     pid = p;
@@ -534,9 +541,9 @@ class StackClass {
     cls_space = InitMemory(cs);
     inst_space  = is;
   }
-  
+
   ~StackClass() {
-    // clean up   
+    // clean up
     if(dclrs) {
       for(int i = 0; i < num_dclrs; i++) {
         StackDclr* tmp = dclrs[i];
@@ -554,31 +561,31 @@ class StackClass {
     }
     delete[] methods;
     methods = NULL;
-    
+
     if(cls_mem) {
       delete[] cls_mem;
       cls_mem = NULL;
     }
   }
-  
-  inline long GetId() { 
-    return id; 
+
+  inline long GetId() {
+    return id;
   }
 
   inline const string GetName() {
     return name;
   }
-  
-  inline StackDclr** GetDeclarations() { 
-    return dclrs; 
-  }
-  
-  inline const int GetNumberDeclarations() { 
-    return num_dclrs; 
+
+  inline StackDclr** GetDeclarations() {
+    return dclrs;
   }
 
-  inline long GetParentId() { 
-    return id; 
+  inline const int GetNumberDeclarations() {
+    return num_dclrs;
+  }
+
+  inline long GetParentId() {
+    return id;
   }
 
   inline bool IsVirtual() {
@@ -586,11 +593,11 @@ class StackClass {
   }
 
   inline long* GetClassMemory() {
-    return cls_mem; 
+    return cls_mem;
   }
-    
-  inline long GetInstanceMemorySize() { 
-    return inst_space; 
+
+  inline long GetInstanceMemorySize() {
+    return inst_space;
   }
 
   void SetMethods(StackMethod** mthds, const int num) {
@@ -601,7 +608,7 @@ class StackClass {
       method_name_map.insert(make_pair(mthds[i]->GetName(), mthds[i]));
     }
   }
-  
+
   inline StackMethod* GetMethod(long id) {
 #ifdef _DEBUG
     assert(id > -1 && id < method_num);
@@ -614,7 +621,7 @@ class StackClass {
     if(result != method_name_map.end()) {
       return result->second;
     }
-    
+
     return NULL;
   }
 };
@@ -631,8 +638,8 @@ class StackProgram {
   int num_char_strings;
   StackMethod* init_method;
   long string_cls_id;
-  
- public:
+
+public:
   StackProgram() {
     cls_hierarchy = NULL;
   }
@@ -649,7 +656,7 @@ class StackProgram {
     if(cls_hierarchy) {
       delete[] cls_hierarchy;
       cls_hierarchy = NULL;
-    }   
+    }
 
     if(char_strings) {
       for(int i = 0; i < num_char_strings; i++) {
@@ -660,7 +667,7 @@ class StackProgram {
       delete[] char_strings;
       char_strings = NULL;
     }
-  
+
     if(init_method) {
       delete init_method;
       init_method = NULL;
@@ -674,7 +681,7 @@ class StackProgram {
   StackMethod* GetInitializationMethod() {
     return init_method;
   }
-  
+
   void SetStringClassId(long id) {
     string_cls_id = id;
   }
@@ -691,16 +698,16 @@ class StackProgram {
   BYTE_VALUE** GetCharStrings() {
     return char_strings;
   }
-  
+
   void SetClasses(StackClass** clss, const int num) {
     classes = clss;
     class_num = num;
   }
-  
+
   void SetHierarchy(int* h) {
     cls_hierarchy = h;
   }
-  
+
   inline int* GetHierarchy() {
     return cls_hierarchy;
   }
@@ -722,8 +729,8 @@ class StackFrame {
   long* mem;
   long ip;
   bool jit_called;
-  
- public:
+
+public:
   StackFrame(StackMethod* md, long* m) {
     method = md;
     mem = m;
@@ -747,7 +754,7 @@ class StackFrame {
   inline void SetIp(long i) {
     ip = i;
   }
-  
+
   inline long GetIp() {
     return ip;
   }
@@ -755,7 +762,7 @@ class StackFrame {
   inline void SetJitCalled(bool j) {
     jit_called = j;
   }
-  
+
   inline bool IsJitCalled() {
     return jit_called;
   }
