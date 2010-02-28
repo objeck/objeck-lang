@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and uses in source and binary forms, with or without 
+ * Redistribution and uses in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -63,2257 +63,2248 @@
 using namespace std;
 
 namespace frontend {
-  class TreeFactory;
-  class Variable;
-  class MethodCall;
-  class Class;
-  class Enum;
-  class ParsedProgram;
-  
-  /****************************
-   * StatementType enum
-   ****************************/
-  typedef enum _StatementType {
-    DECLARATION_STMT,
-    ASSIGN_STMT,
-    METHOD_CALL_STMT,
-    SIMPLE_STMT,
-    IF_STMT,
-    WHILE_STMT,
-    FOR_STMT,
-    SELECT_STMT,
-    ENUM_STMT,
-    RETURN_STMT,
-    SYSTEM_STMT,
-  } StatementType;
+class TreeFactory;
+class Variable;
+class MethodCall;
+class Class;
+class Enum;
+class ParsedProgram;
 
-  /****************************
-   * SymbolEntry class
-   ****************************/
-  class SymbolEntry : public ParseNode {
-    friend class TreeFactory;
-    vector<Variable*> variables;
-    int id;
-    string name;
-    Type* type;
-    bool is_static;
-    bool is_local;
-    bool is_self;
+/****************************
+ * StatementType enum
+ ****************************/
+typedef enum _StatementType {
+  DECLARATION_STMT,
+  ASSIGN_STMT,
+  METHOD_CALL_STMT,
+  SIMPLE_STMT,
+  IF_STMT,
+  WHILE_STMT,
+  FOR_STMT,
+  SELECT_STMT,
+  ENUM_STMT,
+  RETURN_STMT,
+  SYSTEM_STMT,
+} StatementType;
 
-  SymbolEntry(const string &f, int l, const string &n, Type* t, bool s, bool c, bool e = false) : 
+/****************************
+ * SymbolEntry class
+ ****************************/
+class SymbolEntry : public ParseNode {
+  friend class TreeFactory;
+  vector<Variable*> variables;
+  int id;
+  string name;
+  Type* type;
+  bool is_static;
+  bool is_local;
+  bool is_self;
+
+  SymbolEntry(const string &f, int l, const string &n, Type* t, bool s, bool c, bool e = false) :
     ParseNode(f, l) {
-      name = n;
-      id = -1;
-      type = t;
-      is_static = s;
-      is_local = c;
-      is_self = e;
+    name = n;
+    id = -1;
+    type = t;
+    is_static = s;
+    is_local = c;
+    is_self = e;
+  }
+
+  ~SymbolEntry() {
+  }
+
+public:
+  void SetType(Type* t) {
+    type =  t;
+  }
+
+  Type* GetType() {
+    return type;
+  }
+
+  bool IsStatic() {
+    return is_static;
+  }
+
+  bool IsLocal() {
+    return is_local;
+  }
+
+  const string GetName() {
+    return name;
+  }
+
+  void SetId(int i);
+
+  int GetId() {
+    return id;
+  }
+
+  bool IsSelf() {
+    return is_self;
+  }
+
+  void AddVariable(Variable* v) {
+    variables.push_back(v);
+  }
+};
+
+/****************************
+ * ScopeTable class
+ ****************************/
+class ScopeTable {
+  map<const string, SymbolEntry*> entries;
+  ScopeTable* parent;
+  vector<ScopeTable*> children;
+  int child_pos;
+
+public:
+  ScopeTable(ScopeTable* p) {
+    parent = p;
+    child_pos = 0;
+  }
+
+  ~ScopeTable() {
+    // clean up
+    while(!children.empty()) {
+      ScopeTable* tmp = children.front();
+      children.erase(children.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+  }
+
+  vector<SymbolEntry*> GetEntries() {
+    vector<SymbolEntry*> entries_list;
+    map<const string, SymbolEntry*>::iterator iter;
+    for(iter = entries.begin(); iter != entries.end(); iter++) {
+      SymbolEntry* entry = iter->second;
+      entries_list.push_back(entry);
     }
 
-    ~SymbolEntry() {
-    }
-    
-  public:
-    void SetType(Type* t) {
-      type =  t;
+    return entries_list;
+  }
+
+  SymbolEntry* GetEntry(const string &name) {
+    map<const string, SymbolEntry*>::iterator result = entries.find(name);
+    if(result != entries.end()) {
+      return result->second;
     }
 
-    Type* GetType() {
-      return type;
-    }
-  
-    bool IsStatic() {
-      return is_static;
-    }
-  
-    bool IsLocal() {
-      return is_local;
-    }
+    return NULL;
+  }
 
-    const string GetName() {
-      return name;
+  bool AddEntry(SymbolEntry* e) {
+    if(GetEntry(e->GetName())) {
+      return false;
     }
+    // add
+    entries.insert(pair<string, SymbolEntry*>(e->GetName(), e));
+    return true;
+  }
 
-    void SetId(int i);
+  ScopeTable* GetParent() {
+    return parent;
+  }
 
-    int GetId() {
-      return id;
-    }
+  ScopeTable* GetNextChild() {
+    return children[child_pos++];
+  }
 
-    bool IsSelf() {
-      return is_self;
-    }
-  
-    void AddVariable(Variable* v) {
-      variables.push_back(v);
-    }
-  };
+  void AddChild(ScopeTable* c) {
+    children.push_back(c);
+  }
+};
 
-  /****************************
-   * ScopeTable class
-   ****************************/
-  class ScopeTable {
-    map<const string, SymbolEntry*> entries;
-    ScopeTable* parent;
-    vector<ScopeTable*> children;
-    int child_pos;
+/****************************
+ * SymbolTable class
+ ****************************/
+class SymbolTable {
+  ScopeTable *head, *parse_ptr, *iter_ptr;
+  vector<SymbolEntry*> entries;
 
-  public:
-    ScopeTable(ScopeTable* p) {
-      parent = p;
-      child_pos = 0;
-    }
-    
-    ~ScopeTable() {
-      // clean up
-      while(!children.empty()) {
-	ScopeTable* tmp = children.front();
-	children.erase(children.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
+public:
+  SymbolTable() {
+    head = parse_ptr = iter_ptr = new ScopeTable(NULL);
+  }
+
+  ~SymbolTable() {
+    delete head;
+    head = NULL;
+  }
+
+  vector<SymbolEntry*> GetEntries() {
+    return entries;
+  }
+
+  SymbolEntry* GetEntry(const string &name) {
+    ScopeTable* tmp = iter_ptr;
+    while(tmp) {
+      SymbolEntry* entry = tmp->GetEntry(name);
+      if(entry) {
+        return entry;
       }
-    }  
-  
-    vector<SymbolEntry*> GetEntries() {
-      vector<SymbolEntry*> entries_list;    
-      map<const string, SymbolEntry*>::iterator iter;
-      for(iter = entries.begin(); iter != entries.end(); iter++) {
-	SymbolEntry* entry = iter->second;
-	entries_list.push_back(entry);
+      tmp = tmp->GetParent();
+    }
+
+    return NULL;
+  }
+
+  bool AddEntry(SymbolEntry* e) {
+    // see of we have this entry
+    ScopeTable* tmp = parse_ptr;
+    while(tmp) {
+      SymbolEntry* entry = tmp->GetEntry(e->GetName());
+      if(entry) {
+        return false;
       }
-
-      return entries_list;
-    }
-  
-    SymbolEntry* GetEntry(const string &name) {
-      map<const string, SymbolEntry*>::iterator result = entries.find(name);
-      if(result != entries.end()) {
-	return result->second;
-      }
-    
-      return NULL;
+      tmp = tmp->GetParent();
     }
 
-    bool AddEntry(SymbolEntry* e) {
-      if(GetEntry(e->GetName())) {
-	return false;
-      }
-      // add
-      entries.insert(pair<string, SymbolEntry*>(e->GetName(), e));
-      return true;
+    // add new entry
+    parse_ptr->AddEntry(e);
+    entries.push_back(e);
+    return true;
+  }
+
+  void NewParseScope() {
+    ScopeTable* tmp = parse_ptr;
+    parse_ptr = new ScopeTable(tmp);
+    tmp->AddChild(parse_ptr);
+  }
+
+  void PreviousParseScope() {
+    parse_ptr = parse_ptr->GetParent();
+  }
+
+  void NewScope() {
+    iter_ptr = iter_ptr->GetNextChild();
+  }
+
+  void PreviousScope() {
+    iter_ptr = iter_ptr->GetParent();
+  }
+};
+
+/****************************
+ * SymbolTableManager class
+ ****************************/
+class SymbolTableManager {
+  stack<SymbolTable*> scope;
+  map<const string, SymbolTable*> tables;
+
+public:
+  SymbolTableManager() {
+  }
+
+  ~SymbolTableManager() {
+    // clean up
+    map<const string, SymbolTable*>::iterator iter;
+    for(iter = tables.begin(); iter != tables.end(); iter++) {
+      SymbolTable* tmp = iter->second;
+      delete tmp;
+      tmp = NULL;
+    }
+    tables.clear();
+  }
+
+  void NewParseScope() {
+    scope.push(new SymbolTable);
+  }
+
+  void PreviousParseScope(const string &namescope) {
+    // assert(!GetSymbolTable(namescope));
+    if(GetSymbolTable(namescope)) {
+      return;
     }
 
-    ScopeTable* GetParent() {
-      return parent;
-    }
+    tables.insert(pair<string, SymbolTable*>(namescope, scope.top()));
+    scope.pop();
+  }
 
-    ScopeTable* GetNextChild() {
-      return children[child_pos++];
-    }
-    
-    void AddChild(ScopeTable* c) {
-      children.push_back(c);
-    }
-  };
+  SymbolTable* CurrentParseScope() {
+    return scope.top();
+  }
 
-  /****************************
-   * SymbolTable class
-   ****************************/
-  class SymbolTable {
-    ScopeTable *head, *parse_ptr, *iter_ptr;
+  vector<SymbolEntry*> GetEntries(const string &namescope) {
     vector<SymbolEntry*> entries;
-    
-  public:
-    SymbolTable() {
-      head = parse_ptr = iter_ptr = new ScopeTable(NULL);
-    }
-    
-    ~SymbolTable() {
-      delete head;
-      head = NULL;
-    }  
-  
-    vector<SymbolEntry*> GetEntries() {
-      return entries;
-    }
-  
-    SymbolEntry* GetEntry(const string &name) {
-      ScopeTable* tmp = iter_ptr;
-      while(tmp) {
-        SymbolEntry* entry = tmp->GetEntry(name);
-        if(entry) {
-          return entry;
-        }
-        tmp = tmp->GetParent();
-      }
-      
-      return NULL;
+    map<const string, SymbolTable*>::iterator result = tables.find(namescope);
+    if(result != tables.end()) {
+      entries = result->second->GetEntries();
     }
 
-    bool AddEntry(SymbolEntry* e) {
-      // see of we have this entry
-      ScopeTable* tmp = parse_ptr;
-      while(tmp) {
-        SymbolEntry* entry = tmp->GetEntry(e->GetName());
-        if(entry) {
-          return false;
-        }
-        tmp = tmp->GetParent();
-      }
+    return entries;
+  }
 
-      // add new entry
-      parse_ptr->AddEntry(e);
-      entries.push_back(e);
-      return true;
-    }
-    
-    void NewParseScope() {
-      ScopeTable* tmp = parse_ptr;
-      parse_ptr = new ScopeTable(tmp);
-      tmp->AddChild(parse_ptr);
-    }
-    
-    void PreviousParseScope() {
-      parse_ptr = parse_ptr->GetParent();
+  SymbolTable* GetSymbolTable(const string &namescope) {
+    map<const string, SymbolTable*>::iterator result = tables.find(namescope);
+    if(result != tables.end()) {
+      return result->second;
     }
 
-    void NewScope() {
-      iter_ptr = iter_ptr->GetNextChild();
-    }
+    return NULL;
+  }
+};
 
-    void PreviousScope() {
-      iter_ptr = iter_ptr->GetParent();
-    }
-  };
-
-  /****************************
-   * SymbolTableManager class
-   ****************************/
-  class SymbolTableManager {
-    stack<SymbolTable*> scope;
-    map<const string, SymbolTable*> tables;
-    
-  public:
-    SymbolTableManager() {
-    }
-  
-    ~SymbolTableManager() {
-      // clean up
-      map<const string, SymbolTable*>::iterator iter;
-      for(iter = tables.begin(); iter != tables.end(); iter++) {
-	SymbolTable* tmp = iter->second;
-	delete tmp;
-	tmp = NULL;
-      }
-      tables.clear();
-    }  
-
-    void NewParseScope() {
-      scope.push(new SymbolTable);
-    }
-  
-    void PreviousParseScope(const string &namescope) {
-      // assert(!GetSymbolTable(namescope));
-      if(GetSymbolTable(namescope)) {
-        return;
-      }
-      
-      tables.insert(pair<string, SymbolTable*>(namescope, scope.top()));
-      scope.pop();
-    }
-
-    SymbolTable* CurrentParseScope() {
-      return scope.top();
-    }
-
-    vector<SymbolEntry*> GetEntries(const string &namescope) {
-      vector<SymbolEntry*> entries;
-      map<const string, SymbolTable*>::iterator result = tables.find(namescope);
-      if(result != tables.end()) {
-	entries = result->second->GetEntries();
-      }
-      
-      return entries;
-    }
-  
-    SymbolTable* GetSymbolTable(const string &namescope) {
-      map<const string, SymbolTable*>::iterator result = tables.find(namescope);
-      if(result != tables.end()) {
-	return result->second;
-      }
-    
-      return NULL;
-    }
-  };
-
-  /****************************
-   * Statement base class
-   ****************************/
-  class Statement : public ParseNode {
-  public:
+/****************************
+ * Statement base class
+ ****************************/
+class Statement : public ParseNode {
+public:
   Statement(const string &f, const int l) : ParseNode(f, l) {
-    }
+  }
 
-    ~Statement() {
-    }
-  
-    virtual const StatementType GetStatementType() = 0;
-  };
+  ~Statement() {
+  }
 
-  /****************************
-   * StatementList class
-   ****************************/
-  class StatementList {
-    friend class TreeFactory;
-    vector<Statement*> statements;
-  
-    StatementList() {
-    }
+  virtual const StatementType GetStatementType() = 0;
+};
 
-    ~StatementList() {
-    }
+/****************************
+ * StatementList class
+ ****************************/
+class StatementList {
+  friend class TreeFactory;
+  vector<Statement*> statements;
 
-  public:
-    vector<Statement*> GetStatements() {
-      return statements;
-    }
+  StatementList() {
+  }
 
-    void AddStatement(Statement* s) {
-      statements.push_back(s);
-    } 
-  };
+  ~StatementList() {
+  }
 
-  /****************************
-   * ExpressionType enum
-   ****************************/
-  typedef enum _ExpressionType {
-    METHOD_CALL_EXPR,
-    VAR_EXPR,
-    NIL_LIT_EXPR,
-    CHAR_LIT_EXPR,
-    INT_LIT_EXPR,
-    FLOAT_LIT_EXPR,
-    BOOLEAN_LIT_EXPR,
-    AND_EXPR,
-    OR_EXPR,
-    EQL_EXPR,
-    NEQL_EXPR,
-    LES_EXPR,
-    GTR_EQL_EXPR,
-    LES_EQL_EXPR,
-    GTR_EXPR,
-    ADD_EXPR,
-    SUB_EXPR,
-    MUL_EXPR,
-    DIV_EXPR,
-    MOD_EXPR,
-    CHAR_STR_EXPR,
-  } ExpressionType;
+public:
+  vector<Statement*> GetStatements() {
+    return statements;
+  }
 
-  /****************************
-   * Expression base class
-   ****************************/
-  class Expression : public ParseNode {
-    friend class TreeFactory;
+  void AddStatement(Statement* s) {
+    statements.push_back(s);
+  }
+};
 
-  protected:
-    Type* base_type;
-    Type* eval_type;
-    Type* cast_type;
-    MethodCall* method_call;
-    Expression* prev_expr;
-    Class* to_class;
-    LibraryClass* to_lib_class;
-  
+/****************************
+ * ExpressionType enum
+ ****************************/
+typedef enum _ExpressionType {
+  METHOD_CALL_EXPR,
+  VAR_EXPR,
+  NIL_LIT_EXPR,
+  CHAR_LIT_EXPR,
+  INT_LIT_EXPR,
+  FLOAT_LIT_EXPR,
+  BOOLEAN_LIT_EXPR,
+  AND_EXPR,
+  OR_EXPR,
+  EQL_EXPR,
+  NEQL_EXPR,
+  LES_EXPR,
+  GTR_EQL_EXPR,
+  LES_EQL_EXPR,
+  GTR_EXPR,
+  ADD_EXPR,
+  SUB_EXPR,
+  MUL_EXPR,
+  DIV_EXPR,
+  MOD_EXPR,
+  CHAR_STR_EXPR,
+} ExpressionType;
+
+/****************************
+ * Expression base class
+ ****************************/
+class Expression : public ParseNode {
+  friend class TreeFactory;
+
+protected:
+  Type* base_type;
+  Type* eval_type;
+  Type* cast_type;
+  MethodCall* method_call;
+  Expression* prev_expr;
+  Class* to_class;
+  LibraryClass* to_lib_class;
+
   Expression(const string &f, const int l) : ParseNode(f, l) {
-      base_type = eval_type = cast_type = NULL;
-      method_call = NULL;
-      prev_expr = NULL;
-      to_class = NULL;
-      to_lib_class = NULL;
-    }
-  
+    base_type = eval_type = cast_type = NULL;
+    method_call = NULL;
+    prev_expr = NULL;
+    to_class = NULL;
+    to_lib_class = NULL;
+  }
+
   Expression(const string &f, const int l, Type* t) : ParseNode(f, l) {
+    base_type = eval_type = TypeFactory::Instance()->MakeType(t);
+    cast_type = NULL;
+    method_call = NULL;
+    prev_expr = NULL;
+    to_class = NULL;
+    to_lib_class = NULL;
+  }
+
+  ~Expression() {
+  }
+
+public:
+  void SetToClass(Class* t) {
+    to_class = t;
+  }
+
+  Class* GetToClass() {
+    return to_class;
+  }
+
+  void SetToLibraryClass(LibraryClass* t) {
+    to_lib_class = t;
+  }
+
+  LibraryClass* GetToLibraryClass() {
+    return to_lib_class;
+  }
+
+  void SetMethodCall(MethodCall* call);
+
+  void SetPreviousExpression(Expression* e) {
+    prev_expr = e;
+  }
+
+  MethodCall* GetMethodCall() {
+    return method_call;
+  }
+
+  Expression* GetPreviousExpression() {
+    return prev_expr;
+  }
+
+  void SetTypes(Type* t) {
+    if(t) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
-      cast_type = NULL;
-      method_call = NULL;
-      prev_expr = NULL;
-      to_class = NULL;
-      to_lib_class = NULL;
     }
-    
-    ~Expression() {
+  }
+
+  // used for target emission
+  Type* GetBaseType() {
+    return base_type;
+  }
+
+  // used for contextual casting
+  Type* GetEvalType() {
+    return eval_type;
+  }
+
+  void SetEvalType(Type* e, bool zd) {
+    eval_type = TypeFactory::Instance()->MakeType(e);
+
+    if(!base_type) {
+      base_type = eval_type;
     }
 
-  public:
-    void SetToClass(Class* t) {
-      to_class = t;
+    if(zd) {
+      eval_type->SetDimension(0);
     }
+  }
 
-    Class* GetToClass() {
-      return to_class;
-    }
+  void SetCastType(Type* c) {
+    cast_type = TypeFactory::Instance()->MakeType(c);
+  }
 
-    void SetToLibraryClass(LibraryClass* t) {
-      to_lib_class = t;
-    }
+  Type* GetCastType() {
+    return cast_type;
+  }
 
-    LibraryClass* GetToLibraryClass() {
-      return to_lib_class;
-    }
-    
-    void SetMethodCall(MethodCall* call);
+  virtual const ExpressionType GetExpressionType() = 0;
+};
 
-    void SetPreviousExpression(Expression* e) {
-      prev_expr = e;
-    }
-    
-    MethodCall* GetMethodCall() {
-      return method_call;
-    }
+/****************************
+ * ExpressionList class
+ ****************************/
+class ExpressionList {
+  friend class TreeFactory;
+  vector<Expression*> expressions;
 
-    Expression* GetPreviousExpression() {
-      return prev_expr;
-    }
-  
-    void SetTypes(Type* t) {
-      if(t) {
-	base_type = eval_type = TypeFactory::Instance()->MakeType(t);
-      }
-    }
-  
-    // used for target emission
-    Type* GetBaseType() {
-      return base_type;
-    }
-  
-    // used for contextual casting
-    Type* GetEvalType() {
-      return eval_type;
-    }
-    
-    void SetEvalType(Type* e, bool zd) {
-      eval_type = TypeFactory::Instance()->MakeType(e);
+  ExpressionList() {
+  }
 
-      if(!base_type) {
-        base_type = eval_type;
-      }
+  ~ExpressionList() {
+  }
 
-      if(zd) {
-	eval_type->SetDimension(0);
-      }
-    }
-  
-    void SetCastType(Type* c) {
-      cast_type = TypeFactory::Instance()->MakeType(c);
-    }
+public:
+  vector<Expression*> GetExpressions() {
+    return expressions;
+  }
 
-    Type* GetCastType() {
-      return cast_type;
-    }
-  
-    virtual const ExpressionType GetExpressionType() = 0;
-  };
+  void AddExpression(Expression* e) {
+    expressions.push_back(e);
+  }
+};
 
-  /****************************
-   * ExpressionList class
-   ****************************/
-  class ExpressionList {
-    friend class TreeFactory;
-    vector<Expression*> expressions;
-  
-    ExpressionList() {
-    }
-  
-    ~ExpressionList() {
-    }
+/****************************
+ * CharacterString class
+ ****************************/
+class CharacterString : public Expression {
+  friend class TreeFactory;
+  int id;
+  string char_string;
 
-  public:
-    vector<Expression*> GetExpressions() {
-      return expressions;
-    }
-  
-    void AddExpression(Expression* e) {
-      expressions.push_back(e);
-    } 
-  };
-
-  /****************************
-   * CharacterString class
-   ****************************/
-  class CharacterString : public Expression {
-    friend class TreeFactory;
-    int id;
-    string char_string;
-
-  CharacterString(const string &f, int l, const string &orig) : 
+  CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
-      int skip = 2;
-      for(unsigned int i = 0; i < orig.size(); i++) {
-        char c = orig[i];
-        if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
-          char cc = orig[i + 1];
-          switch(cc) {
-            case '"':
-              char_string += '\"';
-              skip = 0;
-              break;
+    int skip = 2;
+    for(unsigned int i = 0; i < orig.size(); i++) {
+      char c = orig[i];
+      if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
+        char cc = orig[i + 1];
+        switch(cc) {
+        case '"':
+          char_string += '\"';
+          skip = 0;
+          break;
 
-            case '\\':
-              char_string += '\\';
-              skip = 0;
-              break;
+        case '\\':
+          char_string += '\\';
+          skip = 0;
+          break;
 
-            case 'n':
-              char_string += '\n';
-              skip = 0;
-              break;
+        case 'n':
+          char_string += '\n';
+          skip = 0;
+          break;
 
-            case 'r':
-              char_string += '\r';
-              skip = 0;
-              break;
+        case 'r':
+          char_string += '\r';
+          skip = 0;
+          break;
 
-	          case 't':
-              char_string += '\t';
-              skip = 0;
-              break;
+        case 't':
+          char_string += '\t';
+          skip = 0;
+          break;
 
-            case '0':
-              char_string += '\0';
-              skip = 0;
-              break;
+        case '0':
+          char_string += '\0';
+          skip = 0;
+          break;
 
-            default:
-              if(skip > 1) {
-                char_string += c;
-              }
-              else {
-                skip++;
-              }
-              break;
+        default:
+          if(skip > 1) {
+            char_string += c;
+          } else {
+            skip++;
           }
-        }
-        
-        if(skip > 1) {
-          char_string += c;
-        }
-        else {
-          skip++;
+          break;
         }
       }
-      id = -1;
-    }
 
-    ~CharacterString() {
+      if(skip > 1) {
+        char_string += c;
+      } else {
+        skip++;
+      }
     }
-    
-  public:
-    const ExpressionType GetExpressionType() {
-      return CHAR_STR_EXPR;
-    }
+    id = -1;
+  }
 
-    void SetId(int i) {
-      id = i;
-    }
+  ~CharacterString() {
+  }
 
-    int GetId() {
-      return id;
-    }
+public:
+  const ExpressionType GetExpressionType() {
+    return CHAR_STR_EXPR;
+  }
 
-    const string GetString() {
-      return char_string;
-    }
-  };
-    
-  /****************************
-   * CalculatedExpression class
-   ****************************/
-  class CalculatedExpression : public Expression {
-    friend class TreeFactory;
-    ExpressionType type;
-    Expression* left;
-    Expression* right;
-  
-  CalculatedExpression(const string &f, int l, ExpressionType t) : 
+  void SetId(int i) {
+    id = i;
+  }
+
+  int GetId() {
+    return id;
+  }
+
+  const string GetString() {
+    return char_string;
+  }
+};
+
+/****************************
+ * CalculatedExpression class
+ ****************************/
+class CalculatedExpression : public Expression {
+  friend class TreeFactory;
+  ExpressionType type;
+  Expression* left;
+  Expression* right;
+
+  CalculatedExpression(const string &f, int l, ExpressionType t) :
     Expression(f, l) {
-      left = right = NULL;
-      type = t;
-    }
-  
-    ~CalculatedExpression() {
-    }
+    left = right = NULL;
+    type = t;
+  }
 
-  public:
-    const ExpressionType GetExpressionType() {
-      return type;
-    }
+  ~CalculatedExpression() {
+  }
 
-    void SetLeft(Expression* l) {
-      left = l;
-    }
+public:
+  const ExpressionType GetExpressionType() {
+    return type;
+  }
 
-    Expression* GetLeft() {
-      return left;
-    }
+  void SetLeft(Expression* l) {
+    left = l;
+  }
 
-    void SetRight(Expression* r) {
-      right = r;
-    }
+  Expression* GetLeft() {
+    return left;
+  }
 
-    Expression* GetRight() {
-      return right;
-    }
-  };
+  void SetRight(Expression* r) {
+    right = r;
+  }
 
-  /****************************
-   * Variable class
-   ****************************/
-  class Variable : public Expression {
-    friend class TreeFactory;
-    int id;
-    string name;
-    ExpressionList* indices;
-    SymbolEntry* entry;
+  Expression* GetRight() {
+    return right;
+  }
+};
+
+/****************************
+ * Variable class
+ ****************************/
+class Variable : public Expression {
+  friend class TreeFactory;
+  int id;
+  string name;
+  ExpressionList* indices;
+  SymbolEntry* entry;
 
   Variable(const string &f, int l, const string &n) : Expression(f, l) {
-      name = n;
-      indices = NULL;
-      entry = NULL;
-      id = -1;
-    }
-  
-    ~Variable() {
-    }
+    name = n;
+    indices = NULL;
+    entry = NULL;
+    id = -1;
+  }
 
-  public:
-    const string GetName() {
-      return name;
-    }
+  ~Variable() {
+  }
 
-    void SetId(int i) {
-      id = i;
-    }
+public:
+  const string GetName() {
+    return name;
+  }
 
-    const int GetId() {
-      return id;
-    }
+  void SetId(int i) {
+    id = i;
+  }
 
-    void SetEntry(SymbolEntry* e) {
-      entry = e;
-    }
+  const int GetId() {
+    return id;
+  }
 
-    SymbolEntry* GetEntry() {
-      return entry;
-    }
+  void SetEntry(SymbolEntry* e) {
+    entry = e;
+  }
 
-    const ExpressionType GetExpressionType() {
-      return VAR_EXPR;
-    }
+  SymbolEntry* GetEntry() {
+    return entry;
+  }
 
-    void SetIndices(ExpressionList* i) {
-      indices = i;
-    }
+  const ExpressionType GetExpressionType() {
+    return VAR_EXPR;
+  }
 
-    ExpressionList* GetIndices() {
-      return indices;
-    }
-  };
+  void SetIndices(ExpressionList* i) {
+    indices = i;
+  }
 
-  /****************************
-   * BooleanLiteral class
-   ****************************/
-  class BooleanLiteral : public Expression {
-    friend class TreeFactory;
-    bool value;
-  
-  BooleanLiteral(const string &f, const int l, bool v) : 
+  ExpressionList* GetIndices() {
+    return indices;
+  }
+};
+
+/****************************
+ * BooleanLiteral class
+ ****************************/
+class BooleanLiteral : public Expression {
+  friend class TreeFactory;
+  bool value;
+
+  BooleanLiteral(const string &f, const int l, bool v) :
     Expression(f, l, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
-      value = v;
-    }
-  
-    ~BooleanLiteral() {
-    }
+    value = v;
+  }
 
-  public:
-    const ExpressionType GetExpressionType() {
-      return BOOLEAN_LIT_EXPR;
-    }
-  
-    bool GetValue() {
-      return value;
-    }
-  };
+  ~BooleanLiteral() {
+  }
 
-  /****************************
-   * NilLiteral class
-   ****************************/
-  class NilLiteral : public Expression {
-    friend class TreeFactory;
-    
+public:
+  const ExpressionType GetExpressionType() {
+    return BOOLEAN_LIT_EXPR;
+  }
+
+  bool GetValue() {
+    return value;
+  }
+};
+
+/****************************
+ * NilLiteral class
+ ****************************/
+class NilLiteral : public Expression {
+  friend class TreeFactory;
+
   NilLiteral(const string &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
-    }
-  
-    ~NilLiteral() {
-    }
+  }
 
-  public:
-    const ExpressionType GetExpressionType() {
-      return NIL_LIT_EXPR;
-    }
-  };
+  ~NilLiteral() {
+  }
 
-  /****************************
-   * CharacterLiteral class
-   ****************************/
-  class CharacterLiteral : public Expression {
-    friend class TreeFactory;
-    CHAR_VALUE value;
-  
-  CharacterLiteral(const string &f, const int l, CHAR_VALUE v) : 
+public:
+  const ExpressionType GetExpressionType() {
+    return NIL_LIT_EXPR;
+  }
+};
+
+/****************************
+ * CharacterLiteral class
+ ****************************/
+class CharacterLiteral : public Expression {
+  friend class TreeFactory;
+  CHAR_VALUE value;
+
+  CharacterLiteral(const string &f, const int l, CHAR_VALUE v) :
     Expression(f, l, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
-      value = v;
-    }
-  
-    ~CharacterLiteral() {
-    }
+    value = v;
+  }
 
-  public:
-    CHAR_VALUE GetValue() {
-      return value;
-    }
+  ~CharacterLiteral() {
+  }
 
-    const ExpressionType GetExpressionType() {
-      return CHAR_LIT_EXPR;
-    }
-  };
+public:
+  CHAR_VALUE GetValue() {
+    return value;
+  }
 
-  /****************************
-   * IntegerLiteral class
-   ****************************/
-  class IntegerLiteral : public Expression {
-    friend class TreeFactory;
-    INT_VALUE value;
-  
-  IntegerLiteral(const string &f, const int l, INT_VALUE v) : 
+  const ExpressionType GetExpressionType() {
+    return CHAR_LIT_EXPR;
+  }
+};
+
+/****************************
+ * IntegerLiteral class
+ ****************************/
+class IntegerLiteral : public Expression {
+  friend class TreeFactory;
+  INT_VALUE value;
+
+  IntegerLiteral(const string &f, const int l, INT_VALUE v) :
     Expression(f, l, TypeFactory::Instance()->MakeType(INT_TYPE)) {
-      value = v;
-    }
-  
-    ~IntegerLiteral() {
-    }
+    value = v;
+  }
 
-  public:
-    INT_VALUE GetValue() {
-      return value;
-    }
+  ~IntegerLiteral() {
+  }
 
-    const ExpressionType GetExpressionType() {
-      return INT_LIT_EXPR;
-    }
-  };
+public:
+  INT_VALUE GetValue() {
+    return value;
+  }
 
-  /****************************
-   * FloatLiteral class
-   ****************************/
-  class FloatLiteral : public Expression {
-    friend class TreeFactory;
-    FLOAT_VALUE value;
-  
-  FloatLiteral(const string &f, const int l, FLOAT_VALUE v) : 
+  const ExpressionType GetExpressionType() {
+    return INT_LIT_EXPR;
+  }
+};
+
+/****************************
+ * FloatLiteral class
+ ****************************/
+class FloatLiteral : public Expression {
+  friend class TreeFactory;
+  FLOAT_VALUE value;
+
+  FloatLiteral(const string &f, const int l, FLOAT_VALUE v) :
     Expression(f, l, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
-      value = v;
-    }
-  
-    ~FloatLiteral() {
-    }
+    value = v;
+  }
 
-  public:
-    FLOAT_VALUE GetValue() {
-      return value;
-    }
+  ~FloatLiteral() {
+  }
 
-    const ExpressionType GetExpressionType() {
-      return FLOAT_LIT_EXPR;
-    }
-  };
+public:
+  FLOAT_VALUE GetValue() {
+    return value;
+  }
 
-  /****************************
-   * Return class
-   ****************************/
-  class Return : public Statement {
-    friend class TreeFactory;
-    Expression* expression;
-  
+  const ExpressionType GetExpressionType() {
+    return FLOAT_LIT_EXPR;
+  }
+};
+
+/****************************
+ * Return class
+ ****************************/
+class Return : public Statement {
+  friend class TreeFactory;
+  Expression* expression;
+
   Return(const string &f, const int l, Expression* e) : Statement(f, l) {
-      expression = e;
-    }
+    expression = e;
+  }
 
-    ~Return() {
-    }
-    
-  public:
-    const StatementType GetStatementType() {
-      return RETURN_STMT;
-    }
+  ~Return() {
+  }
 
-    Expression* GetExpression() {
-      return expression;
-    }
-  };
+public:
+  const StatementType GetStatementType() {
+    return RETURN_STMT;
+  }
 
-  /****************************
-   * If class
-   ****************************/
-  class If : public Statement {
-    friend class TreeFactory;
-    Expression* expression;
-    StatementList* if_statements;
-    StatementList* else_statements;
-    If* next;
-    
-  If(const string &f, const int l, Expression* e, StatementList* s, If* n = NULL) : 
+  Expression* GetExpression() {
+    return expression;
+  }
+};
+
+/****************************
+ * If class
+ ****************************/
+class If : public Statement {
+  friend class TreeFactory;
+  Expression* expression;
+  StatementList* if_statements;
+  StatementList* else_statements;
+  If* next;
+
+  If(const string &f, const int l, Expression* e, StatementList* s, If* n = NULL) :
     Statement(f, l) {
-      expression = e;
-      if_statements = s;
-      next = n;
-      else_statements = NULL;
-    }
+    expression = e;
+    if_statements = s;
+    next = n;
+    else_statements = NULL;
+  }
 
-    ~If() {
-    }
-	
-  public:
-    const StatementType GetStatementType() {
-      return IF_STMT;
-    }
-    
-    Expression* GetExpression() {
-      return expression;
-    }
+  ~If() {
+  }
 
-    StatementList* GetIfStatements() {
-      return if_statements;
-    }
+public:
+  const StatementType GetStatementType() {
+    return IF_STMT;
+  }
 
-    void SetElseStatements(StatementList* e) {
-      else_statements = e;
-    }
-    
-    StatementList* GetElseStatements() {
-      return else_statements;
-    }
+  Expression* GetExpression() {
+    return expression;
+  }
 
-    If* GetNext() {
-      return next;
-    }
-  };
+  StatementList* GetIfStatements() {
+    return if_statements;
+  }
 
-  /****************************
-   * EnumItem class
-   ****************************/
-  class EnumItem : public ParseNode {
-    friend class TreeFactory;
-    string name;
-    int id;
-    Enum* eenum;
+  void SetElseStatements(StatementList* e) {
+    else_statements = e;
+  }
+
+  StatementList* GetElseStatements() {
+    return else_statements;
+  }
+
+  If* GetNext() {
+    return next;
+  }
+};
+
+/****************************
+ * EnumItem class
+ ****************************/
+class EnumItem : public ParseNode {
+  friend class TreeFactory;
+  string name;
+  int id;
+  Enum* eenum;
 
   EnumItem(const string &f, const int l, const string &n, Enum* e) :
     ParseNode(f, l) {
-      name = n;
-      id = -1;
-      eenum = e;
-    }
+    name = n;
+    id = -1;
+    eenum = e;
+  }
 
-    ~EnumItem() {
-    }
+  ~EnumItem() {
+  }
 
-  public:
-    const string GetName() {
-      return name;
-    }
+public:
+  const string GetName() {
+    return name;
+  }
 
-    void SetId(int i) {
-      id = i;
-    }
+  void SetId(int i) {
+    id = i;
+  }
 
-    Enum* GetEnum() {
-      return eenum;
-    }
+  Enum* GetEnum() {
+    return eenum;
+  }
 
-    int GetId() {
-      return id;
-    }
-  };
+  int GetId() {
+    return id;
+  }
+};
 
-  /****************************
-   * Enum class
-   ****************************/
-  class Enum : public ParseNode {
-    friend class TreeFactory;
-    string name;
-    int offset;
-    int index;
-    map<const string, EnumItem*> items;
-    
-  Enum(const string &f, const int l, string &n, int o) : 
+/****************************
+ * Enum class
+ ****************************/
+class Enum : public ParseNode {
+  friend class TreeFactory;
+  string name;
+  int offset;
+  int index;
+  map<const string, EnumItem*> items;
+
+  Enum(const string &f, const int l, string &n, int o) :
     ParseNode(f, l) {
-      name = n;
-      index = offset = o;
+    name = n;
+    index = offset = o;
+  }
+
+  ~Enum() {
+  }
+
+public:
+  void AddItem(EnumItem* e) {
+    e->SetId(index++);
+    items.insert(pair<const string, EnumItem*>(e->GetName(), e));
+  }
+
+  EnumItem* GetItem(const string &i) {
+    map<const string, EnumItem*>::iterator result = items.find(i);
+    if(result != items.end()) {
+      return result->second;
     }
 
-    ~Enum() {
-    }
+    return NULL;
+  }
 
-  public:
-    void AddItem(EnumItem* e) {
-      e->SetId(index++);
-      items.insert(pair<const string, EnumItem*>(e->GetName(), e));
-    }
-    
-    EnumItem* GetItem(const string &i) {
-      map<const string, EnumItem*>::iterator result = items.find(i);
-      if(result != items.end()) {
-	return result->second;
-      }
+  const string GetName() {
+    return name;
+  }
 
-      return NULL;
-    }
-    
-    const string GetName() {
-      return name;
-    }
+  int GetOffset() {
+    return offset;
+  }
 
-    int GetOffset() {
-      return offset;
-    }
+  map<const string, EnumItem*> GetItems() {
+    return items;
+  }
+};
 
-    map<const string, EnumItem*> GetItems() {
-      return items;
-    }
-  };
+/****************************
+ * Select class
+ ****************************/
+class Select : public Statement {
+  friend class TreeFactory;
+  Expression* eval_expression;
+  map<int, StatementList*> label_statements;
+  map<ExpressionList*, StatementList*> statement_map;
+  StatementList* other;
 
-  /****************************
-   * Select class
-   ****************************/
-  class Select : public Statement {
-    friend class TreeFactory;
-    Expression* eval_expression;
-    map<int, StatementList*> label_statements;
-    map<ExpressionList*, StatementList*> statement_map;
-    StatementList* other;
-    
-  Select(const string &f, const int l, Expression* e, map<ExpressionList*, StatementList*> s, StatementList* o) : 
+  Select(const string &f, const int l, Expression* e, map<ExpressionList*, StatementList*> s, StatementList* o) :
     Statement(f, l) {
-      eval_expression = e;
-      statement_map = s;
-      other = o;
-    }
+    eval_expression = e;
+    statement_map = s;
+    other = o;
+  }
 
-    ~Select() {
-    }
-    
-  public:
-    void SetLabelStatements(map<int, StatementList*> s) {
-      label_statements = s;
-    }
+  ~Select() {
+  }
 
-    map<int, StatementList*> GetLabelStatements() {
-      return label_statements;
-    }
-    
-    const StatementType GetStatementType() {
-      return SELECT_STMT;
-    }
+public:
+  void SetLabelStatements(map<int, StatementList*> s) {
+    label_statements = s;
+  }
 
-    Expression* GetExpression() {
-      return eval_expression;
-    }
+  map<int, StatementList*> GetLabelStatements() {
+    return label_statements;
+  }
 
-    map<ExpressionList*, StatementList*> GetStatements() {
-      return statement_map;
-    }
-    
-    StatementList* GetOther() {
-      return other;
-    }
-  };
-  
-  /****************************
-   * For class
-   ****************************/
-  class For : public Statement {
-    friend class TreeFactory;
-    Statement* pre_stmt;
-    Expression* cond_expr;
-    Statement* update_stmt;
-    StatementList* statements;
-    
-  For(const string &f, const int l, Statement* pre, Expression* cond, 
+  const StatementType GetStatementType() {
+    return SELECT_STMT;
+  }
+
+  Expression* GetExpression() {
+    return eval_expression;
+  }
+
+  map<ExpressionList*, StatementList*> GetStatements() {
+    return statement_map;
+  }
+
+  StatementList* GetOther() {
+    return other;
+  }
+};
+
+/****************************
+ * For class
+ ****************************/
+class For : public Statement {
+  friend class TreeFactory;
+  Statement* pre_stmt;
+  Expression* cond_expr;
+  Statement* update_stmt;
+  StatementList* statements;
+
+  For(const string &f, const int l, Statement* pre, Expression* cond,
       Statement* update, StatementList* stmts) : Statement(f, l) {
-      pre_stmt = pre;
-      cond_expr = cond;
-      update_stmt = update;
-      statements = stmts;
-    }
+    pre_stmt = pre;
+    cond_expr = cond;
+    update_stmt = update;
+    statements = stmts;
+  }
 
-    ~For() {
-    }
-    
-  public:
-    const StatementType GetStatementType() {
-      return FOR_STMT;
-    }
+  ~For() {
+  }
 
-    Statement* GetPreStatement() {
-      return pre_stmt;
-    }
+public:
+  const StatementType GetStatementType() {
+    return FOR_STMT;
+  }
 
-    Expression* GetExpression() {
-      return cond_expr;
-    }
+  Statement* GetPreStatement() {
+    return pre_stmt;
+  }
 
-    Statement* GetUpdateStatement() {
-      return update_stmt;
-    }
-    
-    StatementList* GetStatements() {
-      return statements;
-    }
-  };
-  
-  /****************************
-   * While class
-   *****  ***********************/
-  class While : public Statement {
-    friend class TreeFactory;
-    Expression* expression;
-    StatementList* statements;
-  
+  Expression* GetExpression() {
+    return cond_expr;
+  }
+
+  Statement* GetUpdateStatement() {
+    return update_stmt;
+  }
+
+  StatementList* GetStatements() {
+    return statements;
+  }
+};
+
+/****************************
+ * While class
+ *****  ***********************/
+class While : public Statement {
+  friend class TreeFactory;
+  Expression* expression;
+  StatementList* statements;
+
   While(const string &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
-      expression = e;
-      statements = s;
-    }
+    expression = e;
+    statements = s;
+  }
 
-    ~While() {
-    }
-    
-  public:
-    const StatementType GetStatementType() {
-      return WHILE_STMT;
-    }
-    
-    Expression* GetExpression() {
-      return expression;
-    }
+  ~While() {
+  }
 
-    StatementList* GetStatements() {
-      return statements;
-    }
-  };
+public:
+  const StatementType GetStatementType() {
+    return WHILE_STMT;
+  }
 
-  /****************************
-   * SystemStatement class
-   ****************************/
-  class SystemStatement : public Statement {
-    friend class TreeFactory;
-    int id;
-    
+  Expression* GetExpression() {
+    return expression;
+  }
+
+  StatementList* GetStatements() {
+    return statements;
+  }
+};
+
+/****************************
+ * SystemStatement class
+ ****************************/
+class SystemStatement : public Statement {
+  friend class TreeFactory;
+  int id;
+
   SystemStatement(const string &f, const int l, int i) : Statement(f, l) {
-      id = i;
-    }
+    id = i;
+  }
 
-    ~SystemStatement() {
-    }
+  ~SystemStatement() {
+  }
 
-  public:
-    const StatementType GetStatementType() {
-      return SYSTEM_STMT;
-    }
-    
-    int GetId() {
-      return id;
-    }
-  };
-  
-  /****************************
-   * SimpleStatement class
-   ****************************/
-  class SimpleStatement : public Statement {
-    friend class TreeFactory;
-    Expression* expression;
-  
-  SimpleStatement(const string &f, const int l, Expression* e) : 
+public:
+  const StatementType GetStatementType() {
+    return SYSTEM_STMT;
+  }
+
+  int GetId() {
+    return id;
+  }
+};
+
+/****************************
+ * SimpleStatement class
+ ****************************/
+class SimpleStatement : public Statement {
+  friend class TreeFactory;
+  Expression* expression;
+
+  SimpleStatement(const string &f, const int l, Expression* e) :
     Statement(f, l) {
-      expression = e;
-    }
+    expression = e;
+  }
 
-    ~SimpleStatement() {
-    }
+  ~SimpleStatement() {
+  }
 
-  public:
-    const StatementType GetStatementType() {
-      return SIMPLE_STMT;
-    }
+public:
+  const StatementType GetStatementType() {
+    return SIMPLE_STMT;
+  }
 
-    Expression* GetExpression() {
-      return expression;
-    }
-  };
+  Expression* GetExpression() {
+    return expression;
+  }
+};
 
-  /****************************
-   * Assignment class
-   ****************************/
-  class Assignment : public Statement {
-    friend class TreeFactory;
-    Variable* variable;
-    Expression* expression;
-  
+/****************************
+ * Assignment class
+ ****************************/
+class Assignment : public Statement {
+  friend class TreeFactory;
+  Variable* variable;
+  Expression* expression;
+
   Assignment(const string &f, const int l, Variable* v, Expression* e) :
     Statement(f, l) {
-      variable = v;
-      expression = e;
-    }
-  
-    ~Assignment() {
-    }
-  
-  public:
-    Variable* GetVariable() {
-      return variable;
-    }
+    variable = v;
+    expression = e;
+  }
 
-    Expression* GetExpression() {
-      return expression;
-    }
-  
-    const StatementType GetStatementType() {
-      return ASSIGN_STMT;
-    }
-  };
+  ~Assignment() {
+  }
 
-  /****************************
-   * Declaration class
-   ****************************/
-  class Declaration : public Statement {
-    friend class TreeFactory;
-    SymbolEntry* entry;
-    Assignment* assignment;
-    
-  Declaration(const string &f, const int l, SymbolEntry* e, Assignment* a) : 
+public:
+  Variable* GetVariable() {
+    return variable;
+  }
+
+  Expression* GetExpression() {
+    return expression;
+  }
+
+  const StatementType GetStatementType() {
+    return ASSIGN_STMT;
+  }
+};
+
+/****************************
+ * Declaration class
+ ****************************/
+class Declaration : public Statement {
+  friend class TreeFactory;
+  SymbolEntry* entry;
+  Assignment* assignment;
+
+  Declaration(const string &f, const int l, SymbolEntry* e, Assignment* a) :
     Statement(f, l) {
-      entry = e;
-      assignment = a;
-    }
+    entry = e;
+    assignment = a;
+  }
 
   Declaration(const string &f, const int l, SymbolEntry* e) :
     Statement(f, l) {
-      entry = e;
-      assignment = NULL;
-    }
-    
-    ~Declaration() {
-    }
-  
+    entry = e;
+    assignment = NULL;
+  }
 
-  public:
-    SymbolEntry* GetEntry() {
-      return entry;
-    }
-    
-    Assignment* GetAssignment() {
-      return assignment;
-    }
-  
-    const StatementType GetStatementType() {
-      return DECLARATION_STMT;
-    }
-  };
-  
-  /****************************
-   * DeclarationList class
-   ****************************/
-  class DeclarationList {
-    friend class TreeFactory;
-    vector<Declaration*> declarations;
-  
-    DeclarationList() {
-    }
-  
-    ~DeclarationList() {
-    }
+  ~Declaration() {
+  }
 
-  public:
-    vector<Declaration*> GetDeclarations() {
-      return declarations;
-    }
-  
-    void AddDeclaration(Declaration* t) {
-      declarations.push_back(t);
-    } 
-  };
 
-  /****************************
-   * Method class
-   ****************************/
-  class Method : public ParseNode {
-    friend class TreeFactory;
-    int id;
-    string name;
-    string parsed_name;
-    string encoded_name;
-    string encoded_return;
-    StatementList* statements;
-    DeclarationList* declarations;
-    Type* return_type;
-    MethodType method_type;
-    bool is_static;
-    bool is_native;
-    bool has_and_or;
-    SymbolTable* symbol_table;
-    Class* klass;
-    
-  Method(const string &f, const int l, const string &n, MethodType m, bool s, bool c) : 
+public:
+  SymbolEntry* GetEntry() {
+    return entry;
+  }
+
+  Assignment* GetAssignment() {
+    return assignment;
+  }
+
+  const StatementType GetStatementType() {
+    return DECLARATION_STMT;
+  }
+};
+
+/****************************
+ * DeclarationList class
+ ****************************/
+class DeclarationList {
+  friend class TreeFactory;
+  vector<Declaration*> declarations;
+
+  DeclarationList() {
+  }
+
+  ~DeclarationList() {
+  }
+
+public:
+  vector<Declaration*> GetDeclarations() {
+    return declarations;
+  }
+
+  void AddDeclaration(Declaration* t) {
+    declarations.push_back(t);
+  }
+};
+
+/****************************
+ * Method class
+ ****************************/
+class Method : public ParseNode {
+  friend class TreeFactory;
+  int id;
+  string name;
+  string parsed_name;
+  string encoded_name;
+  string encoded_return;
+  StatementList* statements;
+  DeclarationList* declarations;
+  Type* return_type;
+  MethodType method_type;
+  bool is_static;
+  bool is_native;
+  bool has_and_or;
+  SymbolTable* symbol_table;
+  Class* klass;
+
+  Method(const string &f, const int l, const string &n, MethodType m, bool s, bool c) :
     ParseNode(f, l) {
-      name = n;
-      method_type = m;
-      is_static = s;
-      is_native = c;
-      statements = NULL;
-      return_type = NULL;
-      declarations = NULL;
-      id = -1;
-      has_and_or = false;
-    }
-    
-    ~Method() {
-    }
-    
-    string EncodeType(Type* type, ParsedProgram* program, Linker* linker);
+    name = n;
+    method_type = m;
+    is_static = s;
+    is_native = c;
+    statements = NULL;
+    return_type = NULL;
+    declarations = NULL;
+    id = -1;
+    has_and_or = false;
+  }
 
-    string EncodeType(Type* type) {
-      string name;
-      if(type) {
-	// type
-	switch(type->GetType()) {
-	case BOOLEAN_TYPE:
-	  name = 'l';
-	  break;
+  ~Method() {
+  }
 
-	case BYTE_TYPE:
-	  name = 'b';
-	  break;
-    
-	case INT_TYPE:
-	  name = 'i';
-	  break;
-    
-	case FLOAT_TYPE:
-	  name = 'f';
-	  break;
-    
-	case CHAR_TYPE:
-	  name = 'c';
-	  break;
-    
-	case NIL_TYPE:
-	  name = 'n';
-	  break;
+  string EncodeType(Type* type, ParsedProgram* program, Linker* linker);
 
-	case VAR_TYPE:
-	  name = 'v';
-	  break;
-	  
-	case CLASS_TYPE:
-	  name = "o.";
-	  name += type->GetClassName();
-	  break;
-	}
-	
-	// dimension
-	for(int i = 0; i < type->GetDimension(); i++) {
-	  name += '*';
-	}
-      }
-
-      return name;
-    }
-    
-  public:
-    void SetId(int i) {
-      id = i;
-    }
-
-    int GetId() {
-      return id;
-    }
-
-    bool IsNative() {
-      return is_native;
-    }
-    
-    void SetReturn(Type* r) {
-      return_type = r;
-    }
- 
-    void EncodeSignature() {
-      encoded_return = EncodeType(return_type);   
-      
-      // name
-      parsed_name = name + ':';
-      // params
-      vector<Declaration*> declaration_list = declarations->GetDeclarations();
-      for(unsigned int i = 0; i < declaration_list.size(); i++) {
-	SymbolEntry* entry = declaration_list[i]->GetEntry();
-	if(entry) {
-	  parsed_name += EncodeType(entry->GetType());
-	}
-      }
-    }
-
-    void EncodeSignature(ParsedProgram* program, Linker* linker) {
-      encoded_return = EncodeType(return_type, program, linker);   
-
-      // name
-      encoded_name = name + ':';
-      // params
-      vector<Declaration*> declaration_list = declarations->GetDeclarations();
-      for(unsigned int i = 0; i < declaration_list.size(); i++) {
-	SymbolEntry* entry = declaration_list[i]->GetEntry();
-	if(entry) {
-	  encoded_name += EncodeType(entry->GetType(), program, linker) + ',';
-	}
-      }
-    }
-
-    void SetDeclarations(DeclarationList* d) {
-      declarations = d;
-    }
-    
-    bool HasAndOr() {
-      return has_and_or;
-    }
-
-    void SetAndOr(bool ao) {
-      has_and_or = ao;
-    }
-    
-    bool IsStatic() {
-      return is_static;
-    }
-
-    bool IsVirtual() {
-      return statements == NULL;
-    }
-    
-    MethodType GetMethodType() {
-      return method_type;
-    }
-  
-    void SetStatements(StatementList* s) {
-      statements = s;
-    }
-
-    void SetSymbolTable(SymbolTable *t) {
-      symbol_table = t;
-    }
-
-    SymbolTable* GetSymbolTable() {
-      return symbol_table;
-    }
-  
-    const string GetName() {
-      return name;
-    }
-
-    const string GetParsedName() {
-      if(parsed_name.size() == 0) {
-	EncodeSignature();
-      }
-
-      return parsed_name;
-    }
-
-    const string GetEncodedName() {
-      return encoded_name;
-    }
-
-    const string GetEncodedReturn() {
-      return encoded_return;
-    }
-  
-    DeclarationList* GetDeclarations() {
-      return declarations;
-    }
-  
-    StatementList* GetStatements() {
-      return statements;
-    }
-
-    Type* GetReturn() {
-      return return_type;
-    }
-
-    void SetClass(Class* k) {
-      klass = k;
-    }
-  
-    Class* GetClass() {
-      return klass;
-    }
-  };
-
-  /****************************
-   * Class class
-   ****************************/
-  class Class : public ParseNode {
-    friend class TreeFactory;
-    int id;
+  string EncodeType(Type* type) {
     string name;
-    string parent_name;
-    map<const string, Method*> methods;
-    vector<Method*> method_list;
-    vector<Statement*> statements;
-    SymbolTable* symbol_table;
-    Class* parent;
-    LibraryClass* lib_parent;
-    vector<Class*> children;
-    bool is_virtual;
-    bool was_called;
-    
+    if(type) {
+      // type
+      switch(type->GetType()) {
+      case BOOLEAN_TYPE:
+        name = 'l';
+        break;
+
+      case BYTE_TYPE:
+        name = 'b';
+        break;
+
+      case INT_TYPE:
+        name = 'i';
+        break;
+
+      case FLOAT_TYPE:
+        name = 'f';
+        break;
+
+      case CHAR_TYPE:
+        name = 'c';
+        break;
+
+      case NIL_TYPE:
+        name = 'n';
+        break;
+
+      case VAR_TYPE:
+        name = 'v';
+        break;
+
+      case CLASS_TYPE:
+        name = "o.";
+        name += type->GetClassName();
+        break;
+      }
+
+      // dimension
+      for(int i = 0; i < type->GetDimension(); i++) {
+        name += '*';
+      }
+    }
+
+    return name;
+  }
+
+public:
+  void SetId(int i) {
+    id = i;
+  }
+
+  int GetId() {
+    return id;
+  }
+
+  bool IsNative() {
+    return is_native;
+  }
+
+  void SetReturn(Type* r) {
+    return_type = r;
+  }
+
+  void EncodeSignature() {
+    encoded_return = EncodeType(return_type);
+
+    // name
+    parsed_name = name + ':';
+    // params
+    vector<Declaration*> declaration_list = declarations->GetDeclarations();
+    for(unsigned int i = 0; i < declaration_list.size(); i++) {
+      SymbolEntry* entry = declaration_list[i]->GetEntry();
+      if(entry) {
+        parsed_name += EncodeType(entry->GetType());
+      }
+    }
+  }
+
+  void EncodeSignature(ParsedProgram* program, Linker* linker) {
+    encoded_return = EncodeType(return_type, program, linker);
+
+    // name
+    encoded_name = name + ':';
+    // params
+    vector<Declaration*> declaration_list = declarations->GetDeclarations();
+    for(unsigned int i = 0; i < declaration_list.size(); i++) {
+      SymbolEntry* entry = declaration_list[i]->GetEntry();
+      if(entry) {
+        encoded_name += EncodeType(entry->GetType(), program, linker) + ',';
+      }
+    }
+  }
+
+  void SetDeclarations(DeclarationList* d) {
+    declarations = d;
+  }
+
+  bool HasAndOr() {
+    return has_and_or;
+  }
+
+  void SetAndOr(bool ao) {
+    has_and_or = ao;
+  }
+
+  bool IsStatic() {
+    return is_static;
+  }
+
+  bool IsVirtual() {
+    return statements == NULL;
+  }
+
+  MethodType GetMethodType() {
+    return method_type;
+  }
+
+  void SetStatements(StatementList* s) {
+    statements = s;
+  }
+
+  void SetSymbolTable(SymbolTable *t) {
+    symbol_table = t;
+  }
+
+  SymbolTable* GetSymbolTable() {
+    return symbol_table;
+  }
+
+  const string GetName() {
+    return name;
+  }
+
+  const string GetParsedName() {
+    if(parsed_name.size() == 0) {
+      EncodeSignature();
+    }
+
+    return parsed_name;
+  }
+
+  const string GetEncodedName() {
+    return encoded_name;
+  }
+
+  const string GetEncodedReturn() {
+    return encoded_return;
+  }
+
+  DeclarationList* GetDeclarations() {
+    return declarations;
+  }
+
+  StatementList* GetStatements() {
+    return statements;
+  }
+
+  Type* GetReturn() {
+    return return_type;
+  }
+
+  void SetClass(Class* k) {
+    klass = k;
+  }
+
+  Class* GetClass() {
+    return klass;
+  }
+};
+
+/****************************
+ * Class class
+ ****************************/
+class Class : public ParseNode {
+  friend class TreeFactory;
+  int id;
+  string name;
+  string parent_name;
+  map<const string, Method*> methods;
+  vector<Method*> method_list;
+  vector<Statement*> statements;
+  SymbolTable* symbol_table;
+  Class* parent;
+  LibraryClass* lib_parent;
+  vector<Class*> children;
+  bool is_virtual;
+  bool was_called;
+
   Class(const string &f, const int l, const string &n, const string &p) : ParseNode(f, l) {
-      name = n;
-      parent_name = p;
-      id = -1;
-      parent = NULL;
-      lib_parent = NULL;
-      is_virtual = false;
-      was_called = false;
-    }
-    
-    ~Class() {
+    name = n;
+    parent_name = p;
+    id = -1;
+    parent = NULL;
+    lib_parent = NULL;
+    is_virtual = false;
+    was_called = false;
+  }
+
+  ~Class() {
+  }
+
+public:
+  void SetId(int i) {
+    id = i;
+  }
+
+  int GetId() {
+    return id;
+  }
+
+  void SetCalled(bool c) {
+    was_called = c;
+  }
+
+  bool GetCalled() {
+    return was_called;
+  }
+
+  const string GetName() {
+    return name;
+  }
+
+  const string GetParentName() {
+    return parent_name;
+  }
+
+  void SetParentName(string n) {
+    parent_name = n;
+  }
+
+  void SetSymbolTable(SymbolTable *t) {
+    symbol_table = t;
+  }
+
+  SymbolTable* GetSymbolTable() {
+    return symbol_table;
+  }
+
+  bool AddMethod(Method* m) {
+    const string &parsed_name = m->GetParsedName();
+    if(GetMethod(parsed_name)) {
+      return false;
     }
 
-  public:
-    void SetId(int i) {
-      id = i;
+    method_list.push_back(m);
+    m->SetClass(this);
+
+    return true;
+  }
+
+  void SetVirtual(bool v) {
+    is_virtual = v;
+  }
+
+  bool IsVirtual() {
+    return is_virtual;
+  }
+
+  void AddStatement(Statement* s) {
+    statements.push_back(s);
+  }
+
+  vector<Statement*> GetStatements() {
+    return statements;
+  }
+
+  Method* GetMethod(const string &n) {
+    map<const string, Method*>::iterator result = methods.find(n);
+    if(result != methods.end()) {
+      return result->second;
     }
 
-    int GetId() {
-      return id;
-    }
+    return NULL;
+  }
 
-    void SetCalled(bool c) {
-      was_called = c;
-    }
+  const vector<Method*> GetMethods() {
+    return method_list;
+  }
 
-    bool GetCalled() {
-      return was_called;
-    }
-  
-    const string GetName() {
-      return name;
-    }
+  void SetParent(Class* p) {
+    parent = p;
+  }
 
-    const string GetParentName() {
-      return parent_name;
-    }
+  Class* GetParent() {
+    return parent;
+  }
 
-    void SetParentName(string n) {
-      parent_name = n;
-    }
+  void SetLibraryParent(LibraryClass* p) {
+    lib_parent = p;
+  }
 
-    void SetSymbolTable(SymbolTable *t) {
-      symbol_table = t;
-    }
+  LibraryClass* GetLibraryParent() {
+    return lib_parent;
+  }
 
-    SymbolTable* GetSymbolTable() {
-      return symbol_table;
-    }
+  void AddChild(Class* c) {
+    children.push_back(c);
+  }
 
-    bool AddMethod(Method* m) {
-      const string &parsed_name = m->GetParsedName();
-      if(GetMethod(parsed_name)) {
-	return false;
-      }
-      
-      method_list.push_back(m);
-      m->SetClass(this);
-      
-      return true;
-    }
+  vector<Class*> GetChildren() {
+    return children;
+  }
 
-    void SetVirtual(bool v) {
-      is_virtual = v;
+  void AssociateMethods() {
+    for(unsigned int i = 0; i < method_list.size(); i++) {
+      Method* method = method_list[i];
+      methods.insert(pair<string, Method*>(method->GetEncodedName(), method));
     }
+  }
+};
 
-    bool IsVirtual() {
-      return is_virtual;
-    }
-  
-    void AddStatement(Statement* s) {
-      statements.push_back(s);
-    }
-  
-    vector<Statement*> GetStatements() {
-      return statements;
-    }
-  
-    Method* GetMethod(const string &n) {
-      map<const string, Method*>::iterator result = methods.find(n);
-      if(result != methods.end()) {
-	return result->second;
-      }
+/****************************
+ * MethodCall class
+ ****************************/
+class MethodCall : public Statement, public Expression {
+  friend class TreeFactory;
+  EnumItem* enum_item;
+  Class* original_klass;
+  Method* method;
+  LibraryClass* original_lib_klass;
+  LibraryMethod* lib_method;
+  LibraryEnumItem* lib_enum_item;
+  string variable_name;
+  string method_name;
+  ExpressionList* expressions;
+  SymbolEntry* entry;
+  MethodCallType call_type;
+  Type* array_type;
+  Variable* variable;
 
-      return NULL;
-    }
-  
-    const vector<Method*> GetMethods() {
-      return method_list;
-    }
-
-    void SetParent(Class* p) {
-      parent = p;
-    }
-
-    Class* GetParent() {
-      return parent;
-    }
-    
-    void SetLibraryParent(LibraryClass* p) {
-      lib_parent = p;
-    }
-
-    LibraryClass* GetLibraryParent() {
-      return lib_parent;
-    }
-
-    void AddChild(Class* c) {
-      children.push_back(c);
-    }
-
-    vector<Class*> GetChildren() {
-      return children;
-    }
-
-    void AssociateMethods() {
-      for(unsigned int i = 0; i < method_list.size(); i++) {
-	Method* method = method_list[i];
-	methods.insert(pair<string, Method*>(method->GetEncodedName(), method));
-      }
-    }
-  };
-    
-  /****************************
-   * MethodCall class
-   ****************************/
-  class MethodCall : public Statement, public Expression {
-    friend class TreeFactory;
-    EnumItem* enum_item;
-    Class* original_klass;
-    Method* method;
-    LibraryClass* original_lib_klass;
-    LibraryMethod* lib_method;
-    LibraryEnumItem* lib_enum_item;
-    string variable_name;
-    string method_name;
-    ExpressionList* expressions;
-    SymbolEntry* entry;
-    MethodCallType call_type;
-    Type* array_type;
-    Variable* variable;
-    
-  MethodCall(const string &f, const int l, MethodCallType t, 
-	     const string &v, ExpressionList* e) : 
+  MethodCall(const string &f, const int l, MethodCallType t,
+             const string &v, ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
-      variable_name = v;
-      call_type = t;
-      method_name = "New";
-      expressions = e;
-      entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      variable = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
-      
-      if(variable_name == BOOL_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
-      }
-      else if(variable_name == BYTE_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
-      }
-      else if(variable_name == INT_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(INT_TYPE);
-      }
-      else if(variable_name == FLOAT_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
-      }
-      else if(variable_name == CHAR_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
-      }
-      else if(variable_name == NIL_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(NIL_TYPE);
-      }
-      else if(variable_name == VAR_CLASS_ID) {
-	array_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-      }
-      else {
-	array_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, variable_name);
-      }      
-      array_type->SetDimension((int)expressions->GetExpressions().size());
-      SetEvalType(array_type, false);
+    variable_name = v;
+    call_type = t;
+    method_name = "New";
+    expressions = e;
+    entry = NULL;
+    method = NULL;
+    array_type = NULL;
+    variable = NULL;
+    enum_item = NULL;
+    method = NULL;
+    lib_method = NULL;
+    lib_enum_item = NULL;
+    original_klass = NULL;
+    original_lib_klass = NULL;
+
+    if(variable_name == BOOL_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+    } else if(variable_name == BYTE_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
+    } else if(variable_name == INT_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+    } else if(variable_name == FLOAT_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+    } else if(variable_name == CHAR_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+    } else if(variable_name == NIL_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(NIL_TYPE);
+    } else if(variable_name == VAR_CLASS_ID) {
+      array_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
+    } else {
+      array_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, variable_name);
     }
-    
-  MethodCall(const string &f, const int l, 
-	     const string &v, const string &m,
-	     ExpressionList* e) :
+    array_type->SetDimension((int)expressions->GetExpressions().size());
+    SetEvalType(array_type, false);
+  }
+
+  MethodCall(const string &f, const int l,
+             const string &v, const string &m,
+             ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
-      variable_name = v;
-      call_type = METHOD_CALL;
-      method_name = m;
-      expressions = e;
-      entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      variable = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
-    }
+    variable_name = v;
+    call_type = METHOD_CALL;
+    method_name = m;
+    expressions = e;
+    entry = NULL;
+    method = NULL;
+    array_type = NULL;
+    variable = NULL;
+    enum_item = NULL;
+    method = NULL;
+    lib_method = NULL;
+    lib_enum_item = NULL;
+    original_klass = NULL;
+    original_lib_klass = NULL;
+  }
 
-  MethodCall(const string &f, const int l, 
-	     const string &v, const string &m) :
+  MethodCall(const string &f, const int l,
+             const string &v, const string &m) :
     Statement(f, l), Expression(f, l) {
-      variable_name = v;
-      call_type = ENUM_CALL;
-      method_name = m;
-      expressions = NULL;
-      entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      variable = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
-    }
+    variable_name = v;
+    call_type = ENUM_CALL;
+    method_name = m;
+    expressions = NULL;
+    entry = NULL;
+    method = NULL;
+    array_type = NULL;
+    variable = NULL;
+    enum_item = NULL;
+    method = NULL;
+    lib_method = NULL;
+    lib_enum_item = NULL;
+    original_klass = NULL;
+    original_lib_klass = NULL;
+  }
 
-  MethodCall(const string &f, const int l, 
-	     Variable* v, const string &m,
-	     ExpressionList* e) :
+  MethodCall(const string &f, const int l,
+             Variable* v, const string &m,
+             ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
-      variable = v;
-      call_type = METHOD_CALL;
-      method_name = m;
-      expressions = e;
-      entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
+    variable = v;
+    call_type = METHOD_CALL;
+    method_name = m;
+    expressions = e;
+    entry = NULL;
+    method = NULL;
+    array_type = NULL;
+    enum_item = NULL;
+    method = NULL;
+    lib_method = NULL;
+    lib_enum_item = NULL;
+    original_klass = NULL;
+    original_lib_klass = NULL;
+  }
+
+  ~MethodCall() {
+  }
+
+public:
+  MethodCallType GetCallType() {
+    return call_type;
+  }
+
+  Type* GetArrayType() {
+    return array_type;
+  }
+
+  const string GetVariableName() {
+    return variable_name;
+  }
+
+  void SetVariableName(const string v) {
+    variable_name = v;
+  }
+
+  void SetEntry(SymbolEntry* e) {
+    entry = e;
+  }
+
+  Variable* GetVariable() {
+    return variable;
+  }
+
+  SymbolEntry* GetEntry() {
+    return entry;
+  }
+
+  const string GetMethodName() {
+    return method_name;
+  }
+
+  const ExpressionType GetExpressionType() {
+    return METHOD_CALL_EXPR;
+  }
+
+  const StatementType GetStatementType() {
+    return METHOD_CALL_STMT;
+  }
+
+  ExpressionList* GetCallingParameters() {
+    return expressions;
+  }
+
+  void SetEnumItem(EnumItem* i, const string &enum_name) {
+    enum_item = i;
+    SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
+  }
+
+  void SetMethod(Method* m) {
+    method = m;
+    eval_type = m->GetReturn();
+    if(method_call) {
+      method_call->SetEvalType(eval_type, false);
+    }
+  }
+
+  void SetLibraryEnumItem(LibraryEnumItem* i, const string &enum_name) {
+    lib_enum_item = i;
+    SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
+  }
+
+  void SetLibraryMethod(LibraryMethod* l) {
+    lib_method = l;
+    eval_type = l->GetReturn();
+    if(method_call) {
+      method_call->SetEvalType(eval_type, false);
+    }
+  }
+
+  EnumItem* GetEnumItem() {
+    return enum_item;
+  }
+
+  LibraryEnumItem* GetLibraryEnumItem() {
+    return lib_enum_item;
+  }
+
+  Method* GetMethod() {
+    return method;
+  }
+
+  LibraryMethod* GetLibraryMethod() {
+    return lib_method;
+  }
+
+  void SetOriginalClass(Class* c) {
+    original_klass = c;
+  }
+
+  Class* GetOriginalClass() {
+    return original_klass;
+  }
+
+  void SetOriginalLibraryClass(LibraryClass* c) {
+    original_lib_klass = c;
+  }
+
+  LibraryClass* GetOriginalLibraryClass() {
+    return original_lib_klass;
+  }
+};
+
+/****************************
+ * TreeFactory class
+ ****************************/
+class TreeFactory {
+  static TreeFactory* instance;
+
+  vector<ParseNode*> nodes;
+  vector<Statement*> statements;
+  vector<Expression*> expressions;
+  vector<DeclarationList*> declaration_lists;
+  vector<StatementList*> statement_lists;
+  vector<ExpressionList*> expression_lists;
+  vector<MethodCall*> calls;
+  vector<SymbolEntry*> entries;
+  vector<Declaration*> declarations;
+
+  TreeFactory() {
+  }
+
+  ~TreeFactory() {
+  }
+
+public:
+  static TreeFactory* Instance();
+
+  void Clear() {
+    while(!nodes.empty()) {
+      ParseNode* tmp = nodes.front();
+      nodes.erase(nodes.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    ~MethodCall() {
-    }
-    
-  public:
-    MethodCallType GetCallType() {
-      return call_type;
-    }
-    
-    Type* GetArrayType() {
-      return array_type;
-    }
-    
-    const string GetVariableName() {
-      return variable_name;
+    while(!expressions.empty()) {
+      Expression* tmp = expressions.front();
+      expressions.erase(expressions.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    void SetVariableName(const string v) {
-      variable_name = v;
+    while(!statements.empty()) {
+      Statement* tmp = statements.front();
+      statements.erase(statements.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    void SetEntry(SymbolEntry* e) {
-      entry = e;
+    while(!declaration_lists.empty()) {
+      DeclarationList* tmp = declaration_lists.front();
+      declaration_lists.erase(declaration_lists.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+    declaration_lists.clear();
+
+    while(!statement_lists.empty()) {
+      StatementList* tmp = statement_lists.front();
+      statement_lists.erase(statement_lists.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    Variable* GetVariable() {
-      return variable;
-    }
-  
-    SymbolEntry* GetEntry() {
-      return entry;
-    }
-
-    const string GetMethodName() {
-      return method_name;
+    while(!expression_lists.empty()) {
+      ExpressionList* tmp = expression_lists.front();
+      expression_lists.erase(expression_lists.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    const ExpressionType GetExpressionType() {
-      return METHOD_CALL_EXPR;
-    }
-  
-    const StatementType GetStatementType() {
-      return METHOD_CALL_STMT;
-    }
-  
-    ExpressionList* GetCallingParameters() {
-      return expressions;
-    }
-    
-    void SetEnumItem(EnumItem* i, const string &enum_name) {
-      enum_item = i;
-      SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
-    }
-    
-    void SetMethod(Method* m) {
-      method = m;
-      eval_type = m->GetReturn();
-      if(method_call) {
-        method_call->SetEvalType(eval_type, false);
-      }
+    while(!calls.empty()) {
+      MethodCall* tmp = calls.front();
+      calls.erase(calls.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    void SetLibraryEnumItem(LibraryEnumItem* i, const string &enum_name) {
-      lib_enum_item = i;
-      SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
+    while(!entries.empty()) {
+      SymbolEntry* tmp = entries.front();
+      entries.erase(entries.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    void SetLibraryMethod(LibraryMethod* l) {
-      lib_method = l;
-      eval_type = l->GetReturn();
-      if(method_call) {
-        method_call->SetEvalType(eval_type, false);
-      }
+    delete instance;
+    instance = NULL;
+  }
+
+  Enum* MakeEnum(const string &file_name, const int line_num, string &name, int offset) {
+    Enum* tmp = new Enum(file_name, line_num, name, offset);
+    nodes.push_back(tmp);
+    return tmp;
+  }
+
+  EnumItem* MakeEnumItem(const string &file_name, const int line_num, const string &name, Enum* e) {
+    EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
+    nodes.push_back(tmp);
+    return tmp;
+  }
+
+  Class* MakeClass(const string &file_name, const int line_num, const string &name, const string &parent_name) {
+    Class* tmp = new Class(file_name, line_num, name, parent_name);
+    nodes.push_back(tmp);
+    return tmp;
+  }
+
+  Method* MakeMethod(const string &file_name, const int line_num, const string &name, MethodType type, bool is_function, bool is_native) {
+    Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
+    nodes.push_back(tmp);
+    return tmp;
+  }
+
+  StatementList* MakeStatementList() {
+    StatementList* tmp = new StatementList;
+    statement_lists.push_back(tmp);
+    return tmp;
+  }
+
+  DeclarationList* MakeDeclarationList() {
+    DeclarationList* tmp = new DeclarationList;
+    declaration_lists.push_back(tmp);
+    return tmp;
+  }
+
+  ExpressionList* MakeExpressionList() {
+    ExpressionList* tmp = new ExpressionList;
+    expression_lists.push_back(tmp);
+    return tmp;
+  }
+
+  SystemStatement* MakeSystemStatement(const string &file_name, const int line_num, instructions::InstructionType instr) {
+    SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  SystemStatement* MakeSystemStatement(const string &file_name, const int line_num, instructions::Traps trap) {
+    SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  SimpleStatement* MakeSimpleStatement(const string &file_name, const int line_num, Expression* expression) {
+    SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  Variable* MakeVariable(const string &file_name, int line_num, const string &name) {
+    Variable* tmp = new Variable(file_name, line_num, name);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  Declaration* MakeDeclaration(const string &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
+    Declaration* tmp = new Declaration(file_name, line_num, entry, assign);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  Declaration* MakeDeclaration(const string &file_name, const int line_num, SymbolEntry* entry) {
+    Declaration* tmp = new Declaration(file_name, line_num, entry);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  CalculatedExpression* MakeCalculatedExpression(const string &file_name, int line_num, ExpressionType type) {
+    CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  IntegerLiteral* MakeIntegerLiteral(const string &file_name, const int line_num, INT_VALUE value) {
+    IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  FloatLiteral* MakeFloatLiteral(const string &file_name, const int line_num, FLOAT_VALUE value) {
+    FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  CharacterLiteral* MakeCharacterLiteral(const string &file_name, const int line_num, CHAR_VALUE value) {
+    CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  CharacterString* MakeCharacterString(const string &file_name, const int line_num, const string &char_string) {
+    CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  NilLiteral* MakeNilLiteral(const string &file_name, const int line_num) {
+    NilLiteral* tmp = new NilLiteral(file_name, line_num);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  BooleanLiteral* MakeBooleanLiteral(const string &file_name, const int line_num, bool boolean) {
+    BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+
+  MethodCall* MakeMethodCall(const string &file_name, const int line_num, MethodCallType type,
+                             const string &value, ExpressionList* exprs) {
+    MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
+    calls.push_back(tmp);
+    return tmp;
+  }
+
+  MethodCall* MakeMethodCall(const string &f, const int l, const string &v, const string &m, ExpressionList* e) {
+    MethodCall* tmp = new MethodCall(f, l, v, m, e);
+    calls.push_back(tmp);
+    return tmp;
+  }
+
+  MethodCall* MakeMethodCall(const string &f, const int l, const string &v, const string &m) {
+    MethodCall* tmp = new MethodCall(f, l, v, m);
+    calls.push_back(tmp);
+    return tmp;
+  }
+
+  MethodCall* MakeMethodCall(const string &f, const int l, Variable* v, const string &m, ExpressionList* e) {
+    MethodCall* tmp = new MethodCall(f, l, v, m, e);
+    calls.push_back(tmp);
+    return tmp;
+  }
+
+  If* MakeIf(const string &file_name, const int line_num, Expression* expression,
+             StatementList* if_statements, If* next = NULL) {
+    If* tmp = new If(file_name, line_num, expression, if_statements, next);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  While* MakeWhile(const string &file_name, const int line_num,
+                   Expression* expression, StatementList* stmts) {
+    While* tmp = new While(file_name, line_num, expression, stmts);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  For* MakeFor(const string &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
+               Statement* update_stmt, StatementList* stmts) {
+    For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  Select* MakeSelect(const string &file_name, const int line_num, Expression* eval_expression,
+                     map<ExpressionList*, StatementList*> statement_map, StatementList* other) {
+    Select* tmp = new Select(file_name, line_num, eval_expression, statement_map, other);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  Return* MakeReturn(const string &file_name, const int line_num, Expression* expression) {
+    Return* tmp = new Return(file_name, line_num, expression);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  Assignment* MakeAssignment(const string &file_name, const int line_num,
+                             Variable* variable, Expression* expression) {
+    Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
+    statements.push_back(tmp);
+    return tmp;
+  }
+
+  SymbolEntry* MakeSymbolEntry(const string &f, int l, const string &n,
+                               Type* t, bool s, bool c, bool e = false) {
+    SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
+    entries.push_back(tmp);
+    return tmp;
+  }
+};
+
+/****************************
+ * ParsedBundle class
+ ****************************/
+class ParsedBundle {
+  string name;
+  SymbolTableManager* symbol_table;
+  map<const string, Enum*> enums;
+  vector<Enum*> enum_list;
+  map<const string, Class*> classes;
+  vector<Class*> class_list;
+
+public:
+  ParsedBundle(string &n, SymbolTableManager *t) {
+    name = n;
+    symbol_table = t;
+  }
+
+  ~ParsedBundle() {
+    delete symbol_table;
+    symbol_table = NULL;
+  }
+
+  const string GetName() {
+    return name;
+  }
+
+  void AddEnum(Enum* e) {
+    enums.insert(pair<string, Enum*>(e->GetName(), e));
+    enum_list.push_back(e);
+  }
+
+  Enum* GetEnum(const string &e) {
+    map<const string, Enum*>::iterator result = enums.find(e);
+    if(result != enums.end()) {
+      return result->second;
     }
 
-    EnumItem* GetEnumItem() {
-      return enum_item;
-    }
-    
-    LibraryEnumItem* GetLibraryEnumItem() {
-      return lib_enum_item;
+    return NULL;
+  }
+
+  void AddClass(Class* cls) {
+    classes.insert(pair<string, Class*>(cls->GetName(), cls));
+    class_list.push_back(cls);
+  }
+
+  Class* GetClass(const string &n) {
+    map<const string, Class*>::iterator result = classes.find(n);
+    if(result != classes.end()) {
+      return result->second;
     }
 
-    Method* GetMethod() {
-      return method;
+    return NULL;
+  }
+
+  const vector<Enum*> GetEnums() {
+    return enum_list;
+  }
+
+  const vector<Class*> GetClasses() {
+    return class_list;
+  }
+
+  SymbolTableManager* GetSymbolTableManager() {
+    return symbol_table;
+  }
+};
+
+/****************************
+ * ParsedProgram class
+ ****************************/
+class ParsedProgram {
+  map<string, int> char_string_ids;
+  vector<string> char_strings;
+  vector<string> uses;
+  vector<ParsedBundle*> bundles;
+  vector<string> bundle_names;
+  Class* start_class;
+  Method* start_method;
+  Linker* linker; // deleted elsewhere
+
+public:
+  ParsedProgram() {
+    linker = NULL;
+    start_class = NULL;
+    start_method = NULL;
+  }
+
+  ~ParsedProgram() {
+    // clean up
+    while(!bundles.empty()) {
+      ParsedBundle* tmp = bundles.front();
+      bundles.erase(bundles.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
     }
 
-    LibraryMethod* GetLibraryMethod() {
-      return lib_method;
-    }
-
-    void SetOriginalClass(Class* c) {
-      original_klass = c;
-    }
-
-    Class* GetOriginalClass() {
-      return original_klass;
-    }  
-    
-    void SetOriginalLibraryClass(LibraryClass* c) {
-      original_lib_klass = c;
-    }
-    
-    LibraryClass* GetOriginalLibraryClass() {
-      return original_lib_klass;
-    }
-  };
-
-  /****************************
-   * TreeFactory class
-   ****************************/
-  class TreeFactory {
-    static TreeFactory* instance;
-
-    vector<ParseNode*> nodes;
-    vector<Statement*> statements;
-    vector<Expression*> expressions;
-    vector<DeclarationList*> declaration_lists;
-    vector<StatementList*> statement_lists;
-    vector<ExpressionList*> expression_lists;
-    vector<MethodCall*> calls;
-    vector<SymbolEntry*> entries;
-    vector<Declaration*> declarations;
-    
-    TreeFactory() {
-    }
-
-    ~TreeFactory() {
-    }
-
-  public:
-    static TreeFactory* Instance();
-    
-    void Clear() {
-      while(!nodes.empty()) {
-	ParseNode* tmp = nodes.front();
-	nodes.erase(nodes.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      while(!expressions.empty()) {
-	Expression* tmp = expressions.front();
-	expressions.erase(expressions.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      while(!statements.empty()) {
-	Statement* tmp = statements.front();
-	statements.erase(statements.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      while(!declaration_lists.empty()) {
-	DeclarationList* tmp = declaration_lists.front();
-	declaration_lists.erase(declaration_lists.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      declaration_lists.clear();
-
-      while(!statement_lists.empty()) {
-	StatementList* tmp = statement_lists.front();
-	statement_lists.erase(statement_lists.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      while(!expression_lists.empty()) {
-	ExpressionList* tmp = expression_lists.front();
-	expression_lists.erase(expression_lists.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      while(!calls.empty()) {
-	MethodCall* tmp = calls.front();
-	calls.erase(calls.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-      
-      while(!entries.empty()) {
-	SymbolEntry* tmp = entries.front();
-	entries.erase(entries.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
-      }
-
-      delete instance;
-      instance = NULL;
-    }
-
-    Enum* MakeEnum(const string &file_name, const int line_num, string &name, int offset) {
-      Enum* tmp = new Enum(file_name, line_num, name, offset);
-      nodes.push_back(tmp);
-      return tmp;
-    }
-  
-    EnumItem* MakeEnumItem(const string &file_name, const int line_num, const string &name, Enum* e) {
-      EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
-      nodes.push_back(tmp);
-      return tmp;
-    }
-
-    Class* MakeClass(const string &file_name, const int line_num, const string &name, const string &parent_name) { 
-      Class* tmp = new Class(file_name, line_num, name, parent_name);
-      nodes.push_back(tmp);
-      return tmp;
-    }
-    
-    Method* MakeMethod(const string &file_name, const int line_num, const string &name, MethodType type, bool is_function, bool is_native) {
-      Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
-      nodes.push_back(tmp);
-      return tmp;
-    }
-
-    StatementList* MakeStatementList() {
-      StatementList* tmp = new StatementList;
-      statement_lists.push_back(tmp);
-      return tmp;
-    }
-
-    DeclarationList* MakeDeclarationList() {
-      DeclarationList* tmp = new DeclarationList;
-      declaration_lists.push_back(tmp);
-      return tmp;
-    }
-
-    ExpressionList* MakeExpressionList() {
-      ExpressionList* tmp = new ExpressionList;
-      expression_lists.push_back(tmp);
-      return tmp;
-    }
-    
-    SystemStatement* MakeSystemStatement(const string &file_name, const int line_num, instructions::InstructionType instr) {
-      SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    SystemStatement* MakeSystemStatement(const string &file_name, const int line_num, instructions::Traps trap) {
-      SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
-      statements.push_back(tmp);
-      return tmp;
-    }
-    
-    SimpleStatement* MakeSimpleStatement(const string &file_name, const int line_num, Expression* expression) {
-      SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
-      statements.push_back(tmp);
-      return tmp;
-    }
-    
-    Variable* MakeVariable(const string &file_name, int line_num, const string &name) {
-      Variable* tmp = new Variable(file_name, line_num, name);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    Declaration* MakeDeclaration(const string &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, assign);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    Declaration* MakeDeclaration(const string &file_name, const int line_num, SymbolEntry* entry) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry);
-      statements.push_back(tmp);
-      return tmp;
-    }
-    
-    CalculatedExpression* MakeCalculatedExpression(const string &file_name, int line_num, ExpressionType type) {
-      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    IntegerLiteral* MakeIntegerLiteral(const string &file_name, const int line_num, INT_VALUE value) {
-      IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-    
-    FloatLiteral* MakeFloatLiteral(const string &file_name, const int line_num, FLOAT_VALUE value) {
-      FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    CharacterLiteral* MakeCharacterLiteral(const string &file_name, const int line_num, CHAR_VALUE value) {
-      CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    CharacterString* MakeCharacterString(const string &file_name, const int line_num, const string &char_string) {
-      CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-    
-    NilLiteral* MakeNilLiteral(const string &file_name, const int line_num) {
-      NilLiteral* tmp = new NilLiteral(file_name, line_num);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    BooleanLiteral* MakeBooleanLiteral(const string &file_name, const int line_num, bool boolean) {
-      BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
-      expressions.push_back(tmp);
-      return tmp;
-    }
-
-    MethodCall* MakeMethodCall(const string &file_name, const int line_num, MethodCallType type, 
-                               const string &value, ExpressionList* exprs) {
-      MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
-      calls.push_back(tmp);
-      return tmp;
-    }
-
-    MethodCall* MakeMethodCall(const string &f, const int l, const string &v, const string &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(f, l, v, m, e);
-      calls.push_back(tmp);
-      return tmp;
-    }
-
-    MethodCall* MakeMethodCall(const string &f, const int l, const string &v, const string &m) {
-      MethodCall* tmp = new MethodCall(f, l, v, m);
-      calls.push_back(tmp);
-      return tmp;
-    }
-    
-    MethodCall* MakeMethodCall(const string &f, const int l, Variable* v, const string &m, ExpressionList* e) {
-      MethodCall* tmp = new MethodCall(f, l, v, m, e);
-      calls.push_back(tmp);
-      return tmp;
-    }
-
-    If* MakeIf(const string &file_name, const int line_num, Expression* expression, 
-               StatementList* if_statements, If* next = NULL) {
-      If* tmp = new If(file_name, line_num, expression, if_statements, next);  
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    While* MakeWhile(const string &file_name, const int line_num, 
-                     Expression* expression, StatementList* stmts) {
-      While* tmp = new While(file_name, line_num, expression, stmts);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    For* MakeFor(const string &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr, 
-		 Statement* update_stmt, StatementList* stmts) {
-      For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
-      statements.push_back(tmp);
-      return tmp;
-    }
-    
-    Select* MakeSelect(const string &file_name, const int line_num, Expression* eval_expression, 
-                       map<ExpressionList*, StatementList*> statement_map, StatementList* other) {
-      Select* tmp = new Select(file_name, line_num, eval_expression, statement_map, other);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    Return* MakeReturn(const string &file_name, const int line_num, Expression* expression) {
-      Return* tmp = new Return(file_name, line_num, expression);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    Assignment* MakeAssignment(const string &file_name, const int line_num, 
-                               Variable* variable, Expression* expression) {
-      Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
-      statements.push_back(tmp);
-      return tmp;
-    }
-
-    SymbolEntry* MakeSymbolEntry(const string &f, int l, const string &n, 
-                                 Type* t, bool s, bool c, bool e = false) {
-      SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
-      entries.push_back(tmp);
-      return tmp;
-    }
-  };
-  
-  /****************************
-   * ParsedBundle class
-   ****************************/
-  class ParsedBundle {
-    string name;
-    SymbolTableManager* symbol_table;
-    map<const string, Enum*> enums;
-    vector<Enum*> enum_list;
-    map<const string, Class*> classes;
-    vector<Class*> class_list;
-    
-  public:
-    ParsedBundle(string &n, SymbolTableManager *t) {
-      name = n;
-      symbol_table = t;
-    }
-    
-    ~ParsedBundle() {
-      delete symbol_table;
-      symbol_table = NULL; 
-    }
-
-    const string GetName() {
-      return name;
-    }
-
-    void AddEnum(Enum* e) {
-      enums.insert(pair<string, Enum*>(e->GetName(), e));
-      enum_list.push_back(e);
-    }
-    
-    Enum* GetEnum(const string &e) {
-      map<const string, Enum*>::iterator result = enums.find(e);
-      if(result != enums.end()) {
-	return result->second;
-      }
-
-      return NULL;
-    }
-    
-    void AddClass(Class* cls) {
-      classes.insert(pair<string, Class*>(cls->GetName(), cls));
-      class_list.push_back(cls);
-    }
-    
-    Class* GetClass(const string &n) {
-      map<const string, Class*>::iterator result = classes.find(n);
-      if(result != classes.end()) {
-	return result->second;
-      }
-
-      return NULL;
-    }
-
-    const vector<Enum*> GetEnums() {
-      return enum_list;
-    }
-    
-    const vector<Class*> GetClasses() {
-      return class_list;
-    }
-
-    SymbolTableManager* GetSymbolTableManager() {
-      return symbol_table;
-    }
-  };
-
-  /****************************
-   * ParsedProgram class
-   ****************************/
-  class ParsedProgram {
-    map<string, int> char_string_ids;
-    vector<string> char_strings;
-    vector<string> uses;
-    vector<ParsedBundle*> bundles;
-    vector<string> bundle_names;
-    Class* start_class;
-    Method* start_method;
-    Linker* linker; // deleted elsewhere
-    
-  public:
-    ParsedProgram() {
+    if(linker) {
+      delete linker;
       linker = NULL;
-      start_class = NULL; 
-      start_method = NULL;
     }
-  
-    ~ParsedProgram() {
-      // clean up
-      while(!bundles.empty()) {
-	ParsedBundle* tmp = bundles.front();
-	bundles.erase(bundles.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
+
+    // clear factories
+    TreeFactory::Instance()->Clear();
+    TypeFactory::Instance()->Clear();
+  }
+
+  void SetUses(vector<string> u) {
+    uses = u;
+  }
+
+  bool HasBundleName(const string& name) {
+    vector<string>::iterator found = find (bundle_names.begin(), bundle_names.end(), name);
+    return found != bundle_names.end();
+  }
+
+  const vector<string> GetUses() {
+    return uses;
+  }
+
+  void AddBundle(ParsedBundle* b) {
+    bundle_names.push_back(b->GetName());
+    bundles.push_back(b);
+  }
+
+  const vector<ParsedBundle*> GetBundles() {
+    return bundles;
+  }
+
+  void AddCharString(const string &s, int id) {
+    char_string_ids.insert(pair<string, int>(s, id));
+    char_strings.push_back(s);
+  }
+
+  int GetCharStringId(const string &s) {
+    map<string, int>::iterator result = char_string_ids.find(s);
+    if(result != char_string_ids.end()) {
+      return result->second;
+    }
+
+    return -1;
+  }
+
+  vector<string> GetCharStrings() {
+    return char_strings;
+  }
+
+  Class* GetClass(const string &n) {
+    for(unsigned int i = 0; i < bundles.size(); i++) {
+      Class* klass = bundles[i]->GetClass(n);
+      if(klass) {
+        return klass;
       }
+    }
 
-      if(linker) {
-        delete linker;
-        linker = NULL;
+    return NULL;
+  }
+
+  Enum* GetEnum(const string &n) {
+    for(unsigned int i = 0; i < bundles.size(); i++) {
+      Enum* e = bundles[i]->GetEnum(n);
+      if(e) {
+        return e;
       }
-		
-      // clear factories
-      TreeFactory::Instance()->Clear();
-      TypeFactory::Instance()->Clear();
     }
 
-    void SetUses(vector<string> u) {
-      uses = u;
-    }
-    
-    bool HasBundleName(const string& name) {
-      vector<string>::iterator found = find (bundle_names.begin(), bundle_names.end(), name);
-      return found != bundle_names.end();
-    }
-    
-    const vector<string> GetUses() {
-      return uses;
-    }
+    return NULL;
+  }
 
-    void AddBundle(ParsedBundle* b) {
-      bundle_names.push_back(b->GetName());
-      bundles.push_back(b);
-    }
+  void SetLinker(Linker* l) {
+    linker = l;
+  }
 
-    const vector<ParsedBundle*> GetBundles() {
-      return bundles;
-    }
+  Linker* GetLinker() {
+    return linker;
+  }
 
-    void AddCharString(const string &s, int id) {
-      char_string_ids.insert(pair<string, int>(s, id));
-      char_strings.push_back(s);
-    }
+  void SetStart(Class* c, Method* m) {
+    start_class = c;
+    start_method = m;
+  }
 
-    int GetCharStringId(const string &s) {
-      map<string, int>::iterator result = char_string_ids.find(s);
-      if(result != char_string_ids.end()) {
-	return result->second;
-      }
-    
-      return -1;
-    }
-    
-    vector<string> GetCharStrings() {
-      return char_strings;
-    }
-    
-    Class* GetClass(const string &n) {
-      for(unsigned int i = 0; i < bundles.size(); i++) {
-	Class* klass = bundles[i]->GetClass(n);
-	if(klass) {
-	  return klass;
-	}
-      }
-      
-      return NULL;
-    }
+  Class* GetStartClass() {
+    return start_class;
+  }
 
-    Enum* GetEnum(const string &n) {
-      for(unsigned int i = 0; i < bundles.size(); i++) {
-	Enum* e = bundles[i]->GetEnum(n);
-	if(e) {
-	  return e;
-	}
-      }
-      
-      return NULL;
-    }
-
-    void SetLinker(Linker* l) {
-      linker = l;
-    }
-
-    Linker* GetLinker() {
-      return linker;
-    }
-    
-    void SetStart(Class* c, Method* m) {
-      start_class = c;
-      start_method = m;
-    }
-
-    Class* GetStartClass() {
-      return start_class;
-    }
-
-    Method* GetStartMethod() {
-      return start_method;
-    }
-  };
+  Method* GetStartMethod() {
+    return start_method;
+  }
+};
 }
 
 #endif

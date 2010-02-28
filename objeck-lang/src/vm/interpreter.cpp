@@ -4,28 +4,28 @@
  * Copyright (c) 2008, 2009, 2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -48,12 +48,13 @@ using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
 
-void StackInterpreter::Initialize(StackProgram* p) {
+void StackInterpreter::Initialize(StackProgram* p)
+{
   program = p;
 #ifdef _X64
   JitCompiler::Initialize(program);
 #else
-  JitCompilerIA32::Initialize(program);  
+  JitCompilerIA32::Initialize(program);
 #endif
   MemoryManager::Initialize(program);
 }
@@ -61,13 +62,14 @@ void StackInterpreter::Initialize(StackProgram* p) {
 /********************************
  * Main VM execution method
  ********************************/
-void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,  
-			       long* self, bool jit_called) {
+void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
+                               long* self, bool jit_called)
+{
   // inital setup
   op_stack = stack;
   stack_pos = pos;
   call_stack_pos = 0;
-    
+
   long* mem = method->NewMemory();
   mem[0] = (long)self;
   frame = new StackFrame(method, mem);
@@ -76,22 +78,23 @@ void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* meth
 #endif
   frame->SetJitCalled(jit_called);
   ip = i;
-  
+
 #ifdef _DEBUG
   cout << "\n---------- Executing Interpretered Code: method_id=" << frame->GetMethod()->GetId()
        << "; method_name='" << frame->GetMethod()->GetName() << "' ---------\n" << endl;
 #endif
-  
+
   // add frame
   if(!jit_called) {
     MemoryManager::Instance()->AddPdaMethodRoot(frame);
   }
-  
+
   // execute
   Execute();
 }
 
-void StackInterpreter::Execute() {
+void StackInterpreter::Execute()
+{
   // execute
   halt = false;
   while(!halt) {
@@ -100,7 +103,7 @@ void StackInterpreter::Execute() {
     case STOR_INT_VAR:
       ProcessStoreInt(instr);
       break;
-      
+
     case STOR_FLOAT_VAR:
       ProcessStoreFloat(instr);
       break;
@@ -108,11 +111,11 @@ void StackInterpreter::Execute() {
     case COPY_INT_VAR:
       ProcessCopyInt(instr);
       break;
-      
+
     case COPY_FLOAT_VAR:
       ProcessCopyFloat(instr);
       break;
-      
+
     case LOAD_INT_LIT:
 #ifdef _DEBUG
       cout << "stack oper: LOAD_INT_LIT; call_pos=" << call_stack_pos << endl;
@@ -127,7 +130,7 @@ void StackInterpreter::Execute() {
       long value = PopInt();
       PushInt(value << instr->GetOperand());
     }
-      break;
+    break;
 
     case SHR_INT: {
 #ifdef _DEBUG
@@ -136,7 +139,7 @@ void StackInterpreter::Execute() {
       long value = PopInt();
       PushInt(value >> instr->GetOperand());
     }
-      break;
+    break;
 
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG
@@ -144,7 +147,7 @@ void StackInterpreter::Execute() {
 #endif
       PushFloat(instr->GetFloatOperand());
       break;
-      
+
     case LOAD_INT_VAR:
       ProcessLoadInt(instr);
       break;
@@ -152,7 +155,7 @@ void StackInterpreter::Execute() {
     case LOAD_FLOAT_VAR:
       ProcessLoadFloat(instr);
       break;
-      
+
     case ASYNC_JOIN:
 #ifdef _DEBUG
       cout << "stack oper: ASYNC_JOIN; call_pos=" << call_stack_pos << endl;
@@ -161,7 +164,7 @@ void StackInterpreter::Execute() {
       pthread_join((pthread_t)PopInt(), NULL);
 #endif
       break;
-      
+
     case AND_INT: {
 #ifdef _DEBUG
       cout << "stack oper: AND; call_pos=" << call_stack_pos << endl;
@@ -170,7 +173,7 @@ void StackInterpreter::Execute() {
       long left = PopInt();
       PushInt(left && right);
     }
-      break;
+    break;
 
     case OR_INT: {
 #ifdef _DEBUG
@@ -180,8 +183,8 @@ void StackInterpreter::Execute() {
       long left = PopInt();
       PushInt(left || right);
     }
-      break;
-      
+    break;
+
     case ADD_INT:
 #ifdef _DEBUG
       cout << "stack oper: ADD; call_pos=" << call_stack_pos << endl;
@@ -195,7 +198,7 @@ void StackInterpreter::Execute() {
 #endif
       PushFloat(PopFloat() + PopFloat());
       break;
-      
+
     case SUB_INT:
 #ifdef _DEBUG
       cout << "stack oper: SUB; call_pos=" << call_stack_pos << endl;
@@ -209,14 +212,14 @@ void StackInterpreter::Execute() {
 #endif
       PushFloat(PopFloat() - PopFloat());
       break;
-      
+
     case MUL_INT:
 #ifdef _DEBUG
       cout << "stack oper: MUL; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt(PopInt() * PopInt());
       break;
-      
+
     case DIV_INT:
 #ifdef _DEBUG
       cout << "stack oper: DIV; call_pos=" << call_stack_pos << endl;
@@ -230,7 +233,7 @@ void StackInterpreter::Execute() {
 #endif
       PushFloat(PopFloat() * PopFloat());
       break;
-      
+
     case DIV_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: DIV; call_pos=" << call_stack_pos << endl;
@@ -293,14 +296,14 @@ void StackInterpreter::Execute() {
 #endif
       PushInt(PopInt() < PopInt());
       break;
-      
+
     case GTR_INT:
 #ifdef _DEBUG
       cout << "stack oper: GTR; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt(PopInt() > PopInt());
       break;
-      
+
     case EQL_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: EQL; call_pos=" << call_stack_pos << endl;
@@ -321,7 +324,7 @@ void StackInterpreter::Execute() {
 #endif
       PushInt(PopFloat() < PopFloat());
       break;
-      
+
     case GTR_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: GTR; call_pos=" << call_stack_pos << endl;
@@ -332,25 +335,25 @@ void StackInterpreter::Execute() {
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat()));
       break;
-      
+
     case FLOR_FLOAT:
       PushFloat(floor(PopFloat()));
       break;
-      
+
     case I2F:
 #ifdef _DEBUG
       cout << "stack oper: I2F; call_pos=" << call_stack_pos << endl;
 #endif
       PushFloat(PopInt());
       break;
-      
+
     case F2I:
 #ifdef _DEBUG
       cout << "stack oper: F2I; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt((long)PopFloat());
       break;
-      
+
     case POP_INT:
 #ifdef _DEBUG
       cout << "stack oper: POP_INT; call_pos=" << call_stack_pos << endl;
@@ -364,44 +367,44 @@ void StackInterpreter::Execute() {
 #endif
       PopFloat();
       break;
-      
+
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt();
-      long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(), 
-								     program->GetHierarchy());
+      long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+                    program->GetHierarchy());
       if(!result && mem) {
-	StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);	  
-	cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
-	     << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);
+        cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )
+             << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
       PushInt(result);
     }
-      break;
-      
+    break;
+
     case RTRN:
       ProcessReturn();
       // return directly back to JIT code
       if(frame && frame->IsJitCalled()) {
-	frame->SetJitCalled(false);
-	return;
+        frame->SetJitCalled(false);
+        return;
       }
       break;
-      
+
     case MTHD_CALL:
       ProcessMethodCall(instr);
       // return directly back to JIT code
       if(frame->IsJitCalled()) {
-	frame->SetJitCalled(false);
-	return;
+        frame->SetJitCalled(false);
+        return;
       }
       break;
 
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr);
       break;
-      
+
     case NEW_INT_ARY:
       ProcessNewArray(instr);
       break;
@@ -421,7 +424,7 @@ void StackInterpreter::Execute() {
     case LOAD_BYTE_ARY_ELM:
       ProcessLoadByteArrayElement(instr);
       break;
-      
+
     case STOR_INT_ARY_ELM:
       ProcessStoreIntArrayElement(instr);
       break;
@@ -433,11 +436,11 @@ void StackInterpreter::Execute() {
     case STOR_FLOAT_ARY_ELM:
       ProcessStoreFloatArrayElement(instr);
       break;
-      
+
     case LOAD_FLOAT_ARY_ELM:
       ProcessLoadFloatArrayElement(instr);
       break;
-      
+
     case LOAD_CLS_MEM:
 #ifdef _DEBUG
       cout << "stack oper: LOAD_CLS_MEM; call_pos=" << call_stack_pos << endl;
@@ -451,7 +454,7 @@ void StackInterpreter::Execute() {
 #endif
       PushInt(frame->GetMemory()[0]);
       break;
-      
+
     case TRAP:
     case TRAP_RTRN:
 #ifdef _DEBUG
@@ -462,30 +465,29 @@ void StackInterpreter::Execute() {
 
     case JMP:
       if(instr->GetOperand2() < 0) {
-	ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+        ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+      } else if(PopInt() == instr->GetOperand2()) {
+        ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
       }
-      else if(PopInt() == instr->GetOperand2()) {
-	ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
-      } 
       break;
     }
   }
 }
 
 /********************************
- * Processes a load integer 
+ * Processes a load integer
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadInt(StackInstr* instr) {
+void StackInterpreter::ProcessLoadInt(StackInstr* instr)
+{
 #ifdef _DEBUG
-  cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand() 
+  cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     PushInt(mem[instr->GetOperand() + 1]);
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -497,10 +499,11 @@ void StackInterpreter::ProcessLoadInt(StackInstr* instr) {
 }
 
 /********************************
- * Processes a load float 
+ * Processes a load float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFloat(StackInstr* instr) {
+void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
@@ -509,8 +512,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr) {
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     memcpy(&value, &mem[instr->GetOperand() + 1], sizeof(FLOAT_VALUE));
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -523,19 +525,19 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr) {
 }
 
 /********************************
- * Processes a store integer 
+ * Processes a store integer
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreInt(StackInstr* instr) {
+void StackInterpreter::ProcessStoreInt(StackInstr* instr)
+{
 #ifdef _DEBUG
-  cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand() 
+  cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     mem[instr->GetOperand() + 1] = PopInt();
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -547,45 +549,45 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr) {
 }
 
 /********************************
- * Processes a store float 
+ * Processes a store float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFloat(StackInstr* instr) {
+void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
+{
 #ifdef _DEBUG
-  cout << "stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand() 
+  cout << "stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
-  if(instr->GetOperand2() == LOCL) {   
-    FLOAT_VALUE value = PopFloat(); 
-    long* mem = frame->GetMemory();  
+  if(instr->GetOperand2() == LOCL) {
+    FLOAT_VALUE value = PopFloat();
+    long* mem = frame->GetMemory();
     memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
       StackErrorUnwind();
       exit(1);
     }
-    FLOAT_VALUE value = PopFloat();   
+    FLOAT_VALUE value = PopFloat();
     memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
   }
 }
 
 /********************************
- * Processes a copy integer 
+ * Processes a copy integer
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessCopyInt(StackInstr* instr) {
+void StackInterpreter::ProcessCopyInt(StackInstr* instr)
+{
 #ifdef _DEBUG
-  cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand() 
+  cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     mem[instr->GetOperand() + 1] = TopInt();
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -597,27 +599,27 @@ void StackInterpreter::ProcessCopyInt(StackInstr* instr) {
 }
 
 /********************************
- * Processes a copy float 
+ * Processes a copy float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessCopyFloat(StackInstr* instr) {
+void StackInterpreter::ProcessCopyFloat(StackInstr* instr)
+{
 #ifdef _DEBUG
-  cout << "stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand() 
+  cout << "stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
-  if(instr->GetOperand2() == LOCL) {   
+  if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat();
-    long* mem = frame->GetMemory();   
+    long* mem = frame->GetMemory();
     memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
-  }
-  else {
+  } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
       StackErrorUnwind();
       exit(1);
     }
-    FLOAT_VALUE value = TopFloat();   
+    FLOAT_VALUE value = TopFloat();
     memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
   }
 }
@@ -626,13 +628,14 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr) {
  * Processes a new object instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr) {
+void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
 
-  long inst_mem = (long)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
-								  op_stack, *stack_pos);
+  long inst_mem = (long)MemoryManager::Instance()->AllocateObject(instr->GetOperand(),
+                  op_stack, *stack_pos);
   PushInt(inst_mem);
 }
 
@@ -640,7 +643,8 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr) {
  * Processes a new array instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float) {
+void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
+{
 #ifdef _DEBUG
   cout << "stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << call_stack_pos << endl;
 #endif
@@ -652,19 +656,18 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float) {
   for(long i = 1; i < instr->GetOperand(); i++) {
     long value = PopInt();
     size *= value;
-    indices[dim++] = value;	
+    indices[dim++] = value;
   }
   // double for double
   if(is_float) {
     size *= 2;
   }
   // assumes that doubles are twice the size of integers
-  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + dim + 2, INT_TYPE, 
-							      op_stack, *stack_pos);
+  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + dim + 2, INT_TYPE,
+              op_stack, *stack_pos);
   if(is_float) {
     mem[0] = size / 2;
-  }
-  else {
+  } else {
     mem[0] = size;
   }
   mem[1] = dim;
@@ -677,7 +680,8 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float) {
  * Processes a new byte array instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewByteArray(StackInstr* instr) {
+void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: NEW_BYTE_ARY; call_pos=" << call_stack_pos << endl;
 #endif
@@ -691,8 +695,8 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr) {
     size *= value;
     indices[dim++] = value;
   }
-  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)), 
-							      BYTE_ARY_TYPE, op_stack, *stack_pos);
+  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)),
+              BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(long));
@@ -701,28 +705,28 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr) {
 
 /********************************
  * Processes a return instruction.
- * This instruction modifies the 
+ * This instruction modifies the
  * call stack.
  ********************************/
-void StackInterpreter::ProcessReturn() {
+void StackInterpreter::ProcessReturn()
+{
 #ifdef _DEBUG
   cout << "stack oper: RTRN; call_pos=" << call_stack_pos << endl;
 #endif
-  
+
   // unregister old frame
   MemoryManager::Instance()->RemovePdaMethodRoot(frame);
 #ifdef _DEBUG
   cout << "removing frame=" << frame << endl;
 #endif
-    delete frame;
-    frame = NULL;
-  
+  delete frame;
+  frame = NULL;
+
   // restore previous frame
   if(!StackEmpty()) {
     frame = PopFrame();
     ip = frame->GetIp();
-  }
-  else {
+  } else {
     halt = true;
   }
 }
@@ -731,16 +735,17 @@ void StackInterpreter::ProcessReturn() {
  * Processes a synchronous method
  * call.
  ********************************/
-void StackInterpreter::ProcessMethodCall(StackInstr* instr) {
+void StackInterpreter::ProcessMethodCall(StackInstr* instr)
+{
   // save current method
   frame->SetIp(ip);
   PushFrame(frame);
-  
+
   // pop instance
   long instance = PopInt();
-  
+
   // make call
-  StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2()); 
+  StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
   // dynamically bind class for virutal method
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
@@ -750,16 +755,16 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr) {
       exit(1);
     }
     const string& qualified_method_name = called->GetName();
-    const string& method_name = impl_class->GetName() + 
-      qualified_method_name.substr(qualified_method_name.find(':'));
-    
+    const string& method_name = impl_class->GetName() +
+                                qualified_method_name.substr(qualified_method_name.find(':'));
+
 #ifdef _DEBUG
-    cout << "=== Binding virtual method call: from: '" << called->GetName() 
-	 << "'; to: '" << method_name << "' ===" << endl;
+    cout << "=== Binding virtual method call: from: '" << called->GetName()
+         << "'; to: '" << method_name << "' ===" << endl;
 #endif
     called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
   }
-  
+
   // execute JIT call
   if(instr->GetOperand3()) {
     ProcessJitMethodCall(called, instance);
@@ -771,10 +776,11 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr) {
 }
 
 /********************************
- * Processes an interpreted 
+ * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance) {
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
+{
 #ifdef _X64
   ProcessInterpretedMethodCall(called, instance);
 #else
@@ -785,20 +791,20 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance) 
     // restore previous state
     frame = PopFrame();
     ip = frame->GetIp();
-  }
-  else {
+  } else {
     ProcessInterpretedMethodCall(called, instance);
   }
 #endif
 }
 
 /********************************
- * Processes an interpreted 
+ * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long instance) {
+void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long instance)
+{
 #ifdef _DEBUG
-  cout << "=== MTHD_CALL: id=" << called->GetClass()->GetId() << "," 
+  cout << "=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
        << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif
   long* mem = called->NewMemory();
@@ -812,10 +818,11 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long in
 }
 
 /********************************
- * Processes a load integer array 
+ * Processes a load integer array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: LOAD_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
@@ -827,10 +834,11 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr) {
 }
 
 /********************************
- * Processes a load store array 
+ * Processes a load store array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
@@ -842,10 +850,11 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr) {
 }
 
 /********************************
- * Processes a load byte array 
+ * Processes a load byte array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: LOAD_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
@@ -858,10 +867,11 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr) {
 }
 
 /********************************
- * Processes a store byte array 
+ * Processes a store byte array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: STOR_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
@@ -874,10 +884,11 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr) {
 }
 
 /********************************
- * Processes a load float array 
+ * Processes a load float array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
@@ -891,17 +902,18 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr) {
 }
 
 /********************************
- * Processes a store float array 
+ * Processes a store float array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr) {
+void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
+{
 #ifdef _DEBUG
   cout << "stack oper: STOR_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
   const long size = array[0];
   array += 2;
-  long index = ArrayIndex(instr, array,size);  
+  long index = ArrayIndex(instr, array,size);
   FLOAT_VALUE value = PopFloat();
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }
@@ -909,18 +921,19 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr) {
 /********************************
  * Processes trap instruction
  ********************************/
-void StackInterpreter::ProcessTrap(StackInstr* instr) { 
-  switch(PopInt()) {      
+void StackInterpreter::ProcessTrap(StackInstr* instr)
+{
+  switch(PopInt()) {
   case LOAD_CLS_INST_ID:
     PushInt(MemoryManager::Instance()->GetObjectID((long*)PopInt()));
     break;
-		
+
   case LOAD_ARY_SIZE: {
     long* array = (long*)PopInt();
     PushInt(array[2]);
   }
-    break;
-	
+  break;
+
   case CPY_STR_ARY: {
     long index = PopInt();
     BYTE_VALUE* value_str = program->GetCharStrings()[index];
@@ -932,40 +945,40 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
       str[i] = value_str[i];
     }
 #ifdef _DEBUG
-    cout << "stack oper: CPY_STR_ARY: from='" << value_str << "', to='" 
-	 << str << "', size=" << size << endl;
+    cout << "stack oper: CPY_STR_ARY: from='" << value_str << "', to='"
+         << str << "', size=" << size << endl;
 #endif
     PushInt((long)array);
   }
-    break;
+  break;
 
-    // ---------------- standard i/o ----------------
+  // ---------------- standard i/o ----------------
   case STD_OUT_BOOL:
     cout << ((PopInt() == 0) ? "false" : "true");
     break;
-	
+
   case STD_OUT_BYTE:
     cout << (void*)PopInt();
     break;
-	
+
   case STD_OUT_CHAR:
     cout << (char)PopInt();
     break;
-	
+
   case STD_OUT_INT:
     cout << PopInt();
     break;
-	
+
   case STD_OUT_FLOAT:
     cout << PopFloat();
     break;
-	
+
   case STD_OUT_CHAR_ARY: {
     long* array = (long*)PopInt();
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
     cout << str;
   }
-    break;
+  break;
 
   case STD_IN_STRING: {
     long* array = (long*)PopInt();
@@ -973,50 +986,50 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
     const long num = array[0];
     cin.getline(buffer, num);
   }
-    break;
-	
-    // ---------------- file i/o ----------------
+  break;
+
+  // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
-    long* instance = (long*)PopInt();	
+    long* instance = (long*)PopInt();
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "r");
 #ifdef _DEBUG
     cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << file << "(" << (long)file << ") #" << endl;
+         "; addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
-    break;
-	
+  break;
+
   case FILE_OPEN_WRITE: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
-    long* instance = (long*)PopInt();	
+    long* instance = (long*)PopInt();
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "a");
 #ifdef _DEBUG
     cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << file << "(" << (long)file << ") #" << endl;
+         "; addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
-    break;
-	
+  break;
+
   case FILE_OPEN_READ_WRITE: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
-    long* instance = (long*)PopInt();	
+    long* instance = (long*)PopInt();
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "a+");
 #ifdef _DEBUG
     cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")"
-      << "; addr=" << file << "(" << (long)file << ") #" << endl;
+         << "; addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
-    break;
+  break;
 
   case FILE_CLOSE: {
     long* instance = (long*)PopInt();
@@ -1030,68 +1043,66 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
       fclose(file);
     }
   }
-    break;
+  break;
 
   case FILE_IN_STRING: {
     long* array = (long*)PopInt();
-    long* instance = (long*)PopInt();	
+    long* instance = (long*)PopInt();
     char* buffer = (char*)(array + 3);
     const long num = array[0] - 1;
     FILE* file = (FILE*)instance[0];
-	
+
     if(file) {
       fgets(buffer, num, file);
       int end_index = strlen(buffer) - 1;
       if(end_index >= 0) {
         if(buffer[end_index] == '\n') {
-	  buffer[end_index] = '\0';
+          buffer[end_index] = '\0';
         }
       }
     }
   }
-    break;
+  break;
 
   case FILE_OUT_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];	
+    FILE* file = (FILE*)instance[0];
     const char* name = (char*)(array + 3);
-	
+
     if(file) {
       fputs(name, file);
     }
   }
-    break;
-	
+  break;
+
   case FILE_REWIND: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];	
-	
+    FILE* file = (FILE*)instance[0];
+
     if(file) {
       rewind(file);
     }
   }
-    break;	
-   
-    // --- TRAP_RTRN --- //
+  break;
+
+  // --- TRAP_RTRN --- //
 
   case FILE_IN_BYTE: {
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
-	
+
     if(file) {
       if(fgetc(file) == EOF) {
-	PushInt(0);
+        PushInt(0);
+      } else {
+        PushInt(1);
       }
-      else {
-	PushInt(1);
-      }
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
 
   case FILE_IN_BYTE_ARY: {
@@ -1100,41 +1111,37 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
     const long offset = PopInt();
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
-	
+
     if(file && offset + num < array[0]) {
-      char* buffer = (char*)(array + 3);	  
+      char* buffer = (char*)(array + 3);
       if(fread(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
-	PushInt(0);
+        PushInt(0);
+      } else {
+        PushInt(1);
       }
-      else {
-	PushInt(1);
-      }
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
   case FILE_OUT_BYTE: {
     long value = PopInt();
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
-	
+
     if(file) {
       if(fputc(value, file) != value) {
-	PushInt(0);
-      }
-      else {
-	PushInt(1);
+        PushInt(0);
+      } else {
+        PushInt(1);
       }
 
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
   case FILE_OUT_BYTE_ARY: {
     long* array = (long*)PopInt();
@@ -1142,66 +1149,60 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
     const long offset = PopInt();
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
-	
+
     if(file && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       if(fwrite(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
-	PushInt(0);
+        PushInt(0);
+      } else {
+        PushInt(1);
       }
-      else {
-	PushInt(1);
-      }
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
   case FILE_SEEK: {
     long pos = PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];	
-	
+    FILE* file = (FILE*)instance[0];
+
     if(file) {
       if(fseek(file, pos, SEEK_CUR) != 0) {
-	PushInt(0);
+        PushInt(0);
+      } else {
+        PushInt(1);
       }
-      else {
-	PushInt(1);
-      }
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
   case FILE_EOF: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];	
-	
+    FILE* file = (FILE*)instance[0];
+
     if(file) {
       PushInt(feof(file) != 0);
-    }
-    else {
+    } else {
       PushInt(1);
     }
   }
-    break;
+  break;
 
   case FILE_OPEN: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];	
-	
+    FILE* file = (FILE*)instance[0];
+
     if(file) {
       PushInt(1);
-    }
-    else {
+    } else {
       PushInt(0);
     }
   }
-    break;
+  break;
 
   case FILE_EXISTS: {
     long* array = (long*)PopInt();
@@ -1210,17 +1211,17 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
 
     PushInt(File::FileExists(name));
   }
-    break;
-	
+  break;
+
   case FILE_SIZE: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
     const char* name = (char*)(array + 3);
 
     PushInt(File::FileSize(name));
-	
+
   }
-    break;
+  break;
 
   case FILE_DELETE: {
     long* array = (long*)PopInt();
@@ -1229,12 +1230,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
 
     if(remove(name) != 0) {
       PushInt(0);
-    }
-    else {
+    } else {
       PushInt(1);
     }
   }
-    break;
+  break;
 
   case FILE_RENAME: {
     long* to = (long*)PopInt();
@@ -1244,17 +1244,16 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
     long* from = (long*)PopInt();
     from = (long*)from[0];
     const char* from_name = (char*)(from + 3);
-	
+
     if(rename(from_name, to_name) != 0) {
       PushInt(0);
-    }
-    else {
+    } else {
       PushInt(1);
     }
   }
-    break;
+  break;
 
-    //----------- directory functions -----------
+  //----------- directory functions -----------
   case DIR_CREATE: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
@@ -1262,8 +1261,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
 
     PushInt(File::MakeDir(name));
   }
-    break;
-	
+  break;
+
   case DIR_EXISTS: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
@@ -1271,8 +1270,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
 
     PushInt(File::IsDir(name));
   }
-    break;
-	
+  break;
+
   case DIR_LIST: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
@@ -1282,51 +1281,51 @@ void StackInterpreter::ProcessTrap(StackInstr* instr) {
 
     // create 'System.String' object array
     long str_obj_array_size = files.size();
-    const long str_obj_array_dim = 1;  
-    long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
-									  str_obj_array_dim + 2, 
-									  INT_TYPE, op_stack, 
-									  *stack_pos);
+    const long str_obj_array_dim = 1;
+    long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size +
+                          str_obj_array_dim + 2,
+                          INT_TYPE, op_stack,
+                          *stack_pos);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
     long* str_obj_array_ptr = str_obj_array + 3;
-    
+
     // create and assign 'System.String' instances to array
     for(unsigned int i = 0; i < files.size(); i++) {
       // get value string
       string &value_str = files[i];
-      
+
       // create character array
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
-      long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 + 
-									 ((char_array_dim + 2) * 
-									  sizeof(long)),  
-									 BYTE_ARY_TYPE, 
-									 op_stack, *stack_pos);
+      long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+                         ((char_array_dim + 2) *
+                          sizeof(long)),
+                         BYTE_ARY_TYPE,
+                         op_stack, *stack_pos);
       char_array[0] = char_array_size;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
-      
+
       // copy string
       char* char_array_ptr = (char*)(char_array + 3);
 
-      strcpy(char_array_ptr, value_str.c_str()); 
-//			strcpy_s(char_array_ptr,  value_str.size(), value_str.c_str()); 
+      strcpy(char_array_ptr, value_str.c_str());
+//			strcpy_s(char_array_ptr,  value_str.size(), value_str.c_str());
 
       // create 'System.String' object instance
-      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(), 
-								(long*)op_stack, *stack_pos);
+      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
+                      (long*)op_stack, *stack_pos);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
 
       // add to object array
       str_obj_array_ptr[i] = (long)str_obj;
     }
-    
+
     PushInt((long)str_obj_array);
   }
-    break;
+  break;
   }
-}     
+}

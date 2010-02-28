@@ -4,28 +4,28 @@
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Reistribution and use in source and binary forms, with or without 
+ * Reistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- * - Redistributions of source code must retain the above copyright 
+ * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright 
- * notice, this list of conditions and the following disclaimer in 
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
- * contributors may be used to endorse or promote products derived 
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
@@ -108,7 +108,7 @@ enum TokenType {
   TOKEN_SELECT_ID,
   TOKEN_OTHER_ID,
   TOKEN_LABEL_ID,
-  TOKEN_NEW_ID, 
+  TOKEN_NEW_ID,
   TOKEN_CLASS_ID,
   TOKEN_FUNCTION_ID,
   TOKEN_METHOD_ID,
@@ -158,12 +158,12 @@ enum TokenType {
   DIR_LIST,
 #endif
 };
-  
+
 /****************************
  * Token class
  ****************************/
 class Token {
- private:
+private:
   TokenType token_type;
   int line_nbr;
   string filename;
@@ -174,7 +174,7 @@ class Token {
   CHAR_VALUE char_lit;
   BYTE_VALUE byte_lit;
 
- public:
+public:
 
   inline void Copy(Token* token) {
     line_nbr = token->GetLineNumber();
@@ -185,11 +185,11 @@ class Token {
     token_type = token->GetType();
     filename = token->GetFileName();
   }
-  
+
   inline const string GetFileName() {
     return filename;
   }
-    
+
   inline void SetFileName(string f) {
     filename = f;
   }
@@ -217,7 +217,7 @@ class Token {
   inline void SetCharLit(CHAR_VALUE c) {
     char_lit = c;
   }
-    
+
   inline void SetIdentifier(string i) {
     ident = i;
   }
@@ -237,7 +237,7 @@ class Token {
   inline const CHAR_VALUE GetCharLit() {
     return char_lit;
   }
-  
+
   inline const string GetIdentifier() {
     return ident;
   }
@@ -256,7 +256,7 @@ class Token {
  * tokens
  **********************************/
 class Scanner {
- private:
+private:
   // input file name
   string filename;
   // input buffer
@@ -272,16 +272,16 @@ class Scanner {
   // input characters
   char cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-	map<const string, TokenType> ident_map;
+  map<const string, TokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
   // line number
   int line_nbr;
-  
-  // warning message 
+
+  // warning message
   void ProcessWarning() {
-    cout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1 
-	 << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
+    cout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
+         << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
 
   // loads a file into memory
@@ -295,18 +295,17 @@ class Scanner {
       buffer_size = in.tellg();
       in.seekg(0, ios::beg);
       buffer = new char[buffer_size];
-      in.read(buffer, buffer_size); 
+      in.read(buffer, buffer_size);
       // close file
       in.close();
-    }  
-    else {
+    } else {
       cout << "Unable to open source file: " << filename << endl;
       exit(1);
     }
 
     return buffer;
   }
-    
+
   // parsers a character string
   inline void CheckString(int index) {
     // copy string
@@ -316,13 +315,13 @@ class Scanner {
     tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
     tokens[index]->SetIdentifier(char_string);
   }
-  
+
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
     // copy string
     int length = end_pos - start_pos;
     string ident(buffer, start_pos, length);
-      
+
     // set token
     char* end;
     tokens[index]->SetType(TOKEN_INT_LIT);
@@ -330,7 +329,7 @@ class Scanner {
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
   }
-    
+
   // parse a double
   inline void ParseDouble(int index) {
     // copy string
@@ -342,7 +341,7 @@ class Scanner {
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
   }
- 
+
   // parsers an unicode character
   inline void ParseUnicodeChar(int index) {
     // copy string
@@ -354,8 +353,8 @@ class Scanner {
     tokens[index]->SetCharLit((CHAR_VALUE)strtol(ident.c_str(), &end, 16));
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
-  }    
-    
+  }
+
   // read input file into memory
   void ReadFile();
   // ignore white space
@@ -368,12 +367,12 @@ class Scanner {
   void ParseToken(int index);
   // check identifier
   void CheckIdentifier(int index);
-    
- public:
+
+public:
   // default constructor
   Scanner(string f);
   // default destructor
-  ~Scanner(); 
+  ~Scanner();
 
   // next token
   void NextToken();
