@@ -333,109 +333,109 @@ void Loader::LoadStatements(StackMethod* method)
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_INT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_INT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
       method->AddInstruction(new StackInstr(STOR_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(COPY_INT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case COPY_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(COPY_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case LOAD_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_INT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case LOAD_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_BYTE_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       method->AddInstruction(new StackInstr(STOR_INT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       long mem_context = ReadInt();
       method->AddInstruction(new StackInstr(STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case NEW_FLOAT_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_FLOAT_ARY, dim));
     }
-    break;
+      break;
 
     case NEW_INT_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_INT_ARY, dim));
     }
-    break;
+      break;
 
     case NEW_BYTE_ARY: {
       long dim = ReadInt();
       method->AddInstruction(new StackInstr(NEW_BYTE_ARY, dim));
 
     }
-    break;
+      break;
 
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
       method->AddInstruction(new StackInstr(NEW_OBJ_INST, obj_id));
     }
-    break;
+      break;
 
     case MTHD_CALL: {
       long cls_id = ReadInt();
@@ -443,7 +443,7 @@ void Loader::LoadStatements(StackMethod* method)
       long is_native = ReadInt();
       method->AddInstruction(new StackInstr(MTHD_CALL, cls_id, mthd_id, is_native));
     }
-    break;
+      break;
 
     case LIB_OBJ_INST_CAST:
       cerr << ">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
@@ -462,20 +462,20 @@ void Loader::LoadStatements(StackMethod* method)
       long cond = ReadInt();
       method->AddInstruction(new StackInstr(JMP, label, cond));
     }
-    break;
+      break;
 
     case LBL: {
       long id = ReadInt();
       method->AddInstruction(new StackInstr(LBL, id));
       method->AddLabel(id, index);
     }
-    break;
+      break;
 
     case OBJ_INST_CAST: {
       long to = ReadInt();
       method->AddInstruction(new StackInstr(OBJ_INST_CAST, to));
     }
-    break;
+      break;
 
     case OR_INT:
       method->AddInstruction(new StackInstr(OR_INT));
@@ -610,17 +610,33 @@ void Loader::LoadStatements(StackMethod* method)
       method->AddInstruction(new StackInstr(RTRN));
       break;
 
+    case THREAD_CREATE:
+      // TODO: implement
+      break;
+      
+    case THREAD_WAIT:
+      // TODO: implement
+      break;
+
+    case CRITICAL_START:
+      // TODO: implement
+      break;
+
+    case CRITICAL_END:
+      // TODO: implement
+      break;
+      
     case TRAP: {
       long args = ReadInt();
       method->AddInstruction(new StackInstr(TRAP, args));
     }
-    break;
+      break;
 
     case TRAP_RTRN: {
       long args = ReadInt();
       method->AddInstruction(new StackInstr(TRAP_RTRN, args));
     }
-    break;
+      break;
 
     default: {
 #ifdef _DEBUG
@@ -629,7 +645,7 @@ void Loader::LoadStatements(StackMethod* method)
 #endif
       exit(1);
     }
-    break;
+      break;
 
     }
     // update

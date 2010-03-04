@@ -229,6 +229,22 @@ public:
 
   void Debug() {
     switch(type) {
+    case THREAD_CREATE:
+      cout << "THREAD_CREATE" << endl;
+      break;
+
+    case THREAD_WAIT:
+      cout << "THREAD_WAIT" << endl;
+      break;
+
+    case CRITICAL_START:
+      cout << "CRITICAL_START" << endl;
+      break;
+
+    case CRITICAL_END:
+      cout << "CRITICAL_END" << endl;
+      break;
+
     case POP_INT:
       cout << "POP_INT" << endl;
       break;
