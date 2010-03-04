@@ -10,8 +10,8 @@ bundle Default {
 		function : Run(args : String[]), Nil {
 			(2 * 3)->PrintLine();
 			critical {	
-				"\"Hello\""->PrintLine();
-				(3*7)->PrintLine();
+				a : Int := 8;
+				(a-3)->PrintLine();
 			};
 		}
 	}
