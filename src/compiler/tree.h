@@ -84,6 +84,7 @@ typedef enum _StatementType {
   SELECT_STMT,
   ENUM_STMT,
   RETURN_STMT,
+  CRITICAL_STMT,
   SYSTEM_STMT,
 } StatementType;
 
@@ -1035,6 +1036,15 @@ public:
 
   StatementList* GetOther() {
     return other;
+  }
+};
+
+/****************************
+ * CriticalSection class
+ ****************************/
+class CriticalSection : public Statement {
+  const StatementType GetStatementType() {
+    return CRITICAL_STMT;
   }
 };
 

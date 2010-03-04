@@ -377,10 +377,6 @@
 			</File>
 		</Filter>
 		<File
-			RelativePath="..\..\..\images\bevel-gear.ico"
-			>
-		</File>
-		<File
 			RelativePath="..\..\..\images\Gear.ico"
 			>
 		</File>
