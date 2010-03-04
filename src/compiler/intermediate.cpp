@@ -575,6 +575,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     EmitFor(static_cast<For*>(statement));
     break;
 
+  case CRITICAL_STMT:
+    EmitCriticalSection(static_cast<CriticalSection*>(statement));
+    break;
+
   case SYSTEM_STMT:
     EmitSystemDirective(static_cast<SystemStatement*>(statement));
     break;
@@ -936,6 +940,20 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, unconditional, -1));
   NewBlock();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, conditional));
+}
+
+/****************************
+ * Emits a critical section
+ ****************************/
+void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt) 
+{
+  StatementList* statement_list = critical_stmt->GetStatements();
+  vector<Statement*> statements = statement_list->GetStatements();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CRITICAL_START));
+  for(unsigned int i = 0; i < statements.size(); i++) {
+    EmitStatement(statements[i]);
+  }
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CRITICAL_END));
 }
 
 /****************************

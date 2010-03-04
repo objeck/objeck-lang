@@ -169,6 +169,7 @@ class IntermediateEmitter {
   void EmitWhile(While* while_stmt);
   void EmitSelect(Select* select_stmt);
   void EmitFor(For* for_stmt);
+  void EmitCriticalSection(CriticalSection* critical_stmt);
   void EmitIndices(ExpressionList* indices);
   void EmitExpressions(ExpressionList* parameters);
   void EmitExpression(Expression* expression);
