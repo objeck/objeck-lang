@@ -1,7 +1,7 @@
 /***************************************************************************
  * JIT compiler for the x86 architecture.
  *
- * Copyright (c) 2008, 2009, 2010 Randy Hollines
+ * Copyright (c) 2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
