@@ -637,14 +637,18 @@
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath="..\..\..\images\Gear.ico"
+		<Filter
+			Name="Resources"
 			>
-		</File>
-		<File
-			RelativePath=".\objeck.rc"
-			>
-		</File>
+			<File
+				RelativePath="..\..\..\images\Gear.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\objeck.rc"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

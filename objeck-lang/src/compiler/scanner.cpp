@@ -105,6 +105,7 @@ void Scanner::LoadKeywords()
   ident_map["New"] = TOKEN_NEW_ID;
   ident_map["Nil"] = TOKEN_NIL_ID;
   ident_map["As"] = TOKEN_AS_ID;
+  ident_map["critical"] = TOKEN_CRITICAL_ID;
 #ifdef _SYSTEM
   ident_map["FLOR_FLOAT"] = FLOR_FLOAT;
   ident_map["CEIL_FLOAT"] = CEIL_FLOAT;
@@ -157,6 +158,7 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_CRITICAL_ID:
   case TOKEN_VIRTUAL_ID:
   case TOKEN_FROM_ID:
   case TOKEN_OTHER_ID:
