@@ -1035,7 +1035,7 @@ Expression* Parser::ParseExpression(int depth)
 /****************************
  * Parses a logical expression.
  * This method delegates support
- * for other types expressions.
+ * for other types of expressions.
  ****************************/
 Expression* Parser::ParseLogic(int depth)
 {
@@ -1082,7 +1082,7 @@ Expression* Parser::ParseLogic(int depth)
 /****************************
  * Parses a mathematical expression.
  * This method delegates support
- * for other types expressions.
+ * for other types of expressions.
  ****************************/
 Expression* Parser::ParseMathLogic(int depth)
 {
@@ -1137,7 +1137,7 @@ Expression* Parser::ParseMathLogic(int depth)
 /****************************
  * Parses a mathematical term.
  * This method delegates support
- * for other types expressions.
+ * for other types of expressions.
  ****************************/
 Expression* Parser::ParseTerm(int depth)
 {
@@ -1198,7 +1198,7 @@ Expression* Parser::ParseTerm(int depth)
 /****************************
  * Parses a mathematical factor.
  * This method delegates support
- * for other types expressions.
+ * for other types of expressions.
  ****************************/
 Expression* Parser::ParseFactor(int depth)
 {
