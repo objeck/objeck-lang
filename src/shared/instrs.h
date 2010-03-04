@@ -107,6 +107,11 @@ typedef enum _InstructionType {
   // NOOPs
   POP_INT,
   POP_FLOAT,
+  // thread directives
+  THREAD_CREATE,
+  THREAD_WAIT,
+  CRITICAL_START,
+  CRITICAL_END,
   // library directives
   LIB_NEW_OBJ_INST,
   LIB_MTHD_CALL,
