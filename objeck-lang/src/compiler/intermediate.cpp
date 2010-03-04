@@ -1147,7 +1147,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
     // note: this is not clean (drinking bordeaux)... literals are
     // considered expressions and turned into instances of 'System.String'
-    // objects and are considered nested if a method call is present
+    // objects are considered nested if a method call is present
     bool is_nested = false || expression->GetExpressionType() == CHAR_STR_EXPR;
     while(method_call) {
       // declarations

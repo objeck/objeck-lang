@@ -495,6 +495,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
     AnalyzeSelect(static_cast<Select*>(statement), depth);
     break;
 
+  case CRITICAL_STMT:
+    AnalyzeStatements(static_cast<CriticalSection*>(statement)->GetStatements(), depth + 1);
+    break;
+
   default:
     ProcessError(statement, "Undefined statement");
     break;
@@ -753,6 +757,10 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
   }
 }
 
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
     Class* &klass, LibraryClass* &lib_klass)
 {
@@ -2415,6 +2423,9 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
   }
 }
 
+/****************************
+ * Encodes a method call
+ ****************************/
 string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params,
     int depth)
 {
