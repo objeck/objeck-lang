@@ -630,6 +630,10 @@ Statement* Parser::ParseStatement(int depth)
       statement = ParseFor(depth + 1);
       break;
 
+    case TOKEN_CRITICAL_ID:
+      statement = ParseCritical(depth + 1);
+      break;
+
 #ifdef _SYSTEM
     case FLOR_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
@@ -1653,6 +1657,14 @@ While* Parser::ParseWhile(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
   return TreeFactory::Instance()->MakeWhile(file_name, line_num, expression, statements);
+}
+
+/****************************
+ * Parses a critical section
+ ****************************/
+CriticalSection* Parser::ParseCritical(int depth)
+{
+  return NULL;
 }
 
 /****************************

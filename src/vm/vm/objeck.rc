@@ -75,7 +75,7 @@ BEGIN
             VALUE "FileVersion", "0, 9, 5, 0"
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2008-2010"
-            VALUE "OriginalFilename", "vm.exe"
+            VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Lanuage Runtime"
             VALUE "ProductVersion", "0, 9, 5, 0"
         END
