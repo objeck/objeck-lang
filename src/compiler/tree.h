@@ -1043,6 +1043,20 @@ public:
  * CriticalSection class
  ****************************/
 class CriticalSection : public Statement {
+  StatementList* statements;
+  
+ public:
+  CriticalSection(const string &f, const int l, StatementList* s) : Statement(f, l) {
+    statements = s;
+  }
+  
+  ~CriticalSection() {
+  }
+  
+  StatementList* GetStatements() {
+    return statements;
+  }
+
   const StatementType GetStatementType() {
     return CRITICAL_STMT;
   }
@@ -2096,7 +2110,13 @@ public:
     statements.push_back(tmp);
     return tmp;
   }
-
+  
+  CriticalSection* MakeCriticalSection(const string &file_name, const int line_num, StatementList* stmts) {
+    CriticalSection* tmp = new CriticalSection(file_name, line_num, stmts);
+    statements.push_back(tmp);
+    return tmp;
+  }
+  
   Select* MakeSelect(const string &file_name, const int line_num, Expression* eval_expression,
                      map<ExpressionList*, StatementList*> statement_map, StatementList* other) {
     Select* tmp = new Select(file_name, line_num, eval_expression, statement_map, other);
