@@ -1664,7 +1664,19 @@ While* Parser::ParseWhile(int depth)
  ****************************/
 CriticalSection* Parser::ParseCritical(int depth)
 {
-  return NULL;
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+
+#ifdef _DEBUG
+  Show("Critical Section", depth);
+#endif
+  
+  NextToken();
+  symbol_table->CurrentParseScope()->NewParseScope(); 
+  StatementList* statements =  ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  
+  return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, statements);
 }
 
 /****************************
