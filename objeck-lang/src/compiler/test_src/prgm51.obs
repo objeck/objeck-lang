@@ -1,0 +1,18 @@
+bundle Default {
+	class Hello {
+		New() {
+		}
+
+		function : Main(args : System.String[]), Nil {
+			Run(args);
+		}
+
+		function : Run(args : String[]), Nil {
+			(2 * 3)->PrintLine();
+			critical {	
+				"\"Hello\""->PrintLine();
+				(3*7)->PrintLine();
+			};
+		}
+	}
+}
