@@ -684,6 +684,22 @@ void Library::LoadStatements(LibraryMethod* method)
       instrs.push_back(new LibraryInstr(LOAD_FLOAT_LIT, ReadDouble()));
       break;
 
+    case THREAD_CREATE:
+      // TODO: implement
+      break;
+      
+    case THREAD_WAIT:
+      // TODO: implement
+      break;
+
+    case CRITICAL_START:
+      // TODO: implement
+      break;
+
+    case CRITICAL_END:
+      // TODO: implement
+      break;
+      
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;
