@@ -275,12 +275,14 @@ Token* Scanner::GetToken(int index)
   if(index < LOOK_AHEAD) {
     return tokens[index];
   }
-
+  
   return NULL;
 }
 
 /****************************
-* Gets the next character
+* Gets the next character.
+* Note, EOB is returned at
+* end of a stream
 ****************************/
 void Scanner::NextChar()
 {

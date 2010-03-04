@@ -576,8 +576,6 @@ Statement* Parser::ParseStatement(int depth)
       if(Match(TOKEN_ASSIGN)) {
         statement = ParseAssignment(variable, depth + 1);
       } else if(Match(TOKEN_ASSESSOR)) {
-        // TODO: Fix me a[1,2,3]->PrintLine()
-
         // subsequent method
         if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
           statement = ParseMethodCall(variable, depth + 1);
