@@ -849,6 +849,58 @@ bundle System {
 			@string->PrintLine();
 		}
 	}
+	
+	#~~
+	# Time class
+	~~#	
+	class Time {
+		New() {
+		}
+	}
+	
+	#~~
+	# Runtime system class
+	~~#	
+	class Runtime {
+		function : Join(), Nil {
+			THREAD_JOIN;
+		}
+		
+		function : GetTime(), Time {
+			CUR_TIME;
+		}
+		
+		function : Sleep(t : Int), Nil {
+			THREAD_SLEEP;
+		}
+	}
+	
+	#~~
+	# System thread class
+	~~#	
+	class Thread {
+		param : System.Base;
+		
+		New() {
+		}
+		
+		method : public : Execute(p : System.Base), Nil {
+			param := p;
+			ASYNC_MTHD_CALL;
+		}
+
+		#~~
+		# Sleeps worker thread
+		~~#
+		method : public : Sleep(t : Int), Nil {
+			THREAD_SLEEP;
+		}
+		
+		#~~
+		# Method to execute in new worker thread
+		~~#
+		method : virtual : public : Run(p : System.Base), Nil;
+	}	
 }
 
 #------------ I/O ------------

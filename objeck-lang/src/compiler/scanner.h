@@ -158,8 +158,11 @@ enum TokenType {
   DIR_EXISTS,
   DIR_LIST,
   // thread management
-  THREAD_CREATE,
-  THREAD_WAIT,
+  ASYNC_MTHD_CALL,
+  THREAD_SLEEP,
+  THREAD_JOIN,
+  // time
+  CUR_TIME
 #endif
 };
 

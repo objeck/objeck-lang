@@ -684,11 +684,11 @@ void Library::LoadStatements(LibraryMethod* method)
       instrs.push_back(new LibraryInstr(LOAD_FLOAT_LIT, ReadDouble()));
       break;
 
-    case THREAD_CREATE:
+    case ASYNC_MTHD_CALL:
       // TODO: implement
       break;
       
-    case THREAD_WAIT:
+    case THREAD_SLEEP:
       // TODO: implement
       break;
 
