@@ -143,8 +143,10 @@ void Scanner::LoadKeywords()
   ident_map["DIR_CREATE"] = DIR_CREATE;
   ident_map["DIR_EXISTS"] = DIR_EXISTS;
   ident_map["DIR_LIST"] = DIR_LIST;
-  ident_map["THREAD_CREATE"] = THREAD_CREATE;
-  ident_map["THREAD_WAIT"] = THREAD_WAIT;
+  ident_map["ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
+  ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
+  ident_map["THREAD_JOIN"] = THREAD_JOIN;
+  ident_map["CUR_TIME"] = CUR_TIME;
 #endif
 }
 
@@ -160,6 +162,8 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case THREAD_JOIN:
+  case CUR_TIME:
   case TOKEN_CRITICAL_ID:
   case TOKEN_VIRTUAL_ID:
   case TOKEN_FROM_ID:
@@ -225,8 +229,8 @@ void Scanner::CheckIdentifier(int index)
   case DIR_CREATE:
   case DIR_EXISTS:
   case DIR_LIST:
-  case THREAD_CREATE:
-  case THREAD_WAIT:
+  case ASYNC_MTHD_CALL:
+  case THREAD_SLEEP:
 #endif
     tokens[index]->SetType(ident_type);
     break;

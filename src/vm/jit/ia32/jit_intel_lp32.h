@@ -1619,8 +1619,8 @@ namespace Runtime {
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
 	     << mthd_id << "; mthd_name='" << mthd->GetName() << "'; params=" 
 	     << mthd->GetParamCount() << " ----------" << endl;
-
 #endif
+	
 	code_buf_max = 4096;
 #ifndef _WIN32
 	code = (BYTE_VALUE*)valloc(code_buf_max);

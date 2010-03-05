@@ -633,15 +633,27 @@ Statement* Parser::ParseStatement(int depth)
       break;
 
 #ifdef _SYSTEM
-    case THREAD_CREATE:
+    case ASYNC_MTHD_CALL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::THREAD_CREATE);
+							       instructions::ASYNC_MTHD_CALL);
       NextToken();
       break;
       
-    case THREAD_WAIT:
+    case THREAD_SLEEP:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::THREAD_WAIT);
+							       instructions::THREAD_SLEEP);
+      NextToken();
+      break;
+
+    case THREAD_JOIN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::THREAD_JOIN);
+      NextToken();
+      break;
+
+    case CUR_TIME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::CUR_TIME);
       NextToken();
       break;
       

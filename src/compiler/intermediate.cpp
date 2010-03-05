@@ -620,6 +620,30 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CEIL_FLOAT));
     break;
 
+  case ASYNC_MTHD_CALL:
+    // TODO: implement
+    break;
+    
+  case THREAD_JOIN:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(THREAD_JOIN));
+    break;
+    
+  case THREAD_SLEEP:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(THREAD_SLEEP));
+    break;
+    
+  case CRITICAL_START:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CRITICAL_START));
+    break;
+    
+  case CRITICAL_END:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CRITICAL_END));
+    break;
+    
+  case CUR_TIME:
+    // TODO: implement
+    break;
+    
     // -------------- standard i/o --------------
   case instructions::STD_OUT_BOOL:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
