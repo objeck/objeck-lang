@@ -507,29 +507,29 @@ use System;
 
 bundle Default {
   class Test {
-    function : Main(args : System.String[]), Nil {
+    function : Main(args : String[]), Nil {
       Run();
       "Done!"->PrintLine();
     }
 
     function : native : Run(), Nil {
-      tree : BinaryTree := BinaryTree->New();
+      tree := BinaryTree->New();
       for(i : Int := 0; i < 1000; i := i + 1;) {
-        v : IntHolder := IntHolder->New(i);
-        s : System.String := System.String->New("Pug-");
+        v := IntHolder->New(i);
+        s := String->New("Pug-");
         s->Append((i + 2)->ToString()->ToCharArray());
-        tree->Insert(v->As(System.Compare), s->As(System.Base));
+        tree->Insert(v->As(Compare), s->As(Base));
       };
 
-      v : Vector := tree->GetKeys();
+      v := tree->GetKeys();
       for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-        h : IntHolder := v->GetValue(i)->As(Structure.IntHolder);
+        h := v->GetValue(i)->As(Structure.IntHolder);
         h->GetValue()->PrintLine();
       };
 
       v := tree->GetValues();
       for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-        v->GetValue(i)->As(System.String)->PrintLine();
+        v->GetValue(i)->As(String)->PrintLine();
       };
     }
   }
@@ -658,7 +658,11 @@ NEW\_BYTE\_ARY & array dimension & pushes address of new byte array \\ \hline
 NEW\_INT\_ARY & array dimension & pushes address of new integer array \\ \hline
 NEW\_FLOAT\_ARY & array dimension & pushes address of new float array \\ \hline
 NEW\_OBJ\_INST & integer value for class id & pushes address of new class instance \\ \hline
-OBJ\_INST\_CAST & integer values for from class and to class & performs runtime class cast check (note: only required for up casting) \\ \hline
+OBJ\_INST\_CAST & integer values for ``from'' class and ``to'' class & performs runtime class cast check (note: only required for up casting) \\ \hline
+THREAD\_CREATE & n/a & creates an new thread instance (calculation stack and  stack pointer) \\ \hline
+THREAD\_WAIT & n/a & waits for worker threads to stop execution \\ \hline
+CRITICAL\_START & n/a & creates a mutex such that only one thread can execute in a given section \\ \hline
+CRITICAL\_END & n/a & releases a system mutex \\ \hline
 TRAP & integer value for trap id & calls runtime subroutine releasing control \\ \hline
 TRAP\_RTRN & integer value for trap id and number of arguments & calls runtime subroutine releasing control and then process an integer return value \\ \hline
 LIB\_NEW\_OBJ\_INST & n/a & symbolic library link for a new object instance  \\ \hline

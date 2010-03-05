@@ -817,7 +817,7 @@ namespace Runtime {
 	mem[0] = size;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-  PushInt(op_stack, stack_pos, (int32_t)mem);
+	PushInt(op_stack, stack_pos, (int32_t)mem);
 	
 #ifdef _DEBUG
 	cout << "jit oper: NEW_BYTE_ARY: dim=" << dim << "; size=" << size 
@@ -846,7 +846,7 @@ namespace Runtime {
 	mem[0] = size;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-  PushInt(op_stack, stack_pos, (int32_t)mem);
+	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
 	
@@ -871,7 +871,7 @@ namespace Runtime {
 	mem[0] = size / 2;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-  PushInt(op_stack, stack_pos, (int32_t)mem);
+	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
 	
@@ -881,7 +881,7 @@ namespace Runtime {
 #endif
 	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
 									   (long*)op_stack, *stack_pos);
-  PushInt(op_stack, stack_pos, (int32_t)mem);
+	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
 	
@@ -899,7 +899,7 @@ namespace Runtime {
 	       << "' to '" << program->GetClass(to_id)->GetName() << "' <<<" << endl;
 	  exit(1);
 	}
-  PushInt(op_stack, stack_pos, result);
+	PushInt(op_stack, stack_pos, result);
       }
 	break;
 	
@@ -1052,13 +1052,13 @@ namespace Runtime {
 	cout << "jit oper: TRAP_RTRN: id=" << op_stack[(*stack_pos) - 1] << endl; 
 #endif
 	switch(PopInt(op_stack, stack_pos)) {
-      case LOAD_CLS_INST_ID: {
+	case LOAD_CLS_INST_ID: {
 #ifdef _DEBUG
 	  cout << "  LOAD_CLS_INST_ID" << endl;
 #endif
 	  int32_t value = (int32_t)MemoryManager::Instance()->GetObjectID((long*)PopInt(op_stack, stack_pos));
-    PushInt(op_stack, stack_pos, value);
-  }
+	  PushInt(op_stack, stack_pos, value);
+	}
 	  break;
 	  
 	case LOAD_ARY_SIZE: {
@@ -1066,7 +1066,7 @@ namespace Runtime {
 	  cout << "  LOAD_ARY_SIZE" << endl;
 #endif
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
-    PushInt(op_stack, stack_pos, (int32_t)array[2]);
+	  PushInt(op_stack, stack_pos, (int32_t)array[2]);
 	}  
 	  break;
 
@@ -1084,7 +1084,7 @@ namespace Runtime {
 	  cout << "  CPY_STR_ARY: addr=" << array << "(" << long(array) 
 	       << "), from='" << value_str << "', to='" << str << "'" << endl;
 #endif
-    PushInt(op_stack, stack_pos, (int32_t)array);
+	  PushInt(op_stack, stack_pos, (int32_t)array);
 	}
 	  break;
 	  
@@ -1102,14 +1102,14 @@ namespace Runtime {
 	  FILE* file = (FILE*)instance[0];	  
 	  if(file) {
 	    if(fgetc(file) == EOF) {
-        PushInt(op_stack, stack_pos, 0);
+	      PushInt(op_stack, stack_pos, 0);
 	    }
 	    else {
-        PushInt(op_stack, stack_pos, 1);
+	      PushInt(op_stack, stack_pos, 1);
 	    }
 	  }
 	  else {
-        PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
@@ -1125,14 +1125,14 @@ namespace Runtime {
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    if(fread(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
-        PushInt(op_stack, stack_pos, 0);
+	      PushInt(op_stack, stack_pos, 0);
 	    }
 	    else {
-        PushInt(op_stack, stack_pos, 1);
+	      PushInt(op_stack, stack_pos, 1);
 	    }
 	  }
 	  else {
-        PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
@@ -1144,14 +1144,14 @@ namespace Runtime {
 	
 	  if(file) {
 	    if(fputc(value, file) != value) {
-        PushInt(op_stack, stack_pos, 0);
+	      PushInt(op_stack, stack_pos, 0);
 	    }
 	    else {
-        PushInt(op_stack, stack_pos, 1);
+	      PushInt(op_stack, stack_pos, 1);
 	    }
 	  }
 	  else {
-        PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
@@ -1166,14 +1166,14 @@ namespace Runtime {
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    if(fwrite(buffer + offset, 1, num, (FILE*)instance[0]) < 0) {
-        PushInt(op_stack, stack_pos, 0);
+	      PushInt(op_stack, stack_pos, 0);
 	    }
 	    else {
-        PushInt(op_stack, stack_pos, 1);
+	      PushInt(op_stack, stack_pos, 1);
 	    }
 	  }
 	  else {
-        PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
@@ -1185,14 +1185,14 @@ namespace Runtime {
 	
 	  if(file) {
 	    if(fseek(file, pos, SEEK_CUR) < 0) {
-        PushInt(op_stack, stack_pos, 0);
+	      PushInt(op_stack, stack_pos, 0);
 	    }
 	    else {
-        PushInt(op_stack, stack_pos, 1);
+	      PushInt(op_stack, stack_pos, 1);
 	    }
 	  }
 	  else {
-        PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
@@ -1202,7 +1202,7 @@ namespace Runtime {
 	  FILE* file = (FILE*)instance[0];	
 	
 	  if(file) {
-      PushInt(op_stack, stack_pos, feof(file) != 0);
+	    PushInt(op_stack, stack_pos, feof(file) != 0);
 	  }
 	  else {
 	    PushInt(op_stack, stack_pos, 1);
@@ -1712,8 +1712,8 @@ namespace Runtime {
 #ifdef _DEBUG
       cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
 	   << "; name='" << mthd->GetName() << "'; self=" << inst << "(" << (long)inst 
-     << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
-     << mthd->GetParamCount() << " ===" << endl;
+	   << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
+	   << mthd->GetParamCount() << " ===" << endl;
       assert((*stack_pos) >= mthd->GetParamCount());
 #endif
 
