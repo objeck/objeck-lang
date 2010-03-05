@@ -82,7 +82,7 @@ int main(const int argc, char* argv[])
 
     MemoryManager::Instance()->Clear();
   } else {
-    string usage = "Copyright (c) 2007-2010, Randy Hollines. All rights reserved.\n";
+    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
