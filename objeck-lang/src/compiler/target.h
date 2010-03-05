@@ -229,22 +229,6 @@ public:
 
   void Debug() {
     switch(type) {
-    case THREAD_CREATE:
-      cout << "THREAD_CREATE" << endl;
-      break;
-
-    case THREAD_WAIT:
-      cout << "THREAD_WAIT" << endl;
-      break;
-
-    case CRITICAL_START:
-      cout << "CRITICAL_START" << endl;
-      break;
-
-    case CRITICAL_END:
-      cout << "CRITICAL_END" << endl;
-      break;
-
     case POP_INT:
       cout << "POP_INT" << endl;
       break;
@@ -335,6 +319,22 @@ public:
     case STOR_FLOAT_ARY_ELM:
       cout << "STOR_FLOAT_ARY_ELM: dimension=" << operand
            << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+
+    case THREAD_CREATE:
+      cout << "THREAD_CREATE" << endl;
+      break;
+      
+    case THREAD_WAIT:
+      cout << "THREAD_WAIT" << endl;
+      break;
+
+    case CRITICAL_START:
+      cout << "CRITICAL_START" << endl;
+      break;
+
+    case CRITICAL_END:
+      cout << "CRITICAL_END" << endl;
       break;
 
     case AND_INT:
