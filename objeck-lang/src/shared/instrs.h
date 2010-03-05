@@ -90,8 +90,6 @@ typedef enum _InstructionType {
   // control
   RTRN,
   MTHD_CALL,
-  ASYNC_MTHD_CALL,
-  ASYNC_JOIN,
   LBL,
   JMP,
   // memory allocation
@@ -108,10 +106,13 @@ typedef enum _InstructionType {
   POP_INT,
   POP_FLOAT,
   // thread directives
-  THREAD_CREATE,
-  THREAD_WAIT,
+  ASYNC_MTHD_CALL,
+  THREAD_JOIN,
+  THREAD_SLEEP,
   CRITICAL_START,
   CRITICAL_END,
+  // time
+  CUR_TIME,
   // library directives
   LIB_NEW_OBJ_INST,
   LIB_MTHD_CALL,

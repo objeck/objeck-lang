@@ -321,12 +321,12 @@ public:
            << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
       break;
 
-    case THREAD_CREATE:
-      cout << "THREAD_CREATE" << endl;
+    case instructions::ASYNC_MTHD_CALL:
+      cout << "ASYNC_MTHD_CALL" << endl;
       break;
       
-    case THREAD_WAIT:
-      cout << "THREAD_WAIT" << endl;
+    case instructions::THREAD_SLEEP:
+      cout << "THREAD_SLEEP" << endl;
       break;
 
     case CRITICAL_START:
