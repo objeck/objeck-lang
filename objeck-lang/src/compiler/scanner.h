@@ -157,6 +157,9 @@ enum TokenType {
   DIR_CREATE,
   DIR_EXISTS,
   DIR_LIST,
+  // thread management
+  THREAD_CREATE,
+  THREAD_WAIT,
 #endif
 };
 
