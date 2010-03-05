@@ -633,6 +633,18 @@ Statement* Parser::ParseStatement(int depth)
       break;
 
 #ifdef _SYSTEM
+    case THREAD_CREATE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::THREAD_CREATE);
+      NextToken();
+      break;
+      
+    case THREAD_WAIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::THREAD_WAIT);
+      NextToken();
+      break;
+      
     case FLOR_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                   instructions::FLOR_FLOAT);

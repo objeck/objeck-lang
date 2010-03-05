@@ -143,6 +143,8 @@ void Scanner::LoadKeywords()
   ident_map["DIR_CREATE"] = DIR_CREATE;
   ident_map["DIR_EXISTS"] = DIR_EXISTS;
   ident_map["DIR_LIST"] = DIR_LIST;
+  ident_map["THREAD_CREATE"] = THREAD_CREATE;
+  ident_map["THREAD_WAIT"] = THREAD_WAIT;
 #endif
 }
 
@@ -223,6 +225,8 @@ void Scanner::CheckIdentifier(int index)
   case DIR_CREATE:
   case DIR_EXISTS:
   case DIR_LIST:
+  case THREAD_CREATE:
+  case THREAD_WAIT:
 #endif
     tokens[index]->SetType(ident_type);
     break;
