@@ -324,6 +324,10 @@ public:
     case instructions::ASYNC_MTHD_CALL:
       cout << "ASYNC_MTHD_CALL" << endl;
       break;
+
+    case instructions::THREAD_JOIN:
+      cout << "THREAD_JOIN" << endl;
+      break;
       
     case instructions::THREAD_SLEEP:
       cout << "THREAD_SLEEP" << endl;
@@ -335,6 +339,10 @@ public:
 
     case CRITICAL_END:
       cout << "CRITICAL_END" << endl;
+      break;
+
+    case instructions::CUR_TIME:
+      cout << "CUR_TIME" << endl;
       break;
 
     case AND_INT:
