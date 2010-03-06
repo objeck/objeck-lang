@@ -802,6 +802,25 @@ namespace Runtime {
       }
 	break;
 
+      case CUR_TIME: {
+	time_t raw_time;
+	time (&raw_time);
+	
+	struct tm* local_time = localtime (&raw_time);
+	long* time = (long*)inst;
+	time[0] = local_time->tm_mday; // day
+	time[1] = local_time->tm_mon; // month
+	time[2] = local_time->tm_year; // year
+	time[3] = local_time->tm_hour; // hours
+	time[4] = local_time->tm_min; // mins
+	time[5] = local_time->tm_sec; // secs
+
+#ifdef _DEBUG
+	cout << "jit oper: CUR_TIME: index=" << (*stack_pos) << endl;
+#endif
+      }
+	break;
+
       case NEW_BYTE_ARY: {
 	int32_t indices[8];
 	int32_t value = PopInt(op_stack, stack_pos);
