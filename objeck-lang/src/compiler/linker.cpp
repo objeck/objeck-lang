@@ -687,6 +687,10 @@ void Library::LoadStatements(LibraryMethod* method)
     case ASYNC_MTHD_CALL:
       // TODO: implement
       break;
+
+    case THREAD_JOIN:
+      // TODO: implement
+      break;
       
     case THREAD_SLEEP:
       // TODO: implement
@@ -697,6 +701,10 @@ void Library::LoadStatements(LibraryMethod* method)
       break;
 
     case CRITICAL_END:
+      // TODO: implement
+      break;
+
+    case CUR_TIME:
       // TODO: implement
       break;
       

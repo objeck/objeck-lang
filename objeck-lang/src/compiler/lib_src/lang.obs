@@ -854,7 +854,15 @@ bundle System {
 	# Time class
 	~~#	
 	class Time {
+		day : Int;
+		month : Int;
+		year : Int;
+		hours : Int;
+		mins : Int;
+		secs : Int;
+		
 		New() {
+			CUR_TIME;
 		}
 	}
 	
@@ -867,7 +875,7 @@ bundle System {
 		}
 		
 		function : GetTime(), Time {
-			CUR_TIME;
+			return Time->New();
 		}
 		
 		function : Sleep(t : Int), Nil {

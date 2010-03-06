@@ -162,8 +162,6 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
-  case THREAD_JOIN:
-  case CUR_TIME:
   case TOKEN_CRITICAL_ID:
   case TOKEN_VIRTUAL_ID:
   case TOKEN_FROM_ID:
@@ -231,6 +229,8 @@ void Scanner::CheckIdentifier(int index)
   case DIR_LIST:
   case ASYNC_MTHD_CALL:
   case THREAD_SLEEP:
+  case THREAD_JOIN:
+  case CUR_TIME:
 #endif
     tokens[index]->SetType(ident_type);
     break;
