@@ -199,7 +199,7 @@ class StackInterpreter {
 
   static void* AsyncCall(void* arg);
   static void* AsyncJitCall(void* arg);
-
+  
   inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
   inline void ProcessNewByteArray(StackInstr* instr);
   inline void ProcessNewObjectInstance(StackInstr* instr);
@@ -219,6 +219,7 @@ class StackInterpreter {
   inline void ProcessLoadFloat(StackInstr* instr);
   inline void ProcessCopyInt(StackInstr* instr);
   inline void ProcessCopyFloat(StackInstr* instr);
+  inline void ProcessCurrentTime(StackInstr* instr);
   inline void ProcessTrap(StackInstr* instr);
 
 public:
