@@ -610,11 +610,11 @@ void Loader::LoadStatements(StackMethod* method)
       method->AddInstruction(new StackInstr(RTRN));
       break;
 
-    case THREAD_CREATE:
+    case THREAD_JOIN:
       // TODO: implement
       break;
       
-    case THREAD_WAIT:
+    case THREAD_SLEEP:
       // TODO: implement
       break;
 
@@ -623,6 +623,10 @@ void Loader::LoadStatements(StackMethod* method)
       break;
 
     case CRITICAL_END:
+      // TODO: implement
+      break;
+
+    case CUR_TIME:
       // TODO: implement
       break;
       
