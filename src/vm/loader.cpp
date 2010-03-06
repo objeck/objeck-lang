@@ -611,23 +611,23 @@ void Loader::LoadStatements(StackMethod* method)
       break;
 
     case THREAD_JOIN:
-      // TODO: implement
+      method->AddInstruction(new StackInstr(THREAD_JOIN));
       break;
       
     case THREAD_SLEEP:
-      // TODO: implement
+      method->AddInstruction(new StackInstr(THREAD_SLEEP));
       break;
 
     case CRITICAL_START:
-      // TODO: implement
+      method->AddInstruction(new StackInstr(CRITICAL_START));
       break;
 
     case CRITICAL_END:
-      // TODO: implement
+      method->AddInstruction(new StackInstr(CRITICAL_END));
       break;
 
     case CUR_TIME:
-      // TODO: implement
+      method->AddInstruction(new StackInstr(CUR_TIME));
       break;
       
     case TRAP: {

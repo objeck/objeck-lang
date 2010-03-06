@@ -454,7 +454,37 @@ void StackInterpreter::Execute()
       ProcessTrap(instr);
       break;
 
+    case ASYNC_MTHD_CALL:
+      // TODO: implement
+      break;
+
+    case THREAD_JOIN:
+      // TODO: implement
+      break;
+      
+    case THREAD_SLEEP:
+      // TODO: implement
+      break;
+
+    case CRITICAL_START:
+      // TODO: implement
+      break;
+
+    case CRITICAL_END:
+      // TODO: implement
+      break;
+
+    case CUR_TIME:
+#ifdef _DEBUG
+      cout << "stack oper: CUR_TIME; call_pos=" << call_stack_pos << endl;
+#endif
+      ProcessCurrentTime(instr);
+      break;
+      
     case JMP:
+#ifdef _DEBUG
+      cout << "stack oper: JMP; call_pos=" << call_stack_pos << endl;
+#endif
       if(instr->GetOperand2() < 0) {
         ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
       } else if(PopInt() == instr->GetOperand2()) {
@@ -463,6 +493,23 @@ void StackInterpreter::Execute()
       break;
     }
   }
+}
+
+/********************************
+ * Processes the current time
+ ********************************/
+void StackInterpreter::ProcessCurrentTime(StackInstr* instr) {
+  time_t raw_time;
+  time (&raw_time);
+  
+  struct tm* local_time = localtime (&raw_time);
+  long* time = (long*)frame->GetMemory()[0];
+  time[0] = local_time->tm_mday; // day
+  time[1] = local_time->tm_mon; // month
+  time[2] = local_time->tm_year; // year
+  time[3] = local_time->tm_hour; // hours
+  time[4] = local_time->tm_min; // mins
+  time[5] = local_time->tm_sec; // secs
 }
 
 /********************************
