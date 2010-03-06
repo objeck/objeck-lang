@@ -1556,7 +1556,7 @@ public:
 
   bool AddMethod(Method* m) {
     const string &parsed_name = m->GetParsedName();
-    for(int i = 0; i < method_list.size(); i++) {
+    for(unsigned int i = 0; i < method_list.size(); i++) {
       if(method_list[i]->GetParsedName() == parsed_name) {
 	return false;
       }
