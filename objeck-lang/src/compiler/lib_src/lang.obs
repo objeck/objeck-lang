@@ -851,22 +851,6 @@ bundle System {
 	}
 	
 	#~~
-	# Time class
-	~~#	
-	class Time {
-		day : Int;
-		month : Int;
-		year : Int;
-		hours : Int;
-		mins : Int;
-		secs : Int;
-		
-		New() {
-			CUR_TIME;
-		}
-	}
-	
-	#~~
 	# Runtime system class
 	~~#	
 	class Runtime {
@@ -874,7 +858,7 @@ bundle System {
 			THREAD_JOIN;
 		}
 		
-		function : GetTime(), Time {
+		function : GetTime(), System.Time {
 			return Time->New();
 		}
 		
@@ -884,16 +868,56 @@ bundle System {
 	}
 	
 	#~~
+	# Time class
+	~~#	
+	class Time {
+		@day : Int;
+		@month : Int;
+		@year : Int;
+		@hours : Int;
+		@mins : Int;
+		@secs : Int;
+		
+		New() {
+			CUR_TIME;
+		}
+		
+		method : public : GetDay(), Int {
+			return @day;
+		}
+		
+		method : public : GetMonth(), Int {
+			return @month;
+		}
+		
+		method : public : GetYear(), Int {
+			return @year;
+		}
+		
+		method : public : GetHours(), Int {
+			return @hours;
+		}
+		
+		method : public : GetMinutes(), Int {
+			return @mins;
+		}
+		
+		method : public : GetSeconds(), Int {
+			return @secs;
+		}
+	}
+	
+	#~~
 	# System thread class
 	~~#	
 	class Thread {
-		param : System.Base;
+		@param : System.Base;
 		
 		New() {
 		}
 		
-		method : public : Execute(p : System.Base), Nil {
-			param := p;
+		method : public : Execute(param : System.Base), Nil {
+			@param := param;
 			ASYNC_MTHD_CALL;
 		}
 
@@ -907,7 +931,7 @@ bundle System {
 		#~~
 		# Method to execute in new worker thread
 		~~#
-		method : virtual : public : Run(p : System.Base), Nil;
+		method : virtual : public : Run(param : System.Base), Nil;
 	}	
 }
 

@@ -1421,6 +1421,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, int depth)
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
     Type* type = current_method->GetReturn();
+
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
     if(type->GetType() == CLASS_TYPE) {
@@ -2044,7 +2045,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       // INT
       switch(right->GetType()) {
       case VAR_TYPE:
-        ProcessError(expression, "Invalid operation using classes: Char and Var");
+        ProcessError(expression, "Invalid operation using classes: Var and Int");
         break;
 
       case NIL_TYPE:
