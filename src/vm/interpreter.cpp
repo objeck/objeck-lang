@@ -156,15 +156,6 @@ void StackInterpreter::Execute()
       ProcessLoadFloat(instr);
       break;
 
-    case ASYNC_JOIN:
-#ifdef _DEBUG
-      cout << "stack oper: ASYNC_JOIN; call_pos=" << call_stack_pos << endl;
-#endif
-#ifndef _WIN32
-      pthread_join((pthread_t)PopInt(), NULL);
-#endif
-      break;
-
     case AND_INT: {
 #ifdef _DEBUG
       cout << "stack oper: AND; call_pos=" << call_stack_pos << endl;

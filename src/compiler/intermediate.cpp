@@ -641,7 +641,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
   case CUR_TIME:
-    // TODO: implement
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(CUR_TIME));
     break;
     
     // -------------- standard i/o --------------
