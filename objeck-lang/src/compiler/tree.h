@@ -1556,13 +1556,14 @@ public:
 
   bool AddMethod(Method* m) {
     const string &parsed_name = m->GetParsedName();
-    if(GetMethod(parsed_name)) {
-      return false;
+    for(int i = 0; i < method_list.size(); i++) {
+      if(method_list[i]->GetParsedName() == parsed_name) {
+	return false;
+      }
     }
-
+    
     method_list.push_back(m);
     m->SetClass(this);
-
     return true;
   }
 
@@ -2257,7 +2258,7 @@ public:
   }
 
   bool HasBundleName(const string& name) {
-    vector<string>::iterator found = find (bundle_names.begin(), bundle_names.end(), name);
+    vector<string>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
     return found != bundle_names.end();
   }
 

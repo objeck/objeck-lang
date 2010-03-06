@@ -685,27 +685,27 @@ void Library::LoadStatements(LibraryMethod* method)
       break;
 
     case ASYNC_MTHD_CALL:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(ASYNC_MTHD_CALL));
       break;
 
     case THREAD_JOIN:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(THREAD_JOIN));
       break;
       
     case THREAD_SLEEP:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(THREAD_SLEEP));
       break;
 
     case CRITICAL_START:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(CRITICAL_START));
       break;
 
     case CRITICAL_END:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(CRITICAL_END));
       break;
 
     case CUR_TIME:
-      // TODO: implement
+      instrs.push_back(new LibraryInstr(CUR_TIME));
       break;
       
     default: {
