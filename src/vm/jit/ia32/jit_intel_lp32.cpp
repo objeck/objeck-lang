@@ -423,6 +423,14 @@ void JitCompilerIA32::ProcessInstructions() {
     }
       break;
 
+    case CUR_TIME: {
+#ifdef _DEBUG
+      cout << "CUR_TIME: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CUR_TIME, instr, instr_index, instr->GetOperand());
+    }
+      break;
+      
     case NEW_BYTE_ARY:
 #ifdef _DEBUG
       cout << "NEW_BYTE_ARY: dim=" << instr->GetOperand() << " regs=" << aval_regs.size()
