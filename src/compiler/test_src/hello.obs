@@ -5,12 +5,12 @@ bundle Default {
 		}
 		
 		function : native : Run(), Nil {
-			a := 10;
-			if(a > 20) {
-				"Less"->PrintLine();
+			a := 9;
+			if(a >= 10) {
+				"a"->PrintLine();
 			}
 			else {
-				"More"->PrintLine();
+				"b"->PrintLine();
 			};
 		}	
 	}

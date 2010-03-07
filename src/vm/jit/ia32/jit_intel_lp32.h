@@ -273,6 +273,7 @@ namespace Runtime {
     void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
+
     // execute
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst,
 			       BYTE_VALUE* code, const int32_t code_size, 
@@ -761,7 +762,10 @@ namespace Runtime {
     
     // function call instruction
     void call_reg(Register reg);
-    
+
+    // generates a conditional jump
+    bool cond_jmp(InstructionType type);
+
     static int32_t PopInt(int32_t* op_stack, int32_t *stack_pos) {
       int32_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
