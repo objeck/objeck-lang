@@ -1871,11 +1871,6 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
     // jump - false
     //
     else {
-      
-
-
-
-
       // TODO reverse logic...
       switch(type) {
       case LES_INT:	
@@ -1920,22 +1915,16 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
         AddMachineCode(0x8C);
         break;
       }  
-
-
-
-
-
-    }
-
+    }    
     // store update index
     jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
     // temp offset
     AddImm(0);
     skip_jump = true;
-
+    
     return true;
   }
-
+  
   return false;
 }
 
@@ -2020,7 +2009,9 @@ void JitCompilerIA32::math_reg_reg(Register src, Register dest, InstructionType 
   case LES_EQL_INT:
   case GTR_EQL_INT:
     cmp_reg_reg(src, dest);
-    cmov_reg(dest, type);
+    if(!cond_jmp(type)) {
+      cmov_reg(dest, type);
+    }
     break;
   }
 }
@@ -2057,9 +2048,10 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
     
   case LES_INT:
   case LES_EQL_INT:
-    // cmp_mem_reg(offset, EBP, reg, true);
     cmp_mem_reg(offset, EBP, reg);
-    cmov_reg(reg, type);
+    if(!cond_jmp(type)) {
+      cmov_reg(reg, type);
+    }
     break;
 
   case GTR_INT:
@@ -2067,7 +2059,9 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
   case NEQL_INT:  
   case GTR_EQL_INT:
     cmp_mem_reg(offset, EBP, reg);
-    cmov_reg(reg, type);
+    if(!cond_jmp(type)) {
+      cmov_reg(reg, type);
+    }
     break;
   }
 }
