@@ -1807,50 +1807,22 @@ void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType type) {
-  switch(type) {
-  case AND_INT:
-    and_imm_reg(imm, reg);
-    break;
-
-  case OR_INT:
-    or_imm_reg(imm, reg);
-    break;
-    
-  case ADD_INT:
-    add_imm_reg(imm, reg);
-    break;
-
-  case SUB_INT:
-    sub_imm_reg(imm, reg);
-    break;
-
-  case MUL_INT:
-    mul_imm_reg(imm, reg);
-    break;
-
-  case DIV_INT:
-    div_imm_reg(imm, reg);
-    break;
-
-  case MOD_INT:
-    div_imm_reg(imm, reg, true);
-    break;
-
-  case LES_INT:	
-  case GTR_INT:
-  case EQL_INT:
-  case NEQL_INT:
-  case LES_EQL_INT:
-  case GTR_EQL_INT: {
-    cmp_imm_reg(imm, reg);
-    StackInstr* next_instr = mthd->GetInstruction(instr_index); // TODO: bounds check?
-    if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
+bool JitCompilerIA32::cond_jmp(InstructionType type) {
+  if(instr_index >= mthd->GetInstructionCount()) {
+    return false;
+  }
+  
+  StackInstr* next_instr = mthd->GetInstruction(instr_index);
+  if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
 #ifdef _DEBUG
-      cout << "JMP: id=" << next_instr->GetOperand() << ", regs=" << aval_regs.size() 
-	   << "," << aux_regs.size() << endl;
+    cout << "JMP: id=" << next_instr->GetOperand() << ", regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
-      AddMachineCode(0x0f);
+    AddMachineCode(0x0f);
+
+    //
+    // jump if true
+    //
+    if(next_instr->GetOperand2() == 1) {
       switch(type) {
       case LES_INT:	
 #ifdef _DEBUG
@@ -1893,17 +1865,120 @@ void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType ty
 #endif
         AddMachineCode(0x8D);
         break;
-      }
-      // store update index
-      jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
-      // temp offset
-      AddImm(0);
-      skip_jump = true;
+      }  
     }
+    //
+    // jump - false
+    //
     else {
+      
+
+
+
+
+      // TODO reverse logic...
+      switch(type) {
+      case LES_INT:	
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jl]" << endl;
+#endif
+        AddMachineCode(0x8D);
+        break;
+
+      case GTR_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jg]" << endl;
+#endif
+        AddMachineCode(0x8E);
+        break;
+
+      case EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jne]" << endl;
+#endif
+        AddMachineCode(0x85);
+        break;
+
+      case NEQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [je]" << endl;
+#endif
+        AddMachineCode(0x82);
+        break;
+
+      case LES_EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jle]" << endl;
+#endif
+        AddMachineCode(0x8F);
+        break;
+        
+      case GTR_EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jge]" << endl;
+#endif
+        AddMachineCode(0x8C);
+        break;
+      }  
+
+
+
+
+
+    }
+
+    // store update index
+    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+    // temp offset
+    AddImm(0);
+    skip_jump = true;
+
+    return true;
+  }
+
+  return false;
+}
+
+void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType type) {
+  switch(type) {
+  case AND_INT:
+    and_imm_reg(imm, reg);
+    break;
+
+  case OR_INT:
+    or_imm_reg(imm, reg);
+    break;
+    
+  case ADD_INT:
+    add_imm_reg(imm, reg);
+    break;
+
+  case SUB_INT:
+    sub_imm_reg(imm, reg);
+    break;
+
+  case MUL_INT:
+    mul_imm_reg(imm, reg);
+    break;
+
+  case DIV_INT:
+    div_imm_reg(imm, reg);
+    break;
+
+  case MOD_INT:
+    div_imm_reg(imm, reg, true);
+    break;
+
+  case LES_INT:	
+  case GTR_INT:
+  case EQL_INT:
+  case NEQL_INT:
+  case LES_EQL_INT:
+  case GTR_EQL_INT:
+    cmp_imm_reg(imm, reg);
+    if(!cond_jmp(type)) {
       cmov_reg(reg, type);
     }
-  }
     break;
   }
 }
