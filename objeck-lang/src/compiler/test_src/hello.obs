@@ -1,9 +1,17 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
-			for(i := 0; i < 10; i := i + 1;) {
-				"Hello World!"->PrintLine();
-			};
+			Run();
 		}
+		
+		function : native : Run(), Nil {
+			a := 10;
+			if(a > 20) {
+				"Less"->PrintLine();
+			}
+			else {
+				"More"->PrintLine();
+			};
+		}	
 	}
 }

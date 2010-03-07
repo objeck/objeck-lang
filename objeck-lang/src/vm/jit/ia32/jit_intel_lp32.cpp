@@ -322,6 +322,7 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessCopy(instr);
       break;
       
+      // mathematical
     case AND_INT:
     case OR_INT:
     case ADD_INT:
@@ -329,6 +330,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case MUL_INT:
     case DIV_INT:
     case MOD_INT:
+      // comparison
     case LES_INT:
     case GTR_INT:
     case LES_EQL_INT:
@@ -603,10 +605,6 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case JMP:
-#ifdef _DEBUG
-      cout << "JMP: id=" << instr->GetOperand() << ", regs=" << aval_regs.size() 
-	   << "," << aux_regs.size() << endl;
-#endif
       ProcessJump(instr);
       break;
       
@@ -710,53 +708,63 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
 }
 
 void JitCompilerIA32::ProcessJump(StackInstr* instr) {
-  if(instr->GetOperand2() < 0) {
-    AddMachineCode(0xe9);
+  if(!skip_jump) {
+#ifdef _DEBUG
+      cout << "JMP: id=" << instr->GetOperand() << ", regs=" << aval_regs.size() 
+	   << "," << aux_regs.size() << endl;
+#endif
+    if(instr->GetOperand2() < 0) {
+      AddMachineCode(0xe9);
+    }
+    else {
+      RegInstr* left = working_stack.front();
+      working_stack.pop_front(); 
+
+      switch(left->GetType()) {
+      case IMM_32:{
+        RegisterHolder* holder = GetRegister();
+        move_imm_reg(left->GetOperand(), holder->GetRegister());
+        cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
+        ReleaseRegister(holder);
+      }
+        break;
+        
+      case REG_32:
+        cmp_imm_reg(instr->GetOperand2(), left->GetRegister()->GetRegister());
+        ReleaseRegister(left->GetRegister());
+        break;
+
+      case MEM_32: {
+        RegisterHolder* holder = GetRegister();
+        move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+        cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
+        ReleaseRegister(holder);
+      }
+        break;
+
+      default:
+        cerr << ">>> Should never occur (compiler bug?) type=" << left->GetType() << " <<<" << endl;
+        exit(1);
+        break;
+      }
+
+      // 1 byte compare with register
+      AddMachineCode(0x0f);
+      AddMachineCode(0x84);
+      
+      // clean up
+      delete left;
+      left = NULL;
+    }
+    // store update index
+    jump_table.insert(pair<int32_t, StackInstr*>(code_index, instr));
+    // temp offset, updated in next pass
+    AddImm(0);
   }
   else {
-    RegInstr* left = working_stack.front();
-    working_stack.pop_front(); 
-
-    switch(left->GetType()) {
-    case IMM_32:{
-      RegisterHolder* holder = GetRegister();
-      move_imm_reg(left->GetOperand(), holder->GetRegister());
-      cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
-      ReleaseRegister(holder);
-    }
-      break;
-      
-    case REG_32:
-      cmp_imm_reg(instr->GetOperand2(), left->GetRegister()->GetRegister());
-      ReleaseRegister(left->GetRegister());
-      break;
-
-    case MEM_32: {
-      RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-      cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
-      ReleaseRegister(holder);
-    }
-      break;
-
-    default:
-      cerr << ">>> Should never occur (compiler bug?) type=" << left->GetType() << " <<<" << endl;
-      exit(1);
-      break;
-    }
-
-    // 1 byte compare with register
-    AddMachineCode(0x0f);
-    AddMachineCode(0x84);
-    
-    // clean up
-    delete left;
-    left = NULL;
+    working_stack.pop_front();
+    skip_jump = false;
   }
-  // store update index
-  jump_table.insert(pair<int32_t, StackInstr*>(code_index, instr));
-  // temp offset
-  AddImm(0);
 }
 
 void JitCompilerIA32::ProcessReturnParameters(bool is_int) {
@@ -1834,9 +1842,68 @@ void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType ty
   case EQL_INT:
   case NEQL_INT:
   case LES_EQL_INT:
-  case GTR_EQL_INT:
+  case GTR_EQL_INT: {
     cmp_imm_reg(imm, reg);
-    cmov_reg(reg, type);
+    StackInstr* next_instr = mthd->GetInstruction(instr_index); // TODO: bounds check?
+    if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
+#ifdef _DEBUG
+      cout << "JMP: id=" << next_instr->GetOperand() << ", regs=" << aval_regs.size() 
+	   << "," << aux_regs.size() << endl;
+#endif
+      AddMachineCode(0x0f);
+      switch(type) {
+      case LES_INT:	
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jl]" << endl;
+#endif
+        AddMachineCode(0x8C);
+        break;
+
+      case GTR_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jg]" << endl;
+#endif
+        AddMachineCode(0x8F);
+        break;
+
+      case EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [je]" << endl;
+#endif
+        AddMachineCode(0x84);
+        break;
+
+      case NEQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jne]" << endl;
+#endif
+        AddMachineCode(0x85);
+        break;
+
+      case LES_EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jle]" << endl;
+#endif
+        AddMachineCode(0x8E);
+        break;
+        
+      case GTR_EQL_INT:
+#ifdef _DEBUG
+        cout << "  " << (++instr_count) << ": [jge]" << endl;
+#endif
+        AddMachineCode(0x8D);
+        break;
+      }
+      // store update index
+      jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+      // temp offset
+      AddImm(0);
+      skip_jump = true;
+    }
+    else {
+      cmov_reg(reg, type);
+    }
+  }
     break;
   }
 }
