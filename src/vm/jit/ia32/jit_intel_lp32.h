@@ -235,6 +235,7 @@ namespace Runtime {
     int32_t instr_index;
     int32_t code_buf_max;
     bool compile_success;
+    bool skip_jump;
 
     // setup and teardown
     void Prolog();
@@ -1561,7 +1562,8 @@ namespace Runtime {
   public: 
     static void Initialize(StackProgram* p);
     
-    JitCompilerIA32() {}
+    JitCompilerIA32() {
+    }
     
     ~JitCompilerIA32() {
       while(!working_stack.empty()) {
@@ -1628,6 +1630,7 @@ namespace Runtime {
      ****************************/
     bool Compile(StackMethod* cm) {
       compile_success = true;
+      skip_jump = false;
       
       if(!cm->GetNativeCode()) {
 	mthd = cm;
