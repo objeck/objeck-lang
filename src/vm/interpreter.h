@@ -75,13 +75,14 @@ class StackInterpreter {
 
   inline void StackErrorUnwind() {
     long pos = call_stack_pos;
-    cerr << "Unwinding stack (" << this << "):" << endl;
+    cerr << "Unwinding local stack (" << this << "):" << endl;
     cerr << "  method: pos=" << pos << ", name="
          << frame->GetMethod()->GetName() << endl;
     while(pos--) {
       cerr << "  method: pos=" << pos << ", name="
            << call_stack[pos]->GetMethod()->GetName() << endl;
     }
+    cerr << "  ..." << endl;
   }
 
   inline bool StackEmpty() {
