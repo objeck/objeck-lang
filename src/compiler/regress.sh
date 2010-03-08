@@ -10,6 +10,8 @@ until [  $i -lt 1 ]; do
 	cd ../vm
 	if [ $i = 41 ]; then
 		./obr ../compiler/a.obe 7
+	elif [ $i = 37 ]; then
+		./obr ../compiler/a.obe 13
 	else
 		./obr ../compiler/a.obe
 	fi
