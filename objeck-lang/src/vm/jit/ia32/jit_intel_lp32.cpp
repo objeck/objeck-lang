@@ -762,8 +762,18 @@ void JitCompilerIA32::ProcessJump(StackInstr* instr) {
     AddImm(0);
   }
   else {
-    working_stack.pop_front();
+    RegInstr* left = working_stack.front();
+    working_stack.pop_front(); 
     skip_jump = false;
+
+    // release register
+    if(left->GetType() == REG_32) {
+      ReleaseRegister(left->GetRegister());
+    }
+
+    // clean up
+    delete left;
+    left = NULL;
   }
 }
 
@@ -1814,6 +1824,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
   
   StackInstr* next_instr = mthd->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
+  // if(false) {
 #ifdef _DEBUG
     cout << "JMP: id=" << next_instr->GetOperand() << ", regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
@@ -1828,14 +1839,14 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         cout << "  " << (++instr_count) << ": [jl]" << endl;
 #endif
-        AddMachineCode(0x8C);
+        AddMachineCode(0x8c);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
         cout << "  " << (++instr_count) << ": [jg]" << endl;
 #endif
-        AddMachineCode(0x8F);
+        AddMachineCode(0x8f);
         break;
 
       case EQL_INT:
@@ -1856,14 +1867,14 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         cout << "  " << (++instr_count) << ": [jle]" << endl;
 #endif
-        AddMachineCode(0x8E);
+        AddMachineCode(0x8e);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
         cout << "  " << (++instr_count) << ": [jge]" << endl;
 #endif
-        AddMachineCode(0x8D);
+        AddMachineCode(0x8d);
         break;
       }  
     }
@@ -1871,20 +1882,19 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
     // jump - false
     //
     else {
-      // TODO reverse logic...
       switch(type) {
       case LES_INT:	
 #ifdef _DEBUG
-        cout << "  " << (++instr_count) << ": [jl]" << endl;
+        cout << "  " << (++instr_count) << ": [jge]" << endl;
 #endif
-        AddMachineCode(0x8D);
+        AddMachineCode(0x8d);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
-        cout << "  " << (++instr_count) << ": [jg]" << endl;
+        cout << "  " << (++instr_count) << ": [jle]" << endl;
 #endif
-        AddMachineCode(0x8E);
+        AddMachineCode(0x8e);
         break;
 
       case EQL_INT:
@@ -1898,21 +1908,21 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
 #ifdef _DEBUG
         cout << "  " << (++instr_count) << ": [je]" << endl;
 #endif
-        AddMachineCode(0x82);
+        AddMachineCode(0x84);
         break;
 
       case LES_EQL_INT:
 #ifdef _DEBUG
-        cout << "  " << (++instr_count) << ": [jle]" << endl;
+        cout << "  " << (++instr_count) << ": [jg]" << endl;
 #endif
-        AddMachineCode(0x8F);
+        AddMachineCode(0x8f);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
-        cout << "  " << (++instr_count) << ": [jge]" << endl;
+        cout << "  " << (++instr_count) << ": [jl]" << endl;
 #endif
-        AddMachineCode(0x8C);
+        AddMachineCode(0x8c);
         break;
       }  
     }    
@@ -2053,7 +2063,7 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
       cmov_reg(reg, type);
     }
     break;
-
+    
   case GTR_INT:
   case EQL_INT:
   case NEQL_INT:  
@@ -2412,21 +2422,6 @@ void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) 
 }
 
 void JitCompilerIA32::sub_mem_xreg(int32_t offset, Register src, Register dest) {
-  /*
-    #ifdef _DEBUG
-    cout << "  " << (++instr_count) << ": [subsd " << offset << "(%" 
-    << GetRegisterName(src) << "), %" << GetRegisterName(dest) 
-    << "]" << endl;
-    #endif
-    // encode
-    AddMachineCode(0xf2);
-    AddMachineCode(0x0f);
-    AddMachineCode(0x5c);
-    AddMachineCode(ModRM(src, dest));
-    // write value
-    AddImm(offset);
-  */
-
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   sub_xreg_xreg(dest, holder->GetRegister());
@@ -2449,19 +2444,6 @@ void JitCompilerIA32::mul_mem_xreg(int32_t offset, Register src, Register dest) 
 }
 
 void JitCompilerIA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
-  /*
-    #ifdef _DEBUG
-    cout << "  " << (++instr_count) << ": [divsd " << offset << "(%" 
-    << GetRegisterName(src) << "), %" << GetRegisterName(dest) 
-    << "]" << endl;
-    #endif
-    // encode
-    AddMachineCode(0xf2);
-    AddMachineCode(0x0f);
-    AddMachineCode(0x5e);
-    AddMachineCode(ModRM(src, dest));
-    AddImm(offset);
-  */
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   div_xreg_xreg(dest, holder->GetRegister());
