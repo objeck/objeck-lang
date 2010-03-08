@@ -186,7 +186,6 @@ void Parser::ParseBundle(int depth)
     Show("search: " + ident, depth);
 #endif
   }
-  program->SetUses(uses);
 
   // name space
   if(!Match(TOKEN_BUNDLE_ID)) {
@@ -198,6 +197,9 @@ void Parser::ParseBundle(int depth)
       string bundle_name = ParseBundleName();
       if(bundle_name == DEFAULT_BUNDLE_NAME) {
         bundle_name = "";
+      }
+      else {
+	uses.push_back(bundle_name);
       }
       symbol_table = new SymbolTableManager;
       ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -229,6 +231,7 @@ void Parser::ParseBundle(int depth)
       program->AddBundle(bundle);
     }
   }
+  program->SetUses(uses);
 }
 
 /****************************

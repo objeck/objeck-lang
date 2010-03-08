@@ -1285,7 +1285,10 @@ class Method : public ParseNode {
   string name;
   string parsed_name;
   string encoded_name;
+
   string encoded_return;
+  string parsed_return;
+  
   StatementList* statements;
   DeclarationList* declarations;
   Type* return_type;
@@ -1380,7 +1383,7 @@ public:
   }
 
   void EncodeSignature() {
-    encoded_return = EncodeType(return_type);
+    parsed_return = EncodeType(return_type);
 
     // name
     parsed_name = name + ':';
@@ -1461,7 +1464,15 @@ public:
     return encoded_name;
   }
 
+  const string GetParsedReturn() {
+    return parsed_return;
+  }
+  
   const string GetEncodedReturn() {
+    if(encoded_return.size() == 0) {
+      EncodeSignature();
+    }
+    
     return encoded_return;
   }
 
@@ -1487,7 +1498,7 @@ public:
 };
 
 /****************************
- * Class class
+ * class Class
  ****************************/
 class Class : public ParseNode {
   friend class TreeFactory;
