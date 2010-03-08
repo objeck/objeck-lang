@@ -1,0 +1,7 @@
+bundle Default {
+	class Hello {
+		function : Main(), Nil {
+			"Hello World!"->PrintLine();
+		}
+	}
+}
