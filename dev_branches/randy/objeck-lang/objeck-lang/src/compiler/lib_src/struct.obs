@@ -1,0 +1,752 @@
+#~~
+# Basic data structures
+~~#	
+
+bundle Structure {
+	# Integer Vector
+	class IntVector {
+		@values : Int[];
+		@size : Int;
+		
+		New() {
+			@values := Int->New[16];
+			@size := 0;
+		}
+
+		method : native : Expand(), Nil {
+			if(@size >= @values->GetSize()) {
+				temp : Int[] := Int->New[@size * 2];
+				for(i : Int := 0; i < @size; i := i + 1;) {
+					temp[i] := @values[i];
+				};
+				@values := temp;
+			};
+		}
+
+		method : public : AddBack(value : Int), Nil {
+			Expand();
+			@values[@size] := value;
+			@size := @size + 1;
+		}
+
+		method : public : RemoveBack(), Nil {
+			@size := @size - 1;
+		}
+
+		method : public : GetValue(index : Int), Int {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return 0;
+		}
+
+		method : public : SetValue(value : Int, index : Int), Nil {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+			};
+		}
+		
+		method : public : GetSize(), Int {
+			return @size;
+		}
+	}
+	
+	# Float Vector
+	class FloatVector {
+		@values : Float[];
+		@size : Int;
+		
+		New() {
+			@values := Float->New[16];
+			@size := 0;
+		}
+
+		method : native : Expand(), Nil {
+			if(@size >= @values->GetSize()) {
+				temp : Float[] := Float->New[@size * 2];
+				for(i : Int := 0; i < @size; i := i + 1;) {
+					temp[i] := @values[i];
+				};
+				@values := temp;
+			};
+		}
+
+		method : public : AddBack(value : Float), Nil {
+			Expand();
+			@values[@size] := value;
+			@size := @size + 1;
+		}
+
+		method : public : RemoveBack(), Nil {
+			@size := @size - 1;
+		}
+
+		method : public : GetValue(index : Int), Float {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return 0.0;
+		}
+
+		method : public : SetValue(value : Float, index : Int), Nil {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+			};
+		}
+		
+		method : public : GetSize(), Int {
+			return @size;
+		}
+	}
+	
+	# Object Vector
+	class Vector {
+		@values : System.Base[];
+		@size : Int;
+		
+		New() {
+			@values := System.Base->New[16];
+			@size := 0;
+		}
+
+		method : native : Expand(), Nil {
+			if(@size >= @values->GetSize()) {
+				temp : System.Base[] := System.Base->New[@size * 2];
+				for(i : Int := 0; i < @size; i := i + 1;) {
+					temp[i] := @values[i];
+				};
+				@values := temp;
+			};
+		}
+
+		method : public : AddBack(value : System.Base), Nil {
+			Expand();
+			@values[@size] := value;
+			@size := @size + 1;
+		}
+
+		method : public : RemoveBack(), Nil {
+			@size := @size - 1;
+		}
+
+		method : public : GetValue(index : Int), System.Base {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return Nil;
+		}
+
+		method : public : SetValue(value : System.Base, index : Int), Nil {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+			};
+		}
+		
+		method : public : GetSize(), Int {
+			return @size;
+		}
+	}
+
+	# Integer Linked List
+	class IntLinkedList from LinkedList {
+		New() {
+			Parent();
+		}
+
+		method : public : AddBack(value : Int), Nil {
+			holder : IntHolder := IntHolder->New(value);
+			AddBack(holder->As(System.Compare));
+		}
+
+		method : public : AddFront(value : Int), Nil {
+			holder : IntHolder := IntHolder->New(value);
+			AddFront(holder->As(System.Compare));
+		}
+
+		method : public : GetValue(), Int {
+			temp : System.Compare := GetElement();
+			holder : IntHolder := temp->As(IntHolder);
+			return holder->GetValue();
+		}
+		
+		method : public : FindElement(value : Int), Bool {
+			holder : IntHolder := IntHolder->New(value);
+			return FindElement(holder->As(System.Compare));
+		}
+		
+		method : public : InsertElement(value : Int), Nil {
+			holder : IntHolder := IntHolder->New(value);
+			InsertElement(holder->As(System.Compare));
+		}
+
+	}
+
+	class IntHolder from System.Compare {
+		@value : Int;
+
+		New(value : Int) {
+			Parent();
+			@value := value;
+		}
+
+		method : public : GetValue(), Int {
+			return @value;
+		}
+
+		method : public : native : Compare(rhs : System.Compare), Int {
+			right : IntHolder := rhs->As(IntHolder);
+			if(@value = right->GetValue()) {
+				return 0;
+			}
+			else if(@value < right->GetValue()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+	}
+	
+	# Float Linked List
+	class FloatLinkedList from LinkedList {
+		New() {
+			Parent();
+		}
+
+		method : public : AddBack(value : Float), Nil {
+			holder : FloatHolder := FloatHolder->New(value);
+			AddBack(holder->As(System.Compare));
+		}
+
+		method : public : AddFront(value : Float), Nil {
+			holder : FloatHolder := FloatHolder->New(value);
+			AddFront(holder->As(System.Compare));
+		}
+
+		method : public : GetValue(), Float {
+			temp : System.Compare := GetElement();
+			holder : FloatHolder := temp->As(FloatHolder);
+			return holder->GetValue();
+		}
+		
+		method : public : FindElement(value : Float), Bool {
+			holder : FloatHolder := FloatHolder->New(value);
+			return FindElement(holder->As(System.Compare));
+		}
+		
+		method : public : InsertElement(value : Float), Nil {
+			holder : FloatHolder := FloatHolder->New(value);
+			InsertElement(holder->As(System.Compare));
+		}
+	}
+
+	class FloatHolder from System.Compare {
+		@value : Float;
+
+		New(value : Float) {
+			Parent();
+			@value := value;
+		}
+
+		method : public : GetValue(), Float {
+			return @value;
+		}
+
+		method : public : native : Compare(rhs : System.Compare), Int {
+			right : FloatHolder := rhs->As(FloatHolder);
+			if(@value = right->GetValue()) {
+				return 0;
+			}
+			else if(@value < right->GetValue()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+	}
+
+	# Linked List
+	class ListNode {
+		@value : System.Compare;
+		@next : ListNode;
+		@previous: ListNode;
+
+		New(value : System.Compare) {
+			@value := value;
+		}
+		
+		method : public : SetValue(value : System.Compare), Nil {
+			@value := value;
+		}
+	
+		method : public : GetValue(), System.Compare {
+			return @value;
+		}
+
+		method : public : SetNext(next : Structure.ListNode), Nil {
+			@next := next;
+		}
+	
+		method : public : GetNext(), ListNode {
+			return @next;
+		}
+
+		method : public : SetPrevious(previous : Structure.ListNode), Nil {
+			@previous := previous;
+		}
+	
+		method : public : GetPrevious(), ListNode {
+			return @previous;
+		}
+	}
+
+	# LinkedList class
+	class LinkedList {
+		@size : Int;
+		@head : ListNode;
+		@tail : ListNode;
+		@cursor : ListNode;
+
+		New() {
+			@size := 0;
+		}
+
+		method : public : native : AddBack(value : System.Compare), Nil {
+			node : ListNode := ListNode->New(value);
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+				
+			}
+			else {
+				@tail->SetNext(node);
+			 	node->SetPrevious(@tail);	
+				@tail := node;
+			};
+			@size := @size + 1;
+		}
+
+		method : public : native : AddFront(value : System.Compare), Nil {
+			node : ListNode := ListNode->New(value);
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@head->SetPrevious(node);
+				node->SetNext(@head);
+				@head := node;
+				@cursor := @head;
+			};
+			@size := @size + 1;
+		}
+
+		method : public : Rewind(), Nil {
+			@cursor := @head;
+		}		
+
+		method : public : Foward(), Nil {
+			@cursor := @tail;
+		}		
+
+		method : public : Next(), Nil {
+			@cursor := @cursor->GetNext();
+		}
+
+		method : public : Previous(), Nil {
+			@cursor := @cursor->GetPrevious();
+		}
+
+		method : public : GetElement(), System.Compare {
+			return @cursor->GetValue();
+		}
+
+		method : public : FindElement(value : System.Compare), Bool {
+			@cursor := @head;
+			while(@cursor <> Nil) {
+				if(value->Compare(@cursor->GetValue()) = 0) {
+					return true;
+				};
+				@cursor := @cursor->GetNext();
+			};
+
+			return false;
+		}
+		
+		method : public : InsertElement(value : System.Compare), Nil {
+			if(@cursor <> Nil) {
+				node : ListNode := ListNode->New(value);
+				@cursor->SetNext(node);
+			 	node->SetPrevious(@cursor);	
+				@cursor := node;
+				@size := @size + 1;
+			};
+		}
+		
+		method : public : RemoveElement(), Nil {
+			if(@cursor <> Nil) {
+				@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				@cursor := @cursor->GetNext();
+				@size := @size - 1;
+			};
+		}
+
+		method : public : IsStart(), Bool {
+			return @cursor = Nil;
+		}		
+		
+		method : public : IsEnd(), Bool {
+			return @cursor = Nil;
+		}		
+
+		method : public : GetSize(), Int {
+			return @size;
+		}
+	}
+
+	# TreeNode class
+	class TreeNode {
+		@key : System.Compare;
+		@value : System.Base;
+		@left : Structure.TreeNode;
+		@right : Structure.TreeNode;
+		@level : Int;
+		
+		New(key : System.Compare, value : System.Base, level : Int) {
+			@key := key;
+			@value := value;
+			@level := level;
+			@left := Nil;
+			@right := Nil;
+		}
+
+		method : public : SetKey(key : System.Compare), Nil {
+			@key := key;
+				
+		}
+		
+		method : public : native : GetKey(), System.Compare {
+			return @key;
+		}
+
+		method : public : GetValue(), System.Base {
+			return @value;
+		}
+		
+		method : public : GetLevel(), Int {
+			return @level;
+		}
+
+		method : public : SetLevel(level : Int), Nil {
+			@level := level;
+		}
+
+		method : public : GetLeft(), Structure.TreeNode {
+			return @left;
+		}
+
+		method : public : SetLeft(left : Structure.TreeNode), Nil {
+			@left := left;
+		}
+
+		method : public : GetRight(), Structure.TreeNode {
+			return @right;
+		}
+
+		method : public : SetRight(right : Structure.TreeNode), Nil {
+			@right := right;
+		}
+	}
+
+	# Tree
+	class TreeNode {
+		@key : System.Compare;
+		@value : System.Base;
+		@left : TreeNode;
+		@right : TreeNode;
+		@level : Int;
+		
+		New(key : System.Compare, value : System.Base, level : Int) {
+			@key := key;
+			@value := value;
+			@level := level;
+			@left := Nil;
+			@right := Nil;
+		}
+
+		method : public : SetKey(key : System.Compare), Nil {
+			@key := key;
+				
+		}
+		
+		method : public : native : GetKey(), System.Compare {
+			return @key;
+		}
+
+		method : public : GetValue(), System.Base {
+			return @value;
+		}
+		
+		method : public : GetLevel(), Int {
+			return @level;
+		}
+
+		method : public : SetLevel(level : Int), Nil {
+			@level := level;
+		}
+
+		method : public : GetLeft(), TreeNode {
+			return @left;
+		}
+
+		method : public : SetLeft(left : TreeNode), Nil {
+			@left := left;
+		}
+
+		method : public : GetRight(), TreeNode {
+			return @right;
+		}
+
+		method : public : SetRight(right : TreeNode), Nil {
+			@right := right;
+		}
+	}
+
+	class BinaryTree {
+		@root : TreeNode;
+		@last : TreeNode;
+		@deleted : TreeNode;
+		@size : Int;
+		@found : Bool;
+
+		New() {
+			@root := Nil;
+			@size := 0;	
+		}		
+
+		method : native : Skew(node : Structure.TreeNode), TreeNode {
+			if(node = Nil | node->GetLeft() = Nil) {
+				return node;
+			};
+				
+			if(node->GetLeft()->GetLevel() = node->GetLevel()) {
+				left : TreeNode := node->GetLeft();
+				node->SetLeft(left->GetRight());
+				left->SetRight(node);
+				return left;
+			};
+			
+			return node;
+		}
+
+		method : public : native : GetSize(), Int {
+			return @size;
+		}
+
+		method : native : Split(node : Structure.TreeNode), TreeNode {
+			if(node = Nil | node->GetRight() = Nil | 
+					node->GetRight()->GetRight() = Nil) {
+				return node;
+			};
+
+			if(node->GetRight()->GetRight()->GetLevel() = node->GetLevel()) {
+				right : TreeNode := node->GetRight();
+				node->SetRight(right->GetLeft());
+				right->SetLeft(node);
+				right->SetLevel(right->GetLevel() + 1);
+				
+				return right;
+			};
+			
+			return node;
+		}
+		
+		method : public : Find(key : System.Compare), System.Base {
+			return Find(key, @root);
+		}
+		
+		method : Find(key : System.Compare, node : Structure.TreeNode), System.Base {
+			if(node <> Nil) {
+				if(key->Compare(node->GetKey()) < 0) {
+					return Find(key, node->GetLeft());
+				}
+				else if(key->Compare(node->GetKey()) > 0) {
+					return Find(key, node->GetRight());
+				}
+				else {
+					return node->GetValue();		
+				};
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetKeys(), Structure.Vector {
+			vector : Vector := Vector->New();
+			GetKeys(@root, vector);
+
+			return vector;
+		}
+		
+		method : native : GetKeys(node : Structure.TreeNode, vector : Structure.Vector), Nil {
+			if(node <> Nil) {
+				# process left 
+				GetKeys(node->GetLeft(), vector);
+				
+				key : System.Compare := node->GetKey();
+				vector->AddBack(key->As(System.Base));
+				
+				# process right
+				GetKeys(node->GetRight(), vector);
+			};
+		}
+		
+		method : public : GetValues(), Structure.Vector {
+			vector : Vector := Vector->New();
+			GetValues(@root, vector);
+
+			return vector;
+		}
+
+		method : native : GetValues(node : Structure.TreeNode, vector : Structure.Vector), Nil {
+			if(node <> Nil) {
+				# process left 
+				GetValues(node->GetLeft(), vector);
+				
+				value : System.Base := node->GetValue();
+				vector->AddBack(value);
+				
+				# process right
+				GetValues(node->GetRight(), vector);
+			};
+		}
+		
+		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
+			if(@root = Nil) {
+				@root := Insert(key, value, Nil->As(Structure.TreeNode));
+			}
+			else {
+				@root := Insert(key, value, @root);
+			};
+		}
+		
+		method : native : Insert(key : System.Compare, value : System.Base, node : Structure.TreeNode), Structure.TreeNode {
+			if(node = Nil) {
+				node := TreeNode->New(key, value, 1);
+				@size := @size + 1;
+			}
+			else {
+				if(key->Compare(node->GetKey()) < 0) {
+					node->SetLeft(Insert(key, value, node->GetLeft()));
+				}
+				else if(key->Compare(node->GetKey()) > 0) {
+					node->SetRight(Insert(key, value, node->GetRight()));
+				}
+				else {
+					return node;		
+				};
+				node := Skew(node);
+				node := Split(node);
+			};	
+			
+			return node;
+		}
+
+		method : public : Delete(key : System.Compare), Nil {
+			@found := true;
+			@root := Delete(key, @root);
+			if(@found) {
+				@size := @size - 1;
+			};
+		}
+		
+		method : native : Delete(key : System.Compare, node : Structure.TreeNode), Structure.TreeNode {
+			if(node = Nil) {
+				@found := false;
+				return Nil;
+			};
+
+			if(key->Compare(node->GetKey()) < 0) {
+				node->SetLeft(Delete(key, node->GetLeft()));
+			}
+			else if(key->Compare(node->GetKey()) > 0) {
+				node->SetRight(Delete(key, node->GetRight()));
+			}
+			else {
+				if(node->GetLeft() = Nil & node->GetRight() = Nil) {
+					return Nil;
+				}
+				else if(node->GetLeft() = Nil) {
+					left : System.Compare := Successor(node);
+					node->SetRight(Delete(left, node->GetRight()));
+					node->SetKey(left);
+				} 
+				else {
+					left : System.Compare := Predecessor(node);
+					node->SetLeft(Delete(left, node->GetLeft()));
+					node->SetKey(left);
+				};
+				
+			};
+			
+			# rebalanced
+			node := DecreaseLevel(node);				
+			node := Skew(node);
+			node->SetRight(Skew(node->GetRight()));
+			if(node->GetRight() <> Nil & node->GetRight()->GetRight() <> Nil) {
+				node->GetRight()->SetRight(Skew(node->GetRight()->GetRight()));
+			};	
+			node := Split(node);								
+			node->SetRight(Split(node->GetRight()));
+
+			return node;
+		}
+		
+		method : Predecessor(node : Structure.TreeNode), System.Compare {
+			if(node->GetLeft() <> Nil) {
+				left : TreeNode := node->GetLeft();
+				while(left->GetLeft() <> Nil) {
+					left := left->GetLeft();
+				};
+
+				return left->GetKey();
+			};
+
+			return node->GetKey();
+		}
+
+		method : Successor(node : Structure.TreeNode), System.Compare {
+			if(node->GetRight() <> Nil) {
+				right : TreeNode := node->GetRight();
+				while(right->GetRight() <> Nil) {
+					right := right->GetRight();
+				};
+
+				return right->GetKey();
+			};
+
+			return node->GetKey();
+		}
+
+		 method : DecreaseLevel(node : Structure.TreeNode), TreeNode {
+			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
+				left : Int := node->GetLeft()->GetLevel();
+				right : Int := node->GetRight()->GetLevel();
+				value : Int := left->Min(right);
+			
+				if(value < node->GetLevel()) {
+					node->SetLevel(value);
+					if(value < node->GetRight()->GetLevel()) {
+						node->GetRight()->SetLevel(value);
+					};
+				};
+			};
+			
+			return node;
+		}
+	}
+}
