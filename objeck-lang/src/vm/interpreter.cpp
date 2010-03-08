@@ -473,13 +473,6 @@ void StackInterpreter::Execute()
     case CRITICAL_END:
       // TODO: implement
       break;
-
-    case CUR_TIME:
-#ifdef _DEBUG
-      cout << "stack oper: CUR_TIME; call_pos=" << call_stack_pos << endl;
-#endif
-      ProcessCurrentTime(instr);
-      break;
       
     case JMP:
 #ifdef _DEBUG
@@ -498,7 +491,7 @@ void StackInterpreter::Execute()
 /********************************
  * Processes the current time
  ********************************/
-void StackInterpreter::ProcessCurrentTime(StackInstr* instr) {
+void StackInterpreter::ProcessCurrentTime() {
   time_t raw_time;
   time (&raw_time);
   
@@ -510,6 +503,7 @@ void StackInterpreter::ProcessCurrentTime(StackInstr* instr) {
   time[3] = local_time->tm_hour; // hours
   time[4] = local_time->tm_min; // mins
   time[5] = local_time->tm_sec; // secs
+  time[6] = local_time->tm_isdst > 0; // savings time
 }
 
 /********************************
@@ -1025,8 +1019,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cin.getline(buffer, num);
   }
   break;
-
-  // ---------------- file i/o ----------------
+  
+  // ---------------- system time ----------------
+  case SYS_TIME:
+    ProcessCurrentTime();
+    break;
+    
+    // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
