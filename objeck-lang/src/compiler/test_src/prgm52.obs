@@ -9,8 +9,7 @@ bundle Default {
 
 		function : native : Run(args : String[]), Nil {
 			t := Time->New();
-			t->GetHours()->PrintLine();
-			t->GetMinutes()->PrintLine();
+			IO.Console->GetInstance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
 }

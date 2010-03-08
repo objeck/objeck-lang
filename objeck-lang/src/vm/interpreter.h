@@ -220,7 +220,7 @@ class StackInterpreter {
   inline void ProcessLoadFloat(StackInstr* instr);
   inline void ProcessCopyInt(StackInstr* instr);
   inline void ProcessCopyFloat(StackInstr* instr);
-  inline void ProcessCurrentTime(StackInstr* instr);
+  inline void ProcessCurrentTime();
   inline void ProcessTrap(StackInstr* instr);
 
 public:

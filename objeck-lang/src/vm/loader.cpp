@@ -626,10 +626,6 @@ void Loader::LoadStatements(StackMethod* method)
       method->AddInstruction(new StackInstr(CRITICAL_END));
       break;
 
-    case CUR_TIME:
-      method->AddInstruction(new StackInstr(CUR_TIME));
-      break;
-      
     case TRAP: {
       long args = ReadInt();
       method->AddInstruction(new StackInstr(TRAP, args));
