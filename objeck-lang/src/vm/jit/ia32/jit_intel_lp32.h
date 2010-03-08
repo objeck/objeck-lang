@@ -284,14 +284,18 @@ namespace Runtime {
      ********************************/
     void AddMachineCode(BYTE_VALUE b) {
       if(code_index == code_buf_max) {
-#ifndef _WIN32
+#ifdef _WIN32
+	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
+#else
 	BYTE_VALUE* tmp = (BYTE_VALUE*)valloc(code_buf_max * 2);
 	memcpy(tmp, code, code_index);
 	free(code);
 	code = tmp;
-#else
-	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
 #endif
+	if(!code) {
+	  cerr << "Unable to allocate memory!" << endl;
+	  exit(1);
+	}
 	code_buf_max *= 2;
       }
       code[code_index++] = b;
