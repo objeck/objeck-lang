@@ -111,8 +111,6 @@ typedef enum _InstructionType {
   THREAD_SLEEP,
   CRITICAL_START,
   CRITICAL_END,
-  // time
-  CUR_TIME,
   // library directives
   LIB_NEW_OBJ_INST,
   LIB_MTHD_CALL,

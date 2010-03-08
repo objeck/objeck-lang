@@ -877,9 +877,10 @@ bundle System {
 		@hours : Int;
 		@mins : Int;
 		@secs : Int;
+		@is_savings : Bool;
 		
 		New() {
-			CUR_TIME;
+			SYS_TIME;
 		}
 		
 		method : public : GetDay(), Int {
@@ -905,7 +906,33 @@ bundle System {
 		method : public : GetSeconds(), Int {
 			return @secs;
 		}
+		
+		method : public : IsSavingsTime(), Bool {
+			return @is_savings;
+		}
 	}
+	
+	#~~
+	# Timer class
+	~~#	
+	class Timer {
+		@elapsed : Int;
+		
+		New() {
+		}
+		
+		method : public : Start(), Void {
+			TIMER_START;
+		}
+		
+		method : public : End(), Void {
+			TIMER_END;
+		}
+		
+		method : public : GetElapsedTime(), Int {
+			return @elapsed;
+		}
+	}	
 	
 	#~~
 	# System thread class

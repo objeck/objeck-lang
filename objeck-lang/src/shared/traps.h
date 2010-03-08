@@ -39,6 +39,10 @@ typedef enum _Traps {
   LOAD_CLS_INST_ID = -4000,
   LOAD_ARY_SIZE,
   CPY_STR_ARY,
+  // time
+  SYS_TIME,
+  TIMER_START,
+  TIMER_END,
   // standard i/o
   STD_IN_STRING,
   STD_OUT_BOOL,
