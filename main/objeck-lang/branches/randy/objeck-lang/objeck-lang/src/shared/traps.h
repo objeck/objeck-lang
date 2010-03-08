@@ -1,0 +1,85 @@
+/***************************************************************************
+ *
+ *
+ * Copyright (c) 2008-2009, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
+
+#ifndef __TRAPS_H__
+#define __TRAPS_H__
+
+namespace instructions {
+// system directive codes
+typedef enum _Traps {
+  // core operations
+  LOAD_CLS_INST_ID = -4000,
+  LOAD_ARY_SIZE,
+  CPY_STR_ARY,
+  // standard i/o
+  STD_IN_STRING,
+  STD_OUT_BOOL,
+  STD_OUT_BYTE,
+  STD_OUT_CHAR,
+  STD_OUT_INT,
+  STD_OUT_FLOAT,
+  STD_OUT_CHAR_ARY,
+  // file i/o
+  FILE_OPEN_READ,
+  FILE_OPEN_WRITE,
+  FILE_OPEN_READ_WRITE,
+  FILE_CLOSE,
+  FILE_IN_BYTE,
+  FILE_OUT_BYTE,
+  FILE_IN_BYTE_ARY,
+  FILE_OUT_BYTE_ARY,
+  FILE_IN_STRING,
+  FILE_OUT_STRING,
+  // file operations
+  FILE_OPEN,
+  FILE_EXISTS,
+  FILE_SIZE,
+  FILE_REWIND,
+  FILE_SEEK,
+  FILE_EOF,
+  FILE_DELETE,
+  FILE_RENAME,
+  // directory operations
+  DIR_CREATE,
+  DIR_EXISTS,
+  DIR_LIST,
+  // socket i/o
+  SOCKET_OPEN,
+  SOCKET_CLOSE,
+  SOCKET_IN_BYTE,
+  SOCKET_OUT_BYTE,
+  SOCKET_IN_BYTE_ARY,
+  SOCKET_IN_STRING,
+  SOCKET_OUT_STRING
+} Traps;
+}
+
+#endif
