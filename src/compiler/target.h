@@ -341,10 +341,6 @@ public:
       cout << "CRITICAL_END" << endl;
       break;
 
-    case instructions::CUR_TIME:
-      cout << "CUR_TIME" << endl;
-      break;
-
     case AND_INT:
       cout << "AND_INT" << endl;
       break;

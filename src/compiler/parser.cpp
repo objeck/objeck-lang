@@ -651,9 +651,21 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
-    case CUR_TIME:
+    case SYS_TIME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::CUR_TIME);
+							       instructions::SYS_TIME);
+      NextToken();
+      break;
+
+    case TIMER_START:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::TIMER_START);
+      NextToken();
+      break;
+
+    case TIMER_END:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::TIMER_END);
       NextToken();
       break;
       
