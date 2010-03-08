@@ -1,0 +1,48 @@
+bundle Default {
+	class Foo {
+		@g : Foo;
+
+		New() {
+			@g := Nil;
+		}
+
+		method : public : native : Run(f : Foo), Nil {
+			a := 9;
+			if(a >= 10) {
+				"a"->PrintLine();
+			}
+			else {
+				"b"->PrintLine();
+			};
+
+			@g := f;
+#			if(@g <> Nil & 2 = 2 & False() <> True() & 4 = 4) {
+			if(@g <> Nil) {
+				"c"->PrintLine();
+			};
+		}	
+
+		method : native : True(), Bool {
+			return true;
+		}
+		
+		function : native : False(), Bool {
+			return false;
+		}
+	}
+
+	class Hello {
+		New() {
+		}
+
+		function : Main(args : System.String[]), Nil {
+			Run();
+		}
+
+		function : native : Run(), Nil {
+			f : Foo := Foo->New();
+			f := Foo->New();
+			f->Run(f);
+		}
+	}
+}
