@@ -162,7 +162,9 @@ enum TokenType {
   THREAD_SLEEP,
   THREAD_JOIN,
   // time
-  CUR_TIME
+  SYS_TIME,
+  TIMER_START,
+  TIMER_END,
 #endif
 };
 

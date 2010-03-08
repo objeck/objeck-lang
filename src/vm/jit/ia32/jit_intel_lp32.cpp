@@ -2058,12 +2058,6 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
     
   case LES_INT:
   case LES_EQL_INT:
-    cmp_mem_reg(offset, EBP, reg);
-    if(!cond_jmp(type)) {
-      cmov_reg(reg, type);
-    }
-    break;
-    
   case GTR_INT:
   case EQL_INT:
   case NEQL_INT:  

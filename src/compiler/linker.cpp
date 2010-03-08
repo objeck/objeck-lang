@@ -703,10 +703,6 @@ void Library::LoadStatements(LibraryMethod* method)
     case CRITICAL_END:
       instrs.push_back(new LibraryInstr(CRITICAL_END));
       break;
-
-    case CUR_TIME:
-      instrs.push_back(new LibraryInstr(CUR_TIME));
-      break;
       
     default: {
 #ifdef _DEBUG
