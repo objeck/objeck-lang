@@ -1,0 +1,41 @@
+bundle Default {
+	class Test {
+		function : Main(), Nil {
+			A();
+		}
+
+		function : native : A(), Nil {
+			"Hello"->GetSize()->PrintLine();
+			"Hello"->GetSize()->PrintLine();
+			(9/3)->PrintLine();
+#			"Hello"->GetSize()->Foo();
+#			10->PrintLine();
+			3->PrintLine();
+#~
+			c : Char[] := "Hello";
+			ccc : Char[] := B();
+			C();
+			c->PrintLine();
+			ccc->PrintLine();
+			"Done."->PrintLine();
+			"memory types: 	----- JIT method: addr=0034BF78"->GetSize();
+~#
+		}
+
+		function : B(), Char[] {
+			c : Char[] := "A string 0.";
+			ccc : Char[] := "A string 2.";
+			c->PrintLine();
+			ccc->GetSize();
+			
+			return ccc;
+		}
+
+		function : native : C(), Nil {
+			13->PrintLine();
+			c : Char[] := "A string.";
+			c->PrintLine();		
+			"memory types: 	----- JIT method: addr=0034BF78"->PrintLine();
+		}
+	}
+}

@@ -1,0 +1,653 @@
+/***************************************************************************
+ * Vm memory manager. Implements a "mark and sweep" collection algorithm.
+ *
+ * Copyright (c) 2007, 2008, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
+
+#include "memory.h"
+#include <iomanip>
+
+MemoryManager* MemoryManager::instance;
+StackProgram* MemoryManager::prgm;
+list<ClassMethodId*> MemoryManager::jit_roots;
+list<StackFrame*> MemoryManager::pda_roots;
+map<long*, long> MemoryManager::allocated_memory;
+vector<long*> MemoryManager::marked_memory;
+long MemoryManager::allocation_size;
+long MemoryManager::mem_max_size;
+long MemoryManager::uncollected_count;
+long MemoryManager::collected_count;
+
+void MemoryManager::Initialize(StackProgram* p)
+{
+  prgm = p;
+  allocation_size = 0;
+  mem_max_size = MEM_MAX;
+  uncollected_count = 0;
+}
+
+MemoryManager* MemoryManager::Instance()
+{
+  if(!instance) {
+    instance = new MemoryManager;
+  }
+
+  return instance;
+}
+
+// if return true, trace memory otherwise do not
+inline bool MemoryManager::MarkMemory(long* mem)
+{
+  if(mem) {
+    map<long*, long>::iterator result = allocated_memory.find(mem);
+    if(result != allocated_memory.end()) {
+      // check if memory has been marked
+      if(mem[-1]) {
+        return false;
+      }
+
+      // mark & add to list
+      mem[-1] = 1L;
+      marked_memory.push_back(mem);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
+{
+#ifdef _DEBUG
+  cout << "adding PDA method: frame=" << frame << ", self="
+       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+#endif
+
+  pda_roots.push_back(frame);
+}
+
+void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
+{
+#ifdef _DEBUG
+  cout << "removing PDA method: frame=" << frame << ", self="
+       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+#endif
+
+  pda_roots.remove(frame);
+}
+
+void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
+                                     long* self, long* mem, long offset)
+{
+#ifdef _DEBUG
+  cout << "adding JIT root: class=" << cls_id << ", method=" << mthd_id << ", self=" << self
+       << "(" << (long)self << "), mem=" << mem << ", offset=" << offset << endl;
+#endif
+
+  // zero out memory
+  const long size = offset / sizeof(long);
+  for(int i = 0; i < size; i++) {
+    mem[i] = 0;
+  }
+
+  jit_roots.push_back(new ClassMethodId(self, mem, cls_id, mthd_id));
+}
+
+void MemoryManager::RemoveJitMethodRoot(long* mem)
+{
+  // find
+  ClassMethodId* found = NULL;
+  list<ClassMethodId*>::iterator jit_iter;
+  for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
+    ClassMethodId* id = (*jit_iter);
+    if(id->GetMemory() == mem) {
+      found = id;
+    }
+  }
+
+#ifdef _DEBUG
+  cout << "removing JIT method: mem=" << found->GetMemory()
+       << ", self=" << found->GetSelf() << "(" << (long)found->GetSelf() << ")" << endl;
+#endif
+
+#ifdef _DEBUG
+  assert(found);
+#endif
+  jit_roots.remove(found);
+
+  delete found;
+  found = NULL;
+}
+
+long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos)
+{
+  StackClass* cls = prgm->GetClass(obj_id);
+#ifdef _DEBUG
+  assert(cls);
+#endif
+
+  long* mem = NULL;
+  if(cls) {
+    long size = cls->GetInstanceMemorySize();
+#ifdef _X64
+    // TODO: note: memory size is doubled because integers are assumed to be
+    // 4-bytes.  This approach allocates more memory because doubles are also
+    // doubled.  This will be refactored soon...
+    size *= 2;
+#endif
+
+    // collect memory
+    if(allocation_size + size > mem_max_size) {
+      CollectMemory(op_stack, stack_pos);
+    }
+    // allocate memory
+    mem = (long*)calloc(size * 2 + sizeof(long), sizeof(BYTE_VALUE));
+    mem++;
+    // record
+    allocation_size += size;
+    allocated_memory.insert(pair<long*, long>(mem, -obj_id));
+
+#ifdef _DEBUG
+    cout << "# allocating object: addr=" << mem << "(" << (long)mem << "), size="
+         << size << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+#endif
+  }
+
+  return mem;
+}
+
+long* MemoryManager::AllocateArray(const long size, const MemoryType type,
+                                   long* op_stack, long stack_pos)
+{
+  long calc_size;
+  long* mem;
+  switch(type) {
+  case BYTE_ARY_TYPE:
+    calc_size = size * sizeof(BYTE_VALUE);
+    break;
+
+  case INT_TYPE:
+    calc_size = size * sizeof(long);
+    break;
+
+  case FLOAT_TYPE:
+    calc_size = size * sizeof(FLOAT_VALUE);
+    break;
+  }
+  // collect memory
+  if(allocation_size + calc_size > mem_max_size) {
+    CollectMemory(op_stack, stack_pos);
+  }
+  // allocate memory
+  mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
+  mem++;
+  allocation_size += calc_size;
+  allocated_memory.insert(pair<long*, long>(mem, calc_size));
+
+#ifdef _DEBUG
+  cout << "# allocating array: addr=" << mem << "(" << (long)mem << "), size=" << calc_size
+       << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+#endif
+
+  return mem;
+}
+
+long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
+{
+  long id;
+  map<long*, long>::iterator result = allocated_memory.find(mem);
+  if(result != allocated_memory.end()) {
+    id = -result->second;
+  } else {
+    return NULL;
+  }
+
+  // upcast
+  while(id != -1) {
+    if(id == to_id) {
+      return mem;
+    }
+    // update
+    id = cls_hierarchy[id];
+  }
+
+  return NULL;
+}
+
+void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
+{
+#ifdef _DEBUG
+  long start = allocation_size;
+  cout << endl << "=========================================" << endl;
+  cout << "Starting Garbage Collection" << endl;
+  cout << "=========================================" << endl;
+  cout << "## Marking memory ##" << endl;
+#endif
+
+  // mark
+  CheckStack(op_stack, stack_pos);
+  CheckPdaRoots();
+  CheckJitRoots();
+
+  // sweep
+#ifdef _DEBUG
+  cout << "## Sweeping memory ##" << endl;
+#endif
+  vector<long*> erased_memory;
+
+
+  // sort and use a binary search to sweep memory
+#ifdef _DEBUG
+  cout << "-----------------------------------------" << endl;
+  cout << "Marked " << marked_memory.size() << " items." << endl;
+  cout << "-----------------------------------------" << endl;
+#endif
+  std::sort(marked_memory.begin(), marked_memory.end());
+  map<long*, long>::iterator iter;
+  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
+    bool found = false;
+    if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
+      long* tmp = iter->first;
+      tmp[-1] = 0L;
+      found = true;
+    }
+
+    if(!found) {
+      long mem_size;
+      if(iter->second < 0) {
+        StackClass* cls = prgm->GetClass(-iter->second);
+#ifdef _DEBUG
+        assert(cls);
+#endif
+        if(cls) {
+          mem_size = cls->GetInstanceMemorySize();
+        }
+      } else {
+        mem_size = iter->second;
+      }
+
+#ifdef _DEBUG
+      cout << "# releasing memory: addr=" << iter->first << "(" << (long)iter->first
+           << "), size=" << mem_size << " byte(s) #" << endl;
+#endif
+
+      // account for deallocated memory
+      allocation_size -= mem_size;
+      // erase memory
+      long* tmp = iter->first;
+      erased_memory.push_back(tmp);
+
+      --tmp;
+      free(tmp);
+      tmp = NULL;
+    }
+  }
+  marked_memory.clear();
+
+  // did not collect memory; ajust constraints
+  if(erased_memory.empty()) {
+    if(uncollected_count < UNCOLLECTED_COUNT) {
+      uncollected_count++;
+    } else {
+      mem_max_size *= 2;
+      uncollected_count = 0;
+    }
+  }
+  // collected memory; ajust constraints
+  else if(mem_max_size != MEM_MAX) {
+    if(collected_count < COLLECTED_COUNT) {
+      collected_count++;
+    } else {
+      mem_max_size /= 2;
+      collected_count = 0;
+    }
+  }
+
+  // remove references from allocated pool
+  for(unsigned int i = 0; i < erased_memory.size(); i++) {
+    allocated_memory.erase(erased_memory[i]);
+  }
+
+#ifdef _DEBUG
+  cout << "===============================================================" << endl;
+  cout << "Finished Collection: collected=" << (start - allocation_size)
+       << " of " << start << " byte(s) - " << showpoint << setprecision(3)
+       << (((double)(start - allocation_size) / (double)start) * 100.0)
+       << "%" << endl;
+  cout << "===============================================================" << endl;
+#endif
+}
+
+void MemoryManager::CheckStack(long* op_stack, long stack_pos)
+{
+#ifdef _DEBUG
+  cout << "----- stack: pos=" << stack_pos << " -----" << endl;
+#endif
+  while(stack_pos > -1) {
+    CheckObject((long*)op_stack[stack_pos--], false, 1);
+  }
+}
+
+void MemoryManager::CheckJitRoots()
+{
+#ifdef _DEBUG
+  cout << "---- JIT method root(s): num=" << jit_roots.size() << " ------" << endl;
+  cout << "memory types: " << endl;
+#endif
+
+  list<ClassMethodId*>::iterator jit_iter;
+  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
+    ClassMethodId* id = (*jit_iter);
+    long* mem = id->GetMemory();
+    StackMethod* mthd = prgm->GetClass(id->GetClassId())->GetMethod(id->GetMethodId());
+    const long dclrs_num = mthd->GetNumberDeclarations();
+
+#ifdef _DEBUG
+    cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->GetClassId() << "," << id->GetMethodId()
+         << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() << " =====" << endl;
+#endif
+
+    // check self
+    CheckObject(id->GetSelf(), true, 1);
+
+    StackDclr** dclrs = mthd->GetDeclarations();
+    for(int j = dclrs_num - 1; j > -1; j--) {
+      // get memory size
+      long array_size = 0;
+      map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+
+      if(result != allocated_memory.end()) {
+        array_size = result->second;
+      }
+
+      // update address based upon type
+      switch(dclrs[j]->type) {
+      case INT_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": INT_PARM: value=" << (*mem) << endl;
+#endif
+        // update
+        mem++;
+        break;
+
+      case FLOAT_PARM: {
+#ifdef _DEBUG
+        FLOAT_VALUE value;
+        memcpy(&value, mem, sizeof(FLOAT_VALUE));
+        cout << "\t" << j << ": FLOAT_PARM: value=" << value << endl;
+#endif
+        // update
+        mem += 2;
+      }
+      break;
+
+      case BYTE_ARY_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": BYTE_ARY_PARM: addr=" << (long*)(*mem)
+             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+        // mark data
+        MarkMemory((long*)(*mem));
+        // update
+        mem++;
+        break;
+
+      case INT_ARY_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": INT_ARY_PARM: addr=" << (long*)(*mem)
+             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+        // mark data
+        MarkMemory((long*)(*mem));
+        // update
+        mem++;
+        break;
+
+      case FLOAT_ARY_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
+             << "(" << (long)(*mem) << "), size=" << " byte(s)" << array_size << endl;
+#endif
+        // mark data
+        MarkMemory((long*)(*mem));
+        // update
+        mem++;
+        break;
+
+      case OBJ_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": OBJ_PARM: addr=" << (long*)(*mem)
+             << "(" << (long)(*mem) << "), id=" << array_size << endl;
+#endif
+        // check object
+        CheckObject((long*)(*mem), true, 1);
+        // update
+        mem++;
+        break;
+
+        // TODO: test the code below
+      case OBJ_ARY_PARM:
+#ifdef _DEBUG
+        cout << "\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << "(" << (long)(*mem)
+             << "), size=" << array_size << " byte(s)" << endl;
+#endif
+        // mark data
+        if(MarkMemory((long*)(*mem))) {
+          long* array = (long*)(*mem);
+          const long size = array[0];
+          const long dim = array[1];
+          long* objects = (long*)(array + 2 + dim);
+          for(long k = 0; k < size; k++) {
+            CheckObject((long*)objects[k], true, 2);
+          }
+        }
+        // update
+        mem++;
+        break;
+      }
+    }
+
+    // NOTE: this marks temporary variables that are stored in JIT memory
+    // during some method calls. there are 3 integer temp addresses
+    for(int i = 0; i < 8; i++) {
+      CheckObject((long*)mem[i], false, 1);
+    }
+  }
+}
+
+void MemoryManager::CheckPdaRoots()
+{
+#ifdef _DEBUG
+  cout << "----- PDA method root(s): num=" << pda_roots.size() << " -----" << endl;
+  cout << "memory types:" <<  endl;
+#endif
+  // look at pda methods
+  list<StackFrame*>::iterator pda_iter;
+  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); pda_iter++) {
+    StackMethod* mthd = (*pda_iter)->GetMethod();
+    long* mem = (*pda_iter)->GetMemory();
+
+#ifdef _DEBUG
+    cout << "\t===== PDA method: name=" << mthd->GetName() << ", addr="
+         << mthd << ", num=" << mthd->GetNumberDeclarations() << " =====" << endl;
+#endif
+
+    // mark self
+    CheckObject((long*)(*mem), true, 1);
+
+    if(mthd->HasAndOr()) {
+      mem += 2;
+    } else {
+      mem++;
+    }
+
+    // mark rest of memory
+    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+  }
+}
+
+void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
+{
+  // check method
+  for(int i = 0; i < dcls_size; i++) {
+    // get memory size
+    long array_size = 0;
+    map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+    if(result != allocated_memory.end()) {
+      array_size = result->second;
+    }
+
+#ifdef _DEBUG
+    for(int j = 0; j < depth; j++) {
+      cout << "\t";
+    }
+#endif
+
+    // update address based upon type
+    switch(dclrs[i]->type) {
+    case INT_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
+#endif
+      // update
+      mem++;
+      break;
+
+    case FLOAT_PARM: {
+#ifdef _DEBUG
+      FLOAT_VALUE value;
+      memcpy(&value, mem, sizeof(FLOAT_VALUE));
+      cout << "\t" << i << ": FLOAT_PARM: value=" << value << endl;
+#endif
+      // update
+      mem += 2;
+    }
+    break;
+
+    case BYTE_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case INT_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": INT_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case FLOAT_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case OBJ_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": OBJ_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), id=" << array_size << endl;
+#endif
+      // check object
+      CheckObject((long*)(*mem), true, depth + 1);
+      // update
+      mem++;
+      break;
+
+    case OBJ_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      if(MarkMemory((long*)(*mem))) {
+        long* array = (long*)(*mem);
+        const long size = array[0];
+        const long dim = array[1];
+        long* objects = (long*)(array + 2 + dim);
+        for(long k = 0; k < size; k++) {
+          CheckObject((long*)objects[k], true, 2);
+        }
+      }
+      // update
+      mem++;
+      break;
+    }
+  }
+}
+
+void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
+{
+  if(mem) {
+    StackClass* cls = GetClass(mem);
+    if(cls) {
+#ifdef _DEBUG
+      for(int i = 0; i < depth; i++) {
+        cout << "\t";
+      }
+      cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
+           << cls->GetNumberDeclarations() << " -----" << endl;
+#endif
+
+      // mark data
+      if(MarkMemory(mem)) {
+        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+      }
+    } else {
+      // NOTE: this happens when we are trying to mark unidentified memory
+      // segments. these segments may be parts of that stack or temp for
+      // register variables
+#ifdef _DEBUG
+      for(int i = 0; i < depth; i++) {
+        cout << "\t";
+      }
+      cout <<"$: addr/value=" << mem << endl;
+      if(is_obj) {
+        assert(cls);
+      }
+#endif
+      MarkMemory(mem);
+    }
+  }
+}

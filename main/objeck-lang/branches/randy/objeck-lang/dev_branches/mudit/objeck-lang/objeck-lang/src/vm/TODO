@@ -1,0 +1,11 @@
+* 6/29/09
+Support for I/O routines #
+Update AMD64 support (will not added for 1st release)
+
+* 8/30/09
+Add support for inc and dec (will not added for 1st release)
+
+* 9/27/09
+Fix minor memory leaks (prgm19.obs) #Done
+Regression test with optimizations #Done
+Running with optimization for sys libs (TRAP and TRAP_RTRN has fixed params)

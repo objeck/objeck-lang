@@ -1,0 +1,2 @@
+
+3/6/2010 - Fix a bug that caused duplicate method names to not be properly detected
