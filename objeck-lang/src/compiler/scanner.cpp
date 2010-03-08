@@ -146,7 +146,9 @@ void Scanner::LoadKeywords()
   ident_map["ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
   ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map["THREAD_JOIN"] = THREAD_JOIN;
-  ident_map["CUR_TIME"] = CUR_TIME;
+  ident_map["SYS_TIME"] = SYS_TIME;
+  ident_map["TIMER_START"] = TIMER_START;
+  ident_map["TIMER_END"] =  TIMER_END;
 #endif
 }
 
@@ -230,7 +232,9 @@ void Scanner::CheckIdentifier(int index)
   case ASYNC_MTHD_CALL:
   case THREAD_SLEEP:
   case THREAD_JOIN:
-  case CUR_TIME:
+  case SYS_TIME:
+  case TIMER_START:
+  case TIMER_END:
 #endif
     tokens[index]->SetType(ident_type);
     break;
