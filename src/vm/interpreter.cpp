@@ -774,7 +774,7 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
-  cout << "???" << endl;
+  cout << "??? " << frame->GetMethod()->GetClass()->GetId() << "," << instr->GetOperand2() << " ???" << endl;
 }
 
 /********************************

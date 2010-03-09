@@ -154,14 +154,23 @@ void Compile(map<const string, string> arguments)
   result = arguments.find("opt");
   if(result != arguments.end()) {
     optimize = result->second;
+    if(optimize != "s0" && optimize != "s1" && optimize != "s2" && 
+       optimize != "s3" && optimize != "s4") {
+      cerr << usage << endl << endl;
+      exit(1);
+    }
   }
   // check program libraries path
   string target;
   result = arguments.find("tar");
   if(result != arguments.end()) {
     target = result->second;
+    if(target != "lib" && target != "exe") {
+      cerr << usage << endl << endl;
+      exit(1);
+    }
   }
-
+  
   // parse source code
   Parser parser(arguments["src"]);
   if(parser.Parse()) {
