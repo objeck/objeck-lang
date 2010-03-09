@@ -621,7 +621,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case ASYNC_MTHD_CALL:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(ASYNC_MTHD_CALL, current_class->GetId(), 3L, 1L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(ASYNC_MTHD_CALL, -1, 3L, 1L));
     break;
     
   case THREAD_JOIN:

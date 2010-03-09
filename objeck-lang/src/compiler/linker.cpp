@@ -684,10 +684,14 @@ void Library::LoadStatements(LibraryMethod* method)
       instrs.push_back(new LibraryInstr(LOAD_FLOAT_LIT, ReadDouble()));
       break;
 
-    case ASYNC_MTHD_CALL:
-      instrs.push_back(new LibraryInstr(ASYNC_MTHD_CALL));
+    case ASYNC_MTHD_CALL: {
+      int cls_id = ReadInt();
+      int mthd_id = ReadInt();
+      int is_native = ReadInt();
+      instrs.push_back(new LibraryInstr(ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+    }
       break;
-
+      
     case THREAD_JOIN:
       instrs.push_back(new LibraryInstr(THREAD_JOIN));
       break;
