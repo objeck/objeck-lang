@@ -322,7 +322,7 @@ public:
            << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
       break;
 
-      case instructions::ASYNC_MTHD_CALL:
+    case instructions::ASYNC_MTHD_CALL:
       cout << "ASYNC_MTHD_CALL: class=" << operand << ", method="
            << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
       break;

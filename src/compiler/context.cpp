@@ -194,7 +194,6 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
   current_class = klass;
   current_class->SetCalled(true);
   klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
-
   if(!SearchProgramClasses(klass->GetName()) &&
       !linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
     ProcessError(klass, "Undefined class: '" + klass->GetName() + "'");
@@ -398,17 +397,20 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
     }
     // check for parent call
     if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-        current_method->GetMethodType() == NEW_PRIVATE_METHOD) && current_class->GetParent()) {
+        current_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
+       (current_class->GetParent() || (current_class->GetLibraryParent() && 
+				       current_class->GetLibraryParent()->GetName() != "System.Base"))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
         ProcessError(current_method, "Parent call required");
-      } else {
+      } 
+      else {
         MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
         if(mthd_call->GetCallType() != PARENT_CALL) {
           ProcessError(current_method, "Parent call required");
         }
       }
     }
-
+    
 #ifndef _SYSTEM
     // check for return
     if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
