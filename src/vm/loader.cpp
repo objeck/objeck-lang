@@ -445,6 +445,14 @@ void Loader::LoadStatements(StackMethod* method)
     }
       break;
 
+    case ASYNC_MTHD_CALL: {
+      long cls_id = ReadInt();
+      long mthd_id = ReadInt();
+      long is_native = ReadInt();
+      method->AddInstruction(new StackInstr(ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+    }
+      break;
+      
     case LIB_OBJ_INST_CAST:
       cerr << ">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
       exit(1);
