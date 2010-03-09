@@ -1,5 +1,11 @@
 bundle Default {
 	class MyThread from Thread {
+		New() {
+			Parent();
+		}
+
+		method : public : Run(param : System.Base), Nil {
+		}
 	}
 
 	class Hello {
@@ -7,18 +13,12 @@ bundle Default {
 		}
 
 		function : Main(args : System.String[]), Nil {
-			Run(args);
+			Run();
 		}
 
-		function : Run(args : String[]), Nil {
-			
-#~
-			(2 * 3)->PrintLine();
-			critical {	
-				a : Int := 8;
-				(a-3)->PrintLine();
-			};
-~#
+		function : Run(), Nil {
+			t := MyThread->New();	
+			t->Execute(Nil->As(Base));
 		}
 	}
 }
