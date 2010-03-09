@@ -392,6 +392,15 @@ void StackInterpreter::Execute()
       }
       break;
 
+    case ASYNC_MTHD_CALL:
+      ProcessAsyncMethodCall(instr);
+      // return directly back to JIT code
+      if(frame->IsJitCalled()) {
+        frame->SetJitCalled(false);
+        return;
+      }
+      break;
+      
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr);
       break;
@@ -452,10 +461,6 @@ void StackInterpreter::Execute()
       cout << "stack oper: TRAP; call_pos=" << call_stack_pos << endl;
 #endif
       ProcessTrap(instr);
-      break;
-
-    case ASYNC_MTHD_CALL:
-      // TODO: implement
       break;
 
     case THREAD_JOIN:
@@ -761,6 +766,15 @@ void StackInterpreter::ProcessReturn()
   } else {
     halt = true;
   }
+}
+
+/********************************
+ * Processes an asynchronous method
+ * call.
+ ********************************/
+void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
+{
+  cout << "???" << endl;
 }
 
 /********************************

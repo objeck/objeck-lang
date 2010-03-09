@@ -621,7 +621,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case ASYNC_MTHD_CALL:
-    // TODO: implement
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(ASYNC_MTHD_CALL, current_class->GetId(), 3L, 1L));
     break;
     
   case THREAD_JOIN:
@@ -1925,7 +1925,6 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     else if(method_call->GetLibraryMethod()) {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(is_lib) {
-
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LIB_MTHD_CALL, lib_method->IsNative(),
                                   lib_method->GetLibraryClass()->GetName(),
                                   lib_method->GetName()));

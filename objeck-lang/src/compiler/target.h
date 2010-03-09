@@ -183,6 +183,7 @@ public:
       WriteInt(operand, file_out);
       break;
 
+    case instructions::ASYNC_MTHD_CALL:
     case MTHD_CALL:
       WriteInt(operand, file_out);
       WriteInt(operand2, file_out);
@@ -321,10 +322,11 @@ public:
            << ", local=" << (operand2 == LOCL ? "true" : "false") << endl;
       break;
 
-    case instructions::ASYNC_MTHD_CALL:
-      cout << "ASYNC_MTHD_CALL" << endl;
+      case instructions::ASYNC_MTHD_CALL:
+      cout << "ASYNC_MTHD_CALL: class=" << operand << ", method="
+           << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
       break;
-
+      
     case instructions::THREAD_JOIN:
       cout << "THREAD_JOIN" << endl;
       break;
