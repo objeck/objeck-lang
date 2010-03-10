@@ -115,6 +115,19 @@ class JumpTable
     memset(&buckets, 0, sizeof(JumpBucket*) * NUM_BUCKETS);
   }
 
+  ~JumpTable() {
+    for(int i = 0; i < NUM_BUCKETS; i++) {
+      JumpBucket* bucket = buckets[i];
+      if(bucket) {
+	JumpBucket* temp = bucket;
+	bucket = bucket->next;
+	// remove
+	delete temp;
+	temp = NULL;
+      }
+    }
+  }
+  
   int Find(int key) {
     JumpBucket* bucket = buckets[hash(key)];
     if(!bucket) {
