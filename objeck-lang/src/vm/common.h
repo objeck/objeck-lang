@@ -83,6 +83,78 @@ inline string IntToString(int v)
   return str.str();
 }
 
+
+/********************************
+ * Jump address jump table
+ ********************************/
+#define NUM_BUCKETS 150061
+class JumpBucket 
+{
+ public:
+  int key;
+  int value;
+  JumpBucket* next;
+};
+
+class JumpTable 
+{
+  JumpBucket* buckets[NUM_BUCKETS];
+  
+  int hash(int key) {
+    key = (key ^ 61) ^ (key >> 16);
+    key = key + (key << 3);
+    key = key ^ (key >> 4);
+    key = key * 0x27d4eb2d;
+    key = key ^ (key >> 15);
+
+    return key % NUM_BUCKETS;
+  }
+  
+ public:
+  JumpTable() {
+    memset(&buckets, 0, sizeof(JumpBucket*) * NUM_BUCKETS);
+  }
+
+  int Find(int key) {
+    JumpBucket* bucket = buckets[hash(key)];
+    if(!bucket) {
+      return -1;
+    }
+    else {
+      while(bucket) {
+	if(bucket->key == key) {
+	  return bucket->value;	
+	}
+	bucket = bucket->next;
+      }
+    }
+
+    return -1;
+  }
+  
+  void Insert(int key, int value) {
+    const int hash_key = hash(key);
+    JumpBucket* bucket = buckets[hash_key];
+    if(!bucket) {
+      bucket = new JumpBucket;
+      bucket->key = key;
+      bucket->value = value;
+      bucket->next = NULL;	
+      buckets[hash_key] = bucket;
+    }
+    else {
+      while(bucket->next) {
+	bucket = bucket->next;
+      }
+      JumpBucket* temp = new JumpBucket;
+      temp->key = key;
+      temp->value = value;
+      temp->next = NULL;
+      bucket->next = temp;
+    }
+  }		
+};
+
 /********************************
  * StackDclr struct
  ********************************/
@@ -238,7 +310,10 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   vector<StackInstr*> instrs;
-  map<long, long> jump_table;
+
+  //map<long, long> jump_table;
+  JumpTable jump_table;
+
   long param_count;
   long mem_size;
   NativeCode* native_code;
@@ -449,10 +524,12 @@ public:
   }
 
   void AddLabel(long label_id, long index) {
-    jump_table[label_id] = index;
+    // jump_table[label_id] = index;
+    jump_table.Insert(label_id, index);
   }
 
   inline long GetLabelIndex(long label_id) {
+    /*
     map<long, long>::iterator result = jump_table.find(label_id);
     // not found
     if(result == jump_table.end()) {
@@ -460,6 +537,9 @@ public:
     }
 
     return result->second;
+    */
+
+    return jump_table.Find(label_id);
   }
 
   void SetInstructions(vector<StackInstr*> i) {
