@@ -90,7 +90,6 @@ inline string IntToString(int v)
 #define NUM_BUCKETS 150061
 struct JumpBucket 
 {
- public:
   int key;
   int value;
   JumpBucket* next;
