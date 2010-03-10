@@ -88,7 +88,7 @@ inline string IntToString(int v)
  * Jump address jump table
  ********************************/
 #define NUM_BUCKETS 150061
-class JumpBucket 
+struct JumpBucket 
 {
  public:
   int key;
@@ -171,10 +171,10 @@ class JumpTable
 /********************************
  * StackDclr struct
  ********************************/
-typedef struct _StackDclr {
+struct StackDclr {
   ParamType type;
   long id;
-} StackDclr;
+};
 
 /********************************
  * StackInstr class
