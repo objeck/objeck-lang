@@ -1,8 +1,8 @@
 ###############
 # For OSX only
 ###############
-# ARGS=-mstackrealign -O2
-# ARGS=-D_TIMING -mstackrealign -O2
+# ARGS=-mstackrealign -O3
+# ARGS=-D_TIMING -mstackrealign -O3
 # ARGS=-mstackrealign -g -D_DEBUG -Wunused
 
 ###############
@@ -10,7 +10,7 @@
 ###############
 # ARGS=-g -D_DEBUG  -Wunused
 # ARGS=-g -Wunused
-ARGS=-O2
+ARGS=-O3
 
 CC=g++
 AR=ar

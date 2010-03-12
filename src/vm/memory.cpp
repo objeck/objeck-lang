@@ -42,8 +42,7 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
-pthread_mutex_t MemoryManager::mark_mutex;
-pthread_mutex_t MemoryManager::sweep_mutex;
+pthread_mutex_t MemoryManager::mark_sweep_mutex;
 
 void MemoryManager::Initialize(StackProgram* p)
 {
@@ -74,10 +73,10 @@ inline bool MemoryManager::MarkMemory(long* mem)
       }
 
       // mark & add to list
-      pthread_mutex_lock(&mark_mutex);
+      pthread_mutex_lock(&mark_sweep_mutex);
       mem[-1] = 1L;
       marked_memory.push_back(mem);
-      pthread_mutex_unlock(&mark_mutex);
+      pthread_mutex_unlock(&mark_sweep_mutex);
       
       return true;
     } else {
@@ -90,33 +89,34 @@ inline bool MemoryManager::MarkMemory(long* mem)
 
 void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 {
-  pthread_mutex_lock(&mark_mutex);
+  pthread_mutex_lock(&mark_sweep_mutex);
   
 #ifdef _DEBUG
   cout << "adding PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
   pda_roots.push_back(frame);
-  pthread_mutex_unlock(&mark_mutex);
+
+  pthread_mutex_unlock(&mark_sweep_mutex);
 }
 
 void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 {
-  pthread_mutex_lock(&mark_mutex);
+  pthread_mutex_lock(&mark_sweep_mutex);
+
 #ifdef _DEBUG
   cout << "removing PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
-
   pda_roots.remove(frame);
 
-  pthread_mutex_unlock(&mark_mutex);
+  pthread_mutex_unlock(&mark_sweep_mutex);
 }
 
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
                                      long* self, long* mem, long offset)
 {
-  pthread_mutex_lock(&mark_mutex);
+  pthread_mutex_lock(&mark_sweep_mutex);
   
 #ifdef _DEBUG
   cout << "adding JIT root: class=" << cls_id << ", method=" << mthd_id << ", self=" << self
@@ -136,12 +136,12 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
   mthd_info->mthd_id = mthd_id;
   jit_roots.push_back(mthd_info);
 
-  pthread_mutex_unlock(&mark_mutex);
+  pthread_mutex_unlock(&mark_sweep_mutex);
 }
 
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
-  pthread_mutex_lock(&mark_mutex);
+  pthread_mutex_lock(&mark_sweep_mutex);
 
   // find
   ClassMethodId* found = NULL;
@@ -166,7 +166,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   delete found;
   found = NULL;
 
-  pthread_mutex_unlock(&mark_mutex);
+  pthread_mutex_unlock(&mark_sweep_mutex);
 }
 
 long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos)
@@ -343,10 +343,9 @@ void* MemoryManager::CollectMemory(void* arg)
     cerr << "Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
-    
-
+  
   // sweep
-  pthread_mutex_lock(&sweep_mutex);
+  pthread_mutex_lock(&mark_sweep_mutex);
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;
 #endif
@@ -433,7 +432,7 @@ void* MemoryManager::CollectMemory(void* arg)
        << "%" << endl;
   cout << "===============================================================" << endl;
 #endif
-  pthread_mutex_unlock(&sweep_mutex);
+  pthread_mutex_unlock(&mark_sweep_mutex);
   
   pthread_exit(NULL);
 }
