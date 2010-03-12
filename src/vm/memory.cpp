@@ -76,9 +76,9 @@ inline bool MemoryManager::MarkMemory(long* mem)
       // mark & add to list
       pthread_mutex_lock(&mark_mutex);
       mem[-1] = 1L;
+      marked_memory.push_back(mem);
       pthread_mutex_unlock(&mark_mutex);
       
-      marked_memory.push_back(mem);
       return true;
     } else {
       return false;
@@ -437,7 +437,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
   pthread_exit(NULL);
 }
- 
+
 void* MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;

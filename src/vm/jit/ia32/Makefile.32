@@ -3,14 +3,14 @@
 ###############
 # ARGS=-mstackrealign -O2
 # ARGS=-D_TIMING -mstackrealign -O2
-ARGS=-mstackrealign -g -D_DEBUG -Wunused
+# ARGS=-mstackrealign -g -D_DEBUG -Wunused
 
 ###############
 # For Linux
 ###############
 # ARGS=-g -D_DEBUG  -Wunused
 # ARGS=-g -Wunused
-# ARGS=-O2
+ARGS=-O2
 
 CC=g++
 AR=ar
