@@ -303,6 +303,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
     cerr << "Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
+  
   pthread_attr_destroy(&attrs);
 }
 
