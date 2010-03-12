@@ -47,6 +47,19 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
+pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void* StackInterpreter::CompileMethod(void* arg) 
+{
+  StackMethod* method = (StackMethod*)arg;
+    
+  
+  Runtime::JitCompilerIA32 jit_compiler;
+  jit_compiler.Compile(method);
+  
+  
+  pthread_exit(NULL);
+}
 
 void StackInterpreter::Initialize(StackProgram* p)
 {
@@ -761,7 +774,7 @@ void StackInterpreter::ProcessReturn()
 
   // restore previous frame
   if(!StackEmpty()) {
-    frame = PopFrame();
+   frame = PopFrame();
     ip = frame->GetIp();
   } else {
     halt = true;
@@ -831,14 +844,45 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   ProcessInterpretedMethodCall(called, instance);
 #else
   // TODO: don't try and re-compile code that doesn't compile the first time
-  Runtime::JitCompilerIA32 jit;
-  if(jit.Compile(called)) {
-    jit.Execute(called, (long*)instance, op_stack, stack_pos);
+  // execute method if it's been compiled
+  if(called->GetNativeCode()) {
+    Runtime::JitExecutorIA32 jit_executor;
+    jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
     // restore previous state
     frame = PopFrame();
     ip = frame->GetIp();
-  } else {
-    ProcessInterpretedMethodCall(called, instance);
+  } 
+  else {
+    // compile method unless it's already being compiled i.e. locked
+    if(pthread_mutex_trylock(&called->jit_mutex)) {
+      ProcessInterpretedMethodCall(called, instance);
+    }
+    else {
+      // create joinable thread
+      pthread_attr_t attrs;
+      pthread_attr_init(&attrs);
+      pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+      
+      pthread_t jit_thread;
+      if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
+	cerr << "Unable to create thread to compile method!" << endl;
+        exit(-1);
+      }
+      // wait unitl the thread is done before we release our lock
+      void* status;
+      if(pthread_join(jit_thread, &status)) {
+	cerr << "Unable to join garbage collection threads!" << endl;
+	exit(-1);
+      }
+      pthread_attr_destroy(&attrs);
+      pthread_mutex_unlock(&called->jit_mutex);
+      // execute newly compiled method
+      Runtime::JitExecutorIA32 jit_executor;
+      jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+      // restore previous state
+      frame = PopFrame();
+      ip = frame->GetIp();
+    } 
   }
 #endif
 }
