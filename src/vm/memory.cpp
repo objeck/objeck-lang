@@ -47,6 +47,7 @@ pthread_mutex_t MemoryManager::jit_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::marked_sweep_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void MemoryManager::Initialize(StackProgram* p)
 {
@@ -283,6 +284,11 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
 
 void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 {
+  // only one thread can invoke the gargabe collector
+  if(pthread_mutex_trylock(&marked_sweep_mutex)) {
+    return;
+  }
+
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
@@ -297,7 +303,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
     exit(-1);
   }
 
-  // TODO: a way to not wait?
+  // wait until collection is complete before perceeding
   void* status;
   if(pthread_join(collect_thread, &status)) {
     cerr << "Unable to join garbage collection threads!" << endl;
@@ -305,6 +311,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   }
   
   pthread_attr_destroy(&attrs);
+  pthread_mutex_unlock(&marked_sweep_mutex);
 }
 
 void* MemoryManager::CollectMemory(void* arg)
@@ -343,7 +350,7 @@ void* MemoryManager::CollectMemory(void* arg)
   }
   pthread_attr_destroy(&attrs);
   
-  // join mark threads
+  // join all of the mark threads
   void *status;
   if(pthread_join(stack_thread, &status)) {
     cerr << "Unable to join garbage collection threads!" << endl;
@@ -360,13 +367,13 @@ void* MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
   
-  // sweep
+  // sweep memory
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;
 #endif
   vector<long*> erased_memory;
   
-  // sort and use a binary search to sweep memory
+  // sort and search
   pthread_mutex_lock(&marked_mem_mutex);
 #ifdef _DEBUG
   cout << "-----------------------------------------" << endl;
@@ -395,7 +402,8 @@ void* MemoryManager::CollectMemory(void* arg)
         if(cls) {
           mem_size = cls->GetInstanceMemorySize();
         }
-      } else {
+      } 
+      else {
         mem_size = iter->second;
       }
 

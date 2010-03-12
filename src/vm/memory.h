@@ -35,7 +35,7 @@
 #include "common.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 1024 * 64
+#define MEM_MAX 1024
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
@@ -66,6 +66,8 @@ class MemoryManager {
   
   static vector<long*> marked_memory;
   static pthread_mutex_t marked_mem_mutex;
+
+  static pthread_mutex_t marked_sweep_mutex;
   
   // note: protected by 'allocated_mem_mutex'
   static long allocation_size;
