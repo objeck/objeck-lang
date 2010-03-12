@@ -43,10 +43,10 @@ long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 
-pthread_mutex_t MemoryManager::jit_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::pda_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::allocated_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::marked_mem_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::pda_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::marked_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void MemoryManager::Initialize(StackProgram* p)
@@ -70,26 +70,26 @@ MemoryManager* MemoryManager::Instance()
 inline bool MemoryManager::MarkMemory(long* mem)
 {
   if(mem) {
-    pthread_mutex_lock(&allocated_mem_mutex);
+    pthread_mutex_lock(&allocated_mutex);
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       // check if memory has been marked
       if(mem[-1]) {
-	pthread_mutex_unlock(&allocated_mem_mutex);
+	pthread_mutex_unlock(&allocated_mutex);
         return false;
       }
 
       // mark & add to list
-      pthread_mutex_lock(&marked_mem_mutex);
+      pthread_mutex_lock(&marked_mutex);
       mem[-1] = 1L;
       marked_memory.push_back(mem);
-      pthread_mutex_unlock(&marked_mem_mutex);
+      pthread_mutex_unlock(&marked_mutex);
       
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
       return true;
     } 
     else {
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
       return false;
     }
   }
@@ -103,9 +103,9 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
   cout << "adding PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   pda_roots.push_back(frame);
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 }
 
 void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
@@ -114,9 +114,9 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
   cout << "removing PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   pda_roots.remove(frame);
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 }
 
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
@@ -139,16 +139,16 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
   mthd_info->cls_id = cls_id;
   mthd_info->mthd_id = mthd_id;
 
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   jit_roots.push_back(mthd_info);
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 }
 
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
   // find
   ClassMethodId* found = NULL;
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   list<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
@@ -156,7 +156,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
       found = id;
     }
   }
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 
 #ifdef _DEBUG
   cout << "removing JIT method: mem=" << found->mem << ", self=" 
@@ -167,9 +167,9 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   assert(found);
 #endif
   
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   jit_roots.remove(found);
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 
   delete found;
   found = NULL;
@@ -201,10 +201,10 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
     mem++;
 
     // record
-    pthread_mutex_lock(&allocated_mem_mutex);
+    pthread_mutex_lock(&allocated_mutex);
     allocation_size += size;
     allocated_memory.insert(pair<long*, long>(mem, -obj_id));
-    pthread_mutex_unlock(&allocated_mem_mutex);
+    pthread_mutex_unlock(&allocated_mutex);
 
 #ifdef _DEBUG
     cout << "# allocating object: addr=" << mem << "(" << (long)mem << "), size="
@@ -241,10 +241,10 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
   mem++;
 
-  pthread_mutex_lock(&allocated_mem_mutex);
+  pthread_mutex_lock(&allocated_mutex);
   allocation_size += calc_size;
   allocated_memory.insert(pair<long*, long>(mem, calc_size));
-  pthread_mutex_unlock(&allocated_mem_mutex);
+  pthread_mutex_unlock(&allocated_mutex);
   
 #ifdef _DEBUG
   cout << "# allocating array: addr=" << mem << "(" << (long)mem << "), size=" << calc_size
@@ -258,37 +258,37 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
 {
   long id;
 
-  pthread_mutex_lock(&allocated_mem_mutex);
+  pthread_mutex_lock(&allocated_mutex);
   map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
     id = -result->second;
   } 
   else {
-    pthread_mutex_unlock(&allocated_mem_mutex);
+    pthread_mutex_unlock(&allocated_mutex);
     return NULL;
   }
   
   // upcast
   while(id != -1) {
     if(id == to_id) {
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
       return mem;
     }
     // update
     id = cls_hierarchy[id];
   }
 
-  pthread_mutex_unlock(&allocated_mem_mutex);
+  pthread_mutex_unlock(&allocated_mutex);
   return NULL;
 }
 
 void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 {
-  // only one thread can invoke the gargabe collector
+  // only one thread at a time can invoke the gargabe collector
   if(pthread_mutex_trylock(&marked_sweep_mutex)) {
     return;
   }
-
+  
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
@@ -374,7 +374,7 @@ void* MemoryManager::CollectMemory(void* arg)
   vector<long*> erased_memory;
   
   // sort and search
-  pthread_mutex_lock(&marked_mem_mutex);
+  pthread_mutex_lock(&marked_mutex);
 #ifdef _DEBUG
   cout << "-----------------------------------------" << endl;
   cout << "Marked " << marked_memory.size() << " items." << endl;
@@ -383,7 +383,7 @@ void* MemoryManager::CollectMemory(void* arg)
   std::sort(marked_memory.begin(), marked_memory.end());
   map<long*, long>::iterator iter;
 
-  pthread_mutex_lock(&allocated_mem_mutex);
+  pthread_mutex_lock(&allocated_mutex);
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
@@ -424,7 +424,7 @@ void* MemoryManager::CollectMemory(void* arg)
     }
   }
   marked_memory.clear();
-  pthread_mutex_unlock(&marked_mem_mutex);
+  pthread_mutex_unlock(&marked_mutex);
   
   // did not collect memory; ajust constraints
   if(erased_memory.empty()) {
@@ -449,7 +449,7 @@ void* MemoryManager::CollectMemory(void* arg)
   for(unsigned int i = 0; i < erased_memory.size(); i++) {
     allocated_memory.erase(erased_memory[i]);
   }
-  pthread_mutex_unlock(&allocated_mem_mutex);
+  pthread_mutex_unlock(&allocated_mutex);
 
 #ifdef _DEBUG
   cout << "===============================================================" << endl;
@@ -481,7 +481,7 @@ void* MemoryManager::CheckStack(void* arg)
 
 void* MemoryManager::CheckJitRoots(void* arg)
 {
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   
 #ifdef _DEBUG
   cout << "---- Sweeping JIT method root(s): num=" << jit_roots.size() 
@@ -510,12 +510,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
       // get memory size
       long array_size = 0;
 
-      pthread_mutex_lock(&allocated_mem_mutex);
+      pthread_mutex_lock(&allocated_mutex);
       map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
 
       // update address based upon type
       switch(dclrs[j]->type) {
@@ -610,14 +610,14 @@ void* MemoryManager::CheckJitRoots(void* arg)
       CheckObject((long*)mem[i], false, 1);
     }
   }
-  pthread_mutex_unlock(&jit_mem_mutex);  
+  pthread_mutex_unlock(&jit_mutex);  
 
   pthread_exit(NULL);
 }
 
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
-  pthread_mutex_lock(&jit_mem_mutex);
+  pthread_mutex_lock(&jit_mutex);
   
 #ifdef _DEBUG
   cout << "----- PDA method root(s): num=" << pda_roots.size() 
@@ -647,7 +647,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     // mark rest of memory
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
-  pthread_mutex_unlock(&jit_mem_mutex);
+  pthread_mutex_unlock(&jit_mutex);
 
   pthread_exit(NULL);
 }
@@ -659,12 +659,12 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     // get memory size
     long array_size = 0;
 
-    pthread_mutex_lock(&allocated_mem_mutex);
+    pthread_mutex_lock(&allocated_mutex);
     map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
-    pthread_mutex_unlock(&allocated_mem_mutex);
+    pthread_mutex_unlock(&allocated_mutex);
 
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {

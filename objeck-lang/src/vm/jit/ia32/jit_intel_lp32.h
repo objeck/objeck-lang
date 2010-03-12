@@ -225,12 +225,11 @@ namespace Runtime {
     list<RegisterHolder*> used_xregs;
     map<int32_t, StackInstr*> jump_table;
     int32_t local_space;
-    
-    StackMethod* mthd;
+    StackMethod* method;
     int32_t instr_count;
     BYTE_VALUE* code;
-    int32_t code_index;    
-    FLOAT_VALUE* floats;
+    int32_t code_index;   
+    FLOAT_VALUE* floats;     
     int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
@@ -1504,8 +1503,8 @@ namespace Runtime {
       cout << "Calculating indices for variables..." << endl;
 #endif
       multimap<int32_t, StackInstr*> values;
-      for(int32_t i = 0; i < mthd->GetInstructionCount(); i++) {
-	StackInstr* instr = mthd->GetInstruction(i);
+      for(int32_t i = 0; i < method->GetInstructionCount(); i++) {
+	StackInstr* instr = method->GetInstruction(i);
 	switch(instr->GetType()) {
 	case LOAD_INT_VAR:
 	case STOR_INT_VAR:
@@ -1630,7 +1629,7 @@ namespace Runtime {
         aux_regs.pop();
       }
     }
-    
+
     /****************************
      * Compiles stack code
      ****************************/
@@ -1639,14 +1638,14 @@ namespace Runtime {
       skip_jump = false;
       
       if(!cm->GetNativeCode()) {
-	mthd = cm;
-	int32_t cls_id = mthd->GetClass()->GetId();
-	int32_t mthd_id = mthd->GetId();
+	method = cm;
+	int32_t cls_id = method->GetClass()->GetId();
+	int32_t mthd_id = method->GetId();
 	
 #ifdef _DEBUG
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
-	     << mthd_id << "; mthd_name='" << mthd->GetName() << "'; params=" 
-	     << mthd->GetParamCount() << " ----------" << endl;
+	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
+	     << method->GetParamCount() << " ----------" << endl;
 #endif
 	
 	code_buf_max = 4096;
@@ -1690,7 +1689,7 @@ namespace Runtime {
 	// register root
 	RegisterRoot();
 	// translate parameters
-	ProcessParameters(mthd->GetParamCount());
+	ProcessParameters(method->GetParamCount());
 	// tranlsate program
 	ProcessInstructions();
 	if(!compile_success) {
@@ -1702,8 +1701,8 @@ namespace Runtime {
 	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
 	  StackInstr* instr = iter->second;
 	  int32_t src_offset = iter->first;
-	  int32_t dest_index = mthd->GetLabelIndex(instr->GetOperand()) + 1;
-	  int32_t dest_offset = mthd->GetInstruction(dest_index)->GetOffset();
+	  int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+	  int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
 	  int32_t offset = dest_offset - src_offset - 4;
 	  memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
@@ -1722,30 +1721,58 @@ namespace Runtime {
 	  exit(errno);
 	}
 #endif
-	mthd->SetNativeCode(new NativeCode(code, code_index, floats));
+	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
       }
       
       return compile_success;
     }
+  };    
+  
+
+
+
+
+
+
+  
+  class JitExecutorIA32 {
+    static StackProgram* program;
+    StackMethod* method;
+    BYTE_VALUE* code;
+    int32_t code_index; 
+    FLOAT_VALUE* floats;
     
+    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
+			       BYTE_VALUE* code, const int32_t code_size, 
+			       int32_t* op_stack, int32_t *stack_pos);
+    
+  public:
+    static void Initialize(StackProgram* p);
+
+    JitExecutorIA32() {
+    }
+
+    ~JitExecutorIA32() {
+    }    
+
     /****************************
      * Executes machine code
      ****************************/
     long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
-      mthd = cm;
-      int32_t cls_id = mthd->GetClass()->GetId();
-      int32_t mthd_id = mthd->GetId();
+      method = cm;
+      int32_t cls_id = method->GetClass()->GetId();
+      int32_t mthd_id = method->GetId();
       
 #ifdef _DEBUG
       cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
-	   << "; name='" << mthd->GetName() << "'; self=" << inst << "(" << (long)inst 
+	   << "; name='" << method->GetName() << "'; self=" << inst << "(" << (long)inst 
 	   << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
-	   << mthd->GetParamCount() << " ===" << endl;
-      assert((*stack_pos) >= mthd->GetParamCount());
+	   << method->GetParamCount() << " ===" << endl;
+      assert((*stack_pos) >= method->GetParamCount());
 #endif
 
-      NativeCode* native_code = mthd->GetNativeCode();
+      NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
       floats = native_code->GetFloats();

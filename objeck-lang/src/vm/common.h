@@ -455,12 +455,13 @@ class StackMethod {
 
     return name;
   }
-
+  
 public:
-  pthread_mutex_t mutex;
-
+  pthread_mutex_t jit_mutex;
+  
   StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
+    pthread_mutex_init(&jit_mutex, NULL);
     id = i;
     name = ParseName(n);
     is_virtual = v;
