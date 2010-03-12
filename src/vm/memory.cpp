@@ -42,6 +42,8 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
+pthread_mutex_t MemoryManager::mark_mutex;
+pthread_mutex_t MemoryManager::sweep_mutex;
 
 void MemoryManager::Initialize(StackProgram* p)
 {
@@ -72,7 +74,10 @@ inline bool MemoryManager::MarkMemory(long* mem)
       }
 
       // mark & add to list
+      pthread_mutex_lock(&mark_mutex);
       mem[-1] = 1L;
+      pthread_mutex_unlock(&mark_mutex);
+      
       marked_memory.push_back(mem);
       return true;
     } else {
@@ -85,27 +90,34 @@ inline bool MemoryManager::MarkMemory(long* mem)
 
 void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 {
+  pthread_mutex_lock(&mark_mutex);
+  
 #ifdef _DEBUG
   cout << "adding PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
-
   pda_roots.push_back(frame);
+  pthread_mutex_unlock(&mark_mutex);
 }
 
 void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 {
+  pthread_mutex_lock(&mark_mutex);
 #ifdef _DEBUG
   cout << "removing PDA method: frame=" << frame << ", self="
        << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
 
   pda_roots.remove(frame);
+
+  pthread_mutex_unlock(&mark_mutex);
 }
 
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
                                      long* self, long* mem, long offset)
 {
+  pthread_mutex_lock(&mark_mutex);
+  
 #ifdef _DEBUG
   cout << "adding JIT root: class=" << cls_id << ", method=" << mthd_id << ", self=" << self
        << "(" << (long)self << "), mem=" << mem << ", offset=" << offset << endl;
@@ -117,24 +129,33 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
     mem[i] = 0;
   }
 
-  jit_roots.push_back(new ClassMethodId(self, mem, cls_id, mthd_id));
+  ClassMethodId* mthd_info = new ClassMethodId;
+  mthd_info->self = self;
+  mthd_info->mem = mem;
+  mthd_info->cls_id = cls_id;
+  mthd_info->mthd_id = mthd_id;
+  jit_roots.push_back(mthd_info);
+
+  pthread_mutex_unlock(&mark_mutex);
 }
 
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
+  pthread_mutex_lock(&mark_mutex);
+
   // find
   ClassMethodId* found = NULL;
   list<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
-    if(id->GetMemory() == mem) {
+    if(id->mem == mem) {
       found = id;
     }
   }
 
 #ifdef _DEBUG
-  cout << "removing JIT method: mem=" << found->GetMemory()
-       << ", self=" << found->GetSelf() << "(" << (long)found->GetSelf() << ")" << endl;
+  cout << "removing JIT method: mem=" << found->mem << ", self=" 
+       << found->self << "(" << (long)found->self << ")" << endl;
 #endif
 
 #ifdef _DEBUG
@@ -144,6 +165,8 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 
   delete found;
   found = NULL;
+
+  pthread_mutex_unlock(&mark_mutex);
 }
 
 long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos)
@@ -243,20 +266,87 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
 
 void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 {
+  CollectionInfo* info = new CollectionInfo;
+  info->op_stack = op_stack; 
+  info->stack_pos = stack_pos;
+  
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t collect_thread;
+  if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
+  // TODO: a way to not wait?
+  void* status;
+  if(pthread_join(collect_thread, &status)) {
+    cerr << "Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  
+
+  pthread_attr_destroy(&attrs);
+}
+
+void* MemoryManager::CollectMemory(void* arg)
+{
+  CollectionInfo* info = (CollectionInfo*)arg;
+  
 #ifdef _DEBUG
   long start = allocation_size;
   cout << endl << "=========================================" << endl;
-  cout << "Starting Garbage Collection" << endl;
+  cout << "Starting Garbage Collection; thread=" << pthread_self() << endl;
   cout << "=========================================" << endl;
   cout << "## Marking memory ##" << endl;
 #endif
 
-  // mark
-  CheckStack(op_stack, stack_pos);
-  CheckPdaRoots();
-  CheckJitRoots();
+  // multi-threaded mark
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t stack_thread;
+  if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+  
+  pthread_t pda_thread;
+  if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+  
+  pthread_t jit_thread;
+  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+  pthread_attr_destroy(&attrs);
+  
+  // join mark threads
+  void *status;
+  if(pthread_join(stack_thread, &status)) {
+    cerr << "Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+
+  if(pthread_join(pda_thread, &status)) {
+    cerr << "Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+
+  if(pthread_join(jit_thread, &status)) {
+    cerr << "Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+    
 
   // sweep
+  pthread_mutex_lock(&sweep_mutex);
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;
 #endif
@@ -343,39 +433,50 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
        << "%" << endl;
   cout << "===============================================================" << endl;
 #endif
+  pthread_mutex_unlock(&sweep_mutex);
+  
+  pthread_exit(NULL);
 }
-
-void MemoryManager::CheckStack(long* op_stack, long stack_pos)
+ 
+void* MemoryManager::CheckStack(void* arg)
 {
+  CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
-  cout << "----- stack: pos=" << stack_pos << " -----" << endl;
+  cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos 
+       << "; thread=" << pthread_self() << " -----" << endl;
 #endif
-  while(stack_pos > -1) {
-    CheckObject((long*)op_stack[stack_pos--], false, 1);
+  while(info->stack_pos > -1) {
+    CheckObject((long*)info->op_stack[info->stack_pos--], false, 1);
   }
+  delete info;
+  info = NULL;
+  
+  pthread_exit(NULL);
 }
 
-void MemoryManager::CheckJitRoots()
+void* MemoryManager::CheckJitRoots(void* arg)
 {
 #ifdef _DEBUG
-  cout << "---- JIT method root(s): num=" << jit_roots.size() << " ------" << endl;
+  cout << "---- Sweeping JIT method root(s): num=" << jit_roots.size() 
+       << "; thread=" << pthread_self() << " ------" << endl;
   cout << "memory types: " << endl;
 #endif
-
+  
   list<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
-    long* mem = id->GetMemory();
-    StackMethod* mthd = prgm->GetClass(id->GetClassId())->GetMethod(id->GetMethodId());
+    long* mem = id->mem;
+    StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
     const long dclrs_num = mthd->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->GetClassId() << "," << id->GetMethodId()
-         << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() << " =====" << endl;
+    cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->cls_id << "," 
+	 << id->mthd_id << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() 
+	 << " =====" << endl;
 #endif
 
     // check self
-    CheckObject(id->GetSelf(), true, 1);
+    CheckObject(id->self, true, 1);
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {
@@ -480,12 +581,15 @@ void MemoryManager::CheckJitRoots()
       CheckObject((long*)mem[i], false, 1);
     }
   }
+  
+  pthread_exit(NULL);
 }
 
-void MemoryManager::CheckPdaRoots()
+void* MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifdef _DEBUG
-  cout << "----- PDA method root(s): num=" << pda_roots.size() << " -----" << endl;
+  cout << "----- PDA method root(s): num=" << pda_roots.size() 
+       << "; thread=" << pthread_self()<< " -----" << endl;
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
@@ -511,6 +615,8 @@ void MemoryManager::CheckPdaRoots()
     // mark rest of memory
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
+  
+  pthread_exit(NULL);
 }
 
 void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
