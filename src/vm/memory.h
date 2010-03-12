@@ -56,20 +56,20 @@ class MemoryManager {
   static StackProgram* prgm;
   
   static list<ClassMethodId*> jit_roots;
-  static pthread_mutex_t jit_mem_mutex;
+  static pthread_mutex_t jit_mutex;
   
   static list<StackFrame*> pda_roots; // deleted elsewhere
-  static pthread_mutex_t pda_mem_mutex;
+  static pthread_mutex_t pda_mutex;
 
   static map<long*, long> allocated_memory;
-  static pthread_mutex_t allocated_mem_mutex;
+  static pthread_mutex_t allocated_mutex;
   
   static vector<long*> marked_memory;
-  static pthread_mutex_t marked_mem_mutex;
+  static pthread_mutex_t marked_mutex;
 
   static pthread_mutex_t marked_sweep_mutex;
   
-  // note: protected by 'allocated_mem_mutex'
+  // note: protected by 'allocated_mutex'
   static long allocation_size;
   static long mem_max_size;
   static long uncollected_count;
@@ -137,29 +137,29 @@ public:
   long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
   
   inline long GetObjectID(long* mem) {
-    pthread_mutex_lock(&allocated_mem_mutex);
+    pthread_mutex_lock(&allocated_mutex);
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
       return -result->second;
     } 
     else {
-      pthread_mutex_unlock(&allocated_mem_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
       return -1;
     }
   }
 
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
-      pthread_mutex_lock(&allocated_mem_mutex);
+      pthread_mutex_lock(&allocated_mutex);
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
-	pthread_mutex_unlock(&allocated_mem_mutex);
+	pthread_mutex_unlock(&allocated_mutex);
         return prgm->GetClass(-result->second);
       }
     }
 
-    pthread_mutex_unlock(&allocated_mem_mutex);
+    pthread_mutex_unlock(&allocated_mutex);
     return NULL;
   }
 

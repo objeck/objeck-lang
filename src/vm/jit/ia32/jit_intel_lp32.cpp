@@ -35,7 +35,6 @@
 using namespace Runtime;
 
 StackProgram* JitCompilerIA32::program;
-
 void JitCompilerIA32::Initialize(StackProgram* p) {
   program = p;
 }
@@ -98,19 +97,6 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   }
 }
 
-int32_t JitCompilerIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, BYTE_VALUE* code, 
-					    const int32_t code_size, int32_t* op_stack, int32_t *stack_pos) {
-  // create function
-  jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  
-  // execute
-  int32_t rtrn_value;
-  jit_fun(cls_id, mthd_id, (int32_t*)mthd->GetClass()->GetClassMemory(), 
-	  inst, op_stack, stack_pos, rtrn_value);
-  
-  return rtrn_value;
-}
-
 void JitCompilerIA32::RegisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
@@ -164,7 +150,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
 
-    StackInstr* instr = mthd->GetInstruction(instr_index++);
+    StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);  
 
     RegisterHolder* stack_pos_holder = GetRegister();
@@ -248,8 +234,8 @@ void JitCompilerIA32::ProcessFloatCallParameter() {
 }
 
 void JitCompilerIA32::ProcessInstructions() {
-  while(instr_index < mthd->GetInstructionCount() && compile_success) {
-    StackInstr* instr = mthd->GetInstruction(instr_index++);
+  while(instr_index < method->GetInstructionCount() && compile_success) {
+    StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
     
     switch(instr->GetType()) {
@@ -287,7 +273,7 @@ void JitCompilerIA32::ProcessInstructions() {
       cout << "LOAD_CLS_MEM; regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       RegisterHolder* holder = GetRegister();
-      move_imm_reg((int32_t)mthd->GetClass()->GetClassMemory(), holder->GetRegister());
+      move_imm_reg((int32_t)method->GetClass()->GetClassMemory(), holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -400,19 +386,18 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case MTHD_CALL: {
-      StackMethod* called_mthd = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-			
+      StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      if(called_method) {
 #ifdef _DEBUG
-      assert(called_mthd);
-      cout << "MTHD_CALL: id="<< instr->GetOperand() << "," << instr->GetOperand2() << ", params=" 
-	   << (called_mthd->GetParamCount() + 1) << "; regs=" << aval_regs.size() << "," 
-	   << aux_regs.size() << endl;
-#endif
-      if(called_mthd) {
+	assert(called_method);
+	cout << "MTHD_CALL: id="<< instr->GetOperand() << "," << instr->GetOperand2() << ", params=" 
+	     << (called_method->GetParamCount() + 1) << "; regs=" << aval_regs.size() << "," 
+	     << aux_regs.size() << endl;
+#endif      
 	// passing instance variable
-	ProcessStackCallback(MTHD_CALL, instr, instr_index, called_mthd->GetParamCount() + 1);
+	ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
       
-	switch(called_mthd->GetReturn()) {
+	switch(called_method->GetReturn()) {
 	case INT_TYPE:
 	  ProcessReturnParameters(true);      
 	  break;
@@ -1810,11 +1795,11 @@ void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
 }
 
 bool JitCompilerIA32::cond_jmp(InstructionType type) {
-  if(instr_index >= mthd->GetInstructionCount()) {
+  if(instr_index >= method->GetInstructionCount()) {
     return false;
   }
   
-  StackInstr* next_instr = mthd->GetInstruction(instr_index);
+  StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
   // if(false) {
 #ifdef _DEBUG
@@ -3093,4 +3078,49 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
   RegisterEncode3(code, 2, src);
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+StackProgram* JitExecutorIA32::program;
+void JitExecutorIA32::Initialize(StackProgram* p) {
+  program = p;
+}
+
+int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
+					    BYTE_VALUE* code, const int32_t code_size, 
+					    int32_t* op_stack, int32_t *stack_pos) {
+  // create function
+  jit_fun_ptr jit_fun = (jit_fun_ptr)code;
+  
+  // execute
+  int32_t rtrn_value;
+  jit_fun(cls_id, mthd_id, (int32_t*)method->GetClass()->GetClassMemory(), 
+	  inst, op_stack, stack_pos, rtrn_value);
+  
+  return rtrn_value;
 }
