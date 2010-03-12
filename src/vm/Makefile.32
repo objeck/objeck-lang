@@ -1,15 +1,15 @@
 ##############
 # For OSX only
 ##############
-# ARGS=-mstackrealign -O2
-# ARGS=-D_TIMING -mstackrealign -O2
-# ARGS=-mstackrealign -g -D_DEBUG -Wunused
+# ARGS=--pthread mstackrealign -O2
+# ARGS=-pthread -D_TIMING -mstackrealign -O2
+# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 
 ##############
 # For Linux
 ##############
-ARGS=-g -D_DEBUG  -Wunused
-# ARGS=-O2
+ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-O2 -pthread
 
 CC=g++
 SRC= memory.o interpreter.o loader.o vm.o 
