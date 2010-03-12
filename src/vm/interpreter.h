@@ -65,6 +65,8 @@ class StackInterpreter {
   // halt
   bool halt;
 
+  static pthread_mutex_t jit_mutex;
+
   inline void PushFrame(StackFrame* f) {
     call_stack[call_stack_pos++] = f;
   }
@@ -197,6 +199,8 @@ class StackInterpreter {
 
     return index;
   }
+
+  static void* CompileMethod(void* arg);
 
   static void* AsyncCall(void* arg);
   static void* AsyncJitCall(void* arg);
