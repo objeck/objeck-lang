@@ -35,7 +35,7 @@
 #include "common.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 1024
+#define MEM_MAX 1024 * 64
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
