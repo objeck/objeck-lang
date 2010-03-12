@@ -62,9 +62,7 @@ class MemoryManager {
   static long mem_max_size;
   static long uncollected_count;
   static long collected_count;
-  // thread mutexes
-  static pthread_mutex_t mark_mutex;
-  static pthread_mutex_t sweep_mutex;
+  static pthread_mutex_t mark_sweep_mutex;
   
   MemoryManager() {
   }

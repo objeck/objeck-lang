@@ -323,6 +323,7 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   vector<StackInstr*> instrs;
+  bool is_compiling;
 
   //map<long, long> jump_table;
   JumpTable jump_table;
@@ -456,6 +457,8 @@ class StackMethod {
   }
 
 public:
+  pthread_mutex_t mutex;
+
   StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
     id = i;
@@ -470,6 +473,7 @@ public:
     mem_size = m;
     rtrn_type = r;
     cls = k;
+    is_compiling = false;
   }
 
   ~StackMethod() {
@@ -502,6 +506,14 @@ public:
 
   inline const string GetName() {
     return name;
+  }
+
+  inline void SetCompiling(bool c) {
+    is_compiling = c;
+  }
+
+  inline bool IsCompiling() {
+    return is_compiling;
   }
 
   inline bool IsVirtual() {
