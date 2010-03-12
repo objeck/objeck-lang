@@ -39,35 +39,16 @@
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
-class ClassMethodId {
+struct CollectionInfo {
+  long* op_stack;
+  long stack_pos;
+};
+
+struct ClassMethodId {
   long* self;
   long* mem;
   long cls_id;
   long mthd_id;
-
-public:
-  ClassMethodId(long* s, long* v, long c, long m) {
-    self = s;
-    mem = v;
-    cls_id = c;
-    mthd_id = m;
-  }
-
-  ~ClassMethodId() {
-  }
-
-  long* GetSelf() {
-    return self;
-  }
-  long* GetMemory() {
-    return mem;
-  }
-  long GetClassId() {
-    return cls_id;
-  }
-  long GetMethodId() {
-    return mthd_id;
-  }
 };
 
 class MemoryManager {
@@ -81,7 +62,10 @@ class MemoryManager {
   static long mem_max_size;
   static long uncollected_count;
   static long collected_count;
-
+  // thread mutexes
+  static pthread_mutex_t mark_mutex;
+  static pthread_mutex_t sweep_mutex;
+  
   MemoryManager() {
   }
 
@@ -124,13 +108,17 @@ public:
   void RemovePdaMethodRoot(StackFrame* frame);
 
   // recover memory
-  void CollectMemory(long* op_stack, long stack_pos);
-  void CheckStack(long* op_stack, long stack_pos);
-  void CheckJitRoots();
-  void CheckPdaRoots();
-  void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
-  void CheckObject(long* mem, bool is_obj, const long depth);
+  static void CollectMemory(long* op_stack, long stack_pos);
+  static void* CollectMemory(void* arg);
 
+  static void* CheckStack(void* arg);
+  static void* CheckJitRoots(void* arg);
+  static void* CheckPdaRoots(void* arg);
+
+  static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
+  static void CheckObject(long* mem, bool is_obj, const long depth);
+
+  // TODO: change to static
   // memory allocation
   long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
   long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
@@ -146,7 +134,7 @@ public:
     }
   }
 
-  inline StackClass* GetClass(long* mem) {
+  static inline StackClass* GetClass(long* mem) {
     if(mem) {
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {

@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 #include <time.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
