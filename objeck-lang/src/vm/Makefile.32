@@ -8,7 +8,7 @@
 ##############
 # For Linux
 ##############
-ARGS=-g -D_DEBUG -Wunused -pthread
+ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
 # ARGS=-O3 -pthread
 
 CC=g++
