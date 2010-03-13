@@ -47,7 +47,9 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
-#ifndef _WIN32
+#ifdef _WIN32
+CRITICAL_SECTION StackInterpreter::jit_mutex;
+#else
 pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
