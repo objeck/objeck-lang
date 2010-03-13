@@ -65,8 +65,12 @@ class StackInterpreter {
   // halt
   bool halt;
 
+#ifdef _WIN32
+  static CRITICAL_SECTION jit_mutex;
+#else
   static pthread_mutex_t jit_mutex;
-
+#endif
+  
   inline void PushFrame(StackFrame* f) {
     call_stack[call_stack_pos++] = f;
   }
@@ -200,7 +204,11 @@ class StackInterpreter {
     return index;
   }
 
+#ifdef _WIN32
+  static DWORD WINAPI CompileMethod(LPVOID arg);
+#else
   static void* CompileMethod(void* arg);
+#endif
 
   static void* AsyncCall(void* arg);
   static void* AsyncJitCall(void* arg);
