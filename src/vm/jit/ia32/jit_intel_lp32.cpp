@@ -34,6 +34,9 @@
 
 using namespace Runtime;
 
+/********************************
+ * JitCompilerIA32 class
+ ********************************/
 StackProgram* JitCompilerIA32::program;
 void JitCompilerIA32::Initialize(StackProgram* p) {
   program = p;
@@ -2917,11 +2920,6 @@ void JitCompilerIA32::round_xreg_xreg(Register src, Register dest, bool is_floor
   }
 }
 
-
-
-
-
-
 void JitCompilerIA32::cvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
@@ -3080,32 +3078,9 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/********************************
+ * JitExecutorIA32 class
+ ********************************/
 StackProgram* JitExecutorIA32::program;
 void JitExecutorIA32::Initialize(StackProgram* p) {
   program = p;

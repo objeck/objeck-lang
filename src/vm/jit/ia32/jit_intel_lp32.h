@@ -210,11 +210,17 @@ namespace Runtime {
     }
   };
   
+  /********************************
+   * prototype for jit function
+   ********************************/
   typedef void (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, 
 			      int32_t* cls_mem, int32_t* inst, 
 			      int32_t* op_stack, int32_t *stack_pos, 
 			      int32_t &rtrn_value);
   
+  /********************************
+   * JitCompilerIA32 class
+   ********************************/
   class JitCompilerIA32 {
     static StackProgram* program;
     list<RegInstr*> working_stack;
@@ -256,7 +262,6 @@ namespace Runtime {
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
 			      int32_t &instr_index, int32_t params);
-    // return 
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessReturnParameters(bool is_int);
@@ -273,14 +278,7 @@ namespace Runtime {
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 
-    // execute
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst,
-			       BYTE_VALUE* code, const int32_t code_size, 
-			       int32_t* op_stack, int32_t *stack_pos);
-
-    /********************************
-     * Add byte code to buffer
-     ********************************/
+    // Add byte code to buffer
     void AddMachineCode(BYTE_VALUE b) {
       if(code_index == code_buf_max) {
 #ifdef _WIN32
@@ -300,10 +298,8 @@ namespace Runtime {
       code[code_index++] = b;
     }
     
-    /********************************
-     * Encodes and writes out 32-bit
-     * integer values
-     ********************************/
+    // Encodes and writes out 32-bit
+    // integer values
     void AddImm(int32_t imm) {
       BYTE_VALUE buffer[sizeof(int32_t)];
       ByteEncode32(buffer, imm);
@@ -312,10 +308,8 @@ namespace Runtime {
       }
     }
     
-    /********************************
-     * Caculates the IA-32 MOD R/M
-     * offset
-     ********************************/
+    // Caculates the IA-32 MOD R/M
+    // offset
     BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
       BYTE_VALUE byte;
 
@@ -410,9 +404,7 @@ namespace Runtime {
       return byte;
     }
 
-    /********************************
-     * Returns the name of a register
-     ********************************/
+    // Returns the name of a register
     string GetRegisterName(Register reg) {
       switch(reg) {
       case EAX:
@@ -467,18 +459,14 @@ namespace Runtime {
       return "unknown";
     }
 
-    /********************************
-     * Encodes a byte array with a
-     * 32-bit value
-     ********************************/
+    // Encodes a byte array with a
+    // 32-bit value
     void ByteEncode32(BYTE_VALUE buffer[], int32_t value) {
       memcpy(buffer, &value, sizeof(int32_t));
     }
     
-    /********************************
-     * Encodes an array with the 
-     * binary ID of a register
-     ********************************/
+    // Encodes an array with the 
+    // binary ID of a register
     void RegisterEncode3(BYTE_VALUE& code, int32_t offset, Register reg) {
 #ifdef _DEBUG
       assert(offset == 2 || offset == 5);
@@ -547,10 +535,8 @@ namespace Runtime {
       move_imm_reg(0, EAX);
     }
     
-    /********************************
-     * Gets an avaiable register from
-     * the pool of registers
-     ********************************/
+    // Gets an avaiable register from
+    // the pool of registers
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -581,9 +567,7 @@ namespace Runtime {
       return holder;
     }
 
-    /********************************
-     * Returns a register to the pool
-     ********************************/
+    // Returns a register to the pool
     void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
       cout << "\t * releasing " << GetRegisterName(h->GetRegister())
@@ -606,10 +590,8 @@ namespace Runtime {
       }
     }
 
-    /********************************
-     * Gets an avaiable register from
-     * the pool of registers
-     ********************************/
+    // Gets an avaiable register from
+    // the pool of registers
     RegisterHolder* GetXmmRegister() {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
@@ -635,9 +617,7 @@ namespace Runtime {
       return holder;
     }
 
-    /********************************
-     * Returns a register to the pool
-     ********************************/
+    // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
@@ -787,10 +767,9 @@ namespace Runtime {
 
     // TODO: return value and unwind whole program
     // TOOD: time to refactor... too large!!!
-    /********************************
-     * Process call backs from ASM
-     * code
-     ********************************/
+    // ....
+    // Process call backs from ASM
+    // code
     static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
 			      const int32_t mthd_id, int32_t* inst, int32_t* op_stack, 
 			      int32_t *stack_pos, const int32_t ip) {
@@ -1380,13 +1359,11 @@ namespace Runtime {
 #endif
     } 
 
-    /********************************
-     * Calculates array element offset. 
-     * Note: this code must match up 
-     * with the interpreter's 'ArrayIndex'
-     * method. Bounds checks are not done on
-     * JIT code.
-     ********************************/
+    // Calculates array element offset. 
+    // Note: this code must match up 
+    // with the interpreter's 'ArrayIndex'
+    // method. Bounds checks are not done on
+    // JIT code.
     RegisterHolder* ArrayIndex(StackInstr* instr, int32_t type) {
       RegInstr* holder = working_stack.front();
       working_stack.pop_front();
@@ -1494,10 +1471,8 @@ namespace Runtime {
       return array_holder;
     }
         
-    /********************************
-     * Caculates the indices for
-     * memory references.
-     ********************************/
+    // Caculates the indices for
+    // memory references.
     void ProcessIndices() {
 #ifdef _DEBUG
       cout << "Calculating indices for variables..." << endl;
@@ -1630,9 +1605,7 @@ namespace Runtime {
       }
     }
 
-    /****************************
-     * Compiles stack code
-     ****************************/
+    // Compiles stack code into IA-32 machine code
     bool Compile(StackMethod* cm) {
       compile_success = true;
       skip_jump = false;
@@ -1729,13 +1702,9 @@ namespace Runtime {
     }
   };    
   
-
-
-
-
-
-
-  
+  /********************************
+   * JitExecutorIA32 class
+   ********************************/
   class JitExecutorIA32 {
     static StackProgram* program;
     StackMethod* method;
@@ -1755,10 +1724,8 @@ namespace Runtime {
 
     ~JitExecutorIA32() {
     }    
-
-    /****************************
-     * Executes machine code
-     ****************************/
+    
+    // Executes machine code
     long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();

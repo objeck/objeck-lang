@@ -855,8 +855,15 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     }
     else {
 #ifdef _SERIAL
+      // compile
       Runtime::JitCompilerIA32 jit_compiler;
-      jit_compiler.Compile(called);
+      jit_compiler.Compile(called);      
+      // execute
+      Runtime::JitExecutorIA32 jit_executor;
+      jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+      // restore previous state
+      frame = PopFrame();
+      ip = frame->GetIp();
 #else
       // create joinable thread
       pthread_attr_t attrs;
