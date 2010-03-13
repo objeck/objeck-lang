@@ -43,14 +43,31 @@ long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 
+#ifndef _WIN32
 pthread_mutex_t MemoryManager::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_mutex = PTHREAD_MUTEX_INITIALIZER;
+#else
+CRITICAL_SECTION MemoryManager::jit_mutex;
+CRITICAL_SECTION MemoryManager::pda_mutex;
+CRITICAL_SECTION MemoryManager::allocated_mutex;
+CRITICAL_SECTION MemoryManager::marked_mutex;
+CRITICAL_SECTION MemoryManager::marked_sweep_mutex;
+#endif
 
 void MemoryManager::Initialize(StackProgram* p)
 {
+#ifdef _WIN32
+  InitializeCriticalSection(&jit_mutex);
+  InitializeCriticalSection(&pda_mutex);
+  InitializeCriticalSection(&jit_mutex);
+  InitializeCriticalSection(&allocated_mutex);
+  InitializeCriticalSection(&marked_mutex);
+  InitializeCriticalSection(&marked_sweep_mutex);
+#endif
+  
   prgm = p;
   allocation_size = 0;
   mem_max_size = MEM_MAX;
@@ -71,33 +88,53 @@ inline bool MemoryManager::MarkMemory(long* mem)
 {
   if(mem) {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_lock(&allocated_mutex);
+#endif
 #endif
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       // check if memory has been marked
       if(mem[-1]) {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
 	pthread_mutex_unlock(&allocated_mutex);
+#endif
 #endif
         return false;
       }
 
       // mark & add to list
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_lock(&marked_mutex);
+#endif
 #endif
       mem[-1] = 1L;
       marked_memory.push_back(mem);
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_unlock(&marked_mutex);      
       pthread_mutex_unlock(&allocated_mutex);
+#endif
 #endif
       return true;
     } 
     else {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_unlock(&allocated_mutex);
+#endif
 #endif
       return false;
     }
@@ -114,11 +151,20 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 #endif
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
+#endif
   pda_roots.push_back(frame);
+
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&jit_mutex);
+#endif
 #endif
 }
 
@@ -130,11 +176,20 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 #endif
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
+#endif
+
   pda_roots.remove(frame);
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&jit_mutex);
+#endif
 #endif
 }
 
@@ -159,11 +214,20 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
   mthd_info->mthd_id = mthd_id;
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
+#endif
+
   jit_roots.push_back(mthd_info);
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&jit_mutex);
+#endif
 #endif
 }
 
@@ -172,8 +236,13 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   // find
   ClassMethodId* found = NULL;
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
+#endif
+
   list<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
@@ -182,7 +251,11 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
     }
   }
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&jit_mutex);
+#endif
 #endif
 
 #ifdef _DEBUG
@@ -195,13 +268,22 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #endif
   
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
+#endif
   jit_roots.remove(found);
+
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&jit_mutex);
 #endif
-  
+#endif
+
   delete found;
   found = NULL;
 }
@@ -233,14 +315,23 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 
     // record
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_lock(&allocated_mutex);
+#endif
 #endif
     allocation_size += size;
     allocated_memory.insert(pair<long*, long>(mem, -obj_id));
+
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_unlock(&allocated_mutex);
 #endif
-    
+#endif
+
 #ifdef _DEBUG
     cout << "# allocating object: addr=" << mem << "(" << (long)mem << "), size="
          << size << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
@@ -277,14 +368,23 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   mem++;
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&allocated_mutex);
 #endif
+#endif
+
   allocation_size += calc_size;
   allocated_memory.insert(pair<long*, long>(mem, calc_size));
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&allocated_mutex);
 #endif
-  
+#endif
+
 #ifdef _DEBUG
   cout << "# allocating array: addr=" << mem << "(" << (long)mem << "), size=" << calc_size
        << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
@@ -296,9 +396,13 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
 {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&allocated_mutex);
 #endif
-  
+#endif
+
   long id;  
   map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
@@ -306,8 +410,13 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   } 
   else {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_unlock(&allocated_mutex);
 #endif
+#endif
+
     return NULL;
   }
   
@@ -315,7 +424,11 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   while(id != -1) {
     if(id == to_id) {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_unlock(&allocated_mutex);
+#endif
 #endif
       return mem;
     }
@@ -324,9 +437,13 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   }
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&allocated_mutex);
 #endif
-  
+#endif
+
   return NULL;
 }
 
@@ -334,9 +451,13 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 {
 #ifndef _SERIAL
   // only one thread at a time can invoke the gargabe collector
+#ifdef _WIN32
+    // TODO:
+#else
   if(pthread_mutex_trylock(&marked_sweep_mutex)) {
     return;
   }
+#endif
 #endif
   
   CollectionInfo* info = new CollectionInfo;
@@ -344,10 +465,12 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   info->stack_pos = stack_pos;
   
 #ifndef _SERIAL
+#ifndef _WIN32
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-  
+#endif
+
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
@@ -383,10 +506,12 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifndef _SERIAL
   // multi-threaded mark
+#ifndef _WIN32
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-  
+#endif
+
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
@@ -436,9 +561,13 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // sort and search
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&marked_mutex);
 #endif
-  
+#endif
+
 #ifdef _DEBUG
   cout << "-----------------------------------------" << endl;
   cout << "Marked " << marked_memory.size() << " items." << endl;
@@ -448,8 +577,13 @@ void* MemoryManager::CollectMemory(void* arg)
   map<long*, long>::iterator iter;
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&allocated_mutex);
 #endif
+#endif
+  
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
@@ -490,10 +624,15 @@ void* MemoryManager::CollectMemory(void* arg)
     }
   }
   marked_memory.clear();
+
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&marked_mutex);
 #endif  
-  
+#endif
+
   // did not collect memory; ajust constraints
   if(erased_memory.empty()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
@@ -518,9 +657,13 @@ void* MemoryManager::CollectMemory(void* arg)
     allocated_memory.erase(erased_memory[i]);
   }
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_unlock(&allocated_mutex);
 #endif
-  
+#endif
+
 #ifdef _DEBUG
   cout << "===============================================================" << endl;
   cout << "Finished Collection: collected=" << (start - allocation_size)
@@ -556,9 +699,13 @@ void* MemoryManager::CheckStack(void* arg)
 void* MemoryManager::CheckJitRoots(void* arg)
 {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif  
-  
+#endif
+
 #ifdef _DEBUG
   cout << "---- Sweeping JIT method root(s): num=" << jit_roots.size() 
        << "; thread=" << pthread_self() << " ------" << endl;
@@ -587,16 +734,25 @@ void* MemoryManager::CheckJitRoots(void* arg)
       long array_size = 0;
 
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_lock(&allocated_mutex);
 #endif
+#endif
+
       map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
       pthread_mutex_unlock(&allocated_mutex);
 #endif
-      
+#endif
+
       // update address based upon type
       switch(dclrs[j]->type) {
       case INT_PARM:
@@ -700,9 +856,13 @@ void* MemoryManager::CheckJitRoots(void* arg)
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
   pthread_mutex_lock(&jit_mutex);
 #endif
-  
+#endif
+
 #ifdef _DEBUG
   cout << "----- PDA method root(s): num=" << pda_roots.size() 
        << "; thread=" << pthread_self()<< " -----" << endl;
@@ -743,17 +903,27 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
   for(int i = 0; i < dcls_size; i++) {
     // get memory size
     long array_size = 0;
+
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_lock(&allocated_mutex);
 #endif
+#endif
+
     map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
 #ifndef _SERIAL
+#ifdef _WIN32
+    // TODO:
+#else
     pthread_mutex_unlock(&allocated_mutex);
 #endif
-    
+#endif
+
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       cout << "\t";
