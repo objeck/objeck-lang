@@ -52,12 +52,8 @@ pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
-    
-  
   Runtime::JitCompilerIA32 jit_compiler;
   jit_compiler.Compile(method);
-  
-  
   pthread_exit(NULL);
 }
 
@@ -858,6 +854,10 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       ProcessInterpretedMethodCall(called, instance);
     }
     else {
+#ifdef _SERIAL
+      Runtime::JitCompilerIA32 jit_compiler;
+      jit_compiler.Compile(called);
+#else
       // create joinable thread
       pthread_attr_t attrs;
       pthread_attr_init(&attrs);
@@ -882,6 +882,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       // restore previous state
       frame = PopFrame();
       ip = frame->GetIp();
+#endif
     } 
   }
 #endif
