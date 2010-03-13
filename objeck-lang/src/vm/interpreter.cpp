@@ -887,18 +887,18 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 #ifdef _WIN32
       // create joinable thread      
       HANDLE jit_thread = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
-      if(jit_thread) {
-	cerr << "Unable to create thread to compile method!" << endl;
+      if(!jit_thread) {
+	      cerr << "Unable to create thread to compile method!" << endl;
         exit(-1);
       }
-
+      
       // wait unitl the thread is done before we release our lock
-      int status = WaitForSingleObject (jit_thread, NULL);
-      if(status != WAIT_OBJECT_0) {
-	cerr << "Unable to join garbage collection threads!" << endl;
-	exit(-1);
+      if(WaitForSingleObject(jit_thread, NULL) != WAIT_OBJECT_0) {
+	      cerr << "Unable to join garbage collection threads!" << endl;
+	      exit(-1);
       }
       LeaveCriticalSection(&called->jit_mutex);
+      CloseHandle(jit_thread);
 #else
       // create joinable thread      
       pthread_t jit_thread;
