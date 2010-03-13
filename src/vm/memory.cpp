@@ -469,11 +469,16 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-#endif
 
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+#endif
+  HANDLE jit_thread = CreateThread(NULL, 0, CollectMemory, info, 0, NULL);
+  if(!jit_thread) {
+    cerr << "Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
 #else
@@ -492,8 +497,13 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 #endif
 }
 
+#ifdef _WIN32
+static DWORD WINAPI MemoryManager::CollectMemory(LPVOID arg)
+{
+#else 
 void* MemoryManager::CollectMemory(void* arg)
 {
+#endif
   CollectionInfo* info = (CollectionInfo*)arg;
   
 #ifdef _DEBUG
@@ -678,8 +688,13 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
 }
 
+#ifdef _WIN32
+static DWORD WINAPI MemoryManager::CheckStack(LPVOID arg)
+{
+#else
 void* MemoryManager::CheckStack(void* arg)
 {
+#endif
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
   cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos 
@@ -696,8 +711,13 @@ void* MemoryManager::CheckStack(void* arg)
 #endif
 }
 
+#ifdef _WIN32
+static DWORD WINAPI MemoryManager::CheckJitRoots::CheckStack(LPVOID arg)
+{
+#else 
 void* MemoryManager::CheckJitRoots(void* arg)
 {
+#endif
 #ifndef _SERIAL
 #ifdef _WIN32
     // TODO:
@@ -853,8 +873,13 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif
 }
 
+#ifdef _WIN32
+static DWORD WINAPI MemoryManager::CheckPdaRoots::CheckStack(LPVOID arg)
+{
+#else 
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
+#endif
 #ifndef _SERIAL
 #ifdef _WIN32
     // TODO:

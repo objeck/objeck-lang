@@ -138,12 +138,19 @@ public:
 
   // recover memory
   static void CollectMemory(long* op_stack, long stack_pos);
-  static void* CollectMemory(void* arg);
 
+#ifdef _WIN32
+  static DWORD WINAPI CollectMemory(LPVOID arg);
+  static DWORD WINAPI CheckStack(LPVOID arg);
+  static DWORD WINAPI CheckJitRoots(LPVOID arg);
+  static DWORD WINAPI CheckPdaRoots(LPVOID arg);
+#else
+  static void* CollectMemory(void* arg);
   static void* CheckStack(void* arg);
   static void* CheckJitRoots(void* arg);
   static void* CheckPdaRoots(void* arg);
-
+#endif
+  
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
 
