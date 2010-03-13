@@ -44,20 +44,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <pthread.h>
 #include <time.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
 
-#ifdef _MEMCHECK
-#include <mcheck.h>
-#endif
-
 #ifdef _WIN32
-#define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
+#include <windows.h>
 #else
+#include <pthread.h>
 #include <stdint.h>
 #endif
 
@@ -457,11 +452,21 @@ class StackMethod {
   }
   
 public:
+  // mutex variable used to support 
+  // concurrent JIT compiling
+#ifdef _WIN32
+  CRITICAL_SECTION jit_mutex;
+#else 
   pthread_mutex_t jit_mutex;
-  
+#endif
+
   StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
+#ifdef _WIN32
+      EnterCriticalSection(&jit_mutex);
+#else
     pthread_mutex_init(&jit_mutex, NULL);
+#endif
     id = i;
     name = ParseName(n);
     is_virtual = v;

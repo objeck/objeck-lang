@@ -80,9 +80,7 @@ int main(const int argc, char* argv[])
     delete stack_pos;
     stack_pos = NULL;
 
-    MemoryManager::Instance()->Clear();
-    pthread_exit(NULL);
-    
+    MemoryManager::Instance()->Clear();    
   } else {
     string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";

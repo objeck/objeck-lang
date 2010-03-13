@@ -47,19 +47,33 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
+#ifndef _WIN32
 pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
+#ifdef _WIN32
+DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg) {
+#else
 void* StackInterpreter::CompileMethod(void* arg) 
 {
+#endif
   StackMethod* method = (StackMethod*)arg;
   Runtime::JitCompilerIA32 jit_compiler;
   jit_compiler.Compile(method);
+#ifndef _WIN32
   pthread_exit(NULL);
+#endif
+
+  return NULL;
 }
 
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
+#ifdef _WIN32
+  InitializeCriticalSection(&jit_mutex);
+#endif
+  
 #ifdef _X64
   JitCompiler::Initialize(program);
 #else
@@ -850,7 +864,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   } 
   else {
     // compile method unless it's already being compiled i.e. locked
+#ifdef _WIN32
+    if(!TryEnterCriticalSection(&called->jit_mutex)) {
+#else
     if(pthread_mutex_trylock(&called->jit_mutex)) {
+#endif
       ProcessInterpretedMethodCall(called, instance);
     }
     else {
@@ -865,16 +883,30 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       frame = PopFrame();
       ip = frame->GetIp();
 #else
-      // create joinable thread
-      pthread_attr_t attrs;
-      pthread_attr_init(&attrs);
-      pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-      
-      pthread_t jit_thread;
-      if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
+
+#ifdef _WIN32
+      // create joinable thread      
+      HANDLE jit_thread = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
+      if(jit_thread) {
 	cerr << "Unable to create thread to compile method!" << endl;
         exit(-1);
       }
+
+      // wait unitl the thread is done before we release our lock
+      int status = WaitForSingleObject (jit_thread, NULL);
+      if(status != WAIT_OBJECT_0) {
+	cerr << "Unable to join garbage collection threads!" << endl;
+	exit(-1);
+      }
+      LeaveCriticalSection(&called->jit_mutex);
+#else
+      // create joinable thread      
+      pthread_t jit_thread;
+      if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
+	cerr << "Unable to create thread to compile method!" << endl;
+        exit(-1);
+      }
+
       // wait unitl the thread is done before we release our lock
       void* status;
       if(pthread_join(jit_thread, &status)) {
@@ -883,6 +915,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       }
       pthread_attr_destroy(&attrs);
       pthread_mutex_unlock(&called->jit_mutex);
+#endif
+
+
       // execute newly compiled method
       Runtime::JitExecutorIA32 jit_executor;
       jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
