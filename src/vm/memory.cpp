@@ -308,7 +308,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 
     // collect memory
     if(allocation_size + size > mem_max_size) {
-      CollectMemory(op_stack, stack_pos);
+      // CollectMemory(op_stack, stack_pos);
     }
     // allocate memory
     mem = (long*)calloc(size * 2 + sizeof(long), sizeof(BYTE_VALUE));
@@ -362,7 +362,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   }
   // collect memory
   if(allocation_size + calc_size > mem_max_size) {
-    CollectMemory(op_stack, stack_pos);
+    // CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
   mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
@@ -453,7 +453,9 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 #ifndef _SERIAL
   // only one thread at a time can invoke the gargabe collector
 #ifdef _WIN32
-    // TODO:
+  if(!TryEnterCriticalSection(&marked_sweep_mutex)) {
+    return;
+  }
 #else
   if(pthread_mutex_trylock(&marked_sweep_mutex)) {
     return;
@@ -474,13 +476,13 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
 #endif
   HANDLE collect_thread = CreateThread(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread) {
     cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
+    exit(1);
   }
 #else
   CollectMemory(info);
@@ -488,9 +490,9 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   
 #ifndef _SERIAL
 #ifdef _WIN32
-  if(WaitForSingleObject(collect_thread, NULL) != WAIT_OBJECT_0) {
+  if(WaitForSingleObject(collect_thread, INFINITE) != WAIT_OBJECT_0) {
     cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
+    exit(1);
   }
   LeaveCriticalSection(&marked_sweep_mutex);
   CloseHandle(collect_thread);
@@ -499,7 +501,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   void* status;
   if(pthread_join(collect_thread, &status)) {
     cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
+    exit(1);
   }
   pthread_mutex_unlock(&marked_sweep_mutex);
   pthread_attr_destroy(&attrs);
@@ -529,83 +531,66 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifndef _SERIAL
   // multi-threaded mark
+  const int num_threads = 3;
 #ifdef _WIN32
-  HANDLE stack_thread = CreateThread(NULL, 0, CheckStack, info, 0, NULL);
-  if(!stack_thread) {
+  HANDLE thread_handles[num_threads];
+  thread_handles[0] = CreateThread(NULL, 0, CheckStack, info, 0, NULL);
+  if(!thread_handles[0]) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
 
-  HANDLE pda_thread = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
-  if(!stack_thread) {
+  thread_handles[1] = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
+  if(!thread_handles[1]) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
 
-  HANDLE jit_thread = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
-  if(!stack_thread) {
+  thread_handles[2] = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
+  if(!thread_handles[2]) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
   
   // join all of the mark threads
-  if(WaitForSingleObject(stack_thread, NULL) != WAIT_OBJECT_0) {
+  if(WaitForMultipleObjects(num_threads, thread_handles, INFINITE, TRUE) != WAIT_OBJECT_0) {
     cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
+    exit(1);
   }
 
-  if(WaitForSingleObject(pda_thread, NULL) != WAIT_OBJECT_0) {
-    cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
-  }
-
-  if(WaitForSingleObject(jit_thread, NULL) != WAIT_OBJECT_0) {
-    cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
-  }
   // clean up
-  CloseHandle(stack_thread);
-  CloseHandle(pda_thread);
-  CloseHandle(jit_thread);
+  for(int i = 0; i < num_threads; i++) {
+    CloseHandle(thread_handles[i]);
+  }
 #else
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
 
-  pthread_t stack_thread;
-  if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
+  pthread_t threads[num_threads];
+  if(pthread_create(&threads[0], &attrs, CheckStack, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
   
-  pthread_t pda_thread;
-  if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
+  if(pthread_create(&threads[1], &attrs, CheckPdaRoots, NULL)) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
   
-  pthread_t jit_thread;
-  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
+  if(pthread_create(&threads[2], &attrs, CheckJitRoots, NULL)) {
     cerr << "Unable to create garbage collection thread!" << endl;
-    exit(-1);
+    exit(1);
   }
   pthread_attr_destroy(&attrs);
 
   // join all of the mark threads
   void *status;
-  if(pthread_join(stack_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
-  }
-
-  if(pthread_join(pda_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
-  }
-
-  if(pthread_join(jit_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
-    exit(-1);
+  for(int i = 0; i < num_threads; i++) {
+    if(pthread_join(threads[i], &status)) {
+      cerr << "Unable to join garbage collection threads!" << endl;
+      exit(1);
+    }
   }
 #endif
 #endif
@@ -739,6 +724,8 @@ void* MemoryManager::CollectMemory(void* arg)
   pthread_exit(NULL);
 #endif
 #endif
+
+  return NULL;
 }
 
 #ifdef _WIN32
@@ -751,7 +738,7 @@ void* MemoryManager::CheckStack(void* arg)
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
 #ifdef _WIN32
-  // TODO
+  cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos << "; thread=" << GetCurrentThread() << " -----" << endl;
 #else
   cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos << "; thread=" << pthread_self() << " -----" << endl;
 #endif

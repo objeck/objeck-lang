@@ -164,14 +164,14 @@ public:
   
   inline long GetObjectID(long* mem) {
 #ifdef _WIN32
-    // TODO:
+    EnterCriticalSection(&allocated_mutex);
 #else
     pthread_mutex_lock(&allocated_mutex);
 #endif
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
 #ifdef _WIN32
-    // TODO:
+      LeaveCriticalSection(&allocated_mutex);
 #else
       pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -179,7 +179,7 @@ public:
     } 
     else {
 #ifdef _WIN32
-    // TODO:
+      LeaveCriticalSection(&allocated_mutex);
 #else
       pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -190,14 +190,14 @@ public:
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
 #ifdef _WIN32
-    // TODO:
+      EnterCriticalSection(&allocated_mutex);
 #else
       pthread_mutex_lock(&allocated_mutex);
 #endif
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
 #ifdef _WIN32
-    // TODO:
+   LeaveCriticalSection(&allocated_mutex);
 #else
 	pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -205,7 +205,7 @@ public:
       }
     }
 #ifdef _WIN32
-    // TODO:
+    LeaveCriticalSection(&allocated_mutex);
 #else
     pthread_mutex_unlock(&allocated_mutex);
 #endif
