@@ -866,14 +866,6 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   } 
   else {
     // compile method unless it's already being compiled i.e. locked
-#ifdef _WIN32
-    if(!TryEnterCriticalSection(&called->jit_mutex)) {
-#else
-    if(pthread_mutex_trylock(&called->jit_mutex)) {
-#endif
-      ProcessInterpretedMethodCall(called, instance);
-    }
-    else {
 #ifdef _SERIAL
       // compile
       Runtime::JitCompilerIA32 jit_compiler;
@@ -885,50 +877,34 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       frame = PopFrame();
       ip = frame->GetIp();
 #else
-
+    #ifdef _WIN32
+      if(!TryEnterCriticalSection(&called->jit_mutex)) {
+#else
+      if(pthread_mutex_trylock(&called->jit_mutex)) {
+#endif
+        ProcessInterpretedMethodCall(called, instance);
+      }
+      else {
 #ifdef _WIN32
       // create joinable thread      
       HANDLE jit_thread = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
       if(!jit_thread) {
 	      cerr << "Unable to create thread to compile method!" << endl;
-        exit(-1);
+        exit(1);
       }
-      
-      // wait unitl the thread is done before we release our lock
-      if(WaitForSingleObject(jit_thread, NULL) != WAIT_OBJECT_0) {
-	      cerr << "Unable to join garbage collection threads!" << endl;
-	      exit(-1);
-      }
-      LeaveCriticalSection(&called->jit_mutex);
       CloseHandle(jit_thread);
 #else
       // create joinable thread      
       pthread_t jit_thread;
       if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
-	cerr << "Unable to create thread to compile method!" << endl;
-        exit(-1);
-      }
-
-      // wait unitl the thread is done before we release our lock
-      void* status;
-      if(pthread_join(jit_thread, &status)) {
-	cerr << "Unable to join garbage collection threads!" << endl;
-	exit(-1);
+	      cerr << "Unable to create thread to compile method!" << endl;
+        exit(1);
       }
       pthread_attr_destroy(&attrs);
-      pthread_mutex_unlock(&called->jit_mutex);
 #endif
-
-
-      // execute newly compiled method
-      Runtime::JitExecutorIA32 jit_executor;
-      jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
-      // restore previous state
-      frame = PopFrame();
-      ip = frame->GetIp();
+    }     
 #endif
-    } 
-  }
+  } 
 #endif
 }
 
