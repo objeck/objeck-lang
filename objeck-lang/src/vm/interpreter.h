@@ -34,11 +34,6 @@
 
 #include "common.h"
 #include "memory.h"
-
-#ifndef _WIN32
-#include <pthread.h>
-#endif
-
 #include <string.h>
 
 using namespace std;
@@ -64,11 +59,14 @@ class StackInterpreter {
   long ip;
   // halt
   bool halt;
-
+  
+  // JIT compiler thread handles
 #ifdef _WIN32
   static CRITICAL_SECTION jit_mutex;
+  static DWORD WINAPI CompileMethod(LPVOID arg);
 #else
   static pthread_mutex_t jit_mutex;
+  static void* CompileMethod(void* arg);
 #endif
   
   inline void PushFrame(StackFrame* f) {
@@ -203,12 +201,6 @@ class StackInterpreter {
 
     return index;
   }
-
-#ifdef _WIN32
-  static DWORD WINAPI CompileMethod(LPVOID arg);
-#else
-  static void* CompileMethod(void* arg);
-#endif
 
   static void* AsyncCall(void* arg);
   static void* AsyncJitCall(void* arg);
