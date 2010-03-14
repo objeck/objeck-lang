@@ -47,35 +47,19 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
-#ifdef _WIN32
-CRITICAL_SECTION StackInterpreter::jit_mutex;
-#else
 pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
-#ifdef _WIN32
-DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg) {
-#else
 void* StackInterpreter::CompileMethod(void* arg) 
 {
-#endif
   StackMethod* method = (StackMethod*)arg;
   Runtime::JitCompilerIA32 jit_compiler;
   jit_compiler.Compile(method);
-#ifndef _WIN32
   pthread_exit(NULL);
-#endif
-
-  return NULL;
 }
 
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
-#ifdef _WIN32
-  InitializeCriticalSection(&jit_mutex);
-#endif
-  
 #ifdef _X64
   JitCompiler::Initialize(program);
 #else
@@ -865,46 +849,25 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     ip = frame->GetIp();
   } 
   else {
-    // compile method unless it's already being compiled i.e. locked
 #ifdef _SERIAL
-      // compile
-      Runtime::JitCompilerIA32 jit_compiler;
-      jit_compiler.Compile(called);      
-      // execute
-      Runtime::JitExecutorIA32 jit_executor;
-      jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
-      // restore previous state
-      frame = PopFrame();
-      ip = frame->GetIp();
+    // compile
+    Runtime::JitCompilerIA32 jit_compiler;
+    jit_compiler.Compile(called);      
+    // execute
+    Runtime::JitExecutorIA32 jit_executor;
+    jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    // restore previous state
+    frame = PopFrame();
+    ip = frame->GetIp();
 #else
-    #ifdef _WIN32
-      if(!TryEnterCriticalSection(&called->jit_mutex)) {
-#else
-      if(pthread_mutex_trylock(&called->jit_mutex)) {
+    pthread_t jit_thread;
+    if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
+      cerr << "Unable to create thread to compile method!" << endl;
+      exit(-1);
+    }
+    ProcessInterpretedMethodCall(called, instance);
 #endif
-        ProcessInterpretedMethodCall(called, instance);
-      }
-      else {
-#ifdef _WIN32
-      // create joinable thread      
-      HANDLE jit_thread = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
-      if(!jit_thread) {
-	      cerr << "Unable to create thread to compile method!" << endl;
-        exit(1);
-      }
-      CloseHandle(jit_thread);
-#else
-      // create joinable thread      
-      pthread_t jit_thread;
-      if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
-	      cerr << "Unable to create thread to compile method!" << endl;
-        exit(1);
-      }
-      pthread_attr_destroy(&attrs);
-#endif
-    }     
-#endif
-  } 
+  }
 #endif
 }
 

@@ -56,39 +56,24 @@ class MemoryManager {
   static StackProgram* prgm;
   
   static list<ClassMethodId*> jit_roots;
+  static list<StackFrame*> pda_roots; // deleted elsewhere
+  static map<long*, long> allocated_memory;
+  static vector<long*> marked_memory;
+  
 #ifdef _WIN32
   static CRITICAL_SECTION jit_mutex;
-#else
-  static pthread_mutex_t jit_mutex;
-#endif
-  
-  static list<StackFrame*> pda_roots; // deleted elsewhere
-#ifdef _WIN32
   static CRITICAL_SECTION pda_mutex;
-#else
-  static pthread_mutex_t pda_mutex;
-#endif
-
-  static map<long*, long> allocated_memory;
-#ifdef _WIN32
   static CRITICAL_SECTION allocated_mutex;
-#else
-  static pthread_mutex_t allocated_mutex;
-#endif
-  
-  static vector<long*> marked_memory;
-#ifdef _WIN32
   static CRITICAL_SECTION marked_mutex;
-#else
-  static pthread_mutex_t marked_mutex;
-#endif
-
-#ifdef _WIN32
   static CRITICAL_SECTION marked_sweep_mutex;
 #else
+  static pthread_mutex_t jit_mutex;
+  static pthread_mutex_t pda_mutex;
+  static pthread_mutex_t allocated_mutex;
+  static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
 #endif
-  
+    
   // note: protected by 'allocated_mutex'
   static long allocation_size;
   static long mem_max_size;
@@ -163,52 +148,28 @@ public:
   long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
   
   inline long GetObjectID(long* mem) {
-#ifdef _WIN32
-    EnterCriticalSection(&allocated_mutex);
-#else
     pthread_mutex_lock(&allocated_mutex);
-#endif
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
-#ifdef _WIN32
-      LeaveCriticalSection(&allocated_mutex);
-#else
       pthread_mutex_unlock(&allocated_mutex);
-#endif
       return -result->second;
     } 
     else {
-#ifdef _WIN32
-      LeaveCriticalSection(&allocated_mutex);
-#else
       pthread_mutex_unlock(&allocated_mutex);
-#endif
       return -1;
     }
   }
 
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
-#ifdef _WIN32
-      EnterCriticalSection(&allocated_mutex);
-#else
       pthread_mutex_lock(&allocated_mutex);
-#endif
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
-#ifdef _WIN32
-   LeaveCriticalSection(&allocated_mutex);
-#else
 	pthread_mutex_unlock(&allocated_mutex);
-#endif
         return prgm->GetClass(-result->second);
       }
     }
-#ifdef _WIN32
-    LeaveCriticalSection(&allocated_mutex);
-#else
     pthread_mutex_unlock(&allocated_mutex);
-#endif
     return NULL;
   }
 
