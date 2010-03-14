@@ -1611,93 +1611,97 @@ namespace Runtime {
       skip_jump = false;
       
       if(!cm->GetNativeCode()) {
-	method = cm;
-	int32_t cls_id = method->GetClass()->GetId();
-	int32_t mthd_id = method->GetId();
+  method = cm;
+  int32_t cls_id = method->GetClass()->GetId();
+  int32_t mthd_id = method->GetId();
 	
 #ifdef _DEBUG
-	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
-	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
-	     << method->GetParamCount() << " ----------" << endl;
+  cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
+       << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
+       << method->GetParamCount() << " ----------" << endl;
 #endif
 	
-	code_buf_max = 4096;
+  code_buf_max = 4096;
 #ifndef _WIN32
-	code = (BYTE_VALUE*)valloc(code_buf_max);
-	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS * 2);
+  code = (BYTE_VALUE*)valloc(code_buf_max);
+  floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS * 2);
 #else
-	code = (BYTE_VALUE*)malloc(code_buf_max);
+  code = (BYTE_VALUE*)malloc(code_buf_max);
         floats = new FLOAT_VALUE[MAX_DBLS];
 #endif
 
-	floats_index = instr_index = code_index = instr_count = 0;
-	// general use registers
-	aval_regs.push_back(new RegisterHolder(EDX));
-	aval_regs.push_back(new RegisterHolder(ECX));
-	aval_regs.push_back(new RegisterHolder(EBX));
-	aval_regs.push_back(new RegisterHolder(EAX));
-	// aux general use registers
+  floats_index = instr_index = code_index = instr_count = 0;
+  // general use registers
+  aval_regs.push_back(new RegisterHolder(EDX));
+  aval_regs.push_back(new RegisterHolder(ECX));
+  aval_regs.push_back(new RegisterHolder(EBX));
+  aval_regs.push_back(new RegisterHolder(EAX));
+  // aux general use registers
         aux_regs.push(new RegisterHolder(EDI));
         aux_regs.push(new RegisterHolder(ESI));
-	// floating point registers
-	aval_xregs.push_back(new RegisterHolder(XMM7));
-	aval_xregs.push_back(new RegisterHolder(XMM6));
-	aval_xregs.push_back(new RegisterHolder(XMM5));
-	aval_xregs.push_back(new RegisterHolder(XMM4)); 
-	aval_xregs.push_back(new RegisterHolder(XMM3));
-	aval_xregs.push_back(new RegisterHolder(XMM2)); 
-	aval_xregs.push_back(new RegisterHolder(XMM1));
-	aval_xregs.push_back(new RegisterHolder(XMM0));   
+  // floating point registers
+  aval_xregs.push_back(new RegisterHolder(XMM7));
+  aval_xregs.push_back(new RegisterHolder(XMM6));
+  aval_xregs.push_back(new RegisterHolder(XMM5));
+  aval_xregs.push_back(new RegisterHolder(XMM4)); 
+  aval_xregs.push_back(new RegisterHolder(XMM3));
+  aval_xregs.push_back(new RegisterHolder(XMM2)); 
+  aval_xregs.push_back(new RegisterHolder(XMM1));
+  aval_xregs.push_back(new RegisterHolder(XMM0));   
 #ifdef _DEBUG
-	cout << "Compiling code for IA-32 architecture..." << endl;
+  cout << "Compiling code for IA-32 architecture..." << endl;
 #endif
 	
-	// process offsets
-	ProcessIndices();
-	// setup
-	Prolog();
-	// method information
-	move_imm_mem(cls_id, CLS_ID, EBP);
-	move_imm_mem(mthd_id, MTHD_ID, EBP);
-	// register root
-	RegisterRoot();
-	// translate parameters
-	ProcessParameters(method->GetParamCount());
-	// tranlsate program
-	ProcessInstructions();
-	if(!compile_success) {
-	  return false;
-	}
+  // process offsets
+  ProcessIndices();
+  // setup
+  Prolog();
+  // method information
+  move_imm_mem(cls_id, CLS_ID, EBP);
+  move_imm_mem(mthd_id, MTHD_ID, EBP);
+  // register root
+  RegisterRoot();
+  // translate parameters
+  ProcessParameters(method->GetParamCount());
+  // tranlsate program
+  ProcessInstructions();
+  if(!compile_success) {
+    return false;
+  }
 
-	// show content
-	map<int32_t, StackInstr*>::iterator iter;
-	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
-	  StackInstr* instr = iter->second;
-	  int32_t src_offset = iter->first;
-	  int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
-	  int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-	  int32_t offset = dest_offset - src_offset - 4;
-	  memcpy(&code[src_offset], &offset, 4); 
+  // show content
+  map<int32_t, StackInstr*>::iterator iter;
+  for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
+    StackInstr* instr = iter->second;
+    int32_t src_offset = iter->first;
+    int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+    int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
+    int32_t offset = dest_offset - src_offset - 4;
+    memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
-	  cout << "jump update: src=" << src_offset 
-	       << "; dest=" << dest_offset << endl;
+    cout << "jump update: src=" << src_offset 
+         << "; dest=" << dest_offset << endl;
 #endif
-	}
+  }
 #ifdef _DEBUG
-	cout << "Caching JIT code: actual=" << code_index 
-	     << ", buffer=" << code_buf_max << " byte(s)" << endl;
+  cout << "Caching JIT code: actual=" << code_index 
+       << ", buffer=" << code_buf_max << " byte(s)" << endl;
 #endif
-	// store compiled code
+  // store compiled code
 #ifndef _WIN32
-	if(mprotect(code, code_index, PROT_EXEC)) {
-	  perror("Couldn't mprotect");
-	  exit(errno);
-	}
+  if(mprotect(code, code_index, PROT_EXEC)) {
+    perror("Couldn't mprotect");
+    exit(errno);
+  }
 #endif
-	method->SetNativeCode(new NativeCode(code, code_index, floats));
-	compile_success = true;
+  method->SetNativeCode(new NativeCode(code, code_index, floats));
+  compile_success = true;
       }
-      
+
+#ifndef _SERIAL
+      LeaveCriticalSection(&cm->jit_mutex);
+#endif
+
       return compile_success;
     }
   };    

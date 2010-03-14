@@ -463,7 +463,7 @@ public:
   StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
 #ifdef _WIN32
-      EnterCriticalSection(&jit_mutex);
+    InitializeCriticalSection(&jit_mutex);
 #else
     pthread_mutex_init(&jit_mutex, NULL);
 #endif
