@@ -40,7 +40,9 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <hash_map>
 #include <string>
+#include <string.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -57,18 +59,8 @@
 #endif
 
 using namespace std;
+using namespace stdext;
 using namespace instructions;
-
-/*
-// vm data type mapping
-#ifdef _X64
-#define INT_LIT INT_LIT INT_LIT
-#else
-#define INT_LIT long
-#endif
-#define FLOAT_VALUE double
-#define BYTE_VALUE unsigned char
-*/
 
 class StackClass;
 
@@ -319,9 +311,7 @@ class StackMethod {
   bool has_and_or;
   vector<StackInstr*> instrs;
   bool is_compiling;
-
-  //map<long, long> jump_table;
-  JumpTable jump_table;
+  hash_map<long, long> jump_table;
 
   long param_count;
   long mem_size;
@@ -559,24 +549,18 @@ public:
   }
 
   void AddLabel(long label_id, long index) {
-    // jump_table[label_id] = index;
-    jump_table.Insert(label_id, index);
+    jump_table[label_id] = index;
   }
 
   inline long GetLabelIndex(long label_id) {
-    /*
-    map<long, long>::iterator result = jump_table.find(label_id);
-    // not found
-    if(result == jump_table.end()) {
+    hash_map<long, long>::iterator find = jump_table.find(label_id);
+    if(find == jump_table.end()) {
       return -1;
     }
-
-    return result->second;
-    */
-
-    return jump_table.Find(label_id);
+    
+    return find->second;
   }
-
+  
   void SetInstructions(vector<StackInstr*> i) {
     instrs = i;
   }
