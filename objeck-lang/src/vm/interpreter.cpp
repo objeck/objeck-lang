@@ -860,12 +860,18 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     frame = PopFrame();
     ip = frame->GetIp();
 #else
-    pthread_t jit_thread;
-    if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
-      cerr << "Unable to create thread to compile method!" << endl;
-      exit(-1);
+    // lock this section while we compile...
+    if(pthread_mutex_trylock(&called->jit_mutex)) {
+      ProcessInterpretedMethodCall(called, instance);
     }
-    ProcessInterpretedMethodCall(called, instance);
+    else {      
+      pthread_t jit_thread;
+      if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
+	cerr << "Unable to create thread to compile method!" << endl;
+	exit(-1);
+      }
+      ProcessInterpretedMethodCall(called, instance);
+    }
 #endif
   }
 #endif
