@@ -60,21 +60,13 @@ class MemoryManager {
   static map<long*, long> allocated_memory;
   static vector<long*> marked_memory;
   
-#ifdef _WIN32
-  static CRITICAL_SECTION jit_mutex;
-  static CRITICAL_SECTION pda_mutex;
-  static CRITICAL_SECTION allocated_mutex;
-  static CRITICAL_SECTION marked_mutex;
-  static CRITICAL_SECTION marked_sweep_mutex;
-#else
-  static pthread_mutex_t jit_mutex;
-  static pthread_mutex_t pda_mutex;
-  static pthread_mutex_t allocated_mutex;
-  static pthread_mutex_t marked_mutex;
-  static pthread_mutex_t marked_sweep_mutex;
-#endif
+  static CRITICAL_SECTION jit_cs;
+  static CRITICAL_SECTION pda_cs;
+  static CRITICAL_SECTION allocated_cs;
+  static CRITICAL_SECTION marked_cs;
+  static CRITICAL_SECTION marked_sweep_cs;
     
-  // note: protected by 'allocated_mutex'
+  // note: protected by 'allocated_cs'
   static long allocation_size;
   static long mem_max_size;
   static long uncollected_count;
@@ -109,6 +101,12 @@ public:
     }
     allocated_memory.clear();
 
+    DeleteCriticalSection(&jit_cs);
+    DeleteCriticalSection(&pda_cs);
+    DeleteCriticalSection(&allocated_cs);
+    DeleteCriticalSection(&marked_cs);
+    DeleteCriticalSection(&marked_sweep_cs);
+
     delete instance;
     instance = NULL;
   }
@@ -124,17 +122,10 @@ public:
   // recover memory
   static void CollectMemory(long* op_stack, long stack_pos);
 
-#ifdef _WIN32
   static DWORD WINAPI CollectMemory(LPVOID arg);
   static DWORD WINAPI CheckStack(LPVOID arg);
   static DWORD WINAPI CheckJitRoots(LPVOID arg);
   static DWORD WINAPI CheckPdaRoots(LPVOID arg);
-#else
-  static void* CollectMemory(void* arg);
-  static void* CheckStack(void* arg);
-  static void* CheckJitRoots(void* arg);
-  static void* CheckPdaRoots(void* arg);
-#endif
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
@@ -148,28 +139,40 @@ public:
   long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
   
   inline long GetObjectID(long* mem) {
-    pthread_mutex_lock(&allocated_mutex);
+#ifndef _SERIAL
+    EnterCriticalSection(&allocated_cs);
+#endif
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
-      pthread_mutex_unlock(&allocated_mutex);
+#ifndef _SERIAL
+      LeaveCriticalSection(&allocated_cs);
+#endif
       return -result->second;
     } 
     else {
-      pthread_mutex_unlock(&allocated_mutex);
+#ifndef _SERIAL
+      LeaveCriticalSection(&allocated_cs);
+#endif
       return -1;
     }
   }
 
   static inline StackClass* GetClass(long* mem) {
+#ifndef _SERIAL
+    EnterCriticalSection(&allocated_cs);
+#endif
     if(mem) {
-      pthread_mutex_lock(&allocated_mutex);
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
-	pthread_mutex_unlock(&allocated_mutex);
+#ifndef _SERIAL
+	      LeaveCriticalSection(&allocated_cs);
+#endif
         return prgm->GetClass(-result->second);
       }
     }
-    pthread_mutex_unlock(&allocated_mutex);
+#ifndef _SERIAL
+    LeaveCriticalSection(&allocated_cs);
+#endif
     return NULL;
   }
 
