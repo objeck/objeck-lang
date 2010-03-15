@@ -1605,7 +1605,9 @@ namespace Runtime {
       }
     }
 
+    //
     // Compiles stack code into IA-32 machine code
+    //
     bool Compile(StackMethod* cm) {
       compile_success = true;
       skip_jump = false;
@@ -1697,9 +1699,14 @@ namespace Runtime {
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
       }
+
       // release our lock, native code has been compiled and set
+#ifdef _WIN32
+      LeaveCriticalSection(&cm->jit_cs);
+#else
       pthread_mutex_unlock(&cm->jit_mutex);
-      
+#endif
+
       return compile_success;
     }
   };    

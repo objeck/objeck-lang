@@ -455,7 +455,7 @@ public:
   // mutex variable used to support 
   // concurrent JIT compiling
 #ifdef _WIN32
-  CRITICAL_SECTION jit_mutex;
+  CRITICAL_SECTION jit_cs;
 #else 
   pthread_mutex_t jit_mutex;
 #endif
@@ -463,7 +463,7 @@ public:
   StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
 #ifdef _WIN32
-    InitializeCriticalSection(&jit_mutex);
+    InitializeCriticalSection(&jit_cs);
 #else
     pthread_mutex_init(&jit_mutex, NULL);
 #endif
@@ -492,6 +492,8 @@ public:
       }
       delete[] dclrs;
       dclrs = NULL;
+
+      DeleteCriticalSection(&jit_cs); 
     }
 
     // clean up
