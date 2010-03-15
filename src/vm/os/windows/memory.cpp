@@ -230,7 +230,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 
     // collect memory
     if(allocation_size + size > mem_max_size) {
-      // CollectMemory(op_stack, stack_pos);
+      CollectMemory(op_stack, stack_pos);
     }
     // allocate memory
     mem = (long*)calloc(size * 2 + sizeof(long), sizeof(BYTE_VALUE));
@@ -275,7 +275,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   }
   // collect memory
   if(allocation_size + calc_size > mem_max_size) {
-    // CollectMemory(op_stack, stack_pos);
+    CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
   mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
