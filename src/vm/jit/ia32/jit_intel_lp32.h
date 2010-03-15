@@ -33,6 +33,7 @@
 #define __REG_ALLOC_H__
 
 #ifndef _WIN32
+#include "../../os/posix/memory.h"
 #include "../../os/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
@@ -42,7 +43,6 @@
 
 #include "../../common.h"
 #include "../../interpreter.h"
-#include "../../memory.h"
 
 using namespace std;
 
