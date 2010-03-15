@@ -1,7 +1,7 @@
 ##############
 # For OSX only
 ##############
-# ARGS=--pthread mstackrealign -O3
+# ARGS=-pthread -mstackrealign -O3
 # ARGS=-pthread -D_TIMING -mstackrealign -O3
 # ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 
