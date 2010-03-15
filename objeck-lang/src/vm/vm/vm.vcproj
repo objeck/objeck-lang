@@ -190,6 +190,7 @@
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
+				PreprocessorDefinitions="_SERIAL"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="2"
@@ -334,7 +335,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\memory.cpp"
+				RelativePath="..\os\windows\memory.cpp"
 				>
 			</File>
 			<File
@@ -364,7 +365,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\memory.h"
+				RelativePath="..\os\windows\memory.h"
 				>
 			</File>
 			<File

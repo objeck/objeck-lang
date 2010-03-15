@@ -67,10 +67,8 @@ class StackInterpreter {
   
   // JIT compiler thread handles
 #ifdef _WIN32
-  static CRITICAL_SECTION jit_mutex;
   static DWORD WINAPI CompileMethod(LPVOID arg);
 #else
-  static pthread_mutex_t jit_mutex;
   static void* CompileMethod(void* arg);
 #endif
   

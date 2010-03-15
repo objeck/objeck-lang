@@ -47,8 +47,22 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
-pthread_mutex_t StackInterpreter::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/********************************
+ * JIT compiler thread
+ ********************************/
+#ifdef _WIN32
+DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
+{
+  StackMethod* method = (StackMethod*)arg;
+  Runtime::JitCompilerIA32 jit_compiler;
+  if(!jit_compiler.Compile(method)) {
+    exit(1);
+  }
+
+  return 0;
+}
+#else
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
@@ -56,7 +70,11 @@ void* StackInterpreter::CompileMethod(void* arg)
   jit_compiler.Compile(method);
   pthread_exit(NULL);
 }
+#endif
 
+/********************************
+ * VM initialization
+ ********************************/
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
@@ -860,7 +878,26 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     frame = PopFrame();
     ip = frame->GetIp();
 #else
-    // lock this section while we compile...
+#ifdef _WIN32
+    // 
+    // Windows: lock this section while we compile...
+    //
+    if(!TryEnterCriticalSection(&called->jit_cs)) {
+      ProcessInterpretedMethodCall(called, instance);
+    }
+    else { 
+      HANDLE thread_id = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
+      if(!thread_id) {
+	      cerr << "Unable to create thread to compile method!" << endl;
+	      exit(-1);
+      }
+      ProcessInterpretedMethodCall(called, instance);
+      CloseHandle(thread_id);
+    }
+#else
+    // 
+    // Linux and OS X: lock this section while we compile...
+    //
     if(pthread_mutex_trylock(&called->jit_mutex)) {
       ProcessInterpretedMethodCall(called, instance);
     }
@@ -872,6 +909,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
       }
       ProcessInterpretedMethodCall(called, instance);
     }
+#endif
 #endif
   }
 #endif
