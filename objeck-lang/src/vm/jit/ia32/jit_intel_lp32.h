@@ -1607,11 +1607,6 @@ namespace Runtime {
 
     // Compiles stack code into IA-32 machine code
     bool Compile(StackMethod* cm) {
-      // lock this section while we compile...
-      if(pthread_mutex_trylock(&cm->jit_mutex)) {
-	return false;
-      }
-      
       compile_success = true;
       skip_jump = false;
       
