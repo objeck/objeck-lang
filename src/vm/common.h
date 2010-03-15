@@ -493,7 +493,9 @@ public:
       delete[] dclrs;
       dclrs = NULL;
 
+#ifdef _WIN32
       DeleteCriticalSection(&jit_cs); 
+#endif
     }
 
     // clean up
