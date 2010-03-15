@@ -12,14 +12,18 @@ ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
 # ARGS=-O3 -pthread
 
 CC=g++
-SRC= memory.o interpreter.o loader.o vm.o 
-OBJ_LIBS= jit_intel_lp32.a
+SRC=interpreter.o loader.o vm.o 
+OBJ_LIBS= jit_intel_lp32.a memory.a
+MEM_PATH= os/posix
 JIT_PATH= jit/ia32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
+memory.a:
+	cd $(MEM_PATH); make	
+	
 jit_intel_lp32.a:
 	cd $(JIT_PATH); make	
 	
@@ -27,5 +31,6 @@ jit_intel_lp32.a:
 	$(CC) -m32 $(ARGS) -c $< 
 
 clean:
+	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~

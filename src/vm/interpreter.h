@@ -33,8 +33,13 @@
 #define __STACK_INTPR_H__
 
 #include "common.h"
-#include "memory.h"
 #include <string.h>
+
+#ifdef _WIN32
+#include "os/windows/memory.h"
+#else
+#include "os/posix/memory.h"
+#endif
 
 using namespace std;
 
