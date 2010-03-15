@@ -1063,8 +1063,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       str[i] = value_str[i];
     }
 #ifdef _DEBUG
+    cout << "stack oper: CPY_STR_ARY" << endl;
+    /*
     cout << "stack oper: CPY_STR_ARY: from='" << value_str << "', to='"
          << str << "', size=" << size << endl;
+    */
 #endif
     PushInt((long)array);
   }
