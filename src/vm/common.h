@@ -40,7 +40,6 @@
 #include <vector>
 #include <list>
 #include <map>
-#include <hash_map>
 #include <string>
 #include <string.h>
 #include <stdlib.h>
@@ -53,13 +52,14 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <hash_map>
+using namespace stdext;
 #else
 #include <pthread.h>
 #include <stdint.h>
 #endif
 
 using namespace std;
-using namespace stdext;
 using namespace instructions;
 
 class StackClass;
@@ -311,8 +311,12 @@ class StackMethod {
   bool has_and_or;
   vector<StackInstr*> instrs;
   bool is_compiling;
+#ifdef _WIN32
   hash_map<long, long> jump_table;
-
+#else
+  JumpTable jump_table;
+#endif
+  
   long param_count;
   long mem_size;
   NativeCode* native_code;
@@ -549,16 +553,24 @@ public:
   }
 
   void AddLabel(long label_id, long index) {
+#ifdef _WIN32
     jump_table[label_id] = index;
+#else
+    jump_table.Insert(label_id, index);
+#endif
   }
 
   inline long GetLabelIndex(long label_id) {
+#ifdef _WIN32
     hash_map<long, long>::iterator find = jump_table.find(label_id);
     if(find == jump_table.end()) {
       return -1;
     }
     
     return find->second;
+#else    
+    return jump_table.Find(label_id);
+#endif
   }
   
   void SetInstructions(vector<StackInstr*> i) {
