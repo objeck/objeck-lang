@@ -750,7 +750,9 @@ class StackProgram {
   int num_char_strings;
   StackMethod* init_method;
   long string_cls_id;
-
+  static list<pthread_t> thread_ids;
+  static pthread_mutex_t program_mutex;
+  
 public:
   StackProgram() {
     cls_hierarchy = NULL;
@@ -786,6 +788,27 @@ public:
     }
   }
 
+  static void AddThread(pthread_t t) {
+    pthread_mutex_lock(&program_mutex);
+    thread_ids.push_back(t);
+    pthread_mutex_unlock(&program_mutex);
+  }
+
+  static void RemoveThread(pthread_t t) {
+    pthread_mutex_lock(&program_mutex);
+    thread_ids.remove(t);
+    pthread_mutex_unlock(&program_mutex);
+  }
+  
+  static list<pthread_t> GetThreads() {
+    list<pthread_t> temp;
+    pthread_mutex_lock(&program_mutex);
+    temp = thread_ids;
+    pthread_mutex_unlock(&program_mutex);
+    
+    return temp;
+  }
+  
   void SetInitializationMethod(StackMethod* i) {
     init_method = i;
   }
@@ -841,7 +864,7 @@ class StackFrame {
   long* mem;
   long ip;
   bool jit_called;
-
+  
 public:
   StackFrame(StackMethod* md, long* m) {
     method = md;
@@ -854,7 +877,7 @@ public:
     delete[] mem;
     mem = NULL;
   }
-
+  
   inline StackMethod* GetMethod() {
     return method;
   }

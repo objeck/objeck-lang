@@ -1,5 +1,5 @@
 /***************************************************************************
- * Vm memory manager. Implements a "mark and sweep" collection algorithm.
+ * VM memory manager. Implements a "mark and sweep" collection algorithm.
  *
  * Copyright (c) 2007, 2008, Randy Hollines
  * All rights reserved.

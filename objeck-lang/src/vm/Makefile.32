@@ -8,11 +8,14 @@
 ##############
 # For Linux
 ##############
-ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
 
 CC=g++
-SRC=interpreter.o loader.o vm.o 
+SRC=common.o interpreter.o loader.o vm.o 
 OBJ_LIBS= jit_intel_lp32.a memory.a
 MEM_PATH= os/posix
 JIT_PATH= jit/ia32
