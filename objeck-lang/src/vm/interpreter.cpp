@@ -68,6 +68,9 @@ void* StackInterpreter::CompileMethod(void* arg)
   StackMethod* method = (StackMethod*)arg;
   Runtime::JitCompilerIA32 jit_compiler;
   jit_compiler.Compile(method);
+  
+  // clean up
+  program->RemoveThread(pthread_self());
   pthread_exit(NULL);
 }
 #endif
@@ -901,12 +904,20 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     if(pthread_mutex_trylock(&called->jit_mutex)) {
       ProcessInterpretedMethodCall(called, instance);
     }
-    else {      
+    else {     
+      pthread_attr_t attrs;
+      pthread_attr_init(&attrs);
+      pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+      
       pthread_t jit_thread;
-      if(pthread_create(&jit_thread, NULL, CompileMethod, (void*)called)) {
+      if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
 	cerr << "Unable to create thread to compile method!" << endl;
 	exit(-1);
       }
+      program->AddThread(jit_thread);
+      pthread_attr_destroy(&attrs);
+      
+      // execute code in parallel
       ProcessInterpretedMethodCall(called, instance);
     }
 #endif
