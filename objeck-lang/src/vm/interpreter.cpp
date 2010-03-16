@@ -867,7 +867,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     ip = frame->GetIp();
   } 
   else {
-#ifdef _SERIAL
+#ifdef _JIT_SERIAL
     // compile
     Runtime::JitCompilerIA32 jit_compiler;
     jit_compiler.Compile(called);      
