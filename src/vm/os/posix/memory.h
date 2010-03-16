@@ -60,6 +60,7 @@ class MemoryManager {
   static map<long*, long> allocated_memory;
   static vector<long*> marked_memory;
   
+#ifndef _GC_SERIAL
 #ifdef _WIN32
   static CRITICAL_SECTION jit_mutex;
   static CRITICAL_SECTION pda_mutex;
@@ -72,6 +73,7 @@ class MemoryManager {
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
+#endif
 #endif
     
   // note: protected by 'allocated_mutex'
@@ -148,28 +150,40 @@ public:
   long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
   
   inline long GetObjectID(long* mem) {
+#ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
+#endif
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
+#ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
+#endif
       return -result->second;
     } 
     else {
+#ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
+#endif
       return -1;
     }
   }
 
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
+#ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
+#endif
       map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
+#ifndef _GC_SERIAL
 	pthread_mutex_unlock(&allocated_mutex);
+#endif
         return prgm->GetClass(-result->second);
       }
     }
+#ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
+#endif
     return NULL;
   }
 
