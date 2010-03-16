@@ -750,12 +750,20 @@ class StackProgram {
   int num_char_strings;
   StackMethod* init_method;
   long string_cls_id;
+#ifdef _WIN32
+  static list<HANDLE> thread_ids;
+  static CRITICAL_SECTION program_cs;
+#else
   static list<pthread_t> thread_ids;
   static pthread_mutex_t program_mutex;
-  
+#endif
+
 public:
   StackProgram() {
     cls_hierarchy = NULL;
+#ifdef _WIN32
+    InitializeCriticalSection(&program_cs);
+#endif
   }
 
   ~StackProgram() {
@@ -786,8 +794,34 @@ public:
       delete init_method;
       init_method = NULL;
     }
+
+#ifdef _WIN32
+    DeleteCriticalSection(&program_cs);
+#endif
   }
 
+#ifdef _WIN32
+  static void AddThread(HANDLE h) {
+    EnterCriticalSection(&program_cs);
+    thread_ids.push_back(h);
+    LeaveCriticalSection(&program_cs);
+  }
+
+  static void RemoveThread(HANDLE h) {
+    EnterCriticalSection(&program_cs);
+    thread_ids.remove(h);
+    LeaveCriticalSection(&program_cs);
+  }
+  
+  static list<HANDLE> GetThreads() {
+    list<HANDLE> temp;
+    EnterCriticalSection(&program_cs);
+    temp = thread_ids;
+    LeaveCriticalSection(&program_cs);
+    
+    return temp;
+  }
+#else
   static void AddThread(pthread_t t) {
     pthread_mutex_lock(&program_mutex);
     thread_ids.push_back(t);
@@ -808,6 +842,7 @@ public:
     
     return temp;
   }
+#endif
   
   void SetInitializationMethod(StackMethod* i) {
     init_method = i;

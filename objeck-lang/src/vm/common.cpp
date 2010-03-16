@@ -31,6 +31,11 @@
 
 #include "common.h"
 
+
+#ifdef _WIN32
+list<HANDLE> StackProgram::thread_ids;
+CRITICAL_SECTION StackProgram::program_cs;
+#else
 list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+#endif
