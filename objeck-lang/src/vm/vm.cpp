@@ -72,11 +72,22 @@ int main(const int argc, char* argv[])
 #ifdef _DEBUG
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
 #endif
-
+    
     // wait for outstanding threads
+#ifdef _WIN32        
+    list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
+    for(list<HANDLE>::iterator iter = thread_ids.begin();
+      iter != thread_ids.end(); iter++) {
+      HANDLE id = (*iter);
+      if(WaitForSingleObject(id, INFINITE) != WAIT_OBJECT_0) {
+        cerr << "Unable to join garbage collection threads!" << endl;
+        exit(-1);
+      }
+      CloseHandle(id);
+    }
+#else
     void* status;
     list<pthread_t> thread_ids = loader.GetProgram()->GetThreads();
-
     for(list<pthread_t>::iterator iter = thread_ids.begin();
 	iter != thread_ids.end(); iter++) {
       if(pthread_join((*iter), &status)) {
@@ -84,7 +95,8 @@ int main(const int argc, char* argv[])
 	exit(-1);
       }
     }
-    
+#endif
+
     // clean up
     delete[] op_stack;
     op_stack = NULL;

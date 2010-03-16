@@ -894,8 +894,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 	      cerr << "Unable to create thread to compile method!" << endl;
 	      exit(-1);
       }
+      program->AddThread(thread_id);
       ProcessInterpretedMethodCall(called, instance);
-      CloseHandle(thread_id);
     }
 #else
     // 
