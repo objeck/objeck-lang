@@ -248,8 +248,8 @@ public:
   }
 
   // execute method
-  void Execute(long* stack, long* pos, long i, StackMethod* method,
-               long* self, bool jit_called);
+  void Execute(long* stack, long* pos, long i, StackMethod* method, 
+	       long* self, bool jit_called);
   void Execute();
 };
 }

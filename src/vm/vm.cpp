@@ -73,6 +73,18 @@ int main(const int argc, char* argv[])
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
 #endif
 
+    // wait for outstanding threads
+    void* status;
+    list<pthread_t> thread_ids = loader.GetProgram()->GetThreads();
+
+    for(list<pthread_t>::iterator iter = thread_ids.begin();
+	iter != thread_ids.end(); iter++) {
+      if(pthread_join((*iter), &status)) {
+	cerr << "Unable to join program thread!" << endl;
+	exit(-1);
+      }
+    }
+    
     // clean up
     delete[] op_stack;
     op_stack = NULL;
