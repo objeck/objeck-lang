@@ -9,6 +9,7 @@
 
 \usepackage{aliascnt}
 \usepackage{hyperref}
+\usepackage[pdftex]{graphicx}
 
 \begin{document}
 
@@ -571,7 +572,31 @@ bundle Default {
 \end{verbatim}
 
 \newpage
-\section{Appendix A: VM Instructions}
+
+\section{Appendix A: General Compiler Design}
+\includegraphics[scale=0.60]{../images/compiler_data_flow.png}
+
+\subsection{Compiler}
+The language compiler is written in C++ and makes heavy use of the C++ STL for portable across platforms.  As mentioned in the introduction, the compiler accepts source files and shared libraries as inputs and produces either Objeck executables or shared libraries.  Note, the compiler has two modes \texttt{User Mode} compiles traditional end-user programs, while the \texttt{System Mode} compiles system libraries and processes system language directives.
+
+\subsubsection{Scanner and Parser}
+The scanner component reads source files and parses the text into tokens.  The scanner works in conjugation with the \emph{LL(k)} parser by providing \emph{k} lookahead tokens for parsing.  Note, the scanner can scan system language directives in System Mode.  The source parser is a recursive-decent parser, which generates an abstract parser tree that is passed to Contextual Analyser for validation.
+
+\subsubsection{Contextual Analyser}
+The Contextual Analyser is responsible for ensuring that a source program is valid.  In addition, the context analyser also creates relationships between contextually resolved entitles (i.e. methods and method calls).  The analyser accepts an abstract parser tree and shared libraries as input and produces a decorated parse tree as output.  The decorated parse tree is then passed to the Intermediate Code Generator for the production of VM instructions.
+
+\subsubsection{Intermediate Code Generator and Optimzier}
+The Intermediate Code Generator accpets a decorated parse and produces a flat list of VM stack instructions.  These instructions lists are then passed to the Optimizer for basic block optimizations (constant folding, strength reduction, instruction simplification and method inlining).
+
+\subsubsection{Target Emitter}
+Finally, the improved intermediate code is passed to code emitter component, which writes it to a system file.
+
+\subsection{Virtual Machine}
+
+\subsubsection{Loader}
+blah... blah... please finish!
+
+\section{Appendix B: VM Instructions}
 The appendix below lists the types of stack instructions that are executed by the Objeck VM.  The VM was designed to be portable and language independent.  Early development versions of the VM included an inline assembler, which may be re-added in future releases.
 
 \begin{center}
