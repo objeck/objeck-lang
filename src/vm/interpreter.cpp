@@ -804,7 +804,9 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
-  cout << "??? " << frame->GetMethod()->GetClass()->GetId() << "," << instr->GetOperand2() << " ???" << endl;
+  cerr << "Unsupported operation!" << endl;
+  exit(1);
+  // cout << "??? " << frame->GetMethod()->GetClass()->GetId() << "," << instr->GetOperand2() << " ???" << endl;
 }
 
 /********************************
