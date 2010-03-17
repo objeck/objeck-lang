@@ -102,6 +102,10 @@ class JumpTable
     memset(&buckets, 0, sizeof(JumpBucket*) * NUM_BUCKETS);
   }
 
+  JumpTable(JumpTable &t) {
+    memcpy(buckets, t.buckets, sizeof(JumpBucket*) * NUM_BUCKETS);
+  }
+  
   ~JumpTable() {
     for(int i = 0; i < NUM_BUCKETS; i++) {
       JumpBucket* bucket = buckets[i];
@@ -310,7 +314,6 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   vector<StackInstr*> instrs;
-  bool is_compiling;
 #ifdef _WIN32
   hash_map<long, long> jump_table;
 #else
@@ -473,7 +476,19 @@ public:
     mem_size = m;
     rtrn_type = r;
     cls = k;
-    is_compiling = false;
+  }
+
+  StackMethod(int i, string& n, long p, vector<StackInstr*> is, 
+	      StackClass* c, MemoryType r, JumpTable &j) {
+    id = i;
+    name = n;
+    param_count = p;
+    instrs = is;
+    rtrn_type = r;
+    cls = c;
+    jump_table = j;
+    dclrs = NULL;
+    native_code = NULL;
   }
 
   ~StackMethod() {
@@ -486,18 +501,18 @@ public:
       }
       delete[] dclrs;
       dclrs = NULL;
-
-#ifdef _WIN32
-      DeleteCriticalSection(&jit_cs); 
-#endif
     }
-
+    
+#ifdef _WIN32
+    DeleteCriticalSection(&jit_cs); 
+#endif
+    
     // clean up
     if(native_code) {
       delete native_code;
       native_code = NULL;
     }
-
+    
     // clean up
     while(!instrs.empty()) {
       StackInstr* tmp = instrs.front();
@@ -507,17 +522,13 @@ public:
       tmp = NULL;
     }
   }
+  
+  StackMethod* Copy() {
+    return new StackMethod(id, name, param_count, instrs, cls, rtrn_type, jump_table);
+  }
 
   inline const string GetName() {
     return name;
-  }
-
-  inline void SetCompiling(bool c) {
-    is_compiling = c;
-  }
-
-  inline bool IsCompiling() {
-    return is_compiling;
   }
 
   inline bool IsVirtual() {
