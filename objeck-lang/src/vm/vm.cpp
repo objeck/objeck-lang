@@ -31,7 +31,7 @@
 
 #ifdef _DEBUG
 #ifdef _WIN32
-#include "vld.h"
+// #include "vld.h"
 #endif
 #endif
 
