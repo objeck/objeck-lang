@@ -1922,6 +1922,11 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     return;
   }
 
+  if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType()->GetType() == NIL_TYPE) {
+    ProcessError(expression, "Invalid operation method does not return a value");
+    return;
+  }
+
   if(is_scalar) {
     switch(left->GetType()) {
     case VAR_TYPE:

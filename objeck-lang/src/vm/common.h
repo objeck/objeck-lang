@@ -478,8 +478,13 @@ public:
     cls = k;
   }
 
+#ifdef _WIN32
+  StackMethod(int i, string& n, long p, vector<StackInstr*> is, 
+	      StackClass* c, MemoryType r, hash_map<long, long> &j) {
+#else
   StackMethod(int i, string& n, long p, vector<StackInstr*> is, 
 	      StackClass* c, MemoryType r, JumpTable &j) {
+#endif
     id = i;
     name = n;
     param_count = p;
@@ -523,10 +528,6 @@ public:
     }
   }
   
-  StackMethod* Copy() {
-    return new StackMethod(id, name, param_count, instrs, cls, rtrn_type, jump_table);
-  }
-
   inline const string GetName() {
     return name;
   }

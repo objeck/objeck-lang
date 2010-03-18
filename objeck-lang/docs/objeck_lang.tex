@@ -212,7 +212,7 @@ else if(value < 13) {
   "Less than 13"->PrintLine();
 }
 else {
-  "Other number"->PrintLine();
+  "Some other number"->PrintLine();
 };
 \end{verbatim}
 
@@ -305,7 +305,7 @@ class Foo {
   }
 }
 
-class Bar origin Foo {
+class Bar from Foo {
   New(value : Int) {
     Parent(value);
   }
@@ -406,6 +406,7 @@ Objeck includes class libraries that provides access to system resources, such a
 The following data structures are supported:
 \begin{itemize}
     \item Console
+	\item Time
     \item LinkedList
     \item IntLinkedList
     \item FloatLinkedList
@@ -422,6 +423,18 @@ The Console class allows programmers to read and write information to the system
     \item \texttt{Print} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out.
     \item \texttt{PrintLine} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out followed by a newline.
     \item \texttt{ReadLine} - reads in a line of text as a \texttt{Char[]} from standard in.
+\end{itemize}
+
+\subsubsection{Console}
+The Time class allows programmers gain access to the current system time.    The class supports the following operations:
+\begin{itemize}
+    \item \texttt{GetDay} - return the current day as an \texttt{Int}.
+    \item \texttt{GetMonth} - return the current month as an \texttt{Int}.
+    \item \texttt{GetYear} - return the current year as an \texttt{Int}.
+	\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
+    \item \texttt{GetMinutes} - return the current minutes as an \texttt{Int}.
+    \item \texttt{GetSeconds} - return the current seconds as an \texttt{Int}.
+	\item \texttt{IsSavingsTime} - return true if daylights saving time, false otherwise \texttt{Int}.
 \end{itemize}
 
 \subsubsection{File}
