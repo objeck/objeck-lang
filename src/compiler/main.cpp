@@ -35,9 +35,14 @@
 #endif
 #endif
 
-#include "compiler.h"
+#include <windows.h>
+#include <iostream>
+#include <string>
+#include <map>
 
 using namespace std;
+
+typedef int (*Compile)(map<const string, string>, const string);
 
 /****************************
  * Program start. Parses command
@@ -45,72 +50,91 @@ using namespace std;
  ****************************/
 int main(int argc, char* argv[])
 {
-  string usage;
-  usage += "Copyright (c) 2008 -2010, Randy Hollines. All rights reserved.\n";
-  usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-  usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-  usage += "FOR MORE INFORMATION.\n\n";
-  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n\n";
-  usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
-  usage += "options:\n";
-  usage += "  -src: input source files (separated by ',')\n";
-  usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
-  usage += "  -lib: input linked libraries (separated by ',')\n";
-  usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
-  usage += "  -out: output file name\n";
+  int status;
+  HINSTANCE compiler_lib = LoadLibrary("obc.dll");
+  if(compiler_lib) {
+    Compile _Compile = (Compile)GetProcAddress(compiler_lib, "Compile");
+    if(_Compile) {
+      string usage;
+      usage += "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+      usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+      usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+      usage += "FOR MORE INFORMATION.\n\n";
+      usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n\n";
+      usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
+      usage += "options:\n";
+      usage += "  -src: input source files (separated by ',')\n";
+      usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
+      usage += "  -lib: input linked libraries (separated by ',')\n";
+      usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
+      usage += "  -out: output file name\n";
 
-  if(argc >= 3) {
-    // reconstruct path
-    string path;
-    for(int i = 1; i < argc; i++) {
-      path += " ";
-      path += argv[i];
-    }
+      if(argc >= 3) {
+        // reconstruct path
+        string path;
+        for(int i = 1; i < argc; i++) {
+          path += " ";
+          path += argv[i];
+        }
 
-    // parse path
-    int end = (int)path.size();
-    map<const string, string> arguments;
-    int pos = 0;
-    while(pos < end) {
-      // ignore leading white space
-      while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-        pos++;
-      }
-      if(path[pos] == '-') {
-        // parse key
-        int start =  ++pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
+        // parse path
+        int end = (int)path.size();
+        map<const string, string> arguments;
+        int pos = 0;
+        while(pos < end) {
+          // ignore leading white space
+          while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+            pos++;
+          }
+          if(path[pos] == '-') {
+            // parse key
+            int start =  ++pos;
+            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+              pos++;
+            }
+            string key = path.substr(start, pos - start);
+            // parse value
+            while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+              pos++;
+            }
+            start = pos;
+            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+              pos++;
+            }
+            string value = path.substr(start, pos - start);
+            arguments.insert(pair<string, string>(key, value));
+          } 
+          else {
+            while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+              pos++;
+            }
+            int start = pos;
+            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+              pos++;
+            }
+            string value = path.substr(start, pos - start);
+            arguments.insert(pair<string, string>("-", value));
+          }
         }
-        string key = path.substr(start, pos - start);
-        // parse value
-        while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-          pos++;
-        }
-        start = pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
-        }
-        string value = path.substr(start, pos - start);
-        arguments.insert(pair<string, string>(key, value));
+        // compile source
+        status = _Compile(arguments, usage);
       } 
       else {
-        while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-          pos++;
-        }
-        int start = pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
-        }
-        string value = path.substr(start, pos - start);
-        arguments.insert(pair<string, string>("-", value));
+        cerr << usage << endl << endl;
+        status = 1;
       }
     }
-    // compile source
-    return Compile(arguments, usage);
-  } 
-  else {
-    cerr << usage << endl << endl;
-    return 1;
+    else {
+      cerr << "Unable to envoke compiler!" << endl;
+      status = -2;
+    }
+    // clean up
+    FreeLibrary(compiler_lib);
   }
+  else {
+    cerr << "Unable to loaded obc.dll!" << endl;
+    status = -2;
+  }
+
+  return status;
 }
