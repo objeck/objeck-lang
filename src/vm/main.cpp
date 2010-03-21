@@ -1,10 +1,10 @@
 /***************************************************************************
- * Language compiler.
+ * Starting point for the VM.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and uses in source and binary forms, with or without
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -29,21 +29,49 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __COMPILER_H__
-#define __COMPILER_H__
-
-#define DLL_EXPORT
-
-#include "tree.h"
-#include "parser.h"
-#include "context.h"
-#include "intermediate.h"
-#include "optimize.h"
-#include "target.h"
-
-extern "C"
-{
-   __declspec(dllexport) int Compile(map<const string, string> arguments, const string usage);
-}
-
+#ifdef _DEBUG
+#ifdef _WIN32
+// #include "vld.h"
 #endif
+#endif
+
+#include "windows.h"
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+typedef int (*Execute)(const int, char**);
+
+int main(const int argc, char* argv[])
+{
+  if(argc > 1) {
+    int status;
+    HINSTANCE compiler_lib = LoadLibrary("obr.dll");
+    if(compiler_lib) {
+      Execute _Execute = (Execute)GetProcAddress(compiler_lib, "Execute");
+      if(_Execute) {
+        status = _Execute(argc, argv);
+      }
+      else {
+        cerr << "Unable to envoke virtual machine!" << endl;
+        status = -2;
+      }
+      // clean up
+      FreeLibrary(compiler_lib);
+    }
+    else {
+      cerr << "Unable to loaded obr.dll!" << endl;
+      status = -2;
+    }
+  } 
+  else {
+    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += "FOR MORE INFORMATION.\n\n";
+    usage += "usage: obr <program>\n\n";
+    usage += "example: \"obr prgm1.obe\"";
+    cerr << usage << endl << endl;
+  }
+}
