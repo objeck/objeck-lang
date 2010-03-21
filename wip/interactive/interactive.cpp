@@ -4,12 +4,12 @@ int main() {
   cout << "Welcome to Objeck! v0.9.7" << endl;
   
   
-  SourceMethod* method = new SourceMethod("function : Main(args : String[]), Nil {");
+  SourceMethod* method = new SourceMethod("Main", "function : Main(args : String[]), Nil {");
 
 	string line;
   bool quit = false;
 	do {
-    cout << "=> ";
+		cout << "[" << method->GetAlias() << "]#> ";
 		getline(cin, line);
     line = trim(line);
 
@@ -92,6 +92,10 @@ int main() {
 		}
     // change current function/method
 		else if(line == "new method" || line == "nm") {
+			cout << "  alias? ";
+      getline(cin, line);
+      line = trim(line);
+
       cout << "  declaration? ";
       getline(cin, line);
       line = trim(line);

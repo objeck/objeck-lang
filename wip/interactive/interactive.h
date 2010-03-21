@@ -11,14 +11,20 @@
 using namespace std;
 
 class SourceMethod {
+  string alias;
   list<string> method;
 
 public:
-  SourceMethod(string declaration) {
-    method.push_back(declaration);
+  SourceMethod(string a, string d) {
+		alias = a;
+    method.push_back(d);
     method.push_back("}");
   }
-
+  
+	string GetAlias() {
+		return alias;
+	}
+                                  
   string GetLine(int pos) {
     if(pos < 1 || pos > method.size() - 1) {
       return false;
