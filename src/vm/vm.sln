@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vm", "vm\vm.vcproj", "{3131D7AE-8AB8-46C1-872F-0F949C5CD05D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cmd_line", "cmd_line\cmd_line.vcproj", "{361F6ED3-5156-4198-818A-A5609F7B9E8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -19,6 +21,12 @@ Global
 		{3131D7AE-8AB8-46C1-872F-0F949C5CD05D}.Release|Win32.Build.0 = Release|Win32
 		{3131D7AE-8AB8-46C1-872F-0F949C5CD05D}.Release|x64.ActiveCfg = Release|x64
 		{3131D7AE-8AB8-46C1-872F-0F949C5CD05D}.Release|x64.Build.0 = Release|x64
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Debug|Win32.Build.0 = Debug|Win32
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Debug|x64.ActiveCfg = Debug|Win32
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Release|Win32.ActiveCfg = Release|Win32
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Release|Win32.Build.0 = Release|Win32
+		{361F6ED3-5156-4198-818A-A5609F7B9E8B}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
