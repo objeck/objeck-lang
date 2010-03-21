@@ -35,97 +35,21 @@
 #endif
 #endif
 
-#include "tree.h"
-#include "parser.h"
-#include "context.h"
-#include "intermediate.h"
-#include "optimize.h"
-#include "target.h"
-#include <map>
-#include <string>
+#include "compiler.h"
 
 using namespace std;
 
-static string usage;
-void Compile(map<const string, string> arguments);
+#define SUCCESS 0
+#define COMMAND_ERROR -1
+#define PARSE_ERROR 1
+#define CONTEXT_ERROR 2
 
-/****************************
- * Program start. Parses command
- * line parameters.
- ****************************/
-int main(int argc, char* argv[])
-{
-  usage += "Copyright (c) 2008 -2010, Randy Hollines. All rights reserved.\n";
-  usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-  usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-  usage += "FOR MORE INFORMATION.\n\n";
-  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n\n";
-  usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
-  usage += "options:\n";
-  usage += "  -src: input source files (separated by ',')\n";
-  usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
-  usage += "  -lib: input linked libraries (separated by ',')\n";
-  usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
-  usage += "  -out: output file name\n";
-
-  if(argc >= 3) {
-    // reconstruct path
-    string path;
-    for(int i = 1; i < argc; i++) {
-      path += " ";
-      path += argv[i];
-    }
-
-    // parse path
-    int end = (int)path.size();
-    map<const string, string> arguments;
-    int pos = 0;
-    while(pos < end) {
-      // ignore leading white space
-      while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-        pos++;
-      }
-      if(path[pos] == '-') {
-        // parse key
-        int start =  ++pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
-        }
-        string key = path.substr(start, pos - start);
-        // parse value
-        while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-          pos++;
-        }
-        start = pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
-        }
-        string value = path.substr(start, pos - start);
-        arguments.insert(pair<string, string>(key, value));
-      } else {
-        while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
-          pos++;
-        }
-        int start = pos;
-        while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
-          pos++;
-        }
-        string value = path.substr(start, pos - start);
-        arguments.insert(pair<string, string>("-", value));
-      }
-    }
-    // compile source
-    Compile(arguments);
-  } else {
-    cerr << usage << endl << endl;
-  }
-}
 
 /****************************
  * Starts the compilation
  * process.
  ****************************/
-void Compile(map<const string, string> arguments)
+int Compile(map<const string, string> arguments, const string usage)
 {
 #ifdef _MEMCHECK
   mtrace();
@@ -135,13 +59,13 @@ void Compile(map<const string, string> arguments)
   map<const string, string>::iterator result = arguments.find("src");
   if(result == arguments.end()) {
     cerr << usage << endl << endl;
-    exit(1);
+    return COMMAND_ERROR;
   }
   // check program output
   result = arguments.find("dest");
   if(result == arguments.end()) {
     cerr << usage << endl << endl;
-    exit(1);
+    return COMMAND_ERROR;
   }
   // check program libraries path
   string libs_path = "lang.obl";
@@ -157,7 +81,7 @@ void Compile(map<const string, string> arguments)
     if(optimize != "s0" && optimize != "s1" && optimize != "s2" && 
        optimize != "s3" && optimize != "s4") {
       cerr << usage << endl << endl;
-      exit(1);
+      return COMMAND_ERROR;
     }
   }
   // check program libraries path
@@ -167,7 +91,7 @@ void Compile(map<const string, string> arguments)
     target = result->second;
     if(target != "lib" && target != "exe") {
       cerr << usage << endl << endl;
-      exit(1);
+      return COMMAND_ERROR;
     }
   }
   
@@ -175,7 +99,6 @@ void Compile(map<const string, string> arguments)
   Parser parser(arguments["src"]);
   if(parser.Parse()) {
     bool is_lib = target == "lib";
-
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
     ContextAnalyzer analyzer(program, libs_path, is_lib);
@@ -189,6 +112,14 @@ void Compile(map<const string, string> arguments)
       // emit target code
       TargetEmitter target(optimizer.GetProgram(), is_lib, arguments["dest"]);;
       target.Emit();
+      
+      return SUCCESS;
     }
+    else {
+      return CONTEXT_ERROR;
+    }
+  }
+  else {
+    return PARSE_ERROR;
   }
 }
