@@ -22,7 +22,7 @@
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="2"
 			CharacterSet="2"
 			>
 			<Tool
@@ -63,6 +63,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\obr.dll"
 				GenerateDebugInformation="true"
 				DataExecutionPrevention="1"
 				TargetMachine="1"
@@ -165,7 +166,7 @@
 			Name="Release|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="1"
+			ConfigurationType="2"
 			CharacterSet="2"
 			WholeProgramOptimization="1"
 			>
@@ -208,7 +209,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\obr.exe"
+				OutputFile="$(OutDir)\obr.dll"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -377,19 +378,11 @@
 				>
 			</File>
 			<File
+				RelativePath="..\vm.h"
+				>
+			</File>
+			<File
 				RelativePath="..\os\windows\windows.h"
-				>
-			</File>
-		</Filter>
-		<Filter
-			Name="Resources"
-			>
-			<File
-				RelativePath="..\..\..\images\Gear.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\objeck.rc"
 				>
 			</File>
 		</Filter>
