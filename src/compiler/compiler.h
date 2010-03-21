@@ -32,6 +32,8 @@
 #ifndef __COMPILER_H__
 #define __COMPILER_H__
 
+#define DLL_EXPORT
+
 #include "tree.h"
 #include "parser.h"
 #include "context.h"
@@ -39,6 +41,9 @@
 #include "optimize.h"
 #include "target.h"
 
-int Compile(map<const string, string> arguments, const string usage);
+extern "C"
+{
+   __declspec(dllexport) int Compile(map<const string, string> arguments, const string usage);
+}
 
 #endif
