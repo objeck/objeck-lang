@@ -29,25 +29,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifdef _DEBUG
-#ifdef _WIN32
-// #include "vld.h"
-#endif
-#endif
+#include "vm.h"
 
-#include "common.h"
-#include "loader.h"
-#include "interpreter.h"
-#include "time.h"
-
-int main(const int argc, char* argv[])
+int Execute(const int argc, char* argv[])
 {
   if(argc > 1) {
-
-#ifdef _MEMCHECK
-    mtrace();
-#endif
-
     // loader; when this goes out of scope program memory is released
     Loader loader(argc, argv);
     loader.Load();
@@ -104,15 +90,11 @@ int main(const int argc, char* argv[])
     delete stack_pos;
     stack_pos = NULL;
 
-    MemoryManager::Instance()->Clear();    
-  } else {
-    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
-    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += "FOR MORE INFORMATION.\n\n";
-    usage += "usage: obr <program>\n\n";
-    usage += "example: \"obr prgm1.obe\"";
-    cerr << usage << endl << endl;
+    MemoryManager::Instance()->Clear(); 
+
+    return 0;
+  } 
+  else {
+    return 1;
   }
 }
-

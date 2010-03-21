@@ -1,10 +1,10 @@
 /***************************************************************************
- * Language compiler.
+ * Defines the VM execution model.
  *
- * Copyright (c) 2008-2010 Randy Hollines
+ * Copyright (c) 2008, 2009 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and uses in source and binary forms, with or without
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -29,21 +29,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __COMPILER_H__
-#define __COMPILER_H__
+#ifndef __VM_H__
+#define __VM_H__
 
-#define DLL_EXPORT
-
-#include "tree.h"
-#include "parser.h"
-#include "context.h"
-#include "intermediate.h"
-#include "optimize.h"
-#include "target.h"
+#include "common.h"
+#include "loader.h"
+#include "interpreter.h"
 
 extern "C"
 {
-   __declspec(dllexport) int Compile(map<const string, string> arguments, const string usage);
+  __declspec(dllexport) int Execute(const int argc, char* argv[]);
 }
 
 #endif
