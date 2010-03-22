@@ -29,10 +29,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#define SYSTEM_ERROR -2
+
 #ifdef _DEBUG
-#ifdef _WIN32
-// #include "vld.h"
-#endif
+#include "vld.h"
 #endif
 
 #include "windows.h"
@@ -55,14 +55,14 @@ int main(const int argc, char* argv[])
       }
       else {
         cerr << "Unable to envoke virtual machine!" << endl;
-        status = -2;
+        status = SYSTEM_ERROR;
       }
       // clean up
       FreeLibrary(compiler_lib);
     }
     else {
       cerr << "Unable to loaded obr.dll!" << endl;
-      status = -2;
+      status = SYSTEM_ERROR;
     }
   } 
   else {

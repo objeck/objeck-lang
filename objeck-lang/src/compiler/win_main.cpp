@@ -29,16 +29,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifdef _WIN32
-#ifdef _DEBUG
-#include "vld.h"
-#endif
-#include <windows.h>
-#endif
-
 #define USAGE_ERROR -1
 #define SYSTEM_ERROR -2
 
+#ifdef _DEBUG
+#include "vld.h"
+#endif
+
+#include <windows.h>
 #include <iostream>
 #include <string>
 #include <map>

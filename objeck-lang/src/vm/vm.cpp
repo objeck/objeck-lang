@@ -31,6 +31,9 @@
 
 #include "vm.h"
 
+#define SUCCESS 0
+#define USAGE_ERROR -1
+
 int Execute(const int argc, char* argv[])
 {
   if(argc > 1) {
@@ -92,9 +95,9 @@ int Execute(const int argc, char* argv[])
 
     MemoryManager::Instance()->Clear(); 
 
-    return 0;
+    return SUCCESS;
   } 
   else {
-    return 1;
+    return USAGE_ERROR;
   }
 }
