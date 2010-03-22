@@ -29,13 +29,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifdef _DEBUG
 #ifdef _WIN32
-// #include "vld.h"
+#ifdef _DEBUG
+#include "vld.h"
 #endif
+#include <windows.h>
 #endif
 
-#include <windows.h>
+#define USAGE_ERROR -1
+#define SYSTEM_ERROR -2
+
 #include <iostream>
 #include <string>
 #include <map>
@@ -121,19 +124,19 @@ int main(int argc, char* argv[])
       } 
       else {
         cerr << usage << endl << endl;
-        status = 1;
+        status = USAGE_ERROR;
       }
     }
     else {
       cerr << "Unable to envoke compiler!" << endl;
-      status = -2;
+      status = SYSTEM_ERROR;
     }
     // clean up
     FreeLibrary(compiler_lib);
   }
   else {
     cerr << "Unable to loaded obc.dll!" << endl;
-    status = -2;
+    status = SYSTEM_ERROR;
   }
 
   return status;
