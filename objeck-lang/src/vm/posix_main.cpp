@@ -46,7 +46,7 @@ int main(const int argc, char* argv[])
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
     usage += "usage: obr <program>\n\n";
-    usage += "example: \"obr prgm1.obe\"";
+    usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;
   }
 }
