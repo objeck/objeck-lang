@@ -29,12 +29,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifdef _DEBUG
-#ifdef _WIN32
-// #include "vld.h"
-#endif
-#endif
-
 #include "compiler.h"
 
 using namespace std;
