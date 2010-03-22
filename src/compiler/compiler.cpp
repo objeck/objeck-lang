@@ -40,10 +40,9 @@
 using namespace std;
 
 #define SUCCESS 0
-#define COMMAND_ERROR -1
-#define PARSE_ERROR 1
-#define CONTEXT_ERROR 2
-
+#define COMMAND_ERROR 1
+#define PARSE_ERROR 2
+#define CONTEXT_ERROR 3
 
 /****************************
  * Starts the compilation
