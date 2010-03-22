@@ -2,7 +2,7 @@ CC=g++
 # ARGS=-g -D_SYSTEM -D_DEBUG -Wunused
 # ARGS=-g -D_DEBUG -Wunused
 ARGS=-O3 -Wunused
-SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimize.o target.o compiler.o main.o
+SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimize.o target.o compiler.o posix_main.o
 EXE=obc
 
 $(EXE): $(SRC)

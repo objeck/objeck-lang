@@ -43,7 +43,11 @@
 
 extern "C"
 {
-   __declspec(dllexport) int Compile(map<const string, string> arguments, const string usage);
+#ifdef _WIN32
+  __declspec(dllexport) int Compile(map<const string, string> arguments, const string usage);
+#else
+  int Compile(map<const string, string> arguments, const string usage);
+#endif
 }
 
 #endif
