@@ -59,7 +59,8 @@ int main(int argc, char* argv[])
   usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
   usage += "  -lib: input linked libraries (separated by ',')\n";
   usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
-  usage += "  -out: output file name\n";
+  usage += "  -out: output file name\n\n";
+  usage += "  i.e. \"./obc -src tests/hello.obs -dest hello.obe\"\n";
 
   int status;
   if(argc >= 3) {
