@@ -61,6 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\obc.dll"
 				GenerateDebugInformation="true"
 				TargetMachine="1"
 			/>
@@ -335,6 +336,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\obc.dll"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -454,6 +456,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				OutputFile="$(OutDir)\obc.dll"
 			/>
 			<Tool
 				Name="VCALinkTool"
