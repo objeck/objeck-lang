@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
       usage += "  -lib: input linked libraries (separated by ',')\n";
       usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
       usage += "  -out: output file name\n\n";
-      usage += "  i.e. obc \"-src tests\hello.obs -dest hello.obe\"\n";
+      usage += "  example: \"obc -src tests\hello.obs -dest hello.obe\"";
       
       if(argc >= 3) {
         // reconstruct path
