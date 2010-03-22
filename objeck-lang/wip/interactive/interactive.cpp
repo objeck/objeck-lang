@@ -3,27 +3,40 @@
 int main() {
   cout << "Welcome to Objeck! v0.9.7" << endl;
   
-  
+  SourceProgram* program = new SourceProgram;
   SourceMethod* method = new SourceMethod("Main", "function : Main(args : String[]), Nil {");
-
+  program->AddMethod(method);
+  
 	string line;
   bool quit = false;
 	do {
+    // prompt
 		cout << "[" << method->GetAlias() << "]#> ";
 		getline(cin, line);
     line = trim(line);
 
-    // clear program
-		if(line == "clear" || line == "c") {
+    // list methods
+		if(line == "list methods" || line == "lm") {
+      program->ListMethods();      
+		}
+    else if(line == "compile" || line == "c") {
+      program->CompileProgram();      
+		}
+    // list method lines
+		else if(line == "list" || line == "l") {
+      method->ListLines();
+		}
+    // clear method
+		else if(line == "clear method" || line == "cm") {
 			method->Clear();
 			cout << "method cleared!" << endl;
 		}
     // list program
-		else if(line == "list" || line == "l") {
-      method->List();
-		}
+		else if(line == "list program" || line == "lp") {
+      cout << program->ToString() << endl;
+    }
     // insert line
-		else if(line == "insert" || line == "i") {
+		else if(line == "insert line" || line == "il") {
 			cout << "  line #? ";
       getline(cin, line);
       line = trim(line);
@@ -38,7 +51,7 @@ int main() {
       }
 		}
     // replace line
-		else if(line == "replace" || line == "r") {
+		else if(line == "replace line" || line == "rl") {
 			cout << "  line #? ";
       getline(cin, line);
       line = trim(line);
@@ -55,8 +68,8 @@ int main() {
         method->InsertLine(line, index - 1);
       }
 		}
-    // replace line
-		else if(line == "delete" || line == "d") {
+    // delete line
+		else if(line == "delete line" || line == "dl") {
 			cout << "  line #? ";
       getline(cin, line);
       line = trim(line);
@@ -109,4 +122,7 @@ int main() {
 	}
 	while(!quit);
 	cout << "Goodbye..." << endl;
+
+  delete program;
+  program = NULL;
 }
