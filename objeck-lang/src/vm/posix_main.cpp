@@ -1,7 +1,7 @@
 /***************************************************************************
- * Defines the VM execution model.
+ * Starting point for the VM.
  *
- * Copyright (c) 2008, 2009 Randy Hollines
+ * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,20 +29,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __VM_H__
-#define __VM_H__
+#include "vm.h"
+#include <iostream>
+#include <string>
 
-#include "common.h"
-#include "loader.h"
-#include "interpreter.h"
+using namespace std;
 
-extern "C"
+int main(const int argc, char* argv[])
 {
-#ifdef _WIN32
-  __declspec(dllexport) int Execute(const int argc, char* argv[]);
-#else
-  int Execute(const int argc, char* argv[]);
-#endif
+  if(argc > 1) {
+    return Execute(argc, argv);
+  } 
+  else {
+    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += "FOR MORE INFORMATION.\n\n";
+    usage += "usage: obr <program>\n\n";
+    usage += "example: \"obr prgm1.obe\"";
+    cerr << usage << endl << endl;
+  }
 }
-
-#endif
