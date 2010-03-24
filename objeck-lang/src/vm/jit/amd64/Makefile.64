@@ -1,11 +1,11 @@
-ARGS=-g -D_DEBUG -D_X64 -Wunused
-# ARGS=-g -D_X64 -Wunused
-# ARGS=-O2 -D_X64
+# ARGS=-g -D_DEBUG  -Wunused
+# ARGS=-g -Wunused
+ARGS=-O3
 
 CC=g++
 AR=ar
-SRC=jit_common.o
-LIB=../../jit_amd_lp64.a
+SRC= jit_intel_lp64.o
+LIB= ../../jit_intel_lp64.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
