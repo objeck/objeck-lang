@@ -484,6 +484,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case IF_STMT:
     AnalyzeIf(static_cast<If*>(statement), depth);
     break;
+    
+  case DO_WHILE_STMT:
+    AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
+    break;
 
   case WHILE_STMT:
     AnalyzeWhile(static_cast<While*>(statement), depth);
@@ -1389,6 +1393,25 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, int depth)
   // statements
   AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
   current_table->PreviousScope();
+}
+
+/****************************
+ * Analyzes a 'do/while' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, int depth)
+{
+#ifdef _DEBUG
+  Show("do/while", do_while_stmt->GetLineNumber(), depth);
+#endif
+  
+  // 'do/while' statements
+  AnalyzeStatements(do_while_stmt->GetStatements(), depth + 1);
+  // expression
+  Expression* expression = do_while_stmt->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsBooleanExpression(expression)) {
+    ProcessError(expression, "Expected Bool expression");
+  }
 }
 
 /****************************

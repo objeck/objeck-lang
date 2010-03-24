@@ -79,6 +79,7 @@ typedef enum _StatementType {
   METHOD_CALL_STMT,
   SIMPLE_STMT,
   IF_STMT,
+  DO_WHILE_STMT,
   WHILE_STMT,
   FOR_STMT,
   SELECT_STMT,
@@ -1106,9 +1107,39 @@ public:
 };
 
 /****************************
+ * DoWhile class
+ ****************************/
+class DoWhile : public Statement {
+  friend class TreeFactory;
+  Expression* expression;
+  StatementList* statements;
+
+  DoWhile(const string &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
+    expression = e;
+    statements = s;
+  }
+
+  ~DoWhile() {
+  }
+
+public:
+  const StatementType GetStatementType() {
+    return DO_WHILE_STMT;
+  }
+
+  Expression* GetExpression() {
+    return expression;
+  }
+
+  StatementList* GetStatements() {
+    return statements;
+  }
+};
+ 
+/****************************
  * While class
- *****  ***********************/
-class While : public Statement {
+ ****************************/
+ class While : public Statement {
   friend class TreeFactory;
   Expression* expression;
   StatementList* statements;
@@ -2108,7 +2139,14 @@ public:
     statements.push_back(tmp);
     return tmp;
   }
-
+  
+  DoWhile* MakeDoWhile(const string &file_name, const int line_num,
+		       Expression* expression, StatementList* stmts) {
+    DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
+    statements.push_back(tmp);
+    return tmp;
+  }
+  
   While* MakeWhile(const string &file_name, const int line_num,
                    Expression* expression, StatementList* stmts) {
     While* tmp = new While(file_name, line_num, expression, stmts);

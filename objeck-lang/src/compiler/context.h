@@ -410,6 +410,7 @@ class ContextAnalyzer {
   void AnalyzeAssignment(Assignment* assignment, int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, int depth);
   void AnalyzeIf(If* if_stmt, int depth);
+  void AnalyzeDoWhile(DoWhile* do_while_stmt, int depth);
   void AnalyzeWhile(While* while_stmt, int depth);
   void AnalyzeSelect(Select* select_stmt, int depth);
   void AnalyzeFor(For* for_stmt, int depth);

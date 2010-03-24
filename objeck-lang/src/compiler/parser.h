@@ -152,6 +152,7 @@ class Parser {
   Statement* ParseStatement(int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
   If* ParseIf(int depth);
+  DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);
   Select* ParseSelect(int depth);
   Enum* ParseEnum(int depth);
