@@ -589,8 +589,7 @@ Statement* Parser::ParseStatement(int depth)
           statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
         }
       } else {
-        ProcessError("Expected declaration, assignment or method call",
-                     TOKEN_SEMI_COLON);
+        ProcessError("Expected statement", TOKEN_SEMI_COLON);
       }
     }
     break;
@@ -600,7 +599,7 @@ Statement* Parser::ParseStatement(int depth)
       break;
 
     default:
-      ProcessError("Expected declaration, assignment or method call",  TOKEN_CLOSED_PAREN);
+      ProcessError("Expected statement", TOKEN_CLOSED_PAREN);
       break;
     }
   }
@@ -619,6 +618,10 @@ Statement* Parser::ParseStatement(int depth)
       statement = ParseIf(depth + 1);
       break;
 
+    case TOKEN_DO_ID:
+      statement = ParseDoWhile(depth + 1);
+      break;
+      
     case TOKEN_WHILE_ID:
       statement = ParseWhile(depth + 1);
       break;
@@ -1664,6 +1667,42 @@ If* Parser::ParseIf(int depth)
   }
 
   return if_stmt;
+}
+
+/****************************
+ * Parses a 'while' statement
+ ****************************/
+DoWhile* Parser::ParseDoWhile(int depth)
+{
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+
+#ifdef _DEBUG
+  Show("Do/While", depth);
+#endif
+  
+  NextToken();
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* statements =  ParseStatementList(depth + 1);
+
+  if(!Match(TOKEN_WHILE_ID)) {
+    ProcessError("Expected 'while'", TOKEN_SEMI_COLON);
+  }
+  NextToken();
+
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    ProcessError(TOKEN_OPEN_PAREN);
+  }
+  NextToken();
+
+  Expression* expression = ParseExpression(depth + 1);
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  
+  return TreeFactory::Instance()->MakeDoWhile(file_name, line_num, expression, statements);
 }
 
 /****************************

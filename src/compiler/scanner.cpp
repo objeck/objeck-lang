@@ -77,6 +77,7 @@ void Scanner::LoadKeywords()
   ident_map["virtual"] = TOKEN_VIRTUAL_ID;
   ident_map["if"] = TOKEN_IF_ID;
   ident_map["else"] = TOKEN_ELSE_ID;
+  ident_map["do"] = TOKEN_DO_ID;
   ident_map["while"] = TOKEN_WHILE_ID;
   ident_map["use"] = TOKEN_USE_ID;
   ident_map["bundle"] = TOKEN_BUNDLE_ID;
@@ -175,6 +176,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_NATIVE_ID:
   case TOKEN_IF_ID:
   case TOKEN_ELSE_ID:
+  case TOKEN_DO_ID:
   case TOKEN_WHILE_ID:
   case TOKEN_BOOLEAN_ID:
   case TOKEN_TRUE_ID:
