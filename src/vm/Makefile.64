@@ -1,21 +1,29 @@
-ARGS=-g -D_DEBUG -D_X64 -Wunused
-# ARGS=-O2 -D_X64
+ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+# ARGS=-O3 -pthread
 
 CC=g++
-SRC= memory.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS= jit_amd_lp64.a
-JIT_PATH= jit/amd64
+SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+OBJ_LIBS= jit_intel_lp32.a memory.a
+MEM_PATH= os/posix
+JIT_PATH= jit/ia32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
-jit_amd_lp64.a:
+memory.a:
+	cd $(MEM_PATH); make	
+	
+jit_intel_lp32.a:
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
+	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
