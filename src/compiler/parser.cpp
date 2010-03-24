@@ -1670,7 +1670,7 @@ If* Parser::ParseIf(int depth)
 }
 
 /****************************
- * Parses a 'while' statement
+ * Parses a 'do/while' statement
  ****************************/
 DoWhile* Parser::ParseDoWhile(int depth)
 {

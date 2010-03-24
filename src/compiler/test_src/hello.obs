@@ -1,12 +1,13 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
+			i := 0;
 			do {
-				i := 0;
 				i->PrintLine();
 				i := i + 1;
 			}	
 			while(i < 0);
+			"Bye"->PrintLine();
 		}
 	}
 }
