@@ -8,13 +8,17 @@ bundle Default {
     New() {
     }
 
-    function : Main(args : System.String[]), Nil {
+    function : Main(args : String[]), Nil {
       Run();
     }
     function : native : Run(), Nil {
       reserved : BinaryTree := BinaryTree->New();
-      reserved->Insert("function"->As(System.Compare), "keyword: function"->As(System.Base));
-      reserved->Insert("Int"->As(System.Compare), "keyword: Int"->As(System.Base));
+      reserved->Insert("function"->As(Compare), "keyword: function"->As(Base));
+      reserved->Insert("Int"->As(Compare), "keyword: Int"->As(Base));
+      reserved->Insert("Float"->As(Compare), "keyword: Float"->As(Base));
+      reserved->Insert("class"->As(Compare), "keyword: class"->As(Base));
+      reserved->Insert("bundle"->As(Compare), "keyword: bundle"->As(Base));
+      reserved->Insert("native"->As(Compare), "keyword: native"->As(Base));
 
       reader := FileReader->New("../compiler/test_src/prgm1.obs");
       line_num := 0;
@@ -29,15 +33,17 @@ bundle Default {
             i := i + 1;
           };
           
-          # word
-          if(line->GetChar(i)->IsChar() = true) {
-            string := "";
-            while(line->GetChar(i)->IsChar() = true | line->GetChar(i) = '.') {
+          # parse
+          if(i < line->GetSize()) {
+            # word
+            if(line->GetChar(i)->IsChar() = true) {
+              string := "";
+              while(line->GetChar(i)->IsChar() = true | line->GetChar(i) = '.') {
               string->Append(line->GetChar(i));
               i := i + 1;
             };
-
-            result : System.String := reserved->Find(string->As(System.Compare));
+	
+            result : String := reserved->Find(string->As(Compare));
             if(result <> Nil) {
               Console->GetInstance()->PrintLine(result);
             }
@@ -51,13 +57,13 @@ bundle Default {
             is_dec : Bool := false;
             while(line->GetChar(i)->IsDigit() = true | line->GetChar(i) = '.') {
               if(line->GetChar(i) = '.') {
-                is_dec := true;
+            	is_dec := true;
               };
               
               number->Append(line->GetChar(i));
               i := i + 1;
             };
-
+	
             if(is_dec) {
               Console->GetInstance()->Print("decimal '")->Print(number)->PrintLine("'");
             }
@@ -69,58 +75,60 @@ bundle Default {
           else {
             select(line->GetChar(i)) {
               label '(': {
-                "opren"->PrintLine();
+            	"opren"->PrintLine();
               }
               
               label ')': {
-                "cpren"->PrintLine();
+            	"cpren"->PrintLine();
               }
-
+	
               label '[': {
-                "obrace"->PrintLine();
+            	"obrace"->PrintLine();
               }
               
               label ']': {
-                "cbrace"->PrintLine();
+            	"cbrace"->PrintLine();
               }      
-
+	
               
               label '{': {
-                "ocbrace"->PrintLine();
+            	"ocbrace"->PrintLine();
               }
-        
+			
               label '}': {
-                "ccbrace"->PrintLine();
+            	"ccbrace"->PrintLine();
               }
               
               label '#': {
-                "pound"->PrintLine();
+            	"pound"->PrintLine();
               }
-
+	
               label '/': {
-                "div"->PrintLine();
+            	"div"->PrintLine();
               }
-
+	
               label '*': {
-                "mul"->PrintLine();
+            	"mul"->PrintLine();
               }
-
+	
               label '+': {
-                "add"->PrintLine();
+            	"add"->PrintLine();
               }
-
+	
               label '-': {
-                "sub"->PrintLine();
+            	"sub"->PrintLine();
               }
-
+	
               label '%': {
-                "mod"->PrintLine();
+            	"mod"->PrintLine();
               }
+              
               other: {
-                Console->GetInstance()->Print("'")->Print(line->GetChar(i))->PrintLine("'");
+            	Console->GetInstance()->Print("'")->Print(line->GetChar(i))->PrintLine("'");
               }
             };
             i := i + 1;
+            };	
           };
         };
       };
