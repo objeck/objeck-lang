@@ -33,7 +33,7 @@
 #include "math.h"
 
 #ifdef _X64
-#include "jit/amd64/jit_common.h"
+#include "jit/amd64/jit_intel_lp64.h"
 #else
 #include "jit/ia32/jit_intel_lp32.h"
 #endif
@@ -63,19 +63,20 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
   return 0;
 }
 #else
-#ifndef _X64
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
+#ifdef _X64
+  Runtime::JitCompilerIA64 jit_compiler;
+#else
   Runtime::JitCompilerIA32 jit_compiler;
+#endif
   jit_compiler.Compile(method);
-  
+#endif 
   // clean up
   program->RemoveThread(pthread_self());
   pthread_exit(NULL);
 }
-#endif
-#endif
 
 /********************************
  * VM initialization
@@ -83,7 +84,9 @@ void* StackInterpreter::CompileMethod(void* arg)
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
-#ifndef _X64
+#ifdef _X64
+  JitCompilerIA64::Initialize(program);
+#else
   JitCompilerIA32::Initialize(program);
 #endif
   MemoryManager::Initialize(program);
