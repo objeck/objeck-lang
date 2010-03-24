@@ -201,11 +201,11 @@ namespace Runtime {
       return type;
     }
 
-    void SetOperand(int32_t o) {
+    void SetOperand(long o) {
       operand = o;
     }
 
-    int32_t GetOperand() {
+    long GetOperand() {
       return operand;
     }
   };
@@ -213,10 +213,10 @@ namespace Runtime {
   /********************************
    * prototype for jit function
    ********************************/
-  typedef void (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, 
-			      int32_t* cls_mem, int32_t* inst, 
-			      int32_t* op_stack, int32_t *stack_pos, 
-			      int32_t &rtrn_value);
+  typedef void (*jit_fun_ptr)(long cls_id, long mthd_id, 
+			      long* cls_mem, long* inst, 
+			      long* op_stack, long *stack_pos, 
+			      long &rtrn_value);
   
   /********************************
    * JitCompilerIA32 class
@@ -229,25 +229,25 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    map<int32_t, StackInstr*> jump_table;
-    int32_t local_space;
+    map<long, StackInstr*> jump_table;
+    long local_space;
     StackMethod* method;
-    int32_t instr_count;
+    long instr_count;
     BYTE_VALUE* code;
-    int32_t code_index;   
+    long code_index;   
     FLOAT_VALUE* floats;     
-    int32_t floats_index;
-    int32_t instr_index;
-    int32_t code_buf_max;
+    long floats_index;
+    long instr_index;
+    long code_buf_max;
     bool compile_success;
     bool skip_jump;
 
     // setup and teardown
     void Prolog();
-    void Epilog(int32_t imm);
+    void Epilog(long imm);
     
     // stack conversion operations
-    void ProcessParameters(int32_t count);
+    void ProcessParameters(long count);
     void RegisterRoot();
     void UnregisterRoot();
     void ProcessInstructions();
@@ -259,9 +259,9 @@ namespace Runtime {
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessIntShift(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
-    void ProcessReturn(int32_t params = -1);
-    void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
-			      int32_t &instr_index, int32_t params);
+    void ProcessReturn(long params = -1);
+    void ProcessStackCallback(long instr_id, StackInstr* instr, 
+			      long &instr_index, long params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessReturnParameters(bool is_int);
@@ -300,10 +300,10 @@ namespace Runtime {
     
     // Encodes and writes out 32-bit
     // integer values
-    void AddImm(int32_t imm) {
-      BYTE_VALUE buffer[sizeof(int32_t)];
+    void AddImm(long imm) {
+      BYTE_VALUE buffer[sizeof(long)];
       ByteEncode32(buffer, imm);
-      for(int32_t i = 0; i < sizeof(int32_t); i++) {
+      for(long i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -461,13 +461,13 @@ namespace Runtime {
 
     // Encodes a byte array with a
     // 32-bit value
-    void ByteEncode32(BYTE_VALUE buffer[], int32_t value) {
-      memcpy(buffer, &value, sizeof(int32_t));
+    void ByteEncode32(BYTE_VALUE buffer[], long value) {
+      memcpy(buffer, &value, sizeof(long));
     }
     
     // Encodes an array with the 
     // binary ID of a register
-    void RegisterEncode3(BYTE_VALUE& code, int32_t offset, Register reg) {
+    void RegisterEncode3(BYTE_VALUE& code, long offset, Register reg) {
 #ifdef _DEBUG
       assert(offset == 2 || offset == 5);
 #endif
@@ -641,107 +641,107 @@ namespace Runtime {
     }
 
     // move instructions
-    void move_reg_mem8(Register src, int32_t offset, Register dest);
-    void move_mem8_reg(int32_t offset, Register src, Register dest);
-    void move_imm_mem8(int32_t imm, int32_t offset, Register dest);
+    void move_reg_mem8(Register src, long offset, Register dest);
+    void move_mem8_reg(long offset, Register src, Register dest);
+    void move_imm_mem8(long imm, long offset, Register dest);
     void move_reg_reg(Register src, Register dest);
-    void move_reg_mem(Register src, int32_t offset, Register dest);
-    void move_mem_reg(int32_t offset, Register src, Register dest);
-    void move_imm_memx(RegInstr* instr, int32_t offset, Register dest);
-    void move_imm_mem(int32_t imm, int32_t offset, Register dest);
-    void move_imm_reg(int32_t imm, Register reg);
+    void move_reg_mem(Register src, long offset, Register dest);
+    void move_mem_reg(long offset, Register src, Register dest);
+    void move_imm_memx(RegInstr* instr, long offset, Register dest);
+    void move_imm_mem(long imm, long offset, Register dest);
+    void move_imm_reg(long imm, Register reg);
     void move_imm_xreg(RegInstr* instr, Register reg);
-    void move_mem_xreg(int32_t offset, Register src, Register dest);
-    void move_xreg_mem(Register src, int32_t offset, Register dest);
+    void move_mem_xreg(long offset, Register src, Register dest);
+    void move_xreg_mem(Register src, long offset, Register dest);
     void move_xreg_xreg(Register src, Register dest);
 
     // math instructions
-    void math_imm_reg(int32_t imm, Register reg, InstructionType type);    
+    void math_imm_reg(long imm, Register reg, InstructionType type);    
     void math_imm_xreg(RegInstr* instr, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_xreg_xreg(Register src, Register dest, InstructionType type);
-    void math_mem_reg(int32_t offset, Register reg, InstructionType type);
-    void math_mem_xreg(int32_t offset, Register reg, InstructionType type);
+    void math_mem_reg(long offset, Register reg, InstructionType type);
+    void math_mem_xreg(long offset, Register reg, InstructionType type);
 
     // logical
-    void and_imm_reg(int32_t imm, Register reg);
+    void and_imm_reg(long imm, Register reg);
     void and_reg_reg(Register src, Register dest);
-    void and_mem_reg(int32_t offset, Register src, Register dest);
-    void or_imm_reg(int32_t imm, Register reg);
+    void and_mem_reg(long offset, Register src, Register dest);
+    void or_imm_reg(long imm, Register reg);
     void or_reg_reg(Register src, Register dest);
-    void or_mem_reg(int32_t offset, Register src, Register dest);
+    void or_mem_reg(long offset, Register src, Register dest);
     void xor_reg_reg(Register src, Register dest);
 
     // add instructions
-    void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
-    void add_imm_reg(int32_t imm, Register reg);    
+    void add_imm_mem(long imm, long offset, Register dest);    
+    void add_imm_reg(long imm, Register reg);    
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
-    void add_mem_reg(int32_t offset, Register src, Register dest);
-    void add_mem_xreg(int32_t offset, Register src, Register dest);
+    void add_mem_reg(long offset, Register src, Register dest);
+    void add_mem_xreg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
     void sub_imm_xreg(RegInstr* instr, Register reg);
     void sub_xreg_xreg(Register src, Register dest);
-    void sub_mem_xreg(int32_t offset, Register src, Register dest);
-    void sub_imm_reg(int32_t imm, Register reg);
-    void sub_imm_mem(int32_t imm, int32_t offset, Register dest);
+    void sub_mem_xreg(long offset, Register src, Register dest);
+    void sub_imm_reg(long imm, Register reg);
+    void sub_imm_mem(long imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
-    void sub_mem_reg(int32_t offset, Register src, Register dest);
+    void sub_mem_reg(long offset, Register src, Register dest);
 
     // mul instructions
     void mul_imm_xreg(RegInstr* instr, Register reg);
     void mul_xreg_xreg(Register src, Register dest);
-    void mul_mem_xreg(int32_t offset, Register src, Register dest);
-    void mul_imm_reg(int32_t imm, Register reg);
+    void mul_mem_xreg(long offset, Register src, Register dest);
+    void mul_imm_reg(long imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
-    void mul_mem_reg(int32_t offset, Register src, Register dest);
+    void mul_mem_reg(long offset, Register src, Register dest);
 
     // div instructions
     void div_imm_xreg(RegInstr* instr, Register reg);
     void div_xreg_xreg(Register src, Register dest);
-    void div_mem_xreg(int32_t offset, Register src, Register dest);
-    void div_imm_reg(int32_t imm, Register reg, bool is_mod = false);
+    void div_mem_xreg(long offset, Register src, Register dest);
+    void div_imm_reg(long imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
-    void div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod = false);
+    void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
-    void cmp_mem_reg(int32_t offset, Register src, Register dest);
-    void cmp_imm_reg(int32_t imm, Register reg);
+    void cmp_mem_reg(long offset, Register src, Register dest);
+    void cmp_imm_reg(long imm, Register reg);
     void cmp_xreg_xreg(Register src, Register dest);
-    void cmp_mem_xreg(int32_t offset, Register src, Register dest);
+    void cmp_mem_xreg(long offset, Register src, Register dest);
     void cmp_imm_xreg(RegInstr* instr, Register reg);
     void cmov_reg(Register reg, InstructionType oper);
     
     // inc/dec instructions
     void dec_reg(Register dest);
-    void dec_mem(int32_t offset, Register dest);
-    void inc_mem(int32_t offset, Register dest);
+    void dec_mem(long offset, Register dest);
+    void inc_mem(long offset, Register dest);
     
     // shift instructions
-    void shl_reg(Register dest, int32_t value);
-    void shl_mem(int32_t offset, Register src, int32_t value);
-    void shr_reg(Register dest, int32_t value);
-    void shr_mem(int32_t offset, Register src, int32_t value);
+    void shl_reg(Register dest, long value);
+    void shl_mem(long offset, Register src, long value);
+    void shr_reg(Register dest, long value);
+    void shr_mem(long offset, Register src, long value);
     
     // push/pop instructions
-    void push_imm(int32_t value);
+    void push_imm(long value);
     void push_reg(Register reg);
     void pop_reg(Register reg);
-    void push_mem(int32_t offset, Register src);
+    void push_mem(long offset, Register src);
     
     // type conversion instructions
     void round_imm_xreg(RegInstr* instr, Register reg, bool is_floor);
-    void round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor);
+    void round_mem_xreg(long offset, Register src, Register dest, bool is_floor);
     void round_xreg_xreg(Register src, Register dest, bool is_floor);
     void cvt_xreg_reg(Register src, Register dest);
     void cvt_imm_reg(RegInstr* instr, Register reg);
-    void cvt_mem_reg(int32_t offset, Register src, Register dest);
+    void cvt_mem_reg(long offset, Register src, Register dest);
     void cvt_reg_xreg(Register src, Register dest);
     void cvt_imm_xreg(RegInstr* instr, Register reg);
-    void cvt_mem_xreg(int32_t offset, Register src, Register dest);
+    void cvt_mem_xreg(long offset, Register src, Register dest);
     
     // function call instruction
     void call_reg(Register reg);
@@ -749,19 +749,19 @@ namespace Runtime {
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
 
-    static int32_t PopInt(int32_t* op_stack, int32_t *stack_pos) {
-      int32_t value = op_stack[--(*stack_pos)];
+    static long PopInt(long* op_stack, long *stack_pos) {
+      long value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
-      cout << "\t[pop_i: value=" << (int32_t*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+      cout << "\t[pop_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
 #endif
 
       return value;
     }
 
-    static void PushInt(int32_t* op_stack, int32_t *stack_pos, int32_t value) {
+    static void PushInt(long* op_stack, long *stack_pos, long value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
-      cout << "\t[push_i: value=" << (int32_t*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+      cout << "\t[push_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
 #endif
     }
 
@@ -770,9 +770,9 @@ namespace Runtime {
     // ....
     // Process call backs from ASM
     // code
-    static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
-			      const int32_t mthd_id, int32_t* inst, int32_t* op_stack, 
-			      int32_t *stack_pos, const int32_t ip) {
+    static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id, 
+			      const long mthd_id, long* inst, long* op_stack, 
+			      long *stack_pos, const long ip) {
 #ifdef _DEBUG
       cout << "Stack Call: instr=" << instr_id
 	   << ", oper_1=" << instr->GetOperand() << ", oper_2=" << instr->GetOperand2() 
@@ -790,21 +790,21 @@ namespace Runtime {
 	break;
 
       case NEW_BYTE_ARY: {
-	int32_t indices[8];
-	int32_t value = PopInt(op_stack, stack_pos);
-	int32_t size = value;
+	long indices[8];
+	long value = PopInt(op_stack, stack_pos);
+	long size = value;
 	indices[0] = value;
-	int32_t dim = 1;
-	for(int32_t i = 1; i < instr->GetOperand(); i++) {
-	  int32_t value = PopInt(op_stack, stack_pos);
+	long dim = 1;
+	for(long i = 1; i < instr->GetOperand(); i++) {
+	  long value = PopInt(op_stack, stack_pos);
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(int32_t)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
+	long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
-	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-	PushInt(op_stack, stack_pos, (int32_t)mem);
+	memcpy(mem + 2, indices, dim * sizeof(long));
+	PushInt(op_stack, stack_pos, (long)mem);
 	
 #ifdef _DEBUG
 	cout << "jit oper: NEW_BYTE_ARY: dim=" << dim << "; size=" << size 
@@ -814,17 +814,17 @@ namespace Runtime {
 	break;
 
       case NEW_INT_ARY: {
-	int32_t indices[8];
-	int32_t value = PopInt(op_stack, stack_pos);
-	int32_t size = value;
+	long indices[8];
+	long value = PopInt(op_stack, stack_pos);
+	long size = value;
 	indices[0] = value;
-	int32_t dim = 1;
-	for(int32_t i = 1; i < instr->GetOperand(); i++) {
-	  int32_t value = PopInt(op_stack, stack_pos);
+	long dim = 1;
+	for(long i = 1; i < instr->GetOperand(); i++) {
+	  long value = PopInt(op_stack, stack_pos);
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	int32_t* mem = (int32_t*)MemoryManager::
+	long* mem = (long*)MemoryManager::
 	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	cout << "jit oper: NEW_INT_ARY: dim=" << dim << "; size=" << size 
@@ -832,24 +832,24 @@ namespace Runtime {
 #endif
 	mem[0] = size;
 	mem[1] = dim;
-	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-	PushInt(op_stack, stack_pos, (int32_t)mem);
+	memcpy(mem + 2, indices, dim * sizeof(long));
+	PushInt(op_stack, stack_pos, (long)mem);
       }
 	break;
 	
       case NEW_FLOAT_ARY: {
-	int32_t indices[8];
-	int32_t value = PopInt(op_stack, stack_pos);
-	int32_t size = value;
+	long indices[8];
+	long value = PopInt(op_stack, stack_pos);
+	long size = value;
 	indices[0] = value;
-	int32_t dim = 1;
-	for(int32_t i = 1; i < instr->GetOperand(); i++) {
-	  int32_t value = PopInt(op_stack, stack_pos);
+	long dim = 1;
+	for(long i = 1; i < instr->GetOperand(); i++) {
+	  long value = PopInt(op_stack, stack_pos);
 	  size *= value;
 	  indices[dim++] = value;
 	}
 	size *= 2;
-	int32_t* mem = (int32_t*)MemoryManager::
+	long* mem = (long*)MemoryManager::
 	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	cout << "jit oper: NEW_FLOAT_ARY: dim=" << dim << "; size=" << size 
@@ -857,8 +857,8 @@ namespace Runtime {
 #endif
 	mem[0] = size / 2;
 	mem[1] = dim;
-	memcpy(mem + 2, indices, dim * sizeof(int32_t));
-	PushInt(op_stack, stack_pos, (int32_t)mem);
+	memcpy(mem + 2, indices, dim * sizeof(long));
+	PushInt(op_stack, stack_pos, (long)mem);
       }
 	break;
 	
@@ -866,20 +866,20 @@ namespace Runtime {
 #ifdef _DEBUG
 	cout << "jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
-	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
-									   (long*)op_stack, *stack_pos);
-	PushInt(op_stack, stack_pos, (int32_t)mem);
+	long* mem = (long*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
+								     (long*)op_stack, *stack_pos);
+	PushInt(op_stack, stack_pos, (long)mem);
       }
 	break;
 	
       case OBJ_INST_CAST: {
-	int32_t* mem = (int32_t*)PopInt(op_stack, stack_pos);
-	int32_t to_id = instr->GetOperand();
+	long* mem = (long*)PopInt(op_stack, stack_pos);
+	long to_id = instr->GetOperand();
 #ifdef _DEBUG
 	cout << "jit oper: OBJ_INST_CAST: from=" << mem << ", to=" << to_id << endl; 
 #endif	
-	int32_t result = (int32_t)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
-									     program->GetHierarchy());
+	long result = (long)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
+								       program->GetHierarchy());
 	if(!result && mem) {
 	  StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);	  
 	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
@@ -900,7 +900,7 @@ namespace Runtime {
 	switch(PopInt(op_stack, stack_pos)) {
 	  // ---------------- standard i/o ----------------
 	case STD_OUT_BOOL: {
-	  int32_t value = PopInt(op_stack, stack_pos);
+	  long value = PopInt(op_stack, stack_pos);
 	  cout << ((value == 0) ? "false" : "true");
 	}
 	  break;
@@ -939,7 +939,7 @@ namespace Runtime {
 	  break;
 
 	case STD_OUT_CHAR_ARY: {
-	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
+	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 #ifdef _DEBUG
 	  cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
@@ -1060,7 +1060,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  LOAD_CLS_INST_ID" << endl;
 #endif
-	  int32_t value = (int32_t)MemoryManager::Instance()->GetObjectID((long*)PopInt(op_stack, stack_pos));
+	  long value = (long)MemoryManager::Instance()->GetObjectID((long*)PopInt(op_stack, stack_pos));
 	  PushInt(op_stack, stack_pos, value);
 	}
 	  break;
@@ -1069,17 +1069,17 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  LOAD_ARY_SIZE" << endl;
 #endif
-	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
-	  PushInt(op_stack, stack_pos, (int32_t)array[2]);
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  PushInt(op_stack, stack_pos, (long)array[2]);
 	}  
 	  break;
 
 	case CPY_STR_ARY: {
- 	  int32_t index = PopInt(op_stack, stack_pos);
+ 	  long index = PopInt(op_stack, stack_pos);
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
 	  // copy array
-	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
-	  const int32_t size = array[0];
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long size = array[0];
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 	  for(long i = 0; value_str[i] != '\0' && i < size; i++) {
 	    str[i] = value_str[i];
@@ -1088,7 +1088,7 @@ namespace Runtime {
 	  cout << "  CPY_STR_ARY: addr=" << array << "(" << long(array) 
 	       << "), from='" << value_str << "', to='" << str << "'" << endl;
 #endif
-	  PushInt(op_stack, stack_pos, (int32_t)array);
+	  PushInt(op_stack, stack_pos, (long)array);
 	}
 	  break;
 	  
@@ -1364,7 +1364,7 @@ namespace Runtime {
     // with the interpreter's 'ArrayIndex'
     // method. Bounds checks are not done on
     // JIT code.
-    RegisterHolder* ArrayIndex(StackInstr* instr, int32_t type) {
+    RegisterHolder* ArrayIndex(StackInstr* instr, long type) {
       RegInstr* holder = working_stack.front();
       working_stack.pop_front();
 
@@ -1386,8 +1386,8 @@ namespace Runtime {
       }
 
       /* Algorithm:
-	 int32_t index = PopInt();
-	 const int32_t dim = instr->GetOperand();
+	 long index = PopInt();
+	 const long dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
 	 index *= array[i];
@@ -1420,10 +1420,10 @@ namespace Runtime {
 	break;
       }
 
-      const int32_t dim = instr->GetOperand();
+      const long dim = instr->GetOperand();
       for(int i = 1; i < dim; i++) {
 	// index *= array[i];
-        mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(), 
+        mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(), 
 		    index_holder->GetRegister());
         if(holder) {
           delete holder;
@@ -1461,7 +1461,7 @@ namespace Runtime {
 	break;
       }
       // skip first 2 integers (size and dimension) and all dimension indices
-      add_imm_reg((instr->GetOperand() + 2) * sizeof(int32_t), index_holder->GetRegister());      
+      add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());      
       add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
       ReleaseRegister(index_holder);
 
@@ -1477,8 +1477,8 @@ namespace Runtime {
 #ifdef _DEBUG
       cout << "Calculating indices for variables..." << endl;
 #endif
-      multimap<int32_t, StackInstr*> values;
-      for(int32_t i = 0; i < method->GetInstructionCount(); i++) {
+      multimap<long, StackInstr*> values;
+      for(long i = 0; i < method->GetInstructionCount(); i++) {
 	StackInstr* instr = method->GetInstruction(i);
 	switch(instr->GetType()) {
 	case LOAD_INT_VAR:
@@ -1487,22 +1487,22 @@ namespace Runtime {
 	case LOAD_FLOAT_VAR:
 	case STOR_FLOAT_VAR:
 	case COPY_FLOAT_VAR:
-	  values.insert(pair<int32_t, StackInstr*>(instr->GetOperand(), instr));
+	  values.insert(pair<long, StackInstr*>(instr->GetOperand(), instr));
 	  break;
 	}
       }
       
-      int32_t index = TMP_REG_5;
-      int32_t last_id = -1;
-      multimap<int32_t, StackInstr*>::iterator value;
+      long index = TMP_REG_5;
+      long last_id = -1;
+      multimap<long, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); value++) {
-	int32_t id = value->first;
+	long id = value->first;
 	StackInstr* instr = (*value).second;
 	// instance reference
 	if(instr->GetOperand2() == INST) {
 	  // note: all instance variables are allocted in 4-byte blocks,
 	  // for floats the assembler allocates 2 4-byte blocks
-	  instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
+	  instr->SetOperand3(instr->GetOperand() * sizeof(long));
 	}
 	// local reference
 	else {
@@ -1512,7 +1512,7 @@ namespace Runtime {
 	    if(instr->GetType() == LOAD_INT_VAR || 
 	       instr->GetType() == STOR_INT_VAR ||
 	       instr->GetType() == COPY_INT_VAR) {
-	      index -= sizeof(int32_t);
+	      index -= sizeof(long);
 	    }
 	    else {
 	      index -= sizeof(FLOAT_VALUE);
@@ -1614,8 +1614,8 @@ namespace Runtime {
       
       if(!cm->GetNativeCode()) {
 	method = cm;
-	int32_t cls_id = method->GetClass()->GetId();
-	int32_t mthd_id = method->GetId();
+	long cls_id = method->GetClass()->GetId();
+	long mthd_id = method->GetId();
 	
 #ifdef _DEBUG
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
@@ -1672,13 +1672,13 @@ namespace Runtime {
 	}
 
 	// show content
-	map<int32_t, StackInstr*>::iterator iter;
+	map<long, StackInstr*>::iterator iter;
 	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
 	  StackInstr* instr = iter->second;
-	  int32_t src_offset = iter->first;
-	  int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
-	  int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-	  int32_t offset = dest_offset - src_offset - 4;
+	  long src_offset = iter->first;
+	  long dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+	  long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+	  long offset = dest_offset - src_offset - 4;
 	  memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
 	  cout << "jump update: src=" << src_offset 
@@ -1718,12 +1718,12 @@ namespace Runtime {
     static StackProgram* program;
     StackMethod* method;
     BYTE_VALUE* code;
-    int32_t code_index; 
+    long code_index; 
     FLOAT_VALUE* floats;
     
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-			       BYTE_VALUE* code, const int32_t code_size, 
-			       int32_t* op_stack, int32_t *stack_pos);
+    long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, 
+			    BYTE_VALUE* code, const long code_size, 
+			    long* op_stack, long *stack_pos);
     
   public:
     static void Initialize(StackProgram* p);
@@ -1737,8 +1737,8 @@ namespace Runtime {
     // Executes machine code
     long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
       method = cm;
-      int32_t cls_id = method->GetClass()->GetId();
-      int32_t mthd_id = method->GetId();
+      long cls_id = method->GetClass()->GetId();
+      long mthd_id = method->GetId();
       
 #ifdef _DEBUG
       cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
@@ -1754,8 +1754,8 @@ namespace Runtime {
       floats = native_code->GetFloats();
       
       // execute
-      return ExecuteMachineCode(cls_id, mthd_id, (int32_t*)inst, code, code_index, 
-				(int32_t*)op_stack, (int32_t*)stack_pos);
+      return ExecuteMachineCode(cls_id, mthd_id, (long*)inst, code, code_index, 
+				(long*)op_stack, (long*)stack_pos);
     }
   };
 }
