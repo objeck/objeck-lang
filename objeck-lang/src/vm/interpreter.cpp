@@ -63,6 +63,7 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
   return 0;
 }
 #else
+#ifndef _X64
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
@@ -74,6 +75,7 @@ void* StackInterpreter::CompileMethod(void* arg)
   pthread_exit(NULL);
 }
 #endif
+#endif
 
 /********************************
  * VM initialization
@@ -81,9 +83,7 @@ void* StackInterpreter::CompileMethod(void* arg)
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
-#ifdef _X64
-  JitCompiler::Initialize(program);
-#else
+#ifndef _X64
   JitCompilerIA32::Initialize(program);
 #endif
   MemoryManager::Initialize(program);
