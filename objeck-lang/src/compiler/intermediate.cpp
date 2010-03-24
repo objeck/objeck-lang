@@ -568,6 +568,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     EmitSelect(static_cast<Select*>(statement));
     break;
 
+  case DO_WHILE_STMT:
+    EmitDoWhile(static_cast<DoWhile*>(statement));
+    break;
+    
   case WHILE_STMT:
     EmitWhile(static_cast<While*>(statement));
     break;
@@ -962,6 +966,26 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, end_label));
   }
+}
+
+/****************************
+ * Translates a 'while' statement
+ ****************************/
+void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
+{
+  // conditional expression
+  int conditional = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, conditional));
+
+  // statements
+  vector<Statement*> do_while_statements = do_while_stmt->GetStatements()->GetStatements();
+  for(unsigned int i = 0; i < do_while_statements.size(); i++) {
+    EmitStatement(do_while_statements[i]);
+  }
+
+  EmitExpression(do_while_stmt->GetExpression());
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, conditional, true));
+  NewBlock();
 }
 
 /****************************
