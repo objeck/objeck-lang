@@ -219,9 +219,9 @@ namespace Runtime {
 			      long &rtrn_value);
   
   /********************************
-   * JitCompilerIA32 class
+   * JitCompilerIA64 class
    ********************************/
-  class JitCompilerIA32 {
+  class JitCompilerIA64 {
     static StackProgram* program;
     list<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -1542,10 +1542,10 @@ namespace Runtime {
   public: 
     static void Initialize(StackProgram* p);
     
-    JitCompilerIA32() {
+    JitCompilerIA64() {
     }
     
-    ~JitCompilerIA32() {
+    ~JitCompilerIA64() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
