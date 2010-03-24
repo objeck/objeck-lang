@@ -197,7 +197,7 @@ str->GetSize()->PrintLine();
 \end{verbatim}
 
 \subsection{Statements}
-Besides providing support for declaration statements the language has support for conditional and control statements.  As with other languages, control statements can be nested in order to provide finer grain logical control. General control statements include \texttt{if} and \texttt{select} statements. Basic looping statements include \texttt{while} and \texttt{for} loops.  Note, all statements rather decelerations or controls end with a `\texttt{;}'.
+Besides providing support for declaration statements the language has support for conditional and control statements.  As with other languages, control statements can be nested in order to provide finer grain logical control. General control statements include \texttt{if} and \texttt{select} statements. Basic looping statements include \texttt{while}, \texttt{do/while} and \texttt{for} loops.  Note, all statements rather decelerations or controls end with a `\texttt{;}'.
 
 \subsubsection{If Statement}
 
@@ -239,7 +239,7 @@ select(v) {
 
 \subsubsection{While Statement}
 
-A \texttt{while} statement is a control statement that will continue to execute its main body as long as it's conditional expression evaluates to \texttt{true}.  When its conditional expression evaluates to \texttt{false} than the loop body will cease to execute.
+A \texttt{while} statement is a control statement that will continue to execute its main body as long as its conditional expression evaluates to \texttt{true}.  When its conditional expression evaluates to \texttt{false} than the loop body will cease to execute.
 
 \begin{verbatim}
 i : Int := 10;
@@ -247,6 +247,19 @@ while(i > 0) {
    i->PrintLine();
    i := i - 1;
 }
+\end{verbatim}
+
+\subsubsection{Do/While Statement}
+
+A \texttt{do/while} statement is a control statement that will execute its main body at least once and continue to execute its main body as long as its conditional expression evaluates to \texttt{true}.  When its conditional expression evaluates to \texttt{false} than the loop body will cease to execute.
+
+\begin{verbatim}
+i : Int := 10;
+do { 
+   i->PrintLine();
+   i := i - 1;
+} 
+while(i > 0);
 \end{verbatim}
 
 \subsubsection{For Statements}
