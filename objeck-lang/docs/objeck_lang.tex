@@ -189,7 +189,7 @@ array[0,2] := 13;
 array[1,0] := 7;
 \end{verbatim}
 
-The size of an array can be obtained by calling the array's \texttt{GetSize()} method.  The \texttt{GetSize()} method will return the number of elements in a given array.  For a multi-dimensional array the size method returns the number of elements in the first dimension.  Character array literals are allocated as \texttt{System.String} objects.  It should also be noted that language has a \texttt{System.String} class that provides support for advanced string operations.
+The size of an array can be obtained by calling the array's \texttt{GetSize()} method.  The \texttt{GetSize()} method will return the number of elements in a given array.  For a multi-dimensional array the size method returns the number of elements in the first dimension.  Character array literals are allocated as \texttt{String} objects.  It should also be noted that language has a \texttt{String} class that provides support for advanced string operations.
 
 \begin{verbatim}
 str := "Hello World!";
@@ -204,7 +204,7 @@ Besides providing support for declaration statements the language has support fo
 An \texttt{if} statement is a control statement that executes the associated block of code if it evaluates to \texttt{true}.  If the evaluation statement does not evaluate to \texttt{true} than an \texttt{else if} statement may be evaluated (if it exists), otherwise an \texttt{else} statement will be executed (if it exists).  The example below demonstrates an \texttt{if} statement.
 
 \begin{verbatim}
-value : Int := System.ReadLine()->ToInt();
+value : Int := Console.ReadLine()->ToInt();
 if(value <> 3) {
   "Not equal to 3"->PrintLine();
 }
@@ -267,7 +267,7 @@ while(i > 0);
 The \texttt{for} statement is another common looping construct.  The \texttt{for} loop consists of a pre-condition statement followed by an evaluation expression and an update statement.
 
 \begin{verbatim}
-name : Char[] := "John";
+name : Char[] := "John"->ToCharArray();
 for(i : Int := 0; i < name->GetSize(); i := i + 1;) {
   name[i]->PrintLine();
 }
@@ -338,7 +338,7 @@ class Bar from Foo {
 An object that is inherited from another object may be either upcasted or downcasted.  Object casting can be performed using the \texttt{As()} operator.  The Object language detects upcasting and downcastng at compile time. Upcasting requires a runtime check, while down casting does not. If cross casting is detected then a compile time error will be generated.
 
 \begin{verbatim}
-method : public : Compare(right : System.Base), Int {
+method : public : Compare(right : Base), Int {
   if(right <> Nil) {
     if(GetClassID() = right->GetClassID()) {
       a : A := right->As(A);
@@ -360,7 +360,7 @@ A function or method may be defined as \texttt{virtual} meaning that any class t
 
 Below is an example of declaring a virtual method:
 \begin{verbatim}
-method : virtual : public : Compare(right : System.Base), Int;
+method : virtual : public : Compare(right : Base), Int;
 \end{verbatim}
 
 \section{Class Libraries}
@@ -374,7 +374,7 @@ Objeck includes class libraries that provides access to system resources, such a
     \item \texttt{Max} - returns the largest of the two numbers; returns the same number if they are equal
     \item \texttt{Print} - prints the current value
     \item \texttt{PrintLine} - prints the current value along with a line return
-    \item \texttt{ToString} - converts the current value to a \texttt{System.String} object instance
+    \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
 \end{itemize}
 
 \subsection{Byte/Int}
@@ -384,7 +384,7 @@ Objeck includes class libraries that provides access to system resources, such a
     \item \texttt{Abs} - returns the absolute value of the current number
     \item \texttt{Print} - prints the current value
     \item \texttt{PrintLine} - prints the current value along with a line return
-    \item \texttt{ToString} - converts the current value to a \texttt{System.String} object instance
+    \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
 \end{itemize}
 
 \subsection{Float}
@@ -397,12 +397,12 @@ Objeck includes class libraries that provides access to system resources, such a
     \item \texttt{Pi} - returns the value of Pi
     \item \texttt{Print} - prints the current value
     \item \texttt{PrintLine} - prints the current value along with a line return
-    \item \texttt{ToString} - converts the current value to a \texttt{System.String} object instance
+    \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
 \end{itemize}
 
 \subsection{String}
 \begin{itemize}
-    \item \texttt{Append} - Appends a \texttt{System.String}, \texttt{Char[]}, \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String instance
+    \item \texttt{Append} - Appends a \texttt{String}, \texttt{Char[]}, \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String instance
     \item \texttt{GetIndex} - returns the index of the first occurrence of a given Character
     \item \texttt{GetSize} - returns the size of the String
     \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
@@ -438,7 +438,7 @@ The Console class allows programmers to read and write information to the system
     \item \texttt{ReadLine} - reads in a line of text as a \texttt{Char[]} from standard in.
 \end{itemize}
 
-\subsubsection{Console}
+\subsubsection{Time}
 The Time class allows programmers gain access to the current system time.    The class supports the following operations:
 \begin{itemize}
     \item \texttt{GetDay} - return the current day as an \texttt{Int}.
