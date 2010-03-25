@@ -606,34 +606,34 @@ bundle Default {
 The following section gives a brief overview of the major architectural components the comprise the Objeck language compiler and virtual machine.
 
 \subsection{Compiler}
-The language compiler is written in C++ and makes heavy use of the C++ STL for portable across platforms.  As mentioned in the introduction, the compiler accepts source files and shared libraries as inputs and produces either Objeck executables or Objeck shared libraries.  Note, the compiler has two modes of operation: \texttt{User Mode} compiles traditional end-user programs, while the \texttt{System Mode} compiles system libraries and processes special system language directives.
+The language compiler is written in C++ and makes heavy use of the C++ STL for portability across platforms.  As mentioned in the introduction, the compiler accepts source files and shared libraries as inputs and produces either executables or shared libraries.  Note, the compiler has two modes of operation: \texttt{User Mode} compiles traditional end-user programs, while \texttt{System Mode} compiles system libraries and processes special system language directives.
 
 \subsubsection{Scanner and Parser}
-The scanner component reads source files and parses the text into tokens.  The scanner works in conjugation with the \emph{LL(k)} parser by providing \emph{k} lookahead tokens for parsing.  Note, the scanner can scan system language directives when in \texttt{System Mode}.  The source parser is a recursive-decent parser, which generates an abstract parser tree that is passed to the Contextual Analyser for validation.
+The scanner component reads source files and parses the text into tokens.  The scanner works in conjugation with the \emph{LL(k)} parser by providing \emph{k} lookahead tokens for parsing.  Note, the scanner can only scan system language directives while in \texttt{System Mode}.  The source parser is a recursive-decent parser that generates an abstract parser tree, which is passed to the Contextual Analyser for validation.
 
 \subsubsection{Contextual Analyser}
 The Contextual Analyser is responsible for ensuring that a source program is valid.  In addition, the context analyser also creates relationships between contextually resolved entities (i.e. methods $\longleftrightarrow$ method calls).  The analyser accepts an abstract parser tree and shared libraries as input and produces a decorated parse tree as output.  The decorated parse tree is then passed to the Intermediate Code Generator for the production of VM instructions.
 
 \subsubsection{Intermediate Code Generator and Optimzier}
-The Intermediate Code Generator accpets a decorated parse and produces a flat list of VM stack instructions.  These instructions lists are then passed to the Optimizer for basic block optimizations (constant folding, strength reduction, instruction simplification and method inlining).
+The Intermediate Code Generator accpets a decorated parse and produces a flat list of VM stack instructions.  These instruction lists are then passed to the Optimizer for basic block optimizations (constant folding, strength reduction, instruction simplification and method inlining).
 
 \subsubsection{Target Emitter}
 Finally, the improved intermediate code is passed to code emitter component, which writes it to a file.
 
 \subsection{Virtual Machine}
-The language VM is written in C/C++ and was designed to be highly portable.  The VM makes heavy use of operating system specific APIs (i.e. WIN32 and POSIX) but does so in an abstracted manner.  The JIT compiler is targeted to produce machine code for the Intel IA-32 and AMD64 (future) hardware architectures.  
+The language VM is written in C/C++ and was designed to be highly portable.  The VM makes heavy use of operating system specific APIs (i.e. WIN32 and POSIX) but does so in an abstracted manner.  The JIT compiler is targeted to produce machine code for the IA-32 and AMD64 (future) hardware architectures.  
 
 \subsubsection{Loader}
-The loader component allows the VM to read program code such as classes, methods and instructions.  The loader create an in-memory representation of this information, which is used by the VM interpreter and JIT compiler.  In addition, the loader processes command-line parameters that are passed into the VM prior to execution.
+The loader component allows the VM to read target code structures such as classes, methods and VM instructions.  The loader create an in-memory representation of this information, which is used by the VM interpreter and JIT compiler.  In addition, the loader processes command-line parameters that are passed into the VM prior to execution.
 
 \subsubsection{Interpreter}
-The Interpreter executes stack based VM instructions (listed below) and manages two primary stacks: the execution and call stacks.  The execution stack is used to manage the data that is needed for VM calculations.  The call stack is used to manage function/method calls and the states between those calls.
+The Interpreter executes stack based VM instructions (listed below) and manages two primary stacks: the execution stack and call stack.  The execution stack is used to manage the data that is needed for VM calculations.  The call stack is used to manage function/method calls and the states between those calls.
 
 \subsubsection{JIT Compiler}
 The JIT compiler translates stack based VM instruction into processor specific machine code (i.e. IA-32).  The JIT compiler is evoked by the interpreter and methods are translated in a separate execution thread.  This process allow methods to be executed concurrently in an interpreted manner while they are being compiled into machine code.  Note, methods are only converted into machine code once.
 
 \subsubsection{Memory Manager}
-The Memory Manager component allows the runtime system to manage the user allocation/deallocation of heap memory.  The memory mangers implementes a multi-thread ``mark and sweep'' algorithm.  The marking stage of the process is multi-thread, such that, each root in scanned in a separate thread.  The sweeping stage is done in a single thread since data structures that are need to manage the state of the running program are modified.
+The Memory Manager component allows the runtime system to manage the user allocation/deallocation of heap memory.  The memory mangers implementes a multi-thread ``mark and sweep'' algorithm.  The marking stage of the process is multi-thread, such that, each root in scanned in a separate thread.  The sweeping stage is done in a single thread since the data structures that are needed to manage the state of the running program are modified.
 
 \section{Appendix B: VM Instructions}
 The appendix below lists the types of stack instructions that are executed by the Objeck VM.  The VM was designed to be portable and language independent.  Early development versions of the VM included an inline assembler, which may be re-added in future releases.
