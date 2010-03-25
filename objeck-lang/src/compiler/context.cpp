@@ -169,12 +169,12 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, int depth)
 #endif
 
   if(!SearchProgramEnums(eenum->GetName()) &&
-      !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
+     !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
     ProcessError(eenum, "Undefined enum: '" + eenum->GetName() + "'");
   }
 
   if(SearchProgramEnums(eenum->GetName()) &&
-      linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
+     linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
     ProcessError(eenum, "Enum '" + eenum->GetName() +
                  "' defined in program and shared libraries");
   }
@@ -187,7 +187,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
 {
 #ifdef _DEBUG
   string msg = "[class: name='" + klass->GetName() + "'; id=" + ToString(id) +
-               "; virtual=" + ToString(klass->IsVirtual()) + "]";
+    "; virtual=" + ToString(klass->IsVirtual()) + "]";
   Show(msg, klass->GetLineNumber(), depth);
 #endif
 
@@ -195,12 +195,12 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
   current_class->SetCalled(true);
   klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
   if(!SearchProgramClasses(klass->GetName()) &&
-      !linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
+     !linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
     ProcessError(klass, "Undefined class: '" + klass->GetName() + "'");
   }
 
   if(SearchProgramClasses(klass->GetName()) &&
-      linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
+     linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
     ProcessError(klass, "Class '" + klass->GetName() +
                  "' defined in program and shared libraries");
   }
@@ -371,7 +371,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
 {
 #ifdef _DEBUG
   string msg = "(method: name='" + method->GetName() +
-               "; parsed='" + method->GetParsedName() + "')";
+    "; parsed='" + method->GetParsedName() + "')";
   Show(msg, method->GetLineNumber(), depth);
 #endif
 
@@ -414,8 +414,8 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
 #ifndef _SYSTEM
     // check for return
     if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-        current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
-        current_method->GetReturn()->GetType() != NIL_TYPE) {
+       current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
+       current_method->GetReturn()->GetType() != NIL_TYPE) {
       if(statements.size() == 0 || statements.back()->GetStatementType() != RETURN_STMT) {
         ProcessError(current_method, "Method/function does not return a value");
       }
@@ -533,7 +533,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
       char_str_index++;
     }
   }
-  break;
+    break;
 
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
@@ -615,14 +615,14 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
   if(entry) {
 #ifdef _DEBUG
     string msg = "variable reference: name='" + variable->GetName() + "' local=" +
-                 (entry->IsLocal() ? "true" : "false");
+      (entry->IsLocal() ? "true" : "false");
     Show(msg, variable->GetLineNumber(), depth);
 #endif
 
     const string& name = variable->GetName();
     if(SearchProgramClasses(name) || SearchProgramEnums(name) ||
-        linker->SearchClassLibraries(name, program->GetUses()) ||
-        linker->SearchEnumLibraries(name, program->GetUses())) {
+       linker->SearchClassLibraries(name, program->GetUses()) ||
+       linker->SearchEnumLibraries(name, program->GetUses())) {
       ProcessError(variable, "Variable name already used to define a class or enum");
     }
 
@@ -652,10 +652,10 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
   else if(current_method) {
     const string scope_name = current_method->GetName() + ":" + variable->GetName();
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(),
-                         variable->GetLineNumber(),
-                         scope_name,
-                         TypeFactory::Instance()->MakeType(VAR_TYPE),
-                         false, true);
+								  variable->GetLineNumber(),
+								  scope_name,
+								  TypeFactory::Instance()->MakeType(VAR_TYPE),
+								  false, true);
     current_table->AddEntry(entry);
 
     // link entry and variable
@@ -676,8 +676,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
 {
 #ifdef _DEBUG
   string msg = "method/function call: class=" + method_call->GetVariableName() +
-               "; method=" + method_call->GetMethodName() + "; call_type=" +
-               ToString(method_call->GetCallType());
+    "; method=" + method_call->GetMethodName() + "; call_type=" +
+    ToString(method_call->GetCallType());
   Show(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
 #endif
 
@@ -698,7 +698,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
       }
     } else {
       LibraryEnum* lib_eenum = linker->SearchEnumLibraries(method_call->GetVariableName(),
-                               program->GetUses());
+							   program->GetUses());
       if(lib_eenum) {
         LibraryEnumItem* lib_item = lib_eenum->GetItem(method_call->GetMethodName());
         if(lib_item) {
@@ -768,7 +768,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
  * method call
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
-    Class* &klass, LibraryClass* &lib_klass)
+						  Class* &klass, LibraryClass* &lib_klass)
 {
   // data type call
   Type* type;
@@ -787,7 +787,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
 }
 
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,
-    Class* &klass, LibraryClass* &lib_klass)
+						  Class* &klass, LibraryClass* &lib_klass)
 {
   Type* type = entry->GetType();
   if(type) {
@@ -799,8 +799,8 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
 }
 
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
-    string &encoding, Class* &klass,
-    LibraryClass* &lib_klass)
+						  string &encoding, Class* &klass,
+						  LibraryClass* &lib_klass)
 {
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
@@ -856,7 +856,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
       }
     }
   }
-  break;
+    break;
 
   default:
     return false;
@@ -975,8 +975,8 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, string
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
       if(entry->GetType()->GetDimension() > 0 &&
-          (!method_call->GetVariable() ||
-           !method_call->GetVariable()->GetIndices())) {
+	 (!method_call->GetVariable() ||
+	  !method_call->GetVariable()->GetIndices())) {
         klass = program->GetClass(BASE_ARRAY_CLASS_ID);
         encoding = "o.System.Base*,";
       } else {
@@ -1006,8 +1006,8 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
   SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
   if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
     if(entry->GetType()->GetDimension() > 0 &&
-        (!method_call->GetVariable() ||
-         !method_call->GetVariable()->GetIndices())) {
+       (!method_call->GetVariable() ||
+	!method_call->GetVariable()->GetIndices())) {
       klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses());
       encoding = "o.System.Base*,";
     } else {
@@ -1032,8 +1032,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
                                         bool is_expr, string &encoding, int depth)
 {
   string encoded_name = klass->GetName() + ":" +
-                        method_call->GetMethodName() + ":" + encoding +
-                        EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    method_call->GetMethodName() + ":" + encoding +
+    EncodeMethodCall(method_call->GetCallingParameters(), depth);
 
 #ifdef _DEBUG
   cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
@@ -1046,8 +1046,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
       Class* parent = klass->GetParent();
       while(!method && parent) {
         const string &encoded_parent_name =  parent->GetName() + ":" +
-                                             method_call->GetMethodName() + ":" +
-                                             EncodeMethodCall(method_call->GetCallingParameters(), depth);
+	  method_call->GetMethodName() + ":" +
+	  EncodeMethodCall(method_call->GetCallingParameters(), depth);
         method = parent->GetMethod(encoded_parent_name);
         // update
         parent = SearchProgramClasses(parent->GetParentName());
@@ -1056,8 +1056,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
       // check parent library class for method
       LibraryClass* lib_parent = klass->GetLibraryParent();
       const string &encoded_parent_name =  lib_parent->GetName() + ":" +
-                                           method_call->GetMethodName() + ":" +
-                                           EncodeMethodCall(method_call->GetCallingParameters(), depth);
+	method_call->GetMethodName() + ":" +
+	EncodeMethodCall(method_call->GetCallingParameters(), depth);
 
       method_call->SetOriginalClass(klass);
       AnalyzeMethodCall(lib_parent->GetMethod(encoded_parent_name),
@@ -1074,7 +1074,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 
     // public/private check
     if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
-        (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+       (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       bool found = false;
       Class* parent = current_method->GetClass()->GetParent();
       while(parent && !found) {
@@ -1097,7 +1097,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     // cannot create an instance of a virutal class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
         method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-        klass->IsVirtual() && current_class->GetParent() != klass) {
+       klass->IsVirtual() && current_class->GetParent() != klass) {
       ProcessError(static_cast<Expression*>(method_call),
                    "Cannot create an instance of a virutal class");
     }
@@ -1134,7 +1134,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 {
   // look up method
   string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" +
-                        encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
 
 #ifdef _DEBUG
   cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
@@ -1150,7 +1150,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     while(!lib_method && parent) {
       // look up parent method
       encoded_name = parent->GetName() + ":" + method_call->GetMethodName() + ":" +
-                     encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+	encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
 #ifdef _DEBUG
       cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
 #endif
@@ -1355,7 +1355,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
           ProcessError(expression, "Expected integer literal or enum item");
         }
       }
-      break;
+	break;
 
       default:
         ProcessError(expression, "Expected integer literal or enum item");
@@ -1483,7 +1483,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, int depth)
   }
 
   if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-      current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
+     current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, "Cannot return vaule from constructor");
   }
 }
@@ -1500,9 +1500,14 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
   Variable* variable = assignment->GetVariable();
   AnalyzeVariable(variable, depth + 1);
 
+  // get last expression for assignment
   Expression* expression = assignment->GetExpression();
   AnalyzeExpression(expression, depth + 1);
-
+  while(expression->GetMethodCall()) {
+    AnalyzeExpressionMethodCall(expression, depth + 1);
+    expression = expression->GetMethodCall();
+  }
+  
   // if variable, bind it and update the instance and entry
   if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
     SymbolEntry* entry = variable->GetEntry();
@@ -1511,14 +1516,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
       entry->SetType(expression->GetEvalType());
     }
   }
-
+  
   Type* eval_type = variable->GetEvalType();
-
-  // get last expression for assignment
-  while(expression->GetMethodCall()) {
-    AnalyzeExpressionMethodCall(expression, depth + 1);
-    expression = expression->GetMethodCall();
-  }
   AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
 
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -2212,12 +2211,12 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
   // multi-dimensional
   else {
     if(left->GetDimension() != right->GetDimension() &&
-        right->GetType() != NIL_TYPE) {
+       right->GetType() != NIL_TYPE) {
       ProcessError(expression, "Dimension size mismatch");
     }
 
     if(left->GetType() != right->GetType() &&
-        right->GetType() != NIL_TYPE) {
+       right->GetType() != NIL_TYPE) {
       ProcessError(expression, "Invalid array cast");
     }
 
@@ -2458,7 +2457,7 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
  * Encodes a method call
  ****************************/
 string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params,
-    int depth)
+					 int depth)
 {
   AnalyzeExpressions(calling_params, depth + 1);
 
@@ -2526,7 +2525,7 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params,
           }
         }
       }
-      break;
+	break;
       }
       // dimension
       for(int i = 0; !IsScalar(expression) && i < type->GetDimension(); i++) {
