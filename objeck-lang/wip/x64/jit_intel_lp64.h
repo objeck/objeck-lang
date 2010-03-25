@@ -278,6 +278,10 @@ namespace Runtime {
 			    BYTE* code, const long long code_size, 
 			    long long* op_stack, long long& stack_pos);
 
+
+
+
+
     /********************************
      * Add byte code to buffer
      ********************************/
