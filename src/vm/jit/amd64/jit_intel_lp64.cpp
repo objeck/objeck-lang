@@ -53,16 +53,25 @@ void JitCompilerIA64::Prolog() {
 
   BYTE_VALUE setup_code[] = {
     // setup stack frame
-    0x55,                                                        // push %ebp
-    0x89, 0xe5,                                                  // mov  %esp, %ebp
-    0x81, 0xec, buffer[0], buffer[1], buffer[2], buffer[3],      // sub  $imm, %esp
-                                                                 // save registers
-    0x50,                                                        // push eax
-    0x53,                                                        // push ebx
-    0x51,                                                        // push ecx
-    0x52,                                                        // push edx
-    0x57,                                                        // push edi
-    0x56                                                         // push esi
+    0x48, 0x55,                                    // push %rbp
+    0x48, 0x89, 0xe5,                              // mov  %rsp, %rbp    
+    0x48, 0x81, 0xec,                              // sub  $imm, %rsp
+    buffer[0], buffer[1], buffer[2], buffer[3],      
+                                                   // save registers
+    0x48, 0x50,                                    // push rax
+    0x48, 0x53,                                    // push rbx
+    0x48, 0x51,                                    // push rcx
+    0x48, 0x52,                                    // push rdx
+    0x48, 0x57,                                    // push rdi
+    0x48, 0x56,                                    // push rsi
+    0x49, 0x50,                                    // push r8
+    0x49, 0x51,                                    // push r9
+    0x49, 0x52,                                    // push r10
+    0x49, 0x53,                                    // push r11
+    0x49, 0x54,                                    // push r12
+    0x49, 0x55,                                    // push r13
+    0x49, 0x56,                                    // push r14
+    0x49, 0x57,                                    // push r15
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
@@ -76,9 +85,9 @@ void JitCompilerIA64::Epilog(long imm) {
   cout << "  " << (++instr_count) << ": [<epilog>]" << endl;
 #endif
   
-  move_mem_reg(RTRN_VALUE, EBP, EAX);
-  move_mem_reg(0, EAX, EAX);
-  move_imm_reg(imm, EAX);
+  move_mem_reg(RTRN_VALUE, RBP, RAX);
+  move_mem_reg(0, RAX, RAX);
+  move_imm_reg(imm, RAX);
   
   BYTE_VALUE teardown_code[] = {
     // restore registers
@@ -106,19 +115,19 @@ void JitCompilerIA64::RegisterRoot() {
   // note: -8 is the offset requried to 
   // get to the first local variale
   const long offset = local_space + TMP_REG_5 - 8;
-  move_reg_reg(EBP, holder->GetRegister());
+  move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   // push call values
   push_imm(offset + TMP_REG_5);
   push_reg(holder->GetRegister());
-  push_mem(INSTANCE_MEM, EBP);
-  push_mem(MTHD_ID, EBP);
-  push_mem(CLS_ID, EBP);
+  push_mem(INSTANCE_MEM, RBP);
+  push_mem(MTHD_ID, RBP);
+  push_mem(CLS_ID, RBP);
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(20, ESP);
+  add_imm_reg(20, RSP);
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
@@ -127,7 +136,7 @@ void JitCompilerIA64::RegisterRoot() {
 void JitCompilerIA64::UnregisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
-  move_reg_reg(EBP, holder->GetRegister());
+  move_reg_reg(RBP, holder->GetRegister());
   // note: -8 is the offset requried to 
   // get to the first local variale
   sub_imm_reg(local_space + TMP_REG_5 - 8, 
@@ -139,7 +148,7 @@ void JitCompilerIA64::UnregisterRoot() {
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   // clean up
-  add_imm_reg(4, ESP);
+  add_imm_reg(4, RSP);
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
 }
@@ -151,13 +160,13 @@ void JitCompilerIA64::ProcessParameters(long params) {
   
   for(long i = 0; i < params; i++) {
     RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+    move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
 
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);  
 
     RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
+    move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
       
     if(instr->GetType() == STOR_INT_VAR) {
       RegisterHolder* dest_holder = GetRegister();
@@ -198,10 +207,10 @@ void JitCompilerIA64::ProcessIntCallParameter() {
 #endif
   
   RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
   
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
+  move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
   
   dec_mem(0, stack_pos_holder->GetRegister());  
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
@@ -219,10 +228,10 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
 #endif
   
   RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
   
   RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
+  move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
   
   RegisterHolder* dest_holder = GetXmmRegister();
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
@@ -639,7 +648,7 @@ void JitCompilerIA64::ProcessIntShift(StackInstr* instruction) {
     // memory
   case MEM_32: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     if(instruction->GetType() == SHL_INT) {
       shl_reg(holder->GetRegister(), instruction->GetOperand());
     }
@@ -666,7 +675,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
     working_stack.pop_front();
 
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     // CheckNilDereference(holder->GetRegister());
 
     // long value
@@ -716,7 +725,7 @@ void JitCompilerIA64::ProcessJump(StackInstr* instr) {
 
       case MEM_32: {
         RegisterHolder* holder = GetRegister();
-        move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+        move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
         cmp_imm_reg(instr->GetOperand2(), holder->GetRegister());
         ReleaseRegister(holder);
       }
@@ -807,7 +816,7 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   case MEM_32: {    
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem8(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -817,7 +826,7 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   case REG_32: {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
-    if(holder->GetRegister() == EDI || holder->GetRegister() == ESI) {
+    if(holder->GetRegister() == RDI || holder->GetRegister() == RSI) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
       move_reg_mem8(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
@@ -849,7 +858,7 @@ void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
 
   case MEM_32: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
   }
@@ -882,7 +891,7 @@ void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
   case MEM_64: {
     RegisterHolder* holder = GetXmmRegister();
     move_mem_xreg(left->GetOperand(), 
-		  EBP, holder->GetRegister());
+		  RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseXmmRegister(holder);
   }
@@ -917,7 +926,7 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
     
   case MEM_64: {
     RegisterHolder* holder = GetXmmRegister();
-    round_mem_xreg(left->GetOperand(), EBP, holder->GetRegister(), true);
+    round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = NULL;
@@ -948,7 +957,7 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
     
   case MEM_64: {
     RegisterHolder* holder = GetXmmRegister();
-    round_mem_xreg(left->GetOperand(), EBP, holder->GetRegister(), false);
+    round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
     left = NULL;
@@ -975,7 +984,7 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
     
   case MEM_64:
     cvt_mem_reg(left->GetOperand(), 
-		EBP, holder->GetRegister());
+		RBP, holder->GetRegister());
     break;
 
   case REG_64:
@@ -1002,7 +1011,7 @@ void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
     
   case MEM_32:
     cvt_mem_xreg(left->GetOperand(), 
-		 EBP, holder->GetRegister());
+		 RBP, holder->GetRegister());
     break;
 
   case REG_32:
@@ -1023,7 +1032,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
 
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
-    dest = EBP;
+    dest = RBP;
   }
   // class or instance memory
   else {
@@ -1031,7 +1040,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
     working_stack.pop_front();
 
     addr_holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, addr_holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
     // CheckNilDereference(addr_holder->GetRegister());
     
     dest = addr_holder->GetRegister();
@@ -1050,7 +1059,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
 
   case MEM_32: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseRegister(holder);
   }
@@ -1068,7 +1077,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
     
   case MEM_64: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     ReleaseXmmRegister(holder);
   }
@@ -1094,7 +1103,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
   Register dest;
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
-    dest = EBP;
+    dest = RBP;
   }
   // class or instance memory
   else {
@@ -1102,7 +1111,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     working_stack.pop_front();
 
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     // CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
@@ -1125,7 +1134,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
 
   case MEM_32: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1151,7 +1160,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
 
   case MEM_64: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
     move_xreg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // save register
     working_stack.pop_front();
@@ -1196,14 +1205,14 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
     if(i < non_params) {
       switch(left->GetType()) {
       case REG_32:
-	move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, EBP);
+	move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
 	dirty_regs.push(reg_offset);
 	regs.push(left);
 	reg_offset -= 4;
 	break;
 
       case REG_64:
-	move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, EBP);
+	move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
 	dirty_xmms.push(xmm_offset);
 	xmms.push(left);
 	xmm_offset -= 8;
@@ -1226,24 +1235,24 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   ProcessReturn(params);
   // push values
   push_imm(instr_index - 1);
-  push_mem(STACK_POS, EBP);
-  push_mem(OP_STACK, EBP);
-  push_mem(INSTANCE_MEM, EBP);
-  push_mem(MTHD_ID, EBP);
-  push_mem(CLS_ID, EBP);
+  push_mem(STACK_POS, RBP);
+  push_mem(OP_STACK, RBP);
+  push_mem(INSTANCE_MEM, RBP);
+  push_mem(MTHD_ID, RBP);
+  push_mem(CLS_ID, RBP);
   push_imm((long)instr);
   push_imm(instr_id);
   // call function
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(32, ESP);
+  add_imm_reg(32, RSP);
   ReleaseRegister(call_holder);
 
   // restore register values
   while(!dirty_regs.empty()) {
     RegInstr* left = regs.top();
-    move_mem_reg(dirty_regs.top(), EBP, left->GetRegister()->GetRegister());
+    move_mem_reg(dirty_regs.top(), RBP, left->GetRegister()->GetRegister());
     // update
     regs.pop();
     dirty_regs.pop();
@@ -1251,7 +1260,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   
   while(!dirty_xmms.empty()) {
     RegInstr* left = xmms.top();
-    move_mem_xreg(dirty_xmms.top(), EBP, left->GetRegister()->GetRegister());
+    move_mem_xreg(dirty_xmms.top(), RBP, left->GetRegister()->GetRegister());
     // update
     xmms.pop();
     dirty_xmms.pop();
@@ -1261,10 +1270,10 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
 void JitCompilerIA64::ProcessReturn(long params) {
   if(!working_stack.empty()) {
     RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+    move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
     
     RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());    
+    move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());    
     move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
     shl_reg(stack_pos_holder->GetRegister(), 2);
     add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
@@ -1289,7 +1298,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	i++;
       }
       else {
-	move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());            
+	move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());            
 	switch(left->GetType()) {
 	case IMM_32:
 	  move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
@@ -1299,7 +1308,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	
 	case MEM_32: {
 	  RegisterHolder* temp_holder = GetRegister();
-	  move_mem_reg(left->GetOperand(), EBP, temp_holder->GetRegister());
+	  move_mem_reg(left->GetOperand(), RBP, temp_holder->GetRegister());
 	  move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
 	  inc_mem(0, stack_pos_holder->GetRegister());
 	  add_imm_reg(sizeof(long), op_stack_holder->GetRegister()); 
@@ -1321,7 +1330,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	
 	case MEM_64: {
 	  RegisterHolder* temp_holder = GetXmmRegister();
-	  move_mem_xreg(left->GetOperand(), EBP, temp_holder->GetRegister());
+	  move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
 	  move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
 	  add_imm_reg(8, op_stack_holder->GetRegister());
@@ -1394,7 +1403,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
 
     case MEM_32: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(right->GetOperand(), EBP, holder->GetRegister());
+      move_mem_reg(right->GetOperand(), RBP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetRegister();
       move_imm_reg(left->GetOperand(), imm_holder->GetRegister());
@@ -1429,7 +1438,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     case MEM_32: {
       RegisterHolder* lhs = left->GetRegister();
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(right->GetOperand(), EBP, rhs->GetRegister());
+      move_mem_reg(right->GetOperand(), RBP, rhs->GetRegister());
       math_reg_reg(rhs->GetRegister(), lhs->GetRegister(), instruction->GetType());
       ReleaseRegister(rhs);
       working_stack.push_front(new RegInstr(lhs));
@@ -1443,7 +1452,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_32: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
       math_imm_reg(right->GetOperand(), holder->GetRegister(),
 		   instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
@@ -1452,7 +1461,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     case REG_32: {
       RegisterHolder* lhs = right->GetRegister();
       RegisterHolder* rhs = GetRegister();
-      move_mem_reg(left->GetOperand(), EBP, rhs->GetRegister());
+      move_mem_reg(left->GetOperand(), RBP, rhs->GetRegister());
       math_reg_reg(lhs->GetRegister(), rhs->GetRegister(), instruction->GetType());
       ReleaseRegister(lhs);
       working_stack.push_front(new RegInstr(rhs));
@@ -1460,7 +1469,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
       break;
     case MEM_32: {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
       math_mem_reg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
@@ -1518,7 +1527,7 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
 
     case MEM_64: {
       RegisterHolder* holder = GetXmmRegister();
-      move_mem_xreg(right->GetOperand(), EBP, holder->GetRegister());
+      move_mem_xreg(right->GetOperand(), RBP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
@@ -1575,7 +1584,7 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_64: {
       RegisterHolder* holder = GetXmmRegister();
-      move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+      move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
 
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(right, imm_holder->GetRegister());
@@ -1603,10 +1612,10 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
 
     case MEM_64: {
       RegisterHolder* left_holder = GetXmmRegister();
-      move_mem_xreg(left->GetOperand(), EBP, left_holder->GetRegister());
+      move_mem_xreg(left->GetOperand(), RBP, left_holder->GetRegister());
 
       RegisterHolder* right_holder = GetXmmRegister();
-      move_mem_xreg(right->GetOperand(), EBP, right_holder->GetRegister());
+      move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
 
       math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(),  
 		     instruction->GetType());
@@ -2009,31 +2018,31 @@ void JitCompilerIA64::math_reg_reg(Register src, Register dest, InstructionType 
 void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType type) {
   switch(type) {
   case AND_INT:
-    and_mem_reg(offset, EBP, reg);
+    and_mem_reg(offset, RBP, reg);
     break;
 
   case OR_INT:
-    or_mem_reg(offset, EBP, reg);
+    or_mem_reg(offset, RBP, reg);
     break;
     
   case ADD_INT:
-    add_mem_reg(offset, EBP, reg);
+    add_mem_reg(offset, RBP, reg);
     break;
 
   case SUB_INT:
-    sub_mem_reg(offset, EBP, reg);
+    sub_mem_reg(offset, RBP, reg);
     break;
 
   case MUL_INT:
-    mul_mem_reg(offset, EBP, reg);
+    mul_mem_reg(offset, RBP, reg);
     break;
 
   case DIV_INT:
-    div_mem_reg(offset, EBP, reg, false);
+    div_mem_reg(offset, RBP, reg, false);
     break;
     
   case MOD_INT:
-    div_mem_reg(offset, EBP, reg, true);
+    div_mem_reg(offset, RBP, reg, true);
     break;
     
   case LES_INT:
@@ -2042,7 +2051,7 @@ void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType ty
   case EQL_INT:
   case NEQL_INT:  
   case GTR_EQL_INT:
-    cmp_mem_reg(offset, EBP, reg);
+    cmp_mem_reg(offset, RBP, reg);
     if(!cond_jmp(type)) {
       cmov_reg(reg, type);
     }
@@ -2084,7 +2093,7 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
 
 void JitCompilerIA64::math_mem_xreg(long offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg(offset, EBP, holder->GetRegister());
+  move_mem_xreg(offset, RBP, holder->GetRegister());
   math_xreg_xreg(dest, holder->GetRegister(), type);
   move_xreg_xreg(holder->GetRegister(), dest);
   ReleaseXmmRegister(holder);
@@ -2237,7 +2246,7 @@ void JitCompilerIA64::add_imm_mem(long imm, long offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, EAX));
+  AddMachineCode(ModRM(dest, RAX));
   // write value
   AddImm(offset);
   AddImm(imm);
@@ -2445,7 +2454,7 @@ void JitCompilerIA64::sub_imm_mem(long imm, long offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, EBP));
+  AddMachineCode(ModRM(dest, RBP));
   // write value
   AddImm(offset);
   AddImm(imm);
@@ -2535,26 +2544,26 @@ void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
 void JitCompilerIA64::div_mem_reg(long offset, Register src,
 				  Register dest, bool is_mod) {
   if(is_mod) {
-    if(dest != EDX) {
-      move_reg_mem(EDX, TMP_REG_1, EBP);
+    if(dest != RDX) {
+      move_reg_mem(RDX, TMP_REG_1, RBP);
     }
-    move_reg_mem(EAX, TMP_REG_0, EBP);
+    move_reg_mem(RAX, TMP_REG_0, RBP);
   }
   else {
-    if(dest != EAX) {
-      move_reg_mem(EAX, TMP_REG_0, EBP);
+    if(dest != RAX) {
+      move_reg_mem(RAX, TMP_REG_0, RBP);
     }
-    move_reg_mem(EDX, TMP_REG_1, EBP);
+    move_reg_mem(RDX, TMP_REG_1, RBP);
   }
 
   // ============
-  move_reg_reg(dest, EAX);
-  move_reg_reg(EAX, EDX);
-  shr_reg(EDX, 31);
+  move_reg_reg(dest, RAX);
+  move_reg_reg(RAX, RDX);
+  shr_reg(RDX, 31);
   
   // encode
   AddMachineCode(0xf7);
-  AddMachineCode(ModRM(src, EDI));
+  AddMachineCode(ModRM(src, RDI));
   // write value
   AddImm(offset);
   
@@ -2571,47 +2580,47 @@ void JitCompilerIA64::div_mem_reg(long offset, Register src,
   // ============
 
   if(is_mod) {
-    if(dest != EDX) {
-      move_reg_reg(EDX, dest);
-      move_mem_reg(TMP_REG_1, EBP, EDX);
+    if(dest != RDX) {
+      move_reg_reg(RDX, dest);
+      move_mem_reg(TMP_REG_1, RBP, RDX);
     }
 
-    if(dest != EAX) {
-      move_mem_reg(TMP_REG_0, EBP, EAX);
+    if(dest != RAX) {
+      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
   }
   else {
-    if(dest != EAX) {
-      move_reg_reg(EAX, dest);
-      move_mem_reg(TMP_REG_0, EBP, EAX);
+    if(dest != RAX) {
+      move_reg_reg(RAX, dest);
+      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
     
-    if(dest != EDX) {
-      move_mem_reg(TMP_REG_1, EBP, EDX);
+    if(dest != RDX) {
+      move_mem_reg(TMP_REG_1, RBP, RDX);
     }
   }
 }
 
 void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   if(is_mod) {
-    if(dest != EDX) {
-      move_reg_mem(EDX, TMP_REG_1, EBP);
+    if(dest != RDX) {
+      move_reg_mem(RDX, TMP_REG_1, RBP);
     }
-    move_reg_mem(EAX, TMP_REG_0, EBP);
+    move_reg_mem(RAX, TMP_REG_0, RBP);
   }
   else {
-    if(dest != EAX) {
-      move_reg_mem(EAX, TMP_REG_0, EBP);
+    if(dest != RAX) {
+      move_reg_mem(RAX, TMP_REG_0, RBP);
     }
-    move_reg_mem(EDX, TMP_REG_1, EBP);
+    move_reg_mem(RDX, TMP_REG_1, RBP);
   }
   
   // ============
-  move_reg_reg(dest, EAX);
-  move_reg_reg(EAX, EDX);
-  shr_reg(EDX, 31);
+  move_reg_reg(dest, RAX);
+  move_reg_reg(RAX, RDX);
+  shr_reg(RDX, 31);
   
-  if(src != EAX && src != EDX) {
+  if(src != RAX && src != RDX) {
     // encode
     AddMachineCode(0xf7);
     BYTE_VALUE code = 0xf8;
@@ -2633,9 +2642,9 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   else {
     // encode
     AddMachineCode(0xf7);
-    AddMachineCode(ModRM(EBP, EDI));
+    AddMachineCode(ModRM(RBP, RDI));
     // write value
-    if(src == EAX) {
+    if(src == RAX) {
       AddImm(TMP_REG_0);
     }
     else {
@@ -2645,34 +2654,34 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
 #ifdef _DEBUG
     if(is_mod) {
       cout << "  " << (++instr_count) << ": [imod " << TMP_REG_0 << "(%" 
-	   << GetRegisterName(EBP) << ")]" << endl;
+	   << GetRegisterName(RBP) << ")]" << endl;
     }
     else {
       cout << "  " << (++instr_count) << ": [idiv " << TMP_REG_0 << "(%" 
-	   << GetRegisterName(EBP) << ")]" << endl;
+	   << GetRegisterName(RBP) << ")]" << endl;
     }
 #endif
   }
   // ============
   
   if(is_mod) {
-    if(dest != EDX) {
-      move_reg_reg(EDX, dest);
-      move_mem_reg(TMP_REG_1, EBP, EDX);
+    if(dest != RDX) {
+      move_reg_reg(RDX, dest);
+      move_mem_reg(TMP_REG_1, RBP, RDX);
     }
 
-    if(dest != EAX) {
-      move_mem_reg(TMP_REG_0, EBP, EAX);
+    if(dest != RAX) {
+      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
   }
   else {
-    if(dest != EAX) {
-      move_reg_reg(EAX, dest);
-      move_mem_reg(TMP_REG_0, EBP, EAX);
+    if(dest != RAX) {
+      move_reg_reg(RAX, dest);
+      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
-    
-    if(dest != EDX) {
-      move_mem_reg(TMP_REG_1, EBP, EDX);
+     
+    if(dest != RDX) {
+      move_mem_reg(TMP_REG_1, RBP, RDX);
     }
   }
 }
@@ -2725,7 +2734,7 @@ void JitCompilerIA64::shl_reg(Register dest, long value) {
 
 void JitCompilerIA64::shl_mem(long offset, Register src, long value) {
   AddMachineCode(0xc1);
-  AddMachineCode(ModRM(src, ESP));
+  AddMachineCode(ModRM(src, RSP));
   AddImm(offset);
   AddMachineCode(value);
 
@@ -2749,7 +2758,7 @@ void JitCompilerIA64::shr_reg(Register dest, long value) {
 
 void JitCompilerIA64::shr_mem(long offset, Register src, long value) {
   AddMachineCode(0xc1);
-  AddMachineCode(ModRM(src, EBP));
+  AddMachineCode(ModRM(src, RBP));
   AddImm(offset);
   AddMachineCode(value);
   

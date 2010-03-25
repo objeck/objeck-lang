@@ -1042,6 +1042,18 @@ void JitCompilerAmd64::ProcessFloatCalculation(StackInstr* instruction) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 void JitCompilerAmd64::move_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
