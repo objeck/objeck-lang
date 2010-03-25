@@ -53,6 +53,27 @@ void JitCompilerIA64::Prolog() {
 
   BYTE_VALUE setup_code[] = {
     // setup stack frame
+#ifdef _WIN32
+    0x55, 0x40, 0x55,                              // push %rbp
+    0x55, 0x40, 0x89, 0xe5,                        // mov  %rsp, %rbp    
+    0x55, 0x40, 0x81, 0xec,                        // sub  $imm, %rsp
+    buffer[0], buffer[1], buffer[2], buffer[3],      
+                                                   // save registers
+    0x55, 0x40, 0x50,                              // push rax
+    0x55, 0x40, 0x53,                              // push rbx
+    0x55, 0x40, 0x51,                              // push rcx
+    0x55, 0x40, 0x52,                              // push rdx
+    0x55, 0x40, 0x57,                              // push rdi
+    0x55, 0x40, 0x56,                              // push rsi
+    0x55, 0x41, 0x50,                              // push r8
+    0x55, 0x41, 0x51,                              // push r9
+    0x55, 0x41, 0x52,                              // push r10
+    0x55, 0x41, 0x53,                              // push r11
+    0x55, 0x41, 0x54,                              // push r12
+    0x55, 0x41, 0x55,                              // push r13
+    0x55, 0x41, 0x56,                              // push r14
+    0x55, 0x41, 0x57,                              // push r15
+#else
     0x48, 0x55,                                    // push %rbp
     0x48, 0x89, 0xe5,                              // mov  %rsp, %rbp    
     0x48, 0x81, 0xec,                              // sub  $imm, %rsp
@@ -72,6 +93,7 @@ void JitCompilerIA64::Prolog() {
     0x49, 0x55,                                    // push r13
     0x49, 0x56,                                    // push r14
     0x49, 0x57,                                    // push r15
+#endif
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
