@@ -862,6 +862,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
  ********************************/
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 {
+#ifdef _X64
+  ProcessInterpretedMethodCall(called, instance);
+#else
   // TODO: don't try and re-compile code that doesn't compile the first time
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
@@ -929,6 +932,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 #endif
 #endif
   }
+#endif
 }
 
 /********************************
