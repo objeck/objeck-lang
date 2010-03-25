@@ -8,5 +8,6 @@ VM : New : Concurrent JIT compiling
 
 
 0.9.7
+* Compiler: VM : New : added support for do/while loops
 * Compiler: fixed bug that didn't allow arrays to be assigned to VAR_TYPE; explicit cast was requried
 
