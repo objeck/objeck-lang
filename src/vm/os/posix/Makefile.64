@@ -1,4 +1,4 @@
-# ARGS=-g -D_DEBUG -D_X64 -Wunused
+ARGS=-g -D_DEBUG -D_X64 -Wunused
 # ARGS=-g -Wunused -D_X64
 # ARGS=-O3 -D_X64
 
