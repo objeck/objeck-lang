@@ -862,9 +862,6 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
  ********************************/
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 {
-#ifdef _X64
-  ProcessInterpretedMethodCall(called, instance);
-#else
   // TODO: don't try and re-compile code that doesn't compile the first time
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
@@ -877,7 +874,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   else {
 #ifdef _JIT_SERIAL
     // compile
+#ifdef _X64
+    Runtime::JitCompilerIA64 jit_compiler;
+#else
     Runtime::JitCompilerIA32 jit_compiler;
+#endif
     jit_compiler.Compile(called);      
     // execute
     Runtime::JitExecutorIA32 jit_executor;
@@ -928,7 +929,6 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 #endif
 #endif
   }
-#endif
 }
 
 /********************************
