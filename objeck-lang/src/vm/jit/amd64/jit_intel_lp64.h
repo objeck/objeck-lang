@@ -68,7 +68,7 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
-
+  
   // register type
   typedef enum _RegType { 
     IMM_32 = -4000,
@@ -79,16 +79,24 @@ namespace Runtime {
     MEM_64,
   } RegType;
   
-  // general and SSE (x86) registers
+  // general and SSE registers
   typedef enum _Register { 
-    EAX = -5000, 
-    EBX, 
-    ECX, 
-    EDX, 
-    EDI,
-    ESI,
-    EBP,
-    ESP,
+    RAX = -5000, 
+    RBX, 
+    RCX, 
+    RDX, 
+    RDI,
+    RSI,
+    RBP,
+    RSP,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
     XMM0, 
     XMM1,
     XMM2,
@@ -96,7 +104,15 @@ namespace Runtime {
     XMM4,
     XMM5,
     XMM6,
-    XMM7
+    XMM7,
+    XMM8,
+    XMM9,
+    XMM10,
+    XMM11,
+    XMM12,
+    XMM13,
+    XMM14,
+    XMM15,
   } Register;
 
   /********************************
@@ -278,17 +294,12 @@ namespace Runtime {
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 
-    // Add byte code to buffer
+    /********************************
+     * Add byte code to buffer
+     ********************************/
     void AddMachineCode(BYTE_VALUE b) {
       if(code_index == code_buf_max) {
-#ifdef _WIN32
 	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
-#else
-	BYTE_VALUE* tmp = (BYTE_VALUE*)valloc(code_buf_max * 2);
-	memcpy(tmp, code, code_index);
-	free(code);
-	code = tmp;
-#endif
 	if(!code) {
 	  cerr << "Unable to allocate memory!" << endl;
 	  exit(1);
@@ -298,105 +309,217 @@ namespace Runtime {
       code[code_index++] = b;
     }
     
-    // Encodes and writes out 32-bit
-    // integer values
-    void AddImm(long imm) {
-      BYTE_VALUE buffer[sizeof(long)];
+    /********************************
+     * Encodes and writes out 32-bit
+     * integer values; note sizeof(int)
+     ********************************/
+    inline void AddImm(int imm) {
+      BYTE_VALUE buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
+      for(int i = 0; i < sizeof(int); i++) {
+	AddMachineCode(buffer[i]);
+      }
+    }
+
+    /********************************
+     * Encodes and writes out 64-bit
+     * integer values
+     ********************************/
+    inline void AddImm64(long imm) {
+      BYTE_VALUE buffer[sizeof(long)];
+      ByteEncode64(buffer, imm);
       for(long i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
     
-    // Caculates the IA-32 MOD R/M
-    // offset
-    BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
+    /********************************
+     * Encoding for AMD64 "B" bits
+     ********************************/
+    inline BYTE_VALUE B(Register b) {
+      if(b <= RSP) {
+	return 0x48;
+      }
+      else {
+	return 0x49;
+      }
+    }
+
+    /********************************
+     * Encoding for AMD64 "XB" bits
+     ********************************/
+    inline BYTE_VALUE XB(Register b) {
+      if(b <= RSP) {
+	return 0x4a;
+      }
+      else {
+	return 0x4b;
+      }
+    }
+    
+    /********************************
+     * Encoding for AMD64 "RXB" bits
+     ********************************/
+    inline BYTE_VALUE RXB(Register r, Register b) {
+      if((r <= RSP || (r > R15 && r <= XMM7))  && 
+	 (b <= RSP || (b > R15 && b <= XMM7))) {
+	return 0x4a;
+      }
+      else if(((r > RSP && r <= R15) || r > XMM7) && 
+	      ((b > RSP && b <= R15) || b > XMM7)) {
+	return 0x4f;
+      }
+      else if((r > RSP && r <= R15) || r > XMM7) {
+	return 0x4e;
+      }
+      else {
+	return 0x4b;
+      }
+    }
+    
+    /********************************
+     * Encoding for AMD64 "ROB" bits
+     ********************************/
+    inline BYTE_VALUE ROB(Register r, Register b) {
+      if((r <= RSP || (r > R15 && r <= XMM7))  && 
+	 (b <= RSP || (b > R15 && b <= XMM7))) {
+	return 0x48;
+      }
+      else if(((r > RSP && r <= R15) || r > XMM7) && 
+	      ((b > RSP && b <= R15) || b > XMM7)) {
+	return 0x4d;
+      }
+      else if((r > RSP && r <= R15) || r > XMM7) {
+	return 0x4c;
+      }
+      else {
+	return 0x49;
+      }
+    }
+    
+    /********************************
+     * Caculates the IA-32 MOD R/M
+     * offset
+     ********************************/
+    inline BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
       BYTE_VALUE byte;
 
       switch(mod_rm) {
-      case ESP:
+      case RSP:
       case XMM4:
+      case R12:
+      case XMM12:
 	byte = 0xa0;
 	break;
 
-      case EAX:
+      case RAX:
       case XMM0:
+      case R8:
+      case XMM8:
 	byte = 0x80;
 	break;
 
-      case EBX:
+      case RBX:
       case XMM3:
+      case R11:
+      case XMM11:
 	byte = 0x98;
 	break;
 
-      case ECX:
+      case RCX:
       case XMM1:
+      case R9:
+      case XMM9:
 	byte = 0x88;
 	break;
 
-      case EDX:
+      case RDX:
       case XMM2:
+      case R10:
+      case XMM10:
 	byte = 0x90;
 	break;
 
-      case EDI:
+      case RDI:
       case XMM7:
+      case R15:
+      case XMM15:
 	byte = 0xb8;
 	break;
 
-      case ESI:
+      case RSI:
       case XMM6:
+      case R14:
+      case XMM14:
 	byte = 0xb0;
 	break;
 
-      case EBP:
+      case RBP:
       case XMM5:
+      case R13:
+      case XMM13:
 	byte = 0xa8;
 	break;
       }
 
       switch(eff_adr) {
-      case EAX:
+      case RAX:
       case XMM0:
+      case R8:
+      case XMM8:
 	break;
 
-      case EBX:
+      case RBX:
       case XMM3:
+      case R11:
+      case XMM11:
 	byte += 3;
 	break;
 
-      case ECX:
+      case RCX:
       case XMM1:
+      case R9:
+      case XMM9:
 	byte += 1;
 	break;
 
-      case EDX:
+      case RDX:
       case XMM2:
+      case R10:
+      case XMM10:
 	byte += 2;
 	break;
 
-      case EDI:
+      case RDI:
       case XMM7:
+      case R15:
+      case XMM15:
 	byte += 7;
 	break;
 
-      case ESI:
+      case RSI:
       case XMM6:
+      case R14:
+      case XMM14:
 	byte += 6;
 	break;
 
-      case EBP:
+      case RBP:
       case XMM5:
+      case R13:
+      case XMM13:
 	byte += 5;
 	break;
 
       case XMM4:
+      case R12:
+      case XMM12:
 	byte += 4;
 	break;
 	
 	// should never happen for esp
-      case ESP:
-	cerr << ">>> invalid register reference <<<" << endl;
+      case RSP:
+	cerr << "invalid register reference" << endl;
 	exit(1);
 	break;
       }
@@ -404,32 +527,58 @@ namespace Runtime {
       return byte;
     }
 
-    // Returns the name of a register
+    /********************************
+     * Returns the name of a register
+     ********************************/
     string GetRegisterName(Register reg) {
       switch(reg) {
-      case EAX:
-	return "eax";
+      case RAX:
+	return "rax";
 
-      case EBX:
-	return "ebx";
+      case RBX:
+	return "rbx";
 
-      case ECX:
-	return "ecx";
+      case RCX:
+	return "rcx";
 
-      case EDX:
-	return "edx";
+      case RDX:
+	return "rdx";
 
-      case EDI:
-	return "edi";
+      case RDI:
+	return "rdi";
 
-      case ESI:
-	return "esi";
+      case RSI:
+	return "rsi";
 
-      case EBP:
-	return "ebp";
+      case RBP:
+	return "rbp";
 
-      case ESP:
-	return "esp";
+      case RSP:
+	return "rsp";
+
+      case R8:
+	return "r8";
+
+      case R9:
+	return "r9";
+	
+      case R10:
+	return "r10";
+
+      case R11:
+	return "r11";
+
+      case R12:
+	return "r12";
+	
+      case R13:
+	return "r13";
+	
+      case R14:
+	return "r14";
+	
+      case R15:
+	return "r15";
 
       case XMM0:
 	return "xmm0";
@@ -454,63 +603,113 @@ namespace Runtime {
 	
       case XMM7:
 	return "xmm7";
-      }
+	
+      case XMM8:
+	return "xmm8";
 
-      return "unknown";
+      case XMM9:
+	return "xmm9";
+
+      case XMM10:
+	return "xmm10";
+
+      case XMM11:
+	return "xmm11";
+
+      case XMM12:
+	return "xmm12";
+
+      case XMM13:
+	return "xmm13";
+
+      case XMM14:
+	return "xmm14";
+	
+      case XMM15:
+	return "xmm15";
+      }
     }
 
-    // Encodes a byte array with a
-    // 32-bit value
-    void ByteEncode32(BYTE_VALUE buffer[], long value) {
+    /********************************
+     * Encodes a byte array with a
+     * 32-bit value
+     ********************************/
+    inline void ByteEncode32(BYTE_VALUE buffer[], int value) {
+      memcpy(buffer, &value, sizeof(int));
+    }
+
+    /********************************
+     * Encodes a byte array with a
+     * 64-bit value
+     ********************************/
+    inline void ByteEncode64(BYTE_VALUE buffer[], long value) {
       memcpy(buffer, &value, sizeof(long));
     }
     
-    // Encodes an array with the 
-    // binary ID of a register
-    void RegisterEncode3(BYTE_VALUE& code, long offset, Register reg) {
+    /********************************
+     * Encodes an array with the 
+     * binary ID of a register
+     ********************************/
+    inline void RegisterEncode3(BYTE_VALUE& code, long offset, Register reg) {
 #ifdef _DEBUG
       assert(offset == 2 || offset == 5);
 #endif
       
       BYTE_VALUE reg_id;
       switch(reg) {
-      case EAX:
+      case RAX:
       case XMM0:
+      case R8:
+      case XMM8:
 	reg_id = 0x0;
 	break;
 
-      case EBX:
+      case RBX:
       case XMM3:
+      case R11:
+      case XMM11:
 	reg_id = 0x3;     
 	break;
 
-      case ECX:
+      case RCX:
       case XMM1:
+      case R9:
+      case XMM9:
 	reg_id = 0x1;
 	break;
 
-      case EDX:
+      case RDX:
       case XMM2:
+      case R10:
+      case XMM10:
 	reg_id = 0x2;
 	break;
 
-      case EDI:
+      case RDI:
       case XMM7:
+      case R15:
+      case XMM15:
 	reg_id = 0x7;
 	break;
 
-      case ESI:
+      case RSI:
       case XMM6:
+      case R14:
+      case XMM14:
 	reg_id = 0x6;
 	break;
 
-      case ESP:
+      case RSP:
       case XMM4:
+      case R12:
+      case XMM12:
 	reg_id = 0x4;
 	break;
 
-      case EBP:
+      case RBP:
       case XMM5:
+      case R13:
+      case XMM13:
 	reg_id = 0x5;
 	break;
       }
@@ -520,20 +719,27 @@ namespace Runtime {
       }
       code = code | reg_id;
     }
+    
 
-    inline void CheckNilDereference(Register reg) {
-      const int offset = 14;
-      cmp_imm_reg(0, reg);
-#ifdef _DEBUG
-      cout << "  " << (++instr_count) << ": [jne $" << offset << "]" << endl;
-#endif
-      // jump not equal
-      AddMachineCode(0x0F);
-      AddMachineCode(0x85);
-      AddImm(offset);
-      Epilog(0);
-      move_imm_reg(0, EAX);
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     // Gets an avaiable register from
     // the pool of registers
@@ -549,7 +755,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << ">>> No general registers avaiable! <<<" << endl;
 #endif
-	  aux_regs.push(new RegisterHolder(EAX));
+	  aux_regs.push(new RegisterHolder(RAX));
 	  holder = aux_regs.top();
 	  aux_regs.pop();
 	}
@@ -581,7 +787,7 @@ namespace Runtime {
       }
 #endif
 
-      if(h->GetRegister() == EDI || h->GetRegister() == ESI) {
+      if(h->GetRegister() == RDI || h->GetRegister() == RSI) {
 	aux_regs.push(h);
       }
       else {
@@ -636,7 +842,7 @@ namespace Runtime {
 
     RegisterHolder* GetStackPosRegister() {
       RegisterHolder* op_stack_holder = GetRegister();
-      move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+      move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
       return op_stack_holder;
     }
 
@@ -1381,7 +1587,7 @@ namespace Runtime {
 
       case MEM_32:
 	array_holder = GetRegister();
-	move_mem_reg(holder->GetOperand(), EBP, array_holder->GetRegister());
+	move_mem_reg(holder->GetOperand(), RBP, array_holder->GetRegister());
 	break;
       }
 
@@ -1416,7 +1622,7 @@ namespace Runtime {
 
       case MEM_32:
 	index_holder = GetRegister();
-	move_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
+	move_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	break;
       }
 
@@ -1443,7 +1649,7 @@ namespace Runtime {
 	  break;
 
 	case MEM_32:
-	  add_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
+	  add_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	  break;
         }
       }
@@ -1624,23 +1830,17 @@ namespace Runtime {
 #endif
 	
 	code_buf_max = 4096;
-#ifndef _WIN32
-	code = (BYTE_VALUE*)valloc(code_buf_max);
-	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS * 2);
-#else
 	code = (BYTE_VALUE*)malloc(code_buf_max);
         floats = new FLOAT_VALUE[MAX_DBLS];
-#endif
-
 	floats_index = instr_index = code_index = instr_count = 0;
 	// general use registers
-	aval_regs.push_back(new RegisterHolder(EDX));
-	aval_regs.push_back(new RegisterHolder(ECX));
-	aval_regs.push_back(new RegisterHolder(EBX));
-	aval_regs.push_back(new RegisterHolder(EAX));
+	aval_regs.push_back(new RegisterHolder(RDX));
+	aval_regs.push_back(new RegisterHolder(RCX));
+	aval_regs.push_back(new RegisterHolder(RBX));
+	aval_regs.push_back(new RegisterHolder(RAX));
 	// aux general use registers
-        aux_regs.push(new RegisterHolder(EDI));
-        aux_regs.push(new RegisterHolder(ESI));
+        aux_regs.push(new RegisterHolder(RDI));
+        aux_regs.push(new RegisterHolder(RSI));
 	// floating point registers
 	aval_xregs.push_back(new RegisterHolder(XMM7));
 	aval_xregs.push_back(new RegisterHolder(XMM6));
@@ -1659,8 +1859,8 @@ namespace Runtime {
 	// setup
 	Prolog();
 	// method information
-	move_imm_mem(cls_id, CLS_ID, EBP);
-	move_imm_mem(mthd_id, MTHD_ID, EBP);
+	move_imm_mem(cls_id, CLS_ID, RBP);
+	move_imm_mem(mthd_id, MTHD_ID, RBP);
 	// register root
 	RegisterRoot();
 	// translate parameters
@@ -1690,12 +1890,6 @@ namespace Runtime {
 	     << ", buffer=" << code_buf_max << " byte(s)" << endl;
 #endif
 	// store compiled code
-#ifndef _WIN32
-	if(mprotect(code, code_index, PROT_EXEC)) {
-	  perror("Couldn't mprotect");
-	  exit(errno);
-	}
-#endif
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
       }
