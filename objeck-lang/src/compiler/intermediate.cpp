@@ -822,7 +822,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case FILE_SEEK:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_EXISTS));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_SEEK));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
     // new basic block
     NewBlock();
