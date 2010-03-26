@@ -1200,7 +1200,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file) {
       fgets(buffer, num, file);
-      int end_index = strlen(buffer) - 1;
+      long end_index = strlen(buffer) - 1;
       if(end_index >= 0) {
         if(buffer[end_index] == '\n') {
           buffer[end_index] = '\0';
@@ -1438,7 +1438,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* str_obj_array_ptr = str_obj_array + 3;
 
     // create and assign 'System.String' instances to array
-    for(unsigned int i = 0; i < files.size(); i++) {
+    for(unsigned long i = 0; i < files.size(); i++) {
       // get value string
       string &value_str = files[i];
 
