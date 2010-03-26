@@ -245,7 +245,7 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    map<long, StackInstr*> jump_table;
+    map<int, StackInstr*> jump_table; // jump addresses are 32-bits
     long local_space;
     StackMethod* method;
     long instr_count;
@@ -313,19 +313,19 @@ namespace Runtime {
      * Encodes and writes out 32-bit
      * integer values; note sizeof(int)
      ********************************/
-    inline void AddImm(int imm) {
+    inline void AddImm32(int imm) {
       BYTE_VALUE buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
       for(int i = 0; i < sizeof(int); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
-
+    
     /********************************
      * Encodes and writes out 64-bit
      * integer values
      ********************************/
-    inline void AddImm64(long imm) {
+    inline void AddImm(long imm) {
       BYTE_VALUE buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
       for(long i = 0; i < sizeof(long); i++) {
@@ -1872,7 +1872,7 @@ namespace Runtime {
 	}
 
 	// show content
-	map<long, StackInstr*>::iterator iter;
+	map<int, StackInstr*>::iterator iter;
 	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
 	  StackInstr* instr = iter->second;
 	  long src_offset = iter->first;
