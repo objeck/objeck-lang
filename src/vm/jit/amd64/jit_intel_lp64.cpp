@@ -53,27 +53,6 @@ void JitCompilerIA64::Prolog() {
 
   BYTE_VALUE setup_code[] = {
     // setup stack frame
-#ifdef _WIN32
-    0x55, 0x40, 0x55,                              // push %rbp
-    0x55, 0x40, 0x89, 0xe5,                        // mov  %rsp, %rbp    
-    0x55, 0x40, 0x81, 0xec,                        // sub  $imm, %rsp
-    buffer[0], buffer[1], buffer[2], buffer[3],      
-                                                   // save registers
-    0x55, 0x40, 0x50,                              // push rax
-    0x55, 0x40, 0x53,                              // push rbx
-    0x55, 0x40, 0x51,                              // push rcx
-    0x55, 0x40, 0x52,                              // push rdx
-    0x55, 0x40, 0x57,                              // push rdi
-    0x55, 0x40, 0x56,                              // push rsi
-    0x55, 0x41, 0x50,                              // push r8
-    0x55, 0x41, 0x51,                              // push r9
-    0x55, 0x41, 0x52,                              // push r10
-    0x55, 0x41, 0x53,                              // push r11
-    0x55, 0x41, 0x54,                              // push r12
-    0x55, 0x41, 0x55,                              // push r13
-    0x55, 0x41, 0x56,                              // push r14
-    0x55, 0x41, 0x57,                              // push r15
-#else
     0x48, 0x55,                                    // push %rbp
     0x48, 0x89, 0xe5,                              // mov  %rsp, %rbp    
     0x48, 0x81, 0xec,                              // sub  $imm, %rsp
@@ -93,7 +72,6 @@ void JitCompilerIA64::Prolog() {
     0x49, 0x55,                                    // push r13
     0x49, 0x56,                                    // push r14
     0x49, 0x57,                                    // push r15
-#endif
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
@@ -1657,12 +1635,16 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   right = NULL;
 }
 
+
+/////////////////// OPERATIONS ///////////////////
+
 void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x89);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -1678,6 +1660,7 @@ void JitCompilerIA64::move_reg_mem8(Register src, long offset, Register dest) {
        << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x88);
   AddMachineCode(ModRM(dest, src));
   // write value
@@ -1691,6 +1674,7 @@ void JitCompilerIA64::move_reg_mem(Register src, long offset, Register dest) {
        << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x89);
   AddMachineCode(ModRM(dest, src));
   // write value
@@ -1704,6 +1688,7 @@ void JitCompilerIA64::move_mem8_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0xb6);
   AddMachineCode(ModRM(src, dest));
@@ -1718,6 +1703,7 @@ void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x8b);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -1737,6 +1723,7 @@ void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
        << "(%" << GetRegisterName(dest) << ")" << "]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(dest));
   AddMachineCode(0xc6);
   BYTE_VALUE code = 0x80;
   RegisterEncode3(code, 5, dest);
@@ -1752,6 +1739,7 @@ void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
        << "(%" << GetRegisterName(dest) << ")" << "]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(dest));
   AddMachineCode(0xc7);    
   BYTE_VALUE code = 0x80;
   RegisterEncode3(code, 5, dest);
@@ -1767,6 +1755,7 @@ void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
        << GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(reg));
   BYTE_VALUE code = 0xb8;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
@@ -1940,7 +1929,7 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
     // store update index
     jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
     // temp offset
-    AddImm(0);
+    AddImm32(0);
     skip_jump = true;
     
     return true;
@@ -2159,6 +2148,7 @@ void JitCompilerIA64::cmp_reg_reg(Register src, Register dest) {
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x39);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2174,6 +2164,7 @@ void JitCompilerIA64::cmp_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x3b);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2186,6 +2177,7 @@ void JitCompilerIA64::cmp_imm_reg(long imm, Register reg) {
        << GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(reg));
   AddMachineCode(0x81);
   BYTE_VALUE code = 0xf8;
   RegisterEncode3(code, 5, reg);
@@ -2200,10 +2192,12 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
   RegisterHolder* true_holder = GetRegister();
   move_imm_reg(1, true_holder->GetRegister());
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [cmovl %"
-       << GetRegisterName(reg) << "]" << endl;
+  cout << "  " << (++instr_count) << ": [cmovl %" 
+       << GetRegisterName(reg) << ", %" 
+       << GetRegisterName(true_holder->GetRegister()) << " ]" << endl;
 #endif
   // encode
+  AddMachineCode(ROB(true_holder->GetRegister(), reg));
   AddMachineCode(0x0f);
   switch(oper) {    
   case GTR_INT:
@@ -2267,6 +2261,7 @@ void JitCompilerIA64::add_imm_mem(long imm, long offset, Register dest) {
        << offset << "(%"<< GetRegisterName(dest) << ")]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(dest));
   AddMachineCode(0x81);
   AddMachineCode(ModRM(dest, RAX));
   // write value
@@ -2280,6 +2275,7 @@ void JitCompilerIA64::add_imm_reg(long imm, Register reg) {
        << GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(B(reg));
   AddMachineCode(0x81);
   BYTE_VALUE code = 0xc0;
   RegisterEncode3(code, 5, reg);
@@ -2326,6 +2322,7 @@ void JitCompilerIA64::add_reg_reg(Register src, Register dest) {
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x01);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2405,6 +2402,7 @@ void JitCompilerIA64::add_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x03);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2462,6 +2460,7 @@ void JitCompilerIA64::sub_imm_reg(long imm, Register reg) {
        << GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(B(reg));
   AddMachineCode(0x81);
   BYTE_VALUE code = 0xe8;
   RegisterEncode3(code, 5, reg);
@@ -2475,6 +2474,7 @@ void JitCompilerIA64::sub_imm_mem(long imm, long offset, Register dest) {
        << offset << "(%"<< GetRegisterName(dest) << ")]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(dest));
   AddMachineCode(0x81);
   AddMachineCode(ModRM(dest, RBP));
   // write value
@@ -2488,6 +2488,7 @@ void JitCompilerIA64::sub_reg_reg(Register src, Register dest) {
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x29);
   BYTE_VALUE code = 0xc0;
   // write value

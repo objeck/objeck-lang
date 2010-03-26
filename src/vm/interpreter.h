@@ -177,7 +177,7 @@ class StackInterpreter {
     long index = PopInt();
     const long dim = instr->GetOperand();
 
-    for(int i = 1; i < dim; i++) {
+    for(long i = 1; i < dim; i++) {
       index *= array[i];
       index += PopInt();
     }
