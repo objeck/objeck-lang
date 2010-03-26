@@ -1,9 +1,10 @@
-#include <sys/types.h>
+#include <string>
+#include <iostream>
+#include <string>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <string>
-#include <iostream>
 
 using namespace std;
 
