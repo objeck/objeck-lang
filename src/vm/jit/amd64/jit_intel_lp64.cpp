@@ -126,16 +126,25 @@ void JitCompilerIA64::RegisterRoot() {
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   // push call values
+
+  move_imm_reg(offset + TMP_REG_5, R8);
+  move_reg_reg(holder->GetRegister(), RCX);
+  move_mem_reg(INSTANCE_MEM, RBP, RDX);
+  move_mem_reg(MTHD_ID, RBP, RSI);
+  move_mem_reg(CLS_ID, RBP, RDI);
+  
+  /*
   push_imm(offset + TMP_REG_5);
   push_reg(holder->GetRegister());
   push_mem(INSTANCE_MEM, RBP);
   push_mem(MTHD_ID, RBP);
   push_mem(CLS_ID, RBP);
+  */
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(20, RSP);
+  // add_imm_reg(20, RSP);
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
@@ -146,17 +155,17 @@ void JitCompilerIA64::UnregisterRoot() {
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   // note: -8 is the offset requried to 
-  // get to the first local variale
+  // get to the first local variable
   sub_imm_reg(local_space + TMP_REG_5 - 8, 
 	      holder->GetRegister());
   // push call value
-  push_reg(holder->GetRegister());
+  move_reg_reg(holder->GetRegister(), RDI);
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   // clean up
-  add_imm_reg(4, RSP);
+  // add_imm_reg(4, RSP);
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
 }
@@ -181,7 +190,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
-      shl_reg(stack_pos_holder->GetRegister(), 2);
+      shl_reg(stack_pos_holder->GetRegister(), 3);
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister());
       move_mem_reg(0, op_stack_holder->GetRegister(), 
@@ -195,7 +204,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
       sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
-      shl_reg(stack_pos_holder->GetRegister(), 2);
+      shl_reg(stack_pos_holder->GetRegister(), 3);
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister()); 
       move_mem_xreg(0, op_stack_holder->GetRegister(), 
@@ -222,7 +231,7 @@ void JitCompilerIA64::ProcessIntCallParameter() {
   
   dec_mem(0, stack_pos_holder->GetRegister());  
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_reg(stack_pos_holder->GetRegister(), 2);
+  shl_reg(stack_pos_holder->GetRegister(), 3);
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
   move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
@@ -244,7 +253,7 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
   RegisterHolder* dest_holder = GetXmmRegister();
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_reg(stack_pos_holder->GetRegister(), 2);
+  shl_reg(stack_pos_holder->GetRegister(), 3);
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
   move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
@@ -1283,7 +1292,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());    
     move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-    shl_reg(stack_pos_holder->GetRegister(), 2);
+    shl_reg(stack_pos_holder->GetRegister(), 3);
     add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
 
     long non_params;
@@ -1711,7 +1720,7 @@ void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x8b);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2172,7 +2181,7 @@ void JitCompilerIA64::cmp_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x3b);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2410,7 +2419,7 @@ void JitCompilerIA64::add_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x03);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2513,7 +2522,7 @@ void JitCompilerIA64::sub_mem_reg(long offset, Register src, Register dest) {
 #endif
 
   // encode
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x2b);
   AddMachineCode(ModRM(src, dest));
   // write value
