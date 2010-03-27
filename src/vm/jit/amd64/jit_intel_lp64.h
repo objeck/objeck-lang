@@ -305,6 +305,10 @@ namespace Runtime {
 	  exit(1);
 	}
 	code_buf_max *= 2;
+	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+	  cerr << "Unable to mprotect" << endl;
+	  exit(1);
+	}
       }
       code[code_index++] = b;
     }
@@ -313,7 +317,7 @@ namespace Runtime {
      * Encodes and writes out 32-bit
      * integer values; note sizeof(int)
      ********************************/
-    inline void AddImm32(int imm) {
+    inline void AddImm(int imm) {
       BYTE_VALUE buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
       for(int i = 0; i < sizeof(int); i++) {
@@ -325,13 +329,14 @@ namespace Runtime {
      * Encodes and writes out 64-bit
      * integer values
      ********************************/
-    inline void AddImm(long imm) {
+    inline void AddImm64(long imm) {
       BYTE_VALUE buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
       for(long i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
+  
     
     /********************************
      * Encoding for AMD64 "B" bits
@@ -1830,7 +1835,11 @@ namespace Runtime {
 #endif
 	
 	code_buf_max = 4096;
-	code = (BYTE_VALUE*)malloc(code_buf_max);
+	code = (BYTE_VALUE*)valloc(code_buf_max);
+	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+	  cerr << "Unable to mprotect" << endl;
+	  exit(1);
+	}
         floats = new FLOAT_VALUE[MAX_DBLS];
 	floats_index = instr_index = code_index = instr_count = 0;
 	// general use registers
