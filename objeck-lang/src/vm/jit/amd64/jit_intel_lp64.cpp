@@ -91,16 +91,24 @@ void JitCompilerIA64::Epilog(long imm) {
   
   BYTE_VALUE teardown_code[] = {
     // restore registers
-    0x5e,             // pop esi
-    0x5f,             // pop edi
-    0x5a,             // pop edx
-    0x59,             // pop ecx
-    0x5b,             // pop ebx
-    0x58,             // pop eax
+    0x49, 0x5f,       // pop r15
+    0x49, 0x5e,       // pop r14
+    0x49, 0x5d,       // pop r13
+    0x49, 0x5c,       // pop r12
+    0x49, 0x5b,       // pop r11
+    0x49, 0x5a,       // pop r10
+    0x49, 0x59,       // pop r9
+    0x49, 0x58,       // pop r8
+    0x48, 0x5e,       // pop rsi
+    0x48, 0x5f,       // pop rdi
+    0x48, 0x5a,       // pop rdx
+    0x48, 0x59,       // pop rcx
+    0x48, 0x5b,       // pop rbx
+    0x48, 0x58,       // pop rax    
     // tear down stack frame and return
-    0x89, 0xec,       // mov  %ebp, %esp
-    0x5d,             // pop %ebp
-    0xc3              // rtn
+    0x48, 0x89, 0xec, // mov  %rbp, %rsp
+    0x48, 0x5d,       // pop %rbp
+    0x48, 0xc3        // rtn
   };
   const long teardown_size = sizeof(teardown_code);
   // copy teardown
@@ -1760,7 +1768,7 @@ void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-  AddImm(imm);
+  AddImm64(imm);
 }
 
 void JitCompilerIA64::move_imm_xreg(RegInstr* instr, Register reg) {
@@ -1929,7 +1937,7 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
     // store update index
     jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
     // temp offset
-    AddImm32(0);
+    AddImm(0);
     skip_jump = true;
     
     return true;
@@ -2505,6 +2513,7 @@ void JitCompilerIA64::sub_mem_reg(long offset, Register src, Register dest) {
 #endif
 
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x2b);
   AddMachineCode(ModRM(src, dest));
   // write value
@@ -2517,6 +2526,7 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
        << ", %"<< GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(XB(reg));
   AddMachineCode(0x69);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2535,6 +2545,7 @@ void JitCompilerIA64::mul_reg_reg(Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x0f);
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0xaf);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2585,6 +2596,7 @@ void JitCompilerIA64::div_mem_reg(long offset, Register src,
   shr_reg(RDX, 31);
   
   // encode
+  AddMachineCode(XB(src));
   AddMachineCode(0xf7);
   AddMachineCode(ModRM(src, RDI));
   // write value
@@ -2645,6 +2657,7 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   
   if(src != RAX && src != RDX) {
     // encode
+    AddMachineCode(B(src));
     AddMachineCode(0xf7);
     BYTE_VALUE code = 0xf8;
     // write value
@@ -2664,6 +2677,7 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   }
   else {
     // encode
+    AddMachineCode(XB(RBP));
     AddMachineCode(0xf7);
     AddMachineCode(ModRM(RBP, RDI));
     // write value
@@ -2832,6 +2846,7 @@ void JitCompilerIA64::pop_reg(Register reg) {
 }
 
 void JitCompilerIA64::call_reg(Register reg) {
+  AddMachineCode(B(reg));  
   AddMachineCode(0xff);
   BYTE_VALUE code = 0xd0;
   RegisterEncode3(code, 5, reg);
@@ -2959,6 +2974,8 @@ void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
   cvt_mem_reg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
+
+///////////////////////// TODO /////////////////////////
 
 void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
