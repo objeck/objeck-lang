@@ -49,24 +49,24 @@ using namespace std;
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
 #define CLS_ID 8
-#define MTHD_ID 12
-#define CLASS_MEM 16
-#define INSTANCE_MEM 20
-#define OP_STACK 24
-#define STACK_POS 28
-#define RTRN_VALUE 32
+#define MTHD_ID 16
+#define CLASS_MEM 24
+#define INSTANCE_MEM 32
+#define OP_STACK 40
+#define STACK_POS 48
+#define RTRN_VALUE 56
   // float temps
 #define TMP_XMM_0 -8
 #define TMP_XMM_1 -16
 #define TMP_XMM_2 -24
   // integer temps
 #define TMP_REG_0 -28
-#define TMP_REG_1 -32
-#define TMP_REG_2 -36
-#define TMP_REG_3 -40
-#define TMP_REG_4 -44
-#define TMP_REG_5 -48
-
+#define TMP_REG_1 -36
+#define TMP_REG_2 -44
+#define TMP_REG_3 -52
+#define TMP_REG_4 -60
+#define TMP_REG_5 -68
+  
 #define MAX_DBLS 64
   
   // register type
@@ -1664,9 +1664,6 @@ namespace Runtime {
 	break;
 
       case INT_TYPE:
-	shl_reg(index_holder->GetRegister(), 2);
-	break;
-
       case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 3);
 	break;
@@ -1843,13 +1840,21 @@ namespace Runtime {
         floats = new FLOAT_VALUE[MAX_DBLS];
 	floats_index = instr_index = code_index = instr_count = 0;
 	// general use registers
-	aval_regs.push_back(new RegisterHolder(RDX));
-	aval_regs.push_back(new RegisterHolder(RCX));
+	//	aval_regs.push_back(new RegisterHolder(RDX));
+	//	aval_regs.push_back(new RegisterHolder(RCX));
 	aval_regs.push_back(new RegisterHolder(RBX));
 	aval_regs.push_back(new RegisterHolder(RAX));
 	// aux general use registers
-        aux_regs.push(new RegisterHolder(RDI));
-        aux_regs.push(new RegisterHolder(RSI));
+	//        aux_regs.push(new RegisterHolder(RDI));
+	//        aux_regs.push(new RegisterHolder(RSI))
+	aux_regs.push(new RegisterHolder(R15));
+	aux_regs.push(new RegisterHolder(R14));
+	aux_regs.push(new RegisterHolder(R13));
+	aux_regs.push(new RegisterHolder(R12));
+	aux_regs.push(new RegisterHolder(R11));
+	aux_regs.push(new RegisterHolder(R10));
+	//	aux_regs.push(new RegisterHolder(R9));
+	//	aux_regs.push(new RegisterHolder(R8));
 	// floating point registers
 	aval_xregs.push_back(new RegisterHolder(XMM7));
 	aval_xregs.push_back(new RegisterHolder(XMM6));
