@@ -48,24 +48,24 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
-#define CLS_ID 8
-#define MTHD_ID 16
-#define CLASS_MEM 24
-#define INSTANCE_MEM 32
-#define OP_STACK 40
-#define STACK_POS 48
-#define RTRN_VALUE 56
+#define CLS_ID -8
+#define MTHD_ID -16
+#define CLASS_MEM -24
+#define INSTANCE_MEM -32
+#define OP_STACK -40
+#define STACK_POS -48
+#define RTRN_VALUE 16
   // float temps
-#define TMP_XMM_0 -8
-#define TMP_XMM_1 -16
-#define TMP_XMM_2 -24
+#define TMP_XMM_0 -64
+#define TMP_XMM_1 -72
+#define TMP_XMM_2 -80
   // integer temps
-#define TMP_REG_0 -28
-#define TMP_REG_1 -36
-#define TMP_REG_2 -44
-#define TMP_REG_3 -52
-#define TMP_REG_4 -60
-#define TMP_REG_5 -68
+#define TMP_REG_0 -88
+#define TMP_REG_1 -96
+#define TMP_REG_2 -104
+#define TMP_REG_3 -112
+#define TMP_REG_4 -120
+#define TMP_REG_5 -128
   
 #define MAX_DBLS 64
   
@@ -1873,8 +1873,15 @@ namespace Runtime {
 	// setup
 	Prolog();
 	// method information
-	move_imm_mem(cls_id, CLS_ID, RBP);
-	move_imm_mem(mthd_id, MTHD_ID, RBP);
+
+	move_reg_mem(RDI, CLS_ID, RBP);
+	move_reg_mem(RSI, MTHD_ID, RBP);
+	move_reg_mem(RDX, CLASS_MEM, RBP);
+	move_reg_mem(RCX, INSTANCE_MEM, RBP);
+	move_reg_mem(R8, OP_STACK, RBP);
+	move_reg_mem(R9, STACK_POS, RBP);
+	
+
 	// register root
 	RegisterRoot();
 	// translate parameters

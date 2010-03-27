@@ -60,12 +60,14 @@ void JitCompilerIA64::Prolog() {
                                                    // save registers
     0x48, 0x50,                                    // push rax
     0x48, 0x53,                                    // push rbx
+    /****/
     0x48, 0x51,                                    // push rcx
     0x48, 0x52,                                    // push rdx
     0x48, 0x57,                                    // push rdi
     0x48, 0x56,                                    // push rsi
     0x49, 0x50,                                    // push r8
     0x49, 0x51,                                    // push r9
+    /****/
     0x49, 0x52,                                    // push r10
     0x49, 0x53,                                    // push r11
     0x49, 0x54,                                    // push r12
@@ -97,12 +99,14 @@ void JitCompilerIA64::Epilog(long imm) {
     0x49, 0x5c,       // pop r12
     0x49, 0x5b,       // pop r11
     0x49, 0x5a,       // pop r10
+    /****/
     0x49, 0x59,       // pop r9
     0x49, 0x58,       // pop r8
     0x48, 0x5e,       // pop rsi
     0x48, 0x5f,       // pop rdi
     0x48, 0x5a,       // pop rdx
     0x48, 0x59,       // pop rcx
+    /****/
     0x48, 0x5b,       // pop rbx
     0x48, 0x58,       // pop rax    
     // tear down stack frame and return
@@ -3151,7 +3155,8 @@ long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst,
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
-  long rtrn_value;
+  long rtrn_value = 13;
+  cout << "??: " << (&rtrn_value) << endl;
   jit_fun(cls_id, mthd_id, (long*)method->GetClass()->GetClassMemory(), 
 	  inst, op_stack, stack_pos, rtrn_value);
   
