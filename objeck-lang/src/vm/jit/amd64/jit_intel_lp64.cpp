@@ -1267,7 +1267,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(16, RSP);
+  add_imm_reg(8, RSP);
   ReleaseRegister(call_holder);
 
   // restore register values
@@ -2557,8 +2557,8 @@ void JitCompilerIA64::mul_reg_reg(Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
-  AddMachineCode(0x0f);
   AddMachineCode(ROB(src, dest));
+  AddMachineCode(0x0f);
   AddMachineCode(0xaf);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2574,6 +2574,7 @@ void JitCompilerIA64::mul_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xaf);
   AddMachineCode(ModRM(src, dest));
@@ -2737,6 +2738,7 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
 }
 
 void JitCompilerIA64::dec_reg(Register dest) {
+  AddMachineCode(B(dest));
   BYTE_VALUE code = 0x48;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
@@ -2747,6 +2749,7 @@ void JitCompilerIA64::dec_reg(Register dest) {
 }
 
 void JitCompilerIA64::dec_mem(long offset, Register dest) {
+  AddMachineCode(XB(dest));
   AddMachineCode(0xff);
   BYTE_VALUE code = 0x88;
   RegisterEncode3(code, 5, dest);
@@ -2759,6 +2762,7 @@ void JitCompilerIA64::dec_mem(long offset, Register dest) {
 }
 
 void JitCompilerIA64::inc_mem(long offset, Register dest) {
+  AddMachineCode(XB(dest));
   AddMachineCode(0xff);
   BYTE_VALUE code = 0x80;
   RegisterEncode3(code, 5, dest);
@@ -2771,6 +2775,7 @@ void JitCompilerIA64::inc_mem(long offset, Register dest) {
 }
 
 void JitCompilerIA64::shl_reg(Register dest, long value) {
+  AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   BYTE_VALUE code = 0xe0;
   RegisterEncode3(code, 5, dest);
@@ -2783,6 +2788,7 @@ void JitCompilerIA64::shl_reg(Register dest, long value) {
 }
 
 void JitCompilerIA64::shl_mem(long offset, Register src, long value) {
+  AddMachineCode(XB(src));
   AddMachineCode(0xc1);
   AddMachineCode(ModRM(src, RSP));
   AddImm(offset);
@@ -2795,6 +2801,7 @@ void JitCompilerIA64::shl_mem(long offset, Register src, long value) {
 }
 
 void JitCompilerIA64::shr_reg(Register dest, long value) {
+  AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   BYTE_VALUE code = 0xe8;
   RegisterEncode3(code, 5, dest);
@@ -2807,6 +2814,7 @@ void JitCompilerIA64::shr_reg(Register dest, long value) {
 }
 
 void JitCompilerIA64::shr_mem(long offset, Register src, long value) {
+  AddMachineCode(XB(src));
   AddMachineCode(0xc1);
   AddMachineCode(ModRM(src, RBP));
   AddImm(offset);
@@ -2819,6 +2827,7 @@ void JitCompilerIA64::shr_mem(long offset, Register src, long value) {
 }
 
 void JitCompilerIA64::push_mem(long offset, Register dest) {
+  AddMachineCode(B(dest));
   AddMachineCode(0xff);
   BYTE_VALUE code = 0xb0;
   RegisterEncode3(code, 5, dest);
@@ -2831,6 +2840,7 @@ void JitCompilerIA64::push_mem(long offset, Register dest) {
 }
 
 void JitCompilerIA64::push_reg(Register reg) {
+  AddMachineCode(B(reg));
   BYTE_VALUE code = 0x50;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
@@ -2849,6 +2859,7 @@ void JitCompilerIA64::push_imm(long value) {
 }
 
 void JitCompilerIA64::pop_reg(Register reg) {
+  AddMachineCode(B(reg));  
   BYTE_VALUE code = 0x58;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
@@ -2909,6 +2920,7 @@ void JitCompilerIA64::cmp_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
+// TODO>>>>>
 void JitCompilerIA64::cvt_xreg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [cvtsd2si %" << GetRegisterName(src) 
@@ -2980,6 +2992,7 @@ void JitCompilerIA64::round_xreg_xreg(Register src, Register dest, bool is_floor
   }
 }
 
+// TODO>>>>>
 void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
