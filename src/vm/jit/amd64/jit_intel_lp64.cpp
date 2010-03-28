@@ -1236,7 +1236,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
 	move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
 	dirty_xmms.push(xmm_offset);
 	xmms.push(left);
-	xmm_offset -= sizeof(double);
+	xmm_offset -= sizeof(double) * 2;
 	break;
       }
       // update
@@ -1267,7 +1267,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(16, RSP);
+  add_imm_reg(12, RSP);
   ReleaseRegister(call_holder);
 
   // restore register values
