@@ -1974,8 +1974,8 @@ void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
 }
 
 int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
-    IntermediateDeclarations* declarations,
-    bool is_static)
+					     IntermediateDeclarations* declarations,
+					     bool is_static)
 {
   if(table) {
     int var_space = 0;
@@ -1991,7 +1991,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
                  << ", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(INT_ARY_PARM));
-          } else {
+          } 
+	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2007,7 +2008,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
             cout << "\t" << index << ": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(BYTE_ARY_PARM));
-          } else {
+          } 
+	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2024,7 +2026,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
                  << ", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(INT_ARY_PARM));
-          } else {
+          } 
+	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2058,17 +2061,20 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(OBJ_ARY_PARM, parsed_program->GetClass(entry->GetType()->GetClassName())->GetId()));
-            } else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+            } 
+	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(INT_ARY_PARM));
-            } else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+            } 
+	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(INT_ARY_PARM));
-            } else {
+            } 
+	    else {
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2082,17 +2088,20 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(OBJ_PARM, SearchProgramClasses(entry->GetType()->GetClassName())->GetId()));
-            } else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+            } 
+	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(INT_PARM));
-            } else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+            } 
+	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(INT_PARM));
-            } else {
+            } 
+	    else {
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2111,7 +2120,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
             declarations->AddParameter(new IntermediateDeclaration(FLOAT_ARY_PARM));
             entry->SetId(index++);
             var_space++;
-          } else {
+          } 
+	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -2152,7 +2162,8 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
         size += CalculateEntrySpace(table, index, declarations, is_static);
         parent = SearchProgramClasses(parent->GetParentName());
       }
-    } else {
+    } 
+    else {
       // inspect parent library
       LibraryClass* lib_parent = current_class->GetLibraryParent();
       if(lib_parent) {
@@ -2178,4 +2189,3 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
 
   return size;
 }
-

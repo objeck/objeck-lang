@@ -1160,15 +1160,6 @@ namespace Runtime {
 	  cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
 #endif
 	  cout << str;
-
-
-
-
-
-
-
-
-
 	}
 	  break;
 	  
