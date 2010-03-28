@@ -7,6 +7,8 @@ bundle Default {
 #		function : Run(), Nil {
 		function : native : Run(), Nil {		
 			(2 - 3)->PrintLine();
+			(3.24 * 9.1)->PrintLine();
+			(3 + 91)->PrintLine();
 #~
 			a := 2 - 3;
 			a->PrintLine();
