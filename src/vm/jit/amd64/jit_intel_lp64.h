@@ -1664,8 +1664,11 @@ namespace Runtime {
 	break;
 
       case INT_TYPE:
-      case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 3);
+	break;
+	
+      case FLOAT_TYPE:
+	shl_reg(index_holder->GetRegister(), 4);
 	break;
       }
       // skip first 2 integers (size and dimension) and all dimension indices
