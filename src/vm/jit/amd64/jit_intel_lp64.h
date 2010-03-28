@@ -1160,6 +1160,15 @@ namespace Runtime {
 	  cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
 #endif
 	  cout << str;
+
+
+
+
+
+
+
+
+
 	}
 	  break;
 	  
@@ -1848,7 +1857,7 @@ namespace Runtime {
 	  exit(1);
 	}
 	// floats memory
-	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS * 2)) {
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
 	  cerr << "Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
