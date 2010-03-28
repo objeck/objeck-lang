@@ -2554,6 +2554,9 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
+        floats = new FLOAT_VALUE[MAX_DBLS];
+	floats_index = instr_index = code_index = instr_count = 0;
+
   AddImm(imm);
 }
 
