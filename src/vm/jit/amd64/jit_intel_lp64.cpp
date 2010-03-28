@@ -1267,7 +1267,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(32, RSP);
+  add_imm_reg(16, RSP);
   ReleaseRegister(call_holder);
 
   // restore register values
