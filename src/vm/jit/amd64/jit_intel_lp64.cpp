@@ -208,7 +208,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
       sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
-      shl_reg(stack_pos_holder->GetRegister(), 3);
+      shl_reg(stack_pos_holder->GetRegister(), 4);
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister()); 
       move_mem_xreg(0, op_stack_holder->GetRegister(), 
@@ -257,7 +257,7 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
   RegisterHolder* dest_holder = GetXmmRegister();
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_reg(stack_pos_holder->GetRegister(), 3);
+  shl_reg(stack_pos_holder->GetRegister(), 4);
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
   move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
@@ -1267,7 +1267,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(8, RSP);
+  add_imm_reg(32, RSP);
   ReleaseRegister(call_holder);
 
   // restore register values
@@ -1346,7 +1346,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	case IMM_64:
 	  move_imm_memx(left, 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister()); 
+	  add_imm_reg(16, op_stack_holder->GetRegister()); 
 	  break;
 	
 	case MEM_64: {
@@ -1354,7 +1354,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	  move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
 	  move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister());
+	  add_imm_reg(16, op_stack_holder->GetRegister());
 	  ReleaseXmmRegister(temp_holder); 
 	}
 	  break;
@@ -1362,7 +1362,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	case REG_64:
 	  move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister());
+	  add_imm_reg(16, op_stack_holder->GetRegister());
 	  break;
 	}    
       }
