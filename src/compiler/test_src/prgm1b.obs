@@ -8,6 +8,9 @@ bundle Default {
 		function : native : Run(), Nil {		
 			a := 2 - 3;
 			a->PrintLine();
+
+			b := 2 + 3;
+			b->PrintLine();
 #~
 			55.141->As(Char)->PrintLine();	
 
