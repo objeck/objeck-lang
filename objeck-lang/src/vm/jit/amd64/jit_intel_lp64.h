@@ -68,7 +68,8 @@ namespace Runtime {
 #define TMP_REG_5 -128
   
 #define MAX_DBLS 64
-  
+#define PAGE_SIZE 4096
+
   // register type
   typedef enum _RegType { 
     IMM_32 = -4000,
@@ -299,11 +300,14 @@ namespace Runtime {
      ********************************/
     void AddMachineCode(BYTE_VALUE b) {
       if(code_index == code_buf_max) {
-	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
-	if(!code) {
-	  cerr << "Unable to allocate memory!" << endl;
+	BYTE_VALUE* tmp;	
+	if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
+	  cerr << "Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
+	memcpy(tmp, code, code_index);
+	free(code);
+	code = tmp;
 	code_buf_max *= 2;
 	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
 	  cerr << "Unable to mprotect" << endl;
@@ -1832,15 +1836,22 @@ namespace Runtime {
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
 	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
 	     << method->GetParamCount() << " ----------" << endl;
-#endif
-	
-	code_buf_max = 4096;
-	code = (BYTE_VALUE*)valloc(code_buf_max);
+#endif	
+	// code buffer memory
+	code_buf_max = PAGE_SIZE;
+	if(posix_memalign((void**)&code, PAGE_SIZE, PAGE_SIZE)) {
+	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  exit(1);
+	}
 	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
 	  cerr << "Unable to mprotect" << endl;
 	  exit(1);
-	}	
-	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS);
+	}
+	// floats memory
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS * 2)) {
+	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  exit(1);
+	}
 	floats_index = instr_index = code_index = instr_count = 0;
 	// general use registers
 	//	aval_regs.push_back(new RegisterHolder(RDX));

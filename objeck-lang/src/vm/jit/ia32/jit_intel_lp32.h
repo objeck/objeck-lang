@@ -68,6 +68,7 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
+#define PAGE_SIZE 4096
 
   // register type
   typedef enum _RegType { 
@@ -283,16 +284,20 @@ namespace Runtime {
       if(code_index == code_buf_max) {
 #ifdef _WIN32
 	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
-#else
-	BYTE_VALUE* tmp = (BYTE_VALUE*)valloc(code_buf_max * 2);
-	memcpy(tmp, code, code_index);
-	free(code);
-	code = tmp;
-#endif
 	if(!code) {
 	  cerr << "Unable to allocate memory!" << endl;
 	  exit(1);
 	}
+#else
+	BYTE_VALUE* tmp;	
+	if(posix_memalign(&tmp, PAGE_SIZE, code_buf_max * 2)) {
+	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  exit(1);
+	}
+	memcpy(tmp, code, code_index);
+	free(code);
+	code = tmp;
+#endif	
 	code_buf_max *= 2;
       }
       code[code_index++] = b;
@@ -1623,13 +1628,20 @@ namespace Runtime {
 	     << method->GetParamCount() << " ----------" << endl;
 #endif
 	
-	code_buf_max = 4096;
-#ifndef _WIN32
-	code = (BYTE_VALUE*)valloc(code_buf_max);
-	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS);
-#else
+	code_buf_max = PAGE_SIZE;
+#ifdef _WIN32
 	code = (BYTE_VALUE*)malloc(code_buf_max);
         floats = new FLOAT_VALUE[MAX_DBLS];
+#else
+	if(posix_memalign(&code, PAGE_SIZE, code_buf_max)) {
+	  cerr << "Unable to allocate JIT memory!" << endl;
+	  exit(1);
+	}
+	
+	if(posix_memalign(&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
+	  cerr << "Unable to allocate JIT memory!" << endl;
+	  exit(1);
+	}
 #endif
 
 	floats_index = instr_index = code_index = instr_count = 0;
