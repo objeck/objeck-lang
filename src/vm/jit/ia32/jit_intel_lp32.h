@@ -1626,7 +1626,7 @@ namespace Runtime {
 	code_buf_max = 4096;
 #ifndef _WIN32
 	code = (BYTE_VALUE*)valloc(code_buf_max);
-	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS * 2);
+	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS);
 #else
 	code = (BYTE_VALUE*)malloc(code_buf_max);
         floats = new FLOAT_VALUE[MAX_DBLS];

@@ -1839,8 +1839,8 @@ namespace Runtime {
 	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
 	  cerr << "Unable to mprotect" << endl;
 	  exit(1);
-	}
-        floats = new FLOAT_VALUE[MAX_DBLS];
+	}	
+	floats = (FLOAT_VALUE*)valloc(sizeof(FLOAT_VALUE) * MAX_DBLS);
 	floats_index = instr_index = code_index = instr_count = 0;
 	// general use registers
 	//	aval_regs.push_back(new RegisterHolder(RDX));
