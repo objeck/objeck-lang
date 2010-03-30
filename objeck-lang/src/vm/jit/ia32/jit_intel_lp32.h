@@ -290,7 +290,7 @@ namespace Runtime {
 	}
 #else
 	BYTE_VALUE* tmp;	
-	if(posix_memalign(&tmp, PAGE_SIZE, code_buf_max * 2)) {
+	if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
 	  cerr << "Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
@@ -1633,12 +1633,12 @@ namespace Runtime {
 	code = (BYTE_VALUE*)malloc(code_buf_max);
         floats = new FLOAT_VALUE[MAX_DBLS];
 #else
-	if(posix_memalign(&code, PAGE_SIZE, code_buf_max)) {
+	if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}
 	
-	if(posix_memalign(&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}

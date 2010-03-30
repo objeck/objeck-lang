@@ -1831,7 +1831,6 @@ void JitCompilerIA64::move_xreg_xreg(Register src, Register dest) {
   // encode
   AddMachineCode(0xf2);
   AddMachineCode(ROB(src, dest));
-  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x11);
   BYTE_VALUE code = 0xc0;
@@ -2445,6 +2444,7 @@ void JitCompilerIA64::add_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x58);
   AddMachineCode(ModRM(src, dest));
@@ -2468,6 +2468,7 @@ void JitCompilerIA64::mul_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x59);
   AddMachineCode(ModRM(src, dest));
@@ -2546,7 +2547,7 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
        << ", %"<< GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
-  AddMachineCode(XB(reg));
+  AddMachineCode(B(reg));
   AddMachineCode(0x69);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -2554,9 +2555,6 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
-        floats = new FLOAT_VALUE[MAX_DBLS];
-	floats_index = instr_index = code_index = instr_count = 0;
-
   AddImm(imm);
 }
 
@@ -2898,6 +2896,7 @@ void JitCompilerIA64::cmp_xreg_xreg(Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x66);
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x2e);
   BYTE_VALUE code = 0xc0;
@@ -2915,6 +2914,7 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x66);
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x2e);
   AddMachineCode(ModRM(src, dest));
@@ -2963,6 +2963,7 @@ void JitCompilerIA64::round_mem_xreg(long offset, Register src, Register dest, b
 #endif
   
   AddMachineCode(0x66);
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x3a);
   AddMachineCode(0x0b);
@@ -2985,6 +2986,7 @@ void JitCompilerIA64::round_xreg_xreg(Register src, Register dest, bool is_floor
 #endif
   
   AddMachineCode(0x66);
+  AddMachineCode(ROB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x3a);
   AddMachineCode(0x0b);
