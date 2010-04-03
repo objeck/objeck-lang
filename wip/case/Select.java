@@ -6,11 +6,15 @@ public class Select {
 		for(String string : args) {
 			numbers.add(Integer.parseInt(string));
 		}
-		Collections.sort(numbers);
+		
 		for(int i : numbers) {
-			System.out.println(i);
+			System.out.print(i);
+			System.out.print(',');
 		}
+		System.out.println();
 		System.out.println("----------------------");
+		
+		Collections.sort(numbers);
 		Node node = divide(numbers, 0, numbers.size() - 1);
 		
 		walk(node);
