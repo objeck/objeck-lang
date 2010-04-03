@@ -72,11 +72,11 @@ void* StackInterpreter::CompileMethod(void* arg)
   Runtime::JitCompilerIA32 jit_compiler;
 #endif
   jit_compiler.Compile(method);
-#endif 
   // clean up
   program->RemoveThread(pthread_self());
   pthread_exit(NULL);
 }
+#endif 
 
 /********************************
  * VM initialization
