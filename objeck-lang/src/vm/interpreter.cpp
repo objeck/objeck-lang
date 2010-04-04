@@ -1199,13 +1199,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long num = array[0] - 1;
     FILE* file = (FILE*)instance[0];
 
-    if(file) {
-      fgets(buffer, num, file);
+    if(file && fgets(buffer, num, file)) {
       long end_index = strlen(buffer) - 1;
       if(end_index >= 0) {
         if(buffer[end_index] == '\n') {
           buffer[end_index] = '\0';
         }
+      }
+      else {
+        buffer[0] = '\0';
       }
     }
   }
