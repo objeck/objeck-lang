@@ -2,6 +2,9 @@ import java.util.*;
 
 public class Select {
 	public static void main(String[] args) {
+		if(args.length == 0)
+			return;
+	
 		List<Integer> numbers = new ArrayList<Integer>();
 		for(String string : args) {
 			numbers.add(Integer.parseInt(string));
@@ -14,16 +17,19 @@ public class Select {
 		System.out.println();
 		System.out.println("----------------------");
 		
-		Collections.sort(numbers);
-		Node node = divide(numbers, 0, numbers.size() - 1);
-		
-		walk(node);
+		Node node;
+		if(numbers.size() > 1) {
+			Collections.sort(numbers);
+			node = divide(numbers, 0, numbers.size() - 1);
+		}
+		else {
+			node = new Node(numbers.get(0), Node.Type.NONE);
+		}
+		walk(node);		
 	}
 	
 	public static Node divide(List<Integer> numbers, int start, int end) {
-		final int size = end - start + 1;
-// System.out.println("$$$ ((" + start + ", " + end + ": " + size + "))");
-		
+		final int size = end - start + 1;		
 		if(size < 4) {
 			if(size == 2) {
 				Node left = new Node(numbers.get(start), Node.Type.NONE);
@@ -33,7 +39,7 @@ public class Select {
 				node.setRight(right);
 				
 				return node;
-			}
+			} 
 			else {
 				Node left = new Node(numbers.get(start), Node.Type.NONE);
 				Node right = new Node(numbers.get(start + 2), Node.Type.NONE);
@@ -46,7 +52,6 @@ public class Select {
 		}	
 		else {
 			final int middle = size / 2 + start;
-			
 			if(size % 2 == 0) {
 				Node left = divide(numbers, start, middle - 1);
 				Node right = divide(numbers, middle, end);
@@ -65,12 +70,7 @@ public class Select {
 				
 				return node;
 			}
-		}
-/*		
-		for(int i : numbers) {
-			System.out.println(i);
-		}
-*/		
+		}		
 	}
 	
 	public static void walk(Node node) {

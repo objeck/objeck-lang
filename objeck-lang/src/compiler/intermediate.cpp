@@ -63,9 +63,42 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
  ****************************/
 SelectNode* SelectArrayTree::divide(int start, int end)
 {
-  const int distance = end - start;
+  const int size =  end - start + 1;
+  if(size < 4) {
+	  if(size == 2) {
+		  SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], CASE_LESS,
+                          new SelectNode(++emitter->conditional_label, values[start]),
+                          new SelectNode(++emitter->conditional_label, values[start + 1]));
+      return node;	
+    }
+    else {
+		  SelectNode* node = new SelectNode(++emitter->conditional_label, 
+                          values[start + 1], values[start + 2], CASE_LESS_OR_EQUAL,
+                          new SelectNode(++emitter->conditional_label, values[start]),
+                          new SelectNode(++emitter->conditional_label, values[start + 2]));
+      return node;	
+    }
+  }
+  else {
+    SelectNode* node;
+    const int middle = size / 2 + start;
+    if(size % 2 == 0) {
+      SelectNode* left = divide(start, middle - 1);
+	    SelectNode* right = divide(middle, end);
+      node = new SelectNode(++emitter->conditional_label, values[middle], 
+        CASE_LESS, left, right);
+    }
+    else {
+      SelectNode* left = divide(start, middle - 1);			
+			SelectNode* right = divide(middle + 1, end);
+      node = new SelectNode(++emitter->conditional_label, values[middle], values[middle], 
+        CASE_LESS_OR_EQUAL, left, right);
+    }
 
-  SelectNode* node = NULL;
+    return node;
+  }
+  
+  /* 
   // 2-nodes
   if(distance == 1) {
     node = new SelectNode(++emitter->conditional_label, values[end], CASE_LESS,
@@ -78,7 +111,8 @@ SelectNode* SelectArrayTree::divide(int start, int end)
     node = new SelectNode(++emitter->conditional_label, values[end - 1], CASE_LESS_OR_EQUAL,
                           new SelectNode(++emitter->conditional_label, values[start]),
                           new SelectNode(++emitter->conditional_label, values[end]));
-  } else {
+  } 
+  else {
     const int length = end - start;
     const int middle = length / 2 + start;
 
@@ -94,6 +128,7 @@ SelectNode* SelectArrayTree::divide(int start, int end)
   }
 
   return node;
+  */
 }
 
 /****************************
@@ -146,7 +181,8 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, value));
       emitter->EmitExpression(select->GetExpression());
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_INT));
-    } else if(node->GetOperation() == CASE_EQUAL) {
+    } 
+    else if(node->GetOperation() == CASE_EQUAL) {
       const int value = node->GetValue();
       // evaluate equal to
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, value));
@@ -158,13 +194,15 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       // false
       if(select->GetOther()) {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, other_label, -1));
-      } else {
+      } 
+      else {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, end_label, -1));
       }
       emitter->NewBlock();
-    } else {
-      const int value = node->GetValue();
+    } 
+    else {
       // evaluate equal to
+      const int value = node->GetValue();
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, value));
       emitter->EmitExpression(select->GetExpression());
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(EQL_INT));
@@ -172,7 +210,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, value_label_map[value], true));
       emitter->NewBlock();
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, node->GetValue2()));
       emitter->EmitExpression(select->GetExpression());
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_INT));
     }
