@@ -65,70 +65,38 @@ SelectNode* SelectArrayTree::divide(int start, int end)
 {
   const int size =  end - start + 1;
   if(size < 4) {
-	  if(size == 2) {
-		  SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], CASE_LESS,
-                          new SelectNode(++emitter->conditional_label, values[start]),
-                          new SelectNode(++emitter->conditional_label, values[start + 1]));
+    if(size == 2) {
+      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], CASE_LESS,
+					new SelectNode(++emitter->conditional_label, values[start]),
+					new SelectNode(++emitter->conditional_label, values[start + 1]));
       return node;	
     }
     else {
-		  SelectNode* node = new SelectNode(++emitter->conditional_label, 
-                          values[start + 1], values[start + 2], CASE_LESS_OR_EQUAL,
-                          new SelectNode(++emitter->conditional_label, values[start]),
-                          new SelectNode(++emitter->conditional_label, values[start + 2]));
+      SelectNode* node = new SelectNode(++emitter->conditional_label, 
+					values[start + 1], values[start + 2], CASE_LESS_OR_EQUAL,
+					new SelectNode(++emitter->conditional_label, values[start]),
+					new SelectNode(++emitter->conditional_label, values[start + 2]));
       return node;	
     }
   }
   else {
     SelectNode* node;
-    const int middle = size / 2 + start;
-    if(size % 2 == 0) {
-      SelectNode* left = divide(start, middle - 1);
+      const int middle = size / 2 + start;
+	if(size % 2 == 0) {
+	  SelectNode* left = divide(start, middle - 1);
 	    SelectNode* right = divide(middle, end);
-      node = new SelectNode(++emitter->conditional_label, values[middle], 
-        CASE_LESS, left, right);
-    }
-    else {
-      SelectNode* left = divide(start, middle - 1);			
-			SelectNode* right = divide(middle + 1, end);
-      node = new SelectNode(++emitter->conditional_label, values[middle], values[middle], 
-        CASE_LESS_OR_EQUAL, left, right);
-    }
+	    node = new SelectNode(++emitter->conditional_label, values[middle], 
+				  CASE_LESS, left, right);
+	}
+	else {
+	  SelectNode* left = divide(start, middle - 1);
+	    SelectNode* right = divide(middle + 1, end);
+	    node = new SelectNode(++emitter->conditional_label, values[middle], 
+				  values[middle], CASE_LESS_OR_EQUAL, left, right);
+	}
 
-    return node;
-  }
-  
-  /* 
-  // 2-nodes
-  if(distance == 1) {
-    node = new SelectNode(++emitter->conditional_label, values[end], CASE_LESS,
-                          new SelectNode(++emitter->conditional_label, values[start]),
-                          new SelectNode(++emitter->conditional_label, values[end]));
-    return node;
-  }
-  // 3-nodes
-  else if(distance == 2) {
-    node = new SelectNode(++emitter->conditional_label, values[end - 1], CASE_LESS_OR_EQUAL,
-                          new SelectNode(++emitter->conditional_label, values[start]),
-                          new SelectNode(++emitter->conditional_label, values[end]));
-  } 
-  else {
-    const int length = end - start;
-    const int middle = length / 2 + start;
-
-    if(length % 2 == 0) {
-      node = new SelectNode(++emitter->conditional_label, values[middle], CASE_LESS_OR_EQUAL,
-                            divide(start, middle - 1),
-                            divide(middle + 1, end));
-    } else  {
-      node = new SelectNode(++emitter->conditional_label, values[end], CASE_LESS,
-                            divide(start, middle),
-                            divide(middle + 1, end));
-    }
-  }
-
-  return node;
-  */
+	return node;
+  }  
 }
 
 /****************************
@@ -498,7 +466,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
     // return instance if this is constructor call
     if(method->GetMethodType() == NEW_PUBLIC_METHOD ||
-        method->GetMethodType() == NEW_PRIVATE_METHOD) {
+       method->GetMethodType() == NEW_PRIVATE_METHOD) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     }
 
@@ -578,7 +546,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       method_call = method_call->GetMethodCall();
     } while(method_call);
   }
-  break;
+    break;
 
   case ASSIGN_STMT:
     EmitAssignment(static_cast<Assignment*>(statement));
@@ -742,7 +710,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::STD_OUT_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT,
-                              (INT_VALUE)instructions::STD_OUT_FLOAT));
+									       (INT_VALUE)instructions::STD_OUT_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
     // new basic block
     NewBlock();
@@ -1200,7 +1168,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       method_call = method_call->GetMethodCall();
     } while(method_call);
   }
-  break;
+    break;
 
   case BOOLEAN_LIT_EXPR:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, static_cast<BooleanLiteral*>(expression)->GetValue()));
@@ -1366,7 +1334,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, end));
   }
-  break;
+    break;
 
   case OR_EXPR: {
     // emit right
@@ -1384,7 +1352,7 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, end));
   }
-  break;
+    break;
   }
 }
 
@@ -1439,7 +1407,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   switch(expression->GetExpressionType()) {
   case EQL_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(EQL_INT));
@@ -1449,7 +1417,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case NEQL_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(NEQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(NEQL_INT));
@@ -1459,7 +1427,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case LES_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_INT));
@@ -1469,7 +1437,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case GTR_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(GTR_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(GTR_INT));
@@ -1479,7 +1447,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case LES_EQL_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LES_EQL_INT));
@@ -1489,7 +1457,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case GTR_EQL_EXPR:
     if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-        right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(GTR_EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(GTR_EQL_INT));
@@ -1676,7 +1644,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
   EmitExpression(assignment->GetExpression());
 
   // assignment
- Variable* variable = assignment->GetVariable();
+  Variable* variable = assignment->GetVariable();
   ExpressionList* indices = variable->GetIndices();
   MemoryContext mem_context;
 
@@ -1920,9 +1888,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     if(method_call->GetMethod()) {
       Method* method = method_call->GetMethod();
       if(method_call->GetCallType() == PARENT_CALL ||
-          (method->GetMethodType() != NEW_PUBLIC_METHOD &&
-           method->GetMethodType() != NEW_PRIVATE_METHOD) ||
-          current_method == method) {
+	 (method->GetMethodType() != NEW_PUBLIC_METHOD &&
+	  method->GetMethodType() != NEW_PRIVATE_METHOD) ||
+	 current_method == method) {
         if(entry) {
           switch(entry->GetType()->GetType()) {
           case frontend::BOOLEAN_TYPE:
@@ -1946,7 +1914,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     else if(method_call->GetLibraryMethod()) {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(lib_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-          lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
+	 lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
         if(entry) {
           switch(entry->GetType()->GetType()) {
           case frontend::BOOLEAN_TYPE:
@@ -1974,8 +1942,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       Method* method = method_call->GetMethod();
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LIB_MTHD_CALL, method->IsNative(),
-                                  method->GetClass()->GetName(),
-                                  method->GetEncodedName()));
+										   method->GetClass()->GetName(),
+										   method->GetEncodedName()));
       } else {
         int klass_id = method->GetClass()->GetId();
         int method_id = method->GetId();
@@ -1988,8 +1956,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LIB_MTHD_CALL, lib_method->IsNative(),
-                                  lib_method->GetLibraryClass()->GetName(),
-                                  lib_method->GetName()));
+										   lib_method->GetLibraryClass()->GetName(),
+										   lib_method->GetName()));
       } else {
         int klass_id = lib_method->GetLibraryClass()->GetId();
         int method_id = lib_method->GetId();
