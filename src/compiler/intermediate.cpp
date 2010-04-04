@@ -66,14 +66,14 @@ SelectNode* SelectArrayTree::divide(int start, int end)
   const int size =  end - start + 1;
   if(size < 4) {
     if(size == 2) {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1], CASE_LESS,
+      SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
 					new SelectNode(++emitter->conditional_label, values[start]),
 					new SelectNode(++emitter->conditional_label, values[start + 1]));
       return node;	
     }
     else {
       SelectNode* node = new SelectNode(++emitter->conditional_label, 
-					values[start + 1], values[start + 2], CASE_LESS_OR_EQUAL,
+					values[start + 1], values[start + 2],
 					new SelectNode(++emitter->conditional_label, values[start]),
 					new SelectNode(++emitter->conditional_label, values[start + 2]));
       return node;	
@@ -85,14 +85,14 @@ SelectNode* SelectArrayTree::divide(int start, int end)
 	if(size % 2 == 0) {
 	  SelectNode* left = divide(start, middle - 1);
 	    SelectNode* right = divide(middle, end);
-	    node = new SelectNode(++emitter->conditional_label, values[middle], 
-				  CASE_LESS, left, right);
+	    node = new SelectNode(++emitter->conditional_label, 
+				  values[middle], left, right);
 	}
 	else {
 	  SelectNode* left = divide(start, middle - 1);
 	    SelectNode* right = divide(middle + 1, end);
 	    node = new SelectNode(++emitter->conditional_label, values[middle], 
-				  values[middle], CASE_LESS_OR_EQUAL, left, right);
+				  values[middle], left, right);
 	}
 
 	return node;
