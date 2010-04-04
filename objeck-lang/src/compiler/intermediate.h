@@ -69,17 +69,17 @@ class SelectNode {
     right = NULL;
   }
 
-  SelectNode(int i, int v, SelectOperation o, SelectNode* l, SelectNode* r) {
+  SelectNode(int i, int v, SelectNode* l, SelectNode* r) {
     id = i;
-    operation = o;
+    operation = CASE_LESS;
     value = v;
     left = l;
     right = r;
   }
 
-  SelectNode(int i, int v, int v2, SelectOperation o, SelectNode* l, SelectNode* r) {
+  SelectNode(int i, int v, int v2, SelectNode* l, SelectNode* r) {
     id = i;
-    operation = o;
+    operation = CASE_LESS_OR_EQUAL;
     value = v;
     value2 = v2;
     left = l;
