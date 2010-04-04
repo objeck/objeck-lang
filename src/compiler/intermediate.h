@@ -60,7 +60,7 @@ class SelectNode {
   SelectNode* left;
   SelectNode* right;
 
-public:
+ public:
   SelectNode(int i, int v) {
     id = i;
     value = v;
@@ -134,7 +134,7 @@ class SelectArrayTree {
   SelectNode* divide(int start, int end);
   void Emit(SelectNode* node, int end_label);
 
-public:
+ public:
   SelectArrayTree(Select* s, IntermediateEmitter* e);
 
   ~SelectArrayTree() {
@@ -302,7 +302,7 @@ class IntermediateEmitter {
     }
   }
 
-public:
+ public:
   IntermediateEmitter(ParsedProgram* p, bool l) {
     parsed_program = p;
     is_lib = l;

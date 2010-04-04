@@ -43,6 +43,10 @@ bundle Default {
 					label 10: {
 						10->PrintLine();
 					}
+					
+					other: {
+						"other"->PrintLine();
+					}
 				};
 				i->PrintLine();
 			};	
