@@ -55,6 +55,7 @@ enum SelectOperation {
 class SelectNode {
   int id;
   int value;
+  int value2;
   SelectOperation operation;
   SelectNode* left;
   SelectNode* right;
@@ -72,6 +73,15 @@ public:
     id = i;
     operation = o;
     value = v;
+    left = l;
+    right = r;
+  }
+
+  SelectNode(int i, int v, int v2, SelectOperation o, SelectNode* l, SelectNode* r) {
+    id = i;
+    operation = o;
+    value = v;
+    value2 = v2;
     left = l;
     right = r;
   }
@@ -94,6 +104,10 @@ public:
 
   int GetValue() {
     return value;
+  }
+
+  int GetValue2() {
+    return value2;
   }
 
   SelectOperation GetOperation() {

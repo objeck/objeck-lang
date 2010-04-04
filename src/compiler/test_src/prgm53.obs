@@ -2,7 +2,7 @@ bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
 			for(i := 1; i <= 10; i := i + 1;) { 
-				i->PrintLine();
+				# i->PrintLine();
 				
 				"-------------------"->PrintLine();
 				select(i) {
