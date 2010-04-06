@@ -866,6 +866,54 @@ Statement* Parser::ParseStatement(int depth)
                   instructions::FILE_OPEN);
       NextToken();
       break;
+      
+    case SOCK_IP_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_CONNECT);
+      NextToken();
+      break;
+
+    case SOCK_IP_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_CLOSE);
+      NextToken();
+      break;
+      
+    case SOCK_IP_IN_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_IN_BYTE);
+      NextToken();
+      break;
+      
+    case SOCK_IP_IN_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_IN_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_IP_IN_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_IN_STRING);
+      NextToken();
+      break;
+
+    case SOCK_IP_OUT_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_OUT_BYTE);
+      NextToken();
+      break;
+      
+    case SOCK_IP_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_OUT_BYTE_ARY);
+      NextToken();
+      break;
+      
+    case SOCK_IP_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_OUT_STRING);
+      NextToken();
+      break;      
 #endif
 
     default:
