@@ -731,7 +731,31 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     // new basic block
     NewBlock();
     break;
+    
+    //----------- ip socket methods -----------
+  case instructions::SOCK_IP_CONNECT:
+    break;
+    
+  case instructions::SOCK_IP_CLOSE:    
+    break;
+  case instructions::SOCK_IP_IN_BYTE:
+    break;
 
+  case instructions::SOCK_IP_IN_BYTE_ARY:
+    break;
+
+  case instructions::SOCK_IP_IN_STRING:
+    break;
+
+  case instructions::SOCK_IP_OUT_BYTE:
+    break;
+
+  case instructions::SOCK_IP_OUT_BYTE_ARY:
+    break;
+
+  case instructions::SOCK_IP_OUT_STRING:
+    break;
+    
     //----------- file methods -----------
   case instructions::FILE_OPEN_READ:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
