@@ -752,12 +752,23 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case instructions::SOCK_IP_IN_BYTE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IN_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    // new basic block
+    NewBlock();
     break;
 
   case instructions::SOCK_IP_IN_BYTE_ARY:
     break;
 
   case instructions::SOCK_IP_OUT_BYTE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_OUT_BYTE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    // new basic block
+    NewBlock();
     break;
 
   case instructions::SOCK_IP_OUT_BYTE_ARY:
