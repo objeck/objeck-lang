@@ -738,6 +738,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     
   case instructions::SOCK_IP_CLOSE:    
     break;
+
   case instructions::SOCK_IP_IN_BYTE:
     break;
 
