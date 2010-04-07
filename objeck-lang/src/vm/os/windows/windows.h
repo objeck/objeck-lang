@@ -126,4 +126,19 @@ class File {
   }
 };
 
+/****************************
+ * IP socket support class
+ ****************************/
+class IPSocket {
+ public:
+  static int Open(const char* address, int port) {
+    return 0;
+  }
+
+  static void Close(int sock) {
+    closesocket(sock);
+    WSACleanup();
+  }
+};
+
 #endif
