@@ -132,12 +132,44 @@ class File {
 class IPSocket {
  public:
   static int Open(const char* address, int port) {
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(socket < 0) {
+      return 0;
+    }
+
+    struct hostent* host_info = gethostbyname(address);
+    if(!host_info) {
+      return 0;
+    }
+    
+    long host_addr;
+    memcpy(&host_addr, host_info->h_addr, host_info->h_length);
+    
+    struct sockaddr_in ip_addr;
+    ip_addr.sin_addr.s_addr = host_addr;;
+    ip_addr.sin_port=htons(port);
+    ip_addr.sin_family = AF_INET;
+    
+    if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
+      return sock;
+    }
+    
     return 0;
   }
 
+  static void WriteByte(char value, int sock) {
+    send(sock, &value, 1, 0);
+  }
+
+  static char ReadByte(int sock) {
+    char value;
+    recv(sock, &value, 1, 0);
+
+    return value;
+  }
+  
   static void Close(int sock) {
     closesocket(sock);
-    WSACleanup();
   }
 };
 

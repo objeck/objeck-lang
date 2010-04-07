@@ -83,7 +83,7 @@ void* StackInterpreter::CompileMethod(void* arg)
  ********************************/
 void StackInterpreter::Initialize(StackProgram* p)
 {
-  program = p;
+
 #ifdef _X64
   JitCompilerIA64::Initialize(program);
 #else
