@@ -34,6 +34,7 @@
 
 #include "../../common.h"
 #include <windows.h>
+#pragma comment(lib, "Ws2_32.lib")
 
 class File {
  public:
@@ -162,7 +163,7 @@ class IPSocket {
   }
 
   static int WriteBytes(char* values, int len, int sock) {
-    return sebd(sock, values, len, 0);
+    return send(sock, values, len, 0);
   }
 
   static char ReadByte(int sock) {
