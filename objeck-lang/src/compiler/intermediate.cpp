@@ -734,9 +734,21 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     
     //----------- ip socket methods -----------
   case instructions::SOCK_IP_CONNECT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_CONNECT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 4));
+    // new basic block
+    NewBlock();
     break;
     
   case instructions::SOCK_IP_CLOSE:    
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_CLOSE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    // new basic block
+    NewBlock();
     break;
 
   case instructions::SOCK_IP_IN_BYTE:
