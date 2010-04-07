@@ -161,11 +161,19 @@ class IPSocket {
     send(sock, &value, 1, 0);
   }
 
+  static int WriteBytes(char* values, int len, int sock) {
+    return sebd(sock, values, len, 0);
+  }
+
   static char ReadByte(int sock) {
     char value;
     recv(sock, &value, 1, 0);
 
     return value;
+  }
+  
+  static char ReadBytes(char* values, int len, int sock) {
+    return recv(sock, values, len, 0);
   }
   
   static void Close(int sock) {

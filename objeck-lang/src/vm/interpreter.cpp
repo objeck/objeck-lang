@@ -1148,18 +1148,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SOCK_IP_IN_BYTE_ARY:
     break;
 
-  case SOCK_IP_IN_STRING:
-    break;
-
   case SOCK_IP_OUT_BYTE:
     break;
 
   case SOCK_IP_OUT_BYTE_ARY:
     break;
 
-  case SOCK_IP_OUT_STRING:
-    break;
-    
     // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();
