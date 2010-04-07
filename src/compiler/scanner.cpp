@@ -154,10 +154,8 @@ void Scanner::LoadKeywords()
   ident_map["SOCK_IP_CLOSE"] = SOCK_IP_CLOSE;
   ident_map["SOCK_IP_IN_BYTE"] = SOCK_IP_IN_BYTE;
   ident_map["SOCK_IP_IN_BYTE_ARY"] = SOCK_IP_IN_BYTE_ARY;
-  ident_map["SOCK_IP_IN_STRING"] = SOCK_IP_IN_STRING;
   ident_map["SOCK_IP_OUT_BYTE"] = SOCK_IP_OUT_BYTE;
   ident_map["SOCK_IP_OUT_BYTE_ARY"] = SOCK_IP_OUT_BYTE_ARY;
-  ident_map["SOCK_IP_OUT_STRING"] = SOCK_IP_OUT_STRING;
 #endif
 }
 
@@ -249,10 +247,8 @@ void Scanner::CheckIdentifier(int index)
   case SOCK_IP_CLOSE:
   case SOCK_IP_IN_BYTE:
   case SOCK_IP_IN_BYTE_ARY:
-  case SOCK_IP_IN_STRING:
   case SOCK_IP_OUT_BYTE:
   case SOCK_IP_OUT_BYTE_ARY:
-  case SOCK_IP_OUT_STRING:
 #endif
     tokens[index]->SetType(ident_type);
     break;

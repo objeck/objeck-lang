@@ -745,16 +745,10 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::SOCK_IP_IN_BYTE_ARY:
     break;
 
-  case instructions::SOCK_IP_IN_STRING:
-    break;
-
   case instructions::SOCK_IP_OUT_BYTE:
     break;
 
   case instructions::SOCK_IP_OUT_BYTE_ARY:
-    break;
-
-  case instructions::SOCK_IP_OUT_STRING:
     break;
     
     //----------- file methods -----------
