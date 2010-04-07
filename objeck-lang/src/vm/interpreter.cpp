@@ -83,7 +83,8 @@ void* StackInterpreter::CompileMethod(void* arg)
  ********************************/
 void StackInterpreter::Initialize(StackProgram* p)
 {
-
+  program = p;
+  
 #ifdef _X64
   JitCompilerIA64::Initialize(program);
 #else
@@ -1137,10 +1138,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
     // ---------------- ip socket i/o ----------------
   case SOCK_IP_CONNECT: {
+    long port = PopInt();
     long* array = (long*)PopInt();
     array = (long*)array[0];
     long* instance = (long*)PopInt();
-    long port = PopInt();
     const char* addr = (char*)(array + 3);
     SOCKET sock = IPSocket::Open(addr, port);
 #ifdef _DEBUG
@@ -1155,7 +1156,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock) {
+    if(sock > 0) {
       PushInt(1);
     } 
     else {
@@ -1171,14 +1172,22 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #ifdef _DEBUG
     cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-    if(sock) {
+    if(sock > 0) {
       instance[0] = NULL;
       IPSocket::Close(sock);
     }
   }
     break;
     
-  case SOCK_IP_IN_BYTE:
+  case SOCK_IP_IN_BYTE: {
+    long value = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock > 0) {
+      IPSocket::WriteByte((char)value, sock);
+    }
+  }
     break;
 
   case SOCK_IP_IN_BYTE_ARY:

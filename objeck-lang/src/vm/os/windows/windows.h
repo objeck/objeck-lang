@@ -135,12 +135,12 @@ class IPSocket {
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(socket < 0) {
-      return 0;
+      return -1;
     }
 
     struct hostent* host_info = gethostbyname(address);
     if(!host_info) {
-      return 0;
+      return -1;
     }
     
     long host_addr;
@@ -155,7 +155,7 @@ class IPSocket {
       return sock;
     }
     
-    return 0;
+    return -1;
   }
 
   static void WriteByte(char value, SOCKET sock) {

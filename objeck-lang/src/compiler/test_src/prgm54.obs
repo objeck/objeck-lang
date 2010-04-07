@@ -1,0 +1,16 @@
+use Net;
+
+bundle Default {
+	class Hello {
+		function : Main(args : System.String[]), Nil {
+			socket := IPSocket->New("www.du.edu", 80);
+			if(socket->IsOpen()) {
+				"open"->PrintLine();
+				socket->Close();
+			}
+			else {
+				"unable to open"->PrintLine();
+			};
+		}
+	}
+}
