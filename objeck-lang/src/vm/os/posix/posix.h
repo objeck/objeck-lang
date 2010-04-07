@@ -43,6 +43,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#define SOCKET int
+
 /****************************
  * File support class
  ****************************/
@@ -124,8 +126,8 @@ class File {
  ****************************/
 class IPSocket {
  public:
-  static int Open(const char* address, int port) {
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  static SOCKET Open(const char* address, int port) {
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(socket < 0) {
       return 0;
     }
@@ -150,26 +152,26 @@ class IPSocket {
     return 0;
   }
 
-  static void WriteByte(char value, int sock) {
+  static void WriteByte(char value, SOCKET sock) {
     write(sock, &value, 1);
   }
 
-  static int WriteBytes(char* values, int len, int sock) {
+  static int WriteBytes(char* values, int len, SOCKET sock) {
     return write(sock, values, len);
   }
 
-  static char ReadByte(int sock) {
+  static char ReadByte(SOCKET sock) {
     char value;
     read(sock, &value, 1);
 
     return value;
   }
 
-  static char ReadBytes(char* values, int len, int sock) {
+  static char ReadBytes(char* values, int len, SOCKET sock) {
     return read(sock, values, len);
   }
   
-  static void Close(int sock) {
+  static void Close(SOCKET sock) {
     close(sock);
   }
 };

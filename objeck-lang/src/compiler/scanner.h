@@ -147,7 +147,7 @@ enum TokenType {
   FILE_OUT_STRING,
   // file-operations
   FILE_EXISTS,
-  FILE_OPEN,
+  FILE_IS_OPEN,
   FILE_SIZE,
   FILE_SEEK,
   FILE_REWIND,
@@ -160,6 +160,7 @@ enum TokenType {
   DIR_LIST,
   // socket operations
   SOCK_IP_CONNECT,
+  SOCK_IP_IS_CONNECTED,
   SOCK_IP_CLOSE,
   // socket-in
   SOCK_IP_IN_BYTE,

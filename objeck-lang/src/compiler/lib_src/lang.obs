@@ -1058,7 +1058,7 @@ bundle IO {
 		}
 		
 		method : public : IsOpen(), Bool {
-			FILE_OPEN;
+			FILE_IS_OPEN;
 		}
 
 		method : public : Seek(p : Int), Bool {
@@ -1159,15 +1159,22 @@ bundle IO {
 			DIR_LIST;
 		}
 	}
-	
+}
+
+#------------ Network ------------
+bundle Net {
 	class IPSocket {
 		@address : System.String;
 		@port : Int;
 		
 		New(name : System.String, port : Int) {
 			@name := name;
-			@port = port;
+			@port := port;
 			SOCK_IP_CONNECT;
+		}
+		
+		method : public : IsOpen(), Bool {
+			SOCK_IP_IS_CONNECTED;
 		}
 		
 		method : public : Close(), Nil {

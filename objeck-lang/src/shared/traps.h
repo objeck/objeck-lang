@@ -33,56 +33,58 @@
 #define __TRAPS_H__
 
 namespace instructions {
-// system directive codes
-typedef enum _Traps {
-  // core operations
-  LOAD_CLS_INST_ID = -4000,
-  LOAD_ARY_SIZE,
-  CPY_STR_ARY,
-  // time
-  SYS_TIME,
-  TIMER_START,
-  TIMER_END,
-  // standard i/o
-  STD_IN_STRING,
-  STD_OUT_BOOL,
-  STD_OUT_BYTE,
-  STD_OUT_CHAR,
-  STD_OUT_INT,
-  STD_OUT_FLOAT,
-  STD_OUT_CHAR_ARY,
-  // file i/o
-  FILE_OPEN_READ,
-  FILE_OPEN_WRITE,
-  FILE_OPEN_READ_WRITE,
-  FILE_CLOSE,
-  FILE_IN_BYTE,
-  FILE_OUT_BYTE,
-  FILE_IN_BYTE_ARY,
-  FILE_OUT_BYTE_ARY,
-  FILE_IN_STRING,
-  FILE_OUT_STRING,
-  // file operations
-  FILE_OPEN,
-  FILE_EXISTS,
-  FILE_SIZE,
-  FILE_REWIND,
-  FILE_SEEK,
-  FILE_EOF,
-  FILE_DELETE,
-  FILE_RENAME,
-  // directory operations
-  DIR_CREATE,
-  DIR_EXISTS,
-  DIR_LIST,
-  // socket i/o
-  SOCK_IP_CONNECT,
-  SOCK_IP_CLOSE,
-  SOCK_IP_IN_BYTE,
-  SOCK_IP_IN_BYTE_ARY,
-  SOCK_IP_OUT_BYTE,
-  SOCK_IP_OUT_BYTE_ARY,
-} Traps;
+  // system directive codes
+  typedef enum _Traps {
+    // core operations
+    LOAD_CLS_INST_ID = -4000,
+    LOAD_ARY_SIZE,
+    CPY_STR_ARY,
+    // time
+    SYS_TIME,
+    TIMER_START,
+    TIMER_END,
+    // standard i/o
+    STD_IN_STRING,
+    STD_OUT_BOOL,
+    STD_OUT_BYTE,
+    STD_OUT_CHAR,
+    STD_OUT_INT,
+    STD_OUT_FLOAT,
+    STD_OUT_CHAR_ARY,
+    // file i/o
+    FILE_OPEN_READ,
+    FILE_OPEN_WRITE,
+    FILE_OPEN_READ_WRITE,
+    FILE_CLOSE,
+    FILE_IN_BYTE,
+    FILE_OUT_BYTE,
+    FILE_IN_BYTE_ARY,
+    FILE_OUT_BYTE_ARY,
+    FILE_IN_STRING,
+    FILE_OUT_STRING,
+    // file operations
+    FILE_IS_OPEN,
+    FILE_EXISTS,
+    FILE_SIZE,
+    FILE_REWIND,
+    FILE_SEEK,
+    FILE_EOF,
+    FILE_DELETE,
+    FILE_RENAME,
+    // directory operations
+    DIR_CREATE,
+    DIR_EXISTS,
+    DIR_LIST,
+    // socket i/o
+    SOCK_IP_CONNECT,
+    SOCK_IP_IS_CONNECTED,
+    SOCK_IP_CLOSE,
+    SOCK_IP_IN_BYTE,
+    SOCK_IP_IN_BYTE_ARY,
+    SOCK_IP_OUT_BYTE,
+    SOCK_IP_OUT_BYTE_ARY,
+  } 
+  Traps;
 }
 
 #endif

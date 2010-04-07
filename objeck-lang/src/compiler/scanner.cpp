@@ -138,7 +138,7 @@ void Scanner::LoadKeywords()
   ident_map["FILE_SEEK"] = FILE_SEEK;
   ident_map["FILE_EOF"] = FILE_EOF;
   ident_map["FILE_REWIND"] = FILE_REWIND;
-  ident_map["FILE_OPEN"] = FILE_OPEN;
+  ident_map["FILE_IS_OPEN"] = FILE_IS_OPEN;
   ident_map["FILE_DELETE"] = FILE_DELETE;
   ident_map["FILE_RENAME"] = FILE_RENAME;
   ident_map["DIR_CREATE"] = DIR_CREATE;
@@ -151,6 +151,7 @@ void Scanner::LoadKeywords()
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
   ident_map["SOCK_IP_CONNECT"] = SOCK_IP_CONNECT;
+  ident_map["SOCK_IP_IS_CONNECTED"] = SOCK_IP_IS_CONNECTED;
   ident_map["SOCK_IP_CLOSE"] = SOCK_IP_CLOSE;
   ident_map["SOCK_IP_IN_BYTE"] = SOCK_IP_IN_BYTE;
   ident_map["SOCK_IP_IN_BYTE_ARY"] = SOCK_IP_IN_BYTE_ARY;
@@ -231,7 +232,7 @@ void Scanner::CheckIdentifier(int index)
   case FILE_SEEK:
   case FILE_EOF:
   case FILE_REWIND:
-  case FILE_OPEN:
+  case FILE_IS_OPEN:
   case FILE_DELETE:
   case FILE_RENAME:
   case DIR_CREATE:
@@ -244,6 +245,7 @@ void Scanner::CheckIdentifier(int index)
   case TIMER_START:
   case TIMER_END:
   case SOCK_IP_CONNECT:
+  case SOCK_IP_IS_CONNECTED:
   case SOCK_IP_CLOSE:
   case SOCK_IP_IN_BYTE:
   case SOCK_IP_IN_BYTE_ARY:

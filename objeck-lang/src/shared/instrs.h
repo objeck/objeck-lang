@@ -33,99 +33,101 @@
 #define __INSTRS_H__
 
 namespace instructions {
-// vm instructions
-typedef enum _InstructionType {
-  // loads operations
-  LOAD_INT_LIT  = -3000,
-  LOAD_FLOAT_LIT,
-  LOAD_INT_VAR,
-  LOAD_FLOAT_VAR,
-  LOAD_CLS_MEM,
-  LOAD_INST_MEM,
-  // stores operations
-  STOR_INT_VAR,
-  STOR_FLOAT_VAR,
-  // copy operations
-  COPY_INT_VAR,
-  COPY_FLOAT_VAR,
-  // array operations
-  LOAD_BYTE_ARY_ELM,
-  LOAD_INT_ARY_ELM,
-  LOAD_FLOAT_ARY_ELM,
-  STOR_BYTE_ARY_ELM,
-  STOR_INT_ARY_ELM,
-  STOR_FLOAT_ARY_ELM,
-  // logical operations
-  EQL_INT,
-  NEQL_INT,
-  LES_INT,
-  GTR_INT,
-  LES_EQL_INT,
-  GTR_EQL_INT,
-  EQL_FLOAT,
-  NEQL_FLOAT,
-  LES_FLOAT,
-  GTR_FLOAT,
-  LES_EQL_FLOAT,
-  GTR_EQL_FLOAT,
-  // mathematical operations
-  AND_INT,
-  OR_INT,
-  ADD_INT,
-  SUB_INT,
-  MUL_INT,
-  DIV_INT,
-  MOD_INT,
-  SHL_INT,
-  SHR_INT,
-  ADD_FLOAT,
-  SUB_FLOAT,
-  MUL_FLOAT,
-  DIV_FLOAT,
-  // conversions
-  FLOR_FLOAT,
-  CEIL_FLOAT,
-  I2F,
-  F2I,
-  // control
-  RTRN,
-  MTHD_CALL,
-  LBL,
-  JMP,
-  // memory allocation
-  NEW_BYTE_ARY,
-  NEW_INT_ARY,
-  NEW_FLOAT_ARY,
-  NEW_OBJ_INST,
-  // casting
-  OBJ_INST_CAST,
-  // external OS traps
-  TRAP,
-  TRAP_RTRN,
-  // NOOPs
-  POP_INT,
-  POP_FLOAT,
-  // thread directives
-  ASYNC_MTHD_CALL,
-  THREAD_JOIN,
-  THREAD_SLEEP,
-  CRITICAL_START,
-  CRITICAL_END,
-  // library directives
-  LIB_NEW_OBJ_INST,
-  LIB_MTHD_CALL,
-  LIB_OBJ_INST_CAST,
-  // system directives
-  END_STMTS,
-} InstructionType;
+  // vm instructions
+  typedef enum _InstructionType {
+    // loads operations
+    LOAD_INT_LIT  = -3000,
+    LOAD_FLOAT_LIT,
+    LOAD_INT_VAR,
+    LOAD_FLOAT_VAR,
+    LOAD_CLS_MEM,
+    LOAD_INST_MEM,
+    // stores operations
+    STOR_INT_VAR,
+    STOR_FLOAT_VAR,
+    // copy operations
+    COPY_INT_VAR,
+    COPY_FLOAT_VAR,
+    // array operations
+    LOAD_BYTE_ARY_ELM,
+    LOAD_INT_ARY_ELM,
+    LOAD_FLOAT_ARY_ELM,
+    STOR_BYTE_ARY_ELM,
+    STOR_INT_ARY_ELM,
+    STOR_FLOAT_ARY_ELM,
+    // logical operations
+    EQL_INT,
+    NEQL_INT,
+    LES_INT,
+    GTR_INT,
+    LES_EQL_INT,
+    GTR_EQL_INT,
+    EQL_FLOAT,
+    NEQL_FLOAT,
+    LES_FLOAT,
+    GTR_FLOAT,
+    LES_EQL_FLOAT,
+    GTR_EQL_FLOAT,
+    // mathematical operations
+    AND_INT,
+    OR_INT,
+    ADD_INT,
+    SUB_INT,
+    MUL_INT,
+    DIV_INT,
+    MOD_INT,
+    SHL_INT,
+    SHR_INT,
+    ADD_FLOAT,
+    SUB_FLOAT,
+    MUL_FLOAT,
+    DIV_FLOAT,
+    // conversions
+    FLOR_FLOAT,
+    CEIL_FLOAT,
+    I2F,
+    F2I,
+    // control
+    RTRN,
+    MTHD_CALL,
+    LBL,
+    JMP,
+    // memory allocation
+    NEW_BYTE_ARY,
+    NEW_INT_ARY,
+    NEW_FLOAT_ARY,
+    NEW_OBJ_INST,
+    // casting
+    OBJ_INST_CAST,
+    // external OS traps
+    TRAP,
+    TRAP_RTRN,
+    // NOOPs
+    POP_INT,
+    POP_FLOAT,
+    // thread directives
+    ASYNC_MTHD_CALL,
+    THREAD_JOIN,
+    THREAD_SLEEP,
+    CRITICAL_START,
+    CRITICAL_END,
+    // library directives
+    LIB_NEW_OBJ_INST,
+    LIB_MTHD_CALL,
+    LIB_OBJ_INST_CAST,
+    // system directives
+    END_STMTS,
+  } 
+  InstructionType;
 
-// memory reference context, used for
-// loading and storing variables
-typedef enum _MemoryContext {
-  CLS = -3500,
-  INST,
-  LOCL
-} MemoryContext;
+  // memory reference context, used for
+  // loading and storing variables
+  typedef enum _MemoryContext {
+    CLS = -3500,
+    INST,
+    LOCL
+  } 
+  MemoryContext;
 }
 
 #endif
