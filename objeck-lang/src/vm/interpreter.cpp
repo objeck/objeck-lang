@@ -1136,10 +1136,33 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
     
     // ---------------- ip socket i/o ----------------
-  case SOCK_IP_CONNECT:
+  case SOCK_IP_CONNECT: {
+    long* array = (long*)PopInt();
+    array = (long*)array[0];
+    long* instance = (long*)PopInt();
+    long port = PopInt();
+    const char* addr = (char*)(array + 3);
+    SOCKET sock = IPSocket::Open(addr, port);
+#ifdef _DEBUG
+    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
+         "; addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+    instance[0] = (long)sock;
+  }
     break;
     
-  case SOCK_IP_CLOSE:    
+  case SOCK_IP_CLOSE: {
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+
+#ifdef _DEBUG
+    cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+    if(sock) {
+      instance[0] = NULL;
+      IPSocket::Close(sock);
+    }
+  }
     break;
     
   case SOCK_IP_IN_BYTE:
