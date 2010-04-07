@@ -164,11 +164,9 @@ enum TokenType {
   // socket-in
   SOCK_IP_IN_BYTE,
   SOCK_IP_IN_BYTE_ARY,
-  SOCK_IP_IN_STRING,
   // socket-out
   SOCK_IP_OUT_BYTE,
   SOCK_IP_OUT_BYTE_ARY,
-  SOCK_IP_OUT_STRING,
   // thread management
   ASYNC_MTHD_CALL,
   THREAD_SLEEP,
