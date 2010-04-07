@@ -861,9 +861,9 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
-    case FILE_OPEN:
+    case FILE_IS_OPEN:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OPEN);
+                  instructions::FILE_IS_OPEN);
       NextToken();
       break;
       
@@ -872,7 +872,13 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::SOCK_IP_CONNECT);
       NextToken();
       break;
-
+      
+    case SOCK_IP_IS_CONNECTED:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_IS_CONNECTED);
+      NextToken();
+      break;
+      
     case SOCK_IP_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_IP_CLOSE);

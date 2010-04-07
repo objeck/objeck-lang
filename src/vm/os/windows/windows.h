@@ -15,7 +15,7 @@
  * - Neither the name of the StackVM Team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- *
+ *%
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -132,8 +132,8 @@ class File {
  ****************************/
 class IPSocket {
  public:
-  static int Open(const char* address, int port) {
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  static SOCKET Open(const char* address, int port) {
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(socket < 0) {
       return 0;
     }
@@ -158,26 +158,26 @@ class IPSocket {
     return 0;
   }
 
-  static void WriteByte(char value, int sock) {
+  static void WriteByte(char value, SOCKET sock) {
     send(sock, &value, 1, 0);
   }
 
-  static int WriteBytes(char* values, int len, int sock) {
+  static int WriteBytes(char* values, int len, SOCKET sock) {
     return send(sock, values, len, 0);
   }
 
-  static char ReadByte(int sock) {
+  static char ReadByte(SOCKET sock) {
     char value;
     recv(sock, &value, 1, 0);
 
     return value;
   }
   
-  static char ReadBytes(char* values, int len, int sock) {
+  static char ReadBytes(char* values, int len, SOCKET sock) {
     return recv(sock, values, len, 0);
   }
   
-  static void Close(int sock) {
+  static void Close(SOCKET sock) {
     closesocket(sock);
   }
 };
