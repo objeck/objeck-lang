@@ -38,6 +38,7 @@
 #include "windows.h"
 #include <iostream>
 #include <string>
+#pragma comment(lib, "Ws2_32.lib")
 
 using namespace std;
 
@@ -51,7 +52,19 @@ int main(const int argc, char* argv[])
     if(compiler_lib) {
       Execute _Execute = (Execute)GetProcAddress(compiler_lib, "Execute");
       if(_Execute) {
-        status = _Execute(argc, argv);
+        // load winsock
+        WSADATA data;
+        int version = MAKEWORD(2, 2);
+        if(WSAStartup(version, &data)) {
+          cerr << "Unable to load Winsock 2.2!" << endl;
+          status = SYSTEM_ERROR;
+        }
+        else {
+          // execute program
+          status = _Execute(argc, argv);
+        }
+        // release winsock
+        WSACleanup();
       }
       else {
         cerr << "Unable to envoke virtual machine!" << endl;
