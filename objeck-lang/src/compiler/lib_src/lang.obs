@@ -1159,4 +1159,27 @@ bundle IO {
 			DIR_LIST;
 		}
 	}
+	
+	class IPSocket {
+		@address : System.String;
+		@port : Int;
+		
+		New(name : System.String, port : Int) {
+			@name := name;
+			@port = port;
+			SOCK_IP_CONNECT;
+		}
+		
+		method : public : Close(), Nil {
+			SOCK_IP_CLOSE;
+		}
+	
+		method : public : WriteByte(b : Int), Bool {
+			SOCK_IP_OUT_BYTE;
+		}
+		
+		method : public : ReadByte(), Byte {
+			SOCK_IP_IN_BYTE;
+		}
+	}	
 }
