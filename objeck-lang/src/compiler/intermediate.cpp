@@ -742,6 +742,14 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     // new basic block
     NewBlock();
     break;
+
+  case instructions::SOCK_IP_IS_CONNECTED:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IS_CONNECTED));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    // new basic block
+    NewBlock();
+    break;
     
   case instructions::SOCK_IP_CLOSE:    
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
@@ -892,9 +900,9 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     NewBlock();
     break;
 
-  case FILE_OPEN:
+  case FILE_IS_OPEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_OPEN));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_IS_OPEN));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
     // new basic block
     NewBlock();

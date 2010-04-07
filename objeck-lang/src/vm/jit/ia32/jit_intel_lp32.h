@@ -1219,7 +1219,7 @@ namespace Runtime {
 	}
 	  break;
 
-	case FILE_OPEN: {
+	case FILE_IS_OPEN: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];	
 	

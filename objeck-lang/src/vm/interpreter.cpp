@@ -1150,6 +1150,19 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     instance[0] = (long)sock;
   }
     break;
+
+  case SOCK_IP_IS_CONNECTED: {
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock) {
+      PushInt(1);
+    } 
+    else {
+      PushInt(0);
+    }
+  }
+    break;
     
   case SOCK_IP_CLOSE: {
     long* instance = (long*)PopInt();
@@ -1383,13 +1396,14 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
   break;
 
-  case FILE_OPEN: {
+  case FILE_IS_OPEN: {
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
 
     if(file) {
       PushInt(1);
-    } else {
+    } 
+    else {
       PushInt(0);
     }
   }
