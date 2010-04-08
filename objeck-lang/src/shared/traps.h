@@ -83,6 +83,7 @@ namespace instructions {
     SOCK_IP_IN_BYTE_ARY,
     SOCK_IP_OUT_BYTE,
     SOCK_IP_OUT_BYTE_ARY,
+    SOCK_IP_IN_STRING,
     SOCK_IP_OUT_STRING,
   } 
   Traps;
