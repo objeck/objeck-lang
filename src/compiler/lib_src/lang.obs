@@ -1204,5 +1204,15 @@ bundle Net {
 		method : WriteString(buffer : Char[]), Nil {
 			SOCK_IP_OUT_STRING;
 		}
+		
+		method : public : ReadString(), System.String {
+			buffer : Char[] := Char->New[256];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]), Nil {
+			SOCK_IP_IN_STRING;
+		}
 	}	
 }
