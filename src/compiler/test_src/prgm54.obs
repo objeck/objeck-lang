@@ -5,7 +5,11 @@ bundle Default {
 		function : Main(args : System.String[]), Nil {
 			socket := IPSocket->New("www.du.edu", 80);
 			if(socket->IsOpen()) {
-				"open"->PrintLine();
+				buffer := Byte->New[256];
+				socket->ReadBuffer(0, buffer->GetSize(), buffer);
+				for(i := 0; i < buffer->GetSize(); i := i + 1;) {
+					buffer[i]->PrintLine();
+				};
 				socket->Close();
 			}
 			else {

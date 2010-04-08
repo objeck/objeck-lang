@@ -1156,7 +1156,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock > 0) {
+    if(sock > -1) {
       PushInt(1);
     } 
     else {
@@ -1172,7 +1172,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #ifdef _DEBUG
     cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-    if(sock > 0) {
+    if(sock > -1) {
       instance[0] = NULL;
       IPSocket::Close(sock);
     }
@@ -1184,19 +1184,65 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock > 0) {
+    if(sock > -1) {
       IPSocket::WriteByte((char)value, sock);
     }
   }
     break;
 
-  case SOCK_IP_IN_BYTE_ARY:
+  case SOCK_IP_IN_BYTE_ARY: {
+    long* array = (long*)PopInt();
+    const long num = PopInt();
+    const long offset = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock > -1 && offset + num < array[0]) {
+      char* buffer = (char*)(array + 3);
+      if(IPSocket::ReadBytes(buffer + offset, num, sock) != num) {
+        PushInt(0);
+      } 
+      else {
+        PushInt(1);
+      }
+    } 
+    else {
+      PushInt(0);
+    }
+  }
     break;
 
-  case SOCK_IP_OUT_BYTE:
+  case SOCK_IP_OUT_BYTE: {
+    long value = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock > -1) {
+      IPSocket::WriteByte(value, sock);
+    }
+  }
     break;
 
-  case SOCK_IP_OUT_BYTE_ARY:
+ case SOCK_IP_OUT_BYTE_ARY: {
+   long* array = (long*)PopInt();
+   const long num = PopInt();
+   const long offset = PopInt();
+   long* instance = (long*)PopInt();
+   SOCKET sock = (SOCKET)instance[0];
+
+   if(sock > -1 && offset + num < array[0]) {
+     char* buffer = (char*)(array + 3);
+     if(IPSocket::WriteBytes(buffer + offset, num, sock) != num) {
+       PushInt(0);
+     } 
+     else {
+       PushInt(1);
+     }
+   } 
+   else {
+     PushInt(0);
+   }
+ } 
     break;
 
     // ---------------- file i/o ----------------
@@ -1327,7 +1373,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(fread(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
+      if(fread(buffer + offset, 1, num, file) != num) {
         PushInt(0);
       } else {
         PushInt(1);
@@ -1365,12 +1411,14 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(fwrite(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
+      if(fwrite(buffer + offset, 1, num, file) != num) {
         PushInt(0);
-      } else {
+      } 
+      else {
         PushInt(1);
       }
-    } else {
+    } 
+    else {
       PushInt(0);
     }
   }
