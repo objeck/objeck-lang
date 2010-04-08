@@ -768,6 +768,14 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case instructions::SOCK_IP_IN_BYTE_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    // new basic block
+    NewBlock();
     break;
 
   case instructions::SOCK_IP_OUT_BYTE:
@@ -780,9 +788,32 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case instructions::SOCK_IP_OUT_BYTE_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_OUT_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    // new basic block
+    NewBlock();
+    break;
+    
+  case instructions::SOCK_IP_OUT_STRING:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_OUT_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    // new basic block
+    NewBlock();
     break;
 
-  case instructions::SOCK_IP_OUT_STRING:
+  case instructions::SOCK_IP_IN_STRING:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IN_STRING));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    // new basic block
+    NewBlock();
     break;
     
     //----------- file methods -----------
