@@ -1265,7 +1265,28 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SOCKET sock = (SOCKET)instance[0];
 
     if(sock > -1) {
-
+      const int max = 256;
+      char read_buffer[max];
+      bool done = false;
+      int index = 0;
+      do {
+	int num_read = IPSocket::ReadBytes(read_buffer, max, sock);
+	if(num_read <= 0) {
+	  done = true;
+	}
+	else {
+	  for(int i = 0; i < num_read && !done; i++) {
+	    char c = read_buffer[i];
+	    if(c == '\r' || c == '\n') {
+	      done = true;
+	    }
+	    else {
+	      array[index++] = c;
+	    }
+	  }
+	}	
+      }
+      while(!done);
     }
   }
     break;
