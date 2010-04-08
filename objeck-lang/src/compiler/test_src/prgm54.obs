@@ -3,13 +3,14 @@ use Net;
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
-			socket := IPSocket->New("www.du.edu", 80);
+			socket := IPSocket->New("www.cu.edu", 80);
 			if(socket->IsOpen()) {
-				buffer := Byte->New[256];
-				socket->ReadBuffer(0, buffer->GetSize(), buffer);
-				for(i := 0; i < buffer->GetSize(); i := i + 1;) {
-					buffer[i]->PrintLine();
-				};
+				socket->WriteString("GET / HTTP/1.1\r\nHost: www.cu.edu\r\n\r\n");
+				do {
+					line := socket->ReadString();
+					line->PrintLine();
+				}
+				while(line->GetSize() > 0);
 				socket->Close();
 			}
 			else {
