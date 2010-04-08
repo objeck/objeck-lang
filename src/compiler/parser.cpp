@@ -897,6 +897,12 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
+    case SOCK_IP_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_IP_OUT_STRING);
+      NextToken();
+      break;
+      
     case SOCK_IP_OUT_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_IP_OUT_BYTE);
