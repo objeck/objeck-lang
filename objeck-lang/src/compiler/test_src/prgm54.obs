@@ -1,11 +1,15 @@
 use Net;
 
 bundle Default {
-	class Hello {
+	class SocketTest {
 		function : Main(args : System.String[]), Nil {
-			socket := IPSocket->New("www.cu.edu", 80);
+			address := "www.cu.edu";
+			socket := IPSocket->New(address, 80);
 			if(socket->IsOpen()) {
-				socket->WriteString("GET / HTTP/1.1\r\nHost: www.cu.edu\r\n\r\n");
+				get := "GET / HTTP/1.1\r\nHost: ";
+				get->Append(address);
+				get->Append("\r\n\r\n");
+				socket->WriteString(get);
 				do {
 					line := socket->ReadString();
 					line->PrintLine();
@@ -14,7 +18,9 @@ bundle Default {
 				socket->Close();
 			}
 			else {
-				"unable to open"->PrintLine();
+				error := "unable to connect to: ";
+				error->Append(address);
+				error->PrintLine();
 			};
 		}
 	}
