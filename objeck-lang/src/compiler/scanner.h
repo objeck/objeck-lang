@@ -168,6 +168,7 @@ enum TokenType {
   // socket-out
   SOCK_IP_OUT_BYTE,
   SOCK_IP_OUT_BYTE_ARY,
+  SOCK_IP_OUT_STRING,
   // thread management
   ASYNC_MTHD_CALL,
   THREAD_SLEEP,
