@@ -160,9 +160,9 @@ class IPSocket {
     return write(sock, values, len);
   }
 
-  static char ReadByte(SOCKET sock) {
+  static char ReadByte(SOCKET sock, int &status) {
     char value;
-    read(sock, &value, 1);
+    status = read(sock, &value, 1);
 
     return value;
   }
