@@ -1196,5 +1196,13 @@ bundle Net {
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
 			SOCK_IP_IN_BYTE_ARY;
 		}
+		
+		method : public : WriteString(str : System.String), Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]), Nil {
+			SOCK_IP_OUT_STRING;
+		}
 	}	
 }
