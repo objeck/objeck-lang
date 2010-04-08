@@ -1185,8 +1185,16 @@ bundle Net {
 			SOCK_IP_OUT_BYTE;
 		}
 		
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+			SOCK_IP_OUT_BYTE_ARY;
+		}
+		
 		method : public : ReadByte(), Byte {
 			SOCK_IP_IN_BYTE;
+		}
+		
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+			SOCK_IP_BYTE_ARY;
 		}
 	}	
 }
