@@ -1199,15 +1199,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
     if(sock > -1 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(IPSocket::ReadBytes(buffer + offset, num, sock) != num) {
-        PushInt(0);
+      if(!IPSocket::ReadBytes(buffer + offset, num, sock)) {
+        PushInt(1);
       } 
       else {
-        PushInt(1);
+        PushInt(0);
       }
     } 
     else {
-      PushInt(0);
+      PushInt(1);
     }
   }
     break;
@@ -1232,15 +1232,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(sock > -1 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(IPSocket::WriteBytes(buffer + offset, num, sock) != num) {
-	PushInt(0);
+      if(!IPSocket::WriteBytes(buffer + offset, num, sock)) {
+	PushInt(1);
       } 
       else {
-	PushInt(1);
+	PushInt(0);
       }
     } 
     else {
-      PushInt(0);
+      PushInt(1);
     }
   } 
     break;
@@ -1264,27 +1264,21 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long num = array[0] - 1;
     SOCKET sock = (SOCKET)instance[0];
 
+    int status;
     if(sock > -1) {
-      const int max = 256;
-      char read_buffer[max];
-      bool done = false;
-      int index = 0;
-      do {
-	if(IPSocket::ReadBytes(read_buffer, max, sock) < 0) {
-	  done = true;
-	}
-	
-	for(int i = 0; i < max && !done; i++) {
-	  char c = read_buffer[i];
-	  if(c == '\r' || c == '\n') {
-	    done = true;
-	  }
-	  else {
-	    buffer[index++] = c;
-	  }
-	}
+      int index = 0;   
+      BYTE_VALUE value = IPSocket::ReadByte(sock, status);
+      while((value == '\r' || value == '\n') && index < num && status > 0) {
+	value = IPSocket::ReadByte(sock, status);
       }
-      while(index < num && !done);
+
+      if(status > 0) {
+	do {
+	  buffer[index++] = value;
+	  value = IPSocket::ReadByte(sock, status);
+	}
+	while(value != '\r' && value != '\n' && index < num && status > 0);
+      }
     }
   }
     break;
