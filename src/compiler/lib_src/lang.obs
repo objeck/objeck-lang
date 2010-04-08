@@ -1104,7 +1104,7 @@ bundle IO {
 			FILE_IN_BYTE;
 		}
 
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
 			FILE_IN_BYTE_ARY;
 		}
 
@@ -1133,7 +1133,7 @@ bundle IO {
 			FILE_OUT_BYTE;
 		}
 
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
 			FILE_OUT_BYTE_ARY;
 		}
 		
@@ -1164,11 +1164,12 @@ bundle IO {
 #------------ Network ------------
 bundle Net {
 	class IPSocket {
+		@handle : Int;
 		@address : System.String;
 		@port : Int;
 		
-		New(name : System.String, port : Int) {
-			@name := name;
+		New(address : System.String, port : Int) {
+			@address := address;
 			@port := port;
 			SOCK_IP_CONNECT;
 		}
@@ -1185,7 +1186,7 @@ bundle Net {
 			SOCK_IP_OUT_BYTE;
 		}
 		
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
 			SOCK_IP_OUT_BYTE_ARY;
 		}
 		
@@ -1193,7 +1194,7 @@ bundle Net {
 			SOCK_IP_IN_BYTE;
 		}
 		
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
 			SOCK_IP_IN_BYTE_ARY;
 		}
 		
