@@ -787,8 +787,7 @@ bundle System {
             for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
 				c : Char := @string[i];
 				if(c < 127 & c > 31) {
-                       			tmp[i] := @string[i];
-					@pos := @pos + 1;
+                       			tmp[i] := c;
 				};
             };
             
