@@ -867,57 +867,57 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
       
-    case SOCK_IP_CONNECT:
+    case SOCK_TCP_CONNECT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_CONNECT);
+							       instructions::SOCK_TCP_CONNECT);
       NextToken();
       break;
       
-    case SOCK_IP_IS_CONNECTED:
+    case SOCK_TCP_IS_CONNECTED:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_IS_CONNECTED);
+							       instructions::SOCK_TCP_IS_CONNECTED);
       NextToken();
       break;
       
-    case SOCK_IP_CLOSE:
+    case SOCK_TCP_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_CLOSE);
+							       instructions::SOCK_TCP_CLOSE);
       NextToken();
       break;
       
-    case SOCK_IP_IN_BYTE:
+    case SOCK_TCP_IN_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_IN_BYTE);
+							       instructions::SOCK_TCP_IN_BYTE);
       NextToken();
       break;
       
-    case SOCK_IP_IN_BYTE_ARY:
+    case SOCK_TCP_IN_BYTE_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_IN_BYTE_ARY);
+							       instructions::SOCK_TCP_IN_BYTE_ARY);
       NextToken();
       break;
 
-    case SOCK_IP_OUT_STRING:
+    case SOCK_TCP_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_OUT_STRING);
+							       instructions::SOCK_TCP_OUT_STRING);
       NextToken();
       break;
 
-    case SOCK_IP_IN_STRING:
+    case SOCK_TCP_IN_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_IN_STRING);
+							       instructions::SOCK_TCP_IN_STRING);
       NextToken();
       break;
       
-    case SOCK_IP_OUT_BYTE:
+    case SOCK_TCP_OUT_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_OUT_BYTE);
+							       instructions::SOCK_TCP_OUT_BYTE);
       NextToken();
       break;
       
-    case SOCK_IP_OUT_BYTE_ARY:
+    case SOCK_TCP_OUT_BYTE_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_IP_OUT_BYTE_ARY);
+							       instructions::SOCK_TCP_OUT_BYTE_ARY);
       NextToken();
       break;      
 #endif

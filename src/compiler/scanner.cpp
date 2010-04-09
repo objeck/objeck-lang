@@ -150,15 +150,15 @@ void Scanner::LoadKeywords()
   ident_map["SYS_TIME"] = SYS_TIME;
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
-  ident_map["SOCK_IP_CONNECT"] = SOCK_IP_CONNECT;
-  ident_map["SOCK_IP_IS_CONNECTED"] = SOCK_IP_IS_CONNECTED;
-  ident_map["SOCK_IP_CLOSE"] = SOCK_IP_CLOSE;
-  ident_map["SOCK_IP_IN_BYTE"] = SOCK_IP_IN_BYTE;
-  ident_map["SOCK_IP_IN_BYTE_ARY"] = SOCK_IP_IN_BYTE_ARY;
-  ident_map["SOCK_IP_OUT_STRING"] = SOCK_IP_OUT_STRING;
-  ident_map["SOCK_IP_IN_STRING"] = SOCK_IP_IN_STRING;
-  ident_map["SOCK_IP_OUT_BYTE"] = SOCK_IP_OUT_BYTE;
-  ident_map["SOCK_IP_OUT_BYTE_ARY"] = SOCK_IP_OUT_BYTE_ARY;
+  ident_map["SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
+  ident_map["SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
+  ident_map["SOCK_TCP_CLOSE"] = SOCK_TCP_CLOSE;
+  ident_map["SOCK_TCP_IN_BYTE"] = SOCK_TCP_IN_BYTE;
+  ident_map["SOCK_TCP_IN_BYTE_ARY"] = SOCK_TCP_IN_BYTE_ARY;
+  ident_map["SOCK_TCP_OUT_STRING"] = SOCK_TCP_OUT_STRING;
+  ident_map["SOCK_TCP_IN_STRING"] = SOCK_TCP_IN_STRING;
+  ident_map["SOCK_TCP_OUT_BYTE"] = SOCK_TCP_OUT_BYTE;
+  ident_map["SOCK_TCP_OUT_BYTE_ARY"] = SOCK_TCP_OUT_BYTE_ARY;
 #endif
 }
 
@@ -246,15 +246,15 @@ void Scanner::CheckIdentifier(int index)
   case SYS_TIME:
   case TIMER_START:
   case TIMER_END:
-  case SOCK_IP_CONNECT:
-  case SOCK_IP_IS_CONNECTED:
-  case SOCK_IP_CLOSE:
-  case SOCK_IP_IN_BYTE:
-  case SOCK_IP_IN_BYTE_ARY:
-  case SOCK_IP_IN_STRING:
-  case SOCK_IP_OUT_STRING:
-  case SOCK_IP_OUT_BYTE:
-  case SOCK_IP_OUT_BYTE_ARY:
+  case SOCK_TCP_CONNECT:
+  case SOCK_TCP_IS_CONNECTED:
+  case SOCK_TCP_CLOSE:
+  case SOCK_TCP_IN_BYTE:
+  case SOCK_TCP_IN_BYTE_ARY:
+  case SOCK_TCP_IN_STRING:
+  case SOCK_TCP_OUT_STRING:
+  case SOCK_TCP_OUT_BYTE:
+  case SOCK_TCP_OUT_BYTE_ARY:
 #endif
     tokens[index]->SetType(ident_type);
     break;

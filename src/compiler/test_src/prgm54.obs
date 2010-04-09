@@ -3,8 +3,9 @@ use Net;
 bundle Default {
 	class SocketTest {
 		function : Main(args : System.String[]), Nil {
-			address := "www.cu.edu";
-			socket := IPSocket->New(address, 80);
+			address := "www.du.edu";
+
+			socket := TCPSocket->New(address, 80);
 			if(socket->IsOpen()) {
 				get := "GET / HTTP/1.1\r\nHost: ";
 				get->Append(address);
