@@ -1109,24 +1109,93 @@ namespace Runtime {
 	}
 	  break;
 	  
-	  // ---------------- file i/o ----------------
-	case FILE_IN_BYTE: {
+	  // ---------------- socket i/o ----------------
+	case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	  
-	  if(file) {
-	    if(fgetc(file) == EOF) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+	  SOCKET sock = (SOCKET)instance[0];
+    
+	  if(sock > -1) {
+	    PushInt(op_stack, stack_pos, 1);
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
 
+	case SOCK_TCP_IN_BYTE: {
+	  long value = PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+    
+	  IPSocket::WriteByte((char)value, sock);
+	  PushInt(op_stack, stack_pos, 1);
+
+	}
+	  break;
+
+	case SOCK_TCP_IN_BYTE_ARY: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long num = PopInt(op_stack, stack_pos);
+	  const long offset = PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+    
+	  if(sock > -1 && offset + num < array[0]) {
+	    char* buffer = (char*)(array + 3);
+	    PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
+	  }
+	  else {
+	    PushInt(op_stack, stack_pos, -1);
+	  }
+	}
+	  break;
+
+	case SOCK_TCP_OUT_BYTE: {
+	  long value = PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+    
+	  IPSocket::WriteByte(value, sock);
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	  break;
+
+	case SOCK_TCP_OUT_BYTE_ARY: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long num = PopInt(op_stack, stack_pos);
+	  const long offset = PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+
+	  if(sock > -1 && offset + num < array[0]) {
+	    char* buffer = (char*)(array + 3);
+	    PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
+	  } 
+	  else {
+	    PushInt(op_stack, stack_pos, -1);
+	  }
+	} 
+	  break;
+
+	  // -------------- file i/o -----------------
+	case FILE_IN_BYTE: {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  FILE* file = (FILE*)instance[0];
+
+	  if(file) {
+	    if(fgetc(file) == EOF) {
+	      PushInt(op_stack, stack_pos, 0);
+	    } 
+	    else {
+	      PushInt(op_stack, stack_pos, 1);
+	    }
+	  } 
+	  else {
+	    PushInt(op_stack, stack_pos, 0);
+	  }
+	}
+	  break;
 
 	case FILE_IN_BYTE_ARY: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1134,18 +1203,13 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
-	    if(fread(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
+	  } 
 	  else {
-	    PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, -1);
 	  }
 	}
 	  break;
@@ -1154,15 +1218,16 @@ namespace Runtime {
 	  long value = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file) {
 	    if(fputc(value, file) != value) {
 	      PushInt(op_stack, stack_pos, 0);
-	    }
+	    } 
 	    else {
 	      PushInt(op_stack, stack_pos, 1);
 	    }
-	  }
+
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1175,18 +1240,13 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
-	    if(fwrite(buffer + offset, 1, num, (FILE*)instance[0]) < 0) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
+	  } 
 	  else {
-	    PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, -1);
 	  }
 	}
 	  break;
@@ -1194,16 +1254,16 @@ namespace Runtime {
 	case FILE_SEEK: {
 	  long pos = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
-	    if(fseek(file, pos, SEEK_CUR) < 0) {
+	    if(fseek(file, pos, SEEK_CUR) != 0) {
 	      PushInt(op_stack, stack_pos, 0);
-	    }
+	    } 
 	    else {
 	      PushInt(op_stack, stack_pos, 1);
 	    }
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1212,11 +1272,11 @@ namespace Runtime {
 
 	case FILE_EOF: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
 	    PushInt(op_stack, stack_pos, feof(file) != 0);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
@@ -1225,11 +1285,11 @@ namespace Runtime {
 
 	case FILE_IS_OPEN: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
 	    PushInt(op_stack, stack_pos, 1);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1244,14 +1304,14 @@ namespace Runtime {
 	  PushInt(op_stack, stack_pos, File::FileExists(name));
 	}
 	  break;
-	
+
 	case FILE_SIZE: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  array = (long*)array[0];
 	  const char* name = (char*)(array + 3);
 
 	  PushInt(op_stack, stack_pos, File::FileSize(name));
-	
+
 	}
 	  break;
 
@@ -1262,7 +1322,7 @@ namespace Runtime {
 
 	  if(remove(name) != 0) {
 	    PushInt(op_stack, stack_pos, 0);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
@@ -1277,11 +1337,10 @@ namespace Runtime {
 	  long* from = (long*)PopInt(op_stack, stack_pos);
 	  from = (long*)from[0];
 	  const char* from_name = (char*)(from + 3);
-	
+
 	  if(rename(from_name, to_name) != 0) {
 	    PushInt(op_stack, stack_pos, 0);
-	  }
-	  else {
+	  } else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
 	}
