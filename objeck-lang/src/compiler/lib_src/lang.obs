@@ -1104,7 +1104,7 @@ bundle IO {
 			FILE_IN_BYTE;
 		}
 
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
 			FILE_IN_BYTE_ARY;
 		}
 
@@ -1133,7 +1133,7 @@ bundle IO {
 			FILE_OUT_BYTE;
 		}
 
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
 			FILE_OUT_BYTE_ARY;
 		}
 		
@@ -1186,7 +1186,7 @@ bundle Net {
 			SOCK_IP_OUT_BYTE;
 		}
 		
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
 			SOCK_IP_OUT_BYTE_ARY;
 		}
 		
@@ -1194,7 +1194,7 @@ bundle Net {
 			SOCK_IP_IN_BYTE;
 		}
 		
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Bool {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
 			SOCK_IP_IN_BYTE_ARY;
 		}
 		
