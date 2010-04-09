@@ -782,16 +782,30 @@ bundle System {
 
 		method : public : native : Trim(), String {
 			# copy elements
-            tmp : Char[] := Char->New[@max + 1];
-			@pos := 0;
-            for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
-				c : Char := @string[i];
-				if(c < 127 & c > 31) {
-                       			tmp[i] := c;
-				};
-            };
+
+			i := 0;	
+			c : Char := @string[i];
+			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->GetSize()) {
+				i := i + 1;
+				c := @string[i];
+			};
+
+			j := @string->GetSize() - 1;
+			c := @string[j];
+			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & j > -1) {
+				j := j - 1;
+				c := @string[j];
+			};	
+		
+			k := 0;		
+			tmp : Char[] := Char->New[@max + 1];
+			while(i < j) {
+				tmp[k] := @string[i];
+				i := i + 1;
+				k := k + 1;
+			};
             
-            return String->New(tmp);
+			return String->New(tmp);
 		}
 
 		method : public : SubString(offset : Int), String {
