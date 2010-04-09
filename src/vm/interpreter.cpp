@@ -1137,7 +1137,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
     
     // ---------------- ip socket i/o ----------------
-  case SOCK_IP_CONNECT: {
+  case SOCK_TCP_CONNECT: {
     long port = PopInt();
     long* array = (long*)PopInt();
     array = (long*)array[0];
@@ -1152,7 +1152,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;  
     
-  case SOCK_IP_CLOSE: {
+  case SOCK_TCP_CLOSE: {
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
 
@@ -1166,7 +1166,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_OUT_STRING: {
+  case SOCK_TCP_OUT_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
@@ -1178,7 +1178,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_IN_STRING: {
+  case SOCK_TCP_IN_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
     char* buffer = (char*)(array + 3);
@@ -1306,7 +1306,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     // --- TRAP_RTRN --- //
 
-  case SOCK_IP_IS_CONNECTED: {
+    // ---------------- socket i/o ----------------
+  case SOCK_TCP_IS_CONNECTED: {
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
@@ -1319,7 +1320,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_IN_BYTE: {
+  case SOCK_TCP_IN_BYTE: {
     long value = PopInt();
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
@@ -1330,7 +1331,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_IN_BYTE_ARY: {
+  case SOCK_TCP_IN_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
@@ -1347,7 +1348,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_OUT_BYTE: {
+  case SOCK_TCP_OUT_BYTE: {
     long value = PopInt();
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
@@ -1357,7 +1358,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case SOCK_IP_OUT_BYTE_ARY: {
+  case SOCK_TCP_OUT_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();

@@ -11,11 +11,13 @@ bundle Default {
 				get->Append(address);
 				get->Append("\r\n\r\n");
 				socket->WriteString(get);
+				i := 0;
 				do {
 					line := socket->ReadString();
-					line->PrintLine();
+					line->Trim()->PrintLine();
+					i := i + 1;
 				}
-				while(line->GetSize() > 0);
+				while(i < 20);
 				socket->Close();
 			}
 			else {
