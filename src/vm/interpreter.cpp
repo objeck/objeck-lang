@@ -1150,20 +1150,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #endif
     instance[0] = (long)sock;
   }
-    break;
-
-  case SOCK_IP_IS_CONNECTED: {
-    long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    
-    if(sock > -1) {
-      PushInt(1);
-    } 
-    else {
-      PushInt(0);
-    }
-  }
-    break;
+    break;  
     
   case SOCK_IP_CLOSE: {
     long* instance = (long*)PopInt();
@@ -1177,72 +1164,6 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       IPSocket::Close(sock);
     }
   }
-    break;
-    
-  case SOCK_IP_IN_BYTE: {
-    long value = PopInt();
-    long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    
-    if(sock > -1) {
-      IPSocket::WriteByte((char)value, sock);
-    }
-  }
-    break;
-
-  case SOCK_IP_IN_BYTE_ARY: {
-    long* array = (long*)PopInt();
-    const long num = PopInt();
-    const long offset = PopInt();
-    long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    
-    if(sock > -1 && offset + num < array[0]) {
-      char* buffer = (char*)(array + 3);
-      if(!IPSocket::ReadBytes(buffer + offset, num, sock)) {
-        PushInt(1);
-      } 
-      else {
-        PushInt(0);
-      }
-    } 
-    else {
-      PushInt(1);
-    }
-  }
-    break;
-
-  case SOCK_IP_OUT_BYTE: {
-    long value = PopInt();
-    long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    
-    if(sock > -1) {
-      IPSocket::WriteByte(value, sock);
-    }
-  }
-    break;
-
-  case SOCK_IP_OUT_BYTE_ARY: {
-    long* array = (long*)PopInt();
-    const long num = PopInt();
-    const long offset = PopInt();
-    long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-
-    if(sock > -1 && offset + num < array[0]) {
-      char* buffer = (char*)(array + 3);
-      if(!IPSocket::WriteBytes(buffer + offset, num, sock)) {
-	PushInt(1);
-      } 
-      else {
-	PushInt(0);
-      }
-    } 
-    else {
-      PushInt(1);
-    }
-  } 
     break;
 
   case SOCK_IP_OUT_STRING: {
@@ -1385,6 +1306,75 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     // --- TRAP_RTRN --- //
 
+  case SOCK_IP_IS_CONNECTED: {
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock > -1) {
+      PushInt(1);
+    } 
+    else {
+      PushInt(0);
+    }
+  }
+    break;
+
+  case SOCK_IP_IN_BYTE: {
+    long value = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    IPSocket::WriteByte((char)value, sock);
+    PushInt(1);
+
+  }
+    break;
+
+  case SOCK_IP_IN_BYTE_ARY: {
+    long* array = (long*)PopInt();
+    const long num = PopInt();
+    const long offset = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    if(sock > -1 && offset + num < array[0]) {
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSocket::ReadBytes(buffer + offset, num, sock));
+    }
+    else {
+      PushInt(-1);
+    }
+  }
+    break;
+
+  case SOCK_IP_OUT_BYTE: {
+    long value = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+    
+    IPSocket::WriteByte(value, sock);
+    PushInt(1);
+  }
+    break;
+
+  case SOCK_IP_OUT_BYTE_ARY: {
+    long* array = (long*)PopInt();
+    const long num = PopInt();
+    const long offset = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET sock = (SOCKET)instance[0];
+
+    if(sock > -1 && offset + num < array[0]) {
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSocket::WriteBytes(buffer + offset, num, sock));
+    } 
+    else {
+      PushInt(-1);
+    }
+  } 
+    break;
+
+    // -------------- file i/o -----------------
   case FILE_IN_BYTE: {
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
@@ -1392,10 +1382,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     if(file) {
       if(fgetc(file) == EOF) {
         PushInt(0);
-      } else {
+      } 
+      else {
         PushInt(1);
       }
-    } else {
+    } 
+    else {
       PushInt(0);
     }
   }
@@ -1411,13 +1403,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(fread(buffer + offset, 1, num, file) != num) {
-        PushInt(0);
-      } else {
-        PushInt(1);
-      }
-    } else {
-      PushInt(0);
+      PushInt(fread(buffer + offset, 1, num, file));        
+    } 
+    else {
+      PushInt(-1);
     }
   }
     break;
@@ -1430,11 +1419,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     if(file) {
       if(fputc(value, file) != value) {
         PushInt(0);
-      } else {
+      } 
+      else {
         PushInt(1);
       }
 
-    } else {
+    } 
+    else {
       PushInt(0);
     }
   }
@@ -1449,15 +1440,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
-      if(fwrite(buffer + offset, 1, num, file) != num) {
-        PushInt(0);
-      } 
-      else {
-        PushInt(1);
-      }
+      PushInt(fwrite(buffer + offset, 1, num, file));
     } 
     else {
-      PushInt(0);
+      PushInt(-1);
     }
   }
     break;
@@ -1470,10 +1456,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     if(file) {
       if(fseek(file, pos, SEEK_CUR) != 0) {
         PushInt(0);
-      } else {
+      } 
+      else {
         PushInt(1);
       }
-    } else {
+    } 
+    else {
       PushInt(0);
     }
   }
@@ -1485,7 +1473,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(file) {
       PushInt(feof(file) != 0);
-    } else {
+    } 
+    else {
       PushInt(1);
     }
   }
@@ -1530,7 +1519,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     if(remove(name) != 0) {
       PushInt(0);
-    } else {
+    } 
+    else {
       PushInt(1);
     }
   }
