@@ -746,7 +746,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::SOCK_IP_IS_CONNECTED:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IS_CONNECTED));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -762,7 +762,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::SOCK_IP_IN_BYTE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IN_BYTE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -773,7 +773,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_IN_BYTE_ARY));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 5));
     // new basic block
     NewBlock();
     break;
@@ -782,7 +782,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_OUT_BYTE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 3));
     // new basic block
     NewBlock();
     break;
@@ -793,7 +793,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_IP_OUT_BYTE_ARY));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 5));
     // new basic block
     NewBlock();
     break;
@@ -858,7 +858,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_IN_BYTE_ARY));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 5));
     // new basic block
     NewBlock();
     break;
@@ -884,7 +884,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_OUT_BYTE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 3));
     // new basic block
     NewBlock();
     break;
@@ -895,7 +895,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_OUT_BYTE_ARY));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 5));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 5));
     // new basic block
     NewBlock();
     break;
@@ -913,7 +913,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_SEEK));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 3));
     // new basic block
     NewBlock();
     break;
@@ -921,7 +921,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case FILE_EOF:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_EOF));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -937,7 +937,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case FILE_IS_OPEN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_IS_OPEN));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -954,7 +954,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case FILE_SIZE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_SIZE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -962,7 +962,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case FILE_DELETE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_DELETE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -971,7 +971,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::FILE_RENAME));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 3));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 3));
     // new basic block
     NewBlock();
     break;
@@ -980,7 +980,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case DIR_CREATE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::DIR_CREATE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -988,7 +988,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case DIR_EXISTS:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::DIR_EXISTS));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
@@ -996,7 +996,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case DIR_LIST:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, (INT_VALUE)instructions::DIR_LIST));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(TRAP_RTRN, 2));
     // new basic block
     NewBlock();
     break;
