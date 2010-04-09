@@ -153,22 +153,22 @@ class IPSocket {
   }
 
   static void WriteByte(char value, SOCKET sock) {
-    write(sock, &value, 1);
+    send(sock, &value, 1, 0);
   }
 
   static int WriteBytes(char* values, int len, SOCKET sock) {
-    return write(sock, values, len);
+    return send(sock, values, len);
   }
 
   static char ReadByte(SOCKET sock, int &status) {
     char value;
-    status = read(sock, &value, 1);
+    status = send(sock, &value, 1);
 
     return value;
   }
 
   static char ReadBytes(char* values, int len, SOCKET sock) {
-    return read(sock, values, len);
+    return recv(sock, values, len);
   }
   
   static void Close(SOCKET sock) {
