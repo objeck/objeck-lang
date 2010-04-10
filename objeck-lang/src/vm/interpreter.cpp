@@ -809,9 +809,45 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
-  cerr << "Unsupported operation: ProcessAsyncMethodCall!" << endl;
+  // save current method
+  frame->SetIp(ip);
+  PushFrame(frame);
+  
+  // pop instance
+  long instance = frame->GetMemory()[0]; // PopInt();
+
+  // make call
+  StackMethod* called = program->GetClass(frame->GetMethod()->GetClass()->GetId())->GetMethod(instr->GetOperand2());
+  // dynamically bind class for virutal method
+  if(called->IsVirtual()) {
+    StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
+    if(!impl_class) {
+      cerr << "Attempting to envoke a virtual method!" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
+    const string& qualified_method_name = called->GetName();
+    const string& method_name = impl_class->GetName() +
+      qualified_method_name.substr(qualified_method_name.find(':'));
+
+#ifdef _DEBUG
+    cout << "=== Binding virtual method call: from: '" << called->GetName()
+         << "'; to: '" << method_name << "' ===" << endl;
+#endif
+    called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+  }
+  
+  ProcessInterpretedAsyncMethodCall(called, instance);
+}
+
+/********************************
+ * Processes an interpreted
+ * asynchronous method call.
+ ********************************/
+void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long instance)
+{
+  cerr << "Unsupported operation: asynchronous method call!" << endl;
   exit(1);
-  // cout << "??? " << frame->GetMethod()->GetClass()->GetId() << "," << instr->GetOperand2() << " ???" << endl;
 }
 
 /********************************
@@ -833,7 +869,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
     if(!impl_class) {
-      cerr << "Attempting to envoke a virtual class!" << endl;
+      cerr << "Attempting to envoke a virtual method!" << endl;
       StackErrorUnwind();
       exit(1);
     }
