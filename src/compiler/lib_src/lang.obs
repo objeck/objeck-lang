@@ -834,7 +834,7 @@ bundle System {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
-	    	method : public : Compare(rhs : System.Compare), Int {
+		method : public : Compare(rhs : System.Compare), Int {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
 				for(i : Int := 0; i < @pos; i := i + 1;) {
@@ -1174,7 +1174,7 @@ bundle IO {
 	}
 }
 
-#------------ Network ------------
+#------------ Socket ------------
 bundle Net {
 	class TCPSocket {
 		@handle : Int;
