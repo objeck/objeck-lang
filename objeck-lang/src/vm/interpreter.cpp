@@ -1159,7 +1159,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #ifdef _DEBUG
     cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-    if(sock > -1) {
+    if(sock >= 0) {
       instance[0] = NULL;
       IPSocket::Close(sock);
     }
@@ -1172,7 +1172,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SOCKET sock = (SOCKET)instance[0];
     char* data = (char*)(array + 3);
     
-    if(sock > -1) {
+    if(sock >= 0) {
       IPSocket::WriteBytes(data, strlen(data), sock);
     }
   }
@@ -1186,7 +1186,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SOCKET sock = (SOCKET)instance[0];
 
     int status;
-    if(sock > -1) {
+    if(sock >= 0) {
       int index = 0;   
       BYTE_VALUE value = IPSocket::ReadByte(sock, status);
       while((value == '\r' || value == '\n') && index < num && status > 0) {
@@ -1311,7 +1311,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock > -1) {
+    if(sock >= 0) {
       PushInt(1);
     } 
     else {
@@ -1338,7 +1338,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock > -1 && offset + num < array[0]) {
+    if(sock >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock));
     }
@@ -1365,7 +1365,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
 
-    if(sock > -1 && offset + num < array[0]) {
+    if(sock >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock));
     } 
