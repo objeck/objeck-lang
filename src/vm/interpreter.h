@@ -214,6 +214,7 @@ class StackInterpreter {
   inline void ProcessReturn();
   inline void ProcessMethodCall(StackInstr* instr);
   inline void ProcessAsyncMethodCall(StackInstr* instr);
+  inline void ProcessInterpretedAsyncMethodCall(StackMethod* called, long instance);
   inline void ProcessJitMethodCall(StackMethod* called, long instance);
   inline void ProcessInterpretedMethodCall(StackMethod* called, long instance);
   inline void ProcessLoadIntArrayElement(StackInstr* instr);
