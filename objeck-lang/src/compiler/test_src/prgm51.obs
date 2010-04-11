@@ -5,6 +5,7 @@ bundle Default {
 		}
 
 		method : public : Run(param : System.Base), Nil {
+			13->PrintLine();
 		}
 	}
 
