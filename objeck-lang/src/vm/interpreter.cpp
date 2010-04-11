@@ -65,7 +65,7 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 
 DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
-
+  return 0;
 }
 #else
 void* StackInterpreter::CompileMethod(void* arg) 
@@ -877,6 +877,9 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
   params->instance = (long*)instance;
   params->value = frame->GetMemory()[1];
 
+#ifdef _WIN32
+
+#else
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
@@ -892,6 +895,7 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
   void* status;
   if(pthread_join(jit_thread, &status));
   */
+#endif
 }
 
 /********************************
