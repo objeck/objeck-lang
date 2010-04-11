@@ -5,7 +5,9 @@ bundle Default {
 		}
 
 		method : public : Run(param : System.Base), Nil {
-			13->PrintLine();
+			s : String := param->As(System.String);
+			s->PrintLine();
+			913->PrintLine();
 		}
 	}
 
@@ -19,7 +21,8 @@ bundle Default {
 
 		function : Run(), Nil {
 			t := MyThread->New();	
-			t->Execute(Nil->As(Base));
+			s := "Pug";	
+			t->Execute(s->As(Base));
 		}
 	}
 }
