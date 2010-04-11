@@ -89,9 +89,10 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   long* op_stack = new long[STACK_SIZE];
   long* stack_pos = new long;
   (*stack_pos) = 0;
+  op_stack[(*stack_pos)++] = params->value;
   
   Runtime::StackInterpreter intpr;
-  intpr.Execute(op_stack, stack_pos, 0, params->called, (long*) params->instance, false);
+  intpr.Execute(op_stack, stack_pos, 0, params->called, params->instance, false);
 
   // clean up
   delete[] op_stack;
@@ -836,12 +837,7 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
-  // save current method
-  frame->SetIp(ip);
-  PushFrame(frame);
-  
-  // pop instance
-  long instance = frame->GetMemory()[0]; // PopInt();
+  long instance = frame->GetMemory()[0];
 
   // make call
   StackMethod* called = program->GetClass(frame->GetMethod()->GetClass()->GetId())->GetMethod(instr->GetOperand2());
@@ -875,10 +871,11 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
 {
   cerr << "Unsupported operation: asynchronous method call!" << endl;
   exit(1);
-
+  
   AsyncMethodCallParams* params = new AsyncMethodCallParams;
   params->called = called;
-  params->instance = instance;
+  params->instance = (long*)instance;
+  params->value = frame->GetMemory()[1];
 
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
@@ -890,6 +887,11 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
     exit(-1);
   }
   pthread_attr_destroy(&attrs); 
+  
+  /*
+  void* status;
+  if(pthread_join(jit_thread, &status));
+  */
 }
 
 /********************************

@@ -52,7 +52,8 @@ namespace Runtime {
  ********************************/
 struct AsyncMethodCallParams {
   StackMethod* called;
-  long instance;
+  long* instance;
+  long value;
 };
 
 class StackInterpreter {
