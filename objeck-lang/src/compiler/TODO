@@ -6,9 +6,9 @@
 -----------------------------
 
 * 4/9/10
-Have ReadString return a status
+Have ReadString return a status #DONE
 Update the TRAP_RTRN code in amd64 JIT
-*bug* v := array[i];
+*bug* v := array[i]; #DONE
 
 * 6/29/09
 Object inheritance

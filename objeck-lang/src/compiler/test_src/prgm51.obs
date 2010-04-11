@@ -16,7 +16,12 @@ bundle Default {
 		}
 
 		function : Main(args : System.String[]), Nil {
-			Run();
+			array := Int->New[3];
+			array[0] := 13;
+			j := array[0];
+			j->PrintLine();
+
+#			Run();
 		}
 
 		function : Run(), Nil {
