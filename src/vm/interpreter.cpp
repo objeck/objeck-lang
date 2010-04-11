@@ -62,6 +62,11 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 
   return 0;
 }
+
+DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
+{
+
+}
 #else
 void* StackInterpreter::CompileMethod(void* arg) 
 {
@@ -76,7 +81,29 @@ void* StackInterpreter::CompileMethod(void* arg)
   program->RemoveThread(pthread_self());
   pthread_exit(NULL);
 }
-#endif 
+
+void* StackInterpreter::AsyncMethodCall(void* arg)
+{
+  AsyncMethodCallParams* params = (AsyncMethodCallParams*)arg;
+  
+  long* op_stack = new long[STACK_SIZE];
+  long* stack_pos = new long;
+  (*stack_pos) = 0;
+  
+  Runtime::StackInterpreter intpr;
+  intpr.Execute(op_stack, stack_pos, 0, params->called, (long*) params->instance, false);
+
+  // clean up
+  delete[] op_stack;
+  op_stack = NULL;
+  
+  delete stack_pos;
+  stack_pos = NULL;
+
+  delete params;
+  params = NULL;
+}
+#endif
 
 /********************************
  * VM initialization
@@ -848,6 +875,21 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
 {
   cerr << "Unsupported operation: asynchronous method call!" << endl;
   exit(1);
+
+  AsyncMethodCallParams* params = new AsyncMethodCallParams;
+  params->called = called;
+  params->instance = instance;
+
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t jit_thread;
+  if(pthread_create(&jit_thread, &attrs, AsyncMethodCall, (void*)params)) {
+    cerr << "Unable to create thread to compile method!" << endl;
+    exit(-1);
+  }
+  pthread_attr_destroy(&attrs); 
 }
 
 /********************************
