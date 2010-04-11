@@ -1514,6 +1514,15 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
     if(entry && expression) {
       variable->SetTypes(expression->GetEvalType());
       entry->SetType(expression->GetEvalType());
+      // set variable to scalar type if we're de-referencing an array variable
+      if(expression->GetExpressionType() == VAR_EXPR) {
+	Variable* expr_variable = static_cast<Variable*>(expression);
+	if(expr_variable->GetIndices()) {
+	  variable->GetBaseType()->SetDimension(0);
+	  variable->GetEvalType()->SetDimension(0);	 
+	  entry->GetType()->SetDimension(0);
+	}
+      }
     }
   }
   
