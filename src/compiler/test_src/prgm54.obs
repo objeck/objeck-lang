@@ -3,7 +3,7 @@ use Net;
 bundle Default {
 	class SocketTest {
 		function : Main(args : System.String[]), Nil {
-			address := "www.du.edu";
+			address := "www.mscd.edu";
 
 			socket := TCPSocket->New(address, 80);
 			if(socket->IsOpen()) {
@@ -14,7 +14,24 @@ bundle Default {
 
 				line := socket->ReadString();
 				while(line->GetSize() > 0) {	
-					line->Trim()->PrintLine();
+					trim := line->Trim();
+					start := 0;
+					for(i := 0; i < trim->GetSize(); i := i + 1;) {
+						# find tag start
+						if(trim->GetChar(i) = '<') {
+							start := i;
+						};
+
+						# find tag end
+						if(trim->GetChar(i) = '>') {
+							len := i - start;
+							# print tag
+							if(len > 0) {
+								trim->SubString(start, len + 1)->PrintLine();
+							};
+						};
+						
+					};
 					line := socket->ReadString();
 				};
 				socket->Close();
