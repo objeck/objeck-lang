@@ -1,9 +1,10 @@
 use Net;
+use IO;
 
 bundle Default {
 	class SocketTest {
 		function : Main(args : System.String[]), Nil {
-			address := "www.mscd.edu";
+			address := "www.du.edu";
 
 			socket := TCPSocket->New(address, 80);
 			if(socket->IsOpen()) {
@@ -27,7 +28,23 @@ bundle Default {
 							len := i - start;
 							# print tag
 							if(len > 0) {
-								trim->SubString(start, len + 1)->PrintLine();
+								tag := trim->SubString(start + 1, len - 1);
+								if(tag->GetSize() > 0) {
+									if(tag->GetChar(0) <> '/') {
+										tag_end := 0;
+										while(tag_end < tag->GetSize() & tag->GetChar(tag_end) <> ' ') {
+											tag_end := tag_end + 1;
+										};
+										Console->GetInstance()->Print("start tag: |")->Print(tag->SubString(tag_end))->PrintLine("|");			
+									}
+									else {
+										tag_end := 1;
+										while(tag_end < tag->GetSize() & tag->GetChar(tag_end) <> ' ') {
+											tag_end := tag_end + 1;
+										};
+										Console->GetInstance()->Print("end tag: |")->Print(tag->SubString(1, tag_end - 1))->PrintLine("|");
+									};
+								};											
 							};
 						};
 						
