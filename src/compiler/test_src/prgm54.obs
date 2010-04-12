@@ -15,7 +15,7 @@ bundle Default {
 				line := socket->ReadString();
 				while(line->GetSize() > 0) {	
 					trim := line->Trim();
-					start := 0;
+					start : Int;
 					for(i := 0; i < trim->GetSize(); i := i + 1;) {
 						# find tag start
 						if(trim->GetChar(i) = '<') {
