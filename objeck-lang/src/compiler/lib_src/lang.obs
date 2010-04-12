@@ -823,8 +823,8 @@ bundle System {
 			};
 
 			array : Char[] := Char->New[length];
-			for(i : Int := offset; i < end; i := i + 1;) {
-				array[i] := @string[i];
+			for(i : Int := 0; i < length; i := i + 1;) {
+				array[i] := @string[i + offset];
 			};
 
 			return String->New(array);
