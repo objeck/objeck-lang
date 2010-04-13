@@ -968,6 +968,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
 	break;
       }
+      StackErrorUnwind(called);
       exit(1);
     }
     // restore previous state
@@ -997,6 +998,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
 	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
 	break;
       }
+      StackErrorUnwind(called);
       exit(1);
     }
     // restore previous state
