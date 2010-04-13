@@ -57,7 +57,6 @@ void JitCompilerIA32::Prolog() {
     0x89, 0xe5,                                                  // mov  %esp, %ebp
     0x81, 0xec, buffer[0], buffer[1], buffer[2], buffer[3],      // sub  $imm, %esp
                                                                  // save registers
-    0x50,                                                        // push eax
     0x53,                                                        // push ebx
     0x51,                                                        // push ecx
     0x52,                                                        // push edx
@@ -76,14 +75,7 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   cout << "  " << (++instr_count) << ": [<epilog>]" << endl;
 #endif
   
-  /*
-  move_mem_reg(RTRN_VALUE, EBP, EAX);
-  move_mem_reg(0, EAX, EAX);
   move_imm_reg(imm, EAX);
-  */
-
-  move_imm_reg(imm, EAX);
-
   BYTE_VALUE teardown_code[] = {
     // restore registers
     0x5e,             // pop esi
@@ -1313,7 +1305,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
 	case IMM_64:
 	  move_imm_memx(left, 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister()); 
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister()); 
 	  break;
 	
 	case MEM_64: {
@@ -1321,7 +1313,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
 	  move_mem_xreg(left->GetOperand(), EBP, temp_holder->GetRegister());
 	  move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister());
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
 	  ReleaseXmmRegister(temp_holder); 
 	}
 	  break;
@@ -1329,7 +1321,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
 	case REG_64:
 	  move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
 	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(8, op_stack_holder->GetRegister());
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
 	  break;
 	}    
       }
@@ -2722,7 +2714,7 @@ void JitCompilerIA32::shl_reg(Register dest, int32_t value) {
 
 void JitCompilerIA32::shl_mem(int32_t offset, Register src, int32_t value) {
   AddMachineCode(0xc1);
-  AddMachineCode(ModRM(src, ESP));
+  AddMachineCode(ModRM(src, EBP));
   AddImm(offset);
   AddMachineCode(value);
 
