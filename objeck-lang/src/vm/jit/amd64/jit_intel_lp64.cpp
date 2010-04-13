@@ -87,8 +87,6 @@ void JitCompilerIA64::Epilog(long imm) {
   cout << "  " << (++instr_count) << ": [<epilog>]" << endl;
 #endif
   
-  move_mem_reg(RTRN_VALUE, RBP, RAX);
-  move_mem_reg(0, RAX, RAX);
   move_imm_reg(imm, RAX);
   
   BYTE_VALUE teardown_code[] = {
@@ -108,7 +106,7 @@ void JitCompilerIA64::Epilog(long imm) {
     0x48, 0x59,       // pop rcx
     /****/
     0x48, 0x5b,       // pop rbx
-    0x48, 0x58,       // pop rax    
+    // 0x48, 0x58,       // pop rax    
     // tear down stack frame and return
     0x48, 0x89, 0xec, // mov  %rbp, %rsp
     0x48, 0x5d,       // pop %rbp
@@ -148,7 +146,6 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  // add_imm_reg(20, RSP);
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
@@ -169,7 +166,6 @@ void JitCompilerIA64::UnregisterRoot() {
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   // clean up
-  // add_imm_reg(4, RSP);
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
 }
@@ -1345,24 +1341,24 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	
 	case IMM_64:
 	  move_imm_memx(left, 0, op_stack_holder->GetRegister());
-	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(16, op_stack_holder->GetRegister()); 
+	  inc_mem(0, stack_pos_holder->GetRegister());
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister()); 
 	  break;
 	
 	case MEM_64: {
 	  RegisterHolder* temp_holder = GetXmmRegister();
 	  move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
 	  move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(16, op_stack_holder->GetRegister());
+	  inc_mem(0, stack_pos_holder->GetRegister());
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
 	  ReleaseXmmRegister(temp_holder); 
 	}
 	  break;
 	
 	case REG_64:
 	  move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-	  add_imm_mem(2, 0, stack_pos_holder->GetRegister());
-	  add_imm_reg(16, op_stack_holder->GetRegister());
+	  inc_mem(0, stack_pos_holder->GetRegister());
+	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
 	  break;
 	}    
       }
@@ -3189,9 +3185,6 @@ long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst,
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
-  long rtrn_value;
-  jit_fun(cls_id, mthd_id, (long*)method->GetClass()->GetClassMemory(), 
-	  inst, op_stack, stack_pos, rtrn_value);
-  
-  return rtrn_value;
+  return jit_fun(cls_id, mthd_id, (long*)method->GetClass()->GetClassMemory(), 
+		 inst, op_stack, stack_pos);
 }
