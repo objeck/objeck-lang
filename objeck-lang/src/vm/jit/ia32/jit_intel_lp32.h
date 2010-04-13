@@ -214,10 +214,10 @@ namespace Runtime {
   /********************************
    * prototype for jit function
    ********************************/
-  typedef void (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, 
-			      int32_t* cls_mem, int32_t* inst, 
-			      int32_t* op_stack, int32_t *stack_pos, 
-			      int32_t &rtrn_value);
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, 
+				 int32_t* cls_mem, int32_t* inst, 
+				 int32_t* op_stack, int32_t *stack_pos, 
+				 int32_t &rtrn_value);
   
   /********************************
    * JitCompilerIA32 class
@@ -533,11 +533,10 @@ namespace Runtime {
       cout << "  " << (++instr_count) << ": [jne $" << offset << "]" << endl;
 #endif
       // jump not equal
-      AddMachineCode(0x0F);
+      AddMachineCode(0x0f);
       AddMachineCode(0x85);
       AddImm(offset);
-      Epilog(0);
-      move_imm_reg(0, EAX);
+      Epilog(-1);
     }
     
     // Gets an avaiable register from
@@ -1452,7 +1451,9 @@ namespace Runtime {
 	move_mem_reg(holder->GetOperand(), EBP, array_holder->GetRegister());
 	break;
       }
-
+      
+      CheckNilDereference(array_holder->GetRegister());
+      
       /* Algorithm:
 	 int32_t index = PopInt();
 	 const int32_t dim = instr->GetOperand();

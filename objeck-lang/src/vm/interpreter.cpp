@@ -956,7 +956,10 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
     Runtime::JitExecutorIA32 jit_executor;
-    jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    if(jit_executor.Execute(called, (long*)instance, op_stack, stack_pos) < 0) {
+      cerr << "'Nil' memory dereference or array bounds error in native JIT code!" << endl;
+      exit(1);
+    }
     // restore previous state
     frame = PopFrame();
     ip = frame->GetIp();
@@ -972,7 +975,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     jit_compiler.Compile(called);      
     // execute
     Runtime::JitExecutorIA32 jit_executor;
-    jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    if(jit_executor.Execute(called, (long*)instance, op_stack, stack_pos) < 0) {
+      cerr << "Atempting to dereference 'Nil' memory or Array out-of-bounds in native JIT code!" << endl;
+      exit(1);
+    }
+    
     // restore previous state
     frame = PopFrame();
     ip = frame->GetIp();
