@@ -1136,15 +1136,15 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_INT" << endl;
 #endif
-	  cout <<  PopInt(op_stack, stack_pos);
+	  cout << PopInt(op_stack, stack_pos);
 	  break;
 
 	case STD_OUT_FLOAT: {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_FLOAT" << endl;
 #endif
-	  FLOAT_VALUE value;      
-	  (*stack_pos) -= 2;
+	  FLOAT_VALUE value;
+	  --(*stack_pos);	  
 	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
 	  cout << value;
 	  break;
@@ -1728,7 +1728,8 @@ namespace Runtime {
 	      index -= sizeof(long);
 	    }
 	    else {
-	      index -= sizeof(FLOAT_VALUE) * 2;
+	      // index -= sizeof(FLOAT_VALUE) * 2;
+	      index -= sizeof(double);
 	    }
 	  }
 	  instr->SetOperand3(index);
