@@ -526,8 +526,11 @@ namespace Runtime {
       code = code | reg_id;
     }
 
+    /***********************************
+     * Check for 'Nil' dereferencing
+     **********************************/
     inline void CheckNilDereference(Register reg) {
-      const int offset = 14;
+      const int32_t offset = 14;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
       cout << "  " << (++instr_count) << ": [jne $" << offset << "]" << endl;
@@ -538,9 +541,39 @@ namespace Runtime {
       AddImm(offset);
       Epilog(-1);
     }
+
+    /***********************************
+     * Checks array bounds
+     **********************************/
+    inline void CheckArrayBounds(Register reg, Register max_reg) {
+      const int32_t offset = 14;
+      
+      // less than zero
+      cmp_imm_reg(0, reg);
+#ifdef _DEBUG
+      cout << "  " << (++instr_count) << ": [jge $" << offset << "]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8d);
+      AddImm(offset);
+      Epilog(-2);
+      
+      // greater than max
+      cmp_reg_reg(max_reg, reg);
+#ifdef _DEBUG
+      cout << "  " << (++instr_count) << ": [jl $" << offset << "]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8c);
+      AddImm(offset);
+      Epilog(-3);
+    }
     
-    // Gets an avaiable register from
-    // the pool of registers
+    /***********************************
+     * Gets an avaiable register from
+    ***********************************/
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -1459,8 +1492,8 @@ namespace Runtime {
 	 const int32_t dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	 index *= array[i];
-	 index += PopInt();
+	   index *= array[i];
+	   index += PopInt();
 	 }
       */
 
@@ -1517,20 +1550,30 @@ namespace Runtime {
         }
       }
       
+      // bounds check
+      RegisterHolder* bounds_holder = GetRegister();
+      move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister()); 
+      
+      // ajust indices
       switch(type) {
       case BYTE_ARY_TYPE:
 	break;
 
       case INT_TYPE:
 	shl_reg(index_holder->GetRegister(), 2);
+	shl_reg(bounds_holder->GetRegister(), 2);
 	break;
 
       case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 3);
+	shl_reg(bounds_holder->GetRegister(), 3);
 	break;
       }
+      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+      ReleaseRegister(bounds_holder);
+
       // skip first 2 integers (size and dimension) and all dimension indices
-      add_imm_reg((instr->GetOperand() + 2) * sizeof(int32_t), index_holder->GetRegister());      
+      add_imm_reg((instr->GetOperand() + 2) * sizeof(int32_t), index_holder->GetRegister());
       add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
       ReleaseRegister(index_holder);
 
