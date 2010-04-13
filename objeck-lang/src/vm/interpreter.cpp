@@ -956,8 +956,18 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
     Runtime::JitExecutorIA32 jit_executor;
-    if(jit_executor.Execute(called, (long*)instance, op_stack, stack_pos) < 0) {
-      cerr << "'Nil' memory dereference or array bounds error in native JIT code!" << endl;
+    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    if(status < 0) {
+      switch(status) {
+      case -1:
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+	break;
+	
+      case -2:
+      case -3:
+	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
+	break;
+      }
       exit(1);
     }
     // restore previous state
@@ -975,11 +985,20 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
     jit_compiler.Compile(called);      
     // execute
     Runtime::JitExecutorIA32 jit_executor;
-    if(jit_executor.Execute(called, (long*)instance, op_stack, stack_pos) < 0) {
-      cerr << "Atempting to dereference 'Nil' memory or Array out-of-bounds in native JIT code!" << endl;
+    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    if(status < 0) {
+      switch(status) {
+      case -1:
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+	break;
+	
+      case -2:
+      case -3:
+	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
+	break;
+      }
       exit(1);
     }
-    
     // restore previous state
     frame = PopFrame();
     ip = frame->GetIp();
@@ -1145,7 +1164,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
   long* array = (long*)PopInt();
   const long size = array[0];
   array += 2;
-  long index = ArrayIndex(instr, array,size);
+  long index = ArrayIndex(instr, array, size);
   FLOAT_VALUE value = PopFloat();
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }

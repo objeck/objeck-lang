@@ -202,14 +202,15 @@ class StackInterpreter {
         StackErrorUnwind();
         exit(1);
       }
-    } else {
+    } 
+    else {
       if(index < 0 || index >= size) {
         cerr << ">>> Index out of bounds: " << index << "," << size << " <<<" << endl;
         StackErrorUnwind();
         exit(1);
       }
     }
-
+    
     return index;
   }
 
