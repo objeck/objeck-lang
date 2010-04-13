@@ -76,10 +76,14 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   cout << "  " << (++instr_count) << ": [<epilog>]" << endl;
 #endif
   
+  /*
   move_mem_reg(RTRN_VALUE, EBP, EAX);
   move_mem_reg(0, EAX, EAX);
   move_imm_reg(imm, EAX);
-  
+  */
+
+  move_imm_reg(imm, EAX);
+
   BYTE_VALUE teardown_code[] = {
     // restore registers
     0x5e,             // pop esi
@@ -87,7 +91,6 @@ void JitCompilerIA32::Epilog(int32_t imm) {
     0x5a,             // pop edx
     0x59,             // pop ecx
     0x5b,             // pop ebx
-    0x58,             // pop eax
     // tear down stack frame and return
     0x89, 0xec,       // mov  %ebp, %esp
     0x5d,             // pop %ebp
@@ -385,7 +388,7 @@ void JitCompilerIA32::ProcessInstructions() {
       // unregister root
       UnregisterRoot();
       // teardown
-      Epilog(1);
+      Epilog(0);
       break;
       
     case MTHD_CALL: {
@@ -667,7 +670,7 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
 
     // int32_t value
     if(instr->GetType() == LOAD_INT_VAR) {
@@ -769,7 +772,6 @@ void JitCompilerIA32::ProcessReturnParameters(bool is_int) {
 void JitCompilerIA32::ProcessLoadByteElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
   move_mem8_reg(0, elem_holder->GetRegister(), holder->GetRegister());
   ReleaseRegister(elem_holder);
@@ -778,14 +780,12 @@ void JitCompilerIA32::ProcessLoadByteElement(StackInstr* instr) {
 
 void JitCompilerIA32::ProcessLoadIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   move_mem_reg(0, elem_holder->GetRegister(), elem_holder->GetRegister());
   working_stack.push_front(new RegInstr(elem_holder));
 }
 
 void JitCompilerIA32::ProcessLoadFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(0, elem_holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
@@ -794,7 +794,6 @@ void JitCompilerIA32::ProcessLoadFloatElement(StackInstr* instr) {
 
 void JitCompilerIA32::ProcessStoreByteElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -838,7 +837,6 @@ void JitCompilerIA32::ProcessStoreByteElement(StackInstr* instr) {
 
 void JitCompilerIA32::ProcessStoreIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -870,7 +868,6 @@ void JitCompilerIA32::ProcessStoreIntElement(StackInstr* instr) {
 
 void JitCompilerIA32::ProcessStoreFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1032,7 +1029,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
 
     addr_holder = GetRegister();
     move_mem_reg(left->GetOperand(), EBP, addr_holder->GetRegister());
-    // CheckNilDereference(addr_holder->GetRegister());
+    CheckNilDereference(addr_holder->GetRegister());
     
     dest = addr_holder->GetRegister();
     
@@ -1103,7 +1100,7 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
     
@@ -3091,11 +3088,14 @@ int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int
 					    int32_t* op_stack, int32_t *stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  
   // execute
-  int32_t rtrn_value;
-  jit_fun(cls_id, mthd_id, (int32_t*)method->GetClass()->GetClassMemory(), 
-	  inst, op_stack, stack_pos, rtrn_value);
+  int32_t rtrn_value = jit_fun(cls_id, mthd_id, 
+			       (int32_t*)method->GetClass()->GetClassMemory(), 
+			       inst, op_stack, stack_pos, rtrn_value);
+  
+#ifdef _DEBUG
+  cout << "JIT return=: " << rtrn_value << endl;
+#endif  
   
   return rtrn_value;
 }
