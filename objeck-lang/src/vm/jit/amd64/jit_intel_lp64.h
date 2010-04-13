@@ -54,7 +54,6 @@ namespace Runtime {
 #define INSTANCE_MEM -32
 #define OP_STACK -40
 #define STACK_POS -48
-#define RTRN_VALUE 16
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -230,10 +229,9 @@ namespace Runtime {
   /********************************
    * prototype for jit function
    ********************************/
-  typedef void (*jit_fun_ptr)(long cls_id, long mthd_id, 
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, 
 			      long* cls_mem, long* inst, 
-			      long* op_stack, long *stack_pos, 
-			      long &rtrn_value);
+			      long* op_stack, long *stack_pos);
   
   /********************************
    * JitCompilerIA64 class
@@ -1429,7 +1427,7 @@ namespace Runtime {
 	}
 	  break;
 
-	case FILE_OPEN: {
+	case FILE_IS_OPEN: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];	
 	
