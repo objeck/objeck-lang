@@ -549,13 +549,13 @@ namespace Runtime {
       const int32_t offset = 14;
       
       // less than zero
-      cmp_imm_reg(0, reg);
+      cmp_imm_reg(-1, reg);
 #ifdef _DEBUG
-      cout << "  " << (++instr_count) << ": [jge $" << offset << "]" << endl;
+      cout << "  " << (++instr_count) << ": [jg $" << offset << "]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
-      AddMachineCode(0x8d);
+      AddMachineCode(0x8f);
       AddImm(offset);
       Epilog(-2);
       
