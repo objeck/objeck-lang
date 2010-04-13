@@ -1,10 +1,9 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
-			for(i := 1; i <= 10; i := i + 1;) { 
-				"-------------------"->PrintLine();
+			for(i := 1; i <= 13; i := i + 1;) { 
 				select(i) {
-					label 5: {
+					label 1: {
 						1->PrintLine();
 					}
 					
@@ -12,15 +11,15 @@ bundle Default {
 						2->PrintLine();
 					}
 			
-					label 33: {
+					label 3: {
 						3->PrintLine();
 					}
 					
-					label 14: {
+					label 4: {
 						4->PrintLine();
 					}
 					
-					label -5: {
+					label 5: {
 						5->PrintLine();
 					}
 					
@@ -28,11 +27,11 @@ bundle Default {
 						6->PrintLine();
 					}
 					
-					label 27: {
+					label 7: {
 						7->PrintLine();
 					}
 					
-					label -8: {
+					label 8: {
 						8->PrintLine();
 					}
 					
@@ -49,6 +48,7 @@ bundle Default {
 					}
 				};
 				i->PrintLine();
+				"---------------"->PrintLine();
 			};	
 		}
 	}
