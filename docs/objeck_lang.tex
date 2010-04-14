@@ -5,7 +5,7 @@
 }
 \date{\today}
 
-\documentclass[12pt]{article}
+\documentclass[10pt]{article}
 
 \usepackage{aliascnt}
 \usepackage{hyperref}
@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.7}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.9}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -392,7 +392,7 @@ Objeck includes class libraries that provides access to system resources, such a
     	\begin{itemize}
 	\item method : native : IsChar(), Bool
 	\end{itemize}
-    item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
+    	\item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
     	\begin{itemize}
 	\item method : native : Min(r : Byte), Byte
 	\end{itemize}
@@ -720,7 +720,7 @@ The Directory class allows programmers manipulate filesystem directories.    The
 	\end{itemize}
     \item \texttt{List} - returns vector of file and directory names.
     	\begin{itemize}
-	\item function : List(n : System.String), String[]
+	\item function : List(n : String), String[]
 	\end{itemize}
 \end{itemize}
 
@@ -729,7 +729,7 @@ The TCPSocket class allows programmers connect to TCP/IP socket servers.    The 
 \begin{itemize}
     \item \texttt{New}
     	\begin{itemize}
-	\item New(address : System.String, port : Int)
+	\item New(address : String, port : Int)
 	\end{itemize}
     \item \texttt{IsOpen} - returns true if the socket is connected.
     	\begin{itemize}
@@ -766,80 +766,116 @@ The TCPSocket class allows programmers connect to TCP/IP socket servers.    The 
 \end{itemize}
 
 \subsubsection{LinkedList/IntLinkedList/FloatLinkedList}
-The LinkedList class allow values inserted and add to the front and back of a list.  The class supports the following operations:
+The LinkedList class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntLinkedList} and \texttt{FloatLinkedList}.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the list
+    	\begin{itemize}
+	\item method : public : native : AddBack(value : Compare), Nil
+	\end{itemize}
     \item \texttt{AddFront} - adds a new value to the front of the list
+    	\begin{itemize}
+	\item method : public : native : AddFront(value : Compare), Nil
+	\end{itemize}
+    \item \texttt{FindElement} - finds an element in the list
+    	\begin{itemize}
+	\item method : public : FindElement(value : Compare), Bool
+	\end{itemize}
     \item \texttt{InsertElement} - inserts a new value in the position pointed to the cursor
-    \item \texttt{RemoveBack} - removes the last element in the list
-    \item \texttt{RemoveFront} - removes the first element in the list
-    \item \texttt{RemoveElement} - removes the element pointed to the cursor
+    	\begin{itemize}
+	\item method : public : InsertElement(value : Compare), Bool
+	\end{itemize}
+    \item \texttt{RemoveElement} - removes the last element in the list
+    	\begin{itemize}
+	\item method : public : RemoveElement(), Nil
+	\end{itemize}
+    \item \texttt{InsertElement} - inserts an element into the current cursor position
+    	\begin{itemize}
+	\item method : public : InsertElement(value : Compare), Bool
+	\end{itemize}	
     \item \texttt{Next} - advances the internal cursor by one element
+    	\begin{itemize}
+	\item method : public : Next(), Nil
+	\end{itemize}
     \item \texttt{Pervious} - retreats the internal cursor by one element
-    \item \texttt{GetValue} - returns the value of the element  pointed to by the cursor
+    	\begin{itemize}
+	\item method : public : Pervious(), Nil
+	\end{itemize}
+    \item \texttt{GetElement} - returns the value of the element  pointed to by the cursor
+    	\begin{itemize}
+	\item method : public : GetElement(), Compare
+	\end{itemize}
     \item \texttt{Forward} - moves the cursor to the end of the list
+    	\begin{itemize}
+	\item method : public : Forward(), Nil
+	\end{itemize}
     \item \texttt{Rewind} - moves the cursor to the start of the list
+    	\begin{itemize}
+	\item method : public : Rewind(), Nil
+	\end{itemize}
+    \item \texttt{IsStart} - returns true if cursor is at the start of the list
+    	\begin{itemize}
+	\item method : public : IsStart(), Bool
+	\end{itemize}
+    \item \texttt{IsEnd} - returns true if cursor is at the end of the list
+    	\begin{itemize}
+	\item method : public : IsEnd(), Bool
+	\end{itemize}		
     \item \texttt{GetSize} - returns the size of the list
 \end{itemize}
 
 \subsubsection{Vector/IntVector/FloatVector}
-The Vector class support the concept of a growing array.  The class supports the following operations:
+The Vector class support the concept of a growing array.  There are two specialized version of this class: \texttt{IntVector} and \texttt{FloatVector}.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the vector
+    	\begin{itemize}
+	\item method : public : AddBack(value : Base), Nil
+	\end{itemize}
     \item \texttt{RemoveBack} - removes the last element in the vector
+    	\begin{itemize}
+	\item method : public : RemoveBack(), Nil
+	\end{itemize}
     \item \texttt{GetValue} - returns the value of the element  pointed to by the cursor
+    	\begin{itemize}
+	\item method : public : GetValue(index : Int), Base
+	\end{itemize}
     \item \texttt{SetValue} - replaces the list value based upon the given index
+    	\begin{itemize}
+	\item method : public : SetValue(value : Base, index : Int), Bool
+	\end{itemize}
     \item \texttt{GetSize} - returns the size of the list
+    	\begin{itemize}
+	\item method : public : GetSize(), Int
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{BinaryTree}
 The BinaryTree class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $\log_2 n$:
 \begin{itemize}
     \item \texttt{Insert} - adds a new value to the tree
+    	\begin{itemize}
+	\item method : public : native : Insert(key : Compare, value : Base), Nil
+	\end{itemize}
     \item \texttt{Delete} - removes a value from the tree
+    	\begin{itemize}
+	\item method : public : Delete(key : Compare), Nil
+	\end{itemize}
     \item \texttt{Find} - searches for a value based upon a key
-    \item \texttt{SetValue} - replaces the list value based upon the given index
+    	\begin{itemize}
+	\item method : public : Find(key : Compare), Base
+	\end{itemize}
     \item \texttt{GetKeys} - returns a vector of keys
+    	\begin{itemize}
+	\item method : public : GetKeys(), Vector
+	\end{itemize}
+    \item \texttt{GetValues} - returns a vector of values
+    	\begin{itemize}
+	\item method : public : GetValues(), Vector
+	\end{itemize}	
     \item \texttt{GetValue} - returns a vector of values
 \end{itemize}
 
 \section{Examples}
-
-\subsection{Binary Search Tree Example}
-\begin{verbatim}
-use System;
-
-bundle Default {
-  class Test {
-    function : Main(args : String[]), Nil {
-      Run();
-      "Done!"->PrintLine();
-    }
-
-    function : native : Run(), Nil {
-      tree := BinaryTree->New();
-      for(i : Int := 0; i < 1000; i := i + 1;) {
-        v := IntHolder->New(i);
-        s := String->New("Pug-");
-        s->Append((i + 2)->ToString()->ToCharArray());
-        tree->Insert(v->As(Compare), s->As(Base));
-      };
-
-      v := tree->GetKeys();
-      for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-        h := v->GetValue(i)->As(Structure.IntHolder);
-        h->GetValue()->PrintLine();
-      };
-
-      v := tree->GetValues();
-      for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-        v->GetValue(i)->As(String)->PrintLine();
-      };
-    }
-  }
-}
-\end{verbatim}
-\subsection{Prime Number Example}
+\subsection{Prime Numbes}
 \begin{verbatim}
 bundle Default {
   class FindPrime {
@@ -868,6 +904,78 @@ bundle Default {
           candidate->PrintLine();
         };
         candidate := candidate + 1;
+      };
+    }
+  }
+}
+\end{verbatim}
+
+\subsection{Simple HTTP client}
+\begin{verbatim}
+use Net;
+use IO;
+
+bundle Default {
+  class SocketTest {
+    function : Main(args : String[]), Nil {
+      address := "www.du.edu";
+
+      socket := TCPSocket->New(address, 80);
+      if(socket->IsOpen()) {
+        get := "GET / HTTP/1.1\r\nHost: ";
+        get->Append(address);
+        get->Append("\r\n\r\n");
+        socket->WriteString(get);
+
+        line := socket->ReadString();
+        while(line->GetSize() > 0) {  
+          trim := line->Trim();
+          start : Int;
+          end : Int;
+          for(i := 0; i < trim->GetSize(); i := i + 1;) {
+            # find tag start
+            if(trim->GetChar(i) = '<') {
+              start := i;
+            };
+
+            # find tag end
+            if(trim->GetChar(i) = '>') {
+              end := i;
+              len := i - start;
+              # print tag
+              if(len > 0) {
+                tag := trim->SubString(start + 1, len - 1);
+                if(tag->GetSize() > 0) {
+                  if(tag->GetChar(0) <> '/') {
+                    tag_end := 0;
+                    while(tag_end < tag->GetSize() & 
+                    	tag->GetChar(tag_end) <> ' ') {
+                      tag_end := tag_end + 1;
+                    };
+                    Console->GetInstance()->Print("start tag: |")->
+                    	Print(tag->SubString(tag_end))->PrintLine("|");      
+                  }
+                  else {
+                    tag_end := 1;
+                    while(tag_end < tag->GetSize() & 
+                    	tag->GetChar(tag_end) <> ' ') {
+                      tag_end := tag_end + 1;
+                    };
+                    Console->GetInstance()->Print("end tag: |")->
+                    	Print(tag->SubString(1, tag_end - 1))->PrintLine("|");
+                  };
+                };                      
+              };
+            };
+          };
+          line := socket->ReadString();
+        };
+        socket->Close();
+      }
+      else {
+        error := "unable to connect to: ";
+        error->Append(address);
+        error->PrintLine();
       };
     }
   }
