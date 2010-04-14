@@ -1183,6 +1183,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
   case LOAD_ARY_SIZE: {
     long* array = (long*)PopInt();
+    if(!array) {
+      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
     PushInt(array[2]);
   }
     break;

@@ -1111,6 +1111,10 @@ namespace Runtime {
 	  cout << "  LOAD_ARY_SIZE" << endl;
 #endif
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
+	  if(!array) {
+	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	    exit(1);
+	  }
 	  PushInt(op_stack, stack_pos, (int32_t)array[2]);
 	}  
 	  break;
