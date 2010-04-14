@@ -366,60 +366,198 @@ method : virtual : public : Compare(right : Base), Int;
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system resources, such as files and sockets, while also providing support for  basic data structures like lists and vectors.  As new class libraries are added they will be documented in this section.
 
+\subsection{Bool}
+\begin{itemize}
+    \item \texttt{Print} - prints the current value
+    	\begin{itemize}
+	\item method : native : Print(), Nil
+	\end{itemize}
+    \item \texttt{PrintLine} - prints the current value along with a line return
+    	\begin{itemize}
+	\item method : native : PrintLine(), Nil
+	\end{itemize}
+    \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
+   	\begin{itemize}
+	\item method : native : ToString(), String
+	\end{itemize}
+\end{itemize}
+
 \subsection{Char}
 \begin{itemize}
     \item \texttt{IsDigit} - determines if the character is a digit (in the range of \texttt{0-9})
+    	\begin{itemize}
+	\item method : native : IsDigit(), Bool
+	\end{itemize}
     \item \texttt{IsChar} - determines if the character is a alpha (in the range of \texttt{A-Z} or \texttt{a-z})
-    \item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : IsChar(), Bool
+	\end{itemize}
+    item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Min(r : Byte), Byte
+	\end{itemize}
     \item \texttt{Max} - returns the largest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Max(r : Byte), Byte
+	\end{itemize}
     \item \texttt{Print} - prints the current value
+    	\begin{itemize}
+	\item method : native : Print(), Nil
+	\end{itemize}
     \item \texttt{PrintLine} - prints the current value along with a line return
+    	\begin{itemize}
+	\item method : native : PrintLine(), Nil
+	\end{itemize}
     \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
+   	\begin{itemize}
+	\item method : native : ToString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsection{Byte/Int}
 \begin{itemize}
     \item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Min(r : Byte), Byte
+	\end{itemize}
     \item \texttt{Max} - returns the largest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Max(r : Byte), Byte
+	\end{itemize}
     \item \texttt{Abs} - returns the absolute value of the current number
+    	\begin{itemize}
+	\item method : native : Abs(), Byte
+	\end{itemize}
     \item \texttt{Print} - prints the current value
+    	\begin{itemize}
+	\item method : native : Print(), Nil
+	\end{itemize}
     \item \texttt{PrintLine} - prints the current value along with a line return
+    	\begin{itemize}
+	\item method : native : PrintLine(), Nil
+	\end{itemize}
     \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
+   	\begin{itemize}
+	\item method : native : ToString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsection{Float}
 \begin{itemize}
     \item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Min(r : Byte), Float
+	\end{itemize}
     \item \texttt{Max} - returns the largest of the two numbers; returns the same number if they are equal
+    	\begin{itemize}
+	\item method : native : Max(r : Byte), Float
+	\end{itemize}
     \item \texttt{Abs} - returns the absolute value of the current number
+    	\begin{itemize}
+	\item method : native : Abs(), Float
+	\end{itemize}
     \item \texttt{Floor} - returns the floor of the current number
+    	\begin{itemize}
+	\item method : native : Floor(), Float
+	\end{itemize}
     \item \texttt{Ceiling} - returns the ceiling of the current number
+    	\begin{itemize}
+	\item method : native : Ceiling(), Float
+	\end{itemize}
     \item \texttt{Pi} - returns the value of Pi
+    	\begin{itemize}
+	\item function : native : Pi(), Float
+	\end{itemize}
     \item \texttt{Print} - prints the current value
+    	\begin{itemize}
+	\item method : native : Print(), Nil
+	\end{itemize}
     \item \texttt{PrintLine} - prints the current value along with a line return
+    	\begin{itemize}
+	\item method : native : PrintLine(), Nil
+	\end{itemize}
     \item \texttt{ToString} - converts the current value to a \texttt{String} object instance
+   	\begin{itemize}
+	\item method : native : ToString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsection{String}
 \begin{itemize}
+    \item \texttt{New} 
+    	\begin{itemize}
+	\item New()
+	\item New(s : String)
+	\item New(a : Char[])
+	\end{itemize}
     \item \texttt{Append} - Appends a \texttt{String}, \texttt{Char[]}, \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String instance
+    	\begin{itemize}
+	\item method : public : native : Append(s : String), Nil
+	\item method : public : native : Append(c : Char), Nil
+	\item method : public : native : Append(i : Int), Nil
+	\item method : public : native : Append(f : Float), Nil
+	\item method : public : native : Append(a : Char[]), Nil
+	\end{itemize}
     \item \texttt{GetIndex} - returns the index of the first occurrence of a given Character
+    	\begin{itemize}
+	\item method : public : native : GetIndex(c : Char), Int
+	\end{itemize}
     \item \texttt{GetSize} - returns the size of the String
+    	\begin{itemize}
+	\item method : public : native : GetSize(), Int
+	\end{itemize}
     \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
+    	\begin{itemize}
+	\item method : public : native : ToCharArray(), Char[]
+	\end{itemize}
     \item \texttt{ToInt} - converts a string to a \texttt{Int}
+    	\begin{itemize}
+	\item method : public : native : ToInt(), Int
+	\end{itemize}
     \item \texttt{ToFloat} - converts a string to a \texttt{Float}
+    	\begin{itemize}
+	\item method : public : native : ToFloat(), Int
+	\end{itemize}
     \item \texttt{SubString} - creates a new string that contains a subset of the string's contents
+    	\begin{itemize}
+	\item method : public : native : SubString(offset : Int), String
+	\item method : public : native : SubString(offset : Int, length : Int), String
+	\end{itemize}
+    \item \texttt{Trim} - removes all leading and trailing whitespace
+    	\begin{itemize}
+	\item method : public : native : Trim(), String
+	\end{itemize}
+    \item \texttt{ToUpper} - coverts all lowercase characters to uppercase characters
+    	\begin{itemize}
+	\item method : public : native : ToUpper(), String
+	\end{itemize}
+    \item \texttt{ToLower} - coverts all uppercase characters to lowercase characters
+    	\begin{itemize}
+	\item method : public : native : ToLower(), String
+	\end{itemize}
     \item \texttt{Equals} - compares two string returns \texttt{true} if they are equal
+    	\begin{itemize}
+	\item method : public : Equals(rhs : String), Bool
+	\end{itemize}
     \item \texttt{Compare} - compares two string returns 0 if they are equal
-    \item \texttt{Print} - prints the String object's contents
-    \item \texttt{PrintLine} - prints the String object's contents along with a line return
+    	\begin{itemize}
+	\item method : public : native : Compare(rhs : Compare), Int
+	\end{itemize}
+   \item \texttt{Print} - prints the current value
+    	\begin{itemize}
+	\item method : native : Print(), Nil
+	\end{itemize}
+    \item \texttt{PrintLine} - prints the current value along with a line return
+    	\begin{itemize}
+	\item method : native : PrintLine(), Nil
+	\end{itemize}
 \end{itemize}
 
 \subsection{System Libraries and Data Structures}
 The following data structures are supported:
 \begin{itemize}
     \item Console
-	\item Time
+    \item Time
     \item LinkedList
     \item IntLinkedList
     \item FloatLinkedList
@@ -433,73 +571,198 @@ The following data structures are supported:
 \subsubsection{Console}
 The Console class allows programmers to read and write information to the system console.    The class supports the following operations:
 \begin{itemize}
+    \item \texttt{GetInstance} - returns the console instance
+    	\begin{itemize}
+	\item function : GetInstance(), Console
+	\end{itemize}
     \item \texttt{Print} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out.
     \item \texttt{PrintLine} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out followed by a newline.
-    \item \texttt{ReadLine} - reads in a line of text as a \texttt{Char[]} from standard in.
+    \item \texttt{ReadString} - reads in a line of text as a \texttt{Char[]} from standard in.
+    	\begin{itemize}
+	\item method : public : ReadString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{Time}
 The Time class allows programmers gain access to the current system time.    The class supports the following operations:
 \begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New()
+	\end{itemize}
     \item \texttt{GetDay} - return the current day as an \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetDay(), Int
+	\end{itemize}
     \item \texttt{GetMonth} - return the current month as an \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetMonth(), Int
+	\end{itemize}
     \item \texttt{GetYear} - return the current year as an \texttt{Int}.
-	\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetYear(), Int
+	\end{itemize}
+    \item \texttt{GetHours} - return the current hour as an \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetHours(), Int
+	\end{itemize}
     \item \texttt{GetMinutes} - return the current minutes as an \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetMinutes(), Int
+	\end{itemize}
     \item \texttt{GetSeconds} - return the current seconds as an \texttt{Int}.
-	\item \texttt{IsSavingsTime} - return true if daylights saving time, false otherwise \texttt{Int}.
+    	\begin{itemize}
+	\item method : public : GetSeconds(), Int
+	\end{itemize}
+    \item \texttt{IsSavingsTime} - return true if daylights saving time, false otherwise
+    	\begin{itemize}
+	\item method : public : IsSavingsTime(), Bool
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{File}
 The File class allows programmers manipulate system files.    The class supports the following operations:
 \begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(name : String)
+	\end{itemize}
     \item \texttt{IsOpen} - returns true if file is open.
+    	\begin{itemize}
+	\item method : public : IsOpen(), Bool
+	\end{itemize}
     \item \texttt{IsEOF} - returns true if the file pointer is at the EOF.
+    	\begin{itemize}
+	\item method : public : IsEOF(), Bool
+	\end{itemize}
     \item \texttt{Seek} - seeks to a position in a file.
+    	\begin{itemize}
+	\item method : public : Seek(p : Int), Bool
+	\end{itemize}
     \item \texttt{Rewind} - moves the file pointer to the beginning of a file.
+    	\begin{itemize}
+	\item method : public : Rewind(), Nil
+	\end{itemize}
     \item \texttt{GetSize} - returns the size of the file.
+    	\begin{itemize}
+	\item function : GetSize(name : String), Int
+	\end{itemize}
     \item \texttt{Delete} - deletes a file.
+    	\begin{itemize}
+	\item function : Delete(n : String), Bool
+	\end{itemize}
     \item \texttt{Exists} - returns true if the file exists.
+    	\begin{itemize}
+	\item function : Exists(n : String), Bool
+	\end{itemize}
     \item \texttt{Rename} - renames a file
+    	\begin{itemize}
+	\item function : Rename(from : String, to : String), Bool
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{FileReader}
 The FileReader is inherited from the File class and allows programmers read files.    The class supports the following operations:
 \begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(name : String)
+	\end{itemize}
     \item \texttt{Close} - closes a file.
+    	\begin{itemize}
+	\item method : public : Close(), Nil
+	\end{itemize}
     \item \texttt{ReadByte} - reads a byte from a file.
+    	\begin{itemize}
+	\item method : public : ReadByte(), Byte
+	\end{itemize}
     \item \texttt{ReadBuffer} - reads n number of bytes from a file.
+    	\begin{itemize}
+	\item method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int
+	\end{itemize}
     \item \texttt{ReadString} - reads a line from a file.
+    	\begin{itemize}
+	\item method : public : ReadString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{FileWriter}
 The FileReader is inherited from the File class and allows programmers read files.    The class supports the following operations:
 \begin{itemize}
     \item \texttt{Close} - closes a file.
+    	\begin{itemize}
+	\item method : public : Close(), Nil
+	\end{itemize}
     \item \texttt{WriteByte} - writes a byte to a file.
+    	\begin{itemize}
+	\item method : public : WriteByte(b : Int), Bool
+	\end{itemize}
     \item \texttt{WriteBuffer} - writes n number of bytes to a file.
+    	\begin{itemize}
+	\item method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int
+	\end{itemize}
     \item \texttt{WriteString} - writes a string to a file.
+    	\begin{itemize}
+	\item method : public : WriteString(s : String), Nil
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{Directory}
 The Directory class allows programmers manipulate filesystem directories.    The class supports the following operations:
 \begin{itemize}
     \item \texttt{Create} - creates a new directory.
+    	\begin{itemize}
+	\item function : Create(n : String), Bool
+	\end{itemize}
     \item \texttt{Exists} - returns true if the directory exists.
+    	\begin{itemize}
+	\item function : Exists(n : String), Bool
+	\end{itemize}
     \item \texttt{List} - returns vector of file and directory names.
+    	\begin{itemize}
+	\item function : List(n : System.String), String[]
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{TCPSocket}
 The TCPSocket class allows programmers connect to TCP/IP socket servers.    The class supports the following operations:
 \begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(address : System.String, port : Int)
+	\end{itemize}
     \item \texttt{IsOpen} - returns true if the socket is connected.
+    	\begin{itemize}
+	\item method : public : IsOpen(), Bool
+	\end{itemize}
     \item \texttt{Close} - closes a connected socket.
-    \item \texttt{WriteByte} - writes a byte to the socket stream.
-    \item \texttt{WriteBuffer} - writes n number of bytes to the socket stream.
-    \item \texttt{WriteString} - writes a string to the socket stream.
-    \item \texttt{ReadByte} - reads a byte from the socket stream.
-    \item \texttt{ReadBuffer} - reads n number of bytes from the socket stream.
-    \item \texttt{ReadString} - reads a line from the socket stream.
+    	\begin{itemize}
+	\item method : public : Close(), Nil
+	\end{itemize}
+    \item \texttt{WriteByte} - writes a byte to a file.
+    	\begin{itemize}
+	\item method : public : WriteByte(b : Int), Bool
+	\end{itemize}
+    \item \texttt{WriteBuffer} - writes n number of bytes to a file.
+    	\begin{itemize}
+	\item method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int
+	\end{itemize}
+    \item \texttt{WriteString} - writes a string to a file.
+    	\begin{itemize}
+	\item method : public : WriteString(s : String), Nil
+	\end{itemize}
+    \item \texttt{ReadByte} - reads a byte from a file.
+    	\begin{itemize}
+	\item method : public : ReadByte(), Byte
+	\end{itemize}
+    \item \texttt{ReadBuffer} - reads n number of bytes from a file.
+    	\begin{itemize}
+	\item method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int
+	\end{itemize}
+    \item \texttt{ReadString} - reads a line from a file.
+    	\begin{itemize}
+	\item method : public : ReadString(), String
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{LinkedList/IntLinkedList/FloatLinkedList}
