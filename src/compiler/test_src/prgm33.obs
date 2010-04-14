@@ -23,7 +23,7 @@ bundle Default {
 				list->Next();
 			};
 
-			list->Foward();
+			list->Forward();
 			while(list->IsStart() <> true) {
 				list->GetValue()->PrintLine();
 				list->Previous();

@@ -531,13 +531,19 @@ bundle System {
 
 		New() {
 			Parent();
+
 			@max := 8;
-			@pos := 0;
 			@string := Char->New[@max];
+			@pos := 0;
 		}
 
 		New(string : String) {
 			Parent();
+
+			@max := 8;
+			@string := Char->New[@max];
+			@pos := 0;
+			
 			Append(string->ToCharArray());
 		}
 					
@@ -599,13 +605,13 @@ bundle System {
 		method : public : native : Append(c : Char), Nil {
 			if(@pos >= @max) {
 				# expand string
-				@max := @max * 3;
-                tmp : Char[] := Char->New[@max];
-                # copy elements
-                for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
-                	tmp[i] := @string[i];
-                };
-                @string := tmp;
+                		@max := @max * 3;
+                		tmp : Char[] := Char->New[@max];
+                		# copy elements
+                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                        		tmp[i] := @string[i];
+                		};
+                		@string := tmp;
 			};
 
 			@string[@pos] := c;
@@ -775,6 +781,8 @@ bundle System {
 		}
 
 		method : public : native : Trim(), String {
+			# copy elements
+
 			i := 0;	
 			c : Char := @string[i];
 			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->GetSize()) {
@@ -790,7 +798,7 @@ bundle System {
 			};	
 		
 			k := 0;		
-			tmp : Char[] := Char->New[@max + 1];
+			tmp : Char[] := Char->New[@max];
 			while(i < j) {
 				tmp[k] := @string[i];
 				i := i + 1;
@@ -798,28 +806,6 @@ bundle System {
 			};
             
 			return String->New(tmp);
-		}
-
-		method : public : native : SubString(offset : Int), String {
-			return SubString(offset, @pos - offset);
-		}
-
-		method : public : native : SubString(offset : Int, length : Int), String {
-			if(offset < 0 | offset > @pos) {
-				return Nil;
-			};
-
-			end : Int := length + offset;
-			if(end < 0 | end > @pos) {
-				return Nil;
-			};
-
-			array : Char[] := Char->New[length];
-			for(i : Int := 0; i < length; i := i + 1;) {
-				array[i] := @string[i + offset];
-			};
-
-			return String->New(array);
 		}
 		
 		method : public : native : ToUpper(), String {
@@ -847,12 +833,34 @@ bundle System {
 			
 			return String->New(array);
 		}
+
+		method : public : SubString(offset : Int), String {
+			return SubString(0, offset);
+		}
+
+		method : public : SubString(offset : Int, length : Int), String {
+			if(offset < 0 | offset > @pos) {
+				return Nil;
+			};
+
+			end : Int := length + offset;
+			if(end < 0 | end > @pos) {
+				return Nil;
+			};
+
+			array : Char[] := Char->New[length];
+			for(i : Int := 0; i < length; i := i + 1;) {
+				array[i] := @string[i + offset];
+			};
+
+			return String->New(array);
+		}
 	
 		method : public : Equals(rhs : String), Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {
+		method : public : Compare(rhs : System.Compare), Int {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
 				for(i : Int := 0; i < @pos; i := i + 1;) {
