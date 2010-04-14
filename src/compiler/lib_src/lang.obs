@@ -531,19 +531,13 @@ bundle System {
 
 		New() {
 			Parent();
-
 			@max := 8;
-			@string := Char->New[@max + 1];
 			@pos := 0;
+			@string := Char->New[@max];
 		}
 
 		New(string : String) {
 			Parent();
-
-			@max := 8;
-			@string := Char->New[@max + 1];
-			@pos := 0;
-			
 			Append(string->ToCharArray());
 		}
 					
@@ -557,14 +551,14 @@ bundle System {
 				@max := array->GetSize();
 			};
 			
-			@string := Char->New[@max + 1];
+			@string := Char->New[@max];
 			@pos := 0;
 
 			Append(array);
 		}
 
 		method : public : native : ToCharArray(), Char[] {
-			array : Char[] := Char->New[@pos + 1];
+			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				array[i] := @string[i];
 			};
@@ -588,7 +582,7 @@ bundle System {
 			if(@pos + array->GetSize() >= @max) {
 				# expand string
 				@max := (@max + array->GetSize()) * 2;
-				tmp : Char[] := Char->New[@max + 1];
+				tmp : Char[] := Char->New[@max];
 				# copy elements
 				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
 					tmp[i] := @string[i];	
@@ -605,13 +599,13 @@ bundle System {
 		method : public : native : Append(c : Char), Nil {
 			if(@pos >= @max) {
 				# expand string
-                		@max := @max * 3;
-                		tmp : Char[] := Char->New[@max + 1];
-                		# copy elements
-                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
-                        		tmp[i] := @string[i];
-                		};
-                		@string := tmp;
+				@max := @max * 3;
+                tmp : Char[] := Char->New[@max];
+                # copy elements
+                for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                	tmp[i] := @string[i];
+                };
+                @string := tmp;
 			};
 
 			@string[@pos] := c;
@@ -781,8 +775,6 @@ bundle System {
 		}
 
 		method : public : native : Trim(), String {
-			# copy elements
-
 			i := 0;	
 			c : Char := @string[i];
 			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->GetSize()) {
@@ -808,11 +800,11 @@ bundle System {
 			return String->New(tmp);
 		}
 
-		method : public : SubString(offset : Int), String {
-			return SubString(0, offset);
+		method : public : native : SubString(offset : Int), String {
+			return SubString(offset, @pos - offset);
 		}
 
-		method : public : SubString(offset : Int, length : Int), String {
+		method : public : native : SubString(offset : Int, length : Int), String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
@@ -829,12 +821,38 @@ bundle System {
 
 			return String->New(array);
 		}
+		
+		method : public : native : ToUpper(), String {
+			array : Char[] := Char->New[@pos];
+			for(i : Int := 0; i < @pos; i := i + 1;) {
+				c := @string[i];
+				if(c > 96 & c < 123) {
+					c := c - 32;
+				};
+				array[i] := c;
+			};
+			
+			return String->New(array);
+		}
+		
+		method : public : native : ToLower(), String {
+			array : Char[] := Char->New[@pos];
+			for(i : Int := 0; i < @pos; i := i + 1;) {
+				c := @string[i];
+				if(c > 64 & c < 91) {
+					c := c + 32;
+				};
+				array[i] := c;
+			};
+			
+			return String->New(array);
+		}
 	
 		method : public : Equals(rhs : String), Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
-		method : public : Compare(rhs : System.Compare), Int {
+		method : public : native : Compare(rhs : System.Compare), Int {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
 				for(i : Int := 0; i < @pos; i := i + 1;) {
