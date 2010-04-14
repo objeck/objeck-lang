@@ -30,7 +30,9 @@ bundle Structure {
 		}
 
 		method : public : RemoveBack(), Nil {
-			@size := @size - 1;
+			if(@size > 0) {
+				@size := @size - 1;
+			};
 		}
 
 		method : public : GetValue(index : Int), Int {
@@ -41,10 +43,13 @@ bundle Structure {
 			return 0;
 		}
 
-		method : public : SetValue(value : Int, index : Int), Nil {
+		method : public : SetValue(value : Int, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
+				return true;
 			};
+			
+			return false;
 		}
 		
 		method : public : GetSize(), Int {
@@ -79,7 +84,9 @@ bundle Structure {
 		}
 
 		method : public : RemoveBack(), Nil {
-			@size := @size - 1;
+			if(@size > 0) {
+				@size := @size - 1;
+			};
 		}
 
 		method : public : GetValue(index : Int), Float {
@@ -90,10 +97,13 @@ bundle Structure {
 			return 0.0;
 		}
 
-		method : public : SetValue(value : Float, index : Int), Nil {
+		method : public : SetValue(value : Float, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
+				return true;
 			};
+			
+			return false;
 		}
 		
 		method : public : GetSize(), Int {
@@ -128,7 +138,9 @@ bundle Structure {
 		}
 
 		method : public : RemoveBack(), Nil {
-			@size := @size - 1;
+			if(@size > 0) {
+				@size := @size - 1;
+			};
 		}
 
 		method : public : GetValue(index : Int), System.Base {
@@ -139,10 +151,13 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : SetValue(value : System.Base, index : Int), Nil {
+		method : public : SetValue(value : System.Base, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
+				return true;
 			};
+			
+			return false;
 		}
 		
 		method : public : GetSize(), Int {
@@ -349,7 +364,7 @@ bundle Structure {
 			@cursor := @head;
 		}		
 
-		method : public : Foward(), Nil {
+		method : public : Forward(), Nil {
 			@cursor := @tail;
 		}		
 
@@ -377,14 +392,18 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : InsertElement(value : System.Compare), Nil {
+		method : public : InsertElement(value : System.Compare), Bool {
 			if(@cursor <> Nil) {
 				node : ListNode := ListNode->New(value);
 				@cursor->SetNext(node);
 			 	node->SetPrevious(@cursor);	
 				@cursor := node;
 				@size := @size + 1;
+				
+				return true;
 			};
+			
+			return false;
 		}
 		
 		method : public : RemoveElement(), Nil {
