@@ -8,6 +8,12 @@ bundle Default {
 			}	
 			while(i < 0);
 			"Bye"->PrintLine();
+
+			s := "Hello World!";
+			s->StartsWith("Hello")->PrintLine();
+			s->EndsWith("World!")->PrintLine();
+
+			3->Max(5)->PrintLine();
 		}
 	}
 }
