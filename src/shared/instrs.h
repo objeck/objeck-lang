@@ -102,7 +102,8 @@ namespace instructions {
     // external OS traps
     TRAP,
     TRAP_RTRN,
-    // NOOPs
+    // stack ops
+    SWAP_INT,
     POP_INT,
     POP_FLOAT,
     // thread directives

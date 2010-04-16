@@ -1,6 +1,10 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
+			Run();
+		}
+	
+		function : native : Run(), Nil {
 			i := 0;
 			do {
 				i->PrintLine();
@@ -13,7 +17,10 @@ bundle Default {
 			s->StartsWith("Hello")->PrintLine();
 			s->EndsWith("World!")->PrintLine();
 
+
 			3->Max(5)->PrintLine();
+			"Hello World!"->StartsWith("Hello")->PrintLine();
+
 		}
 	}
 }
