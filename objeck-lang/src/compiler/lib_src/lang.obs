@@ -780,6 +780,38 @@ bundle System {
 			return 0.0;
 		}
 
+		method : public : native : StartsWith(s : String), Bool {
+			if(s->GetSize() < @pos) {
+				for(i := 0; i < s->GetSize(); i := i + 1;) {
+					if(s->GetChar(i) <> @string[i]) {
+						return false;
+					};
+				};
+
+				return true;
+			};
+
+			return false;
+		}
+
+		method : public : native : EndsWith(s : String), Bool {
+			if(s->GetSize() < @pos) {
+				i := s->GetSize() - 1;
+				j := @pos - 1;
+				while(i > -1) {
+					if(s->GetChar(i) <> @string[j]) {
+						return false;
+					};
+					i := i - 1;
+					j := j - 1;
+				};
+
+				return true;
+			};
+
+			return false;
+		}
+		
 		method : public : native : Trim(), String {
 			# copy elements
 
