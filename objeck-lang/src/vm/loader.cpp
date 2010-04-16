@@ -513,6 +513,10 @@ void Loader::LoadStatements(StackMethod* method)
       method->AddInstruction(new StackInstr(I2F));
       break;
 
+    case SWAP_INT:
+      method->AddInstruction(new StackInstr(SWAP_INT));
+      break;
+
     case POP_INT:
       method->AddInstruction(new StackInstr(POP_INT));
       break;

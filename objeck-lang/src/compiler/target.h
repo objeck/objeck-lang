@@ -230,6 +230,10 @@ public:
 
   void Debug() {
     switch(type) {
+    case SWAP_INT:
+      cout << "SWAP_INT" << endl;
+      break;
+      
     case POP_INT:
       cout << "POP_INT" << endl;
       break;

@@ -169,7 +169,11 @@ class IntermediateEmitter {
   bool is_lib;
   friend class SelectArrayTree;
   bool is_new_inst;
-
+  // NOTE: used to determine if two instantiated 
+  // objects instances need to be swapped as 
+  // method parameters
+  int new_inst_count; 
+  
   // emit operations
   void EmitStrings();
   void EmitLibraries(Linker* linker);
@@ -315,6 +319,7 @@ class IntermediateEmitter {
     // 1,073,741,824 unconditional labels
     unconditional_label = (2 << 29) - 1;
     is_new_inst = false;
+    new_inst_count = 0;
   }
 
   ~IntermediateEmitter() {

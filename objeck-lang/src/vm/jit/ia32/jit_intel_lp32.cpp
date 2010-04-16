@@ -485,6 +485,21 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessStoreFloatElement(instr);
       break;
 
+    case SWAP_INT: {
+#ifdef _DEBUG
+      cout << "SWAP_INT: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      RegInstr* left = working_stack.front();
+      working_stack.pop_front();
+
+      RegInstr* right = working_stack.front();
+      working_stack.pop_front();
+
+      working_stack.push_front(left);       
+      working_stack.push_front(right);
+    }
+      break;
+
     case POP_INT:
     case POP_FLOAT: {
 #ifdef _DEBUG

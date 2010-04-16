@@ -564,6 +564,10 @@ void Library::LoadStatements(LibraryMethod* method)
       break;
     }
 
+    case SWAP_INT:
+      instrs.push_back(new LibraryInstr(SWAP_INT));
+      break;
+
     case POP_INT:
       instrs.push_back(new LibraryInstr(POP_INT));
       break;
