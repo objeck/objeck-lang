@@ -437,11 +437,13 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
         case frontend::INT_TYPE:
         case frontend::CLASS_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, entry->GetId(), LOCL));
+	  new_inst_count = 0;
           break;
 
         case frontend::FLOAT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, entry->GetId(), LOCL));
+	    new_inst_count = 0;
           } else {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_FLOAT_VAR, entry->GetId(), LOCL));
           }
@@ -1390,10 +1392,14 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(NEW_OBJ_INST, (INT_VALUE)string_cls_id));
   }
   // note: method ID is position dependant
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L));
-
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
   // new basic block
   NewBlock();
+  // check for stack swap
+  new_inst_count++;
+  if(new_inst_count == 2) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(SWAP_INT));
+  }
 }
 
 /****************************
@@ -1410,12 +1416,14 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, label, 1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, 0));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
+    new_inst_count = 0;
     int end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
+    new_inst_count = 0;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, end));
   }
     break;
@@ -1428,12 +1436,14 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, label, 0));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LOAD_INT_LIT, 1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
+    new_inst_count = 0;
     int end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, 0, LOCL));
+    new_inst_count = 0;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(LBL, end));
   }
     break;
@@ -1789,11 +1799,13 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, variable->GetId(), mem_context));
+      new_inst_count = 0;
       break;
 
     case frontend::FLOAT_TYPE:
       if(variable->GetEntry()->GetType()->GetDimension() > 0) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_INT_VAR, variable->GetId(), mem_context));
+	new_inst_count = 0;
       } else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(STOR_FLOAT_VAR, variable->GetId(), mem_context));
       }
@@ -1909,7 +1921,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(NEW_FLOAT_ARY,	(INT_VALUE)expressions.size()));
       break;
     }
-  } else {
+  } 
+  else {
     // literal and variable method calls
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
@@ -1918,12 +1931,14 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       MemoryContext mem_context;
       if(entry->IsLocal()) {
         mem_context = LOCL;
-      } else if(entry->IsStatic()) {
+      } 
+      else if(entry->IsStatic()) {
         mem_context = CLS;
-      } else {
+      } 
+      else {
         mem_context = INST;
       }
-
+      
       if(entry->GetType()->GetDimension() > 0 && entry->GetType()->GetType() == CLASS_TYPE) {
         // load instance or class memory
         if(mem_context == INST) {
@@ -2049,10 +2064,21 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       }
       NewBlock();
     }
-  }
+  }  
   // new basic block
   NewBlock();
   is_new_inst = false;
+
+  // check for stack swap
+  if(is_new_inst) {
+    new_inst_count++;
+  }
+  else {
+    new_inst_count = 0;
+  }  
+  if(new_inst_count == 2) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(SWAP_INT));
+  }
 }
 
 void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)

@@ -406,6 +406,13 @@ void StackInterpreter::Execute()
 #endif
       PushInt((long)PopFloat());
       break;
+      
+    case SWAP_INT:
+#ifdef _DEBUG
+      cout << "stack oper: SWAP_INT; call_pos=" << call_stack_pos << endl;
+#endif
+      SwapInt();
+      break;
 
     case POP_INT:
 #ifdef _DEBUG

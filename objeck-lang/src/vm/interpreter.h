@@ -137,6 +137,14 @@ class StackInterpreter {
     (*stack_pos) += 2;
 #endif
   }
+  
+  inline void SwapInt() {
+    long left = PopInt();
+    long right = PopInt();
+
+    PushInt(left);     
+    PushInt(right);
+  }
 
   inline long PopInt() {
     long v = op_stack[--(*stack_pos)];
