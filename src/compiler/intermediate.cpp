@@ -1397,7 +1397,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   NewBlock();
   // check for stack swap
   new_inst_count++;
-  if(new_inst_count == 2) {
+  if(new_inst_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(SWAP_INT));
   }
 }
@@ -2076,7 +2076,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   else {
     new_inst_count = 0;
   }  
-  if(new_inst_count == 2) {
+  if(new_inst_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(SWAP_INT));
   }
 }
