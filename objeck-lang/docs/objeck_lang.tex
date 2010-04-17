@@ -1104,6 +1104,9 @@ F2I & n/a & pop top float and pushes result of integer cast \\ \hline
 \multicolumn{3}{|c|}{\textbf{Objects/Methods/Traps}} \\
 \hline
 \emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
+SWAP\_INT & n/a & swaps the top two integer values on the stack \\ \hline
+POP\_INT & n/a & control pop of an integer from the stack \\ \hline
+POP\_FLOAT & n/a & control pop of a float from the stack \\ \hline
 RTRN & n/a & exits existing method returning control to callee \\ \hline
 MTHD\_CALL & integer values for class id and method id & synchronous call to given method releasing control \\ \hline
 ASYNC\_MTHD\_CALL & integer values for class id and method id; pushes new thread id & asynchronous call to given method \\ \hline
