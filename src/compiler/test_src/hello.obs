@@ -19,7 +19,7 @@ bundle Default {
 
 
 			3->Max(5)->PrintLine();
-			"Hello World!"->StartsWith("Hello")->PrintLine();
+			"Hello World!"->StartsWith("Hello ")->PrintLine();
 
 		}
 	}
