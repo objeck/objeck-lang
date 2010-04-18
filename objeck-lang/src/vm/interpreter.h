@@ -243,11 +243,11 @@ class StackInterpreter {
   inline void ProcessReturn();
 
   inline void ProcessAsyncMethodCall(StackInstr* instr);
-  inline void ProcessInterpretedAsyncMethodCall(StackMethod* called, long instance);
+  inline void ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance);
 
   inline void ProcessMethodCall(StackInstr* instr);
-  inline void ProcessJitMethodCall(StackMethod* called, long instance);
-  inline void ProcessInterpretedMethodCall(StackMethod* called, long instance);
+  inline void ProcessJitMethodCall(StackMethod* called, long* instance);
+  inline void ProcessInterpretedMethodCall(StackMethod* called, long* instance);
   inline void ProcessLoadIntArrayElement(StackInstr* instr);
   inline void ProcessStoreIntArrayElement(StackInstr* instr);
   inline void ProcessLoadFloatArrayElement(StackInstr* instr);
@@ -281,7 +281,7 @@ public:
 
   // execute method
   void Execute(long* stack, long* pos, long i, StackMethod* method, 
-	       long* self, bool jit_called);
+	       long* instance, bool jit_called);
   void Execute();
 };
 }
