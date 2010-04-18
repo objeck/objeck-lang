@@ -913,13 +913,17 @@ class StackFrame {
   bool jit_called;
   
 public:
-  StackFrame(StackMethod* md, long* m) {
+  StackFrame() {
+  }
+
+  StackFrame(StackMethod* md, long* inst) {
     method = md;
-    mem = m;
+    mem = md->NewMemory();
+    mem[0] = (long)inst;
     ip = -1;
     jit_called = false;
   }
-
+  
   ~StackFrame() {
     delete[] mem;
     mem = NULL;

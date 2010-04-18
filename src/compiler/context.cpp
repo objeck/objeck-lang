@@ -786,6 +786,10 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
   return false;
 }
 
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,
 						  Class* &klass, LibraryClass* &lib_klass)
 {
@@ -798,6 +802,10 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
   return false;
 }
 
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
 						  string &encoding, Class* &klass,
 						  LibraryClass* &lib_klass)

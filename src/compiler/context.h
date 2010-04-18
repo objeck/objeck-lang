@@ -221,6 +221,7 @@ class ContextAnalyzer {
     return false;
   }
 
+  // returns a symbol table entry by name
   SymbolEntry* GetEntry(string name) {
     // check locally
     SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + ":" + name);
@@ -249,6 +250,7 @@ class ContextAnalyzer {
     return NULL;
   }
 
+  // returns a symbol table entry by name for a given method
   SymbolEntry* GetEntry(MethodCall* method_call, const string &variable_name, int depth) {
     SymbolEntry* entry;
     if(method_call->GetVariable()) {
@@ -265,6 +267,7 @@ class ContextAnalyzer {
     return entry;
   }
 
+  // returns a type expression
   Type* GetExpressionType(Expression* expression, int depth) {
     Type* type;
     MethodCall* mthd_call = expression->GetMethodCall();
@@ -281,6 +284,7 @@ class ContextAnalyzer {
     return type;
   }
 
+  // checks for a valid downcast
   bool ValidDownCast(const string &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp) {
     while(class_tmp || lib_class_tmp) {
       // get cast name
@@ -317,6 +321,7 @@ class ContextAnalyzer {
     return false;
   }
 
+  // checks for a valid upcast
   bool ValidUpCast(const string &to, Class* from_klass) {
     if(to == from_klass->GetName()) {
       return true;
@@ -333,6 +338,7 @@ class ContextAnalyzer {
     return false;
   }
 
+  // checks for a valid upcast
   bool ValidUpCast(const string &to, LibraryClass* from_klass) {
     if(to == from_klass->GetName()) {
       return true;
