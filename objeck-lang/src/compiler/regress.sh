@@ -1,5 +1,5 @@
 #!/bin/bash 
-i=53
+i=56
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------
 
@@ -18,5 +18,4 @@ until [  $i -lt 1 ]; do
 
 	cd ../compiler
 	let i-=1
-
 done

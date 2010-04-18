@@ -824,9 +824,10 @@ void StackInterpreter::ProcessReturn()
 #ifdef _DEBUG
   cout << "removing frame=" << frame << endl;
 #endif
+
   delete frame;
   frame = NULL;
-
+  
   // restore previous frame
   if(!StackEmpty()) {
     frame = PopFrame();
