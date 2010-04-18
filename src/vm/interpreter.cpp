@@ -125,16 +125,14 @@ void StackInterpreter::Initialize(StackProgram* p)
  * Main VM execution method
  ********************************/
 void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
-                               long* self, bool jit_called)
+                               long* instance, bool jit_called)
 {
   // inital setup
   op_stack = stack;
   stack_pos = pos;
   call_stack_pos = 0;
 
-  long* mem = method->NewMemory();
-  mem[0] = (long)self;
-  frame = new StackFrame(method, mem);
+  frame = new StackFrame(method, instance);
 #ifdef _DEBUG
   cout << "creating frame=" << frame << endl;
 #endif
@@ -844,7 +842,7 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
-  long instance = frame->GetMemory()[0];
+  long* instance = (long*)frame->GetMemory()[0];
 
   // make call
   StackMethod* called = program->GetClass(frame->GetMethod()->GetClass()->GetId())->GetMethod(instr->GetOperand2());
@@ -874,7 +872,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
  * Processes an interpreted
  * asynchronous method call.
  ********************************/
-void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long instance)
+void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance)
 {
   cerr << "Unsupported operation: asynchronous method call!" << endl;
   exit(1);
@@ -916,7 +914,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
   PushFrame(frame);
 
   // pop instance
-  long instance = PopInt();
+  long* instance = (long*)PopInt();
 
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
@@ -953,7 +951,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 {
   // #ifdef _X64
   // ProcessInterpretedMethodCall(called, instance);
@@ -1061,16 +1059,14 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long instance)
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long instance)
+void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* instance)
 {
 #ifdef _DEBUG
   cout << "=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
        << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif
-  long* mem = called->NewMemory();
-  mem[0] = instance;
   ip = 0;
-  frame = new StackFrame(called, mem);
+  frame = new StackFrame(called, instance);
 #ifdef _DEBUG
   cout << "creating frame=" << frame << endl;
 #endif
