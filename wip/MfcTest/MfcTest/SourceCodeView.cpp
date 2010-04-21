@@ -7,21 +7,21 @@
 
 template< > UINT AFXAPI HashKey( CString& key )
 {
-LPCTSTR pp = (LPCTSTR)(key);
-UINT uiRet = 0;
-while (*pp)
-{
-uiRet = (uiRet<<5) + uiRet + *pp++;
-}
+  LPCTSTR pp = (LPCTSTR)(key);
+  UINT uiRet = 0;
+  while (*pp)
+  {
+    uiRet = (uiRet<<5) + uiRet + *pp++;
+  }
 
-return uiRet;
+  return uiRet;
 }
 
 // SourceCodeView
 
 IMPLEMENT_DYNCREATE(SourceCodeView, CRichEditView)
 
-SourceCodeView::SourceCodeView()
+  SourceCodeView::SourceCodeView()
 {
   mTokenColors[CString("Int")] = RGB(0, 255, 0);
   mTokenColors[CString("Float")] = RGB(255, 0 , 0);
@@ -34,6 +34,7 @@ SourceCodeView::~SourceCodeView()
 
 BEGIN_MESSAGE_MAP(SourceCodeView, CRichEditView)
   ON_WM_KEYUP()
+  ON_COMMAND(ID_EDIT_PASTE, &SourceCodeView::OnEditPaste)
 END_MESSAGE_MAP()
 
 
@@ -42,13 +43,13 @@ END_MESSAGE_MAP()
 #ifdef _DEBUG
 void SourceCodeView::AssertValid() const
 {
-	CRichEditView::AssertValid();
+  CRichEditView::AssertValid();
 }
 
 #ifndef _WIN32_WCE
 void SourceCodeView::Dump(CDumpContext& dc) const
 {
-	CRichEditView::Dump(dc);
+  CRichEditView::Dump(dc);
 }
 #endif
 #endif //_DEBUG
@@ -131,7 +132,36 @@ void SourceCodeView::ParseLine(TCHAR* buffer, const int lineOffset, const int nu
       }
       start = end + 1;
     }
-    break;
+      break;
+    }
+  }
+}
+
+void SourceCodeView::OnEditPaste()
+{
+  CRichEditCtrl& editCtrl = GetRichEditCtrl();
+
+  long startStart, startEnd;
+  editCtrl.GetSel(startStart, startEnd);
+
+  editCtrl.PasteSpecial(CF_TEXT);
+
+  long endStart, endEnd;
+  editCtrl.GetSel(endStart, endEnd);
+
+
+  const int lineMax = 512;
+  int lineStart = -1;
+  for(int i = startStart; i < endEnd; i++) {
+    const int lineOffset = editCtrl.LineIndex(i);
+    const int lineNbr = editCtrl.LineFromChar(lineOffset);
+    TCHAR buffer[lineMax];
+
+    if(lineNbr > -1) {
+      const int numRead = editCtrl.GetLine(lineNbr, buffer, lineMax);
+      buffer[numRead] = '\0';
+      ParseLine(buffer, lineOffset, numRead);
+      lineStart = lineNbr;
     }
   }
 }
