@@ -59,17 +59,21 @@ void SourceCodeView::Dump(CDumpContext& dc) const
 
 void SourceCodeView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-  if((nChar < 48 || nChar > 90) && (nChar != VK_BACK && nChar != VK_DELETE)) {
+  if((nChar < 48 || nChar > 90) && (nChar != VK_BACK && nChar != VK_DELETE &&
+    nChar != VK_UP && nChar != VK_DOWN && nChar != VK_LEFT && nChar != VK_RIGHT &&
+    nChar != VK_LCONTROL && nChar != VK_RCONTROL && nChar != VK_LSHIFT && nChar != VK_RSHIFT)) {
     CRichEditCtrl& editCtrl = GetRichEditCtrl();
 
     const int lineMax = 512;
-    const int lineOffset = editCtrl.LineIndex();
+    int lineOffset = editCtrl.LineIndex();
     int lineNbr = editCtrl.LineFromChar(lineOffset);
     TCHAR buffer[lineMax];
 
     if(lineNbr > -1) {
       if(nChar == VK_RETURN) {
         lineNbr--;
+        lineOffset = editCtrl.LineIndex(lineNbr);
+        lineNbr = editCtrl.LineFromChar(lineOffset);
       }
       const int numRead = editCtrl.GetLine(lineNbr, buffer, lineMax);
       buffer[numRead] = '\0';
@@ -112,6 +116,7 @@ void SourceCodeView::ParseLine(TCHAR* buffer, const int lineOffset, const int nu
     case '\n':
     case '\r':{
       CString word(buffer + start, end - start);
+      word = word.TrimLeft().TrimRight();
       TRACE("|");
       TRACE(word);
       TRACE("|\n");
