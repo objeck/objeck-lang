@@ -59,17 +59,22 @@ void SourceCodeView::Dump(CDumpContext& dc) const
 
 void SourceCodeView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-  CRichEditCtrl& editCtrl = GetRichEditCtrl();
+  if((nChar < 48 || nChar > 90) && (nChar != VK_BACK && nChar != VK_DELETE)) {
+    CRichEditCtrl& editCtrl = GetRichEditCtrl();
 
-  const int lineMax = 512;
-  const int lineOffset = editCtrl.LineIndex();
-  const int lineNbr = editCtrl.LineFromChar(lineOffset);
-  TCHAR buffer[lineMax];
+    const int lineMax = 512;
+    const int lineOffset = editCtrl.LineIndex();
+    int lineNbr = editCtrl.LineFromChar(lineOffset);
+    TCHAR buffer[lineMax];
 
-  if(lineNbr > -1) {
-    const int numRead = editCtrl.GetLine(lineNbr, buffer, lineMax);
-    buffer[numRead] = '\0';
-    ParseLine(buffer, lineOffset, numRead);
+    if(lineNbr > -1) {
+      if(nChar == VK_RETURN) {
+        lineNbr--;
+      }
+      const int numRead = editCtrl.GetLine(lineNbr, buffer, lineMax);
+      buffer[numRead] = '\0';
+      ParseLine(buffer, lineOffset, numRead);
+    }
   }
   // TODO: Add your message handler code here and/or call default
   CRichEditView::OnKeyUp(nChar, nRepCnt, nFlags);
@@ -103,7 +108,9 @@ void SourceCodeView::ParseLine(TCHAR* buffer, const int lineOffset, const int nu
     case '*':
     case '/':
     case '%':
-    case ' ': {
+    case ' ':
+    case '\n':
+    case '\r':{
       CString word(buffer + start, end - start);
       TRACE("|");
       TRACE(word);
@@ -131,6 +138,27 @@ void SourceCodeView::ParseLine(TCHAR* buffer, const int lineOffset, const int nu
         editCtrl.HideSelection(false, false);
       }
       start = end + 1;
+    }
+      break;
+
+    default: {
+      CHARFORMAT cf;
+      editCtrl.HideSelection(true, false);
+      long oldStart, oldEnd;
+      editCtrl.GetSel(oldStart, oldEnd);
+      editCtrl.SetSel(start + lineOffset, oldEnd);
+
+      editCtrl.GetDefaultCharFormat(cf);
+      cf.cbSize = sizeof(CHARFORMAT);
+      cf.dwMask = CFM_COLOR;
+      cf.dwEffects = CFM_COLOR;
+      cf.dwEffects &= ~CFE_AUTOCOLOR;
+      cf.crTextColor = RGB(0, 0, 0);
+
+      editCtrl.SetSelectionCharFormat(cf);
+
+      editCtrl.SetSel(oldStart, oldEnd);
+      editCtrl.HideSelection(false, false);
     }
       break;
     }
