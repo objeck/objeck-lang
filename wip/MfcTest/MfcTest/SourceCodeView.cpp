@@ -23,9 +23,34 @@ IMPLEMENT_DYNCREATE(SourceCodeView, CRichEditView)
 
   SourceCodeView::SourceCodeView()
 {
-  mTokenColors[CString("Int")] = RGB(0, 255, 0);
-  mTokenColors[CString("Float")] = RGB(255, 0 , 0);
-  mTokenColors[CString("function")] = RGB(0, 0, 255);
+  // red3
+  mTokenColors[CString("if")] = RGB(205, 0, 0);
+  mTokenColors[CString("else")] = RGB(205, 0, 0);
+  mTokenColors[CString("do")] = RGB(205, 0, 0);
+  mTokenColors[CString("while")] = RGB(205, 0, 0);
+  mTokenColors[CString("for")] = RGB(205, 0, 0);
+  mTokenColors[CString("select")] = RGB(205, 0, 0);
+  mTokenColors[CString("return")] = RGB(205, 0, 0);
+  mTokenColors[CString("other")] = RGB(205, 0, 0);
+  mTokenColors[CString("label")] = RGB(205, 0, 0);
+  // blue3
+  mTokenColors[CString("class")] = RGB(0, 0, 205);
+  mTokenColors[CString("enum")] = RGB(0, 0, 205);
+  mTokenColors[CString("method")] = RGB(0, 0, 205);
+  mTokenColors[CString("function")] = RGB(0, 0, 205);
+  mTokenColors[CString("Parent")] = RGB(0, 0, 205);
+  mTokenColors[CString("bundle")] = RGB(0, 0, 205);
+  mTokenColors[CString("use")] = RGB(0, 0, 205);
+  mTokenColors[CString("virtual")] = RGB(0, 0, 205);
+  // blue3
+  mTokenColors[CString("true")] = RGB(0, 0, 205);
+  mTokenColors[CString("false")] = RGB(0, 0, 205);
+  mTokenColors[CString("Nil")] = RGB(0, 0, 205);
+  mTokenColors[CString("Int")] = RGB(0, 0, 205);
+  mTokenColors[CString("Float")] = RGB(0, 0, 205);
+  mTokenColors[CString("Byte")] = RGB(0, 0, 205);
+  mTokenColors[CString("Char")] = RGB(0, 0, 205);
+
 }
 
 SourceCodeView::~SourceCodeView()
@@ -63,7 +88,6 @@ void SourceCodeView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
     nChar != VK_UP && nChar != VK_DOWN && nChar != VK_LEFT && nChar != VK_RIGHT &&
     nChar != VK_LCONTROL && nChar != VK_RCONTROL && nChar != VK_LSHIFT && nChar != VK_RSHIFT)) {
     CRichEditCtrl& editCtrl = GetRichEditCtrl();
-
     const int lineMax = 512;
     int lineOffset = editCtrl.LineIndex();
     int lineNbr = editCtrl.LineFromChar(lineOffset);
