@@ -36,8 +36,6 @@ using namespace instructions;
 
 void Linker::ResloveExternalClasses()
 {
-  // TODO: new object_inst EXT
-
   // all libraries
   map<const string, Library*>::iterator lib_iter;
   for(lib_iter = libraries.begin(); lib_iter != libraries.end(); lib_iter++) {
@@ -45,7 +43,6 @@ void Linker::ResloveExternalClasses()
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
     for(unsigned int i = 0; i < classes.size(); i++) {
       // all methods
-
       if(classes[i]->GetCalled()) {
         map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
         map<const string, LibraryMethod*>::iterator mthd_iter;
@@ -266,6 +263,7 @@ void Library::LoadClasses()
     const string &parent_name = ReadString();
 
     bool is_virtual = (bool)ReadInt();
+    bool is_debug = (bool)ReadInt();
     int cls_space = ReadInt();
     int inst_space = ReadInt();
 
@@ -294,9 +292,9 @@ void Library::LoadClasses()
                         "; instance_mem_size=" + Linker::ToString(inst_space) + "]";
     Linker::Show(msg, 0, 0);
 #endif
-
-    LibraryClass* cls = new LibraryClass(name, parent_name, is_virtual,
-                                         cls_space, inst_space, entries, this);
+    
+    LibraryClass* cls = new LibraryClass(name, parent_name, is_virtual, cls_space, 
+					 inst_space, entries, this, is_debug);
     // load method
     LoadMethods(cls);
     // add class

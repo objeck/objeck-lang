@@ -97,40 +97,48 @@ class IntermediateInstruction : public Intermediate {
   FLOAT_VALUE operand4;
   string operand5;
   string operand6;
+  int line_num;
 
-  IntermediateInstruction(InstructionType t) {
+  IntermediateInstruction(int l, InstructionType t) {
+    line_num = l;
     type = t;
   }
 
-  IntermediateInstruction(InstructionType t, int o1) {
+  IntermediateInstruction(int l, InstructionType t, int o1) {
+    line_num = l;
     type = t;
     operand = o1;
   }
 
-  IntermediateInstruction(InstructionType t, int o1, int o2) {
+  IntermediateInstruction(int l, InstructionType t, int o1, int o2) {
+    line_num = l;
     type = t;
     operand = o1;
     operand2 = o2;
   }
 
-  IntermediateInstruction(InstructionType t, int o1, int o2, int o3) {
+  IntermediateInstruction(int l, InstructionType t, int o1, int o2, int o3) {
+    line_num = l;
     type = t;
     operand = o1;
     operand2 = o2;
     operand3 = o3;
   }
 
-  IntermediateInstruction(InstructionType t, FLOAT_VALUE o4) {
+  IntermediateInstruction(int l, InstructionType t, FLOAT_VALUE o4) {
+    line_num = l;
     type = t;
     operand4 = o4;
   }
 
-  IntermediateInstruction(InstructionType t, string o5) {
+  IntermediateInstruction(int l, InstructionType t, string o5) {
+    line_num = l;
     type = t;
     operand5 = o5;
   }
 
-  IntermediateInstruction(InstructionType t, int o3, string o5, string o6) {
+  IntermediateInstruction(int l, InstructionType t, int o3, string o5, string o6) {
+    line_num = l;
     type = t;
     operand3 = o3;
     operand5 = o5;
@@ -139,6 +147,7 @@ class IntermediateInstruction : public Intermediate {
 
   IntermediateInstruction(LibraryInstr* lib_instr) {
     type = lib_instr->GetType();
+    line_num = lib_instr->GetLineNumber();
     operand = lib_instr->GetOperand();
     operand2 = lib_instr->GetOperand2();
     operand3 = lib_instr->GetOperand3();
@@ -167,8 +176,11 @@ public:
     return operand4;
   }
 
-  void Write(ofstream* file_out) {
+  void Write(bool is_debug, ofstream* file_out) {
     WriteInt((int)type, file_out);
+    if(is_debug) {
+      WriteInt(line_num, file_out);
+    }
     switch(type) {
     case SHL_INT:
     case SHR_INT:
@@ -537,44 +549,44 @@ public:
     instance = NULL;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, int o1) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o1);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1, int o2) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o1, o2);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, int o1, int o2, int o3) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o1, o2, o3);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o1, int o2, int o3) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o1, o2, o3);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, FLOAT_VALUE o4) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o4);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, FLOAT_VALUE o4) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o4);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, string o5) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o5);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, string o5) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o5);
     instructions.push_back(tmp);
     return tmp;
   }
 
-  IntermediateInstruction* MakeInstruction(InstructionType t, int o3, string o5, string o6) {
-    IntermediateInstruction* tmp = new IntermediateInstruction(t, o3, o5, o6);
+  IntermediateInstruction* MakeInstruction(int l, InstructionType t, int o3, string o5, string o6) {
+    IntermediateInstruction* tmp = new IntermediateInstruction(l, t, o3, o5, o6);
     instructions.push_back(tmp);
     return tmp;
   }
@@ -619,9 +631,9 @@ public:
     return instructions.size() == 0;
   }
 
-  void Write(ofstream* file_out) {
+  void Write(bool is_debug, ofstream* file_out) {
     for(unsigned int i = 0; i < instructions.size(); i++) {
-      instructions[i]->Write(file_out);
+      instructions[i]->Write(is_debug, file_out);
     }
   }
 
@@ -761,7 +773,7 @@ public:
     blocks = b;
   }
 
-  void Write(ofstream* file_out) {
+  void Write(bool is_debug, ofstream* file_out) {
     // write attributes
     WriteInt(id, file_out);
     WriteInt(type, file_out);
@@ -775,11 +787,11 @@ public:
     // write local space size
     WriteInt(params, file_out);
     WriteInt(space, file_out);
-    entries->Write(file_out);
+    entries->Write(is_debug, file_out);
 
     // write statements
     for(unsigned int i = 0; i < blocks.size(); i++) {
-      blocks[i]->Write(file_out);
+      blocks[i]->Write(is_debug, file_out);
     }
     WriteInt(END_STMTS, file_out);
   }
@@ -812,10 +824,11 @@ class IntermediateClass : public Intermediate {
   IntermediateDeclarations* entries;
   bool is_lib;
   bool is_virtual;
-
+  bool is_debug;
+  
 public:
-  IntermediateClass(int i, const string &n, int pi, const string &p,
-                    bool v, int cs, int is, IntermediateDeclarations* e) {
+  IntermediateClass(int i, const string &n, int pi, const string &p, bool v, 
+		    int cs, int is, IntermediateDeclarations* e, bool d) {
     id = i;
     name = n;
     pid = pi;
@@ -825,6 +838,7 @@ public:
     inst_space = is;
     entries = e;
     is_lib = false;
+    is_debug = d;
   }
 
   IntermediateClass(LibraryClass* lib_klass) {
@@ -834,6 +848,7 @@ public:
     pid = -1;
     parent_name = lib_klass->GetParentName();
     is_virtual = lib_klass->IsVirtual();
+    is_debug = lib_klass->IsDebug();
     cls_space = lib_klass->GetClassSpace();
     inst_space = lib_klass->GetInstanceSpace();
     entries = lib_klass->GetEntries();
@@ -912,15 +927,16 @@ public:
     WriteInt(pid, file_out);
     WriteString(parent_name, file_out);
     WriteInt(is_virtual, file_out);
+    WriteInt(is_debug, file_out);
     // write local space size
     WriteInt(cls_space, file_out);
     WriteInt(inst_space, file_out);
-    entries->Write(file_out);
+    entries->Write(is_debug, file_out);
 
     // write methods
     WriteInt((int)methods.size(), file_out);
     for(unsigned int i = 0; i < methods.size(); i++) {
-      methods[i]->Write(file_out);
+      methods[i]->Write(is_debug, file_out);
     }
   }
 
@@ -928,8 +944,8 @@ public:
     cout << "=========================================================" << endl;
     cout << "Class: id=" << id << "; name='" << name << "'; parent='" << parent_name
          << "'; pid=" << pid << "; virtual=" << is_virtual << ";\n  num_methods="
-         << methods.size() << "; class_mem_size=" << cls_space
-         << "; instance_mem_size=" << inst_space << endl;
+         << methods.size() << "; class_mem_size=" << cls_space << "; instance_mem_size=" 
+	 << inst_space << "; is_debug=" << is_debug << endl;
     cout << "=========================================================" << endl;
     for(unsigned int i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
