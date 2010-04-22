@@ -62,43 +62,51 @@ class LibraryInstr {
   double operand4;
   string operand5;
   string operand6;
+  int line_num;
 
 public:
-  LibraryInstr(instructions::InstructionType t) {
+  LibraryInstr(int l, instructions::InstructionType t) {
+    line_num = l;
     type = t;
     operand = 0;
   }
 
-  LibraryInstr(instructions::InstructionType t, int o) {
+  LibraryInstr(int l, instructions::InstructionType t, int o) {
+    line_num = l;
     type = t;
     operand = o;
   }
 
-  LibraryInstr(instructions::InstructionType t, double fo) {
+  LibraryInstr(int l, instructions::InstructionType t, double fo) {
+    line_num = l;
     type = t;
     operand4 = fo;
     operand = 0;
   }
 
-  LibraryInstr(instructions::InstructionType t, int o, int o2) {
+  LibraryInstr(int l, instructions::InstructionType t, int o, int o2) {
+    line_num = l;
     type = t;
     operand = o;
     operand2 = o2;
   }
 
-  LibraryInstr(instructions::InstructionType t, int o, int o2, int o3) {
+  LibraryInstr(int l, instructions::InstructionType t, int o, int o2, int o3) {
+    line_num = l;
     type = t;
     operand = o;
     operand2 = o2;
     operand3 = o3;
   }
 
-  LibraryInstr(instructions::InstructionType t, string o5) {
+  LibraryInstr(int l, instructions::InstructionType t, string o5) {
+    line_num = l;
     type = t;
     operand5 = o5;
   }
 
-  LibraryInstr(instructions::InstructionType t, int o3, string o5, string o6) {
+  LibraryInstr(int l, instructions::InstructionType t, int o3, string o5, string o6) {
+    line_num = l;
     type = t;
     operand3 = o3;
     operand5 = o5;
@@ -112,6 +120,10 @@ public:
     return type;
   }
 
+  int GetLineNumber() {
+    return line_num;
+  }
+  
   void SetType(instructions::InstructionType t) {
     type = t;
   }
@@ -596,8 +608,8 @@ class Library {
   void LoadFile(const string &file_name);
   void LoadEnums();
   void LoadClasses();
-  void LoadMethods(LibraryClass* cls);
-  void LoadStatements(LibraryMethod* mthd);
+  void LoadMethods(LibraryClass* cls, bool is_debug);
+  void LoadStatements(LibraryMethod* mthd, bool is_debug);
 
 public:
   Library(const string &p) {
