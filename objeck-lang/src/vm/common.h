@@ -329,7 +329,7 @@ class StackMethod {
   long num_dclrs;
   StackClass* cls;
 
-  const string ParseName(const string &name) {
+  const string& ParseName(const string &name) const {
     int state;
     unsigned int index = name.find_last_of(':');
     if(index > 0) {
@@ -511,7 +511,7 @@ public:
     }
   }
   
-  inline const string GetName() {
+  inline const string& GetName() {
     return name;
   }
 
@@ -637,7 +637,7 @@ class StackClass {
   }
 
 public:
-  StackClass(long i, const string ne, long p, bool v,
+  StackClass(long i, const string &ne, long p, bool v,
              StackDclr** d, long n, long cs, long is) {
     id = i;
     name = ne;
@@ -679,7 +679,7 @@ public:
     return id;
   }
 
-  inline const string GetName() {
+  inline const string& GetName() const {
     return name;
   }
 
