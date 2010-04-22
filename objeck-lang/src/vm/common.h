@@ -163,6 +163,7 @@ class JumpTable
  * StackDclr struct
  ********************************/
 struct StackDclr {
+  string name;
   ParamType type;
   long id;
 };
@@ -477,25 +478,7 @@ public:
     rtrn_type = r;
     cls = k;
   }
-
-#ifdef _WIN32
-  StackMethod(int i, string& n, long p, vector<StackInstr*> is, 
-	      StackClass* c, MemoryType r, hash_map<long, long> &j) {
-#else
-  StackMethod(int i, string& n, long p, vector<StackInstr*> is, 
-	      StackClass* c, MemoryType r, JumpTable &j) {
-#endif
-    id = i;
-    name = n;
-    param_count = p;
-    instrs = is;
-    rtrn_type = r;
-    cls = c;
-    jump_table = j;
-    dclrs = NULL;
-    native_code = NULL;
-  }
-
+  
   ~StackMethod() {
     // clean up
     if(dclrs) {
