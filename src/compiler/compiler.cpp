@@ -44,10 +44,6 @@ using namespace std;
  ****************************/
 int Compile(map<const string, string> arguments, const string usage)
 {
-#ifdef _MEMCHECK
-  mtrace();
-#endif
-
   // check source input
   map<const string, string>::iterator result = arguments.find("src");
   if(result == arguments.end()) {
@@ -87,6 +83,12 @@ int Compile(map<const string, string> arguments, const string usage)
       return COMMAND_ERROR;
     }
   }
+  // check for debug flag
+  bool is_debug = false;
+  result = arguments.find("debug");
+  if(result != arguments.end()) {
+    is_debug = true;
+  }
   
   // parse source code
   Parser parser(arguments["src"]);
@@ -97,7 +99,7 @@ int Compile(map<const string, string> arguments, const string usage)
     ContextAnalyzer analyzer(program, libs_path, is_lib);
     if(analyzer.Analyze()) {
       // emit intermediate code
-      IntermediateEmitter intermediate(program, is_lib);
+      IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
       ItermediateOptimizer optimizer(intermediate.GetProgram(), arguments["opt"]);
