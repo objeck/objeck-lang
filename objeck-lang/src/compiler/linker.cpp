@@ -273,15 +273,16 @@ void Library::LoadClasses()
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
+      const string &var_name = ReadString();
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
         break;
 
       default:
-        entries->AddParameter(new backend::IntermediateDeclaration(type));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
         break;
       }
     }
@@ -325,15 +326,16 @@ void Library::LoadMethods(LibraryClass* cls)
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
+      const string &var_name = ReadString();
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
         break;
 
       default:
-        entries->AddParameter(new backend::IntermediateDeclaration(type));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
         break;
       }
     }

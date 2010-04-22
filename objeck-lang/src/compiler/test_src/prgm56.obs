@@ -16,6 +16,8 @@ bundle Default {
 
 			a := 3 < 4;
 			a->PrintLine();
+
+			(3 - 4)->PrintLine();
 		}
 	}
 }
