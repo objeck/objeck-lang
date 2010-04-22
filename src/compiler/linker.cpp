@@ -324,7 +324,10 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
-      const string &var_name = ReadString();
+      string var_name;
+      if(is_debug) {
+	var_name = ReadString();
+      }
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       switch(type) {
       case instructions::OBJ_PARM:

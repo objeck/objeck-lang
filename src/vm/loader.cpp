@@ -140,6 +140,7 @@ void Loader::LoadClasses()
     string parent_name = ReadString();
     // is virtual
     const bool is_virtual = ReadInt();
+    const bool is_debug = ReadInt();
     // space
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
@@ -148,7 +149,10 @@ void Loader::LoadClasses()
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
-      const string &name = ReadString();
+      string name;
+      if(is_debug) {
+	name = ReadString();
+      }
       int type = ReadInt();
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
@@ -177,7 +181,7 @@ void Loader::LoadClasses()
 #endif
 
     // load methods
-    LoadMethods(cls);
+    LoadMethods(cls, is_debug);
     // add class
 #ifdef _DEBUG
     assert(id < number);
@@ -189,7 +193,7 @@ void Loader::LoadClasses()
   program->SetHierarchy(cls_hierarchy);
 }
 
-void Loader::LoadMethods(StackClass* cls)
+void Loader::LoadMethods(StackClass* cls, bool is_debug)
 {
   const int number = ReadInt();
 #ifdef _DEBUG
@@ -275,7 +279,7 @@ void Loader::LoadMethods(StackClass* cls)
 #endif
 
     // load statements
-    LoadStatements(mthd);
+    LoadStatements(mthd, is_debug);
 
     // add method
 #ifdef _DEBUG
@@ -314,11 +318,15 @@ void Loader::LoadInitializationCode(StackMethod* method)
   method->AddInstruction(new StackInstr(RTRN));
 }
 
-void Loader::LoadStatements(StackMethod* method)
+void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int index = 0;
 
   int type = ReadInt();
+  int line_num = -1;
+  if(is_debug) {
+    line_num = ReadInt();
+  }
   while(type != END_STMTS) {
     switch(type) {
     case LOAD_INT_LIT:
