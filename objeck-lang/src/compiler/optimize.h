@@ -54,7 +54,8 @@ class ItermediateOptimizer {
   int inline_end;
   IntermediateMethod* current_method;
   bool merge_blocks;
-
+  int cur_line_num;
+  
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
 
   // inline method calls
@@ -93,6 +94,7 @@ public:
   ItermediateOptimizer(IntermediateProgram* p, string optimize) {
     program = p;
     inline_end = -1;
+    cur_line_num = -1;
     merge_blocks = false;
 
     if(optimize == "s1") {
