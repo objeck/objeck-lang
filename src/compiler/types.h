@@ -229,22 +229,29 @@ namespace backend {
 class IntermediateDeclaration {
   instructions::ParamType type;
   int id;
+  string name;
 
 public:
-  IntermediateDeclaration(instructions::ParamType t) {
+  IntermediateDeclaration(const string &n, instructions::ParamType t) {
     type = t;
     id = -1;
+    name = n;
   }
 
-  IntermediateDeclaration(instructions::ParamType t, int i) {
+  IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
     type = t;
     id = i;
+    name = n;
   }
 
   instructions::ParamType GetType() {
     return type;
   }
 
+  const string GetName() {
+    return name;
+  }
+  
   int GetId() {
     return id;
   }
@@ -261,10 +268,16 @@ class IntermediateDeclarations {
     file_out->write((char*)&value, sizeof(value));
   }
 
-public:
-  IntermediateDeclarations() {
+  void WriteString(const string &value, ofstream* file_out) {
+    int size = (int)value.size();
+    file_out->write((char*)&size, sizeof(size));
+    file_out->write(value.c_str(), value.size());
   }
 
+ public:
+  IntermediateDeclarations() {
+  }
+  
   ~IntermediateDeclarations() {
     while(!declarations.empty()) {
       IntermediateDeclaration* tmp = declarations.front();
@@ -287,6 +300,7 @@ public:
     WriteInt((int)declarations.size(), file_out);
     for(unsigned int i = 0; i < declarations.size(); i++) {
       IntermediateDeclaration* entry = declarations[i];
+      WriteString(entry->GetName(), file_out);
       WriteInt(entry->GetType(), file_out);
       switch(entry->GetType()) {
       case instructions::OBJ_PARM:

@@ -90,6 +90,7 @@ void Loader::Load()
   string name = "$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
   dclrs[0] = new StackDclr;
+  dclrs[0]->name = "args";
   dclrs[0]->type = OBJ_ARY_PARM;
   dclrs[0]->id = string_cls_id;
 
@@ -147,8 +148,10 @@ void Loader::LoadClasses()
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
+      const string &name = ReadString();
       int type = ReadInt();
       dclrs[i] = new StackDclr;
+      dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
       // set id
       switch(type) {
@@ -220,8 +223,10 @@ void Loader::LoadMethods(StackClass* cls)
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
+      const string &name = ReadString();
       const int type = ReadInt();
       dclrs[i] = new StackDclr;
+      dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
       // set id
       switch(type) {
