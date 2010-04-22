@@ -154,7 +154,7 @@ class SelectArrayTree {
  * identifies basic bloks
  * for optimization.
  ****************************/
-class IntermediateEmitter {
+class IntermediateEmitter {  
   ParsedProgram* parsed_program;
   ParsedBundle* parsed_bundle;
   IntermediateBlock* imm_block;
@@ -167,12 +167,14 @@ class IntermediateEmitter {
   int conditional_label;
   int unconditional_label;
   bool is_lib;
+  bool is_debug;
   friend class SelectArrayTree;
   bool is_new_inst;
   // NOTE: used to determine if two instantiated 
   // objects instances need to be swapped as 
   // method parameters
   int new_inst_count; 
+  int cur_line_num;
   
   // emit operations
   void EmitStrings();
@@ -307,9 +309,10 @@ class IntermediateEmitter {
   }
 
  public:
-  IntermediateEmitter(ParsedProgram* p, bool l) {
+  IntermediateEmitter(ParsedProgram* p, bool l, bool d) {
     parsed_program = p;
     is_lib = l;
+    is_debug = d;
     // TODO: use an unsigned integer
     // note: negative numbers are used
     // for method inlining in VM
@@ -320,6 +323,7 @@ class IntermediateEmitter {
     unconditional_label = (2 << 29) - 1;
     is_new_inst = false;
     new_inst_count = 0;
+    cur_line_num = -1;
   }
 
   ~IntermediateEmitter() {
