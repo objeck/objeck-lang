@@ -411,10 +411,11 @@ class LibraryClass {
   vector<LibraryClass*> lib_children;
   vector<frontend::ParseNode*> children;
   bool was_called;
-
+  bool is_debug;
+  
 public:
-  LibraryClass(const string &n, const string &p, bool v,
-               int cs, int is, backend::IntermediateDeclarations* e, Library* l) {
+  LibraryClass(const string &n, const string &p, bool v, int cs, int is, 
+	       backend::IntermediateDeclarations* e, Library* l, bool d) {
     name = n;
     parent_name = p;
     is_virtual = v;
@@ -423,6 +424,7 @@ public:
     entries = e;
     library = l;
     was_called = false;
+    is_debug = d;
   }
 
   ~LibraryClass() {
@@ -450,6 +452,10 @@ public:
     return was_called;
   }
 
+  bool IsDebug() {
+    return is_debug;
+  }
+  
   int GetId() {
     return id;
   }
