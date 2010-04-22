@@ -296,11 +296,13 @@ class IntermediateDeclarations {
     return declarations;
   }
 
-  void Write(ofstream* file_out) {
+  void Write(bool is_debug, ofstream* file_out) {
     WriteInt((int)declarations.size(), file_out);
     for(unsigned int i = 0; i < declarations.size(); i++) {
       IntermediateDeclaration* entry = declarations[i];
-      WriteString(entry->GetName(), file_out);
+      if(is_debug) {
+	WriteString(entry->GetName(), file_out);
+      }
       WriteInt(entry->GetType(), file_out);
       switch(entry->GetType()) {
       case instructions::OBJ_PARM:
