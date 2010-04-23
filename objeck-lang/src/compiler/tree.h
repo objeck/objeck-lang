@@ -132,7 +132,7 @@ public:
     return is_local;
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -622,7 +622,7 @@ public:
     return id;
   }
 
-  const string GetString() {
+  const string& GetString() const {
     return char_string;
   }
 };
@@ -688,7 +688,7 @@ class Variable : public Expression {
   }
 
 public:
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -930,7 +930,7 @@ class EnumItem : public ParseNode {
   }
 
 public:
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -981,7 +981,7 @@ public:
     return NULL;
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -1479,11 +1479,11 @@ public:
     return symbol_table;
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
-  const string GetParsedName() {
+  const string& GetParsedName() {
     if(parsed_name.size() == 0) {
       EncodeSignature();
     }
@@ -1491,15 +1491,15 @@ public:
     return parsed_name;
   }
 
-  const string GetEncodedName() {
+  const string& GetEncodedName() const {
     return encoded_name;
   }
 
-  const string GetParsedReturn() {
+  const string& GetParsedReturn() const {
     return parsed_return;
   }
   
-  const string GetEncodedReturn() {
+  const string& GetEncodedReturn() {
     if(encoded_return.size() == 0) {
       EncodeSignature();
     }
@@ -1576,11 +1576,11 @@ public:
     return was_called;
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
-  const string GetParentName() {
+  const string& GetParentName() const {
     return parent_name;
   }
 
@@ -1798,7 +1798,7 @@ public:
     return array_type;
   }
 
-  const string GetVariableName() {
+  const string& GetVariableName() const {
     return variable_name;
   }
 
@@ -1818,7 +1818,7 @@ public:
     return entry;
   }
 
-  const string GetMethodName() {
+  const string& GetMethodName() const {
     return method_name;
   }
 
@@ -2217,7 +2217,7 @@ public:
     symbol_table = NULL;
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 

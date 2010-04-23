@@ -219,10 +219,14 @@ public:
   }
 
   ~StackInstr() {
-  }
+  }  
 
   inline InstructionType GetType() {
     return type;
+  }
+
+  int GetLineNumber() {
+    return line_num;
   }
 
   inline void SetType(InstructionType t) {
@@ -625,6 +629,7 @@ class StackClass {
   int method_num;
   long id;
   string name;
+  string file_name;
   long pid;
   bool is_virtual;
   long cls_space;
@@ -643,10 +648,11 @@ class StackClass {
   }
 
 public:
-  StackClass(long i, const string &ne, long p, bool v,
-             StackDclr** d, long n, long cs, long is) {
+  StackClass(long i, const string &ne, const string &fn, long p, 
+	     bool v, StackDclr** d, long n, long cs, long is) {
     id = i;
     name = ne;
+    file_name = fn;
     pid = p;
     is_virtual = v;
     dclrs = d;
@@ -687,6 +693,10 @@ public:
 
   inline const string& GetName() const {
     return name;
+  }
+
+  inline const string& GetFileName() const {
+    return file_name;
   }
 
   inline StackDclr** GetDeclarations() {
@@ -942,5 +952,31 @@ public:
     return jit_called;
   }
 };
+
+#ifdef _DEBUGGER
+/********************************
+ * Interactive command line
+ * debugger
+ ********************************/
+class Debugger {
+  static Debugger* instance;
+  
+  Debugger() {
+  }
+  
+ public:
+  static void Initialize(StackProgram* p);
+  static Debugger* Instance();
+  
+ 
+
+  ~Debugger() {
+  }
+  
+  void ProcessInstruction(long* op_stack, long* stack_pos, StackFrame** call_stack,
+			  long call_stack_pos, StackFrame* frame, long ip);
+};
+
+#endif
 
 #endif
