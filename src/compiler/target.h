@@ -825,10 +825,11 @@ class IntermediateClass : public Intermediate {
   bool is_lib;
   bool is_virtual;
   bool is_debug;
+  string file_name;
   
 public:
   IntermediateClass(int i, const string &n, int pi, const string &p, bool v, 
-		    int cs, int is, IntermediateDeclarations* e, bool d) {
+		    int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
     id = i;
     name = n;
     pid = pi;
@@ -839,6 +840,7 @@ public:
     entries = e;
     is_lib = false;
     is_debug = d;
+    file_name = fn;
   }
 
   IntermediateClass(LibraryClass* lib_klass) {
@@ -860,6 +862,7 @@ public:
       IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
       AddMethod(imm_method);
     }
+    file_name = lib_klass->GetFileName();
     is_lib = true;
   }
 
@@ -928,6 +931,9 @@ public:
     WriteString(parent_name, file_out);
     WriteInt(is_virtual, file_out);
     WriteInt(is_debug, file_out);
+    if(is_debug) {
+      WriteString(file_name, file_out);
+    }
     // write local space size
     WriteInt(cls_space, file_out);
     WriteInt(inst_space, file_out);

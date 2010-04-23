@@ -39,3 +39,25 @@ CRITICAL_SECTION StackProgram::program_cs;
 list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
+#ifdef _DEBUGGER
+void Debugger::Initialize(StackProgram* p)
+{
+  
+}
+Debugger* Debugger::instance;
+Debugger* Debugger::Instance()
+{
+  if(!instance) {
+    instance = new Debugger;
+  }
+  
+  return instance;
+}
+
+void Debugger::ProcessInstruction(long* op_stack, long* stack_pos, StackFrame** call_stack,
+				  long call_stack_pos, StackFrame* frame, long ip) 
+{
+  
+}
+#endif

@@ -156,11 +156,11 @@ public:
     return operand4;
   }
 
-  const string GetOperand5() {
+  const string& GetOperand5() const {
     return operand5;
   }
 
-  const string GetOperand6() {
+  const string& GetOperand6() const {
     return operand6;
   }
 };
@@ -276,11 +276,11 @@ public:
     return has_and_or;
   }
 
-  string GetName() {
+  const string& GetName() const {
     return name;
   }
 
-  string GetEncodedReturn() {
+  const string& GetEncodedReturn() const {
     return rtrn_name;
   }
 
@@ -343,7 +343,7 @@ public:
   ~LibraryEnumItem() {
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -381,7 +381,7 @@ public:
     items.clear();
   }
 
-  const string GetName() {
+  const string& GetName() const {
     return name;
   }
 
@@ -424,10 +424,11 @@ class LibraryClass {
   vector<frontend::ParseNode*> children;
   bool was_called;
   bool is_debug;
+  string file_name;
   
 public:
   LibraryClass(const string &n, const string &p, bool v, int cs, int is, 
-	       backend::IntermediateDeclarations* e, Library* l, bool d) {
+	       backend::IntermediateDeclarations* e, Library* l, const string &fn, bool d) {
     name = n;
     parent_name = p;
     is_virtual = v;
@@ -437,6 +438,7 @@ public:
     library = l;
     was_called = false;
     is_debug = d;
+    file_name = fn;
   }
 
   ~LibraryClass() {
@@ -467,16 +469,20 @@ public:
   bool IsDebug() {
     return is_debug;
   }
+
+  const string& GetFileName() const {
+    return file_name;
+  }
   
   int GetId() {
     return id;
   }
 
-  string GetName() {
+  const string& GetName() const {
     return name;
   }
 
-  string GetParentName() {
+  const string& GetParentName() const {
     return parent_name;
   }
 
