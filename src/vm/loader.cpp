@@ -141,6 +141,10 @@ void Loader::LoadClasses()
     // is virtual
     const bool is_virtual = ReadInt();
     const bool is_debug = ReadInt();
+    string file_name;
+    if(is_debug) {
+      file_name = ReadString();
+    }
     // space
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
@@ -168,7 +172,7 @@ void Loader::LoadClasses()
     }
 
     cls_hierarchy[id] = pid;
-    StackClass* cls = new StackClass(id, name, pid, is_virtual, dclrs,
+    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, dclrs,
                                      num_dclrs, cls_space, inst_space);
 
     if(string_cls_id < 0 && name == "System.String") {

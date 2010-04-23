@@ -264,6 +264,10 @@ void Library::LoadClasses()
 
     bool is_virtual = (bool)ReadInt();
     bool is_debug = (bool)ReadInt();
+    string file_name;
+    if(is_debug) {
+      file_name = ReadString();
+    }
     int cls_space = ReadInt();
     int inst_space = ReadInt();
 
@@ -298,7 +302,7 @@ void Library::LoadClasses()
 #endif
     
     LibraryClass* cls = new LibraryClass(name, parent_name, is_virtual, cls_space, 
-					 inst_space, entries, this, is_debug);
+					 inst_space, entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
