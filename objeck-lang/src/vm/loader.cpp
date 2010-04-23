@@ -149,11 +149,12 @@ void Loader::LoadClasses()
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
+      int type = ReadInt();
+      // set name
       string name;
       if(is_debug) {
 	name = ReadString();
       }
-      int type = ReadInt();
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
@@ -227,8 +228,12 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
-      const string &name = ReadString();
       const int type = ReadInt();
+      // set name
+      string name;
+      if(is_debug) {
+	name = ReadString();
+      }
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
@@ -292,161 +297,160 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
 void Loader::LoadInitializationCode(StackMethod* method)
 {
-  method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)arguments.size()));
-  method->AddInstruction(new StackInstr(NEW_INT_ARY, (long)1));
-  method->AddInstruction(new StackInstr(STOR_INT_VAR, 0L, LOCL));
+  method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
+  method->AddInstruction(new StackInstr(-1, NEW_INT_ARY, (long)1));
+  method->AddInstruction(new StackInstr(-1, STOR_INT_VAR, 0L, LOCL));
 
   for(unsigned int i = 0; i < arguments.size(); i++) {
-    method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)arguments[i].size()));
-    method->AddInstruction(new StackInstr(NEW_BYTE_ARY, 1L));
-    method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)(num_char_strings + i)));
-    method->AddInstruction(new StackInstr(LOAD_INT_LIT, -3998L));
-    method->AddInstruction(new StackInstr(TRAP_RTRN, 3L));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
+    method->AddInstruction(new StackInstr(-1, NEW_BYTE_ARY, 1L));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, -3998L));
+    method->AddInstruction(new StackInstr(-1, TRAP_RTRN, 3L));
 
-    method->AddInstruction(new StackInstr(NEW_OBJ_INST, (long)string_cls_id));
+    method->AddInstruction(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
     // note: method ID is position dependant
-    method->AddInstruction(new StackInstr(MTHD_CALL, (long)string_cls_id, 2L, 0L));
+    method->AddInstruction(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
-    method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)i));
-    method->AddInstruction(new StackInstr(LOAD_INT_VAR, 0L, LOCL));
-    method->AddInstruction(new StackInstr(STOR_INT_ARY_ELM, 1L, LOCL));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)i));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+    method->AddInstruction(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
   }
 
-  method->AddInstruction(new StackInstr(LOAD_INT_VAR, 0L, LOCL));
-  method->AddInstruction (new StackInstr(LOAD_INST_MEM));
-  method->AddInstruction(new StackInstr(MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
-  method->AddInstruction(new StackInstr(RTRN));
+  method->AddInstruction(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+  method->AddInstruction (new StackInstr(-1, LOAD_INST_MEM));
+  method->AddInstruction(new StackInstr(-1, MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
+  method->AddInstruction(new StackInstr(-1, RTRN));
 }
 
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int index = 0;
-
   int type = ReadInt();
   int line_num = -1;
-  if(is_debug) {
-    line_num = ReadInt();
-  }
   while(type != END_STMTS) {
+    if(is_debug) {
+      line_num = ReadInt();
+    }
     switch(type) {
     case LOAD_INT_LIT:
-      method->AddInstruction(new StackInstr(LOAD_INT_LIT, (long)ReadInt()));
+      method->AddInstruction(new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt()));
       break;
 
     case SHL_INT:
-      method->AddInstruction(new StackInstr(SHL_INT, (long)ReadInt()));
+      method->AddInstruction(new StackInstr(line_num, SHL_INT, (long)ReadInt()));
       break;
 
     case SHR_INT:
-      method->AddInstruction(new StackInstr(SHR_INT, (long)ReadInt()));
+      method->AddInstruction(new StackInstr(line_num, SHR_INT, (long)ReadInt()));
       break;
 
     case LOAD_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(LOAD_INT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
       break;
 
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(LOAD_FLOAT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(STOR_INT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
       break;
 
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
-      method->AddInstruction(new StackInstr(STOR_FLOAT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(COPY_INT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, COPY_INT_VAR, id, mem_context));
     }
       break;
 
     case COPY_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(COPY_FLOAT_VAR, id, mem_context));
+      method->AddInstruction(new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(LOAD_BYTE_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(LOAD_INT_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(LOAD_FLOAT_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(STOR_BYTE_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(STOR_INT_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       long mem_context = ReadInt();
-      method->AddInstruction(new StackInstr(STOR_FLOAT_ARY_ELM, dim, mem_context));
+      method->AddInstruction(new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case NEW_FLOAT_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(NEW_FLOAT_ARY, dim));
+      method->AddInstruction(new StackInstr(line_num, NEW_FLOAT_ARY, dim));
     }
       break;
 
     case NEW_INT_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(NEW_INT_ARY, dim));
+      method->AddInstruction(new StackInstr(line_num, NEW_INT_ARY, dim));
     }
       break;
 
     case NEW_BYTE_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(NEW_BYTE_ARY, dim));
+      method->AddInstruction(new StackInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
       break;
 
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
-      method->AddInstruction(new StackInstr(NEW_OBJ_INST, obj_id));
+      method->AddInstruction(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
 
@@ -454,7 +458,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      method->AddInstruction(new StackInstr(MTHD_CALL, cls_id, mthd_id, is_native));
+      method->AddInstruction(new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
 
@@ -462,7 +466,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      method->AddInstruction(new StackInstr(ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+      method->AddInstruction(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
       
@@ -481,185 +485,185 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case JMP: {
       long label = ReadInt();
       long cond = ReadInt();
-      method->AddInstruction(new StackInstr(JMP, label, cond));
+      method->AddInstruction(new StackInstr(line_num, JMP, label, cond));
     }
       break;
 
     case LBL: {
       long id = ReadInt();
-      method->AddInstruction(new StackInstr(LBL, id));
+      method->AddInstruction(new StackInstr(line_num, LBL, id));
       method->AddLabel(id, index);
     }
       break;
 
     case OBJ_INST_CAST: {
       long to = ReadInt();
-      method->AddInstruction(new StackInstr(OBJ_INST_CAST, to));
+      method->AddInstruction(new StackInstr(line_num, OBJ_INST_CAST, to));
     }
       break;
 
     case OR_INT:
-      method->AddInstruction(new StackInstr(OR_INT));
+      method->AddInstruction(new StackInstr(line_num, OR_INT));
       break;
 
     case AND_INT:
-      method->AddInstruction(new StackInstr(AND_INT));
+      method->AddInstruction(new StackInstr(line_num, AND_INT));
       break;
 
     case ADD_INT:
-      method->AddInstruction(new StackInstr(ADD_INT));
+      method->AddInstruction(new StackInstr(line_num, ADD_INT));
       break;
 
     case CEIL_FLOAT:
-      method->AddInstruction(new StackInstr(CEIL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, CEIL_FLOAT));
       break;
 
     case FLOR_FLOAT:
-      method->AddInstruction(new StackInstr(FLOR_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, FLOR_FLOAT));
       break;
 
     case F2I:
-      method->AddInstruction(new StackInstr(F2I));
+      method->AddInstruction(new StackInstr(line_num, F2I));
       break;
 
     case I2F:
-      method->AddInstruction(new StackInstr(I2F));
+      method->AddInstruction(new StackInstr(line_num, I2F));
       break;
 
     case SWAP_INT:
-      method->AddInstruction(new StackInstr(SWAP_INT));
+      method->AddInstruction(new StackInstr(line_num, SWAP_INT));
       break;
 
     case POP_INT:
-      method->AddInstruction(new StackInstr(POP_INT));
+      method->AddInstruction(new StackInstr(line_num, POP_INT));
       break;
 
     case POP_FLOAT:
-      method->AddInstruction(new StackInstr(POP_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, POP_FLOAT));
       break;
 
     case LOAD_CLS_MEM:
-      method->AddInstruction(new StackInstr(LOAD_CLS_MEM));
+      method->AddInstruction(new StackInstr(line_num, LOAD_CLS_MEM));
       break;
 
     case LOAD_INST_MEM:
-      method->AddInstruction (new StackInstr(LOAD_INST_MEM));
+      method->AddInstruction (new StackInstr(line_num, LOAD_INST_MEM));
       break;
 
     case SUB_INT:
-      method->AddInstruction(new StackInstr(SUB_INT));
+      method->AddInstruction(new StackInstr(line_num, SUB_INT));
       break;
 
     case MUL_INT:
-      method->AddInstruction(new StackInstr(MUL_INT));
+      method->AddInstruction(new StackInstr(line_num, MUL_INT));
       break;
 
     case DIV_INT:
-      method->AddInstruction(new StackInstr(DIV_INT));
+      method->AddInstruction(new StackInstr(line_num, DIV_INT));
       break;
 
     case MOD_INT:
-      method->AddInstruction(new StackInstr(MOD_INT));
+      method->AddInstruction(new StackInstr(line_num, MOD_INT));
       break;
 
     case EQL_INT:
-      method->AddInstruction(new StackInstr(EQL_INT));
+      method->AddInstruction(new StackInstr(line_num, EQL_INT));
       break;
 
     case NEQL_INT:
-      method->AddInstruction(new StackInstr(NEQL_INT));
+      method->AddInstruction(new StackInstr(line_num, NEQL_INT));
       break;
 
     case LES_INT:
-      method->AddInstruction(new StackInstr(LES_INT));
+      method->AddInstruction(new StackInstr(line_num, LES_INT));
       break;
 
     case GTR_INT:
-      method->AddInstruction(new StackInstr(GTR_INT));
+      method->AddInstruction(new StackInstr(line_num, GTR_INT));
       break;
 
     case LES_EQL_INT:
-      method->AddInstruction(new StackInstr(LES_EQL_INT));
+      method->AddInstruction(new StackInstr(line_num, LES_EQL_INT));
       break;
 
     case LES_EQL_FLOAT:
-      method->AddInstruction(new StackInstr(LES_EQL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, LES_EQL_FLOAT));
       break;
 
     case GTR_EQL_INT:
-      method->AddInstruction(new StackInstr(GTR_EQL_INT));
+      method->AddInstruction(new StackInstr(line_num, GTR_EQL_INT));
       break;
 
     case GTR_EQL_FLOAT:
-      method->AddInstruction(new StackInstr(GTR_EQL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, GTR_EQL_FLOAT));
       break;
 
     case ADD_FLOAT:
-      method->AddInstruction(new StackInstr(ADD_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, ADD_FLOAT));
       break;
 
     case SUB_FLOAT:
-      method->AddInstruction(new StackInstr(SUB_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, SUB_FLOAT));
       break;
 
     case MUL_FLOAT:
-      method->AddInstruction(new StackInstr(MUL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, MUL_FLOAT));
       break;
 
     case DIV_FLOAT:
-      method->AddInstruction(new StackInstr(DIV_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, DIV_FLOAT));
       break;
 
     case EQL_FLOAT:
-      method->AddInstruction(new StackInstr(EQL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, EQL_FLOAT));
       break;
 
     case NEQL_FLOAT:
-      method->AddInstruction(new StackInstr(NEQL_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, NEQL_FLOAT));
       break;
 
     case LES_FLOAT:
-      method->AddInstruction(new StackInstr(LES_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, LES_FLOAT));
       break;
 
     case GTR_FLOAT:
-      method->AddInstruction(new StackInstr(GTR_FLOAT));
+      method->AddInstruction(new StackInstr(line_num, GTR_FLOAT));
       break;
 
     case LOAD_FLOAT_LIT:
-      method->AddInstruction(new StackInstr(LOAD_FLOAT_LIT,
+      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_LIT,
                                             ReadDouble()));
       break;
 
     case RTRN:
-      method->AddInstruction(new StackInstr(RTRN));
+      method->AddInstruction(new StackInstr(line_num, RTRN));
       break;
 
     case THREAD_JOIN:
-      method->AddInstruction(new StackInstr(THREAD_JOIN));
+      method->AddInstruction(new StackInstr(line_num, THREAD_JOIN));
       break;
       
     case THREAD_SLEEP:
-      method->AddInstruction(new StackInstr(THREAD_SLEEP));
+      method->AddInstruction(new StackInstr(line_num, THREAD_SLEEP));
       break;
 
     case CRITICAL_START:
-      method->AddInstruction(new StackInstr(CRITICAL_START));
+      method->AddInstruction(new StackInstr(line_num, CRITICAL_START));
       break;
 
     case CRITICAL_END:
-      method->AddInstruction(new StackInstr(CRITICAL_END));
+      method->AddInstruction(new StackInstr(line_num, CRITICAL_END));
       break;
 
     case TRAP: {
       long args = ReadInt();
-      method->AddInstruction(new StackInstr(TRAP, args));
+      method->AddInstruction(new StackInstr(line_num, TRAP, args));
     }
       break;
 
     case TRAP_RTRN: {
       long args = ReadInt();
-      method->AddInstruction(new StackInstr(TRAP_RTRN, args));
+      method->AddInstruction(new StackInstr(line_num, TRAP_RTRN, args));
     }
       break;
 
