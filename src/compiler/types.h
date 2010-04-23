@@ -300,10 +300,10 @@ class IntermediateDeclarations {
     WriteInt((int)declarations.size(), file_out);
     for(unsigned int i = 0; i < declarations.size(); i++) {
       IntermediateDeclaration* entry = declarations[i];
+      WriteInt(entry->GetType(), file_out);
       if(is_debug) {
 	WriteString(entry->GetName(), file_out);
       }
-      WriteInt(entry->GetType(), file_out);
       switch(entry->GetType()) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
