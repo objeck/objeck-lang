@@ -266,8 +266,9 @@ class StackInterpreter {
 public:
   static void Initialize(StackProgram* p);
 
-  StackInterpreter() {}
-
+  StackInterpreter() {
+  }
+  
   StackInterpreter(StackProgram* p) {
     Initialize(p);
   }

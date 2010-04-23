@@ -119,6 +119,10 @@ void StackInterpreter::Initialize(StackProgram* p)
   JitCompilerIA32::Initialize(program);
 #endif
   MemoryManager::Initialize(program);
+
+#ifdef _DEBUGGER
+  Debugger::Initialize(program);
+#endif
 }
 
 /********************************
@@ -159,6 +163,11 @@ void StackInterpreter::Execute()
   halt = false;
   while(!halt) {
     StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
+    
+#ifdef _DEBUGGER
+    Debugger::Instance()->ProcessInstruction(op_stack, stack_pos, call_stack, call_stack_pos, frame, ip);
+#endif
+
     switch(instr->GetType()) {
     case STOR_INT_VAR:
       ProcessStoreInt(instr);
@@ -958,6 +967,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
   // ProcessInterpretedMethodCall(called, instance);
   // #else
 
+#ifdef _DEBUGGER
+  ProcessInterpretedMethodCall(called, instance);
+#else
   // TODO: don't try and re-compile code that doesn't compile the first time
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
@@ -1053,7 +1065,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 #endif
 #endif
   }
-  // #endif
+#endif
 }
 
 /********************************
