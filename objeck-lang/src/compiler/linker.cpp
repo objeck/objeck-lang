@@ -271,8 +271,11 @@ void Library::LoadClasses()
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
-      const string &var_name = ReadString();
       instructions::ParamType type = (instructions::ParamType)ReadInt();
+      string var_name;
+      if(is_debug) {
+	var_name = ReadString();
+      }
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
@@ -288,8 +291,9 @@ void Library::LoadClasses()
 
 #ifdef _DEBUG
     const string& msg = "[class: name=" + name + "; parent=" + parent_name + "; virtual=" +
-                        Linker::ToString(is_virtual) + "; class_mem_size=" + Linker::ToString(cls_space) +
-                        "; instance_mem_size=" + Linker::ToString(inst_space) + "]";
+      Linker::ToString(is_virtual) + "; class_mem_size=" + Linker::ToString(cls_space) +
+      "; instance_mem_size=" + Linker::ToString(inst_space) + 
+      "; is_debug=" + Linker::ToString(is_debug) + "]";
     Linker::Show(msg, 0, 0);
 #endif
     
@@ -324,11 +328,11 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
+      instructions::ParamType type = (instructions::ParamType)ReadInt();
       string var_name;
       if(is_debug) {
 	var_name = ReadString();
       }
-      instructions::ParamType type = (instructions::ParamType)ReadInt();
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
@@ -344,7 +348,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 #ifdef _DEBUG
     const string &msg = "(method: name=" + name + "; id=" + Linker::ToString(id) + "; num_params: " +
                         Linker::ToString(params) + "; mem_size=" + Linker::ToString(mem_size) + "; is_native=" +
-                        Linker::ToString(is_native) + ")";
+                        Linker::ToString(is_native) +  "; is_debug=" + Linker::ToString(is_debug) + "]";
     Linker::Show(msg, 0, 1);
 #endif
 
@@ -366,10 +370,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
   vector<LibraryInstr*> instrs;
   int type = ReadInt();
   int line_num = -1;
-  if(is_debug) {
-    line_num = ReadInt();
-  }
   while(type != END_STMTS) {
+    if(is_debug) {
+      line_num = ReadInt();
+    }    
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, (INT_VALUE)ReadInt()));
@@ -728,7 +732,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
     break;
     }
-    // update
+    // update    
     type = ReadInt();
   }
   method->AddInstructions(instrs);
