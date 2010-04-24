@@ -31,8 +31,6 @@
 
 #include "parser.h"
 
-#define SELF_ID "@self"
-
 /****************************
  * Loads parsing error codes.
  ****************************/
