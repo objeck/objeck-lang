@@ -41,60 +41,15 @@ namespace frontend {
   class InstanceReference;
   class ParsedCommand;
   class Enum;
-  
-  /******************************
-   * Type class
-   ****************************/
-  class Type {
-    int dimension;
-    string class_name;
-
-    Type(Type* t) {
-      dimension = t->dimension;
-      class_name = t->class_name;
-    }
-
-    Type() {
-      dimension = 0;
-    }
-
-    Type(const string &n) {
-      class_name = n;
-      dimension = 0;
-    }
-
-    ~Type() {
-    }
-
-  public:
-    static Type* CharStringType();
-
-    void SetDimension(int d) {
-      dimension = d;
-    }
-
-    const int GetDimension() {
-      return dimension;
-    }
-
-    void SetClassName(const string &n) {
-      class_name = n;
-    }
-
-    const string GetClassName() {
-      return class_name;
-    }
-  };
 
   /****************************
    * ParseNode base class
    ****************************/
-  class ParseNode {
-    
+  class ParseNode {    
   public:
     ParseNode() {
     }
-
+    
     ~ParseNode() {
     }
   };
@@ -186,7 +141,7 @@ namespace frontend {
   /****************************
    * ExpressionType enum
    ****************************/
-  typedef enum _ExpressionType {
+  enum ExpressionType {
     METHOD_CALL_EXPR,
     VAR_EXPR,
     NIL_LIT_EXPR,
@@ -208,8 +163,8 @@ namespace frontend {
     DIV_EXPR,
     MOD_EXPR,
     CHAR_STR_EXPR,
-  } ExpressionType;
-
+  };
+  
   /****************************
    * Expression base class
    ****************************/
@@ -217,9 +172,8 @@ namespace frontend {
     friend class TreeFactory;
     InstanceReference* method_call;
     
-  protected:
-    
-  Expression() : ParseNode() {
+  protected:    
+    Expression() : ParseNode() {
     }
 
     ~Expression() {
@@ -260,7 +214,21 @@ namespace frontend {
     }
   };
 
-
+  /****************************
+   * Command base class
+   ****************************/
+  class Command : public ParseNode {
+    friend class TreeFactory;
+    InstanceReference* method_call;
+    
+  protected:    
+    Command() : ParseNode() {
+    }
+    
+    ~Command() {
+    }
+  };
+  
   /****************************
    * CharacterString class
    ****************************/

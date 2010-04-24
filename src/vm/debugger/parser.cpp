@@ -134,8 +134,7 @@ void Parser::ParseLine(const string &line)
 {
   scanner = new Scanner(line);
   NextToken();
-  // TODO:
-
+  ParseStatement(0);
   // clean up
   delete scanner;
   scanner = NULL;
@@ -144,9 +143,95 @@ void Parser::ParseLine(const string &line)
 /****************************
  * Parses a bundle.
  ****************************/
-void Parser::ParseStatement(int depth)
+Command* Parser::ParseStatement(int depth)
 {
+  Command* command;
+  switch(GetToken()) {
+  case TOKEN_BREAK_ID:
+    command = ParseBreak(depth + 1);
+    break;
+    
+  case TOKEN_PRINT_ID:
+    command = ParsePrint(depth + 1);
+    break;
+
+  case TOKEN_TYPE_ID:
+    command = ParseType(depth + 1);
+    break;
+    
+  case TOKEN_STACK_ID:
+    command = ParseStack(depth + 1);
+    break;
+    
+  case TOKEN_FRAME_ID:
+    command = ParseFrame(depth + 1);
+    break;
+
+  default:
+    command = NULL;
+    break;
+  }
+
+  return command;
+}
+
+Command* Parser::ParseBreak(int depth) {
+#ifdef _DEBUG
+  Show("Break", depth);
+#endif
   
+  NextToken();
+
+  // file name
+  string file_name;
+  if(Match(TOKEN_IDENT)) {
+    file_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+      NextToken();
+    }
+  }
+  else {
+    file_name = current_file_name;
+  }
+
+  // line number
+  int line_num = -2;
+  if(!Match(TOKEN_INT_LIT)) {
+    line_num = -scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+  else {
+    ProcessError("Expected line number", TOKEN_SEMI_COLON);
+    NextToken();
+  }
+  
+  return NULL;
+}
+
+Command* Parser::ParsePrint(int depth) {
+  NextToken();
+
+  ParseExpression(depth + 1);
+  
+  return NULL;
+}
+
+Command* Parser::ParseType(int depth) {
+  return NULL;
+}
+
+Command* Parser::ParseStack(int depth) {
+  NextToken();
+    
+  return NULL;
+}
+
+Command* Parser::ParseFrame(int depth) {
+  NextToken();
+  
+  return NULL;
 }
 
 /****************************
@@ -165,12 +250,13 @@ ExpressionList* Parser::ParseIndices(int depth)
 
       if(Match(TOKEN_COMMA)) {
         NextToken();
-      } else if(!Match(TOKEN_CLOSED_BRACKET)) {
+      } 
+      else if(!Match(TOKEN_CLOSED_BRACKET)) {
         ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
         NextToken();
       }
     }
-
+    
     if(!Match(TOKEN_CLOSED_BRACKET)) {
       ProcessError(TOKEN_CLOSED_BRACKET);
     }
@@ -421,14 +507,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     switch(GetToken()) {
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(
-							       -scanner->GetToken()->GetIntLit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(-scanner->GetToken()->GetIntLit());
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
-      expression = TreeFactory::Instance()->MakeFloatLiteral(
-							     -scanner->GetToken()->GetFloatLit());
+      expression = TreeFactory::Instance()->MakeFloatLiteral(-scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
 
@@ -440,20 +524,17 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else {
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
-      expression = TreeFactory::Instance()->MakeCharacterLiteral(
-								 scanner->GetToken()->GetCharLit());
+      expression = TreeFactory::Instance()->MakeCharacterLiteral(scanner->GetToken()->GetCharLit());
       NextToken();
       break;
 
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(
-							       scanner->GetToken()->GetIntLit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(scanner->GetToken()->GetIntLit());
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
-      expression = TreeFactory::Instance()->MakeFloatLiteral(
-							     scanner->GetToken()->GetFloatLit());
+      expression = TreeFactory::Instance()->MakeFloatLiteral(scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
 
