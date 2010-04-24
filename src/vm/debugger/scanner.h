@@ -1,5 +1,5 @@
 /***************************************************************************
- * Language scanner.
+ * Debugger scanner.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
@@ -36,9 +36,9 @@
 #include "../../shared/sys.h"
 
 INT_VALUE int_lit;
-  FLOAT_VALUE double_lit;
-  CHAR_VALUE char_lit;
-  BYTE_VALUE byte_lit;
+FLOAT_VALUE double_lit;
+CHAR_VALUE char_lit;
+BYTE_VALUE byte_lit;
 
 using namespace std;
 
@@ -103,7 +103,7 @@ enum TokenType {
  * Token class
  ****************************/
 class Token {
-private:
+ private:
   TokenType token_type;
   string ident;
 
@@ -112,7 +112,7 @@ private:
   CHAR_VALUE char_lit;
   BYTE_VALUE byte_lit;
 
-public:
+ public:
 
   inline void Copy(Token* token) {
     char_lit = token->GetCharLit();
@@ -176,7 +176,7 @@ public:
  * tokens
  **********************************/
 class Scanner {
-private:
+ private:
   // input buffer
   char* buffer;
   // buffer size
@@ -255,7 +255,7 @@ private:
   // check identifier
   void CheckIdentifier(int index);
 
-public:
+ public:
   // default constructor
   Scanner(const string &line);
   // default destructor
