@@ -1,0 +1,29 @@
+##############
+# For OSX only
+##############
+# ARGS=-pthread -mstackrealign -O3
+# ARGS=-pthread -D_TIMING -mstackrealign -O3
+ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
+# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
+
+##############
+# For Linux
+##############
+# ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+# ARGS=-O3 -pthread
+
+CC=g++
+SRC=tree.o scanner.o parser.o test.o
+EXE=test
+
+$(EXE): $(SRC)
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS)
+
+%.o: %.cpp
+	$(CC) -m32 $(ARGS) -c $< 
+
+clean:
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~

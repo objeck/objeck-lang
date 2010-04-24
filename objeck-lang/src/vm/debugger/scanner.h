@@ -35,11 +35,6 @@
 #include "../common.h"
 #include "../../shared/sys.h"
 
-INT_VALUE int_lit;
-FLOAT_VALUE double_lit;
-CHAR_VALUE char_lit;
-BYTE_VALUE byte_lit;
-
 using namespace std;
 
 // comment
