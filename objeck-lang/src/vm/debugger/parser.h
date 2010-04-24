@@ -44,6 +44,7 @@ using namespace frontend;
  * Parsers source files.
  ****************************/
 class Parser {
+  string current_file_name;
   Scanner* scanner;
   ParsedCommand* input;
   map<TokenType, string> error_msgs;
@@ -84,7 +85,12 @@ class Parser {
 
   // parsing operations
   void ParseLine(const string& file_name);
-  void ParseStatement(int depth);
+  Command* ParseStatement(int depth);
+  Command* ParseBreak(int depth);
+  Command* ParsePrint(int depth);
+  Command* ParseType(int depth);
+  Command* ParseStack(int depth);
+  Command* ParseFrame(int depth);
   ExpressionList* ParseIndices(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);
@@ -96,7 +102,8 @@ class Parser {
   void ParseInstanceReference(Expression* expression, int depth);
   
  public:
-  Parser() {
+  Parser(const string &cf) {
+    current_file_name = cf;
     input = new ParsedCommand;
     LoadErrorCodes();
   }
