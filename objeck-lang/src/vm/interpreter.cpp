@@ -44,6 +44,10 @@
 #include "os/posix/posix.h"
 #endif
 
+#ifdef _DEBUGGER
+#include "debugger/debugger.h"
+#endif
+
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
@@ -165,7 +169,7 @@ void StackInterpreter::Execute()
     StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
     
 #ifdef _DEBUGGER
-    Debugger::Instance()->ProcessInstruction(op_stack, stack_pos, call_stack, call_stack_pos, frame, ip);
+    Debugger::Instance()->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
 #endif
 
     switch(instr->GetType()) {
