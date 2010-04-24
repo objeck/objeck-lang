@@ -115,15 +115,6 @@ class Type {
   int dimension;
   string class_name;
 
-  /*
-  static Type* nil_type;
-  static Type* boolean_type;
-  static Type* char_type;
-  static Type* int_type;
-  static Type* float_type;
-  static Type* char_string_type;
-    */
-
   Type(Type* t) {
     type = t->type;
     dimension = t->dimension;

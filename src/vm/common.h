@@ -953,30 +953,4 @@ public:
   }
 };
 
-#ifdef _DEBUGGER
-/********************************
- * Interactive command line
- * debugger
- ********************************/
-class Debugger {
-  static Debugger* instance;
-  
-  Debugger() {
-  }
-  
- public:
-  static void Initialize(StackProgram* p);
-  static Debugger* Instance();
-  
- 
-
-  ~Debugger() {
-  }
-  
-  void ProcessInstruction(long* op_stack, long* stack_pos, StackFrame** call_stack,
-			  long call_stack_pos, StackFrame* frame, long ip);
-};
-
-#endif
-
 #endif
