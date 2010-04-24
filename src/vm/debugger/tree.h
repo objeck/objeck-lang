@@ -1,5 +1,5 @@
 /***************************************************************************
- * Language parse tree.
+ * Debugger parse tree.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
@@ -38,46 +38,27 @@ using namespace std;
 
 namespace frontend {
   class TreeFactory;
-  class MethodCall;
-  class ParsedInput;
+  class InstanceReference;
+  class ParsedCommand;
   class Enum;
   
-  /****************************
-   * Entry types
-   ****************************/
-  typedef enum _EntryType {
-    NIL_TYPE = -4000,
-    BOOLEAN_TYPE,
-    BYTE_TYPE,
-    CHAR_TYPE,
-    INT_TYPE,
-    FLOAT_TYPE,
-    CLASS_TYPE,
-    VAR_TYPE
-  } EntryType;
-
   /******************************
    * Type class
    ****************************/
   class Type {
-    friend class TypeFactory;
-    EntryType type;
     int dimension;
     string class_name;
 
     Type(Type* t) {
-      type = t->type;
       dimension = t->dimension;
       class_name = t->class_name;
     }
 
-    Type(EntryType t) {
-      type = t;
+    Type() {
       dimension = 0;
     }
 
-    Type(EntryType t, const string &n) {
-      type = t;
+    Type(const string &n) {
       class_name = n;
       dimension = 0;
     }
@@ -87,14 +68,6 @@ namespace frontend {
 
   public:
     static Type* CharStringType();
-
-    void SetType(EntryType t) {
-      type = t;
-    }
-
-    const EntryType GetType() {
-      return type;
-    }
 
     void SetDimension(int d) {
       dimension = d;
@@ -117,24 +90,12 @@ namespace frontend {
    * ParseNode base class
    ****************************/
   class ParseNode {
-    string file_name;
-    int line_num;
-
+    
   public:
-    ParseNode(const string &f, const int l) {
-      file_name = f;
-      line_num = l;
+    ParseNode() {
     }
 
     ~ParseNode() {
-    }
-
-    const string GetFileName() {
-      return file_name;
-    }
-
-    const int GetLineNumber() {
-      return line_num;
     }
   };
 
@@ -147,8 +108,8 @@ namespace frontend {
     int id;
     Enum* eenum;
 
-  EnumItem(const string &f, const int l, const string &n, Enum* e) :
-    ParseNode(f, l) {
+  EnumItem(const string &n, Enum* e) :
+    ParseNode() {
       name = n;
       id = -1;
       eenum = e;
@@ -185,8 +146,8 @@ namespace frontend {
     int index;
     map<const string, EnumItem*> items;
 
-  Enum(const string &f, const int l, string &n, int o) :
-    ParseNode(f, l) {
+  Enum(string &n, int o) :
+    ParseNode() {
       name = n;
       index = offset = o;
     }
@@ -254,72 +215,51 @@ namespace frontend {
    ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
-    MethodCall* method_call;
+    InstanceReference* method_call;
     
   protected:
-    Type* base_type;
-    Type* eval_type;
-    Type* cast_type;
-  
-  Expression(const string &f, const int l) : ParseNode(f, l) {
-      base_type = eval_type = cast_type = NULL;
-    }
-
-  Expression(const string &f, const int l, Type* t) : ParseNode(f, l) {
-      base_type = eval_type = TypeFactory::Instance()->MakeType(t);
-      cast_type = NULL;
+    
+  Expression() : ParseNode() {
     }
 
     ~Expression() {
     }
 
   public:
-    void SetMethodCall(MethodCall* call) {
+    void SetInstanceReference(InstanceReference* call) {
       method_call = call;
     }
     
-    MethodCall* GetMethodCall() {
+    InstanceReference* GetInstanceReference() {
       return method_call;
-    }
-
-    void SetTypes(Type* t) {
-      if(t) {
-	base_type = eval_type = TypeFactory::Instance()->MakeType(t);
-      }
-    }
-
-    // used for target emission
-    Type* GetBaseType() {
-      return base_type;
-    }
-
-    // used for contextual casting
-    Type* GetEvalType() {
-      return eval_type;
-    }
-
-    void SetEvalType(Type* e, bool zd) {
-      eval_type = TypeFactory::Instance()->MakeType(e);
-
-      if(!base_type) {
-	base_type = eval_type;
-      }
-
-      if(zd) {
-	eval_type->SetDimension(0);
-      }
-    }
-
-    void SetCastType(Type* c) {
-      cast_type = TypeFactory::Instance()->MakeType(c);
-    }
-
-    Type* GetCastType() {
-      return cast_type;
     }
 
     virtual const ExpressionType GetExpressionType() = 0;
   };
+
+  /****************************
+   * ExpressionList class
+   ****************************/
+  class ExpressionList {
+    friend class TreeFactory;
+    vector<Expression*> expressions;
+
+    ExpressionList() {
+    }
+
+    ~ExpressionList() {
+    }
+
+  public:
+    vector<Expression*> GetExpressions() {
+      return expressions;
+    }
+
+    void AddExpression(Expression* e) {
+      expressions.push_back(e);
+    }
+  };
+
 
   /****************************
    * CharacterString class
@@ -329,8 +269,7 @@ namespace frontend {
     int id;
     string char_string;
 
-  CharacterString(const string &f, int l, const string &orig) :
-    Expression(f, l, Type::CharStringType()) {
+  CharacterString(const string &orig) : Expression() {
       int skip = 2;
       for(unsigned int i = 0; i < orig.size(); i++) {
 	char c = orig[i];
@@ -416,8 +355,8 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-  CalculatedExpression(const string &f, int l, ExpressionType t) :
-    Expression(f, l) {
+  CalculatedExpression(ExpressionType t) :
+    Expression() {
       left = right = NULL;
       type = t;
     }
@@ -454,8 +393,7 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-  BooleanLiteral(const string &f, const int l, bool v) :
-    Expression(f, l, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+  BooleanLiteral(bool v) : Expression() {
       value = v;
     }
 
@@ -478,7 +416,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-  NilLiteral(const string &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+  NilLiteral(const string &f, const int l) : Expression() {
     }
 
     ~NilLiteral() {
@@ -497,8 +435,7 @@ namespace frontend {
     friend class TreeFactory;
     CHAR_VALUE value;
 
-  CharacterLiteral(const string &f, const int l, CHAR_VALUE v) :
-    Expression(f, l, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+  CharacterLiteral(CHAR_VALUE v) : Expression() {
       value = v;
     }
 
@@ -522,8 +459,7 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-  IntegerLiteral(const string &f, const int l, INT_VALUE v) :
-    Expression(f, l, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(INT_VALUE v) : Expression() {
       value = v;
     }
 
@@ -547,8 +483,7 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-  FloatLiteral(const string &f, const int l, FLOAT_VALUE v) :
-    Expression(f, l, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+  FloatLiteral(FLOAT_VALUE v) : Expression() {
       value = v;
     }
 
@@ -566,22 +501,21 @@ namespace frontend {
   };
 
   /****************************
-   * MethodCall class
+   * InstanceReference class
    ****************************/
-  class MethodCall : public Expression {
+  class InstanceReference : public Expression {
     friend class TreeFactory;
     EnumItem* enum_item;
     string variable_name;
     string method_name;
  
 
-  MethodCall(const string &f, const int l,
-             const string &v, const string &m) :Expression(f, l) {
+  InstanceReference(const string &v, const string &m) :Expression() {
       variable_name = v;
       method_name = m;
     }
 
-    ~MethodCall() {
+    ~InstanceReference() {
     }
 
   public:
@@ -599,7 +533,6 @@ namespace frontend {
 
     void SetEnumItem(EnumItem* i, const string &enum_name) {
       enum_item = i;
-      SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
 
     EnumItem* GetEnumItem() {
@@ -615,7 +548,8 @@ namespace frontend {
   
     vector<ParseNode*> nodes;
     vector<Expression*> expressions;
-    vector<MethodCall*> calls;
+    vector<InstanceReference*> calls;
+    vector<ExpressionList*> expression_lists;
   
     TreeFactory() {
     }
@@ -644,43 +578,57 @@ namespace frontend {
       }
     
       while(!calls.empty()) {
-	MethodCall* tmp = calls.front();
+	InstanceReference* tmp = calls.front();
 	calls.erase(calls.begin());
 	// delete
 	delete tmp;
 	tmp = NULL;
       }
 
+      while(!expression_lists.empty()) {
+	ExpressionList* tmp = expression_lists.front();
+	expression_lists.erase(expression_lists.begin());
+	// delete
+	delete tmp;
+	tmp = NULL;
+      }
+      
       delete instance;
       instance = NULL;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const string &file_name, int line_num, ExpressionType type) {
-      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
+    ExpressionList* MakeExpressionList() {
+      ExpressionList* tmp = new ExpressionList;
+      expression_lists.push_back(tmp);
+      return tmp;
+    }
+
+    CalculatedExpression* MakeCalculatedExpression(ExpressionType type) {
+      CalculatedExpression* tmp = new CalculatedExpression(type);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const string &file_name, const int line_num, INT_VALUE value) {
-      IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
+    IntegerLiteral* MakeIntegerLiteral(INT_VALUE value) {
+      IntegerLiteral* tmp = new IntegerLiteral(value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(const string &file_name, const int line_num, FLOAT_VALUE value) {
-      FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
+    FloatLiteral* MakeFloatLiteral(FLOAT_VALUE value) {
+      FloatLiteral* tmp = new FloatLiteral(value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterLiteral* MakeCharacterLiteral(const string &file_name, const int line_num, CHAR_VALUE value) {
-      CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
+    CharacterLiteral* MakeCharacterLiteral(CHAR_VALUE value) {
+      CharacterLiteral* tmp = new CharacterLiteral(value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const string &file_name, const int line_num, const string &char_string) {
-      CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
+    CharacterString* MakeCharacterString(const string &char_string) {
+      CharacterString* tmp = new CharacterString(char_string);
       expressions.push_back(tmp);
       return tmp;
     }
@@ -691,31 +639,30 @@ namespace frontend {
       return tmp;
     }
 
-    BooleanLiteral* MakeBooleanLiteral(const string &file_name, const int line_num, bool boolean) {
-      BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
+    BooleanLiteral* MakeBooleanLiteral(bool boolean) {
+      BooleanLiteral* tmp = new BooleanLiteral(boolean);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const string &f, const int l, const string &v, const string &m) {
-      MethodCall* tmp = new MethodCall(f, l, v, m);
+    InstanceReference* MakeInstanceReference(const string &v, const string &m) {
+      InstanceReference* tmp = new InstanceReference(v, m);
       calls.push_back(tmp);
       return tmp;
     }
   };
 
   /****************************
-   * ParsedInput class
+   * ParsedCommand class
    ****************************/
-  class ParsedInput {  
+  class ParsedCommand {  
   public:
-    ParsedInput() {
+    ParsedCommand() {
     }
     
-    ~ParsedInput() {
+    ~ParsedCommand() {
       // clear factories
       TreeFactory::Instance()->Clear();
-      TypeFactory::Instance()->Clear();
     }
   };
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- * Language parser.
+ * Debugger parser.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
@@ -39,14 +39,13 @@ using namespace frontend;
 
 #define SECOND_INDEX 1
 #define THIRD_INDEX 2
-#define DEFAULT_BUNDLE_NAME "Default"
 
 /****************************
  * Parsers source files.
  ****************************/
 class Parser {
   Scanner* scanner;
-  ParsedInput* input;
+  ParsedCommand* input;
   map<TokenType, string> error_msgs;
   map<int, string> errors;
 
@@ -86,23 +85,19 @@ class Parser {
   // parsing operations
   void ParseLine(const string& file_name);
   void ParseStatement(int depth);
-  ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN,
-                                      TokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
-  void ParseCast(Expression* expression, int depth);
-  Type* ParseType(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);
   Expression* ParseMathLogic(int depth);
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
-  MethodCall* ParseMethodCall(const string &ident, int depth);
-  void ParseMethodCall(Expression* expression, int depth);
+  InstanceReference* ParseInstanceReference(const string &ident, int depth);
+  void ParseInstanceReference(Expression* expression, int depth);
   
-public:
+ public:
   Parser() {
-    input = new ParsedInput;
+    input = new ParsedCommand;
     LoadErrorCodes();
   }
 
@@ -110,8 +105,8 @@ public:
   }
 
   bool Parse(const string &line);
-
-  ParsedInput* GetInput() {
+  
+  ParsedCommand* GetCommand() {
     return input;
   }
 };
