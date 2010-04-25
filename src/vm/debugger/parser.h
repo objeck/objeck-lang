@@ -48,8 +48,8 @@ class Parser {
   Scanner* scanner;
   ParsedCommand* input;
   map<TokenType, string> error_msgs;
-  map<int, string> errors;
-
+  vector<string> errors;
+  
   inline void NextToken() {
     scanner->NextToken();
   }
@@ -79,7 +79,6 @@ class Parser {
   void LoadErrorCodes();
   void ProcessError(const TokenType type);
   void ProcessError(const string &msg);
-  void ProcessError(const string &msg, const TokenType sync);
   bool CheckErrors();
 
   // parsing operations
@@ -97,8 +96,8 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
-  InstanceReference* ParseInstanceReference(const string &ident, int depth);
-  void ParseInstanceReference(Expression* expression, int depth);
+  Reference* ParseReference(const string &ident, int depth);
+  void ParseReference(Reference* reference, int depth);
   
  public:
   Parser(const string &cf) {

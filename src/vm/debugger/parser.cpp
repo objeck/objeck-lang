@@ -60,8 +60,8 @@ void Parser::ProcessError(TokenType type)
   cout << "\tError: "
        << msg << endl;
 #endif
-
-  errors.insert(pair<int, string>(-1, msg));
+  
+  errors.push_back(msg);
 }
 
 /****************************
@@ -73,25 +73,8 @@ void Parser::ProcessError(const string &msg)
   cout << "\tError: "
        << msg << endl;
 #endif
-
-  errors.insert(pair<int, string>(-1, msg));
-}
-
-/****************************
- * Emits parsing error.
- ****************************/
-void Parser::ProcessError(const string &msg, TokenType sync)
-{
-#ifdef _DEBUG
-  cout << "\tError: " << msg << endl;
-#endif
   
-  errors.insert(pair<int, string>(-1, msg));
-  TokenType token = GetToken();
-  while(token != sync && token != TOKEN_END_OF_STREAM) {
-    NextToken();
-    token = GetToken();
-  }
+  errors.push_back(msg);
 }
 
 /****************************
@@ -101,11 +84,9 @@ bool Parser::CheckErrors()
 {
   // check and process errors
   if(errors.size()) {
-    map<int, string>::iterator error;
-    for(error = errors.begin(); error != errors.end(); error++) {
-      cerr << error->second << endl;
-    }
-
+    for(int i = 0; i < errors.size(); i++) {
+      cerr << errors[i] << endl;
+    }    
     // clean up    
     return false;
   }
@@ -135,6 +116,7 @@ void Parser::ParseLine(const string &line)
   scanner = new Scanner(line);
   NextToken();
   ParseStatement(0);
+  
   // clean up
   delete scanner;
   scanner = NULL;
@@ -155,7 +137,7 @@ Command* Parser::ParseStatement(int depth)
     command = ParsePrint(depth + 1);
     break;
 
-  case TOKEN_TYPE_ID:
+  case TOKEN_KIND_ID:
     command = ParseType(depth + 1);
     break;
     
@@ -203,7 +185,7 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
   }
   else {
-    ProcessError("Expected line number", TOKEN_SEMI_COLON);
+    ProcessError("Expected line number");
     NextToken();
   }
   
@@ -251,7 +233,7 @@ ExpressionList* Parser::ParseIndices(int depth)
         NextToken();
       } 
       else if(!Match(TOKEN_CLOSED_BRACKET)) {
-        ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+        ProcessError("Expected comma or semi-colon");
         NextToken();
       }
     }
@@ -505,7 +487,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   if(Match(TOKEN_IDENT)) {    
     const string &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
-    ParseInstanceReference(ident, depth + 1);
+    expression = ParseReference(ident, depth + 1);
   }
   else if(Match(TOKEN_SUB)) {
     NextToken();
@@ -522,7 +504,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     default:
-      ProcessError("Expected expression", TOKEN_SEMI_COLON);
+      ProcessError("Expected expression");
       break;
     }
   } 
@@ -551,14 +533,19 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     default:
-      ProcessError("Expected expression", TOKEN_SEMI_COLON);
+      ProcessError("Expected expression");
       break;
     }
   }
   
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
-    ParseInstanceReference(expression, depth + 1);
+    if(expression->GetExpressionType() == REF_EXPR) {
+      ParseReference(static_cast<Reference*>(expression), depth + 1);
+    }
+    else {
+      ProcessError("Expected reference");
+    }
   }
   
   return expression;
@@ -567,20 +554,20 @@ Expression* Parser::ParseSimpleExpression(int depth)
 /****************************
  * Parses a instance reference.
  ****************************/
-InstanceReference* Parser::ParseInstanceReference(const string &ident, int depth)
+Reference* Parser::ParseReference(const string &ident, int depth)
 {
 #ifdef _DEBUG
   Show("Instance reference", depth);
 #endif
   
-  InstanceReference* inst_ref = TreeFactory::Instance()->MakeInstanceReference(ident);  
+  Reference* inst_ref = TreeFactory::Instance()->MakeReference(ident);  
   if(Match(TOKEN_OPEN_BRACKET)) {
     inst_ref->SetIndices(ParseIndices(depth + 1));      
   }
   
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
-    ParseInstanceReference(inst_ref, depth + 1);
+    ParseReference(inst_ref, depth + 1);
   }
   
   return inst_ref;
@@ -589,14 +576,13 @@ InstanceReference* Parser::ParseInstanceReference(const string &ident, int depth
 /****************************
  * Parses an instance reference. 
  ****************************/
-void Parser::ParseInstanceReference(Expression* expression, int depth)
+void Parser::ParseReference(Reference* reference, int depth)
 {
 #ifdef _DEBUG
   Show("Instance reference", depth);
 #endif
-
+  
   NextToken();
-
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
   }
@@ -604,11 +590,11 @@ void Parser::ParseInstanceReference(Expression* expression, int depth)
   const string &ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
-  if(expression) {
-    expression->SetInstanceReference(ParseInstanceReference(ident, depth + 1));
+  if(reference) {
+    reference->SetReference(ParseReference(ident, depth + 1));
     // subsequent instance references
     if(Match(TOKEN_ASSESSOR)) {
-      ParseInstanceReference(expression->GetInstanceReference(), depth + 1);
+      ParseReference(reference->GetReference(), depth + 1);
     }
   }
 }
