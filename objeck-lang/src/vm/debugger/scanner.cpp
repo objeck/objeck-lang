@@ -364,13 +364,13 @@ void Scanner::ParseToken(int index)
   // number
   else if(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char))) {
     bool is_double = false;
-    int is_hex = 0;
+    int hex_state = 0;
     // mark
     start_pos = buffer_pos - 1;
     
     // test hex state
     if(cur_char == '0') {
-      is_hex = 1;
+      hex_state = 1;
     }
     while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || cur_char == 'x' ||
           (cur_char >= 'a' && cur_char <= 'f') ||
@@ -385,14 +385,17 @@ void Scanner::ParseToken(int index)
         }
         is_double = true;
       }
-      // hex integer/double
+      // hex integer
       if(cur_char == 'x') {
-	if(is_hex == 1) {
-	  is_hex = 2;
+	if(hex_state == 1) {
+	  hex_state = 2;
 	}
 	else {
-	  is_hex = 1;
+	  hex_state = 1;
 	}
+      }
+      else {
+	hex_state = 0;
       }
       // next character
       NextChar();
@@ -402,10 +405,10 @@ void Scanner::ParseToken(int index)
     if(is_double) {
       ParseDouble(index);
     } 
-    else if(is_hex == 2) {
+    else if(hex_state == 2) {
       ParseInteger(index, 16);
     }
-    else if(is_hex) {
+    else if(hex_state) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {
