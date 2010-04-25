@@ -102,7 +102,9 @@ bool Parser::Parse(const string &line)
 #ifdef _DEBUG
   cout << "\n---------- Scanning/Parsing ---------" << endl;
 #endif
-
+  scanner = new Scanner(line);
+  NextToken();
+  
   // parse input
   ParseLine(line);
   return CheckErrors();
@@ -113,10 +115,8 @@ bool Parser::Parse(const string &line)
  ****************************/
 void Parser::ParseLine(const string &line)
 {
-  scanner = new Scanner(line);
-  NextToken();
-  ParseStatement(0);
-  
+
+  Command* command = ParseStatement(0);
   // clean up
   delete scanner;
   scanner = NULL;
