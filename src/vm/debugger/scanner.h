@@ -89,8 +89,7 @@ enum TokenType {
   // reserved words
   TOKEN_BREAK_ID,
   TOKEN_PRINT_ID,
-  TOKEN_KIND_ID,
-  TOKEN_STACK_ID,
+  TOKEN_INFO_ID,
   TOKEN_FRAME_ID,
 };
 
