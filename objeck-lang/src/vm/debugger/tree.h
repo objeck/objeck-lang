@@ -41,7 +41,8 @@ namespace frontend {
   class InstanceReference;
   class ParsedCommand;
   class Enum;
-
+  class ExpressionList;
+  
   /****************************
    * ParseNode base class
    ****************************/
@@ -142,7 +143,7 @@ namespace frontend {
    * ExpressionType enum
    ****************************/
   enum ExpressionType {
-    METHOD_CALL_EXPR,
+    REF_INST_EXPR,
     VAR_EXPR,
     NIL_LIT_EXPR,
     CHAR_LIT_EXPR,
@@ -170,7 +171,8 @@ namespace frontend {
    ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
-    InstanceReference* method_call;
+    ExpressionList* indices;
+    InstanceReference* reference;
     
   protected:    
     Expression() : ParseNode() {
@@ -181,11 +183,19 @@ namespace frontend {
 
   public:
     void SetInstanceReference(InstanceReference* call) {
-      method_call = call;
+      reference = call;
     }
     
     InstanceReference* GetInstanceReference() {
-      return method_call;
+      return reference;
+    }
+    
+    void SetIndices(ExpressionList* l) {
+      indices = l;
+    }
+    
+    ExpressionList* GetIndices() {
+      return indices;
     }
 
     virtual const ExpressionType GetExpressionType() = 0;
@@ -219,7 +229,7 @@ namespace frontend {
    ****************************/
   class Command : public ParseNode {
     friend class TreeFactory;
-    InstanceReference* method_call;
+    InstanceReference* reference;
     
   protected:    
     Command() : ParseNode() {
@@ -473,14 +483,10 @@ namespace frontend {
    ****************************/
   class InstanceReference : public Expression {
     friend class TreeFactory;
-    EnumItem* enum_item;
     string variable_name;
-    string method_name;
- 
-
-  InstanceReference(const string &v, const string &m) :Expression() {
+    
+  InstanceReference(const string &v) :Expression() {
       variable_name = v;
-      method_name = m;
     }
 
     ~InstanceReference() {
@@ -491,20 +497,8 @@ namespace frontend {
       return variable_name;
     }
 
-    const string& GetMethodName() const {
-      return method_name;
-    }
-
     const ExpressionType GetExpressionType() {
-      return METHOD_CALL_EXPR;
-    }
-
-    void SetEnumItem(EnumItem* i, const string &enum_name) {
-      enum_item = i;
-    }
-
-    EnumItem* GetEnumItem() {
-      return enum_item;
+      return REF_INST_EXPR;
     }
   };
 
@@ -613,8 +607,8 @@ namespace frontend {
       return tmp;
     }
 
-    InstanceReference* MakeInstanceReference(const string &v, const string &m) {
-      InstanceReference* tmp = new InstanceReference(v, m);
+    InstanceReference* MakeInstanceReference(const string &v) {
+      InstanceReference* tmp = new InstanceReference(v);
       calls.push_back(tmp);
       return tmp;
     }
