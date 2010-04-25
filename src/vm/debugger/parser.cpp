@@ -505,10 +505,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   if(Match(TOKEN_IDENT)) {    
     const string &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
-    
-    if(Match(TOKEN_OPEN_BRACKET)) {
-      ExpressionList* indices = ParseIndices(depth + 1);
-    }
+    ParseInstanceReference(ident, depth + 1);
   }
   else if(Match(TOKEN_SUB)) {
     NextToken();
@@ -559,7 +556,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
   }
   
-  // subsequent method calls
+  // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
     ParseInstanceReference(expression, depth + 1);
   }
@@ -568,49 +565,34 @@ Expression* Parser::ParseSimpleExpression(int depth)
 }
 
 /****************************
- * Parses a method call.
+ * Parses a instance reference.
  ****************************/
 InstanceReference* Parser::ParseInstanceReference(const string &ident, int depth)
 {
 #ifdef _DEBUG
-  Show("Method call", depth);
+  Show("Instance reference", depth);
 #endif
-
-  InstanceReference* method_call = NULL;
-  if(Match(TOKEN_ASSESSOR)) {
-    NextToken();
-    // method call
-    if(Match(TOKEN_IDENT)) {
-      const string &method_ident = scanner->GetToken()->GetIdentifier();
-      NextToken();
-      method_call = TreeFactory::Instance()->MakeInstanceReference(ident, method_ident);
-    }    
-    else {
-      ProcessError("Expected identifier", TOKEN_SEMI_COLON);
-    }
-  }  
-  else {
-    ProcessError("Expected identifier", TOKEN_SEMI_COLON);
+  
+  InstanceReference* inst_ref = TreeFactory::Instance()->MakeInstanceReference(ident);  
+  if(Match(TOKEN_OPEN_BRACKET)) {
+    inst_ref->SetIndices(ParseIndices(depth + 1));      
   }
   
-  // subsequent method calls
+  // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
-    ParseInstanceReference(method_call, depth + 1);
+    ParseInstanceReference(inst_ref, depth + 1);
   }
-
-  return method_call;
+  
+  return inst_ref;
 }
 
 /****************************
- * Parses a method call. This
- * is either an expression method
- * or a call from a method return
- * value.
+ * Parses an instance reference. 
  ****************************/
 void Parser::ParseInstanceReference(Expression* expression, int depth)
 {
 #ifdef _DEBUG
-  Show("Method call", depth);
+  Show("Instance reference", depth);
 #endif
 
   NextToken();
@@ -624,7 +606,7 @@ void Parser::ParseInstanceReference(Expression* expression, int depth)
 
   if(expression) {
     expression->SetInstanceReference(ParseInstanceReference(ident, depth + 1));
-    // subsequent method calls
+    // subsequent instance references
     if(Match(TOKEN_ASSESSOR)) {
       ParseInstanceReference(expression->GetInstanceReference(), depth + 1);
     }
