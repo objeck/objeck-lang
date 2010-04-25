@@ -63,13 +63,12 @@ class Parser {
   }
 
   void Show(const string &msg, int depth) {
-    cout << ": ";
     for(int i = 0; i < depth; i++) {
       cout << "  ";
     }
     cout << msg << endl;
   }
-
+  
   inline string ToString(int v) {
     ostringstream str;
     str << v;
