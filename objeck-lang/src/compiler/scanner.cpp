@@ -556,9 +556,14 @@ void Scanner::ParseToken(int index)
   // number
   else if(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char))) {
     bool is_double = false;
-    bool is_hex = false;
+    int is_hex = 0;
     // mark
     start_pos = buffer_pos - 1;
+    
+    // test hex state
+    if(cur_char == '0') {
+      is_hex = 1;
+    }
     while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || cur_char == 'x' ||
           (cur_char >= 'a' && cur_char <= 'f') ||
           (cur_char >= 'A' && cur_char <= 'F')) {
@@ -576,15 +581,12 @@ void Scanner::ParseToken(int index)
       }
       // hex integer/double
       if(cur_char == 'x') {
-        // error
-        if(is_hex) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
-          NextChar();
-          break;
-        }
-        is_hex = true;
+        if(is_hex == 1) {
+	  is_hex = 2;
+	}
+	else {
+	  is_hex = 1;
+	}
       }
       // next character
       NextChar();
@@ -593,9 +595,14 @@ void Scanner::ParseToken(int index)
     end_pos = buffer_pos - 1;
     if(is_double) {
       ParseDouble(index);
-    } else if(is_hex) {
+    } 
+    else if(is_hex == 2) {
       ParseInteger(index, 16);
-    } else {
+    }
+    else if(is_hex) {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+    }
+    else {
       ParseInteger(index);
     }
     return;
