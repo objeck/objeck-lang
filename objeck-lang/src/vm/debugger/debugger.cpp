@@ -1,7 +1,7 @@
 /**************************************************************************
  * Runtime debugger
  *
- * Copyright (c) 2008-2010 Randy Hollines
+ * Copyright (c) 2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
