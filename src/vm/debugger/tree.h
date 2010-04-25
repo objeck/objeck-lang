@@ -85,6 +85,7 @@ namespace frontend {
    ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
+    bool is_float_eval;
     INT_VALUE int_value;
     FLOAT_VALUE float_value;
     
@@ -92,12 +93,21 @@ namespace frontend {
     Expression() : ParseNode() {
       int_value = 0;
       float_value = 0.0;
+      is_float_eval = false;
     }
 
     ~Expression() {
     }
 
   public:
+    void SetFloatEval(bool b) {
+      is_float_eval = b;
+    }
+
+    bool GetFloatEval() {
+      return is_float_eval;
+    }
+
     void SetIntValue(INT_VALUE i) {
       int_value = i;
     }
