@@ -46,7 +46,6 @@ using namespace frontend;
 class Parser {
   string current_file_name;
   Scanner* scanner;
-  ParsedCommand* input;
   map<TokenType, string> error_msgs;
   vector<string> errors;
   
@@ -82,12 +81,11 @@ class Parser {
   bool CheckErrors();
 
   // parsing operations
-  void ParseLine(const string& file_name);
+  Command* ParseLine(const string& file_name);
   Command* ParseStatement(int depth);
   Command* ParseBreak(int depth);
   Command* ParsePrint(int depth);
-  Command* ParseType(int depth);
-  Command* ParseStack(int depth);
+  Command* ParseInfo(int depth);
   Command* ParseFrame(int depth);
   ExpressionList* ParseIndices(int depth);
   Expression* ParseExpression(int depth);
@@ -102,22 +100,13 @@ class Parser {
  public:
   Parser(const string &cf) {
     current_file_name = cf;
-    input = new ParsedCommand;
     LoadErrorCodes();
   }
 
   ~Parser() {
-    if(input) {
-      delete input;
-      input = NULL;
-    }
   }
-
-  bool Parse(const string &line);
   
-  ParsedCommand* GetCommand() {
-    return input;
-  }
+  Command* Parse(const string &line);
 };
 
 #endif

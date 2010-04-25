@@ -4,9 +4,7 @@
 
 void Test(const string &line) {
   Parser parser("file.cpp");
-  if(parser.Parse(line)) {
-    ParsedCommand* command = parser.GetCommand();
-  }
+  Command* command = parser.Parse(line);
 }
 
 int main(int argc, char** args) {

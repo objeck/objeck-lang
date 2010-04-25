@@ -74,10 +74,8 @@ void Scanner::LoadKeywords()
   ident_map["b"] = TOKEN_BREAK_ID;
   ident_map["print"] = TOKEN_PRINT_ID;
   ident_map["p"] = TOKEN_PRINT_ID;
-  ident_map["kind"] = TOKEN_KIND_ID;
-  ident_map["k"] = TOKEN_KIND_ID;
-  ident_map["stack"] = TOKEN_STACK_ID;
-  ident_map["s"] = TOKEN_STACK_ID;
+  ident_map["info"] = TOKEN_INFO_ID;
+  ident_map["i"] = TOKEN_INFO_ID;
   ident_map["frame"] = TOKEN_FRAME_ID;
   ident_map["f"] = TOKEN_FRAME_ID;
 }
@@ -96,8 +94,7 @@ void Scanner::CheckIdentifier(int index)
   switch(ident_type) {
   case TOKEN_BREAK_ID:
   case TOKEN_PRINT_ID:
-  case TOKEN_KIND_ID:
-  case TOKEN_STACK_ID:
+  case TOKEN_INFO_ID:
   case TOKEN_FRAME_ID:
     tokens[index]->SetType(ident_type);
     break;
