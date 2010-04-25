@@ -107,6 +107,10 @@ class Parser {
   }
 
   ~Parser() {
+    if(input) {
+      delete input;
+      input = NULL;
+    }
   }
 
   bool Parse(const string &line);
