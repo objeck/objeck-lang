@@ -57,6 +57,12 @@ Scanner::~Scanner()
     delete[] buffer;
     buffer = NULL;
   }
+  
+  for(int i = 0; i < LOOK_AHEAD; i++) {
+    Token* temp = tokens[i];
+    delete temp;
+    temp = NULL;
+  }
 }
 
 /****************************
