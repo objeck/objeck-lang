@@ -1,4 +1,6 @@
 #include "parser.h"
+#include <string>
+#include <fstream>
 
 void Test(const string &line) {
   Parser parser("file.cpp");
@@ -6,7 +8,14 @@ void Test(const string &line) {
 }
 
 int main(int argc, char** args) {
-  // Test("print a");
-  // Test("print b->c");
-  Test("print e[10]");
+  string line;
+  do {
+    cout << "> ";
+    getline(cin, line);
+    cout << endl;
+    if(line.size() > 0) {
+      Test(line);
+    }
+  }
+  while(line.size() > 0);
 }
