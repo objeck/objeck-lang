@@ -110,6 +110,7 @@ void Scanner::ReadLine(const string &line)
 #ifdef _DEBUG
   cout << "---------- Source ---------" << endl;
   cout << buffer << endl;
+  cout << "---------------------------" << endl;
 #endif
 }
 
