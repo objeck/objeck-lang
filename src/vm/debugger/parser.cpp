@@ -85,7 +85,7 @@ void Parser::ProcessError(const string &msg, TokenType sync)
 #ifdef _DEBUG
   cout << "\tError: " << msg << endl;
 #endif
-
+  
   errors.insert(pair<int, string>(-1, msg));
   TokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
