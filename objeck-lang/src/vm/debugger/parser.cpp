@@ -97,7 +97,7 @@ bool Parser::CheckErrors()
 /****************************
  * Starts the parsing process.
  ****************************/
-bool Parser::Parse(const string &line)
+Command* Parser::Parse(const string &line)
 {
 #ifdef _DEBUG
   cout << "\n---------- Scanning/Parsing ---------" << endl;
@@ -106,20 +106,26 @@ bool Parser::Parse(const string &line)
   NextToken();
   
   // parse input
-  ParseLine(line);
-  return CheckErrors();
+  Command* command = ParseLine(line);
+
+  if(!CheckErrors()) {
+    return command;
+  }
+
+  return NULL;
 }
 
 /****************************
  * Parses a file.
  ****************************/
-void Parser::ParseLine(const string &line)
+Command* Parser::ParseLine(const string &line)
 {
-
   Command* command = ParseStatement(0);
   // clean up
   delete scanner;
   scanner = NULL;
+
+  return command;
 }
 
 /****************************
@@ -137,12 +143,8 @@ Command* Parser::ParseStatement(int depth)
     command = ParsePrint(depth + 1);
     break;
 
-  case TOKEN_KIND_ID:
-    command = ParseType(depth + 1);
-    break;
-    
-  case TOKEN_STACK_ID:
-    command = ParseStack(depth + 1);
+  case TOKEN_INFO_ID:
+    command = ParseInfo(depth + 1);
     break;
     
   case TOKEN_FRAME_ID:
@@ -199,13 +201,7 @@ Command* Parser::ParsePrint(int depth) {
   return NULL;
 }
 
-Command* Parser::ParseType(int depth) {
-  return NULL;
-}
-
-Command* Parser::ParseStack(int depth) {
-  NextToken();
-    
+Command* Parser::ParseInfo(int depth) {
   return NULL;
 }
 
