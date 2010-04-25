@@ -103,10 +103,10 @@ void Scanner::CheckIdentifier(int index)
 void Scanner::ReadLine(const string &line)
 {
   buffer_pos = 0;
-  buffer = new char[line.size()];
+  buffer = new char[line.size() + 1];
   const char* src = line.c_str();
   strcpy(buffer, src);
-  buffer_size = line.size();
+  buffer_size = line.size() + 1;
 #ifdef _DEBUG
   cout << "---------- Source ---------" << endl;
   cout << buffer << endl;
@@ -341,19 +341,12 @@ void Scanner::ParseToken(int index)
     }
   }
   // identifier
-#ifdef _SYSTEM
-  else if(isalpha(cur_char) || cur_char == '$' || cur_char == '@') {
-#else
   else if(isalpha(cur_char) || cur_char == '@') {
-#endif
     // mark
     start_pos = buffer_pos - 1;
-
-#ifdef _SYSTEM
-    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || cur_char == '@' || cur_char == '$') && cur_char != EOB) {
-#else
-    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || cur_char == '@') && cur_char != EOB) {
-#endif
+    
+    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || 
+	   cur_char == '@' || cur_char == '.') && cur_char != EOB) {
       NextChar();
     }
     // mark

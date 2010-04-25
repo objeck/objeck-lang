@@ -1,9 +1,7 @@
 #include "parser.h"
 
 int main(int argc, char** args) {
-  if(argc == 1) {
-    string line(args[1]);
-    Parser parser("default");
-    parser.Parse(line);
-  }
+  string line = "break test.cpp:10";  
+  Parser parser("file.cpp");
+  parser.Parse(line);
 }

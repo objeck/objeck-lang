@@ -189,8 +189,8 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
     if(!Match(TOKEN_COLON)) {
       ProcessError(TOKEN_COLON);
-      NextToken();
     }
+    NextToken();
   }
   else {
     file_name = current_file_name;
@@ -198,8 +198,8 @@ Command* Parser::ParseBreak(int depth) {
 
   // line number
   int line_num = -2;
-  if(!Match(TOKEN_INT_LIT)) {
-    line_num = -scanner->GetToken()->GetIntLit();
+  if(Match(TOKEN_INT_LIT)) {
+    line_num = scanner->GetToken()->GetIntLit();
     NextToken();
   }
   else {
@@ -211,8 +211,7 @@ Command* Parser::ParseBreak(int depth) {
 }
 
 Command* Parser::ParsePrint(int depth) {
-  NextToken();
-
+  NextToken();  
   ParseExpression(depth + 1);
   
   return NULL;
@@ -502,7 +501,16 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Show("Simple expression", depth);
 #endif
   Expression* expression = NULL;
-  if(Match(TOKEN_SUB)) {
+  
+  if(Match(TOKEN_IDENT)) {    
+    const string &ident = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    
+    if(Match(TOKEN_OPEN_BRACKET)) {
+      ExpressionList* indices = ParseIndices(depth + 1);
+    }
+  }
+  else if(Match(TOKEN_SUB)) {
     NextToken();
 
     switch(GetToken()) {
@@ -555,6 +563,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   if(Match(TOKEN_ASSESSOR)) {
     ParseInstanceReference(expression, depth + 1);
   }
+  
   return expression;
 }
 
