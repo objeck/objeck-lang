@@ -38,9 +38,8 @@ using namespace std;
 
 namespace frontend {
   class TreeFactory;
-  class InstanceReference;
+  class Reference;
   class ParsedCommand;
-  class Enum;
   class ExpressionList;
   
   /****************************
@@ -53,98 +52,13 @@ namespace frontend {
     
     ~ParseNode() {
     }
-  };
-
-  /****************************
-   * EnumItem class
-   ****************************/
-  class EnumItem : public ParseNode {
-    friend class TreeFactory;
-    string name;
-    int id;
-    Enum* eenum;
-
-  EnumItem(const string &n, Enum* e) :
-    ParseNode() {
-      name = n;
-      id = -1;
-      eenum = e;
-    }
-
-    ~EnumItem() {
-    }
-
-  public:
-    const string& GetName() const {
-      return name;
-    }
-
-    void SetId(int i) {
-      id = i;
-    }
-
-    Enum* GetEnum() {
-      return eenum;
-    }
-
-    int GetId() {
-      return id;
-    }
-  };
-
-  /****************************
-   * Enum class
-   ****************************/
-  class Enum : public ParseNode {
-    friend class TreeFactory;
-    string name;
-    int offset;
-    int index;
-    map<const string, EnumItem*> items;
-
-  Enum(string &n, int o) :
-    ParseNode() {
-      name = n;
-      index = offset = o;
-    }
-
-    ~Enum() {
-    }
-
-  public:
-    void AddItem(EnumItem* e) {
-      e->SetId(index++);
-      items.insert(pair<const string, EnumItem*>(e->GetName(), e));
-    }
-
-    EnumItem* GetItem(const string &i) {
-      map<const string, EnumItem*>::iterator result = items.find(i);
-      if(result != items.end()) {
-	return result->second;
-      }
-
-      return NULL;
-    }
-
-    const string& GetName() const {
-      return name;
-    }
-
-    int GetOffset() {
-      return offset;
-    }
-
-    map<const string, EnumItem*> GetItems() {
-      return items;
-    }
-  };
+  };  
 
   /****************************
    * ExpressionType enum
    ****************************/
   enum ExpressionType {
-    REF_INST_EXPR,
-    VAR_EXPR,
+    REF_EXPR,
     NIL_LIT_EXPR,
     CHAR_LIT_EXPR,
     INT_LIT_EXPR,
@@ -171,8 +85,6 @@ namespace frontend {
    ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
-    ExpressionList* indices;
-    InstanceReference* reference;
     
   protected:    
     Expression() : ParseNode() {
@@ -182,21 +94,7 @@ namespace frontend {
     }
 
   public:
-    void SetInstanceReference(InstanceReference* call) {
-      reference = call;
-    }
     
-    InstanceReference* GetInstanceReference() {
-      return reference;
-    }
-    
-    void SetIndices(ExpressionList* l) {
-      indices = l;
-    }
-    
-    ExpressionList* GetIndices() {
-      return indices;
-    }
 
     virtual const ExpressionType GetExpressionType() = 0;
   };
@@ -229,7 +127,7 @@ namespace frontend {
    ****************************/
   class Command : public ParseNode {
     friend class TreeFactory;
-    InstanceReference* reference;
+    Reference* reference;
     
   protected:    
     Command() : ParseNode() {
@@ -479,17 +377,19 @@ namespace frontend {
   };
 
   /****************************
-   * InstanceReference class
+   * Reference class
    ****************************/
-  class InstanceReference : public Expression {
+  class Reference : public Expression {
     friend class TreeFactory;
     string variable_name;
+    ExpressionList* indices;
+    Reference* reference;
     
-  InstanceReference(const string &v) :Expression() {
+    Reference(const string &v) :Expression() {
       variable_name = v;
     }
-
-    ~InstanceReference() {
+    
+    ~Reference() {
     }
 
   public:
@@ -497,8 +397,24 @@ namespace frontend {
       return variable_name;
     }
 
+    void SetReference(Reference* call) {
+      reference = call;
+    }
+    
+    Reference* GetReference() {
+      return reference;
+    }
+    
+    void SetIndices(ExpressionList* l) {
+      indices = l;
+    }
+    
+    ExpressionList* GetIndices() {
+      return indices;
+    }
+    
     const ExpressionType GetExpressionType() {
-      return REF_INST_EXPR;
+      return REF_EXPR;
     }
   };
 
@@ -510,7 +426,7 @@ namespace frontend {
   
     vector<ParseNode*> nodes;
     vector<Expression*> expressions;
-    vector<InstanceReference*> calls;
+    vector<Reference*> calls;
     vector<ExpressionList*> expression_lists;
   
     TreeFactory() {
@@ -540,7 +456,7 @@ namespace frontend {
       }
     
       while(!calls.empty()) {
-	InstanceReference* tmp = calls.front();
+	Reference* tmp = calls.front();
 	calls.erase(calls.begin());
 	// delete
 	delete tmp;
@@ -607,8 +523,8 @@ namespace frontend {
       return tmp;
     }
 
-    InstanceReference* MakeInstanceReference(const string &v) {
-      InstanceReference* tmp = new InstanceReference(v);
+    Reference* MakeReference(const string &v) {
+      Reference* tmp = new Reference(v);
       calls.push_back(tmp);
       return tmp;
     }
