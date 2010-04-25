@@ -39,7 +39,6 @@ using namespace std;
 namespace frontend {
   class TreeFactory;
   class Reference;
-  class ParsedCommand;
   class ExpressionList;
   
   /****************************
@@ -151,6 +150,16 @@ namespace frontend {
   };
 
   /****************************
+   * CommandType enum
+   ****************************/
+  enum CommandType {
+    BREAK_COMMAND,
+    PRINT_COMMAND,
+    INFO_COMMAND,
+    FRAME_COMMAND,
+  };
+
+  /****************************
    * Command base class
    ****************************/
   class Command : public ParseNode {
@@ -162,6 +171,72 @@ namespace frontend {
     }
     
     ~Command() {
+    }
+    
+    virtual const CommandType GetCommandType() = 0;
+  };
+
+  /****************************
+   * Break class
+   ****************************/
+  class Break : public Command {
+  public:
+    Break() {
+    }
+
+    ~Break() {
+    }
+
+    const CommandType GetCommandType() {
+      return BREAK_COMMAND;
+    }
+  };
+
+  /****************************
+   * Print class
+   ****************************/
+  class Print : public Command {
+  public:
+    Print() {
+    }
+
+    ~Print() {
+    }
+
+    const CommandType GetCommandType() {
+      return PRINT_COMMAND;
+    }
+  };
+
+  /****************************
+   * Info class
+   ****************************/
+  class Info : public Command {
+  public:
+    Info() {
+    }
+
+    ~Info() {
+    }
+
+    const CommandType GetCommandType() {
+      return INFO_COMMAND;
+    }
+  };
+
+  /****************************
+   * Frame class
+   ****************************/
+  class Frame : public Command {
+  public:
+    Frame() {
+    }
+
+    ~Frame() {
+    }
+
+    const CommandType GetCommandType() {
+      return FRAME_COMMAND;
     }
   };
   
@@ -555,20 +630,6 @@ namespace frontend {
       Reference* tmp = new Reference(v);
       calls.push_back(tmp);
       return tmp;
-    }
-  };
-
-  /****************************
-   * ParsedCommand class
-   ****************************/
-  class ParsedCommand {  
-  public:
-    ParsedCommand() {
-    }
-    
-    ~ParsedCommand() {
-      // clear factories
-      TreeFactory::Instance()->Clear();
     }
   };
 }
