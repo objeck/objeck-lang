@@ -1,7 +1,7 @@
 /***************************************************************************
  * Debugger parse tree.
  *
- * Copyright (c) 2008-2010 Randy Hollines
+ * Copyright (c) 2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without
@@ -85,16 +85,34 @@ namespace frontend {
    ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
+    INT_VALUE int_value;
+    FLOAT_VALUE float_value;
     
   protected:    
     Expression() : ParseNode() {
+      int_value = 0;
+      float_value = 0.0;
     }
 
     ~Expression() {
     }
 
   public:
-    
+    void SetIntValue(INT_VALUE i) {
+      int_value = i;
+    }
+
+    INT_VALUE GetIntValue() {
+      return int_value;
+    }
+
+    void SetIntValue(FLOAT_VALUE f) {
+      float_value = f;
+    }
+
+    INT_VALUE GetFloatValue() {
+      return float_value;
+    }
 
     virtual const ExpressionType GetExpressionType() = 0;
   };
