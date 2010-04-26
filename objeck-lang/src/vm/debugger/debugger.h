@@ -37,10 +37,11 @@
 #include "tree.h"
 #include "parser.h"
 
-
 using namespace std;
 
-class StackInterpreter;
+namespace Runtime {
+
+  class StackInterpreter;
 
 /********************************
  * Interactive command line
@@ -48,6 +49,9 @@ class StackInterpreter;
  ********************************/
 class Debugger {
   StackInterpreter* interpreter;
+  long* op_stack;
+  long* stack_pos;
+  
   list<int> breaks;
   
   int FindBreak(int l) {
@@ -88,15 +92,12 @@ class Debugger {
     cout << "Goodbye!" << endl;
   }
   
-  Debugger() {
-  }
-  
-  ~Debugger() {
-  }
+  Debugger();  
+  ~Debugger();
   
   // runtime callback
   void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 			  long call_stack_pos, StackFrame* frame);
 };
-
+}
 #endif

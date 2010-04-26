@@ -3,7 +3,7 @@
 ##############
 # ARGS=-pthread -mstackrealign -O3
 # ARGS=-pthread -D_TIMING -mstackrealign -O3
-ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
+# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 # ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
 
 ##############
@@ -12,7 +12,7 @@ ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 # ARGS=-g -Wunused -pthread
 # ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
 
 CC=g++
@@ -38,3 +38,4 @@ clean:
 	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+
