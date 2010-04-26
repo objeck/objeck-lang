@@ -108,6 +108,18 @@ class Loader {
   void LoadStatements(StackMethod* mthd, bool is_debug);
 
 public:
+  Loader(const char* arg) {
+    filename = arg;
+    /*
+    for(int i = 2; i < argc; i++) {
+      arguments.push_back(argv[i]);
+    }
+    */
+    string_cls_id = -1;
+    ReadFile();
+    program = new StackProgram;
+  }
+
   Loader(const int argc, char** argv) {
     filename = argv[1];
     for(int i = 2; i < argc; i++) {
