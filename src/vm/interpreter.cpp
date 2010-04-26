@@ -50,16 +50,16 @@
 
 using namespace Runtime;
 
-StackProgram* Runtime::StackInterpreter::program;
+StackProgram* StackInterpreter::program;
 
 /********************************
  * JIT compiler thread
  ********************************/
 #ifdef _WIN32
-DWORD WINAPI Runtime::StackInterpreter::CompileMethod(LPVOID arg)
+DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 {
   StackMethod* method = (StackMethod*)arg;
-  Runtime::JitCompilerIA32 jit_compiler;
+  JitCompilerIA32 jit_compiler;
   if(!jit_compiler.Compile(method)) {
     exit(1);
   }
@@ -67,18 +67,18 @@ DWORD WINAPI Runtime::StackInterpreter::CompileMethod(LPVOID arg)
   return 0;
 }
 
-DWORD WINAPI Runtime::StackInterpreter::AsyncMethodCall(LPVOID arg)
+DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
   return 0;
 }
 #else
-void* Runtime::StackInterpreter::CompileMethod(void* arg) 
+void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
 #ifdef _X64
-  Runtime::JitCompilerIA64 jit_compiler;
+  JitCompilerIA64 jit_compiler;
 #else
-  Runtime::JitCompilerIA32 jit_compiler;
+  JitCompilerIA32 jit_compiler;
 #endif
   jit_compiler.Compile(method);
   // clean up
@@ -86,7 +86,7 @@ void* Runtime::StackInterpreter::CompileMethod(void* arg)
   pthread_exit(NULL);
 }
 
-void* Runtime::StackInterpreter::AsyncMethodCall(void* arg)
+void* StackInterpreter::AsyncMethodCall(void* arg)
 {
   AsyncMethodCallParams* params = (AsyncMethodCallParams*)arg;
   
@@ -95,7 +95,7 @@ void* Runtime::StackInterpreter::AsyncMethodCall(void* arg)
   (*stack_pos) = 0;
   op_stack[(*stack_pos)++] = params->value;
   
-  Runtime::StackInterpreter intpr;
+  StackInterpreter intpr;
   intpr.Execute(op_stack, stack_pos, 0, params->called, params->instance, false);
 
   // clean up
@@ -113,7 +113,7 @@ void* Runtime::StackInterpreter::AsyncMethodCall(void* arg)
 /********************************
  * VM initialization
  ********************************/
-void Runtime::StackInterpreter::Initialize(StackProgram* p)
+void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
   
@@ -128,7 +128,7 @@ void Runtime::StackInterpreter::Initialize(StackProgram* p)
 /********************************
  * Main VM execution method
  ********************************/
-void Runtime::StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
+void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
                                long* instance, bool jit_called)
 {
   // inital setup
@@ -157,7 +157,7 @@ void Runtime::StackInterpreter::Execute(long* stack, long* pos, long i, StackMet
   Execute();
 }
 
-void Runtime::StackInterpreter::Execute()
+void StackInterpreter::Execute()
 {
   // execute
   halt = false;
@@ -572,7 +572,7 @@ void Runtime::StackInterpreter::Execute()
 /********************************
  * Processes the current time
  ********************************/
-void Runtime::StackInterpreter::ProcessCurrentTime() 
+void StackInterpreter::ProcessCurrentTime() 
 {
   time_t raw_time;
   time (&raw_time);
@@ -592,7 +592,7 @@ void Runtime::StackInterpreter::ProcessCurrentTime()
  * Processes a load integer
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessLoadInt(StackInstr* instr)
+void StackInterpreter::ProcessLoadInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand()
@@ -616,7 +616,7 @@ void Runtime::StackInterpreter::ProcessLoadInt(StackInstr* instr)
  * Processes a load float
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessLoadFloat(StackInstr* instr)
+void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
@@ -642,7 +642,7 @@ void Runtime::StackInterpreter::ProcessLoadFloat(StackInstr* instr)
  * Processes a store integer
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessStoreInt(StackInstr* instr)
+void StackInterpreter::ProcessStoreInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand()
@@ -666,7 +666,7 @@ void Runtime::StackInterpreter::ProcessStoreInt(StackInstr* instr)
  * Processes a store float
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessStoreFloat(StackInstr* instr)
+void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
@@ -692,7 +692,7 @@ void Runtime::StackInterpreter::ProcessStoreFloat(StackInstr* instr)
  * Processes a copy integer
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessCopyInt(StackInstr* instr)
+void StackInterpreter::ProcessCopyInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
@@ -716,7 +716,7 @@ void Runtime::StackInterpreter::ProcessCopyInt(StackInstr* instr)
  * Processes a copy float
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessCopyFloat(StackInstr* instr)
+void StackInterpreter::ProcessCopyFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
@@ -742,7 +742,7 @@ void Runtime::StackInterpreter::ProcessCopyFloat(StackInstr* instr)
  * Processes a new object instance
  * request.
  ********************************/
-void Runtime::StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
+void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
@@ -757,7 +757,7 @@ void Runtime::StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
  * Processes a new array instance
  * request.
  ********************************/
-void Runtime::StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
+void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
 {
 #ifdef _DEBUG
   cout << "stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << call_stack_pos << endl;
@@ -794,7 +794,7 @@ void Runtime::StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float
  * Processes a new byte array instance
  * request.
  ********************************/
-void Runtime::StackInterpreter::ProcessNewByteArray(StackInstr* instr)
+void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: NEW_BYTE_ARY; call_pos=" << call_stack_pos << endl;
@@ -822,7 +822,7 @@ void Runtime::StackInterpreter::ProcessNewByteArray(StackInstr* instr)
  * This instruction modifies the
  * call stack.
  ********************************/
-void Runtime::StackInterpreter::ProcessReturn()
+void StackInterpreter::ProcessReturn()
 {
 #ifdef _DEBUG
   cout << "stack oper: RTRN; call_pos=" << call_stack_pos << endl;
@@ -850,7 +850,7 @@ void Runtime::StackInterpreter::ProcessReturn()
  * Processes an asynchronous method
  * call.
  ********************************/
-void Runtime::StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
+void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
 {
   long* instance = (long*)frame->GetMemory()[0];
 
@@ -882,7 +882,7 @@ void Runtime::StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
  * Processes an interpreted
  * asynchronous method call.
  ********************************/
-void Runtime::StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance)
+void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance)
 {
   cerr << "Unsupported operation: asynchronous method call!" << endl;
   exit(1);
@@ -917,7 +917,7 @@ void Runtime::StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* c
  * Processes a synchronous method
  * call.
  ********************************/
-void Runtime::StackInterpreter::ProcessMethodCall(StackInstr* instr)
+void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 {
   // save current method
   frame->SetIp(ip);
@@ -961,7 +961,7 @@ void Runtime::StackInterpreter::ProcessMethodCall(StackInstr* instr)
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void Runtime::StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 {
   // #ifdef _X64
   // ProcessInterpretedMethodCall(called, instance);
@@ -973,7 +973,7 @@ void Runtime::StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* 
   // TODO: don't try and re-compile code that doesn't compile the first time
   // execute method if it's been compiled
   if(called->GetNativeCode()) {
-    Runtime::JitExecutorIA32 jit_executor;
+    JitExecutorIA32 jit_executor;
     long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
     if(status < 0) {
       switch(status) {
@@ -997,13 +997,13 @@ void Runtime::StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* 
 #ifdef _JIT_SERIAL
     // compile
 #ifdef _X64
-    Runtime::JitCompilerIA64 jit_compiler;
+    JitCompilerIA64 jit_compiler;
 #else
-    Runtime::JitCompilerIA32 jit_compiler;
+    JitCompilerIA32 jit_compiler;
 #endif
     jit_compiler.Compile(called);      
     // execute
-    Runtime::JitExecutorIA32 jit_executor;
+    JitExecutorIA32 jit_executor;
     long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
     if(status < 0) {
       switch(status) {
@@ -1072,7 +1072,7 @@ void Runtime::StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* 
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void Runtime::StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* instance)
+void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* instance)
 {
 #ifdef _DEBUG
   cout << "=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
@@ -1090,7 +1090,7 @@ void Runtime::StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called
  * Processes a load integer array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1106,7 +1106,7 @@ void Runtime::StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
  * Processes a load store array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1122,7 +1122,7 @@ void Runtime::StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
  * Processes a load byte array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1139,7 +1139,7 @@ void Runtime::StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
  * Processes a store byte array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1156,7 +1156,7 @@ void Runtime::StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
  * Processes a load float array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1174,7 +1174,7 @@ void Runtime::StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
  * Processes a store float array
  * variable instruction.
  ********************************/
-void Runtime::StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
+void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
@@ -1190,7 +1190,7 @@ void Runtime::StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
 /********************************
  * Processes trap instruction
  ********************************/
-void Runtime::StackInterpreter::ProcessTrap(StackInstr* instr)
+void StackInterpreter::ProcessTrap(StackInstr* instr)
 {
   switch(PopInt()) {
   case LOAD_CLS_INST_ID:
