@@ -6,7 +6,7 @@
  *
  * Reistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
+ *tree.o scanner.o parser.o test.o
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
@@ -33,14 +33,21 @@
 #define __DEBUGGER_H__
 
 #include "../common.h"
+#include "../interpreter.h"
+#include "tree.h"
+#include "parser.h"
+
 
 using namespace std;
+
+class StackInterpreter;
 
 /********************************
  * Interactive command line
  * debugger
  ********************************/
 class Debugger {
+  StackInterpreter* interpreter;
   list<int> breaks;
   
   int FindBreak(int l) {
@@ -58,13 +65,36 @@ class Debugger {
     }
   }
   
+  bool ProcessCommand(const string &line);
+  void ProcessLoad(Load* load);
+  void ProcessBreak(Break* break_command);
+  void ProcessPrint(Print* print);
+  
  public:
+  void Debug() {
+    cout << "-------------------------------------" << endl;
+    cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
+    cout << "-------------------------------------" << endl;
+    bool quit = false;
+    do {
+      // prompt for input
+      cout << "> ";
+      string line;
+      getline(cin, line);
+      quit = ProcessCommand(line);    
+      cout << endl;
+    } 
+    while(!quit);
+    cout << "Goodbye!" << endl;
+  }
+  
   Debugger() {
   }
   
   ~Debugger() {
   }
   
+  // runtime callback
   void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 			  long call_stack_pos, StackFrame* frame);
 };

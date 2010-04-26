@@ -41,20 +41,62 @@ void Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_
 
 }
 
+void Debugger::ProcessLoad(Load* load) {
+
+}
+
+void Debugger::ProcessBreak(Break* break_command) {
+
+}
+
+void Debugger::ProcessPrint(Print* print) {
+  
+}
+
+bool Debugger::ProcessCommand(const string &line) {
+#ifdef _DEBUG
+  cout << "line: |" << line << "|" << endl;
+#endif
+  
+  // parser input
+  Parser parser;  
+  Command* command = parser.Parse(line);
+  if(command) {
+    switch(command->GetCommandType()) {
+    case LOAD_COMMAND:
+      ProcessLoad(static_cast<Load*>(command));
+      break;
+      
+    case QUIT_COMMAND:
+      return true;
+
+    case BREAK_COMMAND:
+      ProcessBreak(static_cast<Break*>(command));
+      break;
+
+    case PRINT_COMMAND:
+      ProcessPrint(static_cast<Print*>(command));
+      break;
+
+    case INFO_COMMAND:
+      break;
+
+    case FRAME_COMMAND:
+      break;
+    }    
+  }
+  else {
+    cout << "Unable to process command" << endl;
+  }
+
+  return false;
+}
+
 /********************************
  * Debugger main
  ********************************/
 int main(int argc, char** argv) 
 {
-  string line;
-  do {
-    cout << "> ";
-    // TODO: do stuff
-    getline(cin, line);
-    if(line != "q" && line != "quit") {
-      cout << "blah..." << endl;
-    }
-    cout << endl;
-  } 
-  while(line != "q" && line != "quit");
+  Debugger debugger;
+  debugger.Debug();
 }
