@@ -53,12 +53,6 @@ Debugger* Debugger::Instance()
 void Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 				  long call_stack_pos, StackFrame* frame)
 {
-  if(instr->GetLineNumber() == break_num || next_instr) {
-    next_instr = false;
-    
-    string line;
-    cout << ">";
-    cin >> line;
-    cout << endl;
+  if(is_next_break && FindBreak(instr->GetLineNumber()) {
   }
 }
