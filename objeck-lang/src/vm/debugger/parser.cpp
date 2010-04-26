@@ -172,8 +172,18 @@ Command* Parser::ParseLoad(int depth) {
 #ifdef _DEBUG
   Show("Load", depth);
 #endif
+  NextToken();
+
+  string file_name;
+  if(Match(TOKEN_IDENT)) {
+    file_name = scanner->GetToken()->GetIdentifier();
+  }
+  else {
+    ProcessError("Expected filename");
+  }
+  NextToken();
   
-  return NULL;
+  return TreeFactory::Instance()->MakeLoad(file_name);
 }
 
 Command* Parser::ParseBreak(int depth) {
