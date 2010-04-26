@@ -30,7 +30,6 @@
  ***************************************************************************/
 
 #include "debugger.h"
-#include "parser.h"
 
 /********************************
  * Interactive command line
@@ -47,5 +46,15 @@ void Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_
  ********************************/
 int main(int argc, char** argv) 
 {
-  
+  string line;
+  do {
+    cout << "> ";
+    // TODO: do stuff
+    getline(cin, line);
+    if(line != "q" && line != "quit") {
+      cout << "blah..." << endl;
+    }
+    cout << endl;
+  } 
+  while(line != "q" && line != "quit");
 }
