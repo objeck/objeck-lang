@@ -108,10 +108,10 @@ Command* Parser::Parse(const string &line)
   // parse input
   Command* command = ParseLine(line);
 
-  if(!CheckErrors()) {
+  if(CheckErrors()) {
     return command;
   }
-
+  
   return NULL;
 }
 
@@ -135,6 +135,15 @@ Command* Parser::ParseStatement(int depth)
 {
   Command* command;
   switch(GetToken()) {
+  case TOKEN_LOAD_ID:
+    command = ParseLoad(depth + 1);
+    break;
+    
+  case TOKEN_QUIT_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
+    break;
+    
   case TOKEN_BREAK_ID:
     command = ParseBreak(depth + 1);
     break;
@@ -159,6 +168,14 @@ Command* Parser::ParseStatement(int depth)
   return command;
 }
 
+Command* Parser::ParseLoad(int depth) {
+#ifdef _DEBUG
+  Show("Load", depth);
+#endif
+  
+  return NULL;
+}
+
 Command* Parser::ParseBreak(int depth) {
 #ifdef _DEBUG
   Show("Break", depth);
@@ -176,12 +193,9 @@ Command* Parser::ParseBreak(int depth) {
     }
     NextToken();
   }
-  else {
-    file_name = current_file_name;
-  }
-
+  
   // line number
-  int line_num = -2;
+  int line_num = -1;
   if(Match(TOKEN_INT_LIT)) {
     line_num = scanner->GetToken()->GetIntLit();
     NextToken();
@@ -191,14 +205,12 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
   }
   
-  return NULL;
+  return TreeFactory::Instance()->MakeBreak(file_name, line_num);
 }
 
 Command* Parser::ParsePrint(int depth) {
   NextToken();  
-  ParseExpression(depth + 1);
-  
-  return NULL;
+  return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
 }
 
 Command* Parser::ParseInfo(int depth) {

@@ -57,7 +57,7 @@ namespace frontend {
    * ExpressionType enum
    ****************************/
   enum ExpressionType {
-    REF_EXPR,
+    REF_EXPR = -100,
     NIL_LIT_EXPR,
     CHAR_LIT_EXPR,
     INT_LIT_EXPR,
@@ -153,6 +153,9 @@ namespace frontend {
    * CommandType enum
    ****************************/
   enum CommandType {
+    LOAD_COMMAND = -200,
+    QUIT_COMMAND,
+    HELP_COMMAND,
     BREAK_COMMAND,
     PRINT_COMMAND,
     INFO_COMMAND,
@@ -166,7 +169,7 @@ namespace frontend {
     friend class TreeFactory;
     Reference* reference;
     
-  protected:    
+  public:    
     Command() : ParseNode() {
     }
     
@@ -177,14 +180,69 @@ namespace frontend {
   };
 
   /****************************
+   * Load class
+   ****************************/
+  class Load : public Command {
+    string file_name;
+    
+  public:
+    Load(const string &fn) {
+      file_name = fn;
+    }
+
+    ~Load() {
+    }
+
+    const string& GetFileName() {
+      return file_name;
+    }      
+
+    const CommandType GetCommandType() {
+      return LOAD_COMMAND;
+    }
+  };
+  
+  /****************************
+   * BasicCommand class
+   ****************************/
+  class BasicCommand : public Command {
+    CommandType type;
+    
+  public:
+    BasicCommand(CommandType t) {
+      type = t;
+    }
+
+    ~BasicCommand() {
+    }
+
+    const CommandType GetCommandType() {
+      return type;
+    }
+  };
+
+  /****************************
    * Break class
    ****************************/
   class Break : public Command {
+    string file_name;
+    int line_num;
+    
   public:
-    Break() {
+    Break(const string &fn, int ln) {
+      file_name = fn;
+      line_num = ln;
     }
 
     ~Break() {
+    }
+
+    const string& GetFileName() {
+      return file_name;
+    }
+
+    int GetLineNumber() {
+      return line_num;
     }
 
     const CommandType GetCommandType() {
@@ -196,13 +254,20 @@ namespace frontend {
    * Print class
    ****************************/
   class Print : public Command {
+    Expression* expression;
+    
   public:
-    Print() {
+    Print(Expression *e) {
+      expression = e;
     }
 
     ~Print() {
     }
 
+    Expression* GetExpression() {
+      return expression;
+    }
+    
     const CommandType GetCommandType() {
       return PRINT_COMMAND;
     }
@@ -584,6 +649,30 @@ namespace frontend {
       return tmp;
     }
 
+    BasicCommand* MakeBasicCommand(CommandType t) {
+      BasicCommand* tmp = new BasicCommand(t);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Break* MakeBreak(const string &file_name, int line_num) {
+      Break* tmp = new Break(file_name, line_num);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Load* MakeLoad(const string &file_name) {
+      Load* tmp = new Load(file_name);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Print* MakePrint(Expression* e) {
+      Print* tmp = new Print(e);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+    
     CalculatedExpression* MakeCalculatedExpression(ExpressionType type) {
       CalculatedExpression* tmp = new CalculatedExpression(type);
       expressions.push_back(tmp);

@@ -9,8 +9,8 @@
 ##############
 # For Linux
 ##############
-ARGS=-g -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -Wunused -pthread
+ARGS=-g -D_DEBUG -Wunused -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
 # ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
@@ -19,7 +19,7 @@ CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=compiler.a
 COMPILER_PATH=..
-EXE=odb
+EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
