@@ -41,6 +41,10 @@
 #include "os/posix/memory.h"
 #endif
 
+#ifdef _DEBUGGER
+#include "debugger/debugger.h"
+#endif
+
 using namespace std;
 
 namespace Runtime {
@@ -70,6 +74,9 @@ class StackInterpreter {
   long ip;
   // halt
   bool halt;
+#ifdef _DEBUGGER
+  Debugger* debugger;
+#endif
   
   // JIT compiler thread handles
 #ifdef _WIN32
@@ -272,7 +279,14 @@ public:
   StackInterpreter(StackProgram* p) {
     Initialize(p);
   }
-
+  
+#ifdef _DEBUGGER
+  StackInterpreter(StackProgram* p, Debugger* d) {
+    debugger = d;
+    Initialize(p);
+  }
+#endif
+  
   ~StackInterpreter() {
     if(frame) {
       delete frame;
