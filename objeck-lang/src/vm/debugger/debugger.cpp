@@ -39,7 +39,24 @@
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 				  long call_stack_pos, StackFrame* frame)
 {
-  cout << "#####################################" << endl;
+  if(instr->GetLineNumber() > -1) {
+    const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
+    /*
+    int offset = file_name.find_last_of('/');
+    if(offset < 0) {
+      offset = file_name.find_last_of('\\');
+    }
+    string short_file_name;
+    if(offset < 0) {
+      short_file_name = file_name;
+    }
+    else {
+      short_file_name = file_name.substr(offset + 1);
+    }
+    */
+    cout << "################ 'line: " << file_name << ":"
+	 << instr->GetLineNumber() << "' #####################" << endl;
+  }
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {

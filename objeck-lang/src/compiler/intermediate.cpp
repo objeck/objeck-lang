@@ -382,9 +382,24 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
       parent_name = lib_parent->GetName();
     }
   }
+
+  // get short file name
+  const string &file_name = current_class->GetFileName();
+  int offset = file_name.find_last_of('/');
+  if(offset < 0) {
+    offset = file_name.find_last_of('\\');
+  }
+  string short_file_name;
+  if(offset < 0) {
+    short_file_name = file_name;
+  }
+  else {
+    short_file_name = file_name.substr(offset + 1);
+  }
+  
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
                                     pid, parent_name, current_class->IsVirtual(),
-                                    cls_space, inst_space, entries, current_class->GetFileName(), 
+                                    cls_space, inst_space, entries, short_file_name,
 				    is_debug);
   // block
   NewBlock();
