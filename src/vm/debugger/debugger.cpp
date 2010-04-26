@@ -30,30 +30,54 @@
  ***************************************************************************/
 
 #include "debugger.h"
+#include "../loader.h"
 
 /********************************
  * Interactive command line
  * debugger
  ********************************/
-void Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
+void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 				  long call_stack_pos, StackFrame* frame)
 {
-
-}
-
-void Debugger::ProcessLoad(Load* load) {
-
-}
-
-void Debugger::ProcessBreak(Break* break_command) {
-
-}
-
-void Debugger::ProcessPrint(Print* print) {
   
 }
 
-bool Debugger::ProcessCommand(const string &line) {
+void Runtime::Debugger::ProcessLoad(Load* load) {
+  // TODO: pass args
+  Loader loader(load->GetFileName().c_str()); 
+  loader.Load();
+  
+  // execute
+  op_stack = new long[STACK_SIZE];
+  stack_pos = new long;
+  (*stack_pos) = 0;
+
+#ifdef _TIMING
+  long start = clock();
+#endif
+  interpreter = new Runtime::StackInterpreter(loader.GetProgram(), this);
+  interpreter->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+#ifdef _TIMING
+  cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+  cout << "---------------------------" << endl;
+  cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
+       << " second(s)." << endl;
+#endif
+  
+#ifdef _DEBUG
+  cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+#endif  
+}
+
+void Runtime::Debugger::ProcessBreak(Break* break_command) {
+
+}
+
+void Runtime::Debugger::ProcessPrint(Print* print) {
+  
+}
+
+bool Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
   cout << "line: |" << line << "|" << endl;
 #endif
@@ -92,11 +116,30 @@ bool Debugger::ProcessCommand(const string &line) {
   return false;
 }
 
+Runtime::Debugger::Debugger() {
+  interpreter = NULL;
+  long* op_stack = NULL;
+  long* stack_pos = NULL;
+}
+
+Runtime::Debugger::~Debugger() {
+  if(interpreter) {
+    delete interpreter;
+    interpreter = NULL;
+    
+    delete[] op_stack;
+    op_stack = NULL;
+
+    delete stack_pos;
+    stack_pos = NULL;
+  }
+}
+
 /********************************
  * Debugger main
  ********************************/
 int main(int argc, char** argv) 
 {
-  Debugger debugger;
+  Runtime::Debugger debugger;
   debugger.Debug();
 }

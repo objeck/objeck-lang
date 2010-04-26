@@ -10,14 +10,14 @@
 # For Linux
 ##############
 # ARGS=-g -Wunused -pthread
-ARGS=-g -D_DEBUG -Wunused -pthread
+ARGS=-g -D_DEBUG -D_DEBUGGER -Wunused -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
 # ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
-OBJ_LIBS=compiler.a
+OBJ_LIBS=compiler.a ../jit_intel_lp32.a ../memory.a
 COMPILER_PATH=..
 EXE=obd
 
