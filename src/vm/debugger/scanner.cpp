@@ -70,6 +70,10 @@ Scanner::~Scanner()
 ****************************/
 void Scanner::LoadKeywords()
 {
+  ident_map["load"] = TOKEN_LOAD_ID;
+  ident_map["l"] = TOKEN_LOAD_ID;
+  ident_map["quit"] = TOKEN_QUIT_ID;
+  ident_map["q"] = TOKEN_QUIT_ID;  
   ident_map["break"] = TOKEN_BREAK_ID;
   ident_map["b"] = TOKEN_BREAK_ID;
   ident_map["print"] = TOKEN_PRINT_ID;
@@ -92,6 +96,8 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_LOAD_ID:
+  case TOKEN_QUIT_ID:
   case TOKEN_BREAK_ID:
   case TOKEN_PRINT_ID:
   case TOKEN_INFO_ID:
