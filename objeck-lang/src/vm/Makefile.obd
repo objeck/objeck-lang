@@ -3,27 +3,27 @@
 ##############
 # ARGS=-pthread -mstackrealign -O3
 # ARGS=-pthread -D_TIMING -mstackrealign -O3
-ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
-# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
+# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 
 ##############
 # For Linux
 ##############
 # ARGS=-g -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-O3 -D_JIT_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
+ARGS=-pthread -g -D_DEBUG -D_DEBUGGER -Wunused
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
-OBJ_LIBS= jit_intel_lp32.a memory.a
+OBJ_LIBS=jit_intel_lp32.a memory.a
 MEM_PATH=os/posix
 JIT_PATH=jit/ia32
-EXE= obr
+LIB=debugger/compiler.a
 
-$(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
 
 memory.a:
 	cd $(MEM_PATH); make	
@@ -37,4 +37,4 @@ jit_intel_lp32.a:
 clean:
 	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f $(LIB).exe $(LIB) *.exe *.o *~

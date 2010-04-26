@@ -32,20 +32,6 @@
 #include "debugger.h"
 #include "parser.h"
 
-void Debugger::Initialize(StackProgram* p)
-{
-  
-}
-Debugger* Debugger::instance;
-Debugger* Debugger::Instance()
-{
-  if(!instance) {
-    instance = new Debugger;
-  }
-  
-  return instance;
-}
-
 /********************************
  * Interactive command line
  * debugger
@@ -53,6 +39,13 @@ Debugger* Debugger::Instance()
 void Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 				  long call_stack_pos, StackFrame* frame)
 {
-  if(is_next_break && FindBreak(instr->GetLineNumber()) {
-  }
+
+}
+
+/********************************
+ * Debugger main
+ ********************************/
+int main(int argc, char** argv) 
+{
+  
 }

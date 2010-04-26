@@ -1,27 +1,35 @@
-###############
+##############
 # For OSX only
-###############
-# ARGS=-mstackrealign -O3
-# ARGS=-D_TIMING -mstackrealign -O3
-ARGS=-mstackrealign -g -D_DEBUG -Wunused
+##############
+# ARGS=-pthread -mstackrealign -O3
+# ARGS=-pthread -D_TIMING -mstackrealign -O3
+# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
+# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
 
-###############
+##############
 # For Linux
-###############
-# ARGS=-g -D_DEBUG  -Wunused
-# ARGS=-g -Wunused
-# ARGS=-O3
+##############
+ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+# ARGS=-O3 -pthread
 
 CC=g++
-AR=ar
-SRC= tree.o scanner.o parser.o debugger.o
-LIB= ../debugger.a
+SRC=tree.o scanner.o parser.o debugger.o
+OBJ_LIBS=compiler.a
+COMPILER_PATH=..
+EXE=odb
 
-$(LIB): $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
+compiler.a:
+	cd $(COMPILER_PATH); make	
+	
 %.o: %.cpp
 	$(CC) -m32 $(ARGS) -c $< 
 
 clean:
-	rm -f *.o *~ $(LIB)
+	cd $(COMPILER_PATH); make clean
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
