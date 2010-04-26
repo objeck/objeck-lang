@@ -42,12 +42,24 @@ using namespace std;
  ********************************/
 class Debugger {
   static Debugger* instance;
-  int break_num;
-  bool next_instr;
+  list<int> breaks;
   
   Debugger() {
-    break_num = -2;
-    next_instr = false;
+  }
+
+  int FindBreak(int l) {
+    list<int>::iterator found = find(breaks.begin(), breaks.end(), l);
+    if(found != breaks.begin()) {
+      return *found;
+    }
+
+    return -1;
+  }
+
+  void AddBreak(int l) {
+    if(l > -1 && FindBreak(l) < 0) {
+      breaks.push_back(l);
+    }
   }
   
  public:
