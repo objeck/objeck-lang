@@ -123,10 +123,6 @@ void StackInterpreter::Initialize(StackProgram* p)
   JitCompilerIA32::Initialize(program);
 #endif
   MemoryManager::Initialize(program);
-
-#ifdef _DEBUGGER
-  Debugger::Initialize(program);
-#endif
 }
 
 /********************************
@@ -169,9 +165,9 @@ void StackInterpreter::Execute()
     StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
     
 #ifdef _DEBUGGER
-    Debugger::Instance()->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
+    debugger->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
 #endif
-
+    
     switch(instr->GetType()) {
     case STOR_INT_VAR:
       ProcessStoreInt(instr);

@@ -1,5 +1,5 @@
 /***************************************************************************
- * Language scanner.
+ * Runtime debugger
  *
  * Copyright (c) 2010 Randy Hollines
  * All rights reserved.
@@ -41,12 +41,8 @@ using namespace std;
  * debugger
  ********************************/
 class Debugger {
-  static Debugger* instance;
   list<int> breaks;
   
-  Debugger() {
-  }
-
   int FindBreak(int l) {
     list<int>::iterator found = find(breaks.begin(), breaks.end(), l);
     if(found != breaks.begin()) {
@@ -63,8 +59,8 @@ class Debugger {
   }
   
  public:
-  static void Initialize(StackProgram* p);
-  static Debugger* Instance();
+  Debugger() {
+  }
   
   ~Debugger() {
   }
