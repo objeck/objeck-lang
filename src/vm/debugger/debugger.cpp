@@ -39,7 +39,7 @@
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 				  long call_stack_pos, StackFrame* frame)
 {
-  
+  cout << "#####################################" << endl;
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
