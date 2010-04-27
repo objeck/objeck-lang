@@ -87,6 +87,7 @@ enum TokenType {
   TOKEN_CHAR_LIT,
   TOKEN_CHAR_STRING_LIT,
   // reserved words
+  TOKEN_RUN_ID,
   TOKEN_CLEAR_ID,
   TOKEN_DELETE_ID,
   TOKEN_LOAD_ID,

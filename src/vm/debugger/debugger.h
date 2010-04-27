@@ -52,6 +52,7 @@ namespace Runtime {
    * debugger
    ********************************/
   class Debugger {
+    string program_file;
     // break info
     list<UserBreak*> breaks;
     int cur_line_num;
@@ -60,6 +61,16 @@ namespace Runtime {
     StackInterpreter* interpreter;
     long* op_stack;
     long* stack_pos;
+    
+    bool FileExists(const string &file_name) {
+      ifstream touch(file_name.c_str());
+      if(touch.is_open()) {
+	touch.close();
+	return true;
+      }
+
+      return false;
+    }
     
     bool DeleteBreak(int line_num, const string &file_name) {      
       UserBreak* user_break = FindBreak(line_num, file_name);
@@ -95,6 +106,7 @@ namespace Runtime {
     }
     
     bool ProcessCommand(const string &line);
+    void ProcessRun();
     void ProcessLoad(Load* load);
     void ProcessBreak(Break* break_command);
     void ProcessPrint(Print* print);
@@ -119,7 +131,7 @@ namespace Runtime {
       cout << "Goodbye!" << endl;
     }
   
-    Debugger();  
+    Debugger(const string &fn);  
     ~Debugger();
   
     // runtime callback
