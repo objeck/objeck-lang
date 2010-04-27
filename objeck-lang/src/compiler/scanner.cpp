@@ -606,7 +606,6 @@ void Scanner::ParseToken(int index)
       tokens[index]->SetType(TOKEN_UNKNOWN);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);
-      NextChar();
     }
     else {
       ParseInteger(index);
