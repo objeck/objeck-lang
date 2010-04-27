@@ -160,6 +160,9 @@ namespace frontend {
     PRINT_COMMAND,
     INFO_COMMAND,
     FRAME_COMMAND,
+    RUN_COMMAND,
+    CLEAR_COMMAND,
+    DELETE_COMMAND,
   };
 
   /****************************
