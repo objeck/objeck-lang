@@ -52,6 +52,7 @@ namespace Runtime {
    * debugger
    ********************************/
   class Debugger {
+    bool quit;
     string program_file;
     // break info
     list<UserBreak*> breaks;
@@ -62,13 +63,19 @@ namespace Runtime {
     long* op_stack;
     long* stack_pos;
     
-    bool FileExists(const string &file_name) {
+    bool FileExists(const string &file_name, bool is_exe = false) {
       ifstream touch(file_name.c_str());
-      if(touch.is_open()) {
-	touch.close();
+      if(touch.is_open()) {	
+	if(is_exe) {
+	  int magic_num;
+	  touch.read((char*)&magic_num, sizeof(int));
+	  touch.close();	  	  
+	  return magic_num == 0xdddd;
+	}
+	touch.close();	
 	return true;
       }
-
+      
       return false;
     }
     
@@ -105,10 +112,11 @@ namespace Runtime {
       return false;
     }
     
-    bool ProcessCommand(const string &line);
+    void ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessLoad(Load* load);
-    void ProcessBreak(Break* break_command);
+    void ProcessBreak(BreakDelete* break_command);
+    void ProcessDelete(BreakDelete* break_command);
     void ProcessPrint(Print* print);
     void ClearProgram();
     void ClearBreaks();
@@ -117,14 +125,18 @@ namespace Runtime {
     void Debug() {
       cout << "-------------------------------------" << endl;
       cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
-      cout << "-------------------------------------" << endl;
-      bool quit = false;
+      cout << "-------------------------------------" << endl << endl;
+
+      if(program_file.size() > 0 && FileExists(program_file, true)) {
+	cout << "loaded program: '" << program_file << "'" << endl;
+      }
+      
       do {
 	// prompt for input
 	cout << "> ";
 	string line;
 	getline(cin, line);
-	quit = ProcessCommand(line);    
+	ProcessCommand(line);    
 	cout << endl;
       } 
       while(!quit);

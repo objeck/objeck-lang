@@ -225,19 +225,20 @@ namespace frontend {
   };
 
   /****************************
-   * Break class
+   * BreakDelete class
    ****************************/
-  class Break : public Command {
+  class BreakDelete : public BasicCommand {
+    CommandType type;
     string file_name;
     int line_num;
     
   public:
-    Break(const string &fn, int ln) {
+    BreakDelete(CommandType t, const string &fn, int ln) : BasicCommand(t) {
       file_name = fn;
       line_num = ln;
     }
 
-    ~Break() {
+    ~BreakDelete() {
     }
 
     const string& GetFileName() {
@@ -658,8 +659,8 @@ namespace frontend {
       return tmp;
     }
 
-    Break* MakeBreak(const string &file_name, int line_num) {
-      Break* tmp = new Break(file_name, line_num);
+    BreakDelete* MakeBreakDelete(CommandType t, const string &file_name, int line_num) {
+      BreakDelete* tmp = new BreakDelete(t, file_name, line_num);
       nodes.push_back(tmp);
       return tmp;
     }

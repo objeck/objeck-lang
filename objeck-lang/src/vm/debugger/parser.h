@@ -84,6 +84,7 @@ class Parser {
   Command* ParseStatement(int depth);
   Command* ParseLoad(int depth);
   Command* ParseBreak(int depth);
+  Command* ParseDelete(int depth);
   Command* ParsePrint(int depth);
   Command* ParseInfo(int depth);
   Command* ParseFrame(int depth);

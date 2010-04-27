@@ -38,11 +38,12 @@ void Loader::Load()
   if(magic_num == 0xddde) {
     cerr << "Unable to use execute shared library '" << filename << "'." << endl;
     exit(1);
-  } else if(magic_num != 0xdddd) {
+  } 
+  else if(magic_num != 0xdddd) {
     cerr << "Unable to execute invalid program file '" << filename << "'." << endl;
     exit(1);
   }
-
+  
   // read strings
   num_char_strings = ReadInt();
   BYTE_VALUE** char_strings = new BYTE_VALUE*[num_char_strings + arguments.size()];

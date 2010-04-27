@@ -166,9 +166,12 @@ Command* Parser::ParseStatement(int depth)
     break;
 
   case TOKEN_CLEAR_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
     break;
-
+    
   case TOKEN_DELETE_ID:
+    command = ParseDelete(depth + 1);    
     break;
     
   default:
@@ -202,6 +205,37 @@ Command* Parser::ParseLoad(int depth) {
   return TreeFactory::Instance()->MakeLoad(file_name);
 }
 
+Command* Parser::ParseDelete(int depth) {
+#ifdef _DEBUG
+  Show("Break", depth);
+#endif
+  NextToken();
+
+  // file name
+  string file_name;
+  if(Match(TOKEN_IDENT)) {
+    file_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();
+  }
+  
+  // line number
+  int line_num = -1;
+  if(Match(TOKEN_INT_LIT)) {
+    line_num = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+  else {
+    ProcessError("Expected line number");
+    NextToken();
+  }
+  
+  return TreeFactory::Instance()->MakeBreakDelete(DELETE_COMMAND, file_name, line_num);
+}
+
 Command* Parser::ParseBreak(int depth) {
 #ifdef _DEBUG
   Show("Break", depth);
@@ -230,7 +264,7 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
   }
   
-  return TreeFactory::Instance()->MakeBreak(file_name, line_num);
+  return TreeFactory::Instance()->MakeBreakDelete(BREAK_COMMAND, file_name, line_num);
 }
 
 Command* Parser::ParsePrint(int depth) {
