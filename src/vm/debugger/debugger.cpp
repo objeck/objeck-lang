@@ -39,16 +39,21 @@
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 					   long call_stack_pos, StackFrame* frame)
 {
-  const int line_num = instr->GetLineNumber();
-  const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-  if(line_num > -1 && line_num != prev_line_num && file_name != prev_file_name) {
+  if(frame->GetMethod()->GetClass()) {
+    const int line_num = instr->GetLineNumber();  
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-    cout << "################ 'line: " << file_name << ":"
-	 << instr->GetLineNumber() << "' #####################" << endl;
-
-    // set previous line
-    prev_line_num = line_num;
-    prev_file_name = file_name;
+    
+    if(line_num > -1 && line_num != cur_line_num && file_name != cur_file_name && 
+       FindBreak(line_num, file_name)) {
+      // set current line
+      cur_line_num = line_num;
+      cur_file_name = file_name;
+    
+      // process
+      const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
+      cout << "################ 'line: " << file_name << ":"
+	   << instr->GetLineNumber() << "' #####################" << endl;
+    }
   }
 }
 
@@ -92,7 +97,19 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
 }
 
 void Runtime::Debugger::ProcessBreak(Break* break_command) {
+  int line_num = break_command->GetLineNumber();
+  string file_name = break_command->GetFileName();
   
+  if(file_name.size() == 0) {
+    file_name = cur_file_name;
+  }
+  
+  if(AddBreak(line_num, file_name)) {
+    cout << "added break point: " << file_name << ":" << line_num << endl;
+  }
+  else {
+    cout << "break point already exists!" << endl;
+  }
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
@@ -169,7 +186,7 @@ Runtime::Debugger::Debugger() {
   interpreter = NULL;
   op_stack = NULL;
   stack_pos = NULL;
-  prev_line_num = -2;
+  cur_line_num = -2;
 }
 
 Runtime::Debugger::~Debugger() {
