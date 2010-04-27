@@ -178,6 +178,11 @@ Command* Parser::ParseLoad(int depth) {
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
   }
+  else if(Match(TOKEN_CHAR_STRING_LIT)) {
+    CharacterString* char_string = 
+      TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+    file_name = char_string->GetString();
+  }
   else {
     ProcessError("Expected filename");
   }
