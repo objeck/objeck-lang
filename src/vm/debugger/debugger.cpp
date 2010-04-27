@@ -48,24 +48,28 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
-    
-      // process
-      const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-      cout << "################ 'line: " << file_name << ":"
-	   << instr->GetLineNumber() << "' #####################" << endl;
+      
+      // prompt for input
+      cout << "break point: " << file_name << ":" << line_num << "> ";
+      string line;
+      getline(cin, line);
+      ProcessCommand(line);          
+      cout << endl;
     }
   }
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
   // make sure file exists
-  if(FileExists(load->GetFileName())) {
+  // TODO: check file type
+  if(FileExists(load->GetFileName(), true)) {
     // clear old program
     ClearProgram();
     program_file = load->GetFileName();
+    cout << "loaded program file: '" << program_file << "'" << endl;
   }
   else {
-    cout << "file doesn't exist: '" << load->GetFileName() << "'" << endl;
+    cout << "program file doesn't exist: '" << load->GetFileName() << "'" << endl;
   }
 }
 
@@ -105,27 +109,56 @@ void Runtime::Debugger::ProcessRun() {
   }
 }
 
-void Runtime::Debugger::ProcessBreak(Break* break_command) {
+void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
   int line_num = break_command->GetLineNumber();
   string file_name = break_command->GetFileName();
   
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
+
+  // TODO fix
+  const string &path = "../../compiler/test_src/" + file_name;
   
-  if(AddBreak(line_num, file_name)) {
-    cout << "added break point: " << file_name << ":" << line_num << endl;
+  if(FileExists(path)) {  
+    if(AddBreak(line_num, file_name)) {
+      cout << "added break point: " << file_name << ":" << line_num << endl;
+    }
+    else {
+      cout << "break point already exists!" << endl;
+    }
   }
   else {
-    cout << "break point already exists!" << endl;
+    cout << "File doesn't exit: '" << path << "'" << endl;
+  }
+}
+
+void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
+  int line_num = delete_command->GetLineNumber();
+  string file_name = delete_command->GetFileName();
+  
+  if(file_name.size() == 0) {
+    file_name = cur_file_name;
+  }
+  
+  if(DeleteBreak(line_num, file_name)) {
+    cout << "deleted break point: " << file_name << ":" << line_num << endl;
+  }
+  else {
+    cout << "break point doen't exists!" << endl;
   }
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
-  
+  /*
+  const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
+  cout << "################ 'line: " << file_name << ":"
+       << instr->GetLineNumber() << "' #####################" << endl;
+  */
+  cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << endl;
 }
 
-bool Runtime::Debugger::ProcessCommand(const string &line) {
+void Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
   cout << "input line: |" << line << "|" << endl;
 #endif
@@ -140,38 +173,48 @@ bool Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case QUIT_COMMAND:
-      return true;
+      quit = true;
+      ClearBreaks();
+      break;
 
     case BREAK_COMMAND:
-      ProcessBreak(static_cast<Break*>(command));
+      ProcessBreak(static_cast<BreakDelete*>(command));
       break;
 
     case PRINT_COMMAND:
       ProcessPrint(static_cast<Print*>(command));
       break;
 
-    case INFO_COMMAND:
-      break;
-
-    case FRAME_COMMAND:
-      break;
-
     case RUN_COMMAND:
       ProcessRun();
       break;
       
-    case CLEAR_COMMAND:
+    case CLEAR_COMMAND: {
+      cout << "  Are sure you want to clear all break points? [y/n] ";
+      string line;
+      getline(cin, line);      
+      if(line == "y" || line == "yes") {
+	cout << "  Break points cleared." << endl;
+	ClearBreaks();
+      }
+      cout << endl;
+    }
       break;
 
     case DELETE_COMMAND:
+      ProcessDelete(static_cast<BreakDelete*>(command));
+      break;
+      
+    case INFO_COMMAND:
+      break;
+      
+    case FRAME_COMMAND:
       break;
     }    
   }
   else {
     cout << "Unable to process command" << endl;
   }
-
-  return false;
 }
 
 void Runtime::Debugger::ClearBreaks() {
@@ -202,6 +245,7 @@ void Runtime::Debugger::ClearProgram() {
 }
 
 Runtime::Debugger::Debugger(const string &fn) {
+  quit = false;
   program_file = fn;
   interpreter = NULL;
   op_stack = NULL;
