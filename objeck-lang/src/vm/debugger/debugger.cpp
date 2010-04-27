@@ -37,46 +37,62 @@
  * debugger
  ********************************/
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-				  long call_stack_pos, StackFrame* frame)
+					   long call_stack_pos, StackFrame* frame)
 {
-  if(instr->GetLineNumber() > -1) {
+  const int line_num = instr->GetLineNumber();
+  const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
+  if(line_num > -1 && line_num != prev_line_num && file_name != prev_file_name) {
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
     cout << "################ 'line: " << file_name << ":"
 	 << instr->GetLineNumber() << "' #####################" << endl;
+
+    // set previous line
+    prev_line_num = line_num;
+    prev_file_name = file_name;
   }
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
-  CleanProgram();
+  // make sure file exists
+  ifstream touch(load->GetFileName().c_str());
+  if(touch.is_open()) {
+    touch.close();
+
+    // clear old program
+    ClearProgram();
+    
+    // TODO: pass args
+    Loader loader(load->GetFileName().c_str()); 
+    loader.Load();
   
-  // TODO: pass args
-  Loader loader(load->GetFileName().c_str()); 
-  loader.Load();
-  
-  // execute
-  op_stack = new long[STACK_SIZE];
-  stack_pos = new long;
-  (*stack_pos) = 0;
+    // execute
+    op_stack = new long[STACK_SIZE];
+    stack_pos = new long;
+    (*stack_pos) = 0;
 
 #ifdef _TIMING
-  long start = clock();
+    long start = clock();
 #endif
-  interpreter = new Runtime::StackInterpreter(loader.GetProgram(), this);
-  interpreter->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+    interpreter = new Runtime::StackInterpreter(loader.GetProgram(), this);
+    interpreter->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
-  cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
-  cout << "---------------------------" << endl;
-  cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
-       << " second(s)." << endl;
+    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    cout << "---------------------------" << endl;
+    cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
+	 << " second(s)." << endl;
 #endif
   
 #ifdef _DEBUG
-  cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
 #endif  
+  }
+  else {
+    cout << "file doesn't exist: '" << load->GetFileName() << "'" << endl;
+  }
 }
 
 void Runtime::Debugger::ProcessBreak(Break* break_command) {
-
+  
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
@@ -85,7 +101,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
 bool Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
-  cout << "line: |" << line << "|" << endl;
+  cout << "input line: |" << line << "|" << endl;
 #endif
   
   // parser input
@@ -122,7 +138,17 @@ bool Runtime::Debugger::ProcessCommand(const string &line) {
   return false;
 }
 
-void Runtime::Debugger::CleanProgram() {
+void Runtime::Debugger::ClearBreaks() {
+  while(!breaks.empty()) {
+    UserBreak* tmp = breaks.front();
+    breaks.erase(breaks.begin());
+    // delete
+    delete tmp;
+    tmp = NULL;
+  }
+}
+
+void Runtime::Debugger::ClearProgram() {
   if(interpreter) {
     delete interpreter;
     interpreter = NULL;
@@ -143,10 +169,12 @@ Runtime::Debugger::Debugger() {
   interpreter = NULL;
   op_stack = NULL;
   stack_pos = NULL;
+  prev_line_num = -2;
 }
 
 Runtime::Debugger::~Debugger() {
-  CleanProgram();
+  ClearProgram();
+  ClearBreaks();
 }
 
 /********************************
