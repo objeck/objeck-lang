@@ -73,6 +73,7 @@ class Debugger {
   void ProcessLoad(Load* load);
   void ProcessBreak(Break* break_command);
   void ProcessPrint(Print* print);
+  void CleanProgram();
   
  public:
   void Debug() {

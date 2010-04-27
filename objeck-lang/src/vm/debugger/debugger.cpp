@@ -41,25 +41,14 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 {
   if(instr->GetLineNumber() > -1) {
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-    /*
-    int offset = file_name.find_last_of('/');
-    if(offset < 0) {
-      offset = file_name.find_last_of('\\');
-    }
-    string short_file_name;
-    if(offset < 0) {
-      short_file_name = file_name;
-    }
-    else {
-      short_file_name = file_name.substr(offset + 1);
-    }
-    */
     cout << "################ 'line: " << file_name << ":"
 	 << instr->GetLineNumber() << "' #####################" << endl;
   }
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
+  CleanProgram();
+  
   // TODO: pass args
   Loader loader(load->GetFileName().c_str()); 
   loader.Load();
@@ -133,23 +122,31 @@ bool Runtime::Debugger::ProcessCommand(const string &line) {
   return false;
 }
 
-Runtime::Debugger::Debugger() {
-  interpreter = NULL;
-  long* op_stack = NULL;
-  long* stack_pos = NULL;
-}
-
-Runtime::Debugger::~Debugger() {
+void Runtime::Debugger::CleanProgram() {
   if(interpreter) {
     delete interpreter;
     interpreter = NULL;
-    
+  }
+  
+  if(op_stack) {
     delete[] op_stack;
     op_stack = NULL;
-
+  }
+  
+  if(stack_pos) {
     delete stack_pos;
     stack_pos = NULL;
   }
+}
+
+Runtime::Debugger::Debugger() {
+  interpreter = NULL;
+  op_stack = NULL;
+  stack_pos = NULL;
+}
+
+Runtime::Debugger::~Debugger() {
+  CleanProgram();
 }
 
 /********************************
