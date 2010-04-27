@@ -82,6 +82,10 @@ void Scanner::LoadKeywords()
   ident_map["i"] = TOKEN_INFO_ID;
   ident_map["frame"] = TOKEN_FRAME_ID;
   ident_map["f"] = TOKEN_FRAME_ID;
+  ident_map["clear"] = TOKEN_CLEAR_ID;
+  ident_map["c"] = TOKEN_CLEAR_ID;
+  ident_map["delete"] = TOKEN_DELETE_ID;
+  ident_map["d"] = TOKEN_DELETE_ID;
 }
 
 /****************************
@@ -102,6 +106,8 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_PRINT_ID:
   case TOKEN_INFO_ID:
   case TOKEN_FRAME_ID:
+  case TOKEN_CLEAR_ID:
+  case TOKEN_DELETE_ID:
     tokens[index]->SetType(ident_type);
     break;
   default:
