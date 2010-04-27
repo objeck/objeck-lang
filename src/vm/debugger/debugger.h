@@ -40,65 +40,65 @@
 using namespace std;
 
 namespace Runtime {
-
   class StackInterpreter;
 
-/********************************
- * Interactive command line
- * debugger
- ********************************/
-class Debugger {
-  StackInterpreter* interpreter;
-  long* op_stack;
-  long* stack_pos;
+  typedef struct _UserBreak {
+    int line_num;
+    string file_name;
+  } UserBreak;
   
-  list<int> breaks;
-  
-  int FindBreak(int l) {
-    list<int>::iterator found = find(breaks.begin(), breaks.end(), l);
-    if(found != breaks.begin()) {
-      return *found;
+  /********************************
+   * Interactive command line
+   * debugger
+   ********************************/
+  class Debugger {
+    // break info
+    list<UserBreak*> breaks;
+    int prev_line_num;
+    string prev_file_name;
+    // interpreter variables
+    StackInterpreter* interpreter;
+    long* op_stack;
+    long* stack_pos;
+    
+    int FindBreak(int l) {      
+      return -1;
     }
 
-    return -1;
-  }
-
-  void AddBreak(int l) {
-    if(l > -1 && FindBreak(l) < 0) {
-      breaks.push_back(l);
+    void AddBreak(int l) {
     }
-  }
   
-  bool ProcessCommand(const string &line);
-  void ProcessLoad(Load* load);
-  void ProcessBreak(Break* break_command);
-  void ProcessPrint(Print* print);
-  void CleanProgram();
+    bool ProcessCommand(const string &line);
+    void ProcessLoad(Load* load);
+    void ProcessBreak(Break* break_command);
+    void ProcessPrint(Print* print);
+    void ClearProgram();
+    void ClearBreaks();
   
- public:
-  void Debug() {
-    cout << "-------------------------------------" << endl;
-    cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
-    cout << "-------------------------------------" << endl;
-    bool quit = false;
-    do {
-      // prompt for input
-      cout << "> ";
-      string line;
-      getline(cin, line);
-      quit = ProcessCommand(line);    
-      cout << endl;
-    } 
-    while(!quit);
-    cout << "Goodbye!" << endl;
-  }
+  public:
+    void Debug() {
+      cout << "-------------------------------------" << endl;
+      cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
+      cout << "-------------------------------------" << endl;
+      bool quit = false;
+      do {
+	// prompt for input
+	cout << "> ";
+	string line;
+	getline(cin, line);
+	quit = ProcessCommand(line);    
+	cout << endl;
+      } 
+      while(!quit);
+      cout << "Goodbye!" << endl;
+    }
   
-  Debugger();  
-  ~Debugger();
+    Debugger();  
+    ~Debugger();
   
-  // runtime callback
-  void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-			  long call_stack_pos, StackFrame* frame);
-};
+    // runtime callback
+    void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
+			    long call_stack_pos, StackFrame* frame);
+  };
 }
 #endif
