@@ -59,15 +59,24 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
   // make sure file exists
-  ifstream touch(load->GetFileName().c_str());
-  if(touch.is_open()) {
-    touch.close();
+  if(FileExists(load->GetFileName())) {
+    // clear old program
+    ClearProgram();
+    program_file = load->GetFileName();
+  }
+  else {
+    cout << "file doesn't exist: '" << load->GetFileName() << "'" << endl;
+  }
+}
 
+void Runtime::Debugger::ProcessRun() {
+  // make sure file exists
+  if(program_file.size() > 0) {
     // clear old program
     ClearProgram();
     
     // TODO: pass args
-    Loader loader(load->GetFileName().c_str()); 
+    Loader loader(program_file.c_str()); 
     loader.Load();
   
     // execute
@@ -92,7 +101,7 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
 #endif  
   }
   else {
-    cout << "file doesn't exist: '" << load->GetFileName() << "'" << endl;
+    cout << "Program file not specified" << endl;
   }
 }
 
@@ -146,6 +155,16 @@ bool Runtime::Debugger::ProcessCommand(const string &line) {
 
     case FRAME_COMMAND:
       break;
+
+    case RUN_COMMAND:
+      ProcessRun();
+      break;
+      
+    case CLEAR_COMMAND:
+      break;
+
+    case DELETE_COMMAND:
+      break;
     }    
   }
   else {
@@ -182,7 +201,8 @@ void Runtime::Debugger::ClearProgram() {
   }
 }
 
-Runtime::Debugger::Debugger() {
+Runtime::Debugger::Debugger(const string &fn) {
+  program_file = fn;
   interpreter = NULL;
   op_stack = NULL;
   stack_pos = NULL;
@@ -199,6 +219,10 @@ Runtime::Debugger::~Debugger() {
  ********************************/
 int main(int argc, char** argv) 
 {
-  Runtime::Debugger debugger;
+  string file_name;
+  if(argc == 2) {
+    file_name = argv[1];
+  }
+  Runtime::Debugger debugger(file_name);
   debugger.Debug();
 }

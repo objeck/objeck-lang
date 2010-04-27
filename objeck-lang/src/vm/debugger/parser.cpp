@@ -143,6 +143,11 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
     break;
+
+  case TOKEN_RUN_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(RUN_COMMAND);
+    break;
     
   case TOKEN_BREAK_ID:
     command = ParseBreak(depth + 1);
@@ -160,6 +165,12 @@ Command* Parser::ParseStatement(int depth)
     command = ParseFrame(depth + 1);
     break;
 
+  case TOKEN_CLEAR_ID:
+    break;
+
+  case TOKEN_DELETE_ID:
+    break;
+    
   default:
     command = NULL;
     break;
@@ -195,7 +206,6 @@ Command* Parser::ParseBreak(int depth) {
 #ifdef _DEBUG
   Show("Break", depth);
 #endif
-  
   NextToken();
 
   // file name
@@ -229,12 +239,12 @@ Command* Parser::ParsePrint(int depth) {
 }
 
 Command* Parser::ParseInfo(int depth) {
+  NextToken();
   return NULL;
 }
 
 Command* Parser::ParseFrame(int depth) {
   NextToken();
-  
   return NULL;
 }
 
