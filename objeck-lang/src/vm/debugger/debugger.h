@@ -54,20 +54,46 @@ namespace Runtime {
   class Debugger {
     // break info
     list<UserBreak*> breaks;
-    int prev_line_num;
-    string prev_file_name;
+    int cur_line_num;
+    string cur_file_name;
     // interpreter variables
     StackInterpreter* interpreter;
     long* op_stack;
     long* stack_pos;
     
-    int FindBreak(int l) {      
-      return -1;
+    bool DeleteBreak(int line_num, const string &file_name) {      
+      UserBreak* user_break = FindBreak(line_num, file_name);
+      if(user_break) {
+	breaks.remove(user_break);
+	return true;
+      }
+
+      return false;
+    }
+    
+    UserBreak* FindBreak(int line_num, const string &file_name) {      
+      for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
+	UserBreak* user_break = (*iter);
+	if(user_break->line_num == line_num && user_break->file_name == file_name) {
+	  return *iter;
+	}
+      }
+      
+      return NULL;
     }
 
-    void AddBreak(int l) {
+    bool AddBreak(int line_num, const string &file_name) {
+      if(!FindBreak(line_num, file_name)) {
+	UserBreak* user_break = new UserBreak;
+	user_break->line_num = line_num;
+	user_break->file_name = file_name;
+	breaks.push_back(user_break);
+	return true;
+      }
+
+      return false;
     }
-  
+    
     bool ProcessCommand(const string &line);
     void ProcessLoad(Load* load);
     void ProcessBreak(Break* break_command);
