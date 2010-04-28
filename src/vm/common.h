@@ -537,6 +537,23 @@ public:
     return cls;
   }
 
+#ifdef _DEBUGGER
+  int GetDeclaration(const string& name, StackDclr& found) {
+    if(name.size() > 0) {
+      // search for name
+      for(int i = 0; i < num_dclrs; i++) {
+	StackDclr* dclr = dclrs[i];
+	if(dclr->name == name) {
+	  memcpy((void*)&found, (void*)dclr, sizeof(StackDclr));
+	  return i;
+	}
+      }
+    }
+    
+    return -1;
+  }
+#endif
+  
   inline StackDclr** GetDeclarations() {
     return dclrs;
   }
