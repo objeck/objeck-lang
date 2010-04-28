@@ -545,7 +545,9 @@ public:
 	StackDclr* dclr = dclrs[i];
 	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);
 	if(dclr_name == name) {
-	  memcpy((void*)&found, (void*)dclr, sizeof(StackDclr));
+	  found.name = dclr->name;
+	  found.type = dclr->type;
+	  found.id = dclr->id;
 	  return i;
 	}
       }

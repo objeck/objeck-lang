@@ -259,34 +259,34 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
       if(index > -1) {
 	switch(dclr_value.type) {	  
 	case INT_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Int, value=" << mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Int, value=" << mem[index + 1] << endl;
 	  break;
 
 	case FLOAT_PARM: {
 	  FLOAT_VALUE value;
-	  memcpy(&value, &mem[index], sizeof(FLOAT_VALUE));
-	  cout << "name=" << dclr_name->name << ", type=Float, value=" << value << endl;
+	  memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
+	  cout << "name=" << dclr_value.name << ", type=Float, value=" << value << endl;
 	}
 	  break;
 	  
 	case BYTE_ARY_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Byte:Array, value=" << (void*)mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Byte:Array, value=" << (void*)mem[index + 1] << endl;
 	  break;
 
 	case INT_ARY_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Int:Array, value=" << (void*)mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Int:Array, value=" << (void*)mem[index + 1] << endl;
 	  break;
 
 	case FLOAT_ARY_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Float:Array, value=" << (void*)mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Float:Array, value=" << (void*)mem[index + 1] << endl;
 	  break;
 
 	case OBJ_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Object, value=" << (void*)mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Object, value=" << (void*)mem[index + 1] << endl;
 	  break;
 
 	case OBJ_ARY_PARM:
-	  cout << "name=" << dclr_name->name << ", type=Object:Array, value=" << (void*)mem[index] << endl;
+	  cout << "name=" << dclr_value.name << ", type=Object:Array, value=" << (void*)mem[index + 1] << endl;
 	  break;
 	}
       }
