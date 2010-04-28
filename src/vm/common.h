@@ -543,7 +543,8 @@ public:
       // search for name
       for(int i = 0; i < num_dclrs; i++) {
 	StackDclr* dclr = dclrs[i];
-	if(dclr->name == name) {
+	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);
+	if(dclr_name == name) {
 	  memcpy((void*)&found, (void*)dclr, sizeof(StackDclr));
 	  return i;
 	}

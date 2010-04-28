@@ -58,6 +58,9 @@ namespace Runtime {
     list<UserBreak*> breaks;
     int cur_line_num;
     string cur_file_name;
+    StackFrame** cur_call_stack;    
+    long cur_call_stack_pos; 
+    StackFrame* cur_frame;
     // interpreter variables
     StackInterpreter* interpreter;
     long* op_stack;
@@ -112,7 +115,7 @@ namespace Runtime {
       return false;
     }
     
-    void ProcessCommand(const string &line);
+    Command* ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessLoad(Load* load);
     void ProcessBreak(BreakDelete* break_command);
@@ -120,6 +123,8 @@ namespace Runtime {
     void ProcessPrint(Print* print);
     void ClearProgram();
     void ClearBreaks();
+
+    void EvaluateReference(Reference* reference);
   
   public:
     void Debug() {
@@ -130,17 +135,15 @@ namespace Runtime {
       if(program_file.size() > 0 && FileExists(program_file, true)) {
 	cout << "loaded program: '" << program_file << "'" << endl;
       }
-      
-      do {
-	// prompt for input
+      // enter feedback look
+      Command* command;
+      while(true) {
 	cout << "> ";
 	string line;
 	getline(cin, line);
-	ProcessCommand(line);    
+	command = ProcessCommand(line);    
 	cout << endl;
-      } 
-      while(!quit);
-      cout << "Goodbye!" << endl;
+      }
     }
   
     Debugger(const string &fn);  
