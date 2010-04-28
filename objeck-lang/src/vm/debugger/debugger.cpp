@@ -42,30 +42,40 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
   if(frame->GetMethod()->GetClass()) {
     const int line_num = instr->GetLineNumber();  
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-    
+
+#ifdef _DEBUG
+    cout << "--- file=" << file_name << ", line=" << line_num << endl;
+#endif
+
     if(line_num > -1 && line_num != cur_line_num && file_name != cur_file_name && 
        FindBreak(line_num, file_name)) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
+      cur_frame = frame;
+      cur_call_stack = call_stack;
+      cur_call_stack_pos = call_stack_pos;
       
       // prompt for input
-      cout << "break point: " << file_name << ":" << line_num << "> ";
-      string line;
-      getline(cin, line);
-      ProcessCommand(line);          
-      cout << endl;
+      cout << "break point: " << file_name << ":" << line_num << endl;
+      Command* command;
+      do {
+	cout << "> ";
+	string line;
+	getline(cin, line);
+	command = ProcessCommand(line);
+	cout << endl;
+      }
+      while(!command || (command->GetCommandType() != CONT_COMMAND && 
+			 command->GetCommandType() != NEXT_COMMAND));
     }
   }
 }
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
-  // make sure file exists
-  // TODO: check file type
   if(FileExists(load->GetFileName(), true)) {
-    // clear old program
-    ClearProgram();
     program_file = load->GetFileName();
+    ClearProgram();
     cout << "loaded program file: '" << program_file << "'" << endl;
   }
   else {
@@ -75,10 +85,7 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
 
 void Runtime::Debugger::ProcessRun() {
   // make sure file exists
-  if(program_file.size() > 0) {
-    // clear old program
-    ClearProgram();
-    
+  if(program_file.size() > 0) {    
     // TODO: pass args
     Loader loader(program_file.c_str()); 
     loader.Load();
@@ -103,6 +110,9 @@ void Runtime::Debugger::ProcessRun() {
 #ifdef _DEBUG
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
 #endif  
+    
+    // clear old program
+    ClearProgram();
   }
   else {
     cout << "Program file not specified" << endl;
@@ -156,15 +166,141 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
-  /*
-  const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
-  cout << "################ 'line: " << file_name << ":"
-       << instr->GetLineNumber() << "' #####################" << endl;
-  */
-  cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << endl;
+  if(interpreter) {
+    cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << endl;
+    
+    Expression* expression = print->GetExpression();
+    switch(expression->GetExpressionType()) {
+    case REF_EXPR:
+      EvaluateReference(static_cast<Reference*>(expression));
+      break;
+      
+    case NIL_LIT_EXPR:
+      break;
+      
+    case CHAR_LIT_EXPR:
+      break;
+      
+    case INT_LIT_EXPR:
+      break;
+      
+    case FLOAT_LIT_EXPR:
+      break;
+      
+    case BOOLEAN_LIT_EXPR:
+      break;
+      
+    case AND_EXPR:
+      break;
+      
+    case OR_EXPR:
+      break;
+      
+    case EQL_EXPR:
+      break;
+      
+    case NEQL_EXPR:
+      break;
+      
+    case LES_EXPR:
+      break;
+      
+    case GTR_EQL_EXPR:
+      break;
+      
+    case LES_EQL_EXPR:
+      break;
+      
+    case GTR_EXPR:
+      break;
+      
+    case ADD_EXPR:
+      break;
+      
+    case SUB_EXPR:
+      break;
+      
+    case MUL_EXPR:
+      break;
+      
+    case DIV_EXPR:
+      break;
+      
+    case MOD_EXPR:
+      break;
+      
+    case CHAR_STR_EXPR:
+      break;      
+    }
+  }
+  else {
+    cout << "No program running." << endl;
+  }
 }
 
-void Runtime::Debugger::ProcessCommand(const string &line) {
+void Runtime::Debugger::EvaluateReference(Reference* reference) {
+  long* mem = cur_frame->GetMemory();
+  StackMethod* method = cur_frame->GetMethod();
+  
+  // TODO: complex reference  
+  if(reference->GetReference()) {    
+    if(mem) {      
+    }
+    else {
+      "Unable to deference Nil frame value";
+    }
+  }
+  // simple reference
+  else {
+    if(mem) {
+      const string& name = reference->GetVariableName();
+      StackDclr dclr_value;
+      int index = method->GetDeclaration(name, dclr_value);
+      if(index > -1) {
+	switch(dclr_value.type) {	  
+	case INT_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Int, value=" << mem[index] << endl;
+	  break;
+
+	case FLOAT_PARM: {
+	  FLOAT_VALUE value;
+	  memcpy(&value, &mem[index], sizeof(FLOAT_VALUE));
+	  cout << "name=" << dclr_name->name << ", type=Float, value=" << value << endl;
+	}
+	  break;
+	  
+	case BYTE_ARY_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Byte:Array, value=" << (void*)mem[index] << endl;
+	  break;
+
+	case INT_ARY_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Int:Array, value=" << (void*)mem[index] << endl;
+	  break;
+
+	case FLOAT_ARY_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Float:Array, value=" << (void*)mem[index] << endl;
+	  break;
+
+	case OBJ_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Object, value=" << (void*)mem[index] << endl;
+	  break;
+
+	case OBJ_ARY_PARM:
+	  cout << "name=" << dclr_name->name << ", type=Object:Array, value=" << (void*)mem[index] << endl;
+	  break;
+	}
+      }
+      else {
+	"Unknown variable";
+      }
+    }
+    else {
+      "Unable to deference Nil frame value";
+    }
+  }
+}
+
+Command* Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
   cout << "input line: |" << line << "|" << endl;
 #endif
@@ -179,8 +315,10 @@ void Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case QUIT_COMMAND:
-      quit = true;
       ClearBreaks();
+      ClearProgram();
+      cout << "Goodbye!" << endl;
+      exit(0);
       break;
 
     case BREAK_COMMAND:
@@ -216,11 +354,15 @@ void Runtime::Debugger::ProcessCommand(const string &line) {
       
     case FRAME_COMMAND:
       break;
-    }    
+    }  
+
+    return command;
   }
   else {
     cout << "Unable to process command" << endl;
   }
+  
+  return NULL;
 }
 
 void Runtime::Debugger::ClearBreaks() {
@@ -248,6 +390,11 @@ void Runtime::Debugger::ClearProgram() {
     delete stack_pos;
     stack_pos = NULL;
   }
+  
+  cur_line_num = -2;
+  cur_frame = NULL;
+  cur_call_stack = NULL;
+  cur_call_stack_pos = NULL;
 }
 
 Runtime::Debugger::Debugger(const string &fn) {
@@ -257,6 +404,9 @@ Runtime::Debugger::Debugger(const string &fn) {
   op_stack = NULL;
   stack_pos = NULL;
   cur_line_num = -2;
+  cur_frame = NULL;
+  cur_call_stack = NULL;
+  cur_call_stack_pos = NULL;
 }
 
 Runtime::Debugger::~Debugger() {
