@@ -163,14 +163,15 @@ namespace frontend {
     RUN_COMMAND,
     CLEAR_COMMAND,
     DELETE_COMMAND,
+    NEXT_COMMAND,
+    CONT_COMMAND,
   };
-
+  
   /****************************
    * Command base class
    ****************************/
   class Command : public ParseNode {
     friend class TreeFactory;
-    Reference* reference;
     
   public:    
     Command() : ParseNode() {
@@ -559,6 +560,7 @@ namespace frontend {
     
     Reference(const string &v) :Expression() {
       variable_name = v;
+      reference	= NULL;
     }
     
     ~Reference() {
