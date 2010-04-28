@@ -87,7 +87,6 @@ void Scanner::LoadKeywords()
   ident_map["?frame"] = TOKEN_FRAME_ID;
   ident_map["?f"] = TOKEN_FRAME_ID;
   ident_map["?clear"] = TOKEN_CLEAR_ID;
-  ident_map["?c"] = TOKEN_CLEAR_ID;
   ident_map["?delete"] = TOKEN_DELETE_ID;
   ident_map["?d"] = TOKEN_DELETE_ID;
   ident_map["?run"] = TOKEN_RUN_ID;
