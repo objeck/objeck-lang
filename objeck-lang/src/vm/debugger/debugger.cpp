@@ -118,8 +118,7 @@ void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
   }
 
   // TODO fix
-  const string &path = "../../compiler/test_src/" + file_name;
-  
+  const string &path = "../../compiler/test_src/" + file_name;  
   if(FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
       cout << "added break point: " << file_name << ":" << line_num << endl;
@@ -140,12 +139,19 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
-  
-  if(DeleteBreak(line_num, file_name)) {
-    cout << "deleted break point: " << file_name << ":" << line_num << endl;
+
+  // TODO fix
+  const string &path = "../../compiler/test_src/" + file_name;  
+  if(FileExists(path)) {  
+    if(DeleteBreak(line_num, file_name)) {
+      cout << "added break point: " << file_name << ":" << line_num << endl;
+    }
+    else {
+      cout << "break point already exists!" << endl;
+    }
   }
   else {
-    cout << "break point doen't exists!" << endl;
+    cout << "File doesn't exit: '" << path << "'" << endl;
   }
 }
 
