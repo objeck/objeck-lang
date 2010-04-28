@@ -70,24 +70,28 @@ Scanner::~Scanner()
 ****************************/
 void Scanner::LoadKeywords()
 {
-  ident_map["load"] = TOKEN_LOAD_ID;
-  ident_map["l"] = TOKEN_LOAD_ID;
-  ident_map["quit"] = TOKEN_QUIT_ID;
-  ident_map["q"] = TOKEN_QUIT_ID;  
-  ident_map["break"] = TOKEN_BREAK_ID;
-  ident_map["b"] = TOKEN_BREAK_ID;
-  ident_map["print"] = TOKEN_PRINT_ID;
-  ident_map["p"] = TOKEN_PRINT_ID;
-  ident_map["info"] = TOKEN_INFO_ID;
-  ident_map["i"] = TOKEN_INFO_ID;
-  ident_map["frame"] = TOKEN_FRAME_ID;
-  ident_map["f"] = TOKEN_FRAME_ID;
-  ident_map["clear"] = TOKEN_CLEAR_ID;
-  ident_map["c"] = TOKEN_CLEAR_ID;
-  ident_map["delete"] = TOKEN_DELETE_ID;
-  ident_map["d"] = TOKEN_DELETE_ID;
-  ident_map["run"] = TOKEN_RUN_ID;
-  ident_map["r"] = TOKEN_RUN_ID;
+  ident_map["?next"] = TOKEN_NEXT_ID;
+  ident_map["?n"] = TOKEN_NEXT_ID;
+  ident_map["?cont"] = TOKEN_CONT_ID;
+  ident_map["?c"] = TOKEN_CONT_ID;
+  ident_map["?load"] = TOKEN_LOAD_ID;
+  ident_map["?l"] = TOKEN_LOAD_ID;
+  ident_map["?quit"] = TOKEN_QUIT_ID;
+  ident_map["?q"] = TOKEN_QUIT_ID;  
+  ident_map["?break"] = TOKEN_BREAK_ID;
+  ident_map["?b"] = TOKEN_BREAK_ID;
+  ident_map["?print"] = TOKEN_PRINT_ID;
+  ident_map["?p"] = TOKEN_PRINT_ID;
+  ident_map["?info"] = TOKEN_INFO_ID;
+  ident_map["?i"] = TOKEN_INFO_ID;
+  ident_map["?frame"] = TOKEN_FRAME_ID;
+  ident_map["?f"] = TOKEN_FRAME_ID;
+  ident_map["?clear"] = TOKEN_CLEAR_ID;
+  ident_map["?c"] = TOKEN_CLEAR_ID;
+  ident_map["?delete"] = TOKEN_DELETE_ID;
+  ident_map["?d"] = TOKEN_DELETE_ID;
+  ident_map["?run"] = TOKEN_RUN_ID;
+  ident_map["?r"] = TOKEN_RUN_ID;
 }
 
 /****************************
@@ -102,6 +106,8 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_NEXT_ID:
+  case TOKEN_CONT_ID:
   case TOKEN_LOAD_ID:
   case TOKEN_QUIT_ID:
   case TOKEN_BREAK_ID:
@@ -365,12 +371,12 @@ void Scanner::ParseToken(int index)
     }
   }
   // identifier
-  else if(isalpha(cur_char) || cur_char == '@') {
+  else if(isalpha(cur_char) || cur_char == '@' || cur_char == '?') {
     // mark
     start_pos = buffer_pos - 1;
     
     while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || 
-	   cur_char == '@' || cur_char == '.') && cur_char != EOB) {
+	   cur_char == '@' || cur_char == '?' || cur_char == '.') && cur_char != EOB) {
       NextChar();
     }
     // mark
