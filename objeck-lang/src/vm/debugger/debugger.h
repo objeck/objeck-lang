@@ -64,7 +64,7 @@ namespace Runtime {
     long* stack_pos;
     
     bool FileExists(const string &file_name, bool is_exe = false) {
-      ifstream touch(file_name.c_str());
+      ifstream touch(file_name.c_str(), ios::binary);
       if(touch.is_open()) {	
 	if(is_exe) {
 	  int magic_num;
