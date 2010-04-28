@@ -47,8 +47,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     cout << "--- file=" << file_name << ", line=" << line_num << endl;
 #endif
 
-    if(line_num > -1 && line_num != cur_line_num && file_name != cur_file_name && 
-       FindBreak(line_num, file_name)) {
+    if(line_num > -1 && line_num != cur_line_num && FindBreak(line_num, file_name)) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -307,7 +306,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
   
   // parser input
   Parser parser;  
-  Command* command = parser.Parse(line);
+  Command* command = parser.Parse("?" + line);
   if(command) {
     switch(command->GetCommandType()) {
     case LOAD_COMMAND:
