@@ -315,10 +315,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() && right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() && right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() && right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() && right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() && right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() && right->GetIntValue());
@@ -330,10 +330,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() || right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() || right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() || right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() || right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() || right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() || right->GetIntValue());
@@ -345,10 +345,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() == right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() == right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() == right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() == right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() == right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() == right->GetIntValue());
@@ -360,10 +360,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() != right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() != right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() != right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() != right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() != right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() != right->GetIntValue());
@@ -375,10 +375,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() < right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() < right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() < right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() < right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() < right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() < right->GetIntValue());
@@ -390,10 +390,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() >= right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() >= right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() >= right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() >= right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() >= right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() >= right->GetIntValue());
@@ -405,10 +405,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() <= right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() <= right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() <= right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() <= right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() <= right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() <= right->GetIntValue());
@@ -420,10 +420,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() > right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() > right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() > right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() > right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() > right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() > right->GetIntValue());
@@ -435,10 +435,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() + right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() + right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() + right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() + right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() + right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() + right->GetIntValue());
@@ -450,10 +450,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() - right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() - right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() - right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() - right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() - right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() - right->GetIntValue());
@@ -465,10 +465,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() * right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() * right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() * right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() * right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() * right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() * right->GetIntValue());
@@ -480,10 +480,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetFloatValue(left->GetFloatValue() / right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
-      expression->SetFloatValue(left->GetIntValue() / right->GetFloatValue());
+      expression->SetFloatValue(left->GetFloatValue() / right->GetIntValue());
     }
     else if(right->GetFloatEval()) {
-      expression->SetFloatValue(left->GetFloatValue() / right->GetIntValue());
+      expression->SetFloatValue(left->GetIntValue() / right->GetFloatValue());
     }
     else {
       expression->SetIntValue(left->GetIntValue() / right->GetIntValue());
