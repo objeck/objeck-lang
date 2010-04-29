@@ -547,25 +547,40 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	  reference->SetFloatValue(value);
 	}
 	  break;
-	  
-	case BYTE_ARY_PARM:
-	  reference->SetIntValue(mem[index + 1]);
-	  break;
-
-	case INT_ARY_PARM:
-	  reference->SetIntValue(mem[index + 1]);
-	  break;
-
-	case FLOAT_ARY_PARM:
-	  reference->SetIntValue(mem[index + 1]);
-	  break;
 
 	case OBJ_PARM:
 	  reference->SetIntValue(mem[index + 1]);
 	  break;
-
-	case OBJ_ARY_PARM:
+	  
+	case BYTE_ARY_PARM: {
+	  ExpressionList* indices = reference->GetIndices();	  
 	  reference->SetIntValue(mem[index + 1]);
+	}
+	  break;
+
+	case INT_ARY_PARM: {
+	  ExpressionList* indices = reference->GetIndices();
+	  // TODO: match dimensions
+
+	  // TODO: calculate indices
+
+	  // TODO: test bounds
+
+	  // TODO: set value
+	  reference->SetIntValue(mem[index + 1]);
+	}
+	  break;
+
+	case FLOAT_ARY_PARM: {
+	  ExpressionList* indices = reference->GetIndices();
+	  reference->SetIntValue(mem[index + 1]);
+	}
+	  break;	
+
+	case OBJ_ARY_PARM: {
+	  ExpressionList* indices = reference->GetIndices();
+	  reference->SetIntValue(mem[index + 1]);
+	}
 	  break;
 	}
       }
@@ -581,7 +596,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 
 Command* Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
-  cout << "input line: |" << line << "|" << endl;
+  cout << "input: |" << line << "|" << endl;
 #endif
   
   // parser input
@@ -613,11 +628,11 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case CLEAR_COMMAND: {
-      cout << "  Are sure you want to clear all break points? [y/n] ";
+      cout << "Are sure you want to clear all break points? [y/n] ";
       string line;
       getline(cin, line);      
       if(line == "y" || line == "yes") {
-	cout << "  Break points cleared." << endl;
+	cout << "Break points cleared." << endl;
 	ClearBreaks();
       }
       cout << endl;
