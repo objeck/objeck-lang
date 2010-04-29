@@ -1,4 +1,5 @@
 0.9.10
+* Fixed parser bug related to the minus token
 * Fixed bug related to parsing hex numbers
 * Fixed bug related passing multiple new object instances
 
