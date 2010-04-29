@@ -60,9 +60,10 @@ namespace Runtime {
     string cur_file_name;
     StackFrame** cur_call_stack;    
     long cur_call_stack_pos; 
-    StackFrame* cur_frame;
     // interpreter variables
     StackInterpreter* interpreter;
+    StackProgram* cur_program;
+    StackFrame* cur_frame;
     long* op_stack;
     long* stack_pos;
     

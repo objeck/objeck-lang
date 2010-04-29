@@ -97,8 +97,9 @@ void Runtime::Debugger::ProcessRun() {
 #ifdef _TIMING
     long start = clock();
 #endif
-    interpreter = new Runtime::StackInterpreter(loader.GetProgram(), this);
-    interpreter->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+    cur_program = loader.GetProgram();
+    interpreter = new Runtime::StackInterpreter(cur_program, this);
+    interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
     cout << "---------------------------" << endl;
@@ -168,31 +169,45 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
   Expression* expression = print->GetExpression();
   EvaluateExpression(expression);
-    
+
   switch(expression->GetExpressionType()) {
   case REF_EXPR: 
     if(interpreter) {
-      const StackDclr& dclr_value =  static_cast<Reference*>(expression)->GetDeclaration();
+      Reference* reference = static_cast<Reference*>(expression);
+      while(reference->GetReference()) {
+	reference = reference->GetReference();
+      }
+
+      const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
       switch(dclr_value.type) {
       case INT_PARM:
+	cout << "type=Int, value=" << reference->GetIntValue() << endl;
 	break;
 	
       case FLOAT_PARM:
+	cout << "type=Float, value=" << reference->GetFloatValue() << endl;
 	break;
 	  
       case BYTE_ARY_PARM:
+	cout << "type=Byte:Array, address=" << (void*)reference->GetIntValue() << endl;
 	break;
 
       case INT_ARY_PARM:
+	cout << "type=Int:Array, address=" << (void*)reference->GetIntValue() << endl;
 	break;
 
       case FLOAT_ARY_PARM:
+	cout << "type=Float:Array, address=" << (void*)reference->GetIntValue() << endl;
 	break;
 
-      case OBJ_PARM:
+      case OBJ_PARM: {
+	cout << "type=Object:Array, address=" << (void*)reference->GetIntValue() << endl;
+      }
 	break;
 
-      case OBJ_ARY_PARM:
+      case OBJ_ARY_PARM: {
+	cout << "type=Object:Array, address=" << (void*)reference->GetIntValue() << endl;
+      }
 	break;
       }      
     }
@@ -504,15 +519,17 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
   
   // TODO: complex reference  
   if(reference->GetReference()) {    
-    if(mem) {      
+    if(mem) {
+      
     }
     else {
       "Unable to deference Nil frame";
     }
   }
   // simple reference
-  else {
+  else {    
     if(mem) {
+      // TODO: check for instance reference
       StackDclr dclr_value;
       const string& name = reference->GetVariableName();
       int index = method->GetDeclaration(name, dclr_value);
@@ -527,7 +544,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	case FLOAT_PARM: {
 	  FLOAT_VALUE value;
 	  memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
-	  reference->SetFloatValue(mem[index + 1]);
+	  reference->SetFloatValue(value);
 	}
 	  break;
 	  
@@ -655,6 +672,7 @@ void Runtime::Debugger::ClearProgram() {
   
   cur_line_num = -2;
   cur_frame = NULL;
+  cur_program = NULL;
   cur_call_stack = NULL;
   cur_call_stack_pos = NULL;
 }
@@ -667,6 +685,7 @@ Runtime::Debugger::Debugger(const string &fn) {
   stack_pos = NULL;
   cur_line_num = -2;
   cur_frame = NULL;
+  cur_program = NULL;
   cur_call_stack = NULL;
   cur_call_stack_pos = NULL;
 }
