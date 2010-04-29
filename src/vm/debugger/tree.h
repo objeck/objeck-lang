@@ -116,7 +116,7 @@ namespace frontend {
       is_float_eval = true;
     }
 
-    INT_VALUE GetFloatValue() {
+    FLOAT_VALUE GetFloatValue() {
       return float_value;
     }
 
