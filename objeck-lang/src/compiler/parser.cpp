@@ -1260,7 +1260,7 @@ Expression* Parser::ParseTerm(int depth)
       if(Match(TOKEN_ADD)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, ADD_EXPR);
       } else {
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, ADD_EXPR);
+        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SUB_EXPR);
       }
       NextToken();
 
