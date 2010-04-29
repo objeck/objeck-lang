@@ -124,7 +124,9 @@ namespace Runtime {
     void ClearProgram();
     void ClearBreaks();
 
+    void EvaluateExpression(Expression* expression);
     void EvaluateReference(Reference* reference);
+    void EvaluateCalculation(CalculatedExpression* expression);
   
   public:
     void Debug() {
