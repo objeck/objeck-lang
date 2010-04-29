@@ -166,74 +166,161 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
   if(interpreter) {
-    cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << endl;
-    
     Expression* expression = print->GetExpression();
+    EvaluateExpression(expression);
+    
     switch(expression->GetExpressionType()) {
     case REF_EXPR:
       EvaluateReference(static_cast<Reference*>(expression));
       break;
       
     case NIL_LIT_EXPR:
+      cout << "type=Nil, value=Nil" << endl;
       break;
       
     case CHAR_LIT_EXPR:
+      cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
       break;
       
     case INT_LIT_EXPR:
+      cout << "type=Int, value=" << expression->GetIntValue() << endl;
       break;
       
     case FLOAT_LIT_EXPR:
+      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
       break;
       
     case BOOLEAN_LIT_EXPR:
+      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
       
     case AND_EXPR:
-      break;
-      
     case OR_EXPR:
-      break;
-      
     case EQL_EXPR:
-      break;
-      
     case NEQL_EXPR:
-      break;
-      
     case LES_EXPR:
-      break;
-      
     case GTR_EQL_EXPR:
-      break;
-      
     case LES_EQL_EXPR:
-      break;
-      
     case GTR_EXPR:
+      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
       
     case ADD_EXPR:
-      break;
-      
     case SUB_EXPR:
-      break;
-      
     case MUL_EXPR:
-      break;
-      
     case DIV_EXPR:
-      break;
-      
     case MOD_EXPR:
+      if(expression->GetFloatEval()) {
+	cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+      }
+      else {
+	cout << "type=Int/Array/Object, value=" << expression->GetIntValue() << endl;
+      }
       break;
       
     case CHAR_STR_EXPR:
-      break;      
+      break;    
     }
   }
   else {
     cout << "No program running." << endl;
+  }
+}
+
+void Runtime::Debugger::EvaluateExpression(Expression* expression) {
+  switch(expression->GetExpressionType()) {
+  case REF_EXPR:
+    EvaluateReference(static_cast<Reference*>(expression));
+    break;
+      
+  case NIL_LIT_EXPR:
+    expression->SetIntValue(0);
+    break;
+      
+  case CHAR_LIT_EXPR:
+    expression->SetIntValue(static_cast<CharacterLiteral*>(expression)->GetValue());
+    break;
+      
+  case INT_LIT_EXPR:
+    expression->SetIntValue(static_cast<IntegerLiteral*>(expression)->GetValue());
+    break;
+      
+  case FLOAT_LIT_EXPR:
+    expression->SetFloatValue(static_cast<FloatLiteral*>(expression)->GetValue());
+    break;
+      
+  case BOOLEAN_LIT_EXPR:
+    expression->SetFloatValue(static_cast<FloatLiteral*>(expression)->GetValue());
+    break;
+      
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EQL_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR:
+    EvaluateCalculation(static_cast<CalculatedExpression*>(expression));
+    break;
+      
+  case CHAR_STR_EXPR:
+    break;      
+  }
+}
+
+void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
+  EvaluateExpression(expression->GetLeft());
+  EvaluateExpression(expression->GetRight());
+
+  Expression* left = expression->GetLeft();
+  Expression* right = expression->GetRight();
+  
+  switch(expression->GetExpressionType()) {
+  case AND_EXPR:
+    break;
+
+  case OR_EXPR:
+    break;
+
+  case EQL_EXPR:
+    break;
+
+  case NEQL_EXPR:
+    break;
+
+  case LES_EXPR:
+    break;
+
+  case GTR_EQL_EXPR:
+    break;
+
+  case LES_EQL_EXPR:
+    break;
+
+  case GTR_EXPR:
+    break;
+
+  case ADD_EXPR:
+    break;
+
+  case SUB_EXPR:
+    expression->SetIntValue(left->GetIntValue() - right->GetIntValue());
+    break;
+
+  case MUL_EXPR:
+    break;
+
+  case DIV_EXPR:
+    break;
+
+  case MOD_EXPR:
+    break;
   }
 }
 
@@ -246,55 +333,56 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
     if(mem) {      
     }
     else {
-      "Unable to deference Nil frame value";
+      "Unable to deference Nil frame";
     }
   }
   // simple reference
   else {
     if(mem) {
-      const string& name = reference->GetVariableName();
       StackDclr dclr_value;
+      const string& name = reference->GetVariableName();
       int index = method->GetDeclaration(name, dclr_value);
+      // check index
       if(index > -1) {
 	switch(dclr_value.type) {	  
 	case INT_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Int, value=" << mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 
 	case FLOAT_PARM: {
 	  FLOAT_VALUE value;
 	  memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
-	  cout << "name=" << dclr_value.name << ", type=Float, value=" << value << endl;
+	  reference->SetFloatValue(mem[index + 1]);
 	}
 	  break;
 	  
 	case BYTE_ARY_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Byte:Array, value=" << (void*)mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 
 	case INT_ARY_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Int:Array, value=" << (void*)mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 
 	case FLOAT_ARY_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Float:Array, value=" << (void*)mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 
 	case OBJ_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Object, value=" << (void*)mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 
 	case OBJ_ARY_PARM:
-	  cout << "name=" << dclr_value.name << ", type=Object:Array, value=" << (void*)mem[index + 1] << endl;
+	  reference->SetIntValue(mem[index + 1]);
 	  break;
 	}
       }
       else {
-	"Unknown variable";
+	cout << "Unknown variable: name='" << name << "'";
       }
     }
     else {
-      "Unable to deference Nil frame value";
+      "Unable to deference Nil frame";
     }
   }
 }

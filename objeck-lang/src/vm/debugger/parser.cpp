@@ -462,7 +462,7 @@ Expression* Parser::ParseTerm(int depth)
       if(Match(TOKEN_ADD)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(ADD_EXPR);
       } else {
-        right = TreeFactory::Instance()->MakeCalculatedExpression(ADD_EXPR);
+        right = TreeFactory::Instance()->MakeCalculatedExpression(SUB_EXPR);
       }
       NextToken();
 

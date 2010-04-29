@@ -99,10 +99,6 @@ namespace frontend {
     }
 
   public:
-    void SetFloatEval(bool b) {
-      is_float_eval = b;
-    }
-
     bool GetFloatEval() {
       return is_float_eval;
     }
@@ -115,8 +111,9 @@ namespace frontend {
       return int_value;
     }
 
-    void SetIntValue(FLOAT_VALUE f) {
+    void SetFloatValue(FLOAT_VALUE f) {
       float_value = f;
+      is_float_eval = true;
     }
 
     INT_VALUE GetFloatValue() {
