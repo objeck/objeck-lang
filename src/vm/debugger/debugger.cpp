@@ -165,74 +165,102 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
-  if(interpreter) {
-    Expression* expression = print->GetExpression();
-    EvaluateExpression(expression);
+
+  Expression* expression = print->GetExpression();
+  EvaluateExpression(expression);
     
-    switch(expression->GetExpressionType()) {
-    case REF_EXPR:
-      EvaluateReference(static_cast<Reference*>(expression));
-      break;
-      
-    case NIL_LIT_EXPR:
-      cout << "type=Nil, value=Nil" << endl;
-      break;
-      
-    case CHAR_LIT_EXPR:
-      cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
-      break;
-      
-    case INT_LIT_EXPR:
-      cout << "type=Int, value=" << expression->GetIntValue() << endl;
-      break;
-      
-    case FLOAT_LIT_EXPR:
-      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
-      break;
-      
-    case BOOLEAN_LIT_EXPR:
-      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
-      break;
-      
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EQL_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EXPR:
-      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
-      break;
-      
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-      if(expression->GetFloatEval()) {
-	cout << "type=Float, value=" << expression->GetFloatValue() << endl;
-      }
-      else {
-	cout << "type=Int/Array/Object, value=" << expression->GetIntValue() << endl;
-      }
-      break;
-      
-    case CHAR_STR_EXPR:
-      break;    
+  switch(expression->GetExpressionType()) {
+  case REF_EXPR: 
+    if(interpreter) {
+      const StackDclr& dclr_value =  static_cast<Reference*>(expression)->GetDeclaration();
+      switch(dclr_value.type) {
+      case INT_PARM:
+	break;
+	
+      case FLOAT_PARM:
+	break;
+	  
+      case BYTE_ARY_PARM:
+	break;
+
+      case INT_ARY_PARM:
+	break;
+
+      case FLOAT_ARY_PARM:
+	break;
+
+      case OBJ_PARM:
+	break;
+
+      case OBJ_ARY_PARM:
+	break;
+      }      
     }
-  }
-  else {
-    cout << "No program running." << endl;
+    else {
+      cout << "No program running." << endl;
+    }
+    break;
+      
+  case NIL_LIT_EXPR:
+    cout << "type=Nil, value=Nil" << endl;
+    break;
+      
+  case CHAR_LIT_EXPR:
+    cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
+    break;
+      
+  case INT_LIT_EXPR:
+    cout << "type=Int, value=" << expression->GetIntValue() << endl;
+    break;
+      
+  case FLOAT_LIT_EXPR:
+    cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+    break;
+      
+  case BOOLEAN_LIT_EXPR:
+    cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+    break;
+      
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EQL_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EXPR:
+    cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+    break;
+      
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR:
+    if(expression->GetFloatEval()) {
+      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+    }
+    else {
+      cout << "type=Int, value=" << expression->GetIntValue() << endl;
+    }
+    break;
+      
+  case CHAR_STR_EXPR:
+    break;    
   }
 }
 
 void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   switch(expression->GetExpressionType()) {
   case REF_EXPR:
-    EvaluateReference(static_cast<Reference*>(expression));
+    if(interpreter) {
+      EvaluateReference(static_cast<Reference*>(expression));
+    }
+    else {
+      cout << "No program running." << endl;
+    }
     break;
-      
+    
   case NIL_LIT_EXPR:
     expression->SetIntValue(0);
     break;
@@ -283,43 +311,189 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   
   switch(expression->GetExpressionType()) {
   case AND_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() && right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() && right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() && right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() && right->GetIntValue());
+    }
     break;
 
   case OR_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() || right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() || right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() || right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() || right->GetIntValue());
+    }
     break;
 
   case EQL_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() == right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() == right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() == right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() == right->GetIntValue());
+    }
     break;
 
   case NEQL_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() != right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() != right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() != right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() != right->GetIntValue());
+    }
     break;
 
   case LES_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() < right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() < right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() < right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() < right->GetIntValue());
+    }
     break;
 
   case GTR_EQL_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() >= right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() >= right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() >= right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() >= right->GetIntValue());
+    }
     break;
 
   case LES_EQL_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() <= right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() <= right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() <= right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() <= right->GetIntValue());
+    }
     break;
 
   case GTR_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() > right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() > right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() > right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() > right->GetIntValue());
+    }
     break;
 
   case ADD_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() + right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() + right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() + right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() + right->GetIntValue());
+    }
     break;
 
   case SUB_EXPR:
-    expression->SetIntValue(left->GetIntValue() - right->GetIntValue());
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() - right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() - right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() - right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() - right->GetIntValue());
+    }
     break;
-
+    
   case MUL_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() * right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() * right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() * right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() * right->GetIntValue());
+    }
     break;
 
   case DIV_EXPR:
+    if(left->GetFloatEval() && right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() / right->GetFloatValue());
+    }
+    else if(left->GetFloatEval()) {
+      expression->SetFloatValue(left->GetIntValue() / right->GetFloatValue());
+    }
+    else if(right->GetFloatEval()) {
+      expression->SetFloatValue(left->GetFloatValue() / right->GetIntValue());
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() / right->GetIntValue());
+    }
     break;
-
+    
   case MOD_EXPR:
+    if(!left->GetFloatEval() && !right->GetFloatEval()) {
+      expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
+    }
     break;
   }
 }
@@ -342,6 +516,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
       StackDclr dclr_value;
       const string& name = reference->GetVariableName();
       int index = method->GetDeclaration(name, dclr_value);
+      reference->SetDeclaration(dclr_value);
       // check index
       if(index > -1) {
 	switch(dclr_value.type) {	  

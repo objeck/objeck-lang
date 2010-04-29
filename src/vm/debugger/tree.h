@@ -554,6 +554,7 @@ namespace frontend {
     string variable_name;
     ExpressionList* indices;
     Reference* reference;
+    StackDclr dclr;
     
     Reference(const string &v) :Expression() {
       variable_name = v;
@@ -578,6 +579,14 @@ namespace frontend {
     
     void SetIndices(ExpressionList* l) {
       indices = l;
+    }
+
+    void SetDeclaration(StackDclr &d) {
+      dclr = d;
+    }
+
+    const StackDclr& GetDeclaration() {
+      return dclr;
     }
     
     ExpressionList* GetIndices() {
