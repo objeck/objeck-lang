@@ -585,6 +585,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
     }
   } 
+  else if(Match(TOKEN_OPEN_PAREN)) {
+    NextToken();
+    expression = ParseLogic(depth + 1);
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      ProcessError(TOKEN_CLOSED_PAREN);
+    }
+    NextToken();
+  } 
   else {
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
