@@ -1414,14 +1414,16 @@ Expression* Parser::ParseSimpleExpression(int depth)
       expression = ParseVariable(ident, depth + 1);
       break;
     }
-  } else if(Match(TOKEN_OPEN_PAREN)) {
+  } 
+  else if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
     expression = ParseLogic(depth + 1);
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(TOKEN_CLOSED_PAREN);
     }
     NextToken();
-  } else if(Match(TOKEN_SUB)) {
+  } 
+  else if(Match(TOKEN_SUB)) {
     NextToken();
 
     switch(GetToken()) {
