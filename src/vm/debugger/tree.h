@@ -555,9 +555,11 @@ namespace frontend {
     ExpressionList* indices;
     Reference* reference;
     StackDclr dclr;
+    bool is_instance;
     
-    Reference(const string &v) :Expression() {
+    Reference(const string &v, const bool is) :Expression() {
       variable_name = v;
+      is_instance = is;
       reference	= NULL;
     }
     
@@ -595,6 +597,10 @@ namespace frontend {
     
     const ExpressionType GetExpressionType() {
       return REF_EXPR;
+    }
+
+    bool IsInstance() {
+      return is_instance;
     }
   };
 
@@ -727,8 +733,8 @@ namespace frontend {
       return tmp;
     }
 
-    Reference* MakeReference(const string &v) {
-      Reference* tmp = new Reference(v);
+    Reference* MakeReference(const string &v, const bool i) {
+      Reference* tmp = new Reference(v, i);
       calls.push_back(tmp);
       return tmp;
     }
