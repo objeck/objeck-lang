@@ -581,15 +581,12 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	    if(expressions.size() == dim) {
 	      array += dim + 2;
 
-	      // TODO: calculate indices
-	      
-	      /* TODO: process expession values
-	      long index = PopInt();
+	      // calculate indices	      
+	      long index = values[0];
 	      for(long i = 1; i < dim; i++) {
 		index *= array[i];
-		index += PopInt();
+		index += values[i];
 	      }	      
-	      */	      
 	      
 	      // TODO: check bounds (index)
 	      
