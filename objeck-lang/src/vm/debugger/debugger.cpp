@@ -557,12 +557,12 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	  
 	case BYTE_ARY_PARM:
 	case INT_ARY_PARM:
-	case OBJ_ARY_PARM:
-	  EvaluateIntReference(reference, mem, index);
+	case OBJ_ARY_PARM:	  
+	  EvaluateIntFloatReference(reference, mem, index, false);
 	  break;
 	  
 	case FLOAT_ARY_PARM:
-	  EvaluateFloatReference(reference, mem, index);
+	  EvaluateIntFloatReference(reference, mem, index, true);
 	  break;	
 	}
       }
@@ -579,10 +579,8 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 void Runtime::Debugger::EvaluateObjectReference(Reference* reference, long* mem, int index) {
 }
 
-void Runtime::Debugger::EvaluateFloatReference(Reference* reference, long* mem, int index) {
-}
-
-void Runtime::Debugger::EvaluateIntReference(Reference* reference, long* mem, int index) {
+void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, long* mem, 
+						  int index, bool is_float) {
   ExpressionList* indices = reference->GetIndices();
   // de-reference array value
   if(indices) {
@@ -613,12 +611,25 @@ void Runtime::Debugger::EvaluateIntReference(Reference* reference, long* mem, in
 	array_index += values[j--];
       }	      
       array += dim;
-      // check bounds
-      if(array_index < max) {
-	reference->SetIntValue(array[array_index]);
+      
+      // check float array bounds
+      if(is_float) {
+	array_index *= 2;
+	if(array_index > -1 && array_index < max * 2) {
+	  reference->SetIntValue(array[array_index]);
+	}
+	else {
+	  cout << "Array index out of bounds." << endl;
+	}
       }
+      // check int array bounds
       else {
-	cout << "Array index out of bounds." << endl;
+	if(array_index > -1 && array_index < max) {
+	  reference->SetIntValue(array[array_index]);
+	}
+	else {
+	  cout << "Array index out of bounds." << endl;
+	}
       }
     }
     else {
