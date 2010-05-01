@@ -127,6 +127,9 @@ namespace Runtime {
 
     void EvaluateExpression(Expression* expression);
     void EvaluateReference(Reference* reference);
+    void EvaluateObjectReference(Reference* reference, long* mem, int index);
+    void EvaluateFloatReference(Reference* reference, long* mem, int index);
+    void EvaluateIntReference(Reference* reference, long* mem, int index);
     void EvaluateCalculation(CalculatedExpression* expression);
   
   public:

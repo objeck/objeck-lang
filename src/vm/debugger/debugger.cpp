@@ -530,7 +530,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
     }
   }
   // simple reference
-  else {    
+  else {
     if(mem) {
       // TODO: check for instance reference
       StackDclr dclr_value;
@@ -552,74 +552,18 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	  break;
 
 	case OBJ_PARM:
-	  reference->SetIntValue(mem[index + 1]);
+	  EvaluateObjectReference(reference, mem, index);
 	  break;
 	  
-	case BYTE_ARY_PARM: {
-	  ExpressionList* indices = reference->GetIndices();	  
-	  reference->SetIntValue(mem[index + 1]);
-	}
+	case BYTE_ARY_PARM:
+	case INT_ARY_PARM:
+	case OBJ_ARY_PARM:
+	  EvaluateIntReference(reference, mem, index);
 	  break;
-
-	case INT_ARY_PARM: {
-	  ExpressionList* indices = reference->GetIndices();
-	  if(indices) {
-	    long* array = (long*)mem[index + 1];
-	    const int max = array[0];
-	    const int dim = array[1];
-
-	    vector<Expression*> expressions = indices->GetExpressions();	    
-	    vector<int> values;
-	    for(int i = 0; i < expressions.size(); i++) {
-	      EvaluateExpression(expressions[i]);
-	      // update values
-	      if(expressions[i]->GetFloatEval()) {
-		values.push_back(expressions[i]->GetFloatValue());
-	      }
-	      else {
-		values.push_back(expressions[i]->GetIntValue());
-	      }
-	    }
-	    
-	    if(expressions.size() == dim) {
-	      // calculate indices
-	      array += 2;
-	      int j = dim - 1;
-	      long array_index = values[j--];
-	      for(long i = 1; i < dim; i++) {
-		array_index *= array[i];
-		array_index += values[j--];
-	      }	      
-	      array += dim;
-	      // check bounds
-	      if(array_index < max) {
-		reference->SetIntValue(array[array_index]);
-	      }
-	      else {
-		cout << "Array index out of bounds." << endl;
-	      }
-	    }
-	    else {
-	      cout << "Array dimension mis-match." << endl;
-	    }
-	  }
-	  else {
-	    reference->SetIntValue(mem[index + 1]);
-	  }
-	}
-	  break;
-
-	case FLOAT_ARY_PARM: {
-	  ExpressionList* indices = reference->GetIndices();
-	  reference->SetIntValue(mem[index + 1]);
-	}
+	  
+	case FLOAT_ARY_PARM:
+	  EvaluateFloatReference(reference, mem, index);
 	  break;	
-
-	case OBJ_ARY_PARM: {
-	  ExpressionList* indices = reference->GetIndices();
-	  reference->SetIntValue(mem[index + 1]);
-	}
-	  break;
 	}
       }
       else {
@@ -629,6 +573,61 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
     else {
       "Unable to deference Nil frame";
     }
+  }
+}
+
+void Runtime::Debugger::EvaluateObjectReference(Reference* reference, long* mem, int index) {
+}
+
+void Runtime::Debugger::EvaluateFloatReference(Reference* reference, long* mem, int index) {
+}
+
+void Runtime::Debugger::EvaluateIntReference(Reference* reference, long* mem, int index) {
+  ExpressionList* indices = reference->GetIndices();
+  // de-reference array value
+  if(indices) {
+    long* array = (long*)mem[index + 1];
+    const int max = array[0];
+    const int dim = array[1];
+    // calculate indices values
+    vector<Expression*> expressions = indices->GetExpressions();	    
+    vector<int> values;
+    for(int i = 0; i < expressions.size(); i++) {
+      EvaluateExpression(expressions[i]);
+      // update values
+      if(expressions[i]->GetFloatEval()) {
+	values.push_back(expressions[i]->GetFloatValue());
+      }
+      else {
+	values.push_back(expressions[i]->GetIntValue());
+      }
+    }
+    // match the dimensions
+    if(expressions.size() == dim) {
+      // calculate indices
+      array += 2;
+      int j = dim - 1;
+      long array_index = values[j--];
+      for(long i = 1; i < dim; i++) {
+	array_index *= array[i];
+	array_index += values[j--];
+      }	      
+      array += dim;
+      // check bounds
+      if(array_index < max) {
+	reference->SetIntValue(array[array_index]);
+      }
+      else {
+	cout << "Array index out of bounds." << endl;
+      }
+    }
+    else {
+      cout << "Array dimension mis-match." << endl;
+    }
+  }
+  // set array address
+  else {
+    reference->SetIntValue(mem[index + 1]);
   }
 }
 
