@@ -70,8 +70,7 @@ void Parser::ProcessError(TokenType type)
 void Parser::ProcessError(const string &msg)
 {
 #ifdef _DEBUG
-  cout << "\tError: "
-       << msg << endl;
+  cout << "\tError: " << msg << endl;
 #endif
   
   errors.push_back(msg);
