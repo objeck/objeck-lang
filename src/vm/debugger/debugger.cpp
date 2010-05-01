@@ -189,24 +189,27 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	break;
 	  
       case BYTE_ARY_PARM:
-	cout << "type=Byte:Array, address=" << (void*)reference->GetIntValue() << endl;
+	cout << "type=Byte:Array, value=" << (char)reference->GetIntValue() 
+	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	break;
 
       case INT_ARY_PARM:
-	cout << "type=Int:Array, address=" << (void*)reference->GetIntValue() << endl;
+	cout << "type=Int:Array, value=" << reference->GetIntValue() 
+	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	break;
 
       case FLOAT_ARY_PARM:
-	cout << "type=Float:Array, address=" << (void*)reference->GetIntValue() << endl;
+	cout << "type=Float:Array, value=" << reference->GetFloatValue() 
+	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	break;
 
       case OBJ_PARM: {
-	cout << "type=Object:Array, address=" << (void*)reference->GetIntValue() << endl;
+	cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
       }
 	break;
 
       case OBJ_ARY_PARM: {
-	cout << "type=Object:Array, address=" << (void*)reference->GetIntValue() << endl;
+	cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
       }
 	break;
       }      
@@ -566,7 +569,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	    const int dim = array[1];
 
 	    vector<Expression*> expressions = indices->GetExpressions();	    
-	    vector<int> values(expressions.size());
+	    vector<int> values;
 	    for(int i = 0; i < expressions.size(); i++) {
 	      EvaluateExpression(expressions[i]);
 	      // update values
@@ -579,18 +582,22 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	    }
 	    
 	    if(expressions.size() == dim) {
-	      array += dim + 2;
-
-	      // calculate indices	      
-	      long index = values[0];
+	      // calculate indices
+	      array += 2;
+	      int j = dim - 1;
+	      long array_index = values[j--];
 	      for(long i = 1; i < dim; i++) {
-		index *= array[i];
-		index += values[i];
+		array_index *= array[i];
+		array_index += values[j--];
 	      }	      
-	      
-	      // TODO: check bounds (index)
-	      
-	      // TODO: set value
+	      array += dim;
+	      // check bounds
+	      if(array_index < max) {
+		reference->SetIntValue(array[array_index]);
+	      }
+	      else {
+		cout << "Array index out of bounds." << endl;
+	      }
 	    }
 	    else {
 	      cout << "Array dimension mis-match." << endl;
