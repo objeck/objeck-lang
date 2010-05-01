@@ -44,12 +44,22 @@ namespace frontend {
   /****************************
    * ParseNode base class
    ****************************/
-  class ParseNode {    
+  class ParseNode {
+    bool is_error;
+    
   public:
     ParseNode() {
     }
     
     ~ParseNode() {
+    }
+
+    void SetError(bool e) {
+      is_error = e;
+    }
+
+    bool IsError() {
+      return is_error;
     }
   };  
 
