@@ -560,14 +560,48 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 
 	case INT_ARY_PARM: {
 	  ExpressionList* indices = reference->GetIndices();
-	  // TODO: match dimensions
+	  if(indices) {
+	    long* array = (long*)mem[index + 1];
+	    const int max = array[0];
+	    const int dim = array[1];
 
-	  // TODO: calculate indices
+	    vector<Expression*> expressions = indices->GetExpressions();	    
+	    vector<int> values(expressions.size());
+	    for(int i = 0; i < expressions.size(); i++) {
+	      EvaluateExpression(expressions[i]);
+	      // update values
+	      if(expressions[i]->GetFloatEval()) {
+		values.push_back(expressions[i]->GetFloatValue());
+	      }
+	      else {
+		values.push_back(expressions[i]->GetIntValue());
+	      }
+	    }
+	    
+	    if(expressions.size() == dim) {
+	      array += dim + 2;
 
-	  // TODO: test bounds
-
-	  // TODO: set value
-	  reference->SetIntValue(mem[index + 1]);
+	      // TODO: calculate indices
+	      
+	      /* TODO: process expession values
+	      long index = PopInt();
+	      for(long i = 1; i < dim; i++) {
+		index *= array[i];
+		index += PopInt();
+	      }	      
+	      */	      
+	      
+	      // TODO: check bounds (index)
+	      
+	      // TODO: set value
+	    }
+	    else {
+	      cout << "Array dimension mis-match." << endl;
+	    }
+	  }
+	  else {
+	    reference->SetIntValue(mem[index + 1]);
+	  }
 	}
 	  break;
 
