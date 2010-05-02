@@ -532,42 +532,52 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
   // simple reference
   else {
     if(mem) {
-      // TODO: check for instance reference
+      // check self reference
       StackDclr dclr_value;
-      const string& name = reference->GetVariableName();
-      int index = method->GetDeclaration(name, dclr_value);
-      reference->SetDeclaration(dclr_value);
-      // check index
-      if(index > -1) {
-	switch(dclr_value.type) {	  
-	case INT_PARM:
-	  reference->SetIntValue(mem[index + 1]);
-	  break;
-
-	case FLOAT_PARM: {
-	  FLOAT_VALUE value;
-	  memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
-	  reference->SetFloatValue(value);
-	}
-	  break;
-
-	case OBJ_PARM:
-	  EvaluateObjectReference(reference, mem, index);
-	  break;
-	  
-	case BYTE_ARY_PARM:
-	case INT_ARY_PARM:
-	case OBJ_ARY_PARM:	  
-	  EvaluateIntFloatReference(reference, mem, index, false);
-	  break;
-	  
-	case FLOAT_ARY_PARM:
-	  EvaluateIntFloatReference(reference, mem, index, true);
-	  break;	
-	}
+      if(reference->IsSelf()) {
+	dclr_value.name = "@self";
+	dclr_value.type = OBJ_PARM;
+	dclr_value.id = -1;
+	reference->SetDeclaration(dclr_value);
+	EvaluateObjectReference(reference, mem, -1);
       }
+      // check reference
       else {
-	cout << "Unknown variable: name='" << name << "'";
+	const string& name = reference->GetVariableName();
+	int index = method->GetDeclaration(name, dclr_value);
+	reference->SetDeclaration(dclr_value);
+	// check index
+	if(index > -1) {
+	  switch(dclr_value.type) {	  
+	  case INT_PARM:
+	    reference->SetIntValue(mem[index + 1]);
+	    break;
+
+	  case FLOAT_PARM: {
+	    FLOAT_VALUE value;
+	    memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
+	    reference->SetFloatValue(value);
+	  }
+	    break;
+
+	  case OBJ_PARM:
+	    EvaluateObjectReference(reference, mem, index);
+	    break;
+	  
+	  case BYTE_ARY_PARM:
+	  case INT_ARY_PARM:
+	  case OBJ_ARY_PARM:	  
+	    EvaluateIntFloatReference(reference, mem, index, false);
+	    break;
+	  
+	  case FLOAT_ARY_PARM:
+	    EvaluateIntFloatReference(reference, mem, index, true);
+	    break;	
+	  }
+	}
+	else {
+	  cout << "Unknown variable: name='" << name << "'";
+	}
       }
     }
     else {
