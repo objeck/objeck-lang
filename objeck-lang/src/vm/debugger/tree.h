@@ -565,19 +565,16 @@ namespace frontend {
     ExpressionList* indices;
     Reference* reference;
     StackDclr dclr;
-    bool is_instance;
     bool is_self;
 
     Reference() : Expression() {
       variable_name = "@self";
-      is_instance = true;
       is_self = true;
       reference	= NULL;
     }
     
-    Reference(const string &v, const bool is) : Expression() {
+    Reference(const string &v) : Expression() {
       variable_name = v;
-      is_instance = is;
       is_self = false;
       reference	= NULL;
     }
@@ -616,10 +613,6 @@ namespace frontend {
     
     const ExpressionType GetExpressionType() {
       return REF_EXPR;
-    }
-
-    bool IsInstance() {
-      return is_instance;
     }
 
     bool IsSelf() {
@@ -762,8 +755,8 @@ namespace frontend {
       return tmp;
     }
 
-    Reference* MakeReference(const string &v, const bool i) {
-      Reference* tmp = new Reference(v, i);
+    Reference* MakeReference(const string &v) {
+      Reference* tmp = new Reference(v);
       calls.push_back(tmp);
       return tmp;
     }
