@@ -272,7 +272,7 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   switch(expression->GetExpressionType()) {
   case REF_EXPR:
     if(interpreter) {
-      EvaluateReference(static_cast<Reference*>(expression));
+      EvaluateReference(static_cast<Reference*>(expression), false);
     }
     else {
       cout << "No program running." << endl;
@@ -516,14 +516,14 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   }
 }
 
-void Runtime::Debugger::EvaluateReference(Reference* reference) {
+void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance) {
   long* mem = cur_frame->GetMemory();
   StackMethod* method = cur_frame->GetMethod();
   
   // TODO: complex reference  
   if(reference->GetReference()) {    
     if(mem) {
-      
+      EvaluateReference(reference->GetReference(), true);
     }
     else {
       "Unable to deference Nil frame";
@@ -537,7 +537,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
       if(reference->IsSelf()) {
 	dclr_value.name = "@self";
 	dclr_value.type = OBJ_PARM;
-	dclr_value.id = -1;
+	dclr_value.id = method->GetClass()->GetId();
 	reference->SetDeclaration(dclr_value);
 	EvaluateObjectReference(reference, mem, -1);
       }
@@ -548,6 +548,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference) {
 	reference->SetDeclaration(dclr_value);
 	// check index
 	if(index > -1) {
+	  // ajust for instance variable
+	  if(is_instance) {
+	    index--;
+	  }
+	  
 	  switch(dclr_value.type) {	  
 	  case INT_PARM:
 	    reference->SetIntValue(mem[index + 1]);

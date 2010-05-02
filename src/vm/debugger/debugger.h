@@ -126,7 +126,7 @@ namespace Runtime {
     void ClearBreaks();
 
     void EvaluateExpression(Expression* expression);
-    void EvaluateReference(Reference* reference);
+    void EvaluateReference(Reference* reference, bool is_instance);
     void EvaluateObjectReference(Reference* reference, long* mem, int index);
     void EvaluateIntFloatReference(Reference* reference, long* mem, 
 				   int index, bool is_float);
