@@ -66,6 +66,7 @@ namespace Runtime {
     StackFrame* cur_frame;
     long* op_stack;
     long* stack_pos;
+    bool is_error;
     
     bool FileExists(const string &file_name, bool is_exe = false) {
       ifstream touch(file_name.c_str(), ios::binary);

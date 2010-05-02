@@ -49,13 +49,14 @@ namespace frontend {
     
   public:
     ParseNode() {
+      is_error = false;
     }
     
     ~ParseNode() {
     }
 
-    void SetError(bool e) {
-      is_error = e;
+    void SetError() {
+      is_error = false;
     }
 
     bool IsError() {
