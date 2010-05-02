@@ -342,13 +342,12 @@ Expression* Parser::ParseExpression(int depth)
  ****************************/
 Expression* Parser::ParseLogic(int depth)
 {
-  
 #ifdef _DEBUG
   Show("Boolean logic", depth);
 #endif
-
+  
   Expression* left = ParseMathLogic(depth + 1);
-
+  
   CalculatedExpression* expression = NULL;
   while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
@@ -560,10 +559,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #endif
   Expression* expression = NULL;
   
-  if(Match(TOKEN_IDENT)) {    
+  if(Match(TOKEN_IDENT)) {
     const string &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
     expression = ParseReference(ident, depth + 1);
+  }
+  else if(Match(TOKEN_SELF_ID)) {
+    NextToken();
+    expression = ParseReference(depth + 1);
   }
   else if(Match(TOKEN_SUB)) {
     NextToken();
@@ -633,6 +636,26 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
   
   return expression;
+}
+
+/****************************
+ * Parses a instance reference.
+ ****************************/
+Reference* Parser::ParseReference(int depth)
+{
+#ifdef _DEBUG
+  Show("Instance reference", depth);
+#endif
+  
+  // self reference
+  Reference* inst_ref = TreeFactory::Instance()->MakeReference();  
+  
+  // subsequent instance references
+  if(Match(TOKEN_ASSESSOR)) {
+    ParseReference(inst_ref, depth + 1);
+  }
+  
+  return inst_ref;
 }
 
 /****************************
