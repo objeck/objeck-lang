@@ -79,6 +79,7 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
   }
   else {
     cout << "program file doesn't exist: '" << load->GetFileName() << "'" << endl;
+    is_error = true;
   }
 }
 
@@ -122,10 +123,6 @@ void Runtime::Debugger::ProcessRun() {
 void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
   int line_num = break_command->GetLineNumber();
   string file_name = break_command->GetFileName();
-  
-  if(file_name.size() == 0) {
-    file_name = cur_file_name;
-  }
 
   // TODO fix
   const string &path = "../../compiler/test_src/" + file_name;  
@@ -138,7 +135,8 @@ void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
     }
   }
   else {
-    cout << "File doesn't exit: '" << path << "'" << endl;
+    cout << "file doesn't exit: '" << path << "'" << endl;
+    is_error = true;
   }
 }
 
@@ -146,10 +144,6 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
   int line_num = delete_command->GetLineNumber();
   string file_name = delete_command->GetFileName();
   
-  if(file_name.size() == 0) {
-    file_name = cur_file_name;
-  }
-
   // TODO fix
   const string &path = "../../compiler/test_src/" + file_name;  
   if(FileExists(path)) {  
@@ -161,61 +155,64 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
     }
   }
   else {
-    cout << "File doesn't exit: '" << path << "'" << endl;
+    cout << "file doesn't exit: '" << path << "'" << endl;
+    is_error = true;
   }
 }
 
 void Runtime::Debugger::ProcessPrint(Print* print) {
-
   Expression* expression = print->GetExpression();
   EvaluateExpression(expression);
-
+  
   switch(expression->GetExpressionType()) {
   case REF_EXPR: 
-    if(interpreter) {
+    if(interpreter) {      
       Reference* reference = static_cast<Reference*>(expression);
       while(reference->GetReference()) {
 	reference = reference->GetReference();
       }
-
-      const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
-      switch(dclr_value.type) {
-      case INT_PARM:
-	cout << "type=Int, value=" << reference->GetIntValue() << endl;
-	break;
+      
+      if(!is_error) {
+	const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
+	switch(dclr_value.type) {
+	case INT_PARM:
+	  cout << "type=Int, value=" << reference->GetIntValue() << endl;
+	  break;
 	
-      case FLOAT_PARM:
-	cout << "type=Float, value=" << reference->GetFloatValue() << endl;
-	break;
+	case FLOAT_PARM:
+	  cout << "type=Float, value=" << reference->GetFloatValue() << endl;
+	  break;
 	  
-      case BYTE_ARY_PARM:
-	cout << "type=Byte:Array, value=" << (char)reference->GetIntValue() 
-	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
-	break;
+	case BYTE_ARY_PARM:
+	  cout << "type=Byte:Array, value=" << (char)reference->GetIntValue() 
+	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	  break;
 
-      case INT_ARY_PARM:
-	cout << "type=Int:Array, value=" << reference->GetIntValue() 
-	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
-	break;
+	case INT_ARY_PARM:
+	  cout << "type=Int:Array, value=" << reference->GetIntValue() 
+	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	  break;
 
-      case FLOAT_ARY_PARM:
-	cout << "type=Float:Array, value=" << reference->GetFloatValue() 
-	     << "(" << (void*)reference->GetIntValue() << ")" << endl;
-	break;
+	case FLOAT_ARY_PARM:
+	  cout << "type=Float:Array, value=" << reference->GetFloatValue() 
+	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	  break;
 
-      case OBJ_PARM: {
-	cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
-      }
-	break;
+	case OBJ_PARM: {
+	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
+	}
+	  break;
 
-      case OBJ_ARY_PARM: {
-	cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
-      }
-	break;
-      }      
+	case OBJ_ARY_PARM: {
+	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
+	}
+	  break;
+	}
+      }    
     }
     else {
-      cout << "No program running." << endl;
+      cout << "no program running." << endl;
+      is_error = true;
     }
     break;
       
@@ -276,6 +273,7 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
     }
     else {
       cout << "No program running." << endl;
+      is_error = true;
     }
     break;
     
@@ -581,7 +579,8 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  }
 	}
 	else {
-	  cout << "Unknown variable: name='" << name << "'";
+	  cout << "unknown variable: name='" << name << "'";
+	  is_error = true;
 	}
       }
     }
@@ -636,7 +635,8 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, long* me
 	  reference->SetFloatValue(value);
 	}
 	else {
-	  cout << "Array index out of bounds." << endl;
+	  cout << "array index out of bounds." << endl;
+	  is_error = true;
 	}
       }
       // check int array bounds
@@ -645,12 +645,14 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, long* me
 	  reference->SetIntValue(array[array_index]);
 	}
 	else {
-	  cout << "Array index out of bounds." << endl;
+	  cout << "array index out of bounds." << endl;
+	  is_error = true;
 	}
       }
     }
     else {
-      cout << "Array dimension mis-match." << endl;
+      cout << "array dimension mis-match." << endl;
+      is_error = true;
     }
   }
   // set array address
@@ -693,11 +695,11 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case CLEAR_COMMAND: {
-      cout << "Are sure you want to clear all break points? [y/n] ";
+      cout << "are sure you want to clear all break points? [y/n] ";
       string line;
       getline(cin, line);      
       if(line == "y" || line == "yes") {
-	cout << "Break points cleared." << endl;
+	cout << "break points cleared." << endl;
 	ClearBreaks();
       }
       cout << endl;
@@ -714,13 +716,15 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case FRAME_COMMAND:
       break;
     }  
-
+    
+    is_error = false;
     return command;
   }
   else {
-    cout << "Unable to process command" << endl;
+    cout << "unable to process command" << endl;
   }
   
+  is_error = false;
   return NULL;
 }
 
@@ -768,6 +772,7 @@ Runtime::Debugger::Debugger(const string &fn) {
   cur_program = NULL;
   cur_call_stack = NULL;
   cur_call_stack_pos = NULL;
+  is_error = false;
 }
 
 Runtime::Debugger::~Debugger() {
