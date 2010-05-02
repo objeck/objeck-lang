@@ -667,7 +667,7 @@ Reference* Parser::ParseReference(const string &ident, int depth)
   Show("Instance reference", depth);
 #endif
   
-  Reference* inst_ref = TreeFactory::Instance()->MakeReference(ident, false);  
+  Reference* inst_ref = TreeFactory::Instance()->MakeReference(ident);
   if(Match(TOKEN_OPEN_BRACKET)) {
     inst_ref->SetIndices(ParseIndices(depth + 1));      
   }
