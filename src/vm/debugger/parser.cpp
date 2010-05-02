@@ -252,15 +252,17 @@ Command* Parser::ParseBreak(int depth) {
   NextToken();
 
   // file name
-  string file_name;
-  if(Match(TOKEN_IDENT)) {
-    file_name = scanner->GetToken()->GetIdentifier();
-    NextToken();
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
-    }
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
     NextToken();
   }
+    
+  const string &file_name = scanner->GetToken()->GetIdentifier();
+  NextToken();
+  if(!Match(TOKEN_COLON)) {
+    ProcessError(TOKEN_COLON);
+  }
+  NextToken();
   
   // line number
   int line_num = -1;
@@ -584,6 +586,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     default:
       ProcessError("Expected expression");
+      NextToken();
       break;
     }
   } 
@@ -621,6 +624,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     default:
       ProcessError("Expected expression");
+      NextToken();
       break;
     }
   }
@@ -632,6 +636,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
     else {
       ProcessError("Expected reference");
+      NextToken();
     }
   }
   
@@ -692,6 +697,7 @@ void Parser::ParseReference(Reference* reference, int depth)
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
+    NextToken();
   }
   // identifier
   const string &ident = scanner->GetToken()->GetIdentifier();
