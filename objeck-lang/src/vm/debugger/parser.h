@@ -95,6 +95,7 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
+  Reference* ParseReference(int depth);
   Reference* ParseReference(const string &ident, int depth);
   void ParseReference(Reference* reference, int depth);
   
