@@ -98,6 +98,7 @@ enum TokenType {
   TOKEN_FRAME_ID,
   TOKEN_CONT_ID,
   TOKEN_NEXT_ID,
+  TOKEN_SELF_ID,
 };
 
 /****************************

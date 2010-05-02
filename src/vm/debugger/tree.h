@@ -566,10 +566,19 @@ namespace frontend {
     Reference* reference;
     StackDclr dclr;
     bool is_instance;
+    bool is_self;
+
+    Reference() : Expression() {
+      variable_name = "@self";
+      is_instance = true;
+      is_self = true;
+      reference	= NULL;
+    }
     
-    Reference(const string &v, const bool is) :Expression() {
+    Reference(const string &v, const bool is) : Expression() {
       variable_name = v;
       is_instance = is;
+      is_self = false;
       reference	= NULL;
     }
     
@@ -611,6 +620,10 @@ namespace frontend {
 
     bool IsInstance() {
       return is_instance;
+    }
+
+    bool IsSelf() {
+      return is_self;
     }
   };
 
@@ -740,6 +753,12 @@ namespace frontend {
     BooleanLiteral* MakeBooleanLiteral(bool boolean) {
       BooleanLiteral* tmp = new BooleanLiteral(boolean);
       expressions.push_back(tmp);
+      return tmp;
+    }
+    
+    Reference* MakeReference() {
+      Reference* tmp = new Reference();
+      calls.push_back(tmp);
       return tmp;
     }
 

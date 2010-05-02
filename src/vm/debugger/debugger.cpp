@@ -616,7 +616,9 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, long* me
       if(is_float) {
 	array_index *= 2;
 	if(array_index > -1 && array_index < max * 2) {
-	  reference->SetIntValue(array[array_index]);
+	  FLOAT_VALUE value;
+	  memcpy(&value, &array[array_index], sizeof(FLOAT_VALUE));
+	  reference->SetFloatValue(value);
 	}
 	else {
 	  cout << "Array index out of bounds." << endl;
