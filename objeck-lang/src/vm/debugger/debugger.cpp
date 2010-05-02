@@ -198,14 +198,12 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	  break;
 
-	case OBJ_PARM: {
+	case OBJ_PARM:
 	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
-	}
 	  break;
-
-	case OBJ_ARY_PARM: {
+	  
+	case OBJ_ARY_PARM:
 	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
-	}
 	  break;
 	}
       }    
@@ -590,7 +588,9 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
   }
 }
 
-void Runtime::Debugger::EvaluateObjectReference(Reference* reference, long* mem, int index) {
+void Runtime::Debugger::EvaluateObjectReference(Reference* reference, 
+						long* mem, int index) {
+  reference->SetIntValue(mem[index + 1]);
 }
 
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, long* mem, 
