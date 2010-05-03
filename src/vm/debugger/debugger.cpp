@@ -605,7 +605,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  }
 	}
 	else {
-	  cout << "unknown variable" << "'";
+	  cout << "unknown variable" << endl;
 	  is_error = true;
 	}
       }
