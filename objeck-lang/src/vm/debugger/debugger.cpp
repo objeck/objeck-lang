@@ -513,35 +513,63 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
 }
 
 void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance) {
-  long* mem = cur_frame->GetMemory();
+  ref_mem = cur_frame->GetMemory();
   StackMethod* method = cur_frame->GetMethod();
   
   // TODO: complex reference  
   if(reference->GetReference()) {    
-    if(mem) {
+    if(ref_mem) {
+      int index;
+      StackDclr dclr_value;
+      
+      if(is_instance) {
+	index = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
+	reference->SetDeclaration(dclr_value);
+      }
+      else {
+	index = method->GetDeclaration(reference->GetVariableName(), dclr_value);
+	reference->SetDeclaration(dclr_value);
+      }
+      
+      if(index > -1 && dclr_value.type == OBJ_PARM) {
+	ref_klass = cur_program->GetClass(dclr_value.id);
+      }
+      else {
+	cout << "expected object reference and running program" << endl;
+	is_error = true;
+      }
       EvaluateReference(reference->GetReference(), true);
     }
     else {
-      "Unable to deference Nil frame";
+      cout << "unable to deference Nil frame" << endl;
+      is_error = true;
     }
   }
   // simple reference
   else {
-    if(mem) {
-      // check self reference
+    if(ref_mem) {
       StackDclr dclr_value;
+      int index = -1;
+
+      // check self
       if(reference->IsSelf()) {
 	dclr_value.name = "@self";
 	dclr_value.type = OBJ_PARM;
 	dclr_value.id = method->GetClass()->GetId();
 	reference->SetDeclaration(dclr_value);
-	EvaluateObjectReference(reference, mem, -1);
+	EvaluateObjectReference(reference, ref_mem, index);
       }
       // check reference
       else {
-	const string& name = reference->GetVariableName();
-	int index = method->GetDeclaration(name, dclr_value);
-	reference->SetDeclaration(dclr_value);
+	if(is_instance) {
+	  index = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
+	  reference->SetDeclaration(dclr_value);
+	}
+	else {
+	  index = method->GetDeclaration(reference->GetVariableName(), dclr_value);
+	  reference->SetDeclaration(dclr_value);
+	}
+	
 	// check index
 	if(index > -1) {
 	  // ajust for instance variable
@@ -551,39 +579,40 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  
 	  switch(dclr_value.type) {	  
 	  case INT_PARM:
-	    reference->SetIntValue(mem[index + 1]);
+	    reference->SetIntValue(ref_mem[index + 1]);
 	    break;
 
 	  case FLOAT_PARM: {
 	    FLOAT_VALUE value;
-	    memcpy(&value, &mem[index + 1], sizeof(FLOAT_VALUE));
+	    memcpy(&value, &ref_mem[index + 1], sizeof(FLOAT_VALUE));
 	    reference->SetFloatValue(value);
 	  }
 	    break;
 
 	  case OBJ_PARM:
-	    EvaluateObjectReference(reference, mem, index);
+	    EvaluateObjectReference(reference, ref_mem, index);
 	    break;
 	  
 	  case BYTE_ARY_PARM:
 	  case INT_ARY_PARM:
 	  case OBJ_ARY_PARM:	  
-	    EvaluateIntFloatReference(reference, mem, index, false);
+	    EvaluateIntFloatReference(reference, ref_mem, index, false);
 	    break;
 	  
 	  case FLOAT_ARY_PARM:
-	    EvaluateIntFloatReference(reference, mem, index, true);
+	    EvaluateIntFloatReference(reference, ref_mem, index, true);
 	    break;	
 	  }
 	}
 	else {
-	  cout << "unknown variable: name='" << name << "'";
+	  cout << "unknown variable" << "'";
 	  is_error = true;
 	}
       }
     }
     else {
-      "Unable to deference Nil frame";
+      cout << "unable to deference Nil frame" << endl;
+      is_error = true;
     }
   }
 }
