@@ -1,4 +1,16 @@
 bundle Default {
+	class Foo {
+		value : Int;
+
+		New(v : Int) {
+			value := v;
+		}
+
+		method : public : GetValue(), Int {
+			return value;
+		}	
+	}
+
 	class Test {
 		function : Main(args : System.String[]), Nil {
 			Run();
@@ -25,8 +37,8 @@ bundle Default {
 			(g-h)->PrintLine();
 			(h-g)->PrintLine();		
 
-			s := "Hello";
-			l := s->GetSize();
+			f := Foo->New(24);
+			v := f->GetValue();
 		}
 	}
 }
