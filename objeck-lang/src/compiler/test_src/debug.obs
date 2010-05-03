@@ -1,5 +1,18 @@
 bundle Default {
+
+	class Bar {
+		v1 : Float;
+		v2 : Int;
+
+		New() {
+			v1 := 2.31;	
+			v2 := 26;
+		}
+		
+	}
+
 	class Foo {
+		bar : Bar;
 		value : Int;
 
 		New(v : Int) {
@@ -9,6 +22,10 @@ bundle Default {
 		method : public : GetValue(), Int {
 			return value;
 		}	
+
+		method : public : SetBar(), Nil {
+			bar := Bar->New();
+		}
 	}
 
 	class Test {
@@ -38,6 +55,7 @@ bundle Default {
 			(h-g)->PrintLine();		
 
 			f := Foo->New(24);
+			f->SetBar();
 			v := f->GetValue();
 		}
 	}

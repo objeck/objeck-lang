@@ -78,7 +78,7 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
     cout << "loaded program file: '" << program_file << "'" << endl;
   }
   else {
-    cout << "program file doesn't exist: '" << load->GetFileName() << "'" << endl;
+    cout << "program file doesn't exist." << endl;
     is_error = true;
   }
 }
@@ -131,11 +131,11 @@ void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
       cout << "added break point: " << file_name << ":" << line_num << endl;
     }
     else {
-      cout << "break point already exists!" << endl;
+      cout << "break point already exist" << endl;
     }
   }
   else {
-    cout << "file doesn't exit: '" << path << "'" << endl;
+    cout << "file doesn't exit." << endl;
     is_error = true;
   }
 }
@@ -148,14 +148,14 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
   const string &path = "../../compiler/test_src/" + file_name;  
   if(FileExists(path)) {  
     if(DeleteBreak(line_num, file_name)) {
-      cout << "added break point: " << file_name << ":" << line_num << endl;
+      cout << "deleted break point: " << file_name << ":" << line_num << endl;
     }
     else {
-      cout << "break point already exists!" << endl;
+      cout << "break point doesn't exist" << endl;
     }
   }
   else {
-    cout << "file doesn't exit: '" << path << "'" << endl;
+    cout << "file doesn't exit." << endl;
     is_error = true;
   }
 }
@@ -550,12 +550,12 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	}
       }
       else {
-	cout << "unknown variable" << endl;
+	cout << "unknown variable." << endl;
 	is_error = true;
       }
     }
     else {
-      cout << "unable to deference empty frame" << endl;
+      cout << "unable to deference empty frame." << endl;
       is_error = true;
     }
   }
@@ -611,13 +611,13 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  }
 	}
 	else {
-	  cout << "unknown variable" << endl;
+	  cout << "unknown variable." << endl;
 	  is_error = true;
 	}
       }
     }
     else {
-      cout << "unable to deference empty frame" << endl;
+      cout << "unable to deference empty frame." << endl;
       is_error = true;
     }
   }
@@ -689,7 +689,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
       }
     }
     else {
-      cout << "array dimension mis-match." << endl;
+      cout << "array dimension mismatch." << endl;
       is_error = true;
     }
   }
@@ -749,6 +749,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case INFO_COMMAND:
+      // ProcessInfo(static_cast<Info*>(command));
       break;
       
     case FRAME_COMMAND:
