@@ -164,15 +164,15 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
   Expression* expression = print->GetExpression();
   EvaluateExpression(expression);
   
-  switch(expression->GetExpressionType()) {
-  case REF_EXPR: 
-    if(interpreter) {      
-      Reference* reference = static_cast<Reference*>(expression);
-      while(reference->GetReference()) {
-	reference = reference->GetReference();
-      }
+  if(!is_error) {
+    switch(expression->GetExpressionType()) {
+    case REF_EXPR: 
+      if(interpreter) {      
+	Reference* reference = static_cast<Reference*>(expression);
+	while(reference->GetReference()) {
+	  reference = reference->GetReference();
+	}
       
-      if(!is_error) {
 	const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
 	switch(dclr_value.type) {
 	case INT_PARM:
@@ -206,60 +206,61 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
 	  break;
 	}
-      }    
-    }
-    else {
-      cout << "no program running." << endl;
-      is_error = true;
-    }
-    break;
+
+      }
+      else {
+	cout << "no program running." << endl;
+	is_error = true;
+      }
+      break;
       
-  case NIL_LIT_EXPR:
-    cout << "type=Nil, value=Nil" << endl;
-    break;
+    case NIL_LIT_EXPR:
+      cout << "type=Nil, value=Nil" << endl;
+      break;
       
-  case CHAR_LIT_EXPR:
-    cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
-    break;
+    case CHAR_LIT_EXPR:
+      cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
+      break;
       
-  case INT_LIT_EXPR:
-    cout << "type=Int, value=" << expression->GetIntValue() << endl;
-    break;
-      
-  case FLOAT_LIT_EXPR:
-    cout << "type=Float, value=" << expression->GetFloatValue() << endl;
-    break;
-      
-  case BOOLEAN_LIT_EXPR:
-    cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
-    break;
-      
-  case AND_EXPR:
-  case OR_EXPR:
-  case EQL_EXPR:
-  case NEQL_EXPR:
-  case LES_EXPR:
-  case GTR_EQL_EXPR:
-  case LES_EQL_EXPR:
-  case GTR_EXPR:
-    cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
-    break;
-      
-  case ADD_EXPR:
-  case SUB_EXPR:
-  case MUL_EXPR:
-  case DIV_EXPR:
-  case MOD_EXPR:
-    if(expression->GetFloatEval()) {
-      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
-    }
-    else {
+    case INT_LIT_EXPR:
       cout << "type=Int, value=" << expression->GetIntValue() << endl;
-    }
-    break;
+      break;
       
-  case CHAR_STR_EXPR:
-    break;    
+    case FLOAT_LIT_EXPR:
+      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+      break;
+      
+    case BOOLEAN_LIT_EXPR:
+      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      break;
+      
+    case AND_EXPR:
+    case OR_EXPR:
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EQL_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EXPR:
+      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      break;
+      
+    case ADD_EXPR:
+    case SUB_EXPR:
+    case MUL_EXPR:
+    case DIV_EXPR:
+    case MOD_EXPR:
+      if(expression->GetFloatEval()) {
+	cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+      }
+      else {
+	cout << "type=Int, value=" << expression->GetIntValue() << endl;
+      }
+      break;
+      
+    case CHAR_STR_EXPR:
+      break;    
+    }
   }
 }
 
@@ -311,6 +312,7 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
     break;      
   }
 }
+
 
 void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   EvaluateExpression(expression->GetLeft());
@@ -501,8 +503,12 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     break;
     
   case MOD_EXPR:
-    if(!left->GetFloatEval() && !right->GetFloatEval()) {
+    if(left->GetIntValue() && right->GetIntValue()) {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
+    }
+    else {
+      cout << "modulus operation can only use integer values" << endl;
+      is_error = true;
     }
     break;
   }
