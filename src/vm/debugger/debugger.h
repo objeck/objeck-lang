@@ -67,6 +67,7 @@ namespace Runtime {
     long* op_stack;
     long* stack_pos;
     bool is_error;
+    bool is_next;
     long* ref_mem;
     StackClass* ref_klass;
     
@@ -141,7 +142,7 @@ namespace Runtime {
       cout << "-------------------------------------" << endl << endl;
 
       if(program_file.size() > 0 && FileExists(program_file, true)) {
-	cout << "loaded program: '" << program_file << "'" << endl;
+	cout << "loaded program executable: file='" << program_file << "'" << endl;
       }
       // enter feedback look
       Command* command;
@@ -150,7 +151,6 @@ namespace Runtime {
 	string line;
 	getline(cin, line);
 	command = ProcessCommand(line);    
-	cout << endl;
       }
     }
   
