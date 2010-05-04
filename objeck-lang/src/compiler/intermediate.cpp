@@ -375,7 +375,8 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   if(parent) {
     pid = parent->GetId();
     parent_name = parent->GetName();
-  } else {
+  } 
+  else {
     LibraryClass* lib_parent = current_class->GetLibraryParent();
     if(lib_parent) {
       pid = lib_parent->GetId();
@@ -385,10 +386,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 
   // get short file name
   const string &file_name = current_class->GetFileName();
-  int offset = file_name.find_last_of('/');
-  if(offset < 0) {
-    offset = file_name.find_last_of('\\');
-  }
+  int offset = file_name.find_last_of("/\\");
   string short_file_name;
   if(offset < 0) {
     short_file_name = file_name;

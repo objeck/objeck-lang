@@ -44,10 +44,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
 #ifdef _DEBUG
-    cout << "--- file=" << file_name << ", line=" << line_num << endl;
+    cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
 
-    if(line_num > -1 && line_num != cur_line_num &&  (is_next || FindBreak(line_num, file_name))) {
+    if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  && 
+       (is_next || FindBreak(line_num, file_name))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -67,6 +68,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       cout << "break: file='" << file_name << ":" << line_num << "', method='" 
 	   << cls_name << "->" << mthd_name << "(..)'" << endl;
       
+      // prompt for break command
       Command* command;
       do {
 	cout << "> ";
