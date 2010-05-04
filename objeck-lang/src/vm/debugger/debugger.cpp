@@ -47,7 +47,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     cout << "--- file=" << file_name << ", line=" << line_num << endl;
 #endif
 
-    if(line_num > -1 && line_num != cur_line_num && FindBreak(line_num, file_name)) {
+    if(line_num > -1 && line_num != cur_line_num &&  (is_next || FindBreak(line_num, file_name))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -56,14 +56,23 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       cur_call_stack_pos = call_stack_pos;
       
       // prompt for input
-      cout << "break point: " << file_name << ":" << line_num << endl;
+      const string &long_name = cur_frame->GetMethod()->GetName();
+      int end_index = long_name.find_last_of(':');
+      const string &cls_mthd_name = long_name.substr(0, end_index);
+
+      // show break info
+      int mid_index = cls_mthd_name.find_last_of(':');
+      const string &cls_name = cls_mthd_name.substr(0, mid_index);
+      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);      
+      cout << "break: file='" << file_name << ":" << line_num << "', method='" 
+	   << cls_name << "->" << mthd_name << "(..)'" << endl;
+      
       Command* command;
       do {
 	cout << "> ";
 	string line;
 	getline(cin, line);
 	command = ProcessCommand(line);
-	cout << endl;
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND && 
 			 command->GetCommandType() != NEXT_COMMAND));
@@ -73,9 +82,9 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
 void Runtime::Debugger::ProcessLoad(Load* load) {
   if(FileExists(load->GetFileName(), true)) {
-    program_file = load->GetFileName();
     ClearProgram();
-    cout << "loaded program file: '" << program_file << "'" << endl;
+    program_file = load->GetFileName();
+    cout << "loaded program executable: file='" << program_file << "'" << endl;
   }
   else {
     cout << "program file doesn't exist." << endl;
@@ -116,7 +125,7 @@ void Runtime::Debugger::ProcessRun() {
     ClearProgram();
   }
   else {
-    cout << "Program file not specified" << endl;
+    cout << "program file not specified." << endl;
   }
 }
 
@@ -128,10 +137,10 @@ void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
   const string &path = "../../compiler/test_src/" + file_name;  
   if(FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
-      cout << "added break point: " << file_name << ":" << line_num << endl;
+      cout << "added break point: file='" << file_name << ":" << line_num << "'" << endl;
     }
     else {
-      cout << "break point already exist" << endl;
+      cout << "break point already exist." << endl;
     }
   }
   else {
@@ -148,10 +157,10 @@ void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
   const string &path = "../../compiler/test_src/" + file_name;  
   if(FileExists(path)) {  
     if(DeleteBreak(line_num, file_name)) {
-      cout << "deleted break point: " << file_name << ":" << line_num << endl;
+      cout << "deleted break point: file='" << file_name << ":" << line_num << "'" << endl;
     }
     else {
-      cout << "break point doesn't exist" << endl;
+      cout << "break point doesn't exist." << endl;
     }
   }
   else {
@@ -176,37 +185,36 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
 	switch(dclr_value.type) {
 	case INT_PARM:
-	  cout << "type=Int, value=" << reference->GetIntValue() << endl;
+	  cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
 	  break;
 	
 	case FLOAT_PARM:
-	  cout << "type=Float, value=" << reference->GetFloatValue() << endl;
+	  cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
 	  break;
 	  
 	case BYTE_ARY_PARM:
-	  cout << "type=Byte:Array, value=" << (char)reference->GetIntValue() 
+	  cout << "print: type=Byte[], value=" << (char)reference->GetIntValue() 
 	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	  break;
 
 	case INT_ARY_PARM:
-	  cout << "type=Int:Array, value=" << reference->GetIntValue() 
+	  cout << "print: type=Int[], value=" << reference->GetIntValue() 
 	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	  break;
 
 	case FLOAT_ARY_PARM:
-	  cout << "type=Float:Array, value=" << reference->GetFloatValue() 
+	  cout << "print: type=Float[], value=" << reference->GetFloatValue() 
 	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	  break;
 
 	case OBJ_PARM:
-	  cout << "type=Object, value=" << (void*)reference->GetIntValue() << endl;
+	  cout << "print: type=Object, value=" << (void*)reference->GetIntValue() << endl;
 	  break;
 	  
 	case OBJ_ARY_PARM:
-	  cout << "type=Object:Array, value=" << (void*)reference->GetIntValue() << endl;
+	  cout << "print: type=Object[], value=" << (void*)reference->GetIntValue() << endl;
 	  break;
 	}
-
       }
       else {
 	cout << "no program running." << endl;
@@ -215,23 +223,23 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       break;
       
     case NIL_LIT_EXPR:
-      cout << "type=Nil, value=Nil" << endl;
+      cout << "print: type=Nil, value=Nil" << endl;
       break;
       
     case CHAR_LIT_EXPR:
-      cout << "type=Char, value=" << (char)expression->GetIntValue() << endl;
+      cout << "print: type=Char, value=" << (char)expression->GetIntValue() << endl;
       break;
       
     case INT_LIT_EXPR:
-      cout << "type=Int, value=" << expression->GetIntValue() << endl;
+      cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
       break;
       
     case FLOAT_LIT_EXPR:
-      cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+      cout << "print: type=Float, value=" << expression->GetFloatValue() << endl;
       break;
       
     case BOOLEAN_LIT_EXPR:
-      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
       
     case AND_EXPR:
@@ -242,7 +250,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case GTR_EQL_EXPR:
     case LES_EQL_EXPR:
     case GTR_EXPR:
-      cout << "type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
       
     case ADD_EXPR:
@@ -251,10 +259,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case DIV_EXPR:
     case MOD_EXPR:
       if(expression->GetFloatEval()) {
-	cout << "type=Float, value=" << expression->GetFloatValue() << endl;
+	cout << "print: type=Float, value=" << expression->GetFloatValue() << endl;
       }
       else {
-	cout << "type=Int, value=" << expression->GetIntValue() << endl;
+	cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
       }
       break;
       
@@ -507,7 +515,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
     }
     else {
-      cout << "modulus operation can only use integer values" << endl;
+      cout << "modulus operation requires integer values." << endl;
       is_error = true;
     }
     break;
@@ -709,8 +717,9 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 #ifdef _DEBUG
   cout << "input: |" << line << "|" << endl;
 #endif
-  
+
   // parser input
+  is_next = false;
   Parser parser;  
   Command* command = parser.Parse("?" + line);
   if(command) {
@@ -722,7 +731,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
-      cout << "Goodbye!" << endl;
+      cout << "goodbye." << endl;
       exit(0);
       break;
 
@@ -739,19 +748,22 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case CLEAR_COMMAND: {
-      cout << "are sure you want to clear all break points? [y/n] ";
+      cout << "  are sure you want to clear all break points? [y/n] ";
       string line;
       getline(cin, line);      
       if(line == "y" || line == "yes") {
 	cout << "break points cleared." << endl;
 	ClearBreaks();
       }
-      cout << endl;
     }
       break;
 
     case DELETE_COMMAND:
       ProcessDelete(static_cast<BreakDelete*>(command));
+      break;
+
+    case NEXT_COMMAND:
+      is_next = true;
       break;
       
     case INFO_COMMAND:
@@ -763,16 +775,14 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     }  
     
     is_error = false;
-    ref_mem = NULL;
     ref_mem = NULL; 
     return command;
   }
   else {
-    cout << "unable to process command" << endl;
+    cout << "unable to process command." << endl;
   }
   
   is_error = false;
-  ref_mem = NULL;
   ref_mem = NULL;  
   return NULL;
 }
