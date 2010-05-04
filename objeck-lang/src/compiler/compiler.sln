@@ -1,9 +1,9 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "compiler", "compiler\compiler.vcproj", "{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "compiler", "compiler\compiler.vcxproj", "{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cmd_line", "cmd_line\cmd_line.vcproj", "{F7D7A3B6-AB78-4C8E-BB1D-E5E1A5AF92EB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cmd_line", "cmd_line\cmd_line.vcxproj", "{F7D7A3B6-AB78-4C8E-BB1D-E5E1A5AF92EB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
