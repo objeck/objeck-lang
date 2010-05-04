@@ -91,6 +91,8 @@ void Scanner::LoadKeywords()
   ident_map["?d"] = TOKEN_DELETE_ID;
   ident_map["?run"] = TOKEN_RUN_ID;
   ident_map["?r"] = TOKEN_RUN_ID;
+  ident_map["?list"] = TOKEN_LIST_ID;
+  ident_map["?l"] = TOKEN_LIST_ID;
   ident_map["@self"] = TOKEN_SELF_ID;
 }
 
@@ -106,6 +108,7 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_LIST_ID:
   case TOKEN_SELF_ID:
   case TOKEN_NEXT_ID:
   case TOKEN_CONT_ID:
