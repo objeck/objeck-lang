@@ -33,7 +33,7 @@
 #define SYSTEM_ERROR -2
 
 #ifdef _DEBUG
-#include "vld.h"
+// #include "vld.h"
 #endif
 
 #include <windows.h>
@@ -85,33 +85,33 @@ int main(int argc, char* argv[])
         int pos = 0;
         while(pos < end) {
           // ignore leading white space
-          while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+          while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
             pos++;
           }
           if(path[pos] == '-') {
             // parse key
             int start =  ++pos;
-            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+            while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
               pos++;
             }
             string key = path.substr(start, pos - start);
             // parse value
-            while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+            while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
               pos++;
             }
             start = pos;
-            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+            while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
               pos++;
             }
             string value = path.substr(start, pos - start);
             arguments.insert(pair<string, string>(key, value));
           } 
           else {
-            while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+            while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
               pos++;
             }
             int start = pos;
-            while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+            while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
               pos++;
             }
             string value = path.substr(start, pos - start);
