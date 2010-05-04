@@ -83,6 +83,7 @@ class Parser {
   Command* ParseLine(const string& file_name);
   Command* ParseStatement(int depth);
   Command* ParseLoad(int depth);
+  Command* ParseList(int depth);
   Command* ParseBreak(int depth);
   Command* ParseDelete(int depth);
   Command* ParsePrint(int depth);
