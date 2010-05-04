@@ -46,6 +46,44 @@ namespace Runtime {
     int line_num;
     string file_name;
   } UserBreak;
+
+  /********************************
+   * Source file
+   ********************************/
+  class SourceFile {
+    string file_name;
+    vector<string> lines;
+    
+  public:
+    SourceFile(const string &fn) {
+      file_name = fn;
+
+      ifstream file_in (fn.c_str());
+      while(file_in.good()) {
+	string line;
+	getline(file_in, line);
+	lines.push_back(line);
+      }
+      file_in.close();
+    }
+
+    ~SourceFile() {
+    }
+
+    bool Print(int start) {
+      Print(start, start + 5);
+    }
+    
+    bool Print(int s, int e) {
+      if(start == end || start < lines.size()) {
+	return false;
+      }
+      
+      for(int i = 0; i < end && i < lines.size(); i++) {
+	cout << (i + 1) << ": " << lines[i] << endl;
+      }
+    }
+  };
   
   /********************************
    * Interactive command line
