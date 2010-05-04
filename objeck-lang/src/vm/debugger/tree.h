@@ -173,6 +173,7 @@ namespace frontend {
     DELETE_COMMAND,
     NEXT_COMMAND,
     CONT_COMMAND,
+    LIST_COMMAND,
   };
   
   /****************************
@@ -234,32 +235,27 @@ namespace frontend {
   };
 
   /****************************
-   * BreakDelete class
+   * FilePostion class
    ****************************/
-  class BreakDelete : public BasicCommand {
-    CommandType type;
+  class FilePostion : public BasicCommand {
     string file_name;
     int line_num;
     
   public:
-    BreakDelete(CommandType t, const string &fn, int ln) : BasicCommand(t) {
+    FilePostion(CommandType t, const string &fn, int ln) : BasicCommand(t) {
       file_name = fn;
       line_num = ln;
     }
-
-    ~BreakDelete() {
+    
+    ~FilePostion() {
     }
-
+    
     const string& GetFileName() {
       return file_name;
     }
 
     int GetLineNumber() {
       return line_num;
-    }
-
-    const CommandType GetCommandType() {
-      return BREAK_COMMAND;
     }
   };
 
@@ -690,8 +686,8 @@ namespace frontend {
       return tmp;
     }
 
-    BreakDelete* MakeBreakDelete(CommandType t, const string &file_name, int line_num) {
-      BreakDelete* tmp = new BreakDelete(t, file_name, line_num);
+    FilePostion* MakeFilePostion(CommandType t, const string &file_name, int line_num) {
+      FilePostion* tmp = new FilePostion(t, file_name, line_num);
       nodes.push_back(tmp);
       return tmp;
     }

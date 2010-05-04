@@ -131,7 +131,7 @@ void Runtime::Debugger::ProcessRun() {
   }
 }
 
-void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
+void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   int line_num = break_command->GetLineNumber();
   string file_name = break_command->GetFileName();
 
@@ -151,7 +151,7 @@ void Runtime::Debugger::ProcessBreak(BreakDelete* break_command) {
   }
 }
 
-void Runtime::Debugger::ProcessDelete(BreakDelete* delete_command) {
+void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
   string file_name = delete_command->GetFileName();
   
@@ -737,8 +737,42 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       exit(0);
       break;
 
+    case LIST_COMMAND: {
+      FilePostion* file_pos = static_cast<FilePostion*>(command);
+      
+      string file_name;
+      if(file_pos->GetFileName().size() > 0) {
+	file_name = file_pos->GetFileName();
+      }
+      else {
+	file_name = cur_file_name;
+      }
+      
+      int line_num;
+      if(file_pos->GetLineNumber() > 0) {
+	line_num = file_pos->GetLineNumber();
+      }
+      else {
+	line_num = cur_line_num;
+      }
+
+      const string &path = "../../compiler/test_src/" + file_name;  
+      if(FileExists(path) && line_num > 0) {
+	SourceFile src_file(path);
+	if(!src_file.Print(line_num)) {
+	  cout << "invalid line number." << endl;
+	  is_error = true;
+	}
+      }
+      else {
+	cout << "source file or line number doesn't exist." << endl;
+	is_error = true;
+      }
+    }
+      break;
+
     case BREAK_COMMAND:
-      ProcessBreak(static_cast<BreakDelete*>(command));
+      ProcessBreak(static_cast<FilePostion*>(command));
       break;
 
     case PRINT_COMMAND:
@@ -761,7 +795,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
 
     case DELETE_COMMAND:
-      ProcessDelete(static_cast<BreakDelete*>(command));
+      ProcessDelete(static_cast<FilePostion*>(command));
       break;
 
     case NEXT_COMMAND:

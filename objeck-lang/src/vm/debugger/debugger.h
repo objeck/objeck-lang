@@ -70,18 +70,31 @@ namespace Runtime {
     ~SourceFile() {
     }
 
-    bool Print(int start) {
-      Print(start, start + 5);
+    bool IsLoaded() {
+      return lines.size() > 0;
     }
     
-    bool Print(int s, int e) {
-      if(start == end || start < lines.size()) {
+    bool Print(int start) {
+      Print(start, start + 10);
+    }
+    
+    bool Print(int start, int end) {
+      start--;
+      end--;
+      
+      if(start < 0 || start >= end || start >= lines.size()) {
 	return false;
       }
-      
-      for(int i = 0; i < end && i < lines.size(); i++) {
+
+      for(int i = start; i < lines.size() && i < end; i++) {
 	cout << (i + 1) << ": " << lines[i] << endl;
       }
+      
+      return true;
+    }
+
+    const string& GetFileName() {
+      return file_name;
     }
   };
   
@@ -161,8 +174,9 @@ namespace Runtime {
     Command* ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessLoad(Load* load);
-    void ProcessBreak(BreakDelete* break_command);
-    void ProcessDelete(BreakDelete* break_command);
+    void ProcessBreak(FilePostion* break_command);
+    void ProcessDelete(FilePostion* break_command);
+    void ProcessList(FilePostion* break_command);
     void ProcessPrint(Print* print);
     void ClearProgram();
     void ClearBreaks();
