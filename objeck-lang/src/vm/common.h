@@ -597,11 +597,12 @@ public:
   inline long GetLabelIndex(long label_id) {
 #ifdef _WIN32
     hash_map<long, long>::iterator find = jump_table.find(label_id);
-    if(find == jump_table.end()) {
-      return -1;
-    }
+    if(find != jump_table.end()) {
+      return find->second;
+    }    
     
-    return find->second;
+    return -1;
+    
 #else    
     return jump_table.Find(label_id);
 #endif
@@ -811,7 +812,7 @@ public:
  * StackProgram class
  ********************************/
 class StackProgram {
-  // map<long, StackClass*> class_map;
+  map<string, StackClass*> cls_map;
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
@@ -830,6 +831,8 @@ class StackProgram {
 public:
   StackProgram() {
     cls_hierarchy = NULL;
+    classes = NULL;
+    char_strings = NULL;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
 #endif
@@ -941,8 +944,26 @@ public:
   void SetClasses(StackClass** clss, const int num) {
     classes = clss;
     class_num = num;
+    
+    for(int i = 0; i < num; i++) {
+      const string &name = clss[i]->GetName();
+      if(name.size() > 0) {	
+	cls_map.insert(pair<string, StackClass*>(name, clss[i]));
+      }
+    }
   }
-
+  
+  StackClass* GetClass(const string &n) {
+    if(classes) {
+      map<string, StackClass*>::iterator find = cls_map.find(n);
+      if(find != cls_map.end()) {
+	return find->second;
+      }
+    }
+    
+    return NULL;
+  }
+  
   void SetHierarchy(int* h) {
     cls_hierarchy = h;
   }

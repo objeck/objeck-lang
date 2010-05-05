@@ -320,8 +320,42 @@ Command* Parser::ParsePrint(int depth) {
 }
 
 Command* Parser::ParseInfo(int depth) {
+  string cls_name;
+  string mthd_name;
+
   NextToken();
-  return NULL;
+  
+  // class name
+  if(Match(TOKEN_CLASS_ID)) {
+    NextToken();
+    if(!Match(TOKEN_EQL)) {
+      ProcessError("Expected equal sign");
+    }
+    NextToken();
+    // name
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }    
+    cls_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    // method name
+    if(Match(TOKEN_METHOD_ID)) {
+      NextToken();
+      if(!Match(TOKEN_EQL)) {
+	ProcessError("Expected equal sign");
+      }
+      NextToken();
+      // name
+      if(!Match(TOKEN_IDENT)) {
+	ProcessError(TOKEN_IDENT);
+      }    
+      mthd_name = scanner->GetToken()->GetIdentifier();
+      NextToken();
+    }
+  }
+  
+  return TreeFactory::Instance()->MakeInfo(cls_name, mthd_name);
 }
 
 Command* Parser::ParseFrame(int depth) {
@@ -733,7 +767,6 @@ void Parser::ParseReference(Reference* reference, int depth)
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
-    NextToken();
   }
   // identifier
   const string &ident = scanner->GetToken()->GetIdentifier();

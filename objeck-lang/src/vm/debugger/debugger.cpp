@@ -30,7 +30,6 @@
  ***************************************************************************/
 
 #include "debugger.h"
-#include "../loader.h"
 
 /********************************
  * Interactive command line
@@ -96,11 +95,12 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
 
 void Runtime::Debugger::ProcessRun() {
   // make sure file exists
-  if(program_file.size() > 0) {    
+  if(program_file.size() > 0) {
     // TODO: pass args
     Loader loader(program_file.c_str()); 
     loader.Load();
-  
+    cur_program = loader.GetProgram();
+    
     // execute
     op_stack = new long[STACK_SIZE];
     stack_pos = new long;
@@ -109,7 +109,6 @@ void Runtime::Debugger::ProcessRun() {
 #ifdef _TIMING
     long start = clock();
 #endif
-    cur_program = loader.GetProgram();
     interpreter = new Runtime::StackInterpreter(cur_program, this);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
@@ -803,7 +802,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case INFO_COMMAND:
-      // ProcessInfo(static_cast<Info*>(command));
+      ProcessInfo(static_cast<Info*>(command));
       break;
       
     case FRAME_COMMAND:
@@ -821,6 +820,60 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
   is_error = false;
   ref_mem = NULL;  
   return NULL;
+}
+
+void Runtime::Debugger::ProcessInfo(Info* info) {
+  const string &cls_name = info->GetClassName();
+  const string &mthd_name = info->GetMethodName();
+  
+#ifdef _DEBUG
+  cout << "info class=" << cls_name << ", method=" << mthd_name << endl;
+#endif
+  
+  if(interpreter) {
+    // method info
+    if(cls_name.size() > 0 && mthd_name.size() > 0) {
+      StackClass* klass = cur_program->GetClass(cls_name);
+      if(klass) {
+	StackMethod* method = klass->GetMethod(mthd_name);
+	if(method) {
+	  cout << "class: type=" << klass->GetName() << ", method=" << mthd_name << endl;
+	  PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+	}
+	else {
+	  cout << "unable to find method." << endl;
+	  is_error = true;
+	}
+      }
+      else {
+	cout << "unable to find class." << endl;
+	is_error = true;
+      }
+    }
+    // class info
+    else if(cls_name.size() > 0) {
+      StackClass* klass = cur_program->GetClass(cls_name);
+      if(klass) {
+	cout << "class: type=" << klass->GetName() << endl;
+	PrintDeclarations(klass->GetDeclarations(), klass->GetNumberDeclarations());
+      }
+      else {
+	cout << "unable to find class." << endl;
+	is_error = true;
+      }
+    }
+    // general info
+    else {
+      cout << "general info:" << endl;
+      cout << "  program executable: file='" << program_file << "'" << endl;
+      // get running program info
+      cout << "  current file='" << cur_file_name << ":" << cur_line_num << "', method='" 
+	   << cls_name << "->" << mthd_name << "(..)'" << endl;
+    }    
+  }
+  else {
+    cout << "no program running." << endl;
+  }
 }
 
 void Runtime::Debugger::ClearBreaks() {
