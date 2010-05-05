@@ -94,6 +94,8 @@ void Scanner::LoadKeywords()
   ident_map["?list"] = TOKEN_LIST_ID;
   ident_map["?l"] = TOKEN_LIST_ID;
   ident_map["@self"] = TOKEN_SELF_ID;
+  ident_map["class"] = TOKEN_CLASS_ID;
+  ident_map["method"] = TOKEN_METHOD_ID;
 }
 
 /****************************
@@ -108,6 +110,8 @@ void Scanner::CheckIdentifier(int index)
   // check string
   enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_CLASS_ID:
+  case TOKEN_METHOD_ID:
   case TOKEN_LIST_ID:
   case TOKEN_SELF_ID:
   case TOKEN_NEXT_ID:

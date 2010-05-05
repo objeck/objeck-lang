@@ -259,6 +259,35 @@ namespace frontend {
   };
 
   /****************************
+   * Info class
+   ****************************/
+  class Info : public Command {
+    string cls_name;
+    string mthd_name;
+    
+  public:
+    Info(const string &c, const string &m) {
+      cls_name = c;
+      mthd_name = m;
+    }
+    
+    ~Info() {
+    }
+    
+    const string& GetClassName() {
+      return cls_name;
+    }
+
+    const string& GetMethodName() {
+      return mthd_name;
+    }
+    
+    const CommandType GetCommandType() {
+      return INFO_COMMAND;
+    }
+  };
+
+  /****************************
    * Print class
    ****************************/
   class Print : public Command {
@@ -278,22 +307,6 @@ namespace frontend {
     
     const CommandType GetCommandType() {
       return PRINT_COMMAND;
-    }
-  };
-
-  /****************************
-   * Info class
-   ****************************/
-  class Info : public Command {
-  public:
-    Info() {
-    }
-
-    ~Info() {
-    }
-
-    const CommandType GetCommandType() {
-      return INFO_COMMAND;
     }
   };
 
@@ -691,6 +704,12 @@ namespace frontend {
       return tmp;
     }
 
+    Info* MakeInfo(const string &cls_name, const string &mthd_name) {
+      Info* tmp = new Info(cls_name, mthd_name);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+    
     Load* MakeLoad(const string &file_name) {
       Load* tmp = new Load(file_name);
       nodes.push_back(tmp);
