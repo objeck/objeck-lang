@@ -106,7 +106,7 @@ void Scanner::CheckIdentifier(int index)
   const int length = end_pos - start_pos;
   string ident(buffer, start_pos, length);
   // check string
-  TokenType ident_type = ident_map[ident];
+  enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
   case TOKEN_LIST_ID:
   case TOKEN_SELF_ID:

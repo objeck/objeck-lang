@@ -99,7 +99,7 @@ enum TokenType {
   TOKEN_CONT_ID,
   TOKEN_NEXT_ID,
   TOKEN_SELF_ID,
-  TOKEN_LIST_ID,
+  TOKEN_LIST_ID
 };
 
 /****************************
@@ -107,7 +107,7 @@ enum TokenType {
  ****************************/
 class Token {
  private:
-  TokenType token_type;
+  enum TokenType token_type;
   string ident;
 
   INT_VALUE int_lit;
@@ -165,11 +165,11 @@ class Token {
     return ident;
   }
 
-  inline const TokenType GetType() {
+  inline const enum TokenType GetType() {
     return token_type;
   }
 
-  inline void SetType(TokenType t) {
+  inline void SetType(enum TokenType t) {
     token_type = t;
   }
 };
@@ -193,7 +193,7 @@ class Scanner {
   // input characters
   char cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  map<const string, TokenType> ident_map;
+  map<const string, enum TokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
 

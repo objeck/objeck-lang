@@ -163,7 +163,6 @@ namespace frontend {
   enum CommandType {
     LOAD_COMMAND = -200,
     QUIT_COMMAND,
-    HELP_COMMAND,
     BREAK_COMMAND,
     PRINT_COMMAND,
     INFO_COMMAND,
