@@ -53,7 +53,7 @@ void Parser::LoadErrorCodes()
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(TokenType type)
+void Parser::ProcessError(enum TokenType type)
 {
   string msg = error_msgs[type];
 #ifdef _DEBUG
