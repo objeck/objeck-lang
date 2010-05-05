@@ -75,7 +75,7 @@ namespace Runtime {
     }
     
     bool Print(int start) {
-      Print(start, start + 10);
+      return Print(start, start + 10);
     }
     
     bool Print(int start, int end) {
