@@ -322,7 +322,6 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   }
 }
 
-
 void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   EvaluateExpression(expression->GetLeft());
   EvaluateExpression(expression->GetRight());
@@ -805,8 +804,10 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       ProcessInfo(static_cast<Info*>(command));
       break;
       
+      /* TODO
     case FRAME_COMMAND:
       break;
+      */
     }  
     
     is_error = false;
@@ -827,7 +828,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
   const string &mthd_name = info->GetMethodName();
   
 #ifdef _DEBUG
-  cout << "info class=" << cls_name << ", method=" << mthd_name << endl;
+  cout << "--- info class=" << cls_name << ", method=" << mthd_name << " ---" << endl;
 #endif
   
   if(interpreter) {
@@ -835,10 +836,19 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     if(cls_name.size() > 0 && mthd_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass) {
-	StackMethod* method = klass->GetMethod(mthd_name);
-	if(method) {
-	  cout << "class: type=" << klass->GetName() << ", method=" << mthd_name << endl;
-	  PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+	vector<StackMethod*> methods = klass->GetMethods(mthd_name);
+	if(methods.size() > 0) {
+	  for(int i = 0; i < methods.size(); i++) {
+	    StackMethod* method = methods[i];
+	    // parse method name
+	    int long_name_end = method->GetName().find_last_of(':');
+	    const string &long_name = method->GetName().substr(0, long_name_end);
+	    // print 
+	    cout << "  class: type=" << klass->GetName() << ", method=" 
+		 << long_name << "(..)" << endl;
+	    cout << "  parameters:" << endl;
+	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+	  }
 	}
 	else {
 	  cout << "unable to find method." << endl;
@@ -854,7 +864,9 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     else if(cls_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass) {
-	cout << "class: type=" << klass->GetName() << endl;
+	cout << "  class: type=" << klass->GetName() << endl;
+	// print
+	cout << "  parameters:" << endl;
 	PrintDeclarations(klass->GetDeclarations(), klass->GetNumberDeclarations());
       }
       else {
@@ -866,7 +878,17 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     else {
       cout << "general info:" << endl;
       cout << "  program executable: file='" << program_file << "'" << endl;
-      // get running program info
+      
+      // parse method and class names
+      const string &long_name = cur_frame->GetMethod()->GetName();
+      int end_index = long_name.find_last_of(':');
+      const string &cls_mthd_name = long_name.substr(0, end_index);
+      
+      int mid_index = cls_mthd_name.find_last_of(':');
+      const string &cls_name = cls_mthd_name.substr(0, mid_index);
+      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);
+
+      // print
       cout << "  current file='" << cur_file_name << ":" << cur_line_num << "', method='" 
 	   << cls_name << "->" << mthd_name << "(..)'" << endl;
     }    

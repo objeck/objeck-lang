@@ -106,6 +106,7 @@ Command* Parser::Parse(const string &line)
   
   // parse input
   Command* command = ParseLine(line);
+  
 
   if(CheckErrors()) {
     return command;
@@ -120,6 +121,10 @@ Command* Parser::Parse(const string &line)
 Command* Parser::ParseLine(const string &line)
 {
   Command* command = ParseStatement(0);
+  if(!Match(TOKEN_END_OF_STREAM)) {
+    ProcessError("Expected statement end");
+  }
+  
   // clean up
   delete scanner;
   scanner = NULL;
@@ -333,10 +338,17 @@ Command* Parser::ParseInfo(int depth) {
     }
     NextToken();
     // name
-    if(!Match(TOKEN_IDENT)) {
+    if(Match(TOKEN_IDENT)) {
+      cls_name = scanner->GetToken()->GetIdentifier();
+    }
+    else if(Match(TOKEN_CHAR_STRING_LIT)) {
+      CharacterString* char_string = 
+	TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+      cls_name = char_string->GetString();
+    }
+    else {
       ProcessError(TOKEN_IDENT);
-    }    
-    cls_name = scanner->GetToken()->GetIdentifier();
+    }
     NextToken();
 
     // method name
@@ -348,9 +360,16 @@ Command* Parser::ParseInfo(int depth) {
       NextToken();
       // name
       if(!Match(TOKEN_IDENT)) {
+	mthd_name = scanner->GetToken()->GetIdentifier();
+      }
+      else if(Match(TOKEN_CHAR_STRING_LIT)) {
+	CharacterString* char_string = 
+	  TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+	cls_name = char_string->GetString();
+      }
+      else {
 	ProcessError(TOKEN_IDENT);
-      }    
-      mthd_name = scanner->GetToken()->GetIdentifier();
+      }
       NextToken();
     }
   }
