@@ -33,6 +33,7 @@
 #define __DEBUGGER_H__
 
 #include "../common.h"
+#include "../loader.h"
 #include "../interpreter.h"
 #include "tree.h"
 #include "parser.h"
@@ -170,10 +171,53 @@ namespace Runtime {
 
       return false;
     }
+
+    void PrintDeclarations(StackDclr** dclrs, int dclrs_num) {
+      for(int i = 0; i < dclrs_num; i++) {
+	StackDclr* dclr = dclrs[i];
+
+	// parse name
+	int param_name_index = dclrs[i]->name.find_last_of(':');
+	const string &param_name = dclrs[i]->name.substr(param_name_index + 1);
+	cout << "  parameter: name='" << param_name << "', ";
+	
+	// parse type
+	switch(dclr->type) {
+	  case INT_PARM:
+	  cout << "type=Int" << endl;
+	  break;
+	
+	case FLOAT_PARM:
+	  cout << "type=Float" << endl;
+	  break;
+	  
+	case BYTE_ARY_PARM:
+	  cout << "type=Byte[]" << endl;
+	  break;
+
+	case INT_ARY_PARM:
+	  cout << "type=Int[]" << endl;
+	  break;
+
+	case FLOAT_ARY_PARM:
+	  cout << "type=Float[]" << endl;
+	  break;
+
+	case OBJ_PARM:
+	  cout << "type=" << cur_program->GetClass(dclr->id)->GetName() << endl;
+	  break;
+	  
+	case OBJ_ARY_PARM:
+	  cout << "type=Object[]" << endl;
+	  break;
+	}
+      }
+    }
     
     Command* ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessLoad(Load* load);
+    void ProcessInfo(Info* info);
     void ProcessBreak(FilePostion* break_command);
     void ProcessDelete(FilePostion* break_command);
     void ProcessList(FilePostion* break_command);

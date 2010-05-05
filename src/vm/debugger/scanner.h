@@ -99,7 +99,9 @@ enum TokenType {
   TOKEN_CONT_ID,
   TOKEN_NEXT_ID,
   TOKEN_SELF_ID,
-  TOKEN_LIST_ID
+  TOKEN_LIST_ID,
+  TOKEN_CLASS_ID,
+  TOKEN_METHOD_ID,
 };
 
 /****************************
