@@ -45,18 +45,18 @@ using namespace frontend;
  ****************************/
 class Parser {
   Scanner* scanner;
-  map<TokenType, string> error_msgs;
+  map<enum TokenType, string> error_msgs;
   vector<string> errors;
   
   inline void NextToken() {
     scanner->NextToken();
   }
 
-  inline bool Match(TokenType type, int index = 0) {
+  inline bool Match(enum TokenType type, int index = 0) {
     return scanner->GetToken(index)->GetType() == type;
   }
 
-  inline TokenType GetToken(int index = 0) {
+  inline enum TokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
   }
 
@@ -75,7 +75,7 @@ class Parser {
 
   // error processing
   void LoadErrorCodes();
-  void ProcessError(const TokenType type);
+  void ProcessError(const enum TokenType type);
   void ProcessError(const string &msg);
   bool CheckErrors();
 
