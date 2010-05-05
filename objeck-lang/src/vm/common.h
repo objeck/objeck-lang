@@ -769,6 +769,17 @@ public:
     return methods[id];
   }
 
+  vector<StackMethod*> GetMethods(const string &n) {
+    vector<StackMethod*> found;
+    for(int i = 0; i < method_num; i++) {
+      if(methods[i]->GetName().find(n) != string::npos) {
+	found.push_back(methods[i]);
+      }
+    }
+
+    return found;
+  }
+  
   inline StackMethod* GetMethod(const string n) {
     map<const string, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {

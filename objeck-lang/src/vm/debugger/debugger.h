@@ -179,7 +179,7 @@ namespace Runtime {
 	// parse name
 	int param_name_index = dclrs[i]->name.find_last_of(':');
 	const string &param_name = dclrs[i]->name.substr(param_name_index + 1);
-	cout << "  parameter: name='" << param_name << "', ";
+	cout << "    parameter: name='" << param_name << "', ";
 	
 	// parse type
 	switch(dclr->type) {
