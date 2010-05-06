@@ -46,7 +46,6 @@ using namespace std;
  ****************************/
 int main(int argc, char* argv[])
 {
- 
   string usage;
   usage += "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";

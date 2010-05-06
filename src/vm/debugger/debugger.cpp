@@ -135,7 +135,7 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   string file_name = break_command->GetFileName();
 
   // TODO: fix path
-  const string &path = "../../compiler/test_src/" + file_name;  
+  const string &path = base_path + file_name;  
   if(FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
       cout << "added break point: file='" << file_name << ":" << line_num << "'" << endl;
@@ -150,12 +150,16 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   }
 }
 
+void Runtime::Debugger::ProcessBreaks() {
+  ListBreaks();
+}
+
 void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
   string file_name = delete_command->GetFileName();
   
   // TODO fix
-  const string &path = "../../compiler/test_src/" + file_name;  
+  const string &path = base_path + file_name;  
   if(FileExists(path)) {  
     if(DeleteBreak(line_num, file_name)) {
       cout << "deleted break point: file='" << file_name << ":" << line_num << "'" << endl;
@@ -195,25 +199,47 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  
 	case BYTE_ARY_PARM:
 	  cout << "print: type=Byte[], value=" << (char)reference->GetIntValue() 
-	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	       << "(" << (void*)reference->GetIntValue() << ")";
+	  if(reference->GetArrayDimension()) {
+	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		 << reference->GetArraySize();
+	  }
+	  cout << endl;
 	  break;
 
 	case INT_ARY_PARM:
 	  cout << "print: type=Int[], value=" << reference->GetIntValue() 
-	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	       << "(" << (void*)reference->GetIntValue() << ")";
+	  if(reference->GetArrayDimension()) {
+	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		 << reference->GetArraySize();
+	  }
+	  cout << endl;
 	  break;
 
 	case FLOAT_ARY_PARM:
 	  cout << "print: type=Float[], value=" << reference->GetFloatValue() 
 	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	  if(reference->GetArrayDimension()) {
+	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		 << reference->GetArraySize();
+	  }
+	  cout << endl;
 	  break;
-
+	  
 	case OBJ_PARM:
-	  cout << "print: type=Object, value=" << (void*)reference->GetIntValue() << endl;
+	  cout << "print: type=" << reference->GetClassName() << ", value=" 
+	       << (void*)reference->GetIntValue() << endl;
 	  break;
 	  
 	case OBJ_ARY_PARM:
-	  cout << "print: type=Object[], value=" << (void*)reference->GetIntValue() << endl;
+	  cout << "print: type=" << reference->GetClassName() << "[], value=" 
+	       << (void*)reference->GetIntValue();
+	  if(reference->GetArrayDimension()) {
+	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		 << reference->GetArraySize();
+	  }
+	  cout << endl;
 	  break;
 	}
       }
@@ -641,18 +667,20 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index,
   reference->SetIntValue(ref_mem[index]);
   ref_mem = (long*)ref_mem[index];
   ref_klass = cur_program->GetClass(id);
+  reference->SetClassName(ref_klass->GetName());
   if(reference->GetReference()) {
     EvaluateReference(reference->GetReference(), true);
   }
 }
 
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int index, bool is_float) {
-  ExpressionList* indices = reference->GetIndices();
+  long* array = (long*)ref_mem[index];    
+  const int max = array[0];
+  const int dim = array[1];
+  
   // de-reference array value
+  ExpressionList* indices = reference->GetIndices();
   if(indices) {
-    long* array = (long*)ref_mem[index];
-    const int max = array[0];
-    const int dim = array[1];
     // calculate indices values
     vector<Expression*> expressions = indices->GetExpressions();	    
     vector<int> values;
@@ -709,6 +737,8 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
   }
   // set array address
   else {
+    reference->SetArrayDimension(dim);
+    reference->SetArraySize(max);
     reference->SetIntValue(ref_mem[index]);
   }
 }
@@ -754,9 +784,9 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	line_num = cur_line_num;
       }
 
-      const string &path = "../../compiler/test_src/" + file_name;  
+      const string &path = base_path + file_name;  
       if(FileExists(path) && line_num > 0) {
-	SourceFile src_file(path);
+	SourceFile src_file(path, cur_line_num);
 	if(!src_file.Print(line_num)) {
 	  cout << "invalid line number." << endl;
 	  is_error = true;
@@ -773,6 +803,10 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       ProcessBreak(static_cast<FilePostion*>(command));
       break;
 
+    case BREAKS_COMMAND:
+      ProcessBreaks();
+      break;
+      
     case PRINT_COMMAND:
       ProcessPrint(static_cast<Print*>(command));
       break;
@@ -805,8 +839,8 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
       /* TODO
-    case FRAME_COMMAND:
-      break;
+	 case FRAME_COMMAND:
+	 break;
       */
     }  
     
@@ -934,26 +968,28 @@ void Runtime::Debugger::ClearProgram() {
   ref_mem = NULL; 
 }
 
-Runtime::Debugger::Debugger(const string &fn) {
-  quit = false;
-  program_file = fn;
-  // clear program
-  interpreter = NULL;
-  op_stack = NULL;
-  stack_pos = NULL;
-  cur_line_num = -2;
-  cur_frame = NULL;
-  cur_program = NULL;
-  cur_call_stack = NULL;
-  cur_call_stack_pos = NULL;
-  is_error = false;
-  ref_mem = NULL;
-  ref_mem = NULL; 
-}
+void Runtime::Debugger::Debug() {
+  cout << "-------------------------------------" << endl;
+  cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
+  cout << "-------------------------------------" << endl << endl;
 
-Runtime::Debugger::~Debugger() {
-  ClearProgram();
-  ClearBreaks();
+  if(FileExists(program_file, true) && FileExists(base_path)) {
+    cout << "loaded executable: file='" << program_file << "'" << endl;
+    cout << "source files: path='" << base_path << "'" << endl << endl;
+  }
+  else {
+    cout << "unable to load executable or locate base path." << endl;
+    exit(1);
+  }
+  
+  // enter feedback loop
+  Command* command;
+  while(true) {
+    cout << "> ";
+    string line;
+    getline(cin, line);
+    command = ProcessCommand(line);    
+  }
 }
 
 /********************************
@@ -961,10 +997,90 @@ Runtime::Debugger::~Debugger() {
  ********************************/
 int main(int argc, char** argv) 
 {
-  string file_name;
-  if(argc == 2) {
-    file_name = argv[1];
+  string usage;
+  usage += "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+  usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+  usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+  usage += "FOR MORE INFORMATION.\n\n";
+  usage += "usage: obb -exe <executable> [-src <source>]\n\n";
+  usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
+  usage += "options:\n";
+  usage += "  -exe: executable file\n";
+  usage += "  -src: source file path\n\n";
+  usage += "  example: \"./obd -exe ../hello.obe -src .../\"";
+
+  if(argc >= 3) {
+    // reconstruct path
+    string path;
+    for(int i = 1; i < argc; i++) {
+      path += " ";
+      path += argv[i];
+    }
+
+    // parse path
+    int end = (int)path.size();
+    map<const string, string> arguments;
+    int pos = 0;
+    while(pos < end) {
+      // ignore leading white space
+      while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	pos++;
+      }
+      if(path[pos] == '-') {
+	// parse key
+	int start =  ++pos;
+	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	  pos++;
+	}
+	string key = path.substr(start, pos - start);
+	// parse value
+	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	  pos++;
+	}
+	start = pos;
+	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	  pos++;
+	}
+	string value = path.substr(start, pos - start);
+	arguments.insert(pair<string, string>(key, value));
+      } 
+      else {
+	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	  pos++;
+	}
+	int start = pos;
+	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	  pos++;
+	}
+	string value = path.substr(start, pos - start);
+	arguments.insert(pair<string, string>("-", value));
+      }
+    }
+
+    // start debugger
+    map<const string, string>::iterator result = arguments.find("exe");
+    if(result == arguments.end()) {
+      cerr << usage << endl << endl;
+      return 1;
+    }
+    const string &file_name = arguments["exe"];
+    
+    string base_path = "./";
+    result = arguments.find("src");
+    if(result != arguments.end()) {
+      base_path = arguments["src"];
+    }
+
+    // go debugger
+    Runtime::Debugger debugger(file_name, base_path);
+    debugger.Debug();
+    
+    return 0;
+  } 
+  else {
+    cerr << usage << endl << endl;
+    return 1;
   }
-  Runtime::Debugger debugger(file_name);
-  debugger.Debug();
+  
+  return 1;
 }
