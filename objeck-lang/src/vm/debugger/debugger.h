@@ -136,6 +136,7 @@ namespace Runtime {
     StackFrame** cur_call_stack;    
     long cur_call_stack_pos; 
     // interpreter variables
+    vector<string> arguments;
     StackInterpreter* interpreter;
     StackProgram* cur_program;
     StackFrame* cur_frame;
@@ -270,7 +271,9 @@ namespace Runtime {
     
     Command* ProcessCommand(const string &line);
     void ProcessRun();
-    void ProcessLoad(Load* load);
+    void ProcessExe(Load* load);
+    void ProcessSrc(Load* load);
+    void ProcessArgs(Load* load);
     void ProcessInfo(Info* info);
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();

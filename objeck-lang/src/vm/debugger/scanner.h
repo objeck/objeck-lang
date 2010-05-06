@@ -90,7 +90,7 @@ enum TokenType {
   TOKEN_RUN_ID,
   TOKEN_CLEAR_ID,
   TOKEN_DELETE_ID,
-  TOKEN_LOAD_ID,
+  TOKEN_EXE_ID,
   TOKEN_QUIT_ID,
   TOKEN_BREAK_ID,
   TOKEN_BREAKS_ID,
@@ -103,6 +103,8 @@ enum TokenType {
   TOKEN_LIST_ID,
   TOKEN_CLASS_ID,
   TOKEN_METHOD_ID,
+  TOKEN_SRC_ID,
+  TOKEN_ARGS_ID,
 };
 
 /****************************
