@@ -37,6 +37,7 @@
 #include "../interpreter.h"
 #include "tree.h"
 #include "parser.h"
+#include <iomanip>
 
 using namespace std;
 
@@ -54,10 +55,12 @@ namespace Runtime {
   class SourceFile {
     string file_name;
     vector<string> lines;
+    int cur_line_num;
     
   public:
-    SourceFile(const string &fn) {
+    SourceFile(const string &fn, int l) {
       file_name = fn;
+      cur_line_num = l;
 
       ifstream file_in (fn.c_str());
       while(file_in.good()) {
@@ -86,9 +89,15 @@ namespace Runtime {
       if(start < 0 || start >= end || start >= lines.size()) {
 	return false;
       }
-
+      
+      const int offset = 5;
       for(int i = start; i < lines.size() && i < end; i++) {
-	cout << (i + 1) << ": " << lines[i] << endl;
+	if(i + 1 == cur_line_num) {
+	  cout << right << "=>" << setw(offset) << (i + 1) << ": " << lines[i] << endl;
+	}
+	else {
+	  cout << right << setw(offset + 2) << (i + 1) << ": " << lines[i] << endl;
+	}
       }
       
       return true;
@@ -104,8 +113,9 @@ namespace Runtime {
    * debugger
    ********************************/
   class Debugger {
-    bool quit;
     string program_file;
+    string base_path;
+    bool quit;
     // break info
     list<UserBreak*> breaks;
     int cur_line_num;
@@ -172,6 +182,14 @@ namespace Runtime {
       return false;
     }
 
+    void ListBreaks() {
+      cout << "breaks:" << endl;
+      list<UserBreak*>::iterator iter;
+      for(iter = breaks.begin(); iter != breaks.end(); iter++) {
+	cout << "  break: file='" << (*iter)->file_name << ":" << (*iter)->line_num << "'" << endl;
+      }
+    }
+    
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num) {
       for(int i = 0; i < dclrs_num; i++) {
 	StackDclr* dclr = dclrs[i];
@@ -219,6 +237,7 @@ namespace Runtime {
     void ProcessLoad(Load* load);
     void ProcessInfo(Info* info);
     void ProcessBreak(FilePostion* break_command);
+    void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
     void ProcessList(FilePostion* break_command);
     void ProcessPrint(Print* print);
@@ -232,26 +251,31 @@ namespace Runtime {
     void EvaluateCalculation(CalculatedExpression* expression);
   
   public:
-    void Debug() {
-      cout << "-------------------------------------" << endl;
-      cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
-      cout << "-------------------------------------" << endl << endl;
-
-      if(program_file.size() > 0 && FileExists(program_file, true)) {
-	cout << "loaded program executable: file='" << program_file << "'" << endl;
-      }
-      // enter feedback look
-      Command* command;
-      while(true) {
-	cout << "> ";
-	string line;
-	getline(cin, line);
-	command = ProcessCommand(line);    
-      }
+    Debugger(const string &fn, const string &bp) {
+      program_file = fn;
+      base_path = bp;
+      quit = false;
+      // clear program
+      interpreter = NULL;
+      op_stack = NULL;
+      stack_pos = NULL;
+      cur_line_num = -2;
+      cur_frame = NULL;
+      cur_program = NULL;
+      cur_call_stack = NULL;
+      cur_call_stack_pos = NULL;
+      is_error = false;
+      ref_mem = NULL;
+      ref_mem = NULL; 
     }
-  
-    Debugger(const string &fn);  
-    ~Debugger();
+    
+    ~Debugger() {
+      ClearProgram();
+      ClearBreaks();
+    }
+    
+    // start debugger
+    void Debug();
   
     // runtime callback
     void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,

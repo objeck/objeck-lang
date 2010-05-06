@@ -164,6 +164,7 @@ namespace frontend {
     LOAD_COMMAND = -200,
     QUIT_COMMAND,
     BREAK_COMMAND,
+    BREAKS_COMMAND,
     PRINT_COMMAND,
     INFO_COMMAND,
     FRAME_COMMAND,
@@ -575,11 +576,16 @@ namespace frontend {
     Reference* reference;
     StackDclr dclr;
     bool is_self;
+    int array_size;
+    int array_dim;
+    string cls_name;
 
     Reference() : Expression() {
       variable_name = "@self";
       is_self = true;
       reference	= NULL;
+      array_size = 0;
+      array_dim = 0;
     }
     
     Reference(const string &v) : Expression() {
@@ -626,6 +632,30 @@ namespace frontend {
 
     bool IsSelf() {
       return is_self;
+    }
+    
+    void SetArraySize(int s) {
+      array_size = s;
+    }
+
+    int GetArraySize() {
+      return array_size;
+    }
+
+    void SetArrayDimension(int d) {
+      array_dim = d;
+    }
+
+    int GetArrayDimension() {
+      return array_dim;
+    }
+
+    void SetClassName(const string &n) {
+      cls_name = n;
+    }
+
+    const string& GetClassName() {
+      return cls_name;
     }
   };
 
