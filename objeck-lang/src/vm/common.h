@@ -667,6 +667,7 @@ class StackClass {
   StackDclr** dclrs;
   long num_dclrs;
   long* cls_mem;
+  bool is_debug;
 
   map<const string, StackMethod*> method_name_map;
 
@@ -679,7 +680,7 @@ class StackClass {
 
 public:
   StackClass(long i, const string &ne, const string &fn, long p, 
-	     bool v, StackDclr** d, long n, long cs, long is) {
+	     bool v, StackDclr** d, long n, long cs, long is, bool b) {
     id = i;
     name = ne;
     file_name = fn;
@@ -689,6 +690,7 @@ public:
     num_dclrs = n;
     cls_space = InitMemory(cs);
     inst_space  = is;
+    is_debug = b;
   }
 
   ~StackClass() {
@@ -719,6 +721,10 @@ public:
 
   inline long GetId() {
     return id;
+  }
+
+  bool IsDebug() {
+    return is_debug;
   }
 
   inline const string& GetName() const {

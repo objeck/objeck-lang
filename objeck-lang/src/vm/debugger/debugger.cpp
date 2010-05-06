@@ -667,9 +667,16 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index,
   reference->SetIntValue(ref_mem[index]);
   ref_mem = (long*)ref_mem[index];
   ref_klass = cur_program->GetClass(id);
-  reference->SetClassName(ref_klass->GetName());
-  if(reference->GetReference()) {
-    EvaluateReference(reference->GetReference(), true);
+  if(ref_klass->IsDebug()) {
+    reference->SetClassName(ref_klass->GetName());
+    if(reference->GetReference()) {
+      EvaluateReference(reference->GetReference(), true);
+    }
+  }
+  else {
+    ref_klass = NULL;
+    cout << "no debug information for class." << endl;
+    is_error = true;
   }
 }
 
@@ -869,7 +876,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     // method info
     if(cls_name.size() > 0 && mthd_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
-      if(klass) {
+      if(klass && klass->IsDebug()) {
 	vector<StackMethod*> methods = klass->GetMethods(mthd_name);
 	if(methods.size() > 0) {
 	  for(int i = 0; i < methods.size(); i++) {
@@ -897,7 +904,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     // class info
     else if(cls_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
-      if(klass) {
+      if(klass && klass->IsDebug()) {
 	cout << "  class: type=" << klass->GetName() << endl;
 	// print
 	cout << "  parameters:" << endl;
