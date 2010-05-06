@@ -691,11 +691,11 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     // calculate indices values
     vector<Expression*> expressions = indices->GetExpressions();	    
     vector<int> values;
-    for(int i = 0; i < expressions.size(); i++) {
+    for(unsigned int i = 0; i < expressions.size(); i++) {
       EvaluateExpression(expressions[i]);
       // update values
       if(expressions[i]->GetFloatEval()) {
-	values.push_back(expressions[i]->GetFloatValue());
+	values.push_back((int)expressions[i]->GetFloatValue());
       }
       else {
 	values.push_back(expressions[i]->GetIntValue());
@@ -879,7 +879,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
       if(klass && klass->IsDebug()) {
 	vector<StackMethod*> methods = klass->GetMethods(mthd_name);
 	if(methods.size() > 0) {
-	  for(int i = 0; i < methods.size(); i++) {
+	  for(unsigned int i = 0; i < methods.size(); i++) {
 	    StackMethod* method = methods[i];
 	    // parse method name
 	    int long_name_end = method->GetName().find_last_of(':');
@@ -980,7 +980,7 @@ void Runtime::Debugger::Debug() {
   cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
   cout << "-------------------------------------" << endl << endl;
 
-  if(FileExists(program_file, true) && FileExists(base_path)) {
+  if(FileExists(program_file, true) && DirectoryExists(base_path)) {
     cout << "loaded executable: file='" << program_file << "'" << endl;
     cout << "source files: path='" << base_path << "'" << endl << endl;
   }
@@ -1030,33 +1030,33 @@ int main(int argc, char** argv)
     int pos = 0;
     while(pos < end) {
       // ignore leading white space
-      while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+      while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	pos++;
       }
       if(path[pos] == '-') {
 	// parse key
 	int start =  ++pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
 	  pos++;
 	}
 	string key = path.substr(start, pos - start);
 	// parse value
-	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	  pos++;
 	}
 	start = pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
 	  pos++;
 	}
 	string value = path.substr(start, pos - start);
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
-	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	  pos++;
 	}
 	int start = pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
 	  pos++;
 	}
 	string value = path.substr(start, pos - start);
@@ -1072,11 +1072,21 @@ int main(int argc, char** argv)
     }
     const string &file_name = arguments["exe"];
     
-    string base_path = "./";
+    string base_path = ".";
     result = arguments.find("src");
     if(result != arguments.end()) {
       base_path = arguments["src"];
     }
+
+#ifdef _WIN32
+    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
+      base_path += '\\';
+    }
+#else
+    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '/') {
+      base_path += '/';
+    }
+#endif
 
     // go debugger
     Runtime::Debugger debugger(file_name, base_path);

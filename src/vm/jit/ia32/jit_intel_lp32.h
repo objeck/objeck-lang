@@ -613,7 +613,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(int i  = 0; i < aval_regs.size(); i++) {
+      for(unsigned int i  = 0; i < aval_regs.size(); i++) {
 	assert(h != aval_regs[i]);
       }
 #endif
@@ -658,7 +658,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(int i = 0; i < aval_xregs.size(); i++) {
+      for(unsigned int i = 0; i < aval_xregs.size(); i++) {
 	assert(h != aval_xregs[i]);
       }
 #endif
