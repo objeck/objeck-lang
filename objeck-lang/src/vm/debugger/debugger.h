@@ -38,6 +38,11 @@
 #include "tree.h"
 #include "parser.h"
 #include <iomanip>
+#ifdef _WIN32
+#include "windows.h"
+#else
+#include <dirent.h>
+#endif
 
 using namespace std;
 
@@ -82,7 +87,7 @@ namespace Runtime {
       return Print(start, start + 10);
     }
     
-    bool Print(int start, int end) {
+    bool Print(unsigned int start, unsigned int end) {
       start--;
       end--;
       
@@ -90,8 +95,16 @@ namespace Runtime {
 	return false;
       }
       
+      if(start - 5 > 0) {
+        start -= 5;
+        end -= 5;
+      }
+      else {
+        start = 0;
+      }
+
       const int offset = 5;
-      for(int i = start; i < lines.size() && i < end; i++) {
+      for(unsigned int i = start; i < lines.size() && i < end; i++) {
 	if(i + 1 == cur_line_num) {
 	  cout << right << "=>" << setw(offset) << (i + 1) << ": " << lines[i] << endl;
 	}
@@ -147,6 +160,29 @@ namespace Runtime {
       }
       
       return false;
+    }
+
+    bool DirectoryExists(const string &dir_name) {
+#ifdef _WIN32
+      HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ, 
+			     FILE_SHARE_READ, NULL, OPEN_EXISTING, 
+			     FILE_FLAG_BACKUP_SEMANTICS, NULL);    
+    
+    if(file == INVALID_HANDLE_VALUE) {
+      return false;
+    }
+    CloseHandle(file);
+
+    return true;
+#else
+      DIR* dir = opendir(dir_name);
+      if(dir) {
+        closedir(dir);
+        return true;
+      }
+
+      return true;
+#endif
     }
     
     bool DeleteBreak(int line_num, const string &file_name) {      
