@@ -80,6 +80,7 @@ void Scanner::LoadKeywords()
   ident_map["?q"] = TOKEN_QUIT_ID;  
   ident_map["?break"] = TOKEN_BREAK_ID;
   ident_map["?b"] = TOKEN_BREAK_ID;
+  ident_map["?breaks"] = TOKEN_BREAKS_ID;
   ident_map["?print"] = TOKEN_PRINT_ID;
   ident_map["?p"] = TOKEN_PRINT_ID;
   ident_map["?info"] = TOKEN_INFO_ID;
@@ -119,6 +120,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_LOAD_ID:
   case TOKEN_QUIT_ID:
   case TOKEN_BREAK_ID:
+  case TOKEN_BREAKS_ID:
   case TOKEN_PRINT_ID:
   case TOKEN_INFO_ID:
   case TOKEN_FRAME_ID:
