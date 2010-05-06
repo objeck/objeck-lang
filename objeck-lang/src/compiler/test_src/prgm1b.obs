@@ -7,9 +7,8 @@ bundle Default {
 #		function : Run(), Nil {
 		function : native : Run(), Nil {		
 			(3.24 * 9.25)->PrintLine();
-#			(3 * 9)->PrintLine();
-#~
-			a := 10;
+			(3 * 9)->PrintLine();
+			a := 10 / 5;
 			a->PrintLine();
 			(2 - 3)->PrintLine();
 
@@ -19,13 +18,15 @@ bundle Default {
 
 			b := 2 + 3;
 			b->PrintLine();
+
 			c := 3.5;
 			c->PrintLine();
+#~
 			55.141->As(Char)->PrintLine();	
 
 			(9/3)->PrintLine();
 			(3-9)->PrintLine();
-		
+
 			a : Int := 70;
 			(a / 2)->PrintLine();
 			(4 * a)->PrintLine();
