@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.9}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.10}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -71,6 +71,7 @@ Additional compiler options are listed below:
 \texttt{-tar} & target output \texttt{exe} for executable and \texttt{lib} for library; default is  \texttt{exe} \\ \hline
 \texttt{-opt} & optimization level \texttt{s0}--\texttt{s3} with \texttt{s3} being the most aggressive; default is \texttt{s0} \\ \hline
 \texttt{-dest} & output file name \\ \hline
+\texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
 \end{tabular}
 \end{center}
 
@@ -361,6 +362,33 @@ A function or method may be defined as \texttt{virtual} meaning that any class t
 Below is an example of declaring a virtual method:
 \begin{verbatim}
 method : virtual : public : Compare(right : Base), Int;
+\end{verbatim}
+
+\section{Interactive Debugger}
+The Objeck language toolset contains a basic interactive debugger that allows programmers to inspect variables within their programs.  The debugger will also calculate simple arithmetic expressions, which contain either variables or constants. The debugger allows programmers to set breakpoints within methods based upon the source line numbers.  The following commands are supported:
+
+\begin{center}
+\begin{tabular}{| l | l |}
+\hline
+\emph{Command} & \emph{Description} \\ \hline \hline
+\texttt{[b]reak} &  sets a breakpoint \\ \hline
+\texttt{breaks} &  shows all breakpoints \\ \hline
+\texttt{[d]elete} &  deletes a breakpoint \\ \hline
+\texttt{clear} &  clears all breakpoints \\ \hline
+\texttt{[r]un} &  runs a program, which stops at breakpoints \\ \hline
+\texttt{[p]rint} &  prints the values of an expression \\ \hline
+\texttt{[l]ist} &  list the lines of a source file \\ \hline
+\texttt{[i]nfo} &  display the variables of a class or method \\ \hline
+\texttt{load} &  loads a new executable \\ \hline
+\texttt{[q]uit} &  exits a given debugging session \\ \hline
+\end{tabular}
+\end{center}
+
+\subsection{Executing}
+The source program must be compiled with the \texttt{-debug} set.The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.  Please see the example below:
+
+\begin{verbatim}
+obd -exe test_src\hello.obe -src test_src
 \end{verbatim}
 
 \section{Class Libraries}
