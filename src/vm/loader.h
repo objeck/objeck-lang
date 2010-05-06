@@ -120,7 +120,7 @@ public:
     program = new StackProgram;
   }
 
-  Loader(const int argc, char** argv) {
+  Loader(const int argc, const char** argv) {
     filename = argv[1];
     for(int i = 2; i < argc; i++) {
       arguments.push_back(argv[i]);

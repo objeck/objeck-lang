@@ -35,7 +35,7 @@
 
 using namespace std;
 
-int main(const int argc, char* argv[])
+int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     return Execute(argc, argv);

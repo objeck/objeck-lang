@@ -82,7 +82,7 @@ class Parser {
   // parsing operations
   Command* ParseLine(const string& file_name);
   Command* ParseStatement(int depth);
-  Command* ParseLoad(int depth);
+  Command* ParseLoad(CommandType type, int depth);
   Command* ParseList(int depth);
   Command* ParseBreak(int depth);
   Command* ParseDelete(int depth);

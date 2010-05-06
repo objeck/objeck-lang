@@ -139,8 +139,16 @@ Command* Parser::ParseStatement(int depth)
 {
   Command* command;
   switch(GetToken()) {
-  case TOKEN_LOAD_ID:
-    command = ParseLoad(depth + 1);
+  case TOKEN_EXE_ID:
+    command = ParseLoad(EXE_COMMAND, depth + 1);
+    break;
+
+  case TOKEN_SRC_ID:
+    command = ParseLoad(SRC_COMMAND, depth + 1);
+    break;
+
+  case TOKEN_ARGS_ID:
+    command = ParseLoad(ARGS_COMMAND, depth + 1);
     break;
     
   case TOKEN_LIST_ID:
@@ -235,7 +243,7 @@ Command* Parser::ParseList(int depth) {
   return TreeFactory::Instance()->MakeFilePostion(LIST_COMMAND, file_name, line_num);
 }
 
-Command* Parser::ParseLoad(int depth) {
+Command* Parser::ParseLoad(CommandType type, int depth) {
 #ifdef _DEBUG
   Show("Load", depth);
 #endif
@@ -255,7 +263,7 @@ Command* Parser::ParseLoad(int depth) {
   }
   NextToken();
   
-  return TreeFactory::Instance()->MakeLoad(file_name);
+  return TreeFactory::Instance()->MakeLoad(type, file_name);
 }
 
 Command* Parser::ParseDelete(int depth) {
