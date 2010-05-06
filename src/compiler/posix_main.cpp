@@ -51,15 +51,14 @@ int main(int argc, char* argv[])
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
-  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n\n";
+  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n";
   usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
   usage += "options:\n";
   usage += "  -src: input source files (separated by ',')\n";
   usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
   usage += "  -lib: input linked libraries (separated by ',')\n";
   usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
-  usage += "  -out: output file name\n\n";
-  usage += "  example: \"./obc -src tests/hello.obs -dest hello.obe\"";
+  usage += "  -out: output file name";
 
   int status;
   if(argc >= 3) {

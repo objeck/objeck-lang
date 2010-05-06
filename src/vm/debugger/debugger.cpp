@@ -1005,17 +1005,16 @@ void Runtime::Debugger::Debug() {
 int main(int argc, char** argv) 
 {
   string usage;
-  usage += "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+  usage += "Copyright (c) 2010, Randy Hollines. All rights reserved.\n";
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
-  usage += "usage: obb -exe <executable> [-src <source>]\n\n";
-  usage += "example: \"obc -src test_src\\prgm1.obs -dest prgm1.obe\"\n\n";
+  usage += "usage: obd -exe <executable> [-src <source directory>]\n";
+  usage += "example: \"obd -exe test_src\\prgm1.obe -src test_src\\\"\n\n";
   usage += "options:\n";
   usage += "  -exe: executable file\n";
-  usage += "  -src: source file path\n\n";
-  usage += "  example: \"./obd -exe ../hello.obe -src .../\"";
-
+  usage += "  -src: source directory path";
+  
   if(argc >= 3) {
     // reconstruct path
     string path;
