@@ -81,11 +81,38 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
   }
 }
 
-void Runtime::Debugger::ProcessLoad(Load* load) {
-  if(FileExists(load->GetFileName(), true)) {
+void Runtime::Debugger::ProcessSrc(Load* load) {
+  if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
+    ClearProgram();
+    base_path = load->GetFileName();
+    cout << "source files: path='" << base_path << "'" << endl << endl;
+  }
+  else {
+    cout << "unable to locate base path." << endl;
+    is_error = true;
+  }
+}
+
+void Runtime::Debugger::ProcessArgs(Load* load) {
+  // clear
+  arguments.clear();
+  // parse arguments
+  const char* temp = load->GetFileName().c_str();
+  char buffer[load->GetFileName().size() + 1];
+  strcpy(buffer, temp);
+  arguments.push_back(program_file);
+  char* token = strtok(buffer, " ");
+  while(token) {
+    arguments.push_back(token);
+    token = strtok(NULL, " ");
+  }
+}
+
+void Runtime::Debugger::ProcessExe(Load* load) {
+  if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path)) {
     ClearProgram();
     program_file = load->GetFileName();
-    cout << "loaded program executable: file='" << program_file << "'" << endl;
+    cout << "loaded executable: file='" << program_file << "'" << endl;
   }
   else {
     cout << "program file doesn't exist." << endl;
@@ -96,8 +123,15 @@ void Runtime::Debugger::ProcessLoad(Load* load) {
 void Runtime::Debugger::ProcessRun() {
   // make sure file exists
   if(program_file.size() > 0) {
-    // TODO: pass args
-    Loader loader(program_file.c_str()); 
+    // process parameters
+    const int argc = arguments.size();
+    const char* argv[argc];
+    for(int i = 0; i < argc; i++) {
+      argv[i] = arguments[i].c_str();
+    }
+    
+    // envoke loader
+    Loader loader(argc, argv); 
     loader.Load();
     cur_program = loader.GetProgram();
     
@@ -761,8 +795,16 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
   Command* command = parser.Parse("?" + line);
   if(command) {
     switch(command->GetCommandType()) {
-    case LOAD_COMMAND:
-      ProcessLoad(static_cast<Load*>(command));
+    case EXE_COMMAND:
+      ProcessExe(static_cast<Load*>(command));
+      break;
+
+    case SRC_COMMAND:
+      ProcessSrc(static_cast<Load*>(command));
+      break;
+      
+    case ARGS_COMMAND:
+      ProcessArgs(static_cast<Load*>(command));
       break;
       
     case QUIT_COMMAND:
@@ -964,6 +1006,8 @@ void Runtime::Debugger::ClearProgram() {
     delete stack_pos;
     stack_pos = NULL;
   }
+  
+  arguments.clear();
   
   cur_line_num = -2;
   cur_frame = NULL;
