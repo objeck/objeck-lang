@@ -62,31 +62,6 @@ namespace Runtime {
     vector<string> lines;
     int cur_line_num;
     
-  public:
-    SourceFile(const string &fn, int l) {
-      file_name = fn;
-      cur_line_num = l;
-
-      ifstream file_in (fn.c_str());
-      while(file_in.good()) {
-	string line;
-	getline(file_in, line);
-	lines.push_back(line);
-      }
-      file_in.close();
-    }
-
-    ~SourceFile() {
-    }
-
-    bool IsLoaded() {
-      return lines.size() > 0;
-    }
-    
-    bool Print(int start) {
-      return Print(start, start + 10);
-    }
-    
     bool Print(unsigned int start, unsigned int end) {
       start--;
       end--;
@@ -114,6 +89,31 @@ namespace Runtime {
       }
       
       return true;
+    }
+    
+  public:
+    SourceFile(const string &fn, int l) {
+      file_name = fn;
+      cur_line_num = l;
+
+      ifstream file_in (fn.c_str());
+      while(file_in.good()) {
+	string line;
+	getline(file_in, line);
+	lines.push_back(line);
+      }
+      file_in.close();
+    }
+
+    ~SourceFile() {
+    }
+
+    bool IsLoaded() {
+      return lines.size() > 0;
+    }
+    
+    bool Print(int start) {
+      return Print(start, start + 11);
     }
 
     const string& GetFileName() {
@@ -165,23 +165,23 @@ namespace Runtime {
     bool DirectoryExists(const string &dir_name) {
 #ifdef _WIN32
       HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ, 
-			     FILE_SHARE_READ, NULL, OPEN_EXISTING, 
-			     FILE_FLAG_BACKUP_SEMANTICS, NULL);    
+			       FILE_SHARE_READ, NULL, OPEN_EXISTING, 
+			       FILE_FLAG_BACKUP_SEMANTICS, NULL);    
     
-    if(file == INVALID_HANDLE_VALUE) {
-      return false;
-    }
-    CloseHandle(file);
+      if(file == INVALID_HANDLE_VALUE) {
+	return false;
+      }
+      CloseHandle(file);
 
-    return true;
+      return true;
 #else
-      DIR* dir = opendir(dir_name);
+      DIR* dir = opendir(dir_name.c_str());
       if(dir) {
         closedir(dir);
         return true;
       }
 
-      return true;
+      return false;
 #endif
     }
     
@@ -237,7 +237,7 @@ namespace Runtime {
 	
 	// parse type
 	switch(dclr->type) {
-	  case INT_PARM:
+	case INT_PARM:
 	  cout << "type=Int" << endl;
 	  break;
 	
