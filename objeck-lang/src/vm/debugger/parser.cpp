@@ -152,6 +152,11 @@ Command* Parser::ParseStatement(int depth)
     command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
     break;
 
+  case TOKEN_BREAKS_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(BREAKS_COMMAND);
+    break;
+    
   case TOKEN_RUN_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(RUN_COMMAND);
