@@ -161,7 +161,9 @@ namespace frontend {
    * CommandType enum
    ****************************/
   enum CommandType {
-    LOAD_COMMAND = -200,
+    EXE_COMMAND = -200,
+    SRC_COMMAND,
+    ARGS_COMMAND,
     QUIT_COMMAND,
     BREAK_COMMAND,
     BREAKS_COMMAND,
@@ -191,29 +193,6 @@ namespace frontend {
     
     virtual const CommandType GetCommandType() = 0;
   };
-
-  /****************************
-   * Load class
-   ****************************/
-  class Load : public Command {
-    string file_name;
-    
-  public:
-    Load(const string &fn) {
-      file_name = fn;
-    }
-
-    ~Load() {
-    }
-
-    const string& GetFileName() {
-      return file_name;
-    }      
-
-    const CommandType GetCommandType() {
-      return LOAD_COMMAND;
-    }
-  };
   
   /****************************
    * BasicCommand class
@@ -231,6 +210,25 @@ namespace frontend {
 
     const CommandType GetCommandType() {
       return type;
+    }
+  };
+
+  /****************************
+   * Load class
+   ****************************/
+  class Load : public BasicCommand {
+    string file_name;
+    
+  public:
+    Load(CommandType t, const string &fn) : BasicCommand(t) {
+      file_name = fn;
+    }
+
+    ~Load() {
+    }
+
+    const string& GetFileName() {
+      return file_name;
     }
   };
 
@@ -740,8 +738,8 @@ namespace frontend {
       return tmp;
     }
     
-    Load* MakeLoad(const string &file_name) {
-      Load* tmp = new Load(file_name);
+    Load* MakeLoad(CommandType type, const string &file_name) {
+      Load* tmp = new Load(type, file_name);
       nodes.push_back(tmp);
       return tmp;
     }

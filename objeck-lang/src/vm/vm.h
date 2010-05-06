@@ -39,9 +39,9 @@
 extern "C"
 {
 #ifdef _WIN32
-  __declspec(dllexport) int Execute(const int argc, char* argv[]);
+  __declspec(dllexport) int Execute(const int argc, const char* argv[]);
 #else
-  int Execute(const int argc, char* argv[]);
+  int Execute(const int argc, const char* argv[]);
 #endif
 }
 

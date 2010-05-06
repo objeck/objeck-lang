@@ -34,7 +34,7 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
-int Execute(const int argc, char* argv[])
+int Execute(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // loader; when this goes out of scope program memory is released
