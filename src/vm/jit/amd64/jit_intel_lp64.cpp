@@ -47,7 +47,13 @@ void JitCompilerIA64::Prolog() {
   cout << "  " << (++instr_count) << ": [<prolog>]" << endl;
 #endif
 
-  local_space += 8;
+  local_space += 16;
+  while(local_space % 16 != 0) {
+    local_space++;
+  }
+
+  // local_space = 4096;
+
   BYTE_VALUE buffer[4];
   ByteEncode32(buffer, local_space);
 
@@ -280,13 +286,14 @@ void JitCompilerIA64::ProcessInstructions() {
       break;
 
       // float literal
-    case LOAD_FLOAT_LIT:
+    case LOAD_FLOAT_LIT: {
 #ifdef _DEBUG
       cout << "LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
 	   << "; regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       floats[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
+    }
       break;
       
       // load self

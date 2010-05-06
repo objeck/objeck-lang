@@ -989,8 +989,9 @@ namespace Runtime {
 #ifdef _DEBUG
       cout << "Stack Call: instr=" << instr_id
 	   << ", oper_1=" << instr->GetOperand() << ", oper_2=" << instr->GetOperand2() 
-	   << ", oper_3=" << instr->GetOperand3() << ", self=" << inst << "(" << (long)inst << "), stack=" 
-	   << op_stack << ", stack_addr=" << stack_pos << ", stack_pos=" << (*stack_pos) << endl;
+	   << ", oper_3=" << instr->GetOperand3() << ", self=" << inst << "(" 
+	   << (long)inst << "), stack=" << op_stack << ", stack_addr=" << stack_pos 
+	   << ", stack_pos=" << (*stack_pos) << endl;
 #endif
       switch(instr_id) {
       case MTHD_CALL: {
@@ -1728,7 +1729,6 @@ namespace Runtime {
 	      index -= sizeof(long);
 	    }
 	    else {
-	      // index -= sizeof(FLOAT_VALUE) * 2;
 	      index -= sizeof(double);
 	    }
 	  }
@@ -1749,7 +1749,7 @@ namespace Runtime {
       local_space = -(index + TMP_REG_5);
       
 #ifdef _DEBUG
-      cout << "Local space required: " << (local_space + 8) << " byte(s)" << endl;
+      cout << "Local space required: " << (local_space + 16) << " byte(s)" << endl;
 #endif
     }
     
