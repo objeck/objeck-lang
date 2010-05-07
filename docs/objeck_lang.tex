@@ -365,7 +365,7 @@ method : virtual : public : Compare(right : Base), Int;
 \end{verbatim}
 
 \section{Interactive Debugger}
-The Objeck language toolset contains a simple interactive debugger that allows programmers to inspect values within a program.  The debugger will also calculate simple arithmetic expressions that contain either variable values or constants. The debugger allows programmers to set breakpoints within methods based upon source line numbers.  The following commands are currently supported:
+The Objeck compiler toolset contains a simple interactive read-only debugger, which allows programmers to inspect values within their programs.  The debugger allows programmers to set breakpoints within methods based upon source line numbers.  The debugger can also calculate simple arithmetic expressions involving variables and constants. The following commands are currently supported:
 
 \begin{center}
 \begin{tabular}{| l | l |}
@@ -376,7 +376,7 @@ The Objeck language toolset contains a simple interactive debugger that allows p
 \texttt{[d]elete} &  deletes a breakpoint \\ \hline
 \texttt{clear} &  clears all breakpoints \\ \hline
 \texttt{args} &  specifies program arguments \\ \hline
-\texttt{[r]un} &  runs a program that will stop at breakpoints \\ \hline
+\texttt{[r]un} &  runs a loaded program \\ \hline
 \texttt{[p]rint} &  prints the value of an expression, along with metadata \\ \hline
 \texttt{[l]ist} &  lists a range of lines in a source file \\ \hline
 \texttt{[i]nfo} &  displays the variables for a class or method \\ \hline
@@ -386,11 +386,112 @@ The Objeck language toolset contains a simple interactive debugger that allows p
 \end{tabular}
 \end{center}
 
-\subsection{Executing}
-The source program must be compiled with the \texttt{-debug} set.The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.  Please see the example below:
+\subsection{Starting the Debugger}
+The source program must be compiled with the \texttt{-debug} set.The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.
 
+\subsection{Example Debugging Session}
+The file name is \texttt{debug.obs}.
+\subsubsection{Source}
 \begin{verbatim}
-obd -exe test_src\hello.obe -src test_src
+bundle Default {
+  class Bar {
+    v1 : Float;
+    v2 : Int;
+
+    New() {
+      v1 := 2.31;
+      v2 := 26;
+    }
+  }
+
+  class Foo {
+    bar : Bar;
+    value : Int;
+
+    New(v : Int) {
+      value := v;z
+    }
+
+    method : public : GetValue(), Int {
+      return value;
+    }
+
+    method : public : SetBar(), Nil {
+      bar := Bar->New();
+    }
+  }
+
+  class Test {
+    function : Main(args : System.String[]), Nil {
+      d : Float := 11.12;
+      z := Int->New[5,6];
+      z[2,3] := 27;
+
+      f := Foo->New(24);
+      f->SetBar();
+      v := f->GetValue();
+    }
+  }
+}
+\end{verbatim}
+
+\subsubsection{Compiling the Source and Starting the Debugger}
+\begin{verbatim}
+obc -src test_src\debug.obs -dest a.obe -debug
+obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
+
+-------------------------------------
+Objeck v0.9.10 - Interactive Debugger
+-------------------------------------
+loaded executable: file='../../compiler/a.obe'
+source files: path='../../compiler/test_src/'
+\end{verbatim}
+
+\subsubsection{Set a Breakpoint and Run Program}
+\begin{verbatim}
+> b debug.obs:31
+added break point: file='debug.obs:31'
+> r
+break: file='debug.obs:31', method='Test->Main(..)'
+> l
+  List
+     26: 		}
+     27: 	}
+     28: 
+     29: 	class Test {
+     30: 		function : Main(args : System.String[]), Nil {
+=>   31: 			d : Float := 11.12;
+     32: 			z := Int->New[5,6];	
+     33: 			z[2,3] := 27;
+     34: 
+     35: 			f := Foo->New(24);
+     36: 			f->SetBar();
+> n
+break: file='debug2.obs:32', method='Test->Main(..)'
+\end{verbatim}
+
+\subsubsection{Printing a Values}
+\begin{verbatim}
+> p d
+print: type=Float, value=11.12
+> b debug.obs:37
+added break point: file='debug.obs:37'
+> c
+break: file='debug2.obs:37', method='Test->Main(..)'
+> p z
+print: type=Int[], value=2197556(0x218834), dimension=2, size=30
+> p z[2,3]
+print: type=Int[], value=27(0x1b)
+>  p f->value
+print: type=Int, value=24
+> p f->bar
+print: type=Bar, value=0x218864
+> p f->bar->v1
+print: type=Float, value=2.31
+> q
+> p f->bar->v1 * 3.5
+print: type=Float, value=8.085
+goodbye.
 \end{verbatim}
 
 \section{Class Libraries}
