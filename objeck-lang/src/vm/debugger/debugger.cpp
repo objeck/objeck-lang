@@ -646,7 +646,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	}
       }
       else {
-	cout << "unknown variable." << endl;
+	cout << "unknown variable (or no debug information for class)." << endl;
 	is_error = true;
       }
     }
@@ -711,7 +711,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  }
 	}
 	else {
-	  cout << "unknown variable." << endl;
+	  cout << "unknown variable (or no debug information for class)." << endl;
 	  is_error = true;
 	}
       }
@@ -724,82 +724,100 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 }
 
 void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index, int id) {
-  reference->SetIntValue(ref_mem[index]);
-  ref_mem = (long*)ref_mem[index];
-  ref_klass = cur_program->GetClass(id);
-  reference->SetClassName(ref_klass->GetName());
-  if(reference->GetReference()) {
-    EvaluateReference(reference->GetReference(), true);
+  if(ref_mem) {
+    reference->SetIntValue(ref_mem[index]);
+    ref_mem = (long*)ref_mem[index];
+    ref_klass = cur_program->GetClass(id);
+    reference->SetClassName(ref_klass->GetName());
+    if(reference->GetReference()) {
+      EvaluateReference(reference->GetReference(), true);
+    }
+  }
+  else {
+    cout << "current object reference is Nil" << endl;
+    is_error = true;
   }
 }
 
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int index, bool is_float) {
-  long* array = (long*)ref_mem[index];    
-  const int max = array[0];
-  const int dim = array[1];
-  
-  // de-reference array value
-  ExpressionList* indices = reference->GetIndices();
-  if(indices) {
-    // calculate indices values
-    vector<Expression*> expressions = indices->GetExpressions();	    
-    vector<int> values;
-    for(unsigned int i = 0; i < expressions.size(); i++) {
-      EvaluateExpression(expressions[i]);
-      // update values
-      if(expressions[i]->GetFloatEval()) {
-	values.push_back((int)expressions[i]->GetFloatValue());
+  long* array = (long*)ref_mem[index];
+  if(array) {
+    const int max = array[0];
+    const int dim = array[1];
+    
+    // de-reference array value
+    ExpressionList* indices = reference->GetIndices();
+    if(indices) {
+      // calculate indices values
+      vector<Expression*> expressions = indices->GetExpressions();	    
+      vector<int> values;
+      for(unsigned int i = 0; i < expressions.size(); i++) {
+	EvaluateExpression(expressions[i]);
+	// update values
+	if(expressions[i]->GetFloatEval()) {
+	  values.push_back((int)expressions[i]->GetFloatValue());
+	}
+	else {
+	  values.push_back(expressions[i]->GetIntValue());
+	}
       }
-      else {
-	values.push_back(expressions[i]->GetIntValue());
-      }
-    }
-    // match the dimensions
-    if(expressions.size() == dim) {
-      // calculate indices
-      array += 2;
-      int j = dim - 1;
-      long array_index = values[j--];
-      for(long i = 1; i < dim; i++) {
-	array_index *= array[i];
-	array_index += values[j--];
-      }	      
-      array += dim;
+      // match the dimensions
+      if(expressions.size() == dim) {
+	// calculate indices
+	array += 2;
+	int j = dim - 1;
+	long array_index = values[j--];
+	for(long i = 1; i < dim; i++) {
+	  array_index *= array[i];
+	  array_index += values[j--];
+	}	      
+	array += dim;
       
-      // check float array bounds
-      if(is_float) {
-	array_index *= 2;
-	if(array_index > -1 && array_index < max * 2) {
-	  FLOAT_VALUE value;
-	  memcpy(&value, &array[array_index], sizeof(FLOAT_VALUE));
-	  reference->SetFloatValue(value);
+	// check float array bounds
+	if(is_float) {
+	  array_index *= 2;
+	  if(array_index > -1 && array_index < max * 2) {
+	    FLOAT_VALUE value;
+	    memcpy(&value, &array[array_index], sizeof(FLOAT_VALUE));
+	    reference->SetFloatValue(value);
+	  }
+	  else {
+	    cout << "array index out of bounds." << endl;
+	    is_error = true;
+	  }
 	}
+	// check int array bounds
 	else {
-	  cout << "array index out of bounds." << endl;
-	  is_error = true;
+	  if(array_index > -1 && array_index < max) {
+	    reference->SetIntValue(array[array_index]);
+	  }
+	  else {
+	    cout << "array index out of bounds." << endl;
+	    is_error = true;
+	  }
 	}
       }
-      // check int array bounds
       else {
-	if(array_index > -1 && array_index < max) {
-	  reference->SetIntValue(array[array_index]);
-	}
-	else {
-	  cout << "array index out of bounds." << endl;
-	  is_error = true;
-	}
+	cout << "array dimension mismatch." << endl;
+	is_error = true;
       }
     }
+    // set array address
     else {
-      cout << "array dimension mismatch." << endl;
-      is_error = true;
+      if(ref_mem) {
+	reference->SetArrayDimension(dim);
+	reference->SetArraySize(max);
+	reference->SetIntValue(ref_mem[index]);
+      }
+      else {
+	cout << "current reference is Nil" << endl;
+	is_error = true;
+      }
     }
   }
-  // set array address
   else {
-    reference->SetArrayDimension(dim);
-    reference->SetArraySize(max);
-    reference->SetIntValue(ref_mem[index]);
+    cout << "current array value is Nil" << endl;
+    is_error = true;
   }
 }
 
