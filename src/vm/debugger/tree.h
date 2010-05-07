@@ -584,12 +584,14 @@ namespace frontend {
       reference	= NULL;
       array_size = 0;
       array_dim = 0;
+      indices = NULL;
     }
     
     Reference(const string &v) : Expression() {
       variable_name = v;
       is_self = false;
       reference	= NULL;
+      indices = NULL;
     }
     
     ~Reference() {
