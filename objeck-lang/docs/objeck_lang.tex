@@ -33,10 +33,11 @@ The Objeck program language is an object-oriented computer language that is desi
 \begin{itemize}
 	\item Support for object-oriented programming (all data types are treated as objects)
 	\item Cross platform independence (OS X, Linux and Windows)
-	\item Concurrent runtime JIT support for Intel based computers
-	\item Multi-threaded memory management (garbage collection)
-	\item Support for static shared library
+	\item Concurrent runtime JIT support for Intel processors
+	\item Multi-threaded memory management (garbage collector)
 	\item Basic block compiler optimizations
+	\item Support for static libraries
+	\item Interactive debugger
 \end{itemize}
 
 \section{Getting Started}
@@ -45,8 +46,8 @@ The Objeck computer language consist of a compiler and virtual machine.  The com
 
 \begin{verbatim}
 bundle Default {
-  class Test {
-    function : Main(), Nil {
+  class Hello {
+    function : Main(args : String[]), Nil {
       "Hello World!"->PrintLine();
     }
   }
@@ -988,7 +989,7 @@ The Vector class support the concept of a growing array.  There are two speciali
 \end{itemize}
 
 \subsubsection{BinaryTree}
-The BinaryTree class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $\log_2 n$:
+The BinaryTree class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$:
 \begin{itemize}
     \item \texttt{Insert} - adds a new value to the tree
     	\begin{itemize}
