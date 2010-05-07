@@ -82,6 +82,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 }
 
 void Runtime::Debugger::ProcessSrc(Load* load) {
+  if(interpreter) {
+    cout << "unable to modify source path while program is running." << endl;
+    return;
+  }
+  
   if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
     ClearProgram();
     base_path = load->GetFileName();
@@ -96,22 +101,35 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
 void Runtime::Debugger::ProcessArgs(Load* load) {
   // clear
   arguments.clear();
+  arguments.push_back("obr");
+  arguments.push_back(program_file);
   // parse arguments
   const char* temp = load->GetFileName().c_str();
   char buffer[load->GetFileName().size() + 1];
   strcpy(buffer, temp);
-  arguments.push_back(program_file);
   char* token = strtok(buffer, " ");
   while(token) {
     arguments.push_back(token);
     token = strtok(NULL, " ");
   }
+  cout << "program arguments sets." << endl;
 }
 
 void Runtime::Debugger::ProcessExe(Load* load) {
+  if(interpreter) {
+    cout << "unable to load executable while program is running." << endl;
+    return;
+  }
+
   if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path)) {
+    // clear program
     ClearProgram();
+    ClearBreaks();
     program_file = load->GetFileName();
+    // reset arguments
+    arguments.clear();
+    arguments.push_back("obr");
+    arguments.push_back(program_file);
     cout << "loaded executable: file='" << program_file << "'" << endl;
   }
   else {
@@ -614,7 +632,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  
 	case BYTE_ARY_PARM:
 	case INT_ARY_PARM:
-	case OBJ_ARY_PARM:	  
+	  EvaluateIntFloatReference(reference, index, false);
+	  break;
+
+	case OBJ_ARY_PARM:
+	  reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
 	  EvaluateIntFloatReference(reference, index, false);
 	  break;
 	  
@@ -675,7 +697,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  
 	  case BYTE_ARY_PARM:
 	  case INT_ARY_PARM:
-	  case OBJ_ARY_PARM:	  
+	    EvaluateIntFloatReference(reference, index + 1, false);
+	    break;
+
+	  case OBJ_ARY_PARM:
+	    reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
 	    EvaluateIntFloatReference(reference, index + 1, false);
 	    break;
 	  
@@ -701,16 +727,9 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index,
   reference->SetIntValue(ref_mem[index]);
   ref_mem = (long*)ref_mem[index];
   ref_klass = cur_program->GetClass(id);
-  if(ref_klass->IsDebug()) {
-    reference->SetClassName(ref_klass->GetName());
-    if(reference->GetReference()) {
-      EvaluateReference(reference->GetReference(), true);
-    }
-  }
-  else {
-    ref_klass = NULL;
-    cout << "no debug information for class." << endl;
-    is_error = true;
+  reference->SetClassName(ref_klass->GetName());
+  if(reference->GetReference()) {
+    EvaluateReference(reference->GetReference(), true);
   }
 }
 
@@ -869,7 +888,6 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       string line;
       getline(cin, line);      
       if(line == "y" || line == "yes") {
-	cout << "break points cleared." << endl;
 	ClearBreaks();
       }
     }
@@ -982,6 +1000,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 }
 
 void Runtime::Debugger::ClearBreaks() {
+  cout << "break points cleared." << endl;
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
     breaks.erase(breaks.begin());
@@ -1007,8 +1026,6 @@ void Runtime::Debugger::ClearProgram() {
     stack_pos = NULL;
   }
   
-  arguments.clear();
-  
   cur_line_num = -2;
   cur_frame = NULL;
   cur_program = NULL;
@@ -1027,6 +1044,10 @@ void Runtime::Debugger::Debug() {
   if(FileExists(program_file, true) && DirectoryExists(base_path)) {
     cout << "loaded executable: file='" << program_file << "'" << endl;
     cout << "source files: path='" << base_path << "'" << endl << endl;
+    // clear arguments
+    arguments.clear();
+    arguments.push_back("obr");
+    arguments.push_back(program_file);
   }
   else {
     cout << "unable to load executable or locate base path." << endl;
