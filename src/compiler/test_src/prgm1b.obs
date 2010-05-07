@@ -6,7 +6,8 @@ bundle Default {
 
 #		function : Run(), Nil {
 		function : native : Run(), Nil {		
-			(3.24 * 9.25)->PrintLine();
+			x := 3.24 * 9.25;
+
 			(3 * 9)->PrintLine();
 			a := 10 / 5;
 			a->PrintLine();
