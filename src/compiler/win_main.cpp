@@ -1,33 +1,33 @@
 /***************************************************************************
-* Starting point of the language compiler
-*
-* Copyright (c) 2008-2009, Randy Hollines
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* - Redistributions of source code must retain the above copyright
-* notice, this list of conditions and the following disclaimer.
-* - Redistributions in binary form must reproduce the above copyright
-* notice, this list of conditions and the following disclaimer in
-* the documentation and/or other materials provided with the distribution.
-* - Neither the name of the StackVM Team nor the names of its
-* contributors may be used to endorse or promote products derived
-* from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
-* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ * Starting point of the language compiler
+ *
+ * Copyright (c) 2008-2009, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the StackVM Team nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
 
 #define USAGE_ERROR -1
 #define SYSTEM_ERROR -2
@@ -46,9 +46,9 @@ using namespace std;
 typedef int (*Compile)(map<const string, string>, const string);
 
 /****************************
-* Program start. Parses command
-* line parameters.
-****************************/
+ * Program start. Parses command
+ * line parameters.
+ ****************************/
 int main(int argc, char* argv[])
 {
   int status;
@@ -79,62 +79,66 @@ int main(int argc, char* argv[])
         }
 
         // parse path
-        int end = (int)path.size();
-        map<const string, string> arguments;
-        int pos = 0;
-        while(pos < end) {
-          // ignore leading white space
-          while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-            pos++;
-          }
-          if(path[pos] == '-') {
-            // parse key
-            int start =  ++pos;
-            while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
-              pos++;
-            }
-            string key = path.substr(start, pos - start);
-            // parse value
-            while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-              pos++;
-            }
-            start = pos;
-            bool is_string = false;
-            if(pos < end && path[pos] == '\'') {
-              is_string = true;
-              pos++;
-            }
-            bool not_end = true;
-            while(pos < end && not_end) {
-              if(is_string) {
-                not_end = path[pos] != '\'';
-              }
-              else {
-                not_end = path[pos] != ' ' && path[pos] != '\t';
-              }
-              pos++;
-            }
-            string value;
-            if(is_string) {
-              value = path.substr(start + 1, pos - start - 2);
-            }
-            else {
-              value = path.substr(start, pos - start - 1);
-            }
-            arguments.insert(pair<string, string>(key, value));
-          } 
-          else {
-            while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-              pos++;
-            }
-            int start = pos;
-            while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
-              pos++;
-            }
-            string value = path.substr(start, pos - start);
-            arguments.insert(pair<string, string>("-", value));
-          }
-        }
+	int end = (int)path.size();
+	map<const string, string> arguments;
+	int pos = 0;
+	while(pos < end) {
+	  // ignore leading white space
+	  while( pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
+	    pos++;
+	  }
+	  if(path[pos] == '-') {
+	    // parse key
+	    int start =  ++pos;
+	    while( pos < end && path[pos] != ' ' && path[pos] != '\t') {
+	      pos++;
+	    }
+	    string key = path.substr(start, pos - start);
+	    // parse value
+	    while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
+	      pos++;
+	    }
+	    start = pos;
+	    bool is_string = false;
+	    if(pos < end && path[pos] == '\'') {
+	      is_string = true;
+	      start++;
+	    }
+	    bool not_end = true;
+	    while(pos < end && not_end) {
+	      // check for end
+	      if(is_string) {
+		not_end = path[pos] != '\'';
+	      }
+	      else {
+		not_end = path[pos] != ' ' && path[pos] != '\t';
+	      }
+	      // update position
+	      if(not_end) {
+		pos++;
+	      }
+	    }
+	    string value;
+	    if(is_string) {
+	      value = path.substr(start, pos - start - 1);
+	    }
+	    else {
+	      value = path.substr(start, pos - start);
+	    }
+	    arguments.insert(pair<string, string>(key, value));
+	  } 
+	  else {
+	    while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
+	      pos++;
+	    }
+	    int start = pos;
+	    while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
+	      pos++;
+	    }
+	    string value = path.substr(start, pos - start);
+	    arguments.insert(pair<string, string>("-", value));
+	  }
+	}
         // compile source
         status = _Compile(arguments, usage);
       } 

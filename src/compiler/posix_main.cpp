@@ -75,13 +75,13 @@ int main(int argc, char* argv[])
     int pos = 0;
     while(pos < end) {
       // ignore leading white space
-      while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+      while( pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	pos++;
       }
       if(path[pos] == '-') {
 	// parse key
 	int start =  ++pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	while( pos < end && path[pos] != ' ' && path[pos] != '\t') {
 	  pos++;
 	}
 	string key = path.substr(start, pos - start);
@@ -93,33 +93,37 @@ int main(int argc, char* argv[])
 	bool is_string = false;
 	if(pos < end && path[pos] == '\'') {
 	  is_string = true;
-	  pos++;
+	  start++;
 	}
 	bool not_end = true;
 	while(pos < end && not_end) {
+	  // check for end
 	  if(is_string) {
 	    not_end = path[pos] != '\'';
 	  }
 	  else {
 	    not_end = path[pos] != ' ' && path[pos] != '\t';
 	  }
-	  pos++;
+	  // update position
+	  if(not_end) {
+	    pos++;
+	  }
 	}
 	string value;
 	if(is_string) {
-	  value = path.substr(start + 1, pos - start - 2);
+	  value = path.substr(start, pos - start - 1);
 	}
 	else {
-	  value = path.substr(start, pos - start - 1);
+	  value = path.substr(start, pos - start);
 	}
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
-	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	  pos++;
 	}
 	int start = pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
 	  pos++;
 	}
 	string value = path.substr(start, pos - start);
