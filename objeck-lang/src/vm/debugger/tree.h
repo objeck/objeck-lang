@@ -176,6 +176,8 @@ namespace frontend {
     NEXT_COMMAND,
     CONT_COMMAND,
     LIST_COMMAND,
+    JUMP_OUT_COMMAND,
+    STACK_COMMAND,
   };
   
   /****************************
