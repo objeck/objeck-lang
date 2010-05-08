@@ -1180,28 +1180,28 @@ int main(int argc, char** argv)
 	  pos++;
 	}
 	start = pos;
-  bool is_string = false;
-  if(pos < end && path[pos] == '\'') {
-    is_string = true;
-    pos++;
-  }
-  bool not_end = true;
+	bool is_string = false;
+	if(pos < end && path[pos] == '\'') {
+	  is_string = true;
+	  pos++;
+	}
+	bool not_end = true;
 	while(pos < end && not_end) {
-    if(is_string) {
-      not_end = path[pos] != '\'';
-    }
-    else {
-      not_end = path[pos] != ' ' && path[pos] != '\t';
-    }
+	  if(is_string) {
+	    not_end = path[pos] != '\'';
+	  }
+	  else {
+	    not_end = path[pos] != ' ' && path[pos] != '\t';
+	  }
 	  pos++;
 	}
 	string value;
-  if(is_string) {
-    value = path.substr(start + 1, pos - start - 2);
-  }
-  else {
-    value = path.substr(start, pos - start - 1);
-  }
+	if(is_string) {
+	  value = path.substr(start + 1, pos - start - 2);
+	}
+	else {
+	  value = path.substr(start, pos - start - 1);
+	}
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
