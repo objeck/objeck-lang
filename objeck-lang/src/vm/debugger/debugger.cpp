@@ -117,7 +117,7 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
   arguments.push_back(program_file);
   // parse arguments
   const char* temp = load->GetFileName().c_str();
-  char buffer[load->GetFileName().size() + 1];
+  char* buffer = new char[load->GetFileName().size() + 1];
   strcpy(buffer, temp);
   char* token = strtok(buffer, " ");
   while(token) {
@@ -125,6 +125,9 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
     token = strtok(NULL, " ");
   }
   cout << "program arguments sets." << endl;
+  // clean up
+  delete[] buffer;
+  buffer = NULL;
 }
 
 void Runtime::Debugger::ProcessExe(Load* load) {
@@ -155,7 +158,7 @@ void Runtime::Debugger::ProcessRun() {
   if(program_file.size() > 0) {
     // process parameters
     const int argc = arguments.size();
-    const char* argv[argc];
+    const char** argv = new const char*[argc];
     for(int i = 0; i < argc; i++) {
       argv[i] = arguments[i].c_str();
     }
@@ -187,6 +190,8 @@ void Runtime::Debugger::ProcessRun() {
 #endif  
     
     // clear old program
+    delete[] argv;
+    argv = NULL;
     ClearProgram();
   }
   else {
@@ -1175,10 +1180,28 @@ int main(int argc, char** argv)
 	  pos++;
 	}
 	start = pos;
-	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
+  bool is_string = false;
+  if(pos < end && path[pos] == '\'') {
+    is_string = true;
+    pos++;
+  }
+  bool not_end = true;
+	while(pos < end && not_end) {
+    if(is_string) {
+      not_end = path[pos] != '\'';
+    }
+    else {
+      not_end = path[pos] != ' ' && path[pos] != '\t';
+    }
 	  pos++;
 	}
-	string value = path.substr(start, pos - start);
+	string value;
+  if(is_string) {
+    value = path.substr(start + 1, pos - start - 2);
+  }
+  else {
+    value = path.substr(start, pos - start - 1);
+  }
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
