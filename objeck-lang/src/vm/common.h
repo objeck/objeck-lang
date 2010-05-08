@@ -996,6 +996,16 @@ public:
 
     return NULL;
   }
+
+  bool HasFile(const string &fn) {
+    for(int i = 0; i < class_num; i++) {
+      if(classes[i]->GetFileName() == fn) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 };
 
 /********************************
