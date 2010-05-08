@@ -37,7 +37,7 @@ The Objeck program language is an object-oriented computer language that is desi
 	\item Multi-threaded memory management (garbage collector)
 	\item Basic block compiler optimizations
 	\item Support for static libraries
-	\item Interactive debugger
+	\item Command-line debugger
 \end{itemize}
 
 \section{Getting Started}
@@ -62,7 +62,7 @@ Below is an example of compiling the ``Hello World" program
 obc -src tests\hello.obs -dest hello.obe
 \end{verbatim}
 
-Additional compiler options are listed below:
+Additional compiler options are:
 \begin{center}
 \begin{tabular}{| l | l |}
 \hline
@@ -77,7 +77,7 @@ Additional compiler options are listed below:
 \end{center}
 
 \subsection{Executing}
-The command line example below executes the \texttt{hello.obe} executable. Note, for executables all required libraries are statically linked in the target output file.  When compiling shared libraries, other shared libraries are \underline{not} linked into the target output library file.
+The command-line example below executes the \texttt{hello.obe} executable. Note, for executables all required libraries are statically linked in the target output file.  When compiling shared libraries, other shared libraries are \underline{not} linked into the target output library file.
 
 \begin{verbatim}
 obr hello.obe
@@ -116,7 +116,7 @@ Float->Pi()->PrintLine();
 \end{verbatim}
 
 \subsection{Variable Declarations}
-Variables can be declared for all of the basic types described above and for user defined objects. Variables can be declared anywhere in a program and are bound to traditional block scoping rules.  Variable assignments can be made during a declaration or at any other point in a program. Variables may be declared as local, class instance or class variables.  Class level variables are declared using the \texttt{static} keyword. A class that is derived from another class may access it's parents variables if the parent class is declared in one of the source programs.  \textit{If a class is derived from a class declared in a shared library then that class cannot access it's parents variables, unless an accessor method is provided.}  Local variables can be declared without specifying their data type, such variables are bound to a type following their first assignment. Three different declaration styles are shown below:
+Variables can be declared for all of the basic types described above and for user defined objects. Variables can be declared anywhere in a program and are bound to traditional block scoping rules.  Variable assignments can be made during a declaration or at any other point in a program. Variables may be declared as local, class instance or class variables.  Class level variables are declared using the \texttt{static} keyword. A class that is derived from another class may access it's parents variables if the parent class is declared in one of the source programs.  \textit{If a class is derived from a class declared in a shared library then that class cannot access it's parents variables, unless an accessor method is provided.}  Local variables can be declared without specifying their data type, such variables are bound to a type peceeding their first assignment. Three different declaration styles are shown below:
 
 \begin{verbatim}
 a : Int;
