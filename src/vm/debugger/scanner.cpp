@@ -72,6 +72,8 @@ void Scanner::LoadKeywords()
 {
   ident_map["?next"] = TOKEN_NEXT_ID;
   ident_map["?n"] = TOKEN_NEXT_ID;
+  ident_map["?out"] = TOKEN_OUT_ID;
+  ident_map["?o"] = TOKEN_OUT_ID;
   ident_map["?cont"] = TOKEN_CONT_ID;
   ident_map["?c"] = TOKEN_CONT_ID;
   ident_map["?exe"] = TOKEN_EXE_ID;
@@ -82,6 +84,7 @@ void Scanner::LoadKeywords()
   ident_map["?break"] = TOKEN_BREAK_ID;
   ident_map["?b"] = TOKEN_BREAK_ID;
   ident_map["?breaks"] = TOKEN_BREAKS_ID;
+  ident_map["?stack"] = TOKEN_STACK_ID;
   ident_map["?print"] = TOKEN_PRINT_ID;
   ident_map["?p"] = TOKEN_PRINT_ID;
   ident_map["?info"] = TOKEN_INFO_ID;
@@ -112,6 +115,7 @@ void Scanner::CheckIdentifier(int index)
   // check string
   enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_STACK_ID:
   case TOKEN_SRC_ID:
   case TOKEN_ARGS_ID:
   case TOKEN_CLASS_ID:
@@ -119,6 +123,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_LIST_ID:
   case TOKEN_SELF_ID:
   case TOKEN_NEXT_ID:
+  case TOKEN_OUT_ID:
   case TOKEN_CONT_ID:
   case TOKEN_EXE_ID:
   case TOKEN_QUIT_ID:

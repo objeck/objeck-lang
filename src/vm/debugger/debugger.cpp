@@ -45,15 +45,17 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 #ifdef _DEBUG
     cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
-
+    
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  && 
-       (is_next || FindBreak(line_num, file_name))) {
+       (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) || 
+	FindBreak(line_num, file_name))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
       cur_frame = frame;
       cur_call_stack = call_stack;
       cur_call_stack_pos = call_stack_pos;
+      is_jmp_out = false;
       
       // prompt for input
       const string &long_name = cur_frame->GetMethod()->GetName();
@@ -76,7 +78,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 	command = ProcessCommand(line);
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND && 
-			 command->GetCommandType() != NEXT_COMMAND));
+			 command->GetCommandType() != NEXT_COMMAND &&
+			 command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
 }
@@ -309,7 +312,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	}
       }
       else {
-	cout << "no program running." << endl;
+	cout << "program is not running." << endl;
 	is_error = true;
       }
       break;
@@ -929,17 +932,48 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
 
     case NEXT_COMMAND:
-      is_next = true;
+      if(interpreter) {
+	is_next = true;
+      }
+      else {
+	cout << "program is not running." << endl;
+      }
+      break;
+
+    case JUMP_OUT_COMMAND:
+      if(interpreter) {
+	is_jmp_out = true;
+      }
+      else {
+	cout << "program is not running." << endl;
+      }
+      break;
+      
+    case CONT_COMMAND:
+      if(!interpreter) {
+	cout << "program is not running." << endl;
+      }
       break;
       
     case INFO_COMMAND:
       ProcessInfo(static_cast<Info*>(command));
       break;
       
-      /* TODO
-	 case FRAME_COMMAND:
-	 break;
-      */
+    case STACK_COMMAND:
+      if(interpreter) {
+	long pos = cur_call_stack_pos;
+	cout << "stack:" << endl;
+	cout << "  pos=" << pos << ", system name=\""
+	     << cur_frame->GetMethod()->GetName() << "\"" << endl;
+	while(pos--) {
+	  cout << "  pos=" << pos << ", system name=\""
+	       << cur_call_stack[pos]->GetMethod()->GetName() << "\"" << endl;
+	}
+      }
+      else {
+	cout << "program is not running." << endl;
+      }
+      break;
     }  
     
     is_error = false;
@@ -1026,7 +1060,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     }    
   }
   else {
-    cout << "no program running." << endl;
+    cout << "program is not running." << endl;
   }
 }
 
@@ -1061,10 +1095,11 @@ void Runtime::Debugger::ClearProgram() {
   cur_frame = NULL;
   cur_program = NULL;
   cur_call_stack = NULL;
-  cur_call_stack_pos = NULL;
+  cur_call_stack_pos = 0;
   is_error = false;
   ref_mem = NULL;
-  ref_mem = NULL; 
+  ref_mem = NULL;
+  is_jmp_out = false;
 }
 
 void Runtime::Debugger::Debug() {
@@ -1106,7 +1141,7 @@ int main(int argc, char** argv)
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
   usage += "usage: obd -exe <executable> [-src <source directory>]\n";
-  usage += "example: \"obd -exe test_src\\prgm1.obe -src test_src\\\"\n\n";
+  usage += "example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\n";
   usage += "options:\n";
   usage += "  -exe: executable file\n";
   usage += "  -src: source directory path";

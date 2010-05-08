@@ -174,7 +174,17 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(NEXT_COMMAND);
     break;
+    
+  case TOKEN_OUT_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(JUMP_OUT_COMMAND);
+    break;
 
+  case TOKEN_STACK_ID:
+    NextToken();
+    command = TreeFactory::Instance()->MakeBasicCommand(STACK_COMMAND);
+    break;
+    
   case TOKEN_CONT_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
