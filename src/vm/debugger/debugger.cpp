@@ -90,6 +90,15 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
   if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
     ClearProgram();
     base_path = load->GetFileName();
+#ifdef _WIN32
+    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
+      base_path += '\\';
+    }
+#else
+    if(base_path.size() > 0 && base_path[base_path.size() - 1] != '/') {
+      base_path += '/';
+    }
+#endif
     cout << "source files: path='" << base_path << "'" << endl << endl;
   }
   else {
@@ -190,10 +199,10 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   const string &path = base_path + file_name;  
   if(FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
-      cout << "added break point: file='" << file_name << ":" << line_num << "'" << endl;
+      cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
     }
     else {
-      cout << "break point already exist." << endl;
+      cout << "breakpoint already exist." << endl;
     }
   }
   else {
@@ -203,21 +212,25 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
 }
 
 void Runtime::Debugger::ProcessBreaks() {
-  ListBreaks();
+  if(breaks.size() > 0) {
+    ListBreaks();
+  }
+  else {
+    cout << "no breakpoints defined." << endl;
+  }
 }
 
 void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
   string file_name = delete_command->GetFileName();
   
-  // TODO fix
   const string &path = base_path + file_name;  
   if(FileExists(path)) {  
     if(DeleteBreak(line_num, file_name)) {
-      cout << "deleted break point: file='" << file_name << ":" << line_num << "'" << endl;
+      cout << "deleted breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
     }
     else {
-      cout << "break point doesn't exist." << endl;
+      cout << "breakpoint doesn't exist." << endl;
     }
   }
   else {
@@ -902,7 +915,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
       
     case CLEAR_COMMAND: {
-      cout << "  are sure you want to clear all break points? [y/n] ";
+      cout << "  are sure you want to clear all breakpoints? [y/n] ";
       string line;
       getline(cin, line);      
       if(line == "y" || line == "yes") {
@@ -1017,8 +1030,8 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
   }
 }
 
-void Runtime::Debugger::ClearBreaks() {
-  cout << "break points cleared." << endl;
+void Runtime::Debugger::ClearBreaks() {  
+  cout << "breakpoints cleared." << endl;
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
     breaks.erase(breaks.begin());
