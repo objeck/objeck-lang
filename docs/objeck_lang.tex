@@ -369,29 +369,29 @@ method : virtual : public : Compare(right : Base), Int;
 The Objeck compiler toolset contains a simple interactive read-only debugger, which allows programmers to inspect values within their programs.  The debugger allows programmers to set breakpoints within methods based upon source line numbers.  The debugger can also calculate simple arithmetic expressions involving variables and constants. The following commands are currently supported:
 
 \begin{center}
-\begin{tabular}{| l |p{6 cm} |}
+\begin{tabular}{| l |p{4 cm} |p{6 cm} |}
 \hline
-\emph{Command} & \emph{Description} \\ \hline \hline
-\texttt{[b]reak} &  sets a breakpoint \\ \hline
-\texttt{breaks} &  shows all breakpoints \\ \hline
-\texttt{[d]elete} &  deletes a breakpoint \\ \hline
-\texttt{clear} &  clears all breakpoints \\ \hline
-\texttt{[n]ext} &  moves to the next line with debug information \\ \hline
-\texttt{[o]ut} &  jumps out of an existing method/function and moves to the next line with debug information \\ \hline
-\texttt{args} &  specifies program arguments \\ \hline
-\texttt{[r]un} &  runs a loaded program \\ \hline
-\texttt{[p]rint} &  prints the value of an expression, along with metadata \\ \hline
-\texttt{[l]ist} &  lists a range of lines in a source file \\ \hline
-\texttt{[i]nfo} &  displays the variables for a class or method/function \\ \hline
-\texttt{stack} &  displays the method/function call stack \\ \hline
-\texttt{exe} &  loads a new executable \\ \hline
-\texttt{src} &  specifies a new source path \\ \hline
-\texttt{[q]uit} &  exits a given debugging session \\ \hline
+\emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
+\texttt{[b]reak} &  sets a breakpoint & \texttt{b hello.obs:10} \\ \hline
+\texttt{breaks} &  shows all breakpoints &  \\ \hline
+\texttt{[d]elete} &  deletes a breakpoint & \texttt{d hello.obs:10} \\ \hline
+\texttt{clear} &  clears all breakpoints &  \\ \hline
+\texttt{[n]ext} &  moves to the next line with debug information &  \\ \hline
+\texttt{[o]ut} &  jumps out of an existing method/function and moves to the next line with debug information &  \\ \hline
+\texttt{args} &  specifies program arguments & \texttt{args "Hello World"} \\ \hline
+\texttt{[r]un} &  runs a loaded program &  \\ \hline
+\texttt{[p]rint} &  prints the value of an expression, along with metadata & \texttt{p @self$\rightarrow$value} \\ \hline
+\texttt{[l]ist} &  lists a range of lines in a source file or the lines near the current breakpoint & \texttt{l hello.obs:10} \\ \hline
+\texttt{[i]nfo} &  displays the variables for a class or method/function & \texttt{i class=Foo method=New} \\ \hline
+\texttt{stack} &  displays the method/function call stack &  \\ \hline
+\texttt{exe} &  loads a new executable & \texttt{exe "./../test.obe"} \\ \hline
+\texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
+\texttt{[q]uit} &  exits a given debugging session &  \\ \hline
 \end{tabular}
 \end{center}
 
 \subsection{Starting the Debugger}
-The source program must be compiled with the \texttt{-debug} set. The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.
+The source program must be compiled with the \texttt{-debug} set. The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.  Also note, to print instance level variables the path must start with \texttt{@self$\rightarrow$}. 
 
 \subsection{Example Debugging Session}
 \subsubsection{Sample Source}
