@@ -86,14 +86,32 @@ int main(int argc, char* argv[])
 	}
 	string key = path.substr(start, pos - start);
 	// parse value
-	while((path[pos] == ' ' || path[pos] == '\t') && pos < end) {
+	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	  pos++;
 	}
 	start = pos;
-	while(path[pos] != ' ' && path[pos] != '\t' && pos < end) {
+  bool is_string = false;
+  if(pos < end && path[pos] == '\'') {
+    is_string = true;
+    pos++;
+  }
+  bool not_end = true;
+	while(pos < end && not_end) {
+    if(is_string) {
+      not_end = path[pos] != '\'';
+    }
+    else {
+      not_end = path[pos] != ' ' && path[pos] != '\t';
+    }
 	  pos++;
 	}
-	string value = path.substr(start, pos - start);
+	string value;
+  if(is_string) {
+    value = path.substr(start + 1, pos - start - 2);
+  }
+  else {
+    value = path.substr(start, pos - start - 1);
+  }
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
