@@ -134,7 +134,12 @@ namespace Runtime {
     int cur_line_num;
     string cur_file_name;
     StackFrame** cur_call_stack;    
-    long cur_call_stack_pos; 
+    long cur_call_stack_pos;
+    bool is_error;
+    bool is_next;
+    bool is_jmp_out;
+    long* ref_mem;
+    StackClass* ref_klass;
     // interpreter variables
     vector<string> arguments;
     StackInterpreter* interpreter;
@@ -142,10 +147,7 @@ namespace Runtime {
     StackFrame* cur_frame;
     long* op_stack;
     long* stack_pos;
-    bool is_error;
-    bool is_next;
-    long* ref_mem;
-    StackClass* ref_klass;
+    
     
     bool FileExists(const string &file_name, bool is_exe = false) {
       ifstream touch(file_name.c_str(), ios::binary);
@@ -302,10 +304,11 @@ namespace Runtime {
       cur_frame = NULL;
       cur_program = NULL;
       cur_call_stack = NULL;
-      cur_call_stack_pos = NULL;
+      cur_call_stack_pos = 0;
       is_error = false;
       ref_mem = NULL;
-      ref_mem = NULL; 
+      ref_mem = NULL;
+      is_jmp_out = false;
     }
     
     ~Debugger() {
