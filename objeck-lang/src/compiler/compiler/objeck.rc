@@ -13,13 +13,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -62,8 +60,8 @@ IDI_ICON1               ICON                    "..\\..\\..\\images\\Gear.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,9,5,0
- PRODUCTVERSION 0,9,5,0
+ FILEVERSION 0,9,10,0
+ PRODUCTVERSION 0,9,10,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -81,12 +79,12 @@ BEGIN
             VALUE "Comments", "Objeck Lanuage Compiler"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck Compiler"
-            VALUE "FileVersion", "0, 9, 5, 0"
+            VALUE "FileVersion", "0.9.10.0"
             VALUE "InternalName", "obc"
             VALUE "LegalCopyright", "Copyright (C) 2008-2010"
             VALUE "OriginalFilename", "obc.exe"
             VALUE "ProductName", "Objeck Compiler"
-            VALUE "ProductVersion", "0, 9, 5, 0"
+            VALUE "ProductVersion", "0.9.10.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -95,7 +93,7 @@ BEGIN
     END
 END
 
-#endif    // English (U.S.) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
