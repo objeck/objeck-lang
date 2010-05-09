@@ -154,9 +154,8 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 }
 
 void Runtime::Debugger::ProcessRun() {
-  // make sure file exists
   if(program_file.size() > 0) {
-    // process parameters
+    // process program parameters
     const int argc = arguments.size();
     const char** argv = new const char*[argc];
     for(int i = 0; i < argc; i++) {
@@ -201,10 +200,9 @@ void Runtime::Debugger::ProcessRun() {
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   int line_num = break_command->GetLineNumber();
-  string file_name = break_command->GetFileName();
-
-  // TODO: fix path
+  const string &file_name = break_command->GetFileName();
   const string &path = base_path + file_name;  
+  
   if(FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
       cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
@@ -230,9 +228,9 @@ void Runtime::Debugger::ProcessBreaks() {
 
 void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
-  string file_name = delete_command->GetFileName();
+  const string &file_name = delete_command->GetFileName();
+  const string &path = base_path + file_name;
   
-  const string &path = base_path + file_name;  
   if(FileExists(path)) {  
     if(DeleteBreak(line_num, file_name)) {
       cout << "deleted breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
