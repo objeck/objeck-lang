@@ -1108,14 +1108,19 @@ void Runtime::Debugger::ClearProgram() {
     delete stack_pos;
     stack_pos = NULL;
   }
+
+  while(cur_call_stack_pos) {
+    StackFrame* frame = cur_call_stack[--cur_call_stack_pos];
+    delete frame;
+    frame = NULL;
+  }
+  cur_call_stack = NULL;
   
   MemoryManager::Instance()->Clear(); 
-
+  
   cur_line_num = -2;
   cur_frame = NULL;
   cur_program = NULL;
-  cur_call_stack = NULL;
-  cur_call_stack_pos = 0;
   is_error = false;
   ref_mem = NULL;
   ref_mem = NULL;
