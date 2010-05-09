@@ -172,7 +172,7 @@ void Runtime::Debugger::ProcessRun() {
     stack_pos = new long;
     (*stack_pos) = 0;
 
-#ifdef _TIMING
+#ifdef _TIMING9
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
@@ -1109,6 +1109,8 @@ void Runtime::Debugger::ClearProgram() {
     stack_pos = NULL;
   }
   
+  MemoryManager::Instance()->Clear(); 
+
   cur_line_num = -2;
   cur_frame = NULL;
   cur_program = NULL;
