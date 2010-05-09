@@ -300,9 +300,24 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  cout << endl;
 	  break;
 	  
-	case OBJ_PARM:
-	  cout << "print: type=" << reference->GetClassName() << ", value=" 
-	       << (void*)reference->GetIntValue() << endl;
+	case OBJ_PARM: 
+	  if(reference->GetClassName() == "System.String") {
+	    long* instance = (long*)reference->GetIntValue();
+	    if(instance) {
+	      long* string_instance = (long*)instance[0];
+	      const char* char_string = (char*)(string_instance + 3);
+	      cout << "print: type=" << reference->GetClassName() << ", value=\"" 
+		   << char_string << "\"" << endl;
+	    }
+	    else {
+	      cout << "print: type=" << reference->GetClassName() << ", value=" 
+		   << (void*)reference->GetIntValue() << endl;
+	    }
+	  }
+	  else {
+	    cout << "print: type=" << reference->GetClassName() << ", value=" 
+		 << (void*)reference->GetIntValue() << endl;
+	  }
 	  break;
 	  
 	case OBJ_ARY_PARM:
