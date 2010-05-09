@@ -62,35 +62,6 @@ namespace Runtime {
     vector<string> lines;
     int cur_line_num;
     
-    bool Print(int start, int end) {
-      start--;
-      end--;
-      
-      if(start >= end || start >= lines.size()) {
-	return false;
-      }
-      
-      if(start - 5 > 0) {
-        start -= 5;
-        end -= 5;
-      }
-      else {
-        start = 0;
-      }
-
-      const int offset = 5;
-      for(unsigned int i = start; i < lines.size() && i < end; i++) {
-	if(i + 1 == cur_line_num) {
-	  cout << right << "=>" << setw(offset) << (i + 1) << ": " << lines[i] << endl;
-	}
-	else {
-	  cout << right << setw(offset + 2) << (i + 1) << ": " << lines[i] << endl;
-	}
-      }
-      
-      return true;
-    }
-    
   public:
     SourceFile(const string &fn, int l) {
       file_name = fn;
@@ -113,7 +84,33 @@ namespace Runtime {
     }
     
     bool Print(int start) {
-      return Print(start, start + 11);
+      const int window = 5;
+      int end = start + window * 2;
+      start--;
+      
+      if(start >= end || start >= lines.size()) {
+	return false;
+      }
+      
+      if(start - window > 0) {
+        start -= window;
+        end -= window;
+      }
+      else {
+        start = 0;
+	end = window * 2;
+      }
+      
+      for(unsigned int i = start; i < lines.size() && i < end; i++) {
+	if(i + 1 == cur_line_num) {
+	  cout << right << "=>" << setw(window) << (i + 1) << ": " << lines[i] << endl;
+	}
+	else {
+	  cout << right << setw(window + 2) << (i + 1) << ": " << lines[i] << endl;
+	}
+      }
+      
+      return true;
     }
 
     const string& GetFileName() {

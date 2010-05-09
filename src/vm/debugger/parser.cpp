@@ -265,9 +265,6 @@ Command* Parser::ParseList(int depth) {
       ProcessError("Expected line number");
     }
   }
-  else {
-    ProcessError("Expected filename");
-  }
   NextToken();
 
   return TreeFactory::Instance()->MakeFilePostion(LIST_COMMAND, file_name, line_num);
