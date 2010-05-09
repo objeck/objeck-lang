@@ -62,11 +62,11 @@ namespace Runtime {
     vector<string> lines;
     int cur_line_num;
     
-    bool Print(unsigned int start, unsigned int end) {
+    bool Print(int start, int end) {
       start--;
       end--;
       
-      if(start < 0 || start >= end || start >= lines.size()) {
+      if(start >= end || start >= lines.size()) {
 	return false;
       }
       
