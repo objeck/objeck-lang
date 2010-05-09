@@ -234,21 +234,41 @@ Command* Parser::ParseList(int depth) {
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
     NextToken();
+    // colon
     if(!Match(TOKEN_COLON)) {
       ProcessError(TOKEN_COLON);
     }
     NextToken();
-  
     // line number
     if(Match(TOKEN_INT_LIT)) {
       line_num = scanner->GetToken()->GetIntLit();
-      NextToken();
     }
     else {
       ProcessError("Expected line number");
-      NextToken();
     }
   }
+  else if(Match(TOKEN_CHAR_STRING_LIT)) {
+    CharacterString* char_string = 
+      TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+    file_name = char_string->GetString();
+    NextToken();    
+    // colon
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();
+    // line number
+    if(Match(TOKEN_INT_LIT)) {
+      line_num = scanner->GetToken()->GetIntLit();
+    }
+    else {
+      ProcessError("Expected line number");
+    }
+  }
+  else {
+    ProcessError("Expected filename");
+  }
+  NextToken();
 
   return TreeFactory::Instance()->MakeFilePostion(LIST_COMMAND, file_name, line_num);
 }
