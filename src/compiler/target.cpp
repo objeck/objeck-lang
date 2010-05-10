@@ -71,13 +71,17 @@ void TargetEmitter::Emit()
       exit(1);
     }
   }
-
+  
   ofstream* file_out = new ofstream(file_name.c_str(), ofstream::binary);
-  program->Write(file_out, is_lib);
-  file_out->close();
-
-  cout << "Target file: '" << file_name << "'" << endl;
-
+  if(file_out->is_open()) {
+    program->Write(file_out, is_lib);
+    file_out->close();
+    cout << "Wrote target file: '" << file_name << "'" << endl;
+  }
+  else {
+    cerr << "Unable to write file: '" << file_name << "'" << endl;
+  }
+  
   delete file_out;
   file_out = NULL;
 }
