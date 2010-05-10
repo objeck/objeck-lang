@@ -73,7 +73,7 @@ void TargetEmitter::Emit()
   }
   
   ofstream* file_out = new ofstream(file_name.c_str(), ofstream::binary);
-  if(file_out->is_open()) {
+  if(file_out && file_out->is_open()) {
     program->Write(file_out, is_lib);
     file_out->close();
     cout << "Wrote target file: '" << file_name << "'" << endl;
