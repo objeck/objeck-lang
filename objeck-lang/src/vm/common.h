@@ -970,6 +970,7 @@ public:
     }
   }
   
+#ifdef _DEBUGGER
   StackClass* GetClass(const string &n) {
     if(classes) {
       map<string, StackClass*>::iterator find = cls_map.find(n);
@@ -980,6 +981,7 @@ public:
     
     return NULL;
   }
+#endif
   
   void SetHierarchy(int* h) {
     cls_hierarchy = h;
@@ -997,6 +999,7 @@ public:
     return NULL;
   }
 
+#ifdef _DEBUGGER
   bool HasFile(const string &fn) {
     for(int i = 0; i < class_num; i++) {
       if(classes[i]->GetFileName() == fn) {
@@ -1006,6 +1009,7 @@ public:
 
     return false;
   }
+#endif
 };
 
 /********************************
