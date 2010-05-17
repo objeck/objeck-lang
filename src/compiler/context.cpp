@@ -517,6 +517,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 {
   switch(expression->GetExpressionType()) {
+  case STAT_ARY_EXPR:
+    AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
+    break;
+    
   case CHAR_STR_EXPR: {
     // TODO: cleaner way of doing this!
     CharacterString* char_str = static_cast<CharacterString*>(expression);
@@ -527,7 +531,8 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
     int id = program->GetCharStringId(str);
     if(id > -1) {
       char_str->SetId(id);
-    } else {
+    } 
+    else {
       char_str->SetId(char_str_index);
       program->AddCharString(str, char_str_index);
       char_str_index++;
@@ -603,6 +608,11 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 
   // check cast
   AnalyzeCast(expression, depth + 1);
+}
+
+void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
+  cout << "$$$ " << array->GetDimension() << " $$$" << endl;
+  ProcessError(array, "Unsupported expression.");
 }
 
 /****************************
