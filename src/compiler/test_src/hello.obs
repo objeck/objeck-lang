@@ -17,10 +17,10 @@ bundle Default {
 			s->StartsWith("Hello")->PrintLine();
 			s->EndsWith("World!")->PrintLine();
 
-
 			3->Max(5)->PrintLine();
 			"Hello World!"->StartsWith("Hello ")->PrintLine();
 
+			x := [2,3,5];
 		}
 	}
 }
