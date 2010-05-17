@@ -576,18 +576,24 @@ class StaticArray : public Expression {
   }
 
   int GetDimension() {
-    int dim = 0;
-    vector<Expression*> expressions = elements->GetExpressions();
-    for(int i = 0; i < expressions.size(); i++) {
-      if(expressions[i]->GetExpressionType() == STAT_ARY_EXPR) {
-	dim++;
+    if(elements->GetExpressions().size() == 1 && 
+       elements->GetExpressions()[0]->GetExpressionType() == STAT_ARY_EXPR) {
+      int dim = 0;
+      ExpressionList* dim_elements = static_cast<StaticArray*>(elements->GetExpressions()[0])->GetElements();
+      vector<Expression*> expressions = dim_elements->GetExpressions();
+      for(int i = 0; i < expressions.size(); i++) {
+	if(expressions[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	  dim++;
+	}
+	else {
+	  return -1;
+	}
       }
-      else {
-	return 1;
-      }
+
+      return dim;
     }
     
-    return dim;
+    return 1;
   }
 };
 
