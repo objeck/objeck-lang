@@ -547,9 +547,18 @@ public:
  ****************************/
 class StaticArray : public Expression {
   friend class TreeFactory;
+  ExpressionList* elements;
   int id;
   
  public:
+  StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
+    elements = e;
+    id = -1;
+  }
+
+  ~StaticArray() {
+  }
+  
   const ExpressionType GetExpressionType() {
     return STAT_ARY_EXPR;
   }
@@ -560,6 +569,25 @@ class StaticArray : public Expression {
 
   int GetId() {
     return id;
+  }
+  
+  ExpressionList* GetElements() {
+    return elements;
+  }
+
+  int GetDimension() {
+    int dim = 0;
+    vector<Expression*> expressions = elements->GetExpressions();
+    for(int i = 0; i < expressions.size(); i++) {
+      if(expressions[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	dim++;
+      }
+      else {
+	return 1;
+      }
+    }
+    
+    return dim;
   }
 };
 
@@ -2076,6 +2104,12 @@ public:
     return tmp;
   }
 
+  StaticArray* MakeStaticArray(const string &file_name, int line_num, ExpressionList* exprs) {
+    StaticArray* tmp = new StaticArray(file_name, line_num, exprs);
+    expressions.push_back(tmp);
+    return tmp;
+  }
+  
   Declaration* MakeDeclaration(const string &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
     Declaration* tmp = new Declaration(file_name, line_num, entry, assign);
     statements.push_back(tmp);
