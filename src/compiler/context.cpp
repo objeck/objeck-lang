@@ -611,8 +611,20 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 }
 
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
-  cout << "$$$ " << array->GetDimension() << " $$$" << endl;
-  ProcessError(array, "Unsupported expression.");
+  if(array->GetDimension() < 0) {
+    ProcessError(array, "Invalid static array definition.");
+  }
+  else if(!array->IsValidLenghts()) {
+    ProcessError(array, "Array lengths do not match.");
+  }
+  else if(!array->IsMatchingTypes()) {
+    ProcessError(array, "Array element types do not match.");
+  }
+  else {
+    Type* type = TypeFactory::Instance()->MakeType(array->GetType());
+    type->SetDimension(array->GetDimension());
+    array->SetEvalType(type, false);
+  }
 }
 
 /****************************

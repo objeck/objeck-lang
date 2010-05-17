@@ -980,7 +980,8 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 	  expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
 								 -scanner->GetToken()->GetFloatLit());
 	  NextToken();
-	
+	  break;
+	  
 	default:
 	  ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
 	  break;
@@ -998,7 +999,14 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 	  expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
 								 scanner->GetToken()->GetFloatLit());
 	  NextToken();
-      
+	  break;
+	  
+	case TOKEN_CHAR_LIT:
+	  expression = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num,
+								     scanner->GetToken()->GetCharLit());
+	  NextToken();
+	  break;
+	  
 	case TOKEN_CHAR_STRING_LIT: {
 	  const string &ident = scanner->GetToken()->GetIdentifier();
 	  expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
