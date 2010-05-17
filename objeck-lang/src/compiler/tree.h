@@ -411,6 +411,7 @@ typedef enum _ExpressionType {
   DIV_EXPR,
   MOD_EXPR,
   CHAR_STR_EXPR,
+  STAT_ARY_EXPR
 } ExpressionType;
 
 /****************************
@@ -538,6 +539,27 @@ public:
 
   void AddExpression(Expression* e) {
     expressions.push_back(e);
+  }
+};
+
+/****************************
+ * CharacterString class
+ ****************************/
+class StaticArray : public Expression {
+  friend class TreeFactory;
+  int id;
+  
+ public:
+  const ExpressionType GetExpressionType() {
+    return STAT_ARY_EXPR;
+  }
+  
+  void SetId(int i) {
+    id = i;
+  }
+
+  int GetId() {
+    return id;
   }
 };
 
