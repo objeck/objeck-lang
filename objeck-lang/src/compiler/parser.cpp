@@ -947,73 +947,89 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 #ifdef _DEBUG
   Show("Static Array", depth);
 #endif
+
   
   NextToken();
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-  while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
-    Expression* expression = NULL;
-    if(Match(TOKEN_SUB)) {
-      NextToken();
-      
-      switch(GetToken()) {
-      case TOKEN_INT_LIT:
-	expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
-								 -scanner->GetToken()->GetIntLit());
-	NextToken();
-	break;
-      
-      case TOKEN_FLOAT_LIT:
-	expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
-							       -scanner->GetToken()->GetFloatLit());
-	NextToken();
-	
-      default:
-	ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
-	break;
-      }
-    }
-    else {
-      switch(GetToken()) {
-      case TOKEN_INT_LIT:
-	expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
-								 scanner->GetToken()->GetIntLit());
-	NextToken();
-	break;
-      
-      case TOKEN_FLOAT_LIT:
-	expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
-							       scanner->GetToken()->GetFloatLit());
-	NextToken();
-      
-      case TOKEN_CHAR_STRING_LIT: {
-	const string &ident = scanner->GetToken()->GetIdentifier();
-	expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
-	NextToken();
-      }
-	break;
-	
-      default:
-	ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
-	break;
-      }
-    }
-    // add expression
-    expressions->AddExpression(expression);
 
-    // next expression
-    if(Match(TOKEN_COMMA)) {
-      NextToken();
-    } 
-    else if(!Match(TOKEN_CLOSED_BRACKET)) {
-      ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
-      NextToken();
+  // array dimension
+  if(Match(TOKEN_OPEN_BRACKET)) {
+    while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+      expressions->AddExpression(ParseStaticArray(depth + 1));
     }
+    
+    if(!Match(TOKEN_CLOSED_BRACKET)) {
+      ProcessError(TOKEN_CLOSED_BRACKET);
+    }
+    NextToken();
   }
+  // array elements
+  else {
+    while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+      Expression* expression = NULL;
+      if(Match(TOKEN_SUB)) {
+	NextToken();
+      
+	switch(GetToken()) {
+	case TOKEN_INT_LIT:
+	  expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
+								   -scanner->GetToken()->GetIntLit());
+	  NextToken();
+	  break;
+      
+	case TOKEN_FLOAT_LIT:
+	  expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
+								 -scanner->GetToken()->GetFloatLit());
+	  NextToken();
+	
+	default:
+	  ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
+	  break;
+	}
+      }
+      else {
+	switch(GetToken()) {
+	case TOKEN_INT_LIT:
+	  expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
+								   scanner->GetToken()->GetIntLit());
+	  NextToken();
+	  break;
+      
+	case TOKEN_FLOAT_LIT:
+	  expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
+								 scanner->GetToken()->GetFloatLit());
+	  NextToken();
+      
+	case TOKEN_CHAR_STRING_LIT: {
+	  const string &ident = scanner->GetToken()->GetIdentifier();
+	  expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
+	  NextToken();
+	}
+	  break;
+	
+	default:
+	  ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
+	  break;
+	}
+      }
+      // add expression
+      expressions->AddExpression(expression);
+
+      // next expression
+      if(Match(TOKEN_COMMA)) {
+	NextToken();
+      } 
+      else if(!Match(TOKEN_CLOSED_BRACKET)) {
+	ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	NextToken();
+      }
+    }
   
-  if(!Match(TOKEN_CLOSED_BRACKET)) {
-    ProcessError(TOKEN_CLOSED_BRACKET);
+    if(!Match(TOKEN_CLOSED_BRACKET)) {
+      ProcessError(TOKEN_CLOSED_BRACKET);
+    }
+    NextToken();
   }
-  NextToken();
   
   return NULL;
 }
