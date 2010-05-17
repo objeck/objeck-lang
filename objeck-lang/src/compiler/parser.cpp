@@ -944,16 +944,17 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
   
+#ifdef _DEBUG
+  Show("Static Array", depth);
+#endif
+  
   NextToken();
-
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
   while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
     Expression* expression = NULL;
-    
-    // check expression type
     if(Match(TOKEN_SUB)) {
       NextToken();
-
+      
       switch(GetToken()) {
       case TOKEN_INT_LIT:
 	expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
