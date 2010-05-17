@@ -947,11 +947,10 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 #ifdef _DEBUG
   Show("Static Array", depth);
 #endif
-
   
   NextToken();
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-
+  
   // array dimension
   if(Match(TOKEN_OPEN_BRACKET)) {
     while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1031,7 +1030,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
     NextToken();
   }
   
-  return NULL;
+  return TreeFactory::Instance()->MakeStaticArray(file_name, line_num, expressions);
 }
 
 /****************************
