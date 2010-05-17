@@ -151,6 +151,7 @@ class Parser {
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
+  StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);

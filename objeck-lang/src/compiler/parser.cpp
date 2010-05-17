@@ -605,7 +605,7 @@ Statement* Parser::ParseStatement(int depth)
   }
   // other
   else {
-    switch(GetToken()) {
+    switch(GetToken()) {   
     case TOKEN_PARENT_ID:
       statement = ParseMethodCall(depth + 1);
       break;
@@ -938,6 +938,86 @@ Statement* Parser::ParseStatement(int depth)
 }
 
 /****************************
+ * Parses a static array
+ ****************************/
+StaticArray* Parser::ParseStaticArray(int depth) {
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+  
+  NextToken();
+
+  ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+  while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+    Expression* expression = NULL;
+    
+    // check expression type
+    if(Match(TOKEN_SUB)) {
+      NextToken();
+
+      switch(GetToken()) {
+      case TOKEN_INT_LIT:
+	expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
+								 -scanner->GetToken()->GetIntLit());
+	NextToken();
+	break;
+      
+      case TOKEN_FLOAT_LIT:
+	expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
+							       -scanner->GetToken()->GetFloatLit());
+	NextToken();
+	
+      default:
+	ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
+	break;
+      }
+    }
+    else {
+      switch(GetToken()) {
+      case TOKEN_INT_LIT:
+	expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
+								 scanner->GetToken()->GetIntLit());
+	NextToken();
+	break;
+      
+      case TOKEN_FLOAT_LIT:
+	expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
+							       scanner->GetToken()->GetFloatLit());
+	NextToken();
+      
+      case TOKEN_CHAR_STRING_LIT: {
+	const string &ident = scanner->GetToken()->GetIdentifier();
+	expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
+	NextToken();
+      }
+	break;
+	
+      default:
+	ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
+	break;
+      }
+    }
+    // add expression
+    expressions->AddExpression(expression);
+
+    // next expression
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    } 
+    else if(!Match(TOKEN_CLOSED_BRACKET)) {
+      ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+      NextToken();
+    }
+  }
+  
+  if(!Match(TOKEN_CLOSED_BRACKET)) {
+    ProcessError(TOKEN_CLOSED_BRACKET);
+  }
+  NextToken();
+  
+  return NULL;
+}
+
+/****************************
  * Parses a variable.
  ****************************/
 Variable* Parser::ParseVariable(const string &ident, int depth)
@@ -1101,12 +1181,13 @@ ExpressionList* Parser::ParseIndices(int depth)
 
       if(Match(TOKEN_COMMA)) {
         NextToken();
-      } else if(!Match(TOKEN_CLOSED_BRACKET)) {
+      } 
+      else if(!Match(TOKEN_CLOSED_BRACKET)) {
         ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
         NextToken();
       }
     }
-
+    
     if(!Match(TOKEN_CLOSED_BRACKET)) {
       ProcessError(TOKEN_CLOSED_BRACKET);
     }
@@ -1443,7 +1524,8 @@ Expression* Parser::ParseSimpleExpression(int depth)
       ProcessError("Expected expression", TOKEN_SEMI_COLON);
       break;
     }
-  } else {
+  } 
+  else {
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
       expression = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num,
@@ -1462,14 +1544,18 @@ Expression* Parser::ParseSimpleExpression(int depth)
                    scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
-
+      
     case TOKEN_CHAR_STRING_LIT: {
       const string &ident = scanner->GetToken()->GetIdentifier();
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident);
       NextToken();
     }
-    break;
-
+      break;
+    
+    case TOKEN_OPEN_BRACKET:
+      expression = ParseStaticArray(depth + 1);
+      break;
+      
     case TOKEN_NIL_ID:
       expression = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num);
       NextToken();
