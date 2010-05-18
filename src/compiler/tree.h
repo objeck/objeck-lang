@@ -562,6 +562,9 @@ class StaticArray : public Expression {
     dim = 0;
     
     // look at elements
+    cout << "$$$ " << elements->GetExpressions().size() << ", " 
+	 << elements->GetExpressions()[0]->GetExpressionType() << " $$$" << endl;
+
     if(elements->GetExpressions().size() == 1 && 
        elements->GetExpressions()[0]->GetExpressionType() == STAT_ARY_EXPR) {
       int length = -1;
