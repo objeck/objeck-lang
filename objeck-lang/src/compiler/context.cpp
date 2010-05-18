@@ -623,6 +623,9 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   else {
     Type* type = TypeFactory::Instance()->MakeType(array->GetType());
     type->SetDimension(array->GetDimension());
+    if(type->GetType() == CLASS_TYPE) {
+      type->SetClassName("System.String");
+    }
     array->SetEvalType(type, false);
   }
 }
