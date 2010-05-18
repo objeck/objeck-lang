@@ -638,8 +638,10 @@ class StaticArray : public Expression {
       return FLOAT_TYPE;
       
     case CHAR_LIT_EXPR:
+      return CHAR_TYPE;
+
     case CHAR_STR_EXPR:
-      return CHAR_TYPE;  
+      return CLASS_TYPE;
     }
 
     return VAR_TYPE;
