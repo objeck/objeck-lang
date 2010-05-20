@@ -548,74 +548,31 @@ public:
 class StaticArray : public Expression {
   friend class TreeFactory;
   ExpressionList* elements;
-  bool is_valid_types;
-  bool is_valid_lengths;
-  int dim;
+  bool matching_types;
+  ExpressionType cur_type;
+  bool matching_lengths;
+  int cur_length;
   int id;
-  ExpressionType type;
+  int dim;
   
  public:
   StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
     elements = e;
-    is_valid_types = is_valid_lengths = true;
-    id = 1;
-    dim = 0;
+    matching_types = matching_lengths = true;
+    cur_type = VAR_EXPR;
+    cur_length = id = dim = -1;
     
+    /*
     // look at elements
     cout << "$$$ " << elements->GetExpressions().size() << ", " 
-	 << elements->GetExpressions()[0]->GetExpressionType() << " $$$" << endl;
-
-    if(elements->GetExpressions().size() == 1 && 
-       elements->GetExpressions()[0]->GetExpressionType() == STAT_ARY_EXPR) {
-      int length = -1;
-      ExpressionList* dim_elements = static_cast<StaticArray*>(elements->GetExpressions()[0])->GetElements();
-      vector<Expression*> expressions = dim_elements->GetExpressions();
-      // look at elements
-      for(int i = 0; i < expressions.size(); i++) {
-	if(expressions[i]->GetExpressionType() == STAT_ARY_EXPR) {
-	  // check length
-	  StaticArray* static_array = static_cast<StaticArray*>(expressions[i]);
-	  if(length == -1) {
-	    length = static_array->GetElements()->GetExpressions().size();
-	  }
-	  else if(length != static_array->GetElements()->GetExpressions().size()) {
-	    is_valid_lengths = false;
-	  }	  
-	  // type check
-	  vector<Expression*> static_array_elements = static_array->GetElements()->GetExpressions();
-	  for(int i = 0; i < static_array_elements.size() && is_valid_types; i++) {
-	    if(i == 0) {
-	      type = static_array_elements[i]->GetExpressionType();
-	    }
-	    
-	    if(static_array_elements[i]->GetExpressionType() != type) {
-	      is_valid_types = false;
-	    }
-	  }	  
-	  // update dimension
-	  dim++;
-	}
-	else {
-	  dim = -1;
-	}
-      }
-    }
-    else {
-      // type check
-      vector<Expression*> static_array_elements = elements->GetExpressions();
-      for(int i = 0; i < static_array_elements.size() && is_valid_types; i++) {
-	if(i == 0) {
-	  type = static_array_elements[i]->GetExpressionType();
-	}
-	
-	if(static_array_elements[i]->GetExpressionType() != type) {
-	  is_valid_types = false;
-	}
-      }
-      // set dimension
-      dim = 1;
-    }
+	 << elements->GetExpressions()[0]->GetExpressionType() << ", " 
+	 << elements->GetExpressions()[1]->GetExpressionType() << " $$$" << endl;
+    */
+    
+    Validate(this);
   }
+  
+  void Validate(StaticArray* array);
   
   ~StaticArray() {
   }
@@ -633,7 +590,7 @@ class StaticArray : public Expression {
   }
   
   EntryType GetType() {
-    switch(type) {      
+    switch(cur_type) {      
     case INT_LIT_EXPR:
       return INT_TYPE;
       
@@ -659,11 +616,11 @@ class StaticArray : public Expression {
   }
   
   bool IsMatchingTypes() {
-    return is_valid_types;
+    return matching_types;
   }
   
   bool IsValidLenghts() {
-    return is_valid_lengths;
+    return matching_lengths;
   }
 };
 
