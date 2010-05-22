@@ -146,25 +146,27 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(int i = 0; i < static_array.size(); i++) {      
-    if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-      dim = static_array.size();  
-      Validate(static_cast<StaticArray*>(static_array[i]));
-    }
-    else {
-      // check lengths
-      if(cur_length == -1) {
-        cur_length = static_array.size();
+  for(int i = 0; i < static_array.size(); i++) { 
+    if(static_array[i]) {
+      if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	dim = static_array.size();  
+	Validate(static_cast<StaticArray*>(static_array[i]));
       }
-      if(cur_length != static_array.size()) {
-	matching_lengths = false;
-      }      
-      // check types
-      if(cur_type == VAR_EXPR) {
-	cur_type = static_array[i]->GetExpressionType();
-      }
-      else if(cur_type != static_array[i]->GetExpressionType()) {
-	matching_types = false;
+      else {
+	// check lengths
+	if(cur_length == -1) {
+	  cur_length = static_array.size();
+	}
+	if(cur_length != static_array.size()) {
+	  matching_lengths = false;
+	}      
+	// check types
+	if(cur_type == VAR_EXPR) {
+	  cur_type = static_array[i]->GetExpressionType();
+	}
+	else if(cur_type != static_array[i]->GetExpressionType()) {
+	  matching_types = false;
+	}
       }
     }
   }
