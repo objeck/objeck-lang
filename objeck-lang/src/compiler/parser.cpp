@@ -1096,6 +1096,11 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
                        scope_name, type, is_static,
                        current_method != NULL);
+
+#ifdef _DEBUG
+  Show("Adding variable: '" + scope_name + "'", depth + 2);
+#endif
+  
   bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
   if(!was_added) {
     ProcessError("Variable already defined in this scope: '" + ident + "'");
