@@ -560,14 +560,8 @@ class StaticArray : public Expression {
     elements = e;
     matching_types = matching_lengths = true;
     cur_type = VAR_EXPR;
-    cur_length = id = dim = -1;
-    
-    /*
-    // look at elements
-    cout << "$$$ " << elements->GetExpressions().size() << ", " 
-	 << elements->GetExpressions()[0]->GetExpressionType() << ", " 
-	 << elements->GetExpressions()[1]->GetExpressionType() << " $$$" << endl;
-    */
+    cur_length = id = -1;
+    dim = 1;
     
     Validate(this);
   }
