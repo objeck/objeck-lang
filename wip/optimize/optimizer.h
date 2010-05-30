@@ -1,3 +1,6 @@
+#ifndef __OPTIMIZER_H__
+#define __OPTIMIZER_H__
+
 #include "common.h"
 
 using namespace std;
@@ -15,6 +18,12 @@ class CodeElement {
   long value;
   string string_value;
 
+  string LongToString(long v) {
+    ostringstream str;
+    str << v;
+    return str.str();
+  }
+  
  public:
   CodeElement(Type t, long v) {
     type = t;
@@ -160,4 +169,8 @@ class Optimizer {
       root = NULL;
     }
   }
+
+  void Optimize();
 };
+
+#endif
