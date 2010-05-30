@@ -25,6 +25,11 @@ class CodeElement {
   }
   
  public:
+  CodeElement(Type t) {
+    type = t;
+    value = -1;
+  }
+  
   CodeElement(Type t, long v) {
     type = t;
     value = v;
@@ -169,6 +174,18 @@ class CodeBlock {
   void AddChild(CodeBlock* c) {
     children.push_back(c);
   }
+
+  void Print() {
+    // print current block
+    for(int i = 0; i < segments.size(); i++) {
+      cout << segments[i]->ToString() << endl;
+    }
+    // print childern
+    cout << "---------" << endl;
+    for(int i = 0; i < children.size(); i++) {
+      children[i]->Print();
+    }
+  }
 };
 
 class Optimizer {
@@ -183,6 +200,10 @@ class Optimizer {
       delete root;
       root = NULL;
     }
+  }
+
+  void Print() {
+    root->Print();
   }
   
   void Optimize();
