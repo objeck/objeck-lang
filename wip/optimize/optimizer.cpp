@@ -1,5 +1,4 @@
 #include "optimizer.h"
 
-int main() {  
-  return 0;
+void Optimizer::Optimize() { 
 }
