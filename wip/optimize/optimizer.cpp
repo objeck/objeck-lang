@@ -1,4 +1,5 @@
 #include "optimizer.h"
 
-void Optimizer::Optimize() { 
+void Optimizer::Optimize() {
+  root = new CodeBlock();
 }
