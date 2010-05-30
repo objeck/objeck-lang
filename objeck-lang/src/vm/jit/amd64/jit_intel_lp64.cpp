@@ -115,6 +115,7 @@ void JitCompilerIA64::Epilog(long imm) {
     // tear down stack frame and return
     0x48, 0x89, 0xec, // mov  %rbp, %rsp
     0x48, 0x5d,       // pop %rbp
+    // 0xc9 // leave
     0x48, 0xc3        // rtn
   };
   const long teardown_size = sizeof(teardown_code);
@@ -1260,14 +1261,15 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
 
   ProcessReturn(params);
   // push values
-  push_imm(instr_index - 1);
-  push_mem(STACK_POS, RBP);
   move_mem_reg(OP_STACK, RBP, R9);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
   move_imm_reg((long)instr, RSI);
   move_imm_reg(instr_id, RDI);
+  push_imm(instr_index - 1);
+  push_mem(STACK_POS, RBP);
+  
   // call function
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());

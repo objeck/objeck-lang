@@ -1,62 +1,21 @@
 bundle Default {
-
-	class Bar {
-		v1 : Float;
-		v2 : Int;
-
-		New() {
-			v1 := 2.31;	
-			v2 := 26;
-		}
-		
-	}
-
-	class Foo {
-		bar : Bar;
-		value : Int;
-
-		New(v : Int) {
-			value := v;
-		}
-
-		method : public : GetValue(), Int {
-			return value;
-		}	
-
-		method : public : SetBar(), Nil {
-			bar := Bar->New();
-		}
-	}
-
-	class Test {
+	class Hello {
 		function : Main(args : System.String[]), Nil {
 			Run();
 		}
+	
+		function : native : Run(), Nil {
+			x := 7;
+			y := x;
+			w := x * x;
+			if(x < 30) {
+				y := 13;
+			}
+			else {
+				y := 10;
+			};
 
-#		function : Run(), Nil {
-		function : native : Run(), Nil {		
-			a : Int := 70;
-			(a / 2)->PrintLine();
-			(4 * a)->PrintLine();
-
-			g : Float := 3;
-			c : Float := 3.1415;
-			(c-5.5)->PrintLine();
-			d : Float := 11.12;
-
-			z := Int->New[5,6];	
-			z[2,3] := 27;
-
-			h : Float := 11;
-			(c-d)->PrintLine();
-			(d-c)->PrintLine();		
-
-			(g-h)->PrintLine();
-			(h-g)->PrintLine();		
-
-			f := Foo->New(24);
-			f->SetBar();
-			v := f->GetValue();
+			y->PrintLine();
 		}
 	}
 }
