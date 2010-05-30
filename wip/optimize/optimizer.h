@@ -68,7 +68,8 @@ class CodeSegment {
   CodeElement* left;
   CodeElement* oper;
   CodeElement* right;
-
+  string string_value;
+  
  public:
   CodeSegment(CodeElement* r, CodeElement* lhs) {
     result = r;
@@ -105,6 +106,17 @@ class CodeSegment {
       right = NULL;
     }
   }
+
+  const string& ToString() {
+    if(string_value.size() == 0) {
+      string_value = result->ToString() + '=' + left->ToString();
+      if(oper && right) {
+	string_value += oper->ToString() + right->ToString();
+      }
+    }
+
+    return string_value;
+  }
   
   bool IsUnary() {
     return !oper && !right;
@@ -117,8 +129,7 @@ class CodeBlock {
   vector<CodeBlock*> children;
  
  public:
-  CodeBlock(const vector<CodeSegment*> &s) {
-    segments = s;
+  CodeBlock() {
   }
 
   ~CodeBlock() {
@@ -146,6 +157,10 @@ class CodeBlock {
       tmp = NULL;
     }
   }
+
+  void AddSegment(CodeSegment* s) {
+    segments.push_back(s);
+  }
   
   void AddParent(CodeBlock* p) {
     parents.push_back(p);
@@ -169,7 +184,7 @@ class Optimizer {
       root = NULL;
     }
   }
-
+  
   void Optimize();
 };
 
