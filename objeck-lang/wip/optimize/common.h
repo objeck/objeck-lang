@@ -1,3 +1,6 @@
+#ifndef __COMMON_H__
+#define __COMMON_H__
+
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -6,8 +9,4 @@
 
 using namespace std;
 
-string LongToString(long v) {
-  ostringstream str;
-  str << v;
-  return str.str();
-}
+#endif
