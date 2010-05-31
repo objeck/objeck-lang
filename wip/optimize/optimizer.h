@@ -39,6 +39,10 @@ class CodeElementVersion {
 
   ~CodeElementVersion() {
   }
+
+  Type GetType() {
+    return type;
+  }
   
   const string GetKey() {
     if(type == INT_VAR) {
@@ -217,6 +221,10 @@ class CodeSegment {
 
   CodeElementVersion* GetLeft() {
     return left;
+  }
+
+  void SetLeft(CodeElementVersion* l) {
+    left = l;
   }
 
   CodeElementVersion* GetRight() {
