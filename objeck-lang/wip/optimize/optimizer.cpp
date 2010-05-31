@@ -9,7 +9,7 @@ CodeElementFactory* CodeElementFactory::Instance() {
   return instance;
 }
 
-void CodeBlock::AddSegment(CodeSegment* s) {
+void CodeBlock::Optimize(CodeSegment* s) {
   // remove invalidated expressions & propagation constants
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
@@ -30,6 +30,11 @@ void CodeBlock::AddSegment(CodeSegment* s) {
   }
 
   // TODO: apply other optimizations (const folding, identities, strength reduction)
+  if(s->GetLeft()->GetType() == INT_LIT && s->GetRight() && s->GetRight()->GetType() == INT_LIT) {
+    s->SetLeft(CodeElementFactory::Instance()->MakeCodeElement(INT_LIT, s->GetLeft()->GetValue() + s->GetRight()->GetValue())->GetVersion());
+    s->SetRight(NULL);
+    s->SetOperator(NULL);
+  }
   
   // associate common expressions
   multimap<const string, CodeSegment*>::iterator result = value_numbers.find(s->GetKey());
@@ -56,11 +61,9 @@ void CodeBlock::AddSegment(CodeSegment* s) {
     optimized_segments.push_back(s);
     value_numbers.insert(pair<const string, CodeSegment*>(s->GetKey(), s));
   }
-  // add original
-  original_segments.push_back(s);
 }
 
-void Optimizer::Optimize() {
+void Optimizer::LoadSegments() {
   root = new CodeBlock();
   /*
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
@@ -102,10 +105,10 @@ void Optimizer::Optimize() {
 				   MakeCodeElement(INT_VAR, 0)));
  
 
-  /*
+  
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 13)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
 				   MakeCodeElement(INT_VAR, 0))); 
-  */
+  
 }
