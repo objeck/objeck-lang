@@ -10,6 +10,8 @@ CodeElementFactory* CodeElementFactory::Instance() {
 }
 
 void CodeBlock::AddSegment(CodeSegment* s) {
+  // TODO: apply other optimizations (const folding, identities, strength reduction)
+  
   // remove invalidated expressions
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
@@ -27,6 +29,8 @@ void CodeBlock::AddSegment(CodeSegment* s) {
     multimap<const string, CodeSegment*>::iterator last = value_numbers.upper_bound(s->GetKey());
     --last;
     // create new segment
+
+    // TODO: constant propagation 
     CodeSegment* segment = new CodeSegment(s->GetResult()->GetCodeElement(), 
 					   last->second->GetResult()->GetCodeElement());
     optimized_segments.push_back(segment);
