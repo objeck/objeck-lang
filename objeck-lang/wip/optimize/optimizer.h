@@ -227,18 +227,22 @@ class CodeSegment {
 };
 
 class CodeBlock {
-  vector<CodeSegment*> segments;
+  // cfg and original segments;
+  vector<CodeSegment*> original_segments;
   vector<CodeBlock*> parents;
   vector<CodeBlock*> children;
- 
+  // optimized segments
+  vector<CodeSegment*> optimized_segments;
+  map<const string, CodeSegment*> value_numbers;
+  
  public:
   CodeBlock() {
   }
 
   ~CodeBlock() {
-    while(!segments.empty()) {
-      CodeSegment* tmp = segments.front();
-      segments.erase(segments.begin());
+    while(!original_segments.empty()) {
+      CodeSegment* tmp = original_segments.front();
+      original_segments.erase(original_segments.begin());
       // delete
       delete tmp;
       tmp = NULL;
@@ -262,7 +266,7 @@ class CodeBlock {
   }
 
   void AddSegment(CodeSegment* s) {
-    segments.push_back(s);
+    original_segments.push_back(s);
   }
   
   void AddParent(CodeBlock* p) {
@@ -275,8 +279,8 @@ class CodeBlock {
 
   void Print() {
     // print current block
-    for(int i = 0; i < segments.size(); i++) {
-      cout << segments[i]->GetKey() << endl;
+    for(int i = 0; i < original_segments.size(); i++) {
+      cout << original_segments[i]->GetKey() << endl;
     }
     // print childern
     cout << "---------" << endl;
@@ -300,6 +304,15 @@ class Optimizer {
     }
   }
 
+
+  CodeElement* MakeCodeElement(Type t) {
+    return CodeElementFactory::Instance()->MakeCodeElement(t);
+  }
+
+  CodeElement* MakeCodeElement(Type t, long v) {
+    return CodeElementFactory::Instance()->MakeCodeElement(t, v);
+  }
+  
   void Print() {
     root->Print();
   }
