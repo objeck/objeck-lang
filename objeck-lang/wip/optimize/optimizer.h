@@ -227,6 +227,10 @@ class CodeSegment {
     left = l;
   }
 
+   void SetRight(CodeElementVersion* r) {
+    right = r;
+  }
+
   CodeElementVersion* GetRight() {
     return right;
   }
