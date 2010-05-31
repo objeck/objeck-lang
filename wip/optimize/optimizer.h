@@ -177,6 +177,7 @@ class CodeSegment {
   CodeElement* oper;
   CodeElementVersion* right;
   string key;
+  string segment_str;
   
  public:
   CodeSegment(CodeElement* r, CodeElement* lhs) {
@@ -209,16 +210,39 @@ class CodeSegment {
       right = NULL;
     }
   }
+
+  CodeElementVersion* GetResult() {
+    return result;
+  }
+
+  CodeElementVersion* GetLeft() {
+    return left;
+  }
+
+  CodeElementVersion* GetRight() {
+    return right;
+  }
   
   const string& GetKey() {
     if(key.size() == 0) {
-      key = result->GetKey() + '=' + left->GetKey();
+      key = left->GetKey();
       if(oper && right) {
 	key += oper->GetKey() + right->GetKey();
       }
     }
-
+    
     return key;
+  }
+  
+  const string& ToString() {
+    if(segment_str.size() == 0) {
+      segment_str = result->GetKey() + '=' + left->GetKey();
+      if(oper && right) {
+	segment_str += oper->GetKey() + right->GetKey();
+      }
+    }
+
+    return segment_str;
   }
   
   bool IsUnary() {
@@ -227,13 +251,13 @@ class CodeSegment {
 };
 
 class CodeBlock {
-  // cfg and original segments;
+  // cfg and original segments
   vector<CodeSegment*> original_segments;
   vector<CodeBlock*> parents;
   vector<CodeBlock*> children;
   // optimized segments
   vector<CodeSegment*> optimized_segments;
-  map<const string, CodeSegment*> value_numbers;
+  multimap<const string, CodeSegment*> value_numbers;
   
  public:
   CodeBlock() {
@@ -265,9 +289,7 @@ class CodeBlock {
     }
   }
 
-  void AddSegment(CodeSegment* s) {
-    original_segments.push_back(s);
-  }
+  void AddSegment(CodeSegment* s);
   
   void AddParent(CodeBlock* p) {
     parents.push_back(p);
@@ -280,13 +302,19 @@ class CodeBlock {
   void Print() {
     // print current block
     for(int i = 0; i < original_segments.size(); i++) {
-      cout << original_segments[i]->GetKey() << endl;
+      cout << original_segments[i]->ToString() << endl;
     }
     // print childern
     cout << "---------" << endl;
+    // print current block
+    for(int i = 0; i < optimized_segments.size(); i++) {
+      cout << optimized_segments[i]->ToString() << endl;
+    }
+    /*
     for(int i = 0; i < children.size(); i++) {
       children[i]->Print();
     }
+    */
   }
 };
 
