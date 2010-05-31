@@ -10,21 +10,7 @@ CodeElementFactory* CodeElementFactory::Instance() {
 }
 
 void CodeBlock::AddSegment(CodeSegment* s) {
-  // TODO: search value numbers up
-  if(s->IsUnary()) {
-    multimap<const string, CodeSegment*>::iterator result = value_numbers.find(s->GetLeft()->GetKey());
-    if(result != value_numbers.end()) {
-      if(result->second->GetLeft()->GetType() == INT_LIT) {
-	s->SetLeft(result->second->GetLeft());
-      }
-    }
-  }
-
-
-  // TODO: apply other optimizations (const folding, identities, strength reduction)
-  
-
-  // remove invalidated expressions
+  // remove invalidated expressions & propagation constants
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
     if(iter->second->GetLeft()->GetCodeElement() == s->GetResult()->GetCodeElement() ||
@@ -32,9 +18,18 @@ void CodeBlock::AddSegment(CodeSegment* s) {
 	iter->second->GetRight()->GetCodeElement() == s->GetResult()->GetCodeElement())) {
       value_numbers.erase(iter->first);
     }
-
-    
+    // constant propagation 
+    if(iter->second->GetResult()->GetCodeElement() == s->GetLeft()->GetCodeElement() &&
+       iter->second->GetLeft()->GetType() == INT_LIT) {
+      s->SetLeft(iter->second->GetLeft()->GetCodeElement()->GetVersion());
+    }    
+    if(s->GetRight() && iter->second->GetResult()->GetCodeElement() == s->GetRight()->GetCodeElement() &&
+       iter->second->GetLeft()->GetType() == INT_LIT) {
+      s->SetRight(iter->second->GetLeft()->GetCodeElement()->GetVersion());
+    }
   }
+
+  // TODO: apply other optimizations (const folding, identities, strength reduction)
   
   // associate common expressions
   multimap<const string, CodeSegment*>::iterator result = value_numbers.find(s->GetKey());
@@ -42,9 +37,17 @@ void CodeBlock::AddSegment(CodeSegment* s) {
     // get last value
     multimap<const string, CodeSegment*>::iterator last = value_numbers.upper_bound(s->GetKey());
     --last;
-    // create new segment
-    CodeSegment* segment = new CodeSegment(s->GetResult()->GetCodeElement(), 
-					   last->second->GetResult()->GetCodeElement());
+    // perfer constant value
+    CodeSegment* segment;
+    if(last->second->IsUnary() && last->second->GetLeft()->GetType() == INT_LIT) {
+      segment = new CodeSegment(s->GetResult()->GetCodeElement(), 
+				last->second->GetLeft()->GetCodeElement());
+    }
+    else {
+      segment = new CodeSegment(s->GetResult()->GetCodeElement(), 
+				last->second->GetResult()->GetCodeElement());
+    }
+    
     optimized_segments.push_back(segment);
     // add to map    
     value_numbers.insert(pair<const string, CodeSegment*>(s->GetKey(), segment));
@@ -76,7 +79,7 @@ void Optimizer::Optimize() {
 				   MakeCodeElement(INT_VAR, 0)));
   */
 
-  /*
+ 
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 13)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
@@ -89,18 +92,20 @@ void Optimizer::Optimize() {
 				   MakeCodeElement(INT_VAR, 0)));
   
 
-  // root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
-//				   MakeCodeElement(INT_LIT, 25)));
+  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
+				   MakeCodeElement(INT_LIT, 25)));
 
   
-  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 3), 
+  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
 				   MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(ADD_OPER),
 				   MakeCodeElement(INT_VAR, 0)));
-  */
+ 
 
+  /*
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 13)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
 				   MakeCodeElement(INT_VAR, 0))); 
+  */
 }
