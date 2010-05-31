@@ -10,6 +10,7 @@ CodeElementFactory* CodeElementFactory::Instance() {
 }
 
 void CodeBlock::AddSegment(CodeSegment* s) {
+  // remove invalidated expressions
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
     if(iter->second->GetLeft()->GetCodeElement() == s->GetResult()->GetCodeElement() ||
@@ -19,7 +20,7 @@ void CodeBlock::AddSegment(CodeSegment* s) {
     }
   }
   
-  
+  // associate common expressions
   multimap<const string, CodeSegment*>::iterator result = value_numbers.find(s->GetKey());
   if(result != value_numbers.end()) {
     // get last value
