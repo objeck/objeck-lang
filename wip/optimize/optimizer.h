@@ -5,6 +5,8 @@
 
 using namespace std;
 
+class CodeElement;
+
 enum Type {
   INT_LIT,
   INT_VAR,
@@ -24,21 +26,30 @@ class CodeElementVersion {
   long value;
   int version;
   string key;
+  CodeElement* element;
   
  public:
-  CodeElementVersion(Type t, long v, const string &k, int i) {
-  type = t;
-  value = v;
-  key = k;
-  version = i;
-}
+  CodeElementVersion(Type t, long v, const string &k, int i, CodeElement* e) {
+    type = t;
+    value = v;
+    key = k;
+    version = i;
+    element = e;
+  }
+
+  ~CodeElementVersion() {
+  }
   
   const string GetKey() {
     if(type == INT_VAR) {
       return key + '(' + LongToString(version) + ')';
     }
-
+    
     return key;
+  }
+  
+  CodeElement* GetCodeElement() {
+    return element;
   }
 };
 
@@ -46,41 +57,38 @@ class CodeElement {
   Type type;
   long value;
   string key;
-  int version;
+  int version_num;
   
  public:
   CodeElement(Type t) {
     type = t;
     value = -1;
-    version = -1;
+    version_num = -1;
   }
   
   CodeElement(Type t, long v, const string& k) {
     type = t;
     value = v;
     key = k;
-    version = -1;
+    version_num = -1;
   }
   
   ~CodeElement() {
   }
 
+  // TODO: reutrn same version if no changes
   CodeElementVersion* GetVersion() {
-    // TODO: leak!
-    return new CodeElementVersion(type, value, key, version);
+    return new CodeElementVersion(type, value, key, version_num, this);
   }
-
+  
   CodeElementVersion* GetNewVersion() {
-    // TODO: leak!
-    return new CodeElementVersion(type, value, key, ++version);
+    return new CodeElementVersion(type, value, key, ++version_num, this);
   }
   
   const string& GetKey() {
     return key;
   }
 };
-
-
 
 class CodeElementFactory {
   static CodeElementFactory* instance;
