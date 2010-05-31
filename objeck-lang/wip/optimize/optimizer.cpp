@@ -10,8 +10,20 @@ CodeElementFactory* CodeElementFactory::Instance() {
 }
 
 void CodeBlock::AddSegment(CodeSegment* s) {
+  // TODO: search value numbers up
+  if(s->IsUnary()) {
+    multimap<const string, CodeSegment*>::iterator result = value_numbers.find(s->GetLeft()->GetKey());
+    if(result != value_numbers.end()) {
+      if(result->second->GetLeft()->GetType() == INT_LIT) {
+	s->SetLeft(result->second->GetLeft());
+      }
+    }
+  }
+
+
   // TODO: apply other optimizations (const folding, identities, strength reduction)
   
+
   // remove invalidated expressions
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
@@ -20,6 +32,8 @@ void CodeBlock::AddSegment(CodeSegment* s) {
 	iter->second->GetRight()->GetCodeElement() == s->GetResult()->GetCodeElement())) {
       value_numbers.erase(iter->first);
     }
+
+    
   }
   
   // associate common expressions
@@ -29,8 +43,6 @@ void CodeBlock::AddSegment(CodeSegment* s) {
     multimap<const string, CodeSegment*>::iterator last = value_numbers.upper_bound(s->GetKey());
     --last;
     // create new segment
-
-    // TODO: constant propagation 
     CodeSegment* segment = new CodeSegment(s->GetResult()->GetCodeElement(), 
 					   last->second->GetResult()->GetCodeElement());
     optimized_segments.push_back(segment);
@@ -64,6 +76,7 @@ void Optimizer::Optimize() {
 				   MakeCodeElement(INT_VAR, 0)));
   */
 
+  /*
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 13)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
@@ -75,14 +88,19 @@ void Optimizer::Optimize() {
 				   MakeCodeElement(ADD_OPER),
 				   MakeCodeElement(INT_VAR, 0)));
   
-  /*
-  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
-				   MakeCodeElement(INT_LIT, 25)));
-  */
+
+  // root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
+//				   MakeCodeElement(INT_LIT, 25)));
+
   
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 3), 
 				   MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(ADD_OPER),
 				   MakeCodeElement(INT_VAR, 0)));
-  
+  */
+
+  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
+				   MakeCodeElement(INT_LIT, 13)));
+  root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
+				   MakeCodeElement(INT_VAR, 0))); 
 }
