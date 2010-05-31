@@ -13,81 +13,176 @@ enum Type {
   JUMP
 };
 
+static string LongToString(long v) {
+  ostringstream str;
+  str << v;
+  return str.str();
+}
+
+class CodeElementVersion {
+  Type type;
+  long value;
+  int version;
+  string key;
+  
+ public:
+  CodeElementVersion(Type t, long v, const string &k, int i) {
+  type = t;
+  value = v;
+  key = k;
+  version = i;
+}
+  
+  const string GetKey() {
+    if(type == INT_VAR) {
+      return key + '(' + LongToString(version) + ')';
+    }
+
+    return key;
+  }
+};
+
 class CodeElement {
   Type type;
   long value;
-  string string_value;
-
-  string LongToString(long v) {
-    ostringstream str;
-    str << v;
-    return str.str();
-  }
+  string key;
+  int version;
   
  public:
   CodeElement(Type t) {
     type = t;
     value = -1;
+    version = -1;
   }
   
-  CodeElement(Type t, long v) {
+  CodeElement(Type t, long v, const string& k) {
     type = t;
     value = v;
+    key = k;
+    version = -1;
   }
   
   ~CodeElement() {
   }
+
+  CodeElementVersion* GetVersion() {
+    // TODO: leak!
+    return new CodeElementVersion(type, value, key, version);
+  }
+
+  CodeElementVersion* GetNewVersion() {
+    // TODO: leak!
+    return new CodeElementVersion(type, value, key, ++version);
+  }
   
-  // TODO: for value numbering
-  const string& ToString() {
-    if(string_value.size() == 0) {
-      switch(type) {	
+  const string& GetKey() {
+    return key;
+  }
+};
+
+
+
+class CodeElementFactory {
+  static CodeElementFactory* instance;
+  map<const string, CodeElement*> elements;
+  
+  CodeElementFactory() {
+  }
+
+  ~CodeElementFactory() {
+    // clean up
+    map<const string, CodeElement*>::iterator iter;
+    for(iter = elements.begin(); iter != elements.end(); iter++) {
+      CodeElement* tmp = iter->second;
+      delete tmp;
+      tmp = NULL;
+    }
+    elements.clear();
+  }
+
+  // TODO: constants in blocks
+  const string HashKey(Type t, long v) {
+    string key;
+    
+    if(key.size() == 0) {
+      switch(t) {	
       case INT_LIT:
-	string_value = LongToString(value);
+	key = LongToString(v);
 	break;
       
       case INT_VAR:
-	string_value = 'v' + LongToString(value);
+	key = 'v' + LongToString(v);
 	break;
 
       case ADD_OPER:
-	string_value = '+';
+	key = '+';
 	break;
       
       case MUL_OPER:
-	string_value = '*';
+	key = '*';
 	break;
 
       case JUMP:
-	string_value = "jmp:" + LongToString(value);
+	key = "jmp:" + LongToString(v);
 	break;
       }
     }
 
-    return string_value;
+    return key;
+  }
+
+ public:
+  static CodeElementFactory* Instance();
+
+  CodeElement* MakeCodeElement(Type t) {
+    return MakeCodeElement(t, -1);
+  }
+  
+  bool HasCodeElement(CodeElement* e) {
+    map<const string, CodeElement*>::iterator iter;
+    for(iter = elements.begin(); iter != elements.end(); iter++) {
+      if(iter->second == e) {
+	return true;
+      }
+    }
+
+    return false;
+  }
+  
+  CodeElement* MakeCodeElement(Type t, long v) {
+    const string& key = HashKey(t, v);
+    map<const string, CodeElement*>::iterator result = elements.find(key);
+    if(result != elements.end()) {
+      return result->second;
+    }
+    else {
+      CodeElement* element = new CodeElement(t, v, key);
+      elements.insert(pair<const string, CodeElement*>(key, element));
+      return element;
+    }
   }
 };
 
 class CodeSegment {
-  CodeElement* result;
-  CodeElement* left;
+  CodeElementVersion* result;
+  CodeElementVersion* left;
   CodeElement* oper;
-  CodeElement* right;
-  string string_value;
+  CodeElementVersion* right;
+  string key;
   
  public:
   CodeSegment(CodeElement* r, CodeElement* lhs) {
-    result = r;
-    left = lhs;
+    result = r->GetNewVersion();
+    left = lhs->GetVersion();
     oper = NULL;
     right = NULL;
   }
-
+  
   CodeSegment(CodeElement* r, CodeElement* lhs, CodeElement* o, CodeElement* rhs) {
-    result = r;
-    left = lhs;
+    result = r->GetNewVersion();
+    left = lhs->GetVersion();
     oper = o;
-    right = rhs;
+    right = rhs->GetVersion();
   }
 
   ~CodeSegment() {
@@ -101,26 +196,21 @@ class CodeSegment {
       left = NULL;
     }
     
-    if(oper) {
-      delete oper;
-      left = NULL;
-    }
-
     if(right) {
       delete right;
       right = NULL;
     }
   }
-
-  const string& ToString() {
-    if(string_value.size() == 0) {
-      string_value = result->ToString() + '=' + left->ToString();
+  
+  const string& GetKey() {
+    if(key.size() == 0) {
+      key = result->GetKey() + '=' + left->GetKey();
       if(oper && right) {
-	string_value += oper->ToString() + right->ToString();
+	key += oper->GetKey() + right->GetKey();
       }
     }
 
-    return string_value;
+    return key;
   }
   
   bool IsUnary() {
@@ -145,7 +235,7 @@ class CodeBlock {
       delete tmp;
       tmp = NULL;
     }
-    
+
     while(!parents.empty()) {
       CodeBlock* tmp = parents.front();
       parents.erase(parents.begin());
@@ -178,7 +268,7 @@ class CodeBlock {
   void Print() {
     // print current block
     for(int i = 0; i < segments.size(); i++) {
-      cout << segments[i]->ToString() << endl;
+      cout << segments[i]->GetKey() << endl;
     }
     // print childern
     cout << "---------" << endl;
