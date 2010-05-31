@@ -2,8 +2,11 @@
 
 int main() {
   Optimizer optimize;
-  optimize.Optimize();
+  optimize.LoadSegments();
   optimize.Print();
+  
+  optimize.Optimize();
+  optimize.PrintOptimized();
   
   return 0;
 }
