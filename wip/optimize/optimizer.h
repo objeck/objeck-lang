@@ -51,6 +51,10 @@ class CodeElementVersion {
     
     return key;
   }
+
+  long GetValue() {
+    return value;
+  }
   
   CodeElement* GetCodeElement() {
     return element;
@@ -91,6 +95,10 @@ class CodeElement {
   
   const string& GetKey() {
     return key;
+  }
+  
+  long GetValue() {
+    return value;
   }
 };
 
@@ -234,6 +242,10 @@ class CodeSegment {
   CodeElementVersion* GetRight() {
     return right;
   }
+
+  void SetOperator(CodeElement* o) {
+    oper = o;
+  }
   
   const string& GetKey() {
     if(key.size() == 0) {
@@ -247,12 +259,12 @@ class CodeSegment {
   }
   
   const string& ToString() {
-    if(segment_str.size() == 0) {
+    // if(segment_str.size() == 0) {
       segment_str = result->GetKey() + '=' + left->GetKey();
       if(oper && right) {
 	segment_str += oper->GetKey() + right->GetKey();
       }
-    }
+      // }
 
     return segment_str;
   }
@@ -270,6 +282,8 @@ class CodeBlock {
   // optimized segments
   vector<CodeSegment*> optimized_segments;
   multimap<const string, CodeSegment*> value_numbers;
+
+  void Optimize(CodeSegment* s);
   
  public:
   CodeBlock() {
@@ -301,7 +315,15 @@ class CodeBlock {
     }
   }
 
-  void AddSegment(CodeSegment* s);
+  void AddSegment(CodeSegment* s) {
+    original_segments.push_back(s);
+  }
+
+  void Optimize() {
+    for(int i = 0; i < original_segments.size(); i++) {
+      Optimize(original_segments[i]);
+    }
+  }
   
   void AddParent(CodeBlock* p) {
     parents.push_back(p);
@@ -318,15 +340,19 @@ class CodeBlock {
     }
     // print childern
     cout << "---------" << endl;
-    // print current block
-    for(int i = 0; i < optimized_segments.size(); i++) {
-      cout << optimized_segments[i]->ToString() << endl;
-    }
     /*
     for(int i = 0; i < children.size(); i++) {
       children[i]->Print();
     }
     */
+  }
+  
+  void PrintOptimized() {
+    // print current block
+    for(int i = 0; i < optimized_segments.size(); i++) {
+      cout << optimized_segments[i]->ToString() << endl;
+    }
+    cout << "---------" << endl;
   }
 };
 
@@ -356,8 +382,15 @@ class Optimizer {
   void Print() {
     root->Print();
   }
+
+  void PrintOptimized() {
+    root->PrintOptimized();
+  }
   
-  void Optimize();
+  void LoadSegments();
+  void Optimize() {
+    root->Optimize();
+  }
 };
 
 #endif
