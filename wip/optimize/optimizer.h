@@ -96,6 +96,10 @@ class CodeElement {
   const string& GetKey() {
     return key;
   }
+
+  Type GetType() {
+    return type;
+  }
   
   long GetValue() {
     return value;
@@ -252,6 +256,10 @@ class CodeSegment {
 
   void SetOperator(CodeElement* o) {
     oper = o;
+  }
+  
+  CodeElement* GetOperator() {
+    return oper;
   }
   
   const string& GetKey() {
