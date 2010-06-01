@@ -192,6 +192,13 @@ class CodeSegment {
   string segment_str;
   
  public:
+  CodeSegment(CodeElementVersion* r, CodeElementVersion* lhs) {
+    result = r;
+    left = lhs;
+    oper = NULL;
+    right = NULL;
+  }
+  
   CodeSegment(CodeElement* r, CodeElement* lhs) {
     result = r->GetNewVersion();
     left = lhs->GetVersion();
