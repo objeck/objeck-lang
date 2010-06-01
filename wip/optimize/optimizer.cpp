@@ -13,7 +13,7 @@ void CodeBlock::Optimize(CodeSegment* s) {
   // remove invalidated expressions & propagation constants
   multimap<const string, CodeSegment*>::iterator iter;
   for(iter = value_numbers.begin(); iter != value_numbers.end(); iter++) {
-/* NOT NEED SINCE SSA
+/* NOT NEEDED SINCE SSA
     if(iter->second->GetLeft()->GetKey() == s->GetResult()->GetKey() ||
        (iter->second->GetRight() && 
 	iter->second->GetRight()->GetCodeElement() == s->GetResult()->GetCodeElement())) {
@@ -30,17 +30,22 @@ void CodeBlock::Optimize(CodeSegment* s) {
       s->SetRight(iter->second->GetLeft()->GetCodeElement()->GetVersion());
     }
   }
-
+  
   // TODO: apply other optimizations (const folding, identities, strength reduction)
   if(s->GetLeft()->GetType() == INT_LIT && s->GetRight() && s->GetRight()->GetType() == INT_LIT) {
-    CodeElementVersion* add_result = 
-	CodeElementFactory::Instance()->MakeCodeElement(INT_LIT, s->GetLeft()->GetValue() + 
-	s->GetRight()->GetValue())->GetVersion();
-/*
-    CodeSegment* segment = new CodeSegment(s->GetResult()//->GetCodeElement()//, add_result);
-    optimized_segments.push_back(segment);
-*/
-    s->SetLeft(add_result);
+    CodeElementVersion* oper_result;
+    switch(s->GetOperator()->GetType()) {
+    case ADD_OPER:
+      oper_result = CodeElementFactory::Instance()->MakeCodeElement(INT_LIT, s->GetLeft()->GetValue() + 
+								    s->GetRight()->GetValue())->GetVersion();
+      break;
+
+    case MUL_OPER:
+      oper_result = CodeElementFactory::Instance()->MakeCodeElement(INT_LIT, s->GetLeft()->GetValue() * 
+								    s->GetRight()->GetValue())->GetVersion();
+      break;
+    }
+    s->SetLeft(oper_result);
     s->SetRight(NULL);
     s->SetOperator(NULL);
   }
@@ -51,12 +56,10 @@ void CodeBlock::Optimize(CodeSegment* s) {
     // perfer constant value
     CodeSegment* segment;
     if(result->second->IsUnary() && result->second->GetLeft()->GetType() == INT_LIT) {
-      segment = new CodeSegment(s->GetResult()/*->GetCodeElement()*/, 
-				result->second->GetLeft()/*->GetCodeElement()*/);
+      segment = new CodeSegment(s->GetResult(), result->second->GetLeft());
     }
     else {
-      segment = new CodeSegment(s->GetResult()/*->GetCodeElement()*/, 
-				result->second->GetResult()/*->GetCodeElement()*/);
+      segment = new CodeSegment(s->GetResult(), result->second->GetResult());
     }
     optimized_segments.push_back(segment);
     // add to map    
@@ -102,7 +105,6 @@ void Optimizer::LoadSegments() {
 
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 25)));
-
   
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
 				   MakeCodeElement(INT_VAR, 0), 
