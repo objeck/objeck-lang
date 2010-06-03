@@ -627,6 +627,41 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       type->SetClassName("System.String");
     }
     array->SetEvalType(type, false);
+    
+    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+    switch(array->GetType()) {
+    case INT_TYPE:
+      cout << "###: ";
+      for(int i = 0; i < all_elements.size(); i++) {
+	cout << static_cast<IntegerLiteral*>(all_elements[i])->GetValue() << ",";
+      }
+      cout << endl;
+      break;
+      
+    case FLOAT_TYPE:
+      cout << "###: ";
+      for(int i = 0; i < all_elements.size(); i++) {
+	cout << static_cast<FloatLiteral*>(all_elements[i])->GetValue() << ",";
+      }
+      cout << endl;
+      break;
+      
+    case CHAR_TYPE:
+      cout << "###: ";
+      for(int i = 0; i < all_elements.size(); i++) {
+	cout << static_cast<CharacterLiteral*>(all_elements[i])->GetValue() << ",";
+      }
+      cout << endl;
+      break;
+
+    case CLASS_TYPE:
+      cout << "###: ";
+      for(int i = 0; i < all_elements.size(); i++) {
+	cout << static_cast<CharacterString*>(all_elements[i])->GetString() << ",";
+      }
+      cout << endl;
+      break;
+    }
   }
 }
 
