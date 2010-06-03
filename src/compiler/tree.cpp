@@ -143,7 +143,9 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
   return name;
 }
 
-
+/****************************
+ * Validates a static array
+ ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
   for(int i = 0; i < static_array.size(); i++) { 
@@ -170,4 +172,16 @@ void StaticArray::Validate(StaticArray* array) {
       }
     }
   }
+}
+
+/****************************
+ * Get all static elements
+ ****************************/
+ExpressionList* StaticArray::GetAllElements() {
+  if(!all_elements) {
+    all_elements = TreeFactory::Instance()->MakeExpressionList();  
+    GetAllElements(this, all_elements);
+  }
+  
+  return all_elements;
 }

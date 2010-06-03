@@ -548,16 +548,32 @@ public:
 class StaticArray : public Expression {
   friend class TreeFactory;
   ExpressionList* elements;
+  ExpressionList* all_elements;
   bool matching_types;
   ExpressionType cur_type;
   bool matching_lengths;
   int cur_length;
   int id;
   int dim;
+
+  void GetAllElements(StaticArray* array, ExpressionList* elems) {
+    vector<Expression*> static_array = array->GetElements()->GetExpressions();
+    for(int i = 0; i < static_array.size(); i++) { 
+      if(static_array[i]) {
+	if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	  GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
+	}
+	else {
+	  elems->AddExpression(static_array[i]);
+	}
+      }
+    } 
+  }
   
  public:
   StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
     elements = e;
+    all_elements = NULL;
     matching_types = matching_lengths = true;
     cur_type = VAR_EXPR;
     cur_length = id = -1;
@@ -605,6 +621,8 @@ class StaticArray : public Expression {
     return elements;
   }
 
+  ExpressionList* GetAllElements();
+  
   int GetDimension() {
     return dim;
   }
@@ -2349,8 +2367,15 @@ public:
  * ParsedProgram class
  ****************************/
 class ParsedProgram {
+  map<string, int> int_string_ids;
+  vector<INT_VALUE*> int_strings;
+
+  map<string, int> float_string_ids;
+  vector<FLOAT_VALUE*> float_strings;
+  
   map<string, int> char_string_ids;
   vector<string> char_strings;
+
   vector<string> uses;
   vector<ParsedBundle*> bundles;
   vector<string> bundle_names;
@@ -2405,6 +2430,19 @@ public:
 
   const vector<ParsedBundle*> GetBundles() {
     return bundles;
+  }
+  
+  void AddIntString(vector<Expression*> &int_elements, int id) {
+    INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
+    for(int i = 0; i < int_elements.size(); i++) {
+      int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
+    }
+    // int_string_ids.insert(pair<INT_LIT*, int>(s, id));
+    int_strings.push_back(int_array);
+  }
+  
+  void AddFloatString(vector<Expression*> &int_elements, int id) {
+
   }
 
   void AddCharString(const string &s, int id) {
