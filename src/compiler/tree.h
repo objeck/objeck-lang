@@ -2362,16 +2362,60 @@ public:
     return symbol_table;
   }
 };
+ 
+ typedef struct _IntStringHolder {
+   INT_VALUE* value;
+   int length;
+ } 
+ IntStringHolder;
+ 
+ struct int_string_comp {
+   bool operator() (IntStringHolder* lhs, IntStringHolder* rhs) const {
+     if(lhs->length != rhs->length) {
+       return false;
+     }
+    
+     for(int i = 0; i < lhs->length; i++) {
+       if(lhs->value[i] != rhs->value[i]) {
+	 return false;
+       }
+     }
+     
+     return true;
+   }
+ };
 
+ typedef struct _FloatStringHolder {
+   FLOAT_VALUE* value;
+   int length;
+ } 
+ FloatStringHolder;
+
+ struct float_string_comp {
+   bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
+     if(lhs->length != rhs->length) {
+       return false;
+     }
+    
+     for(int i = 0; i < lhs->length; i++) {
+       if(lhs->value[i] != rhs->value[i]) {
+	 return false;
+       }
+     }
+     
+     return true;
+   }
+ };
+ 
 /****************************
  * ParsedProgram class
  ****************************/
 class ParsedProgram {
-  map<string, int> int_string_ids;
-  vector<INT_VALUE*> int_strings;
-
-  map<string, int> float_string_ids;
-  vector<FLOAT_VALUE*> float_strings;
+  map<IntStringHolder*, int, int_string_comp> int_string_ids;
+  vector<IntStringHolder*> int_strings;
+  
+  map<FloatStringHolder*, int, float_string_comp> float_string_ids;
+  vector<FloatStringHolder*> float_strings;
   
   map<string, int> char_string_ids;
   vector<string> char_strings;
@@ -2437,14 +2481,49 @@ public:
     for(int i = 0; i < int_elements.size(); i++) {
       int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
     }
-    // int_string_ids.insert(pair<INT_LIT*, int>(s, id));
-    int_strings.push_back(int_array);
+
+    IntStringHolder* holder = new IntStringHolder;
+    holder->value = int_array;
+    holder->length = int_elements.size();
+    
+    int_string_ids.insert(pair<IntStringHolder*, int>(holder, id));
+    int_strings.push_back(holder);
+  }
+
+  int GetIntStringId(IntStringHolder* h) {
+    map<IntStringHolder*, int>::iterator result = int_string_ids.find(h);
+    if(result != int_string_ids.end()) {
+      return result->second;
+    }
+
+    return -1;
+  }
+
+
+  
+  void AddFloatString(vector<Expression*> &float_elements, int id) {
+    FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
+    for(int i = 0; i < float_elements.size(); i++) {
+      float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
+    }
+    
+    FloatStringHolder* holder = new FloatStringHolder;
+    holder->value = float_array;
+    holder->length = float_elements.size();
+    
+    float_string_ids.insert(pair<FloatStringHolder*, int>(holder, id));
+    float_strings.push_back(holder);
   }
   
-  void AddFloatString(vector<Expression*> &int_elements, int id) {
+  int GetFloatStringId(FloatStringHolder* h) {
+    map<FloatStringHolder*, int>::iterator result = float_string_ids.find(h);
+    if(result != float_string_ids.end()) {
+      return result->second;
+    }
 
+    return -1;
   }
-
+  
   void AddCharString(const string &s, int id) {
     char_string_ids.insert(pair<string, int>(s, id));
     char_strings.push_back(s);
