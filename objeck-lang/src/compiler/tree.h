@@ -2444,6 +2444,22 @@ public:
       tmp = NULL;
     }
 
+    while(!int_strings.empty()) {
+      IntStringHolder* tmp = int_strings.front();
+      int_strings.erase(int_strings.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+    
+    while(!float_strings.empty()) {
+      FloatStringHolder* tmp = float_strings.front();
+      float_strings.erase(float_strings.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+
     if(linker) {
       delete linker;
       linker = NULL;
@@ -2489,17 +2505,32 @@ public:
     int_string_ids.insert(pair<IntStringHolder*, int>(holder, id));
     int_strings.push_back(holder);
   }
-
-  int GetIntStringId(IntStringHolder* h) {
-    map<IntStringHolder*, int>::iterator result = int_string_ids.find(h);
-    if(result != int_string_ids.end()) {
-      return result->second;
+  
+  int GetIntStringId(vector<Expression*> &int_elements) {
+    INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
+    for(int i = 0; i < int_elements.size(); i++) {
+      int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
     }
 
+    IntStringHolder* holder = new IntStringHolder;
+    holder->value = int_array;
+    holder->length = int_elements.size();
+
+    map<IntStringHolder*, int>::iterator result = int_string_ids.find(holder);
+    if(result != int_string_ids.end()) {
+      delete holder;
+      holder = NULL;
+      return result->second;
+    }
+    
+    delete holder;
+    holder = NULL;
     return -1;
   }
 
-
+  vector<IntStringHolder*> GetIntStrings() {
+    return int_strings;
+  }
   
   void AddFloatString(vector<Expression*> &float_elements, int id) {
     FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
@@ -2515,13 +2546,31 @@ public:
     float_strings.push_back(holder);
   }
   
-  int GetFloatStringId(FloatStringHolder* h) {
-    map<FloatStringHolder*, int>::iterator result = float_string_ids.find(h);
+  int GetFloatStringId(vector<Expression*> &float_elements) {
+    FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
+    for(int i = 0; i < float_elements.size(); i++) {
+      float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
+    }
+    
+    FloatStringHolder* holder = new FloatStringHolder;
+    holder->value = float_array;
+    holder->length = float_elements.size();
+
+
+    map<FloatStringHolder*, int>::iterator result = float_string_ids.find(holder);
     if(result != float_string_ids.end()) {
+      delete holder;
+      holder = NULL;
       return result->second;
     }
-
+    
+    delete holder;
+    holder = NULL;
     return -1;
+  }
+
+  vector<FloatStringHolder*> GetFloatStrings() {
+    return float_strings;
   }
   
   void AddCharString(const string &s, int id) {

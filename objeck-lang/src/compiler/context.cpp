@@ -630,20 +630,30 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     
     vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
     switch(array->GetType()) {
-    case INT_TYPE:
-      cout << "###: ";
-      for(int i = 0; i < all_elements.size(); i++) {
-	cout << static_cast<IntegerLiteral*>(all_elements[i])->GetValue() << ",";
+    case INT_TYPE: {
+      int id = program->GetIntStringId(all_elements);
+      if(id > -1) {
+	array->SetId(id);
+      } 
+      else {
+	array->SetId(int_str_index);
+	program->AddIntString(all_elements, int_str_index);
+	int_str_index++;
       }
-      cout << endl;
+    }
       break;
       
-    case FLOAT_TYPE:
-      cout << "###: ";
-      for(int i = 0; i < all_elements.size(); i++) {
-	cout << static_cast<FloatLiteral*>(all_elements[i])->GetValue() << ",";
+    case FLOAT_TYPE: {
+      int id = program->GetFloatStringId(all_elements);
+      if(id > -1) {
+	array->SetId(id);
+      } 
+      else {
+	array->SetId(float_str_index);
+	program->AddFloatString(all_elements, float_str_index);
+	float_str_index++;
       }
-      cout << endl;
+    }
       break;
       
     case CHAR_TYPE:
