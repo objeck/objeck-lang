@@ -205,7 +205,7 @@ void Library::LoadFile(const string &file_name)
     cout << "string id=" << i << "; value='" << str_value << "'" << endl;
 #endif
     CharStringInstruction* str_instr = new CharStringInstruction;
-    str_instr->str_value = str_value;
+    str_instr->value = str_value;
     char_strings.push_back(str_instr);
   }
 

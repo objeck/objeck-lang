@@ -46,264 +46,275 @@
 using namespace std;
 
 namespace frontend {
-/****************************
-* ParseNode base class
-****************************/
-class ParseNode {
-  string file_name;
-  int line_num;
+  /****************************
+   * ParseNode base class
+   ****************************/
+  class ParseNode {
+    string file_name;
+    int line_num;
 
-public:
-  ParseNode(const string &f, const int l) {
-    file_name = f;
-    line_num = l;
-  }
-
-  ~ParseNode() {
-  }
-
-  const string GetFileName() {
-    return file_name;
-  }
-
-  const int GetLineNumber() {
-    return line_num;
-  }
-};
-
-/****************************
- * Entry types
- ****************************/
-typedef enum _EntryType {
-  NIL_TYPE = -4000,
-  BOOLEAN_TYPE,
-  BYTE_TYPE,
-  CHAR_TYPE,
-  INT_TYPE,
-  FLOAT_TYPE,
-  CLASS_TYPE,
-  VAR_TYPE
-} EntryType;
-
-/****************************
- * Method types
- ****************************/
-enum MethodType {
-  NEW_PUBLIC_METHOD = -5000,
-  NEW_PRIVATE_METHOD,
-  PUBLIC_METHOD,
-  PRIVATE_METHOD
-};
-
-/****************************
- * Method types
- ****************************/
-enum MethodCallType {
-  ENUM_CALL = -6000,
-  NEW_INST_CALL,
-  NEW_ARRAY_CALL,
-  METHOD_CALL,
-  PARENT_CALL
-};
-
-/******************************
- * Type class
- ****************************/
-class Type {
-  friend class TypeFactory;
-  EntryType type;
-  int dimension;
-  string class_name;
-
-  Type(Type* t) {
-    type = t->type;
-    dimension = t->dimension;
-    class_name = t->class_name;
-  }
-
-  Type(EntryType t) {
-    type = t;
-    dimension = 0;
-  }
-
-  Type(EntryType t, const string &n) {
-    type = t;
-    class_name = n;
-    dimension = 0;
-  }
-
-  ~Type() {
-  }
-
-public:
-  static Type* CharStringType();
-
-  void SetType(EntryType t) {
-    type = t;
-  }
-
-  const EntryType GetType() {
-    return type;
-  }
-
-  void SetDimension(int d) {
-    dimension = d;
-  }
-
-  const int GetDimension() {
-    return dimension;
-  }
-
-  void SetClassName(const string &n) {
-    class_name = n;
-  }
-
-  const string GetClassName() {
-    return class_name;
-  }
-};
-
-/******************************
- * TypeFactory class
- ****************************/
-class TypeFactory {
-  static TypeFactory* instance;
-  vector<Type*> types;
-
-  TypeFactory() {
-  }
-
-  ~TypeFactory() {
-  }
-
-public:
-  static TypeFactory* Instance();
-
-  void Clear() {
-    while(!types.empty()) {
-      Type* tmp = types.front();
-      types.erase(types.begin());
-      // delete
-      delete tmp;
-      tmp = NULL;
+  public:
+    ParseNode(const string &f, const int l) {
+      file_name = f;
+      line_num = l;
     }
 
-    delete instance;
-    instance = NULL;
-  }
+    ~ParseNode() {
+    }
 
-  Type* MakeType(EntryType type) {
-    Type* tmp = new Type(type);
-    types.push_back(tmp);
-    return tmp;
-  }
+    const string GetFileName() {
+      return file_name;
+    }
 
-  Type* MakeType(EntryType type, const string &name) {
-    Type* tmp = new Type(type, name);
-    types.push_back(tmp);
-    return tmp;
-  }
+    const int GetLineNumber() {
+      return line_num;
+    }
+  };
 
-  Type* MakeType(Type* type) {
-    Type* tmp = new Type(type);
-    types.push_back(tmp);
-    return tmp;
-  }
-};
+  /****************************
+   * Entry types
+   ****************************/
+  typedef enum _EntryType {
+    NIL_TYPE = -4000,
+    BOOLEAN_TYPE,
+    BYTE_TYPE,
+    CHAR_TYPE,
+    INT_TYPE,
+    FLOAT_TYPE,
+    CLASS_TYPE,
+    VAR_TYPE
+  } EntryType;
+
+  /****************************
+   * Method types
+   ****************************/
+  enum MethodType {
+    NEW_PUBLIC_METHOD = -5000,
+    NEW_PRIVATE_METHOD,
+    PUBLIC_METHOD,
+    PRIVATE_METHOD
+  };
+
+  /****************************
+   * Method types
+   ****************************/
+  enum MethodCallType {
+    ENUM_CALL = -6000,
+    NEW_INST_CALL,
+    NEW_ARRAY_CALL,
+    METHOD_CALL,
+    PARENT_CALL
+  };
+
+  /******************************
+   * Type class
+   ****************************/
+  class Type {
+    friend class TypeFactory;
+    EntryType type;
+    int dimension;
+    string class_name;
+
+    Type(Type* t) {
+      type = t->type;
+      dimension = t->dimension;
+      class_name = t->class_name;
+    }
+
+    Type(EntryType t) {
+      type = t;
+      dimension = 0;
+    }
+
+    Type(EntryType t, const string &n) {
+      type = t;
+      class_name = n;
+      dimension = 0;
+    }
+
+    ~Type() {
+    }
+
+  public:
+    static Type* CharStringType();
+
+    void SetType(EntryType t) {
+      type = t;
+    }
+
+    const EntryType GetType() {
+      return type;
+    }
+
+    void SetDimension(int d) {
+      dimension = d;
+    }
+
+    const int GetDimension() {
+      return dimension;
+    }
+
+    void SetClassName(const string &n) {
+      class_name = n;
+    }
+
+    const string GetClassName() {
+      return class_name;
+    }
+  };
+
+  /******************************
+   * TypeFactory class
+   ****************************/
+  class TypeFactory {
+    static TypeFactory* instance;
+    vector<Type*> types;
+
+    TypeFactory() {
+    }
+
+    ~TypeFactory() {
+    }
+
+  public:
+    static TypeFactory* Instance();
+
+    void Clear() {
+      while(!types.empty()) {
+	Type* tmp = types.front();
+	types.erase(types.begin());
+	// delete
+	delete tmp;
+	tmp = NULL;
+      }
+
+      delete instance;
+      instance = NULL;
+    }
+
+    Type* MakeType(EntryType type) {
+      Type* tmp = new Type(type);
+      types.push_back(tmp);
+      return tmp;
+    }
+
+    Type* MakeType(EntryType type, const string &name) {
+      Type* tmp = new Type(type, name);
+      types.push_back(tmp);
+      return tmp;
+    }
+
+    Type* MakeType(Type* type) {
+      Type* tmp = new Type(type);
+      types.push_back(tmp);
+      return tmp;
+    }
+  };
+  
+  // static array holders
+  typedef struct _IntStringHolder {
+    INT_VALUE* value;
+    int length;
+  } IntStringHolder;
+  
+  typedef struct _FloatStringHolder {
+    FLOAT_VALUE* value;
+    int length;
+  } FloatStringHolder;
 }
 
 namespace backend {
-/****************************
- * IntermediateDeclaration
- * class
- ****************************/
-class IntermediateDeclaration {
-  instructions::ParamType type;
-  int id;
-  string name;
+  /****************************
+   * IntermediateDeclaration
+   * class
+   ****************************/
+  class IntermediateDeclaration {
+    instructions::ParamType type;
+    int id;
+    string name;
 
-public:
-  IntermediateDeclaration(const string &n, instructions::ParamType t) {
-    type = t;
-    id = -1;
-    name = n;
-  }
-
-  IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
-    type = t;
-    id = i;
-    name = n;
-  }
-
-  instructions::ParamType GetType() {
-    return type;
-  }
-
-  const string GetName() {
-    return name;
-  }
-  
-  int GetId() {
-    return id;
-  }
-};
-
-/****************************
- * IntermediateDeclarations
- * class
- ****************************/
-class IntermediateDeclarations {
-  vector<IntermediateDeclaration*> declarations;
-
-  void WriteInt(int value, ofstream* file_out) {
-    file_out->write((char*)&value, sizeof(value));
-  }
-
-  void WriteString(const string &value, ofstream* file_out) {
-    int size = (int)value.size();
-    file_out->write((char*)&size, sizeof(size));
-    file_out->write(value.c_str(), value.size());
-  }
-
- public:
-  IntermediateDeclarations() {
-  }
-  
-  ~IntermediateDeclarations() {
-    while(!declarations.empty()) {
-      IntermediateDeclaration* tmp = declarations.front();
-      declarations.erase(declarations.begin());
-      // delete
-      delete tmp;
-      tmp = NULL;
+  public:
+    IntermediateDeclaration(const string &n, instructions::ParamType t) {
+      type = t;
+      id = -1;
+      name = n;
     }
-  }
 
-  void AddParameter(IntermediateDeclaration* parameter) {
-    declarations.push_back(parameter);
-  }
+    IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
+      type = t;
+      id = i;
+      name = n;
+    }
 
-  vector<IntermediateDeclaration*> GetParameters() {
-    return declarations;
-  }
+    instructions::ParamType GetType() {
+      return type;
+    }
 
-  void Write(bool is_debug, ofstream* file_out) {
-    WriteInt((int)declarations.size(), file_out);
-    for(unsigned int i = 0; i < declarations.size(); i++) {
-      IntermediateDeclaration* entry = declarations[i];
-      WriteInt(entry->GetType(), file_out);
-      if(is_debug) {
-	WriteString(entry->GetName(), file_out);
-      }
-      switch(entry->GetType()) {
-      case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        WriteInt(entry->GetId(), file_out);
-        break;
+    const string GetName() {
+      return name;
+    }
+  
+    int GetId() {
+      return id;
+    }
+  };
+
+  /****************************
+   * IntermediateDeclarations
+   * class
+   ****************************/
+  class IntermediateDeclarations {
+    vector<IntermediateDeclaration*> declarations;
+
+    void WriteInt(int value, ofstream* file_out) {
+      file_out->write((char*)&value, sizeof(value));
+    }
+
+    void WriteString(const string &value, ofstream* file_out) {
+      int size = (int)value.size();
+      file_out->write((char*)&size, sizeof(size));
+      file_out->write(value.c_str(), value.size());
+    }
+
+  public:
+    IntermediateDeclarations() {
+    }
+  
+    ~IntermediateDeclarations() {
+      while(!declarations.empty()) {
+	IntermediateDeclaration* tmp = declarations.front();
+	declarations.erase(declarations.begin());
+	// delete
+	delete tmp;
+	tmp = NULL;
       }
     }
-  }
-};
+
+    void AddParameter(IntermediateDeclaration* parameter) {
+      declarations.push_back(parameter);
+    }
+
+    vector<IntermediateDeclaration*> GetParameters() {
+      return declarations;
+    }
+
+    void Write(bool is_debug, ofstream* file_out) {
+      WriteInt((int)declarations.size(), file_out);
+      for(unsigned int i = 0; i < declarations.size(); i++) {
+	IntermediateDeclaration* entry = declarations[i];
+	WriteInt(entry->GetType(), file_out);
+	if(is_debug) {
+	  WriteString(entry->GetName(), file_out);
+	}
+	switch(entry->GetType()) {
+	case instructions::OBJ_PARM:
+	case instructions::OBJ_ARY_PARM:
+	  WriteInt(entry->GetId(), file_out);
+	  break;
+	}
+      }
+    }
+  };
 }
 
 #endif
