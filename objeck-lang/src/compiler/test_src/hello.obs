@@ -4,7 +4,13 @@ bundle Default {
 			Run();
 		}
 	
-		function : native : Run(), Nil {
+#		function : native : Run(), Nil {
+		function : Run(), Nil {
+			x : Int[,,] := [[[2,3,5][7,8][11]]];
+#			x : Int[,,] := Int->New[3,2,1];
+			x[0,0,0]->PrintLine();
+
+#~
 			i := 0;
 			do {
 				i->PrintLine();
@@ -20,14 +26,12 @@ bundle Default {
 			3->Max(5)->PrintLine();
 			"Hello World!"->StartsWith("Hello ")->PrintLine();
 
-			x : Int[,,] := [[[2,3,5][6,7,8][9,10,11]]];
-			x[0,0,0]->PrintLine();
-#~
 			y := [2,3,5,6,7,8];
 			z : String[,] := [["Randy"]["Hollines"]];
 			
 			r : Int[] := [2,3,5,6,7,8];
 ~#
+
 			s : String := "Hello World!";
 			s->PrintLine();
 		}

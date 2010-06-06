@@ -40,6 +40,8 @@ using namespace std;
 class Loader {
   int arg_count;
   vector<string> arguments;
+  int num_float_strings;
+  int num_int_strings;
   int num_char_strings;
   StackMethod* init_method;
   int string_cls_id;
