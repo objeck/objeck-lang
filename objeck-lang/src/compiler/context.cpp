@@ -614,11 +614,6 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   if(array->GetDimension() < 0) {
     ProcessError(array, "Invalid static array definition.");
   }
-  /*
-  else if(!array->IsMatchingLenghts()) {
-    ProcessError(array, "Array lengths do not match.");
-  }
-  */
   else if(!array->IsMatchingTypes()) {
     ProcessError(array, "Array element types do not match.");
   }
@@ -658,14 +653,25 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     }
       break;
       
-    case CHAR_TYPE:
-      cout << "###: ";
+    case CHAR_TYPE: {
+      // copy string elements
+      string str;
       for(int i = 0; i < all_elements.size(); i++) {
-	cout << static_cast<CharacterLiteral*>(all_elements[i])->GetValue() << ",";
+	str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
       }
-      cout << endl;
+      // associate char string
+      int id = program->GetCharStringId(str);
+      if(id > -1) {
+	array->SetId(id);
+      } 
+      else {
+	array->SetId(char_str_index);
+	program->AddCharString(str, char_str_index);
+	char_str_index++;
+      }
+    }
       break;
-
+      
     case CLASS_TYPE:
       cout << "###: ";
       for(int i = 0; i < all_elements.size(); i++) {
