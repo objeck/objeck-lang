@@ -271,27 +271,46 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
  ****************************/
 void IntermediateEmitter::EmitStrings()
 {
-  vector<string> string_values = parsed_program->GetCharStrings();
+  vector<string> char_string_values = parsed_program->GetCharStrings();
+  vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
+  vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
+  
   Linker* linker = parsed_program->GetLinker();
   if(linker && !is_lib) {
     // get current index
-    int index = (int)string_values.size();
+    int char_index = (int)char_string_values.size();
+    int int_index = (int)int_string_values.size();
+    int float_index = (int)float_string_values.size();
     // get all libraries
     map<const string, Library*> libraries = linker->GetAllLibraries();
     map<const string, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
-      // get all strings in library
-      vector<CharStringInstruction*> str_insts = iter->second->GetCharStringInstructions();
-      for(unsigned int i = 0; i < str_insts.size(); i++, index++) {
+      // char string processing
+      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
+      for(unsigned int i = 0; i < char_str_insts.size(); i++, char_index++) {
         // update index and add string
-        str_insts[i]->instr->SetOperand(index);
-        string_values.push_back(str_insts[i]->str_value);
+        char_str_insts[i]->instr->SetOperand(char_index);
+        char_string_values.push_back(char_str_insts[i]->str_value);
+      }      
+      // int string processing
+      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
+      for(unsigned int i = 0; i < int_str_insts.size(); i++, int_index++) {
+        // update index and add string
+        int_str_insts[i]->instr->SetOperand(int_index);
+        int_string_values.push_back(int_str_insts[i]->str_value);
       }
+      // float string processing
+      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
+      for(unsigned int i = 0; i < float_str_insts.size(); i++, float_index++) {
+        // update index and add string
+        float_str_insts[i]->instr->SetOperand(float_index);
+        float_string_values.push_back(float_str_insts[i]->str_value);
+      }  
     }
   }
-  imm_program->SetCharStrings(string_values);
-
-  // TODO: dup above
+  imm_program->SetCharStrings(char_string_values);
+  imm_program->SetIntStrings(int_string_values);
+  imm_program->SetFloatStrings(float_string_values);
 }
 
 /****************************
