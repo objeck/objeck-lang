@@ -534,9 +534,19 @@ public:
  * Library class
  ****************************/
 typedef struct _CharStringInstruction {
-  string str_value;
+  string value;
   LibraryInstr* instr;
 } CharStringInstruction;
+
+typedef struct _IntStringInstruction {
+  frontend::IntStringHolder* value;
+  LibraryInstr* instr;
+} IntStringInstruction;
+
+typedef struct _FloatStringInstruction {
+  frontend::FloatStringHolder* value;
+  LibraryInstr* instr;
+} FloatStringInstruction;
 
 class Library {
   string lib_path;
@@ -550,8 +560,10 @@ class Library {
   vector<LibraryClass*> class_list;
   map<const string, const string> hierarchies;
   vector<CharStringInstruction*> char_strings;
+  vector<IntStringInstruction*> int_strings;
+  vector<FloatStringInstruction*> float_strings;
   vector<string> bundle_names;
-
+  
   int ReadInt() {
     int value;
     memcpy(&value, buffer, sizeof(int));
@@ -651,6 +663,22 @@ public:
       tmp = NULL;
     }
 
+    while(!int_strings.empty()) {
+      IntStringInstruction* tmp = int_strings.front();
+      int_strings.erase(int_strings.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+
+    while(!float_strings.empty()) {
+      FloatStringInstruction* tmp = float_strings.front();
+      float_strings.erase(float_strings.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+
     if(alloc_buffer) {
       delete[] alloc_buffer;
       alloc_buffer = NULL;
@@ -694,6 +722,14 @@ public:
 
   vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
+  }
+
+  vector<IntStringInstruction*> GetIntStringInstructions() {
+    return int_strings;
+  }
+  
+  vector<FloatStringInstruction*> GetFloatStringInstructions() {
+    return float_strings;
   }
 
   void Load();

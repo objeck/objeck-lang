@@ -2,7 +2,7 @@
  * Defines how the intermediate code is written to output files
  *
  * Copyright (c) 2008-2010 Randy Hollines
- * All rights reserved.
+ * All rights reserved.string
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1053,10 +1053,12 @@ class IntermediateProgram : public Intermediate {
   vector<IntermediateClass*> classes;
   map<int, IntermediateClass*> class_map;
   vector<string> char_strings;
+  vector<frontend::IntStringHolder*> int_strings;
+  vector<frontend::FloatStringHolder*> float_strings;
   vector<string> bundle_names;
   int num_src_classes;
   int num_lib_classes;
-
+  
 public:
   IntermediateProgram() {
     num_src_classes = num_lib_classes = 0;
@@ -1075,6 +1077,22 @@ public:
     while(!classes.empty()) {
       IntermediateClass* tmp = classes.front();
       classes.erase(classes.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+
+    while(!int_strings.empty()) {
+      frontend::IntStringHolder* tmp = int_strings.front();
+      int_strings.erase(int_strings.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+    
+    while(!float_strings.empty()) {
+      frontend::FloatStringHolder* tmp = float_strings.front();
+      float_strings.erase(float_strings.begin());
       // delete
       delete tmp;
       tmp = NULL;
@@ -1107,7 +1125,15 @@ public:
   void SetCharStrings(vector<string> s) {
     char_strings = s;
   }
+  
+  void SetIntStrings(vector<frontend::IntStringHolder*> s) {
+    int_strings = s;
+  }
 
+  void SetFloatStrings(vector<frontend::FloatStringHolder*> s) {
+    float_strings = s;
+  }
+  
   void SetStartIds(int c, int m) {
     class_id = c;
     method_id = m;
