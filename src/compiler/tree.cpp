@@ -185,3 +185,21 @@ ExpressionList* StaticArray::GetAllElements() {
   
   return all_elements;
 }
+
+int StaticArray::GetSize(int d) {
+  vector<Expression*> expressions = elements->GetExpressions();
+  if(expressions[0] && expressions[0]->GetExpressionType() == STAT_ARY_EXPR) {
+    vector<Expression*> static_array = 
+      static_cast<StaticArray*>(expressions[0])->GetElements()->GetExpressions();
+    if(d < static_array.size()) {
+      if(static_array[d]) {
+	cout << "HELLO" << endl;
+	if(static_array[d]->GetExpressionType() == STAT_ARY_EXPR) {
+	  return static_cast<StaticArray*>(static_array[d])->GetElements()->GetExpressions().size();
+	}
+      }
+    }
+  }
+  
+  return -1;
+}
