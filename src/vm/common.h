@@ -833,8 +833,16 @@ class StackProgram {
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
+
+  FLOAT_VALUE** float_strings;
+  int num_float_strings;
+
+  INT_VALUE** int_strings;
+  int num_int_strings;
+  
   BYTE_VALUE** char_strings;
   int num_char_strings;
+
   StackMethod* init_method;
   long string_cls_id;
 #ifdef _WIN32
@@ -867,6 +875,26 @@ public:
     if(cls_hierarchy) {
       delete[] cls_hierarchy;
       cls_hierarchy = NULL;
+    }
+
+    if(float_strings) {
+      for(int i = 0; i < num_float_strings; i++) {
+        FLOAT_VALUE* tmp = float_strings[i];
+        delete[] tmp;
+        tmp = NULL;
+      }
+      delete[] float_strings;
+      float_strings = NULL;
+    }
+
+    if(int_strings) {
+      for(int i = 0; i < num_int_strings; i++) {
+        INT_VALUE* tmp = int_strings[i];
+        delete[] tmp;
+        tmp = NULL;
+      }
+      delete[] int_strings;
+      int_strings = NULL;
     }
 
     if(char_strings) {
@@ -949,15 +977,33 @@ public:
     return string_cls_id;
   }
 
+  void SetFloatStrings(FLOAT_VALUE** s, int n) {
+    float_strings = s;
+    num_float_strings = n;
+  }
+  
+  void SetIntStrings(INT_VALUE** s, int n) {
+    int_strings = s;
+    num_int_strings = n;
+  }
+
   void SetCharStrings(BYTE_VALUE** s, int n) {
     char_strings = s;
     num_char_strings = n;
+  }  
+  
+  FLOAT_VALUE** GetFloatStrings() {
+    return float_strings;
+  }
+
+  INT_VALUE** GetIntStrings() {
+    return int_strings;
   }
 
   BYTE_VALUE** GetCharStrings() {
     return char_strings;
   }
-
+  
   void SetClasses(StackClass** clss, const int num) {
     classes = clss;
     class_num = num;

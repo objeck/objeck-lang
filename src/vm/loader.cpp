@@ -43,12 +43,40 @@ void Loader::Load()
     cerr << "Unable to execute invalid program file '" << filename << "'." << endl;
     exit(1);
   }
+
+  int i;
+
+  // read float strings
+  num_float_strings = ReadInt();
+  FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
+  for(i = 0; i < num_float_strings; i++) {
+    const int float_string_length = ReadInt();
+    FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
+    // copy string    
+    for(unsigned int j = 0; j < float_string_length; j++) {
+      float_string[j] = ReadDouble();
+    }
+    float_strings[i] = float_string;
+  }
+  program->SetFloatStrings(float_strings, num_float_strings);
   
-  // read strings
+  // read int strings
+  num_int_strings = ReadInt();
+  INT_VALUE** int_strings = new INT_VALUE*[num_int_strings];
+  for(i = 0; i < num_int_strings; i++) {
+    const int int_string_length = ReadInt();
+    INT_VALUE* int_string = new INT_VALUE[int_string_length];
+    // copy string    
+    for(unsigned int j = 0; j < int_string_length; j++) {
+      int_string[j] = ReadInt();
+    }
+    int_strings[i] = int_string;
+  }
+  program->SetIntStrings(int_strings, num_int_strings);
+  
+  // read char strings
   num_char_strings = ReadInt();
   BYTE_VALUE** char_strings = new BYTE_VALUE*[num_char_strings + arguments.size()];
-  // copy static program strings
-  int i;
   for(i = 0; i < num_char_strings; i++) {
     string value = ReadString();
     BYTE_VALUE* char_string = new BYTE_VALUE[value.size() + 1];

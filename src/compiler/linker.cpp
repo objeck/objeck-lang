@@ -197,15 +197,55 @@ void Library::LoadFile(const string &file_name)
     exit(1);
   }
 
-  // read strings
+  // read float strings
+  const int num_float_strings = ReadInt();
+  for(int i = 0; i < num_float_strings; i++) {
+    frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
+    holder->length = ReadInt();
+    holder->value = new FLOAT_VALUE[holder->length];
+    for(int j = 0; j < holder->length; j++) {
+      holder->value[i] = ReadDouble();
+    }
+#ifdef _DEBUG
+    cout << "float string: id=" << i << "; value=";
+    for(int j = 0; j < holder->length; j++) {
+      cout << holder->value[i] << ",";
+    }
+    cout << endl;
+#endif
+    FloatStringInstruction* str_instr = new FloatStringInstruction;
+    str_instr->value = holder;
+    float_strings.push_back(str_instr);
+  }
+  // read int strings
+  const int num_int_strings = ReadInt();
+  for(int i = 0; i < num_int_strings; i++) {
+    frontend::IntStringHolder* holder = new frontend::IntStringHolder;
+    holder->length = ReadInt();
+    holder->value = new INT_VALUE[holder->length];
+    for(int j = 0; j < holder->length; j++) {
+      holder->value[i] = ReadInt();
+    }
+#ifdef _DEBUG
+    cout << "int string: id=" << i << "; value=";
+    for(int j = 0; j < holder->length; j++) {
+      cout << holder->value[i] << ",";
+    }
+    cout << endl;
+#endif
+    IntStringInstruction* str_instr = new IntStringInstruction;
+    str_instr->value = holder;
+    int_strings.push_back(str_instr);
+  }
+  // read char strings
   const int num_char_strings = ReadInt();
   for(int i = 0; i < num_char_strings; i++) {
-    const string &str_value = ReadString();
+    const string &char_str_value = ReadString();
 #ifdef _DEBUG
-    cout << "string id=" << i << "; value='" << str_value << "'" << endl;
+    cout << "char string: id=" << i << "; value='" << char_str_value << "'" << endl;
 #endif
     CharStringInstruction* str_instr = new CharStringInstruction;
-    str_instr->value = str_value;
+    str_instr->value = char_str_value;
     char_strings.push_back(str_instr);
   }
 
@@ -574,6 +614,17 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
         CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand()];
         str_instr->instr = cpy_instr;
       }
+      else if(id == instructions::CPY_INT_STR_ARY) {
+        LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
+        IntStringInstruction* str_instr = int_strings[cpy_instr->GetOperand()];
+        str_instr->instr = cpy_instr;
+      }
+      else if(id == instructions::CPY_FLOAT_STR_ARY) {
+        LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
+        FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand()];
+        str_instr->instr = cpy_instr;
+      }
+
       instrs.push_back(new LibraryInstr(line_num, TRAP_RTRN, ReadInt()));
 
       break;

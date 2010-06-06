@@ -1436,7 +1436,19 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
   switch(array->GetType()) {
   case frontend::INT_TYPE:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)all_elements.size() + 1));
+
+    for(int i = 0; i < array->GetDimension(); i++) {
+      INT_VALUE size = (INT_VALUE)array->GetSize(i);
+#ifdef _DEBUG
+      assert(size > -1);
+#endif
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, size));
+    }
+    
+    
+
+
+
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_INT_STR_ARY));
