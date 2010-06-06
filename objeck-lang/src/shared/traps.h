@@ -38,7 +38,9 @@ namespace instructions {
     // core operations
     LOAD_CLS_INST_ID = -4000,
     LOAD_ARY_SIZE,
-    CPY_STR_ARY,
+    CPY_CHAR_STR_ARY,
+    CPY_INT_STR_ARY,
+    CPY_FLOAT_STR_ARY,
     // time
     SYS_TIME,
     TIMER_START,
