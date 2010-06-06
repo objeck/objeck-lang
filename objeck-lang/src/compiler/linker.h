@@ -533,10 +533,10 @@ public:
 /******************************
  * Library class
  ****************************/
-typedef struct _StringInstruction {
+typedef struct _CharStringInstruction {
   string str_value;
   LibraryInstr* instr;
-} StringInstruction;
+} CharStringInstruction;
 
 class Library {
   string lib_path;
@@ -549,7 +549,7 @@ class Library {
   map<const string, LibraryClass*> named_classes;
   vector<LibraryClass*> class_list;
   map<const string, const string> hierarchies;
-  vector<StringInstruction*> char_strings;
+  vector<CharStringInstruction*> char_strings;
   vector<string> bundle_names;
 
   int ReadInt() {
@@ -644,7 +644,7 @@ public:
     class_list.clear();
 
     while(!char_strings.empty()) {
-      StringInstruction* tmp = char_strings.front();
+      CharStringInstruction* tmp = char_strings.front();
       char_strings.erase(char_strings.begin());
       // delete
       delete tmp;
@@ -692,7 +692,7 @@ public:
     return hierarchies;
   }
 
-  vector<StringInstruction*> GetStringInstructions() {
+  vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
   }
 
