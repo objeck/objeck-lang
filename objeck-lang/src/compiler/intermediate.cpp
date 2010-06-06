@@ -1252,6 +1252,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCharacterString(static_cast<CharacterString*>(expression));
     break;
 
+  case STAT_ARY_EXPR:
+    EmitStaticArray(static_cast<StaticArray*>(expression));
+    break;
+    
   case METHOD_CALL_EXPR: {
     // find end of nested call
     MethodCall* method_call = static_cast<MethodCall*>(expression);
@@ -1401,6 +1405,35 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 }
 
 /****************************
+ * Translates an element array.
+ * This creates a new array
+ * and copies content.
+ ****************************/
+void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
+  cur_line_num = array->GetLineNumber();
+  
+  vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+  switch(array->GetType()) {
+  case frontend::INT_TYPE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)all_elements.size() + 1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_INT_STR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
+    break;
+    
+  case frontend::FLOAT_TYPE:
+    break;
+
+  case frontend::CHAR_TYPE:
+    break;
+
+  case frontend::CLASS_TYPE:
+    break;
+  }
+}
+
+/****************************
  * Translates character string.
  * This creates a new byte array
  * and copies content.
@@ -1413,7 +1446,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size() + 1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId()));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_STR_ARY));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
 
 #ifdef _SYSTEM

@@ -569,7 +569,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case TRAP_RTRN: {
       const int id = instrs.back()->GetOperand();
-      if(id == instructions::CPY_STR_ARY) {
+      if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         StringInstruction* str_instr = char_strings[cpy_instr->GetOperand()];
         str_instr->instr = cpy_instr;
