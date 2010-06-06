@@ -281,7 +281,7 @@ void IntermediateEmitter::EmitStrings()
     map<const string, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
       // get all strings in library
-      vector<StringInstruction*> str_insts = iter->second->GetStringInstructions();
+      vector<CharStringInstruction*> str_insts = iter->second->GetCharStringInstructions();
       for(unsigned int i = 0; i < str_insts.size(); i++, index++) {
         // update index and add string
         str_insts[i]->instr->SetOperand(index);
@@ -290,6 +290,8 @@ void IntermediateEmitter::EmitStrings()
     }
   }
   imm_program->SetCharStrings(string_values);
+
+  // TODO: dup above
 }
 
 /****************************
