@@ -569,6 +569,8 @@ namespace frontend {
 	}
       } 
     }
+
+    void GetSize(StaticArray* array, int dim, int &size);
     
   public:
   StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
@@ -627,7 +629,7 @@ namespace frontend {
 
     ExpressionList* GetAllElements();
 
-    int GetSize(int d);
+    int GetSize(int dim);
     
     bool IsMatchingTypes() {
       return matching_types;

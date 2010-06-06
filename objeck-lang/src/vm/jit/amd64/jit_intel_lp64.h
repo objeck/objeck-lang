@@ -1002,7 +1002,7 @@ namespace Runtime {
 	intpr.Execute((long*)op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
       }
 	break;
-
+	
       case NEW_BYTE_ARY: {
 	long indices[8];
 	long value = PopInt(op_stack, stack_pos);
@@ -1014,6 +1014,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
+	size++;
 	long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
