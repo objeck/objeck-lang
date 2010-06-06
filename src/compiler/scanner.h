@@ -316,7 +316,7 @@ private:
       in.seekg(0, ios::end);
       buffer_size = in.tellg();
       in.seekg(0, ios::beg);
-      buffer = new char[buffer_size];
+      buffer = (char*)calloc(buffer_size + 1, sizeof(char));
       in.read(buffer, buffer_size);
       // close file
       in.close();
