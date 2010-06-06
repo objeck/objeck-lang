@@ -59,7 +59,7 @@ Scanner::~Scanner()
 {
   // delete buffer
   if(buffer) {
-    delete[] buffer;
+    free(buffer);
     buffer = NULL;
   }
   // delete token array
