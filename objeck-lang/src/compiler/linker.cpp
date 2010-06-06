@@ -204,7 +204,7 @@ void Library::LoadFile(const string &file_name)
 #ifdef _DEBUG
     cout << "string id=" << i << "; value='" << str_value << "'" << endl;
 #endif
-    StringInstruction* str_instr = new StringInstruction;
+    CharStringInstruction* str_instr = new CharStringInstruction;
     str_instr->str_value = str_value;
     char_strings.push_back(str_instr);
   }
@@ -571,7 +571,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const int id = instrs.back()->GetOperand();
       if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
-        StringInstruction* str_instr = char_strings[cpy_instr->GetOperand()];
+        CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand()];
         str_instr->instr = cpy_instr;
       }
       instrs.push_back(new LibraryInstr(line_num, TRAP_RTRN, ReadInt()));
