@@ -1084,6 +1084,8 @@ public:
 
     while(!int_strings.empty()) {
       frontend::IntStringHolder* tmp = int_strings.front();
+      delete[] tmp->value;
+      tmp->value = NULL;
       int_strings.erase(int_strings.begin());
       // delete
       delete tmp;
@@ -1092,6 +1094,8 @@ public:
     
     while(!float_strings.empty()) {
       frontend::FloatStringHolder* tmp = float_strings.front();
+      delete[] tmp->value;
+      tmp->value = NULL;
       float_strings.erase(float_strings.begin());
       // delete
       delete tmp;

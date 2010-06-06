@@ -2510,13 +2510,19 @@ namespace frontend {
 
       map<IntStringHolder*, int>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
+	delete[] holder->value;
+	holder->value = NULL;  
 	delete holder;
 	holder = NULL;
+	
 	return result->second;
       }
-    
+
+      delete[] holder->value;
+      holder->value = NULL;
       delete holder;
       holder = NULL;
+      
       return -1;
     }
 
@@ -2551,13 +2557,19 @@ namespace frontend {
 
       map<FloatStringHolder*, int>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
+	delete[] holder->value;
+	holder->value = NULL;  
 	delete holder;
 	holder = NULL;
+
 	return result->second;
       }
-    
+
+      delete[] holder->value;
+      holder->value = NULL;    
       delete holder;
       holder = NULL;
+      
       return -1;
     }
 
