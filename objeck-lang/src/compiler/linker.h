@@ -451,6 +451,13 @@ public:
     }
     methods.clear();
 
+    /* deleted elsewhere
+    if(entries) {
+      delete entries;
+      entries = NULL;
+    }
+    */
+    
     lib_children.clear();
   }
 
