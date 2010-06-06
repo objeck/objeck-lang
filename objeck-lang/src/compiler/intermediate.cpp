@@ -290,21 +290,21 @@ void IntermediateEmitter::EmitStrings()
       for(unsigned int i = 0; i < char_str_insts.size(); i++, char_index++) {
         // update index and add string
         char_str_insts[i]->instr->SetOperand(char_index);
-        char_string_values.push_back(char_str_insts[i]->str_value);
+        char_string_values.push_back(char_str_insts[i]->value);
       }      
       // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(unsigned int i = 0; i < int_str_insts.size(); i++, int_index++) {
         // update index and add string
         int_str_insts[i]->instr->SetOperand(int_index);
-        int_string_values.push_back(int_str_insts[i]->str_value);
+        int_string_values.push_back(int_str_insts[i]->value);
       }
       // float string processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(unsigned int i = 0; i < float_str_insts.size(); i++, float_index++) {
         // update index and add string
         float_str_insts[i]->instr->SetOperand(float_index);
-        float_string_values.push_back(float_str_insts[i]->str_value);
+        float_string_values.push_back(float_str_insts[i]->value);
       }  
     }
   }
