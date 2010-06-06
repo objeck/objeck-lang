@@ -194,6 +194,7 @@ class IntermediateEmitter {
   void EmitIndices(ExpressionList* indices);
   void EmitExpressions(ExpressionList* parameters);
   void EmitExpression(Expression* expression);
+  void EmitStaticArray(StaticArray* array);
   void EmitCharacterString(CharacterString* char_str);
   void EmitAndOr(CalculatedExpression* expression);
   void EmitCalculation(CalculatedExpression* expression);

@@ -1208,7 +1208,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
-  case CPY_STR_ARY: {
+  case CPY_CHAR_STR_ARY: {
     long index = PopInt();
     BYTE_VALUE* value_str = program->GetCharStrings()[index];
     // copy array
@@ -1219,16 +1219,22 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       str[i] = value_str[i];
     }
 #ifdef _DEBUG
-    cout << "stack oper: CPY_STR_ARY" << endl;
-    /*
-      cout << "stack oper: CPY_STR_ARY: from='" << value_str << "', to='"
-      << str << "', size=" << size << endl;
-    */
+    cout << "stack oper: CPY_CHAR_STR_ARY" << endl;
 #endif
     PushInt((long)array);
   }
     break;
-
+    
+  case CPY_INT_STR_ARY: {
+    long index = PopInt();
+    INT_VALUE* value_str = program->GetIntStrings()[index];
+    // copy array
+    long* array = (long*)PopInt();
+    
+    //...
+  }
+    break;
+    
     // ---------------- standard i/o ----------------
   case STD_OUT_BOOL:
     cout << ((PopInt() == 0) ? "false" : "true");
