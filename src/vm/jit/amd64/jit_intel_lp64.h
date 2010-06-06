@@ -1288,7 +1288,7 @@ namespace Runtime {
 	}  
 	  break;
 
-	case CPY_STR_ARY: {
+	case CPY_CHAR_STR_ARY: {
  	  long index = PopInt(op_stack, stack_pos);
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
 	  // copy array
@@ -1299,7 +1299,7 @@ namespace Runtime {
 	    str[i] = value_str[i];
 	  }
 #ifdef _DEBUG
-	  cout << "  CPY_STR_ARY: addr=" << array << "(" << long(array) 
+	  cout << "  CPY_CHAR_STR_ARY: addr=" << array << "(" << long(array) 
 	       << "), from='" << value_str << "', to='" << str << "'" << endl;
 #endif
 	  PushInt(op_stack, stack_pos, (long)array);

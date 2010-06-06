@@ -598,6 +598,10 @@ class StaticArray : public Expression {
   int GetId() {
     return id;
   }
+
+  int GetDimension() {
+    return dim;
+  }
   
   EntryType GetType() {
     switch(cur_type) {      
@@ -622,10 +626,6 @@ class StaticArray : public Expression {
   }
 
   ExpressionList* GetAllElements();
-  
-  int GetDimension() {
-    return dim;
-  }
   
   bool IsMatchingTypes() {
     return matching_types;
