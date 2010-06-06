@@ -186,16 +186,21 @@ ExpressionList* StaticArray::GetAllElements() {
   return all_elements;
 }
 
-int StaticArray::GetSize(int d) {
-  vector<Expression*> expressions = elements->GetExpressions();
-  if(expressions[0] && expressions[0]->GetExpressionType() == STAT_ARY_EXPR) {
-    vector<Expression*> static_array = 
-      static_cast<StaticArray*>(expressions[0])->GetElements()->GetExpressions();
-    if(d < static_array.size() && static_array[d] && 
-       static_array[d]->GetExpressionType() == STAT_ARY_EXPR) {
-      return static_cast<StaticArray*>(static_array[d])->GetElements()->GetExpressions().size();
-    }
+int StaticArray::GetSize(int dim) {
+  int size;
+  GetSize(this, dim, size);
+  return size;
+}
+
+void StaticArray::GetSize(StaticArray* array, int dim, int &size) {
+  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  if(static_array.size() == 1 && static_array[0]->GetExpressionType() == STAT_ARY_EXPR) {
+    GetSize(static_cast<StaticArray*>(static_array[0]), dim, size);
   }
-  
-  return -1;
+  else if(dim < static_array.size() && static_array[dim]->GetExpressionType() == STAT_ARY_EXPR) {
+    GetSize(static_cast<StaticArray*>(static_array[dim]), dim, size);
+  }
+  else {
+    size = static_array.size();
+  }
 }

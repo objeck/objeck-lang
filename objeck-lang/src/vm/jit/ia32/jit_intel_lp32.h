@@ -837,6 +837,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
+	size++;
 	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(int32_t)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
