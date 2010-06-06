@@ -809,6 +809,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
     size *= value;
     indices[dim++] = value;
   }
+  size++;
   long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)),
 							      BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size;
@@ -1247,9 +1248,17 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long index = PopInt();
     FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
     // copy array
-    long* array = (long*)PopInt();
-    
-    //...
+    long* array = (long*)PopInt();    
+    const long size = array[0];
+    const long dim = array[1];    
+    FLOAT_VALUE* str = (FLOAT_VALUE*)(array + dim + 2);
+    for(long i = 0; i < size; i++) {
+      str[i] = value_str[i];
+    }
+#ifdef _DEBUG
+    cout << "stack oper: CPY_INT_STR_ARY" << endl;
+#endif
+    PushInt((long)array);
   }
     break;
     
