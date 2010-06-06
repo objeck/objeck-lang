@@ -1147,16 +1147,35 @@ public:
     // magic number
     if(is_lib) {
       WriteInt(0xddde, file_out);
-    } else {
+    } 
+    else {
       WriteInt(0xdddd, file_out);
     }
-
-    // write program strings
+    
+    // write float strings
+    WriteInt((int)float_strings.size(), file_out);
+    for(unsigned int i = 0; i < float_strings.size(); i++) {
+      frontend::FloatStringHolder* holder = float_strings[i];
+      WriteInt(holder->length, file_out);
+      for(int j = 0; j < holder->length; j++) {
+	WriteDouble(holder->value[j], file_out);
+      }
+    }
+    // write int strings
+    WriteInt((int)int_strings.size(), file_out);
+    for(unsigned int i = 0; i < int_strings.size(); i++) {
+      frontend::IntStringHolder* holder = int_strings[i];
+      WriteInt(holder->length, file_out);
+      for(int j = 0; j < holder->length; j++) {
+	WriteInt(holder->value[j], file_out);
+      }
+    }
+    // write char strings
     WriteInt((int)char_strings.size(), file_out);
     for(unsigned int i = 0; i < char_strings.size(); i++) {
       WriteString(char_strings[i], file_out);
     }
-
+    
     // write bundle names
     if(is_lib) {
       WriteInt((int)bundle_names.size(), file_out);

@@ -569,7 +569,7 @@ namespace frontend {
 	}
       } 
     }
-  
+    
   public:
   StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
       elements = e;
@@ -626,12 +626,14 @@ namespace frontend {
     }
 
     ExpressionList* GetAllElements();
-  
+
+    int GetSize(int d);
+    
     bool IsMatchingTypes() {
       return matching_types;
     }
   
-    bool IsValidLenghts() {
+    bool IsMatchingLenghts() {
       return matching_lengths;
     }
   };
