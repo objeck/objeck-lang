@@ -614,9 +614,11 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   if(array->GetDimension() < 0) {
     ProcessError(array, "Invalid static array definition.");
   }
-  else if(!array->IsValidLenghts()) {
+  /*
+  else if(!array->IsMatchingLenghts()) {
     ProcessError(array, "Array lengths do not match.");
   }
+  */
   else if(!array->IsMatchingTypes()) {
     ProcessError(array, "Array element types do not match.");
   }
