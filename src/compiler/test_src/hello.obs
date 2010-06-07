@@ -14,20 +14,20 @@ bundle Default {
 			c : Char[] := ['N','e','o'];
 			c->PrintLine();
 
-			ff : Float[,] := [[5.5, 4.5][0.45, 1.33, 3.14]];
+			ff : Float[,] := [5.5, 4.5][0.45, 1.33, 3.14];
 			ff[0,1]->PrintLine();
 
 ~#
-			ff : Float[,] := [[5.5, 4.5][0.45, 1.33, 3.14]];
-			ff[0,1]->PrintLine();
+			ff : Float[,] := [[5.5,4.5,3.3][0.45,1.33,3.14]];
+			ff[1,1]->PrintLine();
 
+#~
 			x : Int[,,] := [[[2,3,5][7,8][11]]];
 			x[0,0,0]->PrintLine();
 
 			c : Char[] := ['N','e','o'];
 			c->PrintLine();
 
-#~
 			i := 0;
 			do {
 				i->PrintLine();

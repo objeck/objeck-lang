@@ -1255,8 +1255,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     for(long i = 0; i < size; i++) {
       str[i] = value_str[i];
     }
+    
 #ifdef _DEBUG
-    cout << "stack oper: CPY_INT_STR_ARY" << endl;
+    cout << "stack oper: CPY_FLOAT_STR_ARY" << endl;
 #endif
     PushInt((long)array);
   }
