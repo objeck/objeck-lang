@@ -614,9 +614,19 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   if(array->GetDimension() < 0) {
     ProcessError(array, "Invalid static array definition.");
   }
-  else if(!array->IsMatchingTypes()) {
+  
+  if(!array->IsMatchingTypes()) {
     ProcessError(array, "Array element types do not match.");
   }
+  
+  if(!array->IsMatchingLenghts()) {
+    ProcessError(array, "Array element lenghts do not match.");
+  }
+  
+  if(array->GetDimension() > 2) {
+    ProcessError(array, "Static array definitions must be 2 dimensions or less.");
+  }
+  
   else {
     Type* type = TypeFactory::Instance()->MakeType(array->GetType());
     type->SetDimension(array->GetDimension());
