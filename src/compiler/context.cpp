@@ -613,20 +613,13 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   if(array->GetDimension() < 0) {
     ProcessError(array, "Invalid static array definition.");
-  }
-  
-  if(!array->IsMatchingTypes()) {
+  }  
+  else if(!array->IsMatchingTypes()) {
     ProcessError(array, "Array element types do not match.");
-  }
-  
-  if(!array->IsMatchingLenghts()) {
-    ProcessError(array, "Array element lenghts do not match.");
-  }
-  
-  if(array->GetDimension() > 2) {
-    ProcessError(array, "Static array definitions must be 2 dimensions or less.");
-  }
-  
+  }  
+  else if(!array->IsMatchingLenghts()) {
+    ProcessError(array, "Array dimension lenghts do not match.");
+  }  
   else {
     Type* type = TypeFactory::Instance()->MakeType(array->GetType());
     type->SetDimension(array->GetDimension());
@@ -635,7 +628,17 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     }
     array->SetEvalType(type, false);
     
-    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+    // ensure that element sizes match dimensions
+    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();    
+    int total_size = array->GetSize(0);
+    for(int i = 1; i < array->GetDimension(); i++) {
+      total_size *= array->GetSize(i);
+    }
+    
+    if(all_elements.size() != total_size) {
+      ProcessError(array, "Element counts do not match dimension sizes");
+    }
+
     switch(array->GetType()) {
     case INT_TYPE: {
       int id = program->GetIntStringId(all_elements);
@@ -683,11 +686,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       break;
       
     case CLASS_TYPE:
-      cout << "###: ";
-      for(int i = 0; i < all_elements.size(); i++) {
-	cout << static_cast<CharacterString*>(all_elements[i])->GetString() << ",";
-      }
-      cout << endl;
+      ProcessError(array, "Unsupported statement.");
       break;
     }
   }
