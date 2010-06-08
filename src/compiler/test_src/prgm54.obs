@@ -38,8 +38,7 @@ bundle Default {
 											tag->GetChar(tag_end) <> ' ') {
 											tag_end := tag_end + 1;
 										};
-										Console->GetInstance()->Print("start tag: |")->
-											Print(tag->SubString(tag_end))->PrintLine("|");			
+										"start tag: |"->Print(); tag->SubString(tag_end)->Print(); "|"->PrintLine();			
 									}
 									else {
 										tag_end := 1;
@@ -47,8 +46,7 @@ bundle Default {
 											tag->GetChar(tag_end) <> ' ') {
 											tag_end := tag_end + 1;
 										};
-										Console->GetInstance()->Print("end tag: |")->
-											Print(tag->SubString(1, tag_end - 1))->PrintLine("|");
+										"end tag: |"->Print(); tag->SubString(1, tag_end - 1)->Print(); "|"->PrintLine();
 									};
 								};											
 							};
