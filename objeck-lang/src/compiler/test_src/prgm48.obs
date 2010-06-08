@@ -29,7 +29,7 @@ bundle Default {
 							string->Append(line->GetChar(i));
 							i := i + 1;
 						};
-						Console->GetInstance()->Print("string '")->Print(string)->PrintLine("'");
+						"string '"->Print(); string->Print(); "'"->PrintLine();
 					}
 					# number
 					else if(line->GetChar(i)->IsDigit() = true) {
@@ -38,7 +38,7 @@ bundle Default {
 							number->Append(line->GetChar(i));
 							i := i + 1;
 						};
-						Console->GetInstance()->Print("number '")->Print(number)->PrintLine("'");
+						"number '"->Print(); number->PrintLine(); "'"->PrintLine();
 					}
 					# other'c
 					else {
@@ -73,7 +73,7 @@ bundle Default {
 							}
 							
 							other: {
-								Console->GetInstance()->Print("'")->Print(line->GetChar(i))->PrintLine("'");
+								"'"->Print(); line->GetChar(i)->Print(); "'"->PrintLine();
 							}
 						};
 						i := i + 1;
