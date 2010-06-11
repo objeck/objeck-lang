@@ -1225,6 +1225,25 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     PushInt((long)array);
   }
     break;
+
+  case CPY_CHAR_STR_ARYS: {
+    // copy array
+    long* array = (long*)PopInt();
+    const long size = array[0];
+    const long dim = array[1];
+    // copy elements
+    cout << "## " << array << ", " << size << endl;
+    INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+    for(long i = 0; i < size; i++) {
+      str[i] = PopInt();
+      cout << "$$ " << str[i] << endl;
+    }
+#ifdef _DEBUG
+    cout << "stack oper: CPY_CHAR_STR_ARYS" << endl;
+#endif
+    PushInt((long)array);
+  }
+    break;
     
   case CPY_INT_STR_ARY: {
     long index = PopInt();
