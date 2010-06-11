@@ -6,6 +6,7 @@ bundle Default {
 	
 #		function : native : Run(), Nil {
 		function : Run(), Nil {
+#~
 			c : Char[] := ['N','e','o'];
 			c->PrintLine();
 
@@ -31,9 +32,11 @@ bundle Default {
 			"Hello World!"->StartsWith("Hello ")->PrintLine();
 
 			y := [2,3,5,6,7,8];
-
-			s : String := "Hello World!";
-			s->PrintLine();
+~#
+			ss : String[,] := [["Hello","World"]["Morph","Dog"]];
+			ss[0,0]->PrintLine();
+			ss[1,1]->PrintLine();
+#			ss->GetSize()->PrintLine();
 		}
 	}
 }
