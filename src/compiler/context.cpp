@@ -521,29 +521,14 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
     AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
     break;
     
-  case CHAR_STR_EXPR: {
-    // TODO: cleaner way of doing this!
-    CharacterString* char_str = static_cast<CharacterString*>(expression);
-#ifdef _DEBUG
-    Show("character string literal", expression->GetLineNumber(), depth);
-#endif
-    const string &str = char_str->GetString();
-    int id = program->GetCharStringId(str);
-    if(id > -1) {
-      char_str->SetId(id);
-    } 
-    else {
-      char_str->SetId(char_str_index);
-      program->AddCharString(str, char_str_index);
-      char_str_index++;
-    }
-  }
+  case CHAR_STR_EXPR:
+    AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
     break;
-
+    
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
     break;
-
+    
   case NIL_LIT_EXPR:
 #ifdef _DEBUG
     Show("nil literal", expression->GetLineNumber(), depth);
@@ -608,6 +593,22 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 
   // check cast
   AnalyzeCast(expression, depth + 1);
+}
+
+void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int depth) {
+#ifdef _DEBUG
+  Show("character string literal", char_str->GetLineNumber(), depth);
+#endif
+  const string &str = char_str->GetString();
+  int id = program->GetCharStringId(str);
+  if(id > -1) {
+    char_str->SetId(id);
+  } 
+  else {
+    char_str->SetId(char_str_index);
+    program->AddCharString(str, char_str_index);
+    char_str_index++;
+  }
 }
 
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
@@ -686,7 +687,13 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       break;
       
     case CLASS_TYPE:
-      ProcessError(array, "Unsupported statement.");
+      for(int i = 0; i < all_elements.size(); i++) {	
+	AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
+      }
+      break;
+
+    default:
+      ProcessError(array, "Invalid type for static array.");
       break;
     }
   }
