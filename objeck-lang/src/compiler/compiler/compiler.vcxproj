@@ -46,12 +46,12 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Structure Build|x64'" Label="Configuration">
@@ -117,6 +117,7 @@
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Structure Build|x64'">$(Platform)\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">obc</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">obc</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.exe</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -229,6 +230,7 @@
     <ClCompile Include="..\linker.cpp" />
     <ClCompile Include="..\optimize.cpp" />
     <ClCompile Include="..\parser.cpp" />
+    <ClCompile Include="..\posix_main.cpp" />
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\target.cpp" />
     <ClCompile Include="..\tree.cpp" />
@@ -247,6 +249,12 @@
     <ClInclude Include="..\target.h" />
     <ClInclude Include="..\tree.h" />
     <ClInclude Include="..\types.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\images\Gear.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
