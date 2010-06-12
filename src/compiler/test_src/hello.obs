@@ -24,21 +24,28 @@ bundle Default {
 			while(i < 0);
 			"Bye"->PrintLine();
 
-			s := "Hello World!";
-			s->StartsWith("Hello")->PrintLine();
 			s->EndsWith("World!")->PrintLine();
 
 			3->Max(5)->PrintLine();
-			"Hello World!"->StartsWith("Hello ")->PrintLine();
 
 			y := [2,3,5,6,7,8];
-~#
 			ss : String[,,] := [
 				[["Hello","World"]["Again","Never"]]
 				["AG","Battery"]["Blaq","Poet"]];
 			ss[0,1,0]->PrintLine();
 			ss[1,1,1]->PrintLine();
 			ss->GetSize()->PrintLine();
+
+			ii : Int[,,] := [[[2,3][4,5]][[6,7][8,9]]];
+			ii[1,1,1]->PrintLine();
+~#
+
+			s := "Hello World!";
+			s->StartsWith("Hello")->PrintLine();
+
+			IO.Console->GetInstance()->Print("Hello")->PrintLine(" World!");
+
+			"Hello World!"->StartsWith("Hello ")->PrintLine();
 		}
 	}
 }
