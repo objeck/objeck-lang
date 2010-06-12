@@ -2510,7 +2510,7 @@ namespace frontend {
       holder->value = int_array;
       holder->length = int_elements.size();
 
-      map<IntStringHolder*, int>::iterator result = int_string_ids.find(holder);
+      map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
 	delete[] holder->value;
 	holder->value = NULL;  
@@ -2557,7 +2557,7 @@ namespace frontend {
       holder->length = float_elements.size();
 
 
-      map<FloatStringHolder*, int>::iterator result = float_string_ids.find(holder);
+      map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
 	delete[] holder->value;
 	holder->value = NULL;  
