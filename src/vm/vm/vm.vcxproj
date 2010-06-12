@@ -24,12 +24,12 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -162,6 +162,7 @@
     <ClCompile Include="..\jit\ia32\jit_intel_lp32.cpp" />
     <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\os\windows\memory.cpp" />
+    <ClCompile Include="..\posix_main.cpp" />
     <ClCompile Include="..\vm.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -173,6 +174,12 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\vm.h" />
     <ClInclude Include="..\os\windows\windows.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\images\Gear.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
