@@ -32,6 +32,11 @@ bundle Default {
                         ss[1,1,1]->PrintLine();
                         ss->GetSize()->PrintLine();
 
+			values : Int[,] := [[2,3][4,5]];
+			values[1,1]->PrintLine();
+
+			strs := ["Hello","World!"];
+			strs->GetSize()->PrintLine();
 		}
 	}
 }
