@@ -169,11 +169,10 @@ class IntermediateEmitter {
   bool is_lib;
   bool is_debug;
   friend class SelectArrayTree;
-  bool is_new_inst;
   // NOTE: used to determine if two instantiated 
   // objects instances need to be swapped as 
   // method parameters
-  int new_inst_count; 
+  int new_char_str_count; 
   int cur_line_num;
   
   // emit operations
@@ -322,8 +321,7 @@ class IntermediateEmitter {
     conditional_label = -1;
     // 1,073,741,824 unconditional labels
     unconditional_label = (2 << 29) - 1;
-    is_new_inst = false;
-    new_inst_count = 0;
+    new_char_str_count = 0;
     cur_line_num = -1;
   }
 

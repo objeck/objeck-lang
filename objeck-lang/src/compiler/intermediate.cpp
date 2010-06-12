@@ -479,14 +479,13 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
         case frontend::INT_TYPE:
         case frontend::CLASS_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, entry->GetId(), LOCL));
-	  new_inst_count = 0;
           break;
 
         case frontend::FLOAT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, entry->GetId(), LOCL));
-	    new_inst_count = 0;
-          } else {
+          } 
+	  else {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, entry->GetId(), LOCL));
           }
           break;
@@ -1517,8 +1516,8 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   // new basic block
   NewBlock();
   // check for stack swap
-  new_inst_count++;
-  if(new_inst_count >= 2) {
+  new_char_str_count++;
+  if(new_char_str_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
   }
 }
@@ -1539,14 +1538,12 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, label, 1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
-    new_inst_count = 0;
     int end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
-    new_inst_count = 0;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end));
   }
     break;
@@ -1559,14 +1556,12 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, label, 0));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
-    new_inst_count = 0;
     int end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, label));
     // emit left
     EmitExpression(expression->GetLeft());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
-    new_inst_count = 0;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end));
   }
     break;
@@ -1930,14 +1925,13 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, variable->GetId(), mem_context));
-      new_inst_count = 0;
       break;
 
     case frontend::FLOAT_TYPE:
       if(variable->GetEntry()->GetType()->GetDimension() > 0) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, variable->GetId(), mem_context));
-	new_inst_count = 0;
-      } else {
+      } 
+      else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, variable->GetId(), mem_context));
       }
       break;
@@ -1970,7 +1964,6 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     for(unsigned int i = 0; i < expressions.size(); i++) {
       EmitExpression(expressions[i]);
     }
-    is_new_inst = false;
   }
   // enum call
   else if(method_call->GetCallType() == ENUM_CALL) {
@@ -1981,7 +1974,6 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    is_new_inst = false;
   }
   // instance
   else if(method_call->GetCallType() == NEW_INST_CALL) {
@@ -2010,7 +2002,6 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, klass_id));
       }
     }
-    is_new_inst = true;
   }
   // method call
   else {
@@ -2026,8 +2017,8 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         EmitExpression(expressions[i]);
       }
     }
-    is_new_inst = false;
   }
+  new_char_str_count = 0;
 }
 
 /****************************
@@ -2140,7 +2131,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
-      } else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {
+      } 
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }
@@ -2166,7 +2158,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
       } else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-                (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {
+                (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }
@@ -2202,18 +2194,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   }  
   // new basic block
   NewBlock();
-  is_new_inst = false;
-
-  // check for stack swap
-  if(is_new_inst) {
-    new_inst_count++;
-  }
-  else {
-    new_inst_count = 0;
-  }  
-  if(new_inst_count >= 2) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
-  }
+  new_char_str_count = 0;
 }
 
 /****************************
