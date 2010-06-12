@@ -1058,6 +1058,66 @@ bundle IO {
 		method : ReadString(buffer : Char[]), Nil {
 			STD_IN_STRING;
 		}
+		
+		method : public : Print(b : Byte), Console {
+			b->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(b : Byte), Console {
+			b->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(c : Char), Console {
+			c->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(c : Char), Console {
+			c->PrintLine();
+			return @console;
+		}
+
+		method : public : Print(i : Int), Console {
+			i->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(i : Int), Console {
+			i->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(f : Float), Console {
+			f->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(f : Float), Console {
+			f->PrintLine();
+			return @console;
+		}
+
+		method : public : Print(cc : Char[]), Console {
+			cc->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(cc : Char[]), Console {
+			cc->PrintLine();
+			return @console;
+		}
+		
+		method : public : Print(s : System.String), Console {
+			s->Print();
+			return @console;
+		}
+
+		method : public : PrintLine(s : System.String), Console {
+			s->PrintLine();
+			return @console;
+		}
 	}
 	
 	class File {
