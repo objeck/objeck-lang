@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.10}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.11}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -189,6 +189,8 @@ The Objeck language supports single and multi-dimensional arrays.  Arrays are al
 array := Int->New[2,3];
 array[0,2] := 13;
 array[1,0] := 7;
+values : Int[,] := [[2,3][4,5]];
+values[1,1]->PrintLine();
 \end{verbatim}
 
 The size of an array can be obtained by calling the array's \texttt{GetSize()} method.  The \texttt{GetSize()} method will return the number of elements in a given array.  For a multi-dimensional array the size method returns the number of elements in the first dimension.  Character array literals are allocated as \texttt{String} objects.  It should also be noted that language has a \texttt{String} class that provides support for advanced string operations.
@@ -196,6 +198,8 @@ The size of an array can be obtained by calling the array's \texttt{GetSize()} m
 \begin{verbatim}
 str := "Hello World!";
 str->GetSize()->PrintLine();
+strs := ["Hello","World!"];
+strs->GetSize()->PrintLine();
 \end{verbatim}
 
 \subsection{Statements}
@@ -445,7 +449,7 @@ obc -src test_src\debug.obs -dest a.obe -debug
 obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
 
 -------------------------------------
-Objeck v0.9.10 - Interactive Debugger
+Objeck v0.9.11 - Interactive Debugger
 -------------------------------------
 loaded executable: file='../../compiler/a.obe'
 source files: path='../../compiler/test_src/'
@@ -1166,7 +1170,6 @@ The Memory Manager component allows the runtime system to manage the user alloca
 The appendix below lists the types of stack instructions that are executed by the Objeck VM.  The VM was designed to be portable and language independent.  Early development versions of the VM included an inline assembler, which may be re-added in future releases.
 
 \begin{center}
-{\small{
 \begin{tabular}{| l | l | p{6 cm} |}
 \hline
 \multicolumn{3}{|c|}{\textbf{Stack Operators}} \\
@@ -1263,7 +1266,7 @@ LIB\_NEW\_OBJ\_INST & n/a & symbolic library link for a new object instance  \\ 
 LIB\_MTHD\_CALL & n/a & symbolic library link for a method call  \\ \hline
 LIB\_OBJ\_INST\_CAST & n/a & symbolic library link for an object cast  \\ \hline
 \end{tabular}
-}}
+
 \end{center}
 
 \end{document}
