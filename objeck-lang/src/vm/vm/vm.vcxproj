@@ -83,7 +83,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)obr.dll</OutputFile>
+      <OutputFile>$(OutDir)obr.exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
@@ -124,7 +124,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)obr.dll</OutputFile>
+      <OutputFile>$(OutDir)obr.exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -162,8 +162,8 @@
     <ClCompile Include="..\jit\ia32\jit_intel_lp32.cpp" />
     <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\os\windows\memory.cpp" />
-    <ClCompile Include="..\posix_main.cpp" />
     <ClCompile Include="..\vm.cpp" />
+    <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h" />
