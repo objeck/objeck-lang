@@ -35,48 +35,26 @@
 // #include "vld.h"
 #endif
 
+#include "vm.h"
 #include "windows.h"
 #include <iostream>
-#include <string>
 #pragma comment(lib, "Ws2_32.lib")
 
-using namespace std;
-
-typedef int (*Execute)(const int, char**);
-
-int main(const int argc, char* argv[])
+int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-    int status;
-    HINSTANCE compiler_lib = LoadLibrary("obr.dll");
-    if(compiler_lib) {
-      Execute _Execute = (Execute)GetProcAddress(compiler_lib, "Execute");
-      if(_Execute) {
-        // load winsock
-        WSADATA data;
-        int version = MAKEWORD(2, 2);
-        if(WSAStartup(version, &data)) {
-          cerr << "Unable to load Winsock 2.2!" << endl;
-          status = SYSTEM_ERROR;
-        }
-        else {
-          // execute program
-          status = _Execute(argc, argv);
-        }
-        // release winsock
-        WSACleanup();
-      }
-      else {
-        cerr << "Unable to envoke virtual machine!" << endl;
-        status = SYSTEM_ERROR;
-      }
-      // clean up
-      FreeLibrary(compiler_lib);
+    WSADATA data;
+    int version = MAKEWORD(2, 2);
+    if(WSAStartup(version, &data)) {
+      cerr << "Unable to load Winsock 2.2!" << endl;
+      return SYSTEM_ERROR;
     }
     else {
-      cerr << "Unable to loaded obr.dll!" << endl;
-      status = SYSTEM_ERROR;
+      // execute program
+      return Execute(argc, argv);
     }
+    // release winsock
+    WSACleanup();
   } 
   else {
     string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
