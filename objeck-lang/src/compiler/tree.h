@@ -558,7 +558,7 @@ namespace frontend {
 
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
-      for(int i = 0; i < static_array.size(); i++) { 
+      for(unsigned int i = 0; i < static_array.size(); i++) { 
 	if(static_array[i]) {
 	  if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	    GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
@@ -2488,7 +2488,7 @@ namespace frontend {
   
     void AddIntString(vector<Expression*> &int_elements, int id) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
-      for(int i = 0; i < int_elements.size(); i++) {
+      for(unsigned int i = 0; i < int_elements.size(); i++) {
 	int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
 
@@ -2502,7 +2502,7 @@ namespace frontend {
   
     int GetIntStringId(vector<Expression*> &int_elements) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
-      for(int i = 0; i < int_elements.size(); i++) {
+      for(unsigned int i = 0; i < int_elements.size(); i++) {
 	int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
 
@@ -2534,7 +2534,7 @@ namespace frontend {
   
     void AddFloatString(vector<Expression*> &float_elements, int id) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
-      for(int i = 0; i < float_elements.size(); i++) {
+      for(unsigned int i = 0; i < float_elements.size(); i++) {
 	float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
       }
     
@@ -2548,7 +2548,7 @@ namespace frontend {
   
     int GetFloatStringId(vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
-      for(int i = 0; i < float_elements.size(); i++) {
+      for(unsigned int i = 0; i < float_elements.size(); i++) {
 	float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
       }
     

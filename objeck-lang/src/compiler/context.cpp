@@ -670,7 +670,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     case CHAR_TYPE: {
       // copy string elements
       string str;
-      for(int i = 0; i < all_elements.size(); i++) {
+      for(unsigned int i = 0; i < all_elements.size(); i++) {
 	str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
       }
       // associate char string
@@ -687,7 +687,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       break;
       
     case CLASS_TYPE:
-      for(int i = 0; i < all_elements.size(); i++) {	
+      for(unsigned int i = 0; i < all_elements.size(); i++) {	
 	AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
       }
       break;
