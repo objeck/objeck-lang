@@ -1488,7 +1488,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   cur_line_num = char_str->GetLineNumber();
   
   // copy and create Char[]
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size() + 1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId()));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
