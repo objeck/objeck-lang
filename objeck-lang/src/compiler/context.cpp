@@ -1321,7 +1321,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
   Type* cast_type = expression->GetCastType();
   if(cast_type) {
     AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
-    expression->SetEvalType(cast_type, false);
+    // expression->SetEvalType(cast_type, false);
   }
 }
 
