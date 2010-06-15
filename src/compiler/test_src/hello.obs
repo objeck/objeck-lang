@@ -1,18 +1,19 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
-#			Test1();
+			Test1();
 #			Test2();
-			Test3();
+#			Test3();
 		}
 	
 #		function : native : Run(), Nil {
 		function : Test1(), Nil {
-			f := 10.0;
+			f := 10.3;
 			remainder := f - f->Floor();
 			(1000.0 * remainder)->As(Int)->PrintLine();
 			(5 + 3.14)->As(Int)->PrintLine();
-#			(1000.0 * remainder)->PrintLine();
+			(3.14 + 2)->As(Int)->PrintLine();
+			(1000.0 * remainder)->PrintLine();
 		}
 
 		function : native : Test3(), Nil {
