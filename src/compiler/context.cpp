@@ -2579,8 +2579,14 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params,
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
-    Type* type = expression->GetEvalType();
-
+    Type* type;
+    if(expression->GetCastType()) {
+      type = expression->GetCastType();
+    }
+    else {
+      type = expression->GetEvalType();
+    }
+    
     if(type) {
       switch(type->GetType()) {
       case BOOLEAN_TYPE:
