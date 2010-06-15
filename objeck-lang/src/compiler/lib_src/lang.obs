@@ -182,6 +182,25 @@ bundle System {
 			return string;
 		}
 	}
+	
+	class Number {
+		function : native : IntToString(value : Int, string : String), Nil {
+			values := Int->New[16];
+			i := 0;
+            while(value >= 10 & i < 16) {
+            	mod := value % 10;
+                values[i] := mod;
+                i := i + 1;
+                value := value / 10;
+         	};
+         	values[i] := value;
+            
+			while(i >= 0) {
+            	string->Append((values[i] + 48)->As(Char));
+                i := i - 1;
+          	};     
+    	}
+   	}
 
 	#~~
 	# Int class support
@@ -225,86 +244,9 @@ bundle System {
 		}
 
 		function : native : ToString(i : Int), String {
-			string : String := String->New();
-			
-			if(i = 0) {
-				string->Append(48->As(Char));
-				return string;
-			};
-
-			if(i < 0) {
-				string->Append(45->As(Char));
-				i := i * -1;
-			};
-
-			result : Int := i / 10000000;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 1000000;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};		
-		
-			result := i / 1000000;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 1000000;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-
-			result := i / 100000;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 100000;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-
-			result := i / 10000;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 10000;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-
-			result := i / 1000;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 1000;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-
-			result := i / 100;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 100;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-
-			result := i / 10;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			i := i % 10;
-			if(i = 0) {
-				string->Append(48->As(Char));
-			};
-						
-			if(i <> 0) {
-				string->Append((i + 48)->As(Char));
-			};
-
-			return string;
+			str := String->New();
+			Number->IntToString(i, str);
+			return str;
 		}
 	}
 
@@ -362,111 +304,13 @@ bundle System {
 		}
 
 		function : native : ToString(f : Float), String {
-			value : Float := f;
-			string : String := String->New();
-			
-			digit : Int;
-			result : Float := value / 1000000.0;
-			if(result > 0.99 & result < 10.0) {
-				# 1000.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 1000000.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
+			str := String->New();
+			remainder := f - f->Floor();
+			Number->IntToString(f->Floor()->As(Int), str);
+            str->Append('.');
+            Number->IntToString((1001.0 * remainder)->As(Int), str);
 
-			result := value / 100000.0;
-			if(result > 0.99 & result < 10.0) {
-				# 1000.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 100000.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value / 10000.0;
-			if(result > 0.99 & result < 10.0) {
-				# 1000.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 10000.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value / 1000.0;
-			if(result > 0.99 & result < 10.0) {
-				# 1000.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 1000.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value / 100.0;
-			if(result > 0.99 & result < 10.0) {
-				# 100.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 100.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value / 10.0;
-			if(result > 0.99 & result < 10.0) {
-				# 10.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 10.0;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value;
-			if(result > 0.99 & result < 10.0) {
-				# 1.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			string->Append('.');
-			
-			result := value * 10.0;
-			if(result > 0.99 & result < 10.0) {
-				# 10.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-				value := value - digit * 0.1;
-			}
-			else if(result < 0.99 & value < f) {
-				string->Append('0');
-			};
-
-			result := value * 100.1;
-			if(result > 0.99 & result < 10.0) {
-				# 10.00
-				digit := result->Floor();
-				string->Append((digit + 48)->As(Char));
-			}
-			else if(result = 0.0 & value < f) {
-				string->Append('0');
-			};
-			
-			return string;
+			return str;
 		}
 	}
 
