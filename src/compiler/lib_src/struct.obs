@@ -164,7 +164,39 @@ bundle Structure {
 			return @size;
 		}
 	}
-
+	
+	# Integer Linked List
+	class Stack {
+		values : Vector;
+		
+		New() {
+			values := Vector->New();
+		}
+		
+		method : public : Push(value : System.Base), Nil {
+			values->AddBack(value);
+		}
+		
+		method : public : Pop(), System.Base {
+			if(values->GetSize() > 0) {
+				value : System.Base := values->GetValue(values->GetSize() - 1);
+				values->RemoveBack();
+				
+				return value;
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Peek(), System.Base {
+			if(values->GetSize() > 0) {
+				return values->GetValue(values->GetSize() - 1);
+			};
+			
+			return Nil;
+		}
+	}
+	
 	# Integer Linked List
 	class IntLinkedList from LinkedList {
 		New() {
