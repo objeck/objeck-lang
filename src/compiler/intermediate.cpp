@@ -1964,6 +1964,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     for(unsigned int i = 0; i < expressions.size(); i++) {
       EmitExpression(expressions[i]);
     }
+    is_new_inst = false;
   }
   // enum call
   else if(method_call->GetCallType() == ENUM_CALL) {
@@ -1974,6 +1975,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
+    is_new_inst = false;
   }
   // instance
   else if(method_call->GetCallType() == NEW_INST_CALL) {
@@ -2002,6 +2004,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, klass_id));
       }
     }
+    is_new_inst = true;
   }
   // method call
   else {
@@ -2017,6 +2020,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
         EmitExpression(expressions[i]);
       }
     }
+    is_new_inst = false;
   }
   new_char_str_count = 0;
 }
@@ -2132,7 +2136,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
       } 
-      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }
@@ -2157,8 +2161,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
                                variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
-      } else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-                (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+      } 
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }

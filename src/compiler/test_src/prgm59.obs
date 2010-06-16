@@ -1,0 +1,21 @@
+use Structure;
+
+bundle Default {
+	class Hello {
+		function : Main(args : System.String[]), Nil {
+			Run();
+		}
+	
+#		function : native : Run(), Nil {
+		function : Run(), Nil {
+			s := Stack->New();
+			s->Push(IntHolder->New(23)->As(System.Base));
+			s->Push(IntHolder->New(12)->As(System.Base));
+			s->Push(IntHolder->New(10)->As(System.Base));
+#~
+			v : IntHolder := s->Peek()->As(IntHolder);
+			v->GetValue()->PrintLine();
+~#
+		}
+	}
+}
