@@ -2199,6 +2199,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   // new basic block
   NewBlock();
   new_char_str_count = 0;
+  is_new_inst = false;
 }
 
 /****************************
