@@ -123,8 +123,7 @@ bundle Structure {
 			@size := 0;
 		}
 
-#		method : native : Expand(), Nil {
-		method : Expand(), Nil {
+		method : native : Expand(), Nil {
 			if(@size >= @values->GetSize()) {
 				temp : System.Base[] := System.Base->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
