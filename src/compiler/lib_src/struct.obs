@@ -177,7 +177,8 @@ bundle Structure {
 		}
 		
 		method : public : Push(value : System.Base), Nil {
-			values->AddBack(value);
+			v := value;
+			values->AddBack(v);
 		}
 		
 		method : public : Pop(), System.Base {

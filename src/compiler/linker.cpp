@@ -34,6 +34,41 @@
 
 using namespace instructions;
 
+void Linker::ResloveExternalClass(LibraryClass* klass) 
+{
+  map<const string, LibraryMethod*> methods = klass->GetMethods();
+  map<const string, LibraryMethod*>::iterator mthd_iter;
+  for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
+    vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
+    for(unsigned int j = 0; j < instrs.size(); j++) {
+      LibraryInstr* instr = instrs[j];
+      // check library call
+      switch(instr->GetType()) {
+	// test
+      case LIB_NEW_OBJ_INST:
+      case LIB_OBJ_INST_CAST:
+      case LIB_MTHD_CALL: {
+	LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+	if(lib_klass) {
+	  cout << "#### " << lib_klass->GetName() << " ####" << endl;
+	  if(!lib_klass->GetCalled()) {
+	    lib_klass->SetCalled(true);
+	    ResloveExternalClass(lib_klass);
+	  }
+	} 
+	else {
+	  cerr << "Error: Unable to resolve external library class: '"
+	       << instr->GetOperand5() << "'; check library path" << endl;
+	  exit(1);
+	}
+      }
+	break;
+      }
+    }
+  }
+  
+}
+
 void Linker::ResloveExternalClasses()
 {
   // all libraries
@@ -44,36 +79,11 @@ void Linker::ResloveExternalClasses()
     for(unsigned int i = 0; i < classes.size(); i++) {
       // all methods
       if(classes[i]->GetCalled()) {
-        map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
-        map<const string, LibraryMethod*>::iterator mthd_iter;
-        for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
-          vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
-          for(unsigned int j = 0; j < instrs.size(); j++) {
-            LibraryInstr* instr = instrs[j];
-            // check library call
-            switch(instr->GetType()) {
-              // test
-            case LIB_NEW_OBJ_INST:
-            case LIB_OBJ_INST_CAST:
-            case LIB_MTHD_CALL: {
-              LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
-              if(lib_klass) {
-                lib_klass->SetCalled(true);
-              } else {
-                cerr << "Error: Unable to resolve external library class: '"
-                     << instr->GetOperand5() << "'; check library path" << endl;
-                exit(1);
-              }
-            }
-            break;
-            }
-          }
-        }
+        ResloveExternalClass(classes[i]);
       }
     }
   }
 }
-
 
 void Linker::ResloveExternalMethodCalls()
 {

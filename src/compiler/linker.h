@@ -783,6 +783,7 @@ public:
     paths.clear();
   }
 
+  void ResloveExternalClass(LibraryClass* klass);
   void ResloveExternalClasses();
   void ResloveExternalMethodCalls();
 
