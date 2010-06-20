@@ -8,6 +8,12 @@ bundle Default {
 	
 #		function : native : Run(), Nil {
 		function : Run(), Nil {
+#~
+			v := Vector->New();
+			v->AddBack(IntHolder->New(23)->As(System.Base));
+			v->AddBack(IntHolder->New(12)->As(System.Base));
+			v->AddBack(IntHolder->New(10)->As(System.Base));
+~#
 			s := Stack->New();
 			s->Push(IntHolder->New(23)->As(System.Base));
 			s->Push(IntHolder->New(12)->As(System.Base));
