@@ -711,9 +711,11 @@ The following data structures are supported:
     \item Vector
     \item IntVector
     \item FloatVector
+    \item Stack
+    \item IntStack
+    \item FloatStack
     \item BinaryTree
 \end{itemize}
-
 
 \subsubsection{Console}
 The Console class allows programmers to read and write information to the system console.    The class supports the following operations:
@@ -855,7 +857,7 @@ The FileReader is inherited from the File class and allows programmers read file
 \end{itemize}
 
 \subsubsection{Directory}
-The Directory class allows programmers manipulate filesystem directories.    The class supports the following operations:
+The Directory class allows programmers manipulate file system directories.    The class supports the following operations:
 \begin{itemize}
     \item \texttt{Create} - creates a new directory.
     	\begin{itemize}
@@ -968,6 +970,23 @@ The LinkedList class allow values to be added, removed and deleted from a list. 
 	\item method : public : IsEnd(), Bool
 	\end{itemize}		
     \item \texttt{GetSize} - returns the size of the list
+\end{itemize}
+
+\subsubsection{Stack/IntStack/FloatStack}
+The Stack class support the concept of a growing stack.  There are two specialized version of this class: \texttt{IntStack} and \texttt{FloatStack}.  The general class supports the following operations:
+\begin{itemize}
+    \item \texttt{Push} - pushes a new value onto the stack
+    	\begin{itemize}
+	\item method : public : Push(value : Base), Nil
+	\end{itemize}
+    \item \texttt{Pop} - pops a values from the top of the stack
+    	\begin{itemize}
+	\item method : public : Pop(), Base
+	\end{itemize}
+    \item \texttt{Top} - retrieves the top value from the stack (without popping the stack)
+    	\begin{itemize}
+	\item method : public : Top(), Base
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{Vector/IntVector/FloatVector}
