@@ -14,11 +14,14 @@ bundle Default {
 			v->AddBack(IntHolder->New(12)->As(System.Base));
 			v->AddBack(IntHolder->New(10)->As(System.Base));
 ~#
-			s := Stack->New();
-			s->Push(IntHolder->New(23)->As(System.Base));
-			s->Push(IntHolder->New(12)->As(System.Base));
-			s->Push(IntHolder->New(10)->As(System.Base));
-			s->Peek()->As(IntHolder)->GetValue()->PrintLine();
+			s := IntStack->New();
+			s->Push(23);
+			s->Push(12);
+			s->Push(8);
+			s->Push(10);
+			s->Pop();
+			s->Pop();
+			s->Top()->PrintLine();
 		}
 	}
 }
