@@ -167,7 +167,7 @@ bundle Structure {
 		}
 	}
 	
-	# Integer Linked List
+	# Stack
 	class Stack {
 		values : Vector;
 		
@@ -175,12 +175,12 @@ bundle Structure {
 			values := Vector->New();
 		}
 		
-		method : public : Push(value : System.Base), Nil {
+		method : public: native : Push(value : System.Base), Nil {
 			v := value;
 			values->AddBack(v);
 		}
 		
-		method : public : Pop(), System.Base {
+		method : public : native : Pop(), System.Base {
 			if(values->GetSize() > 0) {
 				value : System.Base := values->GetValue(values->GetSize() - 1);
 				values->RemoveBack();
@@ -191,12 +191,78 @@ bundle Structure {
 			return Nil;
 		}
 		
-		method : public : Peek(), System.Base {
+		method : public: native : Top(), System.Base {
 			if(values->GetSize() > 0) {
 				return values->GetValue(values->GetSize() - 1);
 			};
 			
 			return Nil;
+		}
+	}
+
+	# Integer Stack
+	class IntStack {
+		values : IntVector;
+		
+		New() {
+			values := IntVector->New();
+		}
+		
+		method : public: native : Push(value : Int), Nil {
+			v := value;
+			values->AddBack(v);
+		}
+		
+		method : public: native : Pop(), Int {
+			if(values->GetSize() > 0) {
+				value : Int := values->GetValue(values->GetSize() - 1);
+				values->RemoveBack();
+				
+				return value;
+			};
+			
+			return 0;
+		}
+		
+		method : public: native : Top(), Int {
+			if(values->GetSize() > 0) {
+				return values->GetValue(values->GetSize() - 1);
+			};
+			
+			return 0;
+		}
+	}
+	
+	# Float Stack
+	class FloatStack {
+		values : FloatVector;
+		
+		New() {
+			values := FloatVector->New();
+		}
+		
+		method : public : native : Push(value : Float), Nil {
+			v := value;
+			values->AddBack(v);
+		}
+		
+		method : public: native : Pop(), Float {
+			if(values->GetSize() > 0) {
+				value : Float := values->GetValue(values->GetSize() - 1);
+				values->RemoveBack();
+				
+				return value;
+			};
+			
+			return 0.0;
+		}
+		
+		method : public: native : Top(), Float {
+			if(values->GetSize() > 0) {
+				return values->GetValue(values->GetSize() - 1);
+			};
+			
+			return 0.0;
 		}
 	}
 	
