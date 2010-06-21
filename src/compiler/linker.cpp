@@ -50,7 +50,6 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
       case LIB_MTHD_CALL: {
 	LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
 	if(lib_klass) {
-	  cout << "#### " << lib_klass->GetName() << " ####" << endl;
 	  if(!lib_klass->GetCalled()) {
 	    lib_klass->SetCalled(true);
 	    ResloveExternalClass(lib_klass);
