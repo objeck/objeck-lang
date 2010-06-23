@@ -269,33 +269,43 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  break;
 	  
 	case BYTE_ARY_PARM:
-	  cout << "print: type=Byte[], value=" << (char)reference->GetIntValue() 
-	       << "(" << (void*)reference->GetIntValue() << ")";
+    cout << "print: type=Byte[], value=" << (char)reference->GetIntValue() 
+	        << "(" << (void*)reference->GetIntValue() << ")";
 	  if(reference->GetArrayDimension()) {
 	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		 << reference->GetArraySize();
+		  << reference->GetArraySize();
 	  }
 	  cout << endl;
-	  break;
+  break;
 
 	case INT_ARY_PARM:
-	  cout << "print: type=Int[], value=" << reference->GetIntValue() 
-	       << "(" << (void*)reference->GetIntValue() << ")";
-	  if(reference->GetArrayDimension()) {
-	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		 << reference->GetArraySize();
-	  }
-	  cout << endl;
+    if(reference->GetIndices()) {
+      cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
+    }
+    else {
+	    cout << "print: type=Int[], value=" << reference->GetIntValue() 
+	         << "(" << (void*)reference->GetIntValue() << ")";
+	    if(reference->GetArrayDimension()) {
+	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		   << reference->GetArraySize();
+	    }
+      cout << endl;
+    }
 	  break;
 
 	case FLOAT_ARY_PARM:
-	  cout << "print: type=Float[], value=" << reference->GetFloatValue() 
-	       << "(" << (void*)reference->GetIntValue() << ")" << endl;
-	  if(reference->GetArrayDimension()) {
-	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		 << reference->GetArraySize();
-	  }
-	  cout << endl;
+    if(reference->GetIndices()) {
+      cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
+    }
+    else {
+	    cout << "print: type=Float[], value=" << reference->GetFloatValue() 
+	         << "(" << (void*)reference->GetIntValue() << ")" << endl;
+	    if(reference->GetArrayDimension()) {
+	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		   << reference->GetArraySize();
+	    }
+	    cout << endl;
+    }
 	  break;
 	  
 	case OBJ_PARM: 
@@ -319,13 +329,34 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  break;
 	  
 	case OBJ_ARY_PARM:
-	  cout << "print: type=" << reference->GetClassName() << "[], value=" 
-	       << (void*)reference->GetIntValue();
-	  if(reference->GetArrayDimension()) {
-	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		 << reference->GetArraySize();
-	  }
-	  cout << endl;
+    if(reference->GetIndices()) {
+      if(reference->GetClassName() == "System.String") {
+	      long* instance = (long*)reference->GetIntValue();
+	      if(instance) {
+	        long* string_instance = (long*)instance[0];
+	        const char* char_string = (char*)(string_instance + 3);
+	        cout << "print: type=" << reference->GetClassName() << ", value=\"" 
+		     << char_string << "\"" << endl;
+	      }
+	      else {
+	        cout << "print: type=" << reference->GetClassName() << ", value=" 
+		     << (void*)reference->GetIntValue() << endl;
+	      }
+	    }
+	    else {
+	      cout << "print: type=" << reference->GetClassName() << ", value=" 
+		   << (void*)reference->GetIntValue() << endl;
+	    }
+    }
+    else {
+	    cout << "print: type=" << reference->GetClassName() << "[], value=" 
+	         << (void*)reference->GetIntValue();
+	    if(reference->GetArrayDimension()) {
+	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
+		   << reference->GetArraySize();
+	    }
+	    cout << endl;
+    }
 	  break;
 	}
       }
