@@ -148,7 +148,7 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(int i = 0; i < static_array.size(); i++) { 
+  for(unsigned int i = 0; i < static_array.size(); i++) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	dim = static_array.size();  
@@ -197,7 +197,7 @@ void StaticArray::GetSize(StaticArray* array, int dim, int &size) {
   if(static_array.size() == 1 && static_array[0]->GetExpressionType() == STAT_ARY_EXPR) {
     GetSize(static_cast<StaticArray*>(static_array[0]), dim, size);
   }
-  else if(dim < static_array.size() && static_array[dim]->GetExpressionType() == STAT_ARY_EXPR) {
+  else if(dim < (int)static_array.size() && static_array[dim]->GetExpressionType() == STAT_ARY_EXPR) {
     GetSize(static_cast<StaticArray*>(static_array[dim]), dim, size);
   }
   else {
