@@ -1464,7 +1464,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   }
   else {
     // create string literals
-    for(int i = 0; i < all_elements.size(); i++) {
+    for(unsigned int i = 0; i < all_elements.size(); i++) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
     // write array dimensions
