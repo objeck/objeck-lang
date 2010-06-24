@@ -4,63 +4,74 @@ use IO;
 bundle Default {
 	class SocketTest {
 		function : Main(args : System.String[]), Nil {
-			address := "www.du.edu";
-
-			socket := TCPSocket->New(address, 80);
-			if(socket->IsOpen()) {
-				get := "GET / HTTP/1.1\r\nHost: ";
-				get->Append(address);
-				get->Append("\r\n\r\n");
-				socket->WriteString(get);
-
-				line := socket->ReadString();
-				while(line->GetSize() > 0) {	
-					trim := line->Trim();
-					start : Int;
-					end : Int;
-					for(i := 0; i < trim->GetSize(); i := i + 1;) {
-						# find tag start
-						if(trim->GetChar(i) = '<') {
-							start := i;
-						};
-
-						# find tag end
-						if(trim->GetChar(i) = '>') {
-							end := i;
-							len := i - start;
-							# print tag
-							if(len > 0) {
-								tag := trim->SubString(start + 1, len - 1);
-								if(tag->GetSize() > 0) {
-									if(tag->GetChar(0) <> '/') {
-										tag_end := 0;
-										while(tag_end < tag->GetSize() & 
-											tag->GetChar(tag_end) <> ' ') {
-											tag_end := tag_end + 1;
+			Run(args);
+		}
+		
+		function : native : Run(args : System.String[]), Nil {
+			address := args[0];			
+			if(address->StartsWith("http://")) {
+				
+				address := args[0]->SubString("http://"->GetSize());
+				address->PrintLine();
+				
+#				address := address->SubString("http://"->GetSize(), address->GetSize() - "http://"->GetSize());
+#				address->PrintLine();
+				socket := TCPSocket->New(address, 80);
+				if(socket->IsOpen()) {
+					get := "GET / HTTP/1.1\r\nHost: ";
+					get->Append(address);
+					get->Append("\r\n\r\n");
+					socket->WriteString(get);
+	
+					line := socket->ReadString();
+					while(line->GetSize() > 0) {	
+						trim := line->Trim();
+						start : Int;
+						end : Int;
+						for(i := 0; i < trim->GetSize(); i := i + 1;) {
+							# find tag start
+							if(trim->GetChar(i) = '<') {
+								start := i;
+							};
+	
+							# find tag end
+							if(trim->GetChar(i) = '>') {
+								end := i;
+								len := i - start;
+								# print tag
+								if(len > 0) {
+									tag := trim->SubString(start + 1, len - 1);
+									if(tag->GetSize() > 0) {
+										if(tag->GetChar(0) <> '/') {
+											tag_end := 0;
+											while(tag_end < tag->GetSize() & 
+												tag->GetChar(tag_end) <> ' ') {
+												tag_end := tag_end + 1;
+											};
+											"start tag: |"->Print(); tag->SubString(tag_end)->Print(); "|"->PrintLine();			
+										}
+										else {
+											tag_end := 1;
+											while(tag_end < tag->GetSize() & 
+												tag->GetChar(tag_end) <> ' ') {
+												tag_end := tag_end + 1;
+											};
+											"end tag: |"->Print(); tag->SubString(1, tag_end - 1)->Print(); "|"->PrintLine();
 										};
-										"start tag: |"->Print(); tag->SubString(tag_end)->Print(); "|"->PrintLine();			
-									}
-									else {
-										tag_end := 1;
-										while(tag_end < tag->GetSize() & 
-											tag->GetChar(tag_end) <> ' ') {
-											tag_end := tag_end + 1;
-										};
-										"end tag: |"->Print(); tag->SubString(1, tag_end - 1)->Print(); "|"->PrintLine();
-									};
-								};											
+									};											
+								};
 							};
 						};
+						line := socket->ReadString();
 					};
-					line := socket->ReadString();
+					socket->Close();
+				}
+				else {
+					error := "unable to connect to: ";
+					error->Append(address);
+					error->PrintLine();
 				};
-				socket->Close();
-			}
-			else {
-				error := "unable to connect to: ";
-				error->Append(address);
-				error->PrintLine();
-			};
+			};			
 		}
 	}
 }
