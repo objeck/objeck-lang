@@ -346,7 +346,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 
   // add '@this' entry
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
-                       TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), false, false, true);
+								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -481,7 +481,7 @@ Method* Parser::ParseMethod(bool is_function, int depth)
 #endif
 
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name,
-                   method_type, is_function, is_native);
+						       method_type, is_function, is_native);
   current_method = method;
 
   // declarations
@@ -592,7 +592,7 @@ Statement* Parser::ParseStatement(int depth)
         ProcessError("Expected statement", TOKEN_SEMI_COLON);
       }
     }
-    break;
+      break;
 
     case TOKEN_ASSIGN:
       statement = ParseAssignment(ParseVariable(ident, depth + 1), depth + 1);
@@ -677,193 +677,193 @@ Statement* Parser::ParseStatement(int depth)
       
     case FLOR_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FLOR_FLOAT);
+							       instructions::FLOR_FLOAT);
       NextToken();
       break;
 
     case CEIL_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::CEIL_FLOAT);
+							       instructions::CEIL_FLOAT);
       NextToken();
       break;
 
     case STD_OUT_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_BOOL);
+							       instructions::STD_OUT_BOOL);
       NextToken();
       break;
 
     case STD_OUT_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_BYTE);
+							       instructions::STD_OUT_BYTE);
       NextToken();
       break;
 
     case STD_OUT_CHAR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_CHAR);
+							       instructions::STD_OUT_CHAR);
       NextToken();
       break;
 
     case STD_OUT_INT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_INT);
+							       instructions::STD_OUT_INT);
       NextToken();
       break;
 
     case STD_OUT_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_FLOAT);
+							       instructions::STD_OUT_FLOAT);
       NextToken();
       break;
 
     case LOAD_ARY_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::LOAD_ARY_SIZE);
+							       instructions::LOAD_ARY_SIZE);
       NextToken();
       break;
 
     case LOAD_CLS_INST_ID:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::LOAD_CLS_INST_ID);
+							       instructions::LOAD_CLS_INST_ID);
       NextToken();
       break;
 
     case STD_OUT_CHAR_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_OUT_CHAR_ARY);
+							       instructions::STD_OUT_CHAR_ARY);
       NextToken();
       break;
 
     case STD_IN_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::STD_IN_STRING);
+							       instructions::STD_IN_STRING);
       NextToken();
       break;
 
     case FILE_OPEN_READ:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OPEN_READ);
+							       instructions::FILE_OPEN_READ);
       NextToken();
       break;
 
     case FILE_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_CLOSE);
+							       instructions::FILE_CLOSE);
       NextToken();
       break;
 
     case FILE_IN_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_IN_BYTE);
+							       instructions::FILE_IN_BYTE);
       NextToken();
       break;
 
     case FILE_IN_BYTE_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_IN_BYTE_ARY);
+							       instructions::FILE_IN_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_IN_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_IN_STRING);
+							       instructions::FILE_IN_STRING);
       NextToken();
       break;
 
     case FILE_OPEN_WRITE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OPEN_WRITE);
+							       instructions::FILE_OPEN_WRITE);
       NextToken();
       break;
 
     case FILE_OPEN_READ_WRITE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OPEN_READ_WRITE);
+							       instructions::FILE_OPEN_READ_WRITE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OUT_BYTE);
+							       instructions::FILE_OUT_BYTE);
       NextToken();
       break;
 
     case FILE_OUT_BYTE_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OUT_BYTE_ARY);
+							       instructions::FILE_OUT_BYTE_ARY);
       NextToken();
       break;
 
     case FILE_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_OUT_STRING);
+							       instructions::FILE_OUT_STRING);
       NextToken();
       break;
 
     case FILE_EXISTS:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_EXISTS);
+							       instructions::FILE_EXISTS);
       NextToken();
       break;
 
     case FILE_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_SIZE);
+							       instructions::FILE_SIZE);
       NextToken();
       break;
 
     case FILE_SEEK:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_SEEK);
+							       instructions::FILE_SEEK);
       NextToken();
       break;
 
     case FILE_EOF:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_EOF);
+							       instructions::FILE_EOF);
       NextToken();
       break;
 
     case FILE_DELETE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_DELETE);
+							       instructions::FILE_DELETE);
       NextToken();
       break;
 
     case FILE_RENAME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_RENAME);
+							       instructions::FILE_RENAME);
       NextToken();
       break;
 
     case DIR_CREATE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::DIR_CREATE);
+							       instructions::DIR_CREATE);
       NextToken();
       break;
 
     case DIR_EXISTS:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::DIR_EXISTS);
+							       instructions::DIR_EXISTS);
       NextToken();
       break;
 
     case DIR_LIST:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::DIR_LIST);
+							       instructions::DIR_LIST);
       NextToken();
       break;
 
     case FILE_REWIND:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_REWIND);
+							       instructions::FILE_REWIND);
       NextToken();
       break;
 
     case FILE_IS_OPEN:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                  instructions::FILE_IS_OPEN);
+							       instructions::FILE_IS_OPEN);
       NextToken();
       break;
       
@@ -924,7 +924,7 @@ Statement* Parser::ParseStatement(int depth)
 
     default:
       statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num,
-                  ParseSimpleExpression(depth + 1));
+							       ParseSimpleExpression(depth + 1));
       break;
     }
   }
@@ -1094,8 +1094,8 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
   // add entry
   string scope_name = GetScopeName(ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                       scope_name, type, is_static,
-                       current_method != NULL);
+								scope_name, type, is_static,
+								current_method != NULL);
 
 #ifdef _DEBUG
   Show("Adding variable: '" + scope_name + "'", depth + 2);
@@ -1111,7 +1111,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
     Variable* variable = ParseVariable(ident, depth + 1);
     // FYI: can not specify array indices here
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
-                  ParseAssignment(variable, depth + 1));
+							   ParseAssignment(variable, depth + 1));
   } else {
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
   }
@@ -1302,8 +1302,8 @@ Expression* Parser::ParseMathLogic(int depth)
   Expression* left = ParseTerm(depth + 1);
 
   if(Match(TOKEN_LES) || Match(TOKEN_GTR) ||
-      Match(TOKEN_LEQL) || Match(TOKEN_GEQL) ||
-      Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
+     Match(TOKEN_LEQL) || Match(TOKEN_GEQL) ||
+     Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
     CalculatedExpression* expression = NULL;
     switch(GetToken()) {
     case TOKEN_LES:
@@ -1539,13 +1539,13 @@ Expression* Parser::ParseSimpleExpression(int depth)
     switch(GetToken()) {
     case TOKEN_INT_LIT:
       expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
-                   -scanner->GetToken()->GetIntLit());
+							       -scanner->GetToken()->GetIntLit());
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
       expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
-                   -scanner->GetToken()->GetFloatLit());
+							     -scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
 
@@ -1558,19 +1558,19 @@ Expression* Parser::ParseSimpleExpression(int depth)
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
       expression = TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num,
-                   scanner->GetToken()->GetCharLit());
+								 scanner->GetToken()->GetCharLit());
       NextToken();
       break;
 
     case TOKEN_INT_LIT:
       expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num,
-                   scanner->GetToken()->GetIntLit());
+							       scanner->GetToken()->GetIntLit());
       NextToken();
       break;
 
     case TOKEN_FLOAT_LIT:
       expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num,
-                   scanner->GetToken()->GetFloatLit());
+							     scanner->GetToken()->GetFloatLit());
       NextToken();
       break;
       
@@ -1671,7 +1671,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
 
   NextToken();
   return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, PARENT_CALL, "",
-         ParseExpressionList(depth + 1));
+						 ParseExpressionList(depth + 1));
 }
 
 /****************************
@@ -1697,7 +1697,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 
       if(Match(TOKEN_OPEN_PAREN)) {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident,
-                      ParseExpressionList(depth + 1));
+							      ParseExpressionList(depth + 1));
       } else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident);
       }
@@ -1708,14 +1708,14 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET,
-                                      TOKEN_CLOSED_BRACKET);
+							  TOKEN_CLOSED_BRACKET);
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL,
-                      ident, expressions);
+							      ident, expressions);
       }
       // new object
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
-                      ParseExpressionList(depth + 1));
+							      ParseExpressionList(depth + 1));
       }
     } else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
@@ -1725,7 +1725,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
   else if(Match(TOKEN_OPEN_PAREN)) {
     string klass_name = current_class->GetName();
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name,
-                  ident, ParseExpressionList(depth + 1));
+							  ident, ParseExpressionList(depth + 1));
   } else {
     ProcessError("Expected identifier", TOKEN_SEMI_COLON);
   }
@@ -1792,7 +1792,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   NextToken();
 
   return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, variable, method_ident,
-         ParseExpressionList(depth + 1));
+						 ParseExpressionList(depth + 1));
 }
 
 /****************************
@@ -2043,7 +2043,7 @@ Select* Parser::ParseSelect(int depth)
   NextToken();
 
   return TreeFactory::Instance()->MakeSelect(file_name, line_num, eval_expression,
-         statement_map, other);
+					     statement_map, other);
 }
 
 /****************************
@@ -2079,7 +2079,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 
   NextToken();
   Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable,
-                           ParseExpression(depth + 1));
+								   ParseExpression(depth + 1));
 
   return assignment;
 }
@@ -2129,7 +2129,7 @@ Type* Parser::ParseType(int depth)
     const string ident = ParseBundleName();
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
   }
-  break;
+    break;
 
   default:
     ProcessError("Expected type", TOKEN_SEMI_COLON);
