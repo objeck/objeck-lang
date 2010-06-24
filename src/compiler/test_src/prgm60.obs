@@ -1,0 +1,7 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]), Nil {
+			address := args[0]->SubString("http://"->GetSize());
+		}
+	}
+}

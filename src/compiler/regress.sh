@@ -1,5 +1,5 @@
 #!/bin/bash 
-i=58
+i=60
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------
 
@@ -12,6 +12,8 @@ until [  $i -lt 1 ]; do
 		./obr ../compiler/a.obe 7
 	elif [ $i = 37 ]; then
 		./obr ../compiler/a.obe 13
+	elif [ $i = 60 ]; then
+		./obr ../compiler/a.obe http://www.du.edu
 	else
 		./obr ../compiler/a.obe
 	fi
