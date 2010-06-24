@@ -2008,11 +2008,6 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   }
   // method call
   else {
-    Variable* variable = method_call->GetVariable();
-    if(variable && method_call->GetCallType() == METHOD_CALL) {
-      EmitVariable(variable);
-    }
-
     // declarations
     if(method_call->GetCallingParameters()) {
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
@@ -2056,7 +2051,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     // literal and variable method calls
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
-    if(entry && !variable) {
+    
+    if(variable && method_call->GetCallType() == METHOD_CALL) {
+      EmitVariable(variable);
+    }
+    else if(entry) {
       // memory context
       MemoryContext mem_context;
       if(entry->IsLocal()) {
@@ -2113,6 +2112,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }
+    
     // program method call
     if(method_call->GetMethod()) {
       Method* method = method_call->GetMethod();
