@@ -1937,6 +1937,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       break;
     }
   }
+  new_char_str_count = 0;
 }
 
 /****************************

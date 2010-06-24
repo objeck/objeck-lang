@@ -7,18 +7,30 @@ bundle Default {
 			Run(args);
 		}
 		
-		function : native : Run(args : System.String[]), Nil {
-			address := args[0];			
-			if(address->StartsWith("http://")) {
-				
-				address := args[0]->SubString("http://"->GetSize());
+#		function : native : Run(args : System.String[]), Nil {
+		function : Run(args : System.String[]), Nil {
+			url := args[0];			
+			if(url->StartsWith("http://")) {
+				url := url->SubString("http://"->GetSize(), url->GetSize() - "http://"->GetSize());
+				index := url->GetIndex('/');
+				address := "";
+				location := "/";
+				if(index > -1) {
+					address := url->SubString(index);
+					index->PrintLine();
+					location := url->SubString(index + 1, url->GetSize() - index - 1);
+				}
+				else {
+					address := url;
+				};
 				address->PrintLine();
-				
-#				address := address->SubString("http://"->GetSize(), address->GetSize() - "http://"->GetSize());
-#				address->PrintLine();
+				location->PrintLine();
+
 				socket := TCPSocket->New(address, 80);
 				if(socket->IsOpen()) {
-					get := "GET / HTTP/1.1\r\nHost: ";
+					get := "GET ";
+					get->Append(location);
+					get->Append(" HTTP/1.1\r\nHost: ");
 					get->Append(address);
 					get->Append("\r\n\r\n");
 					socket->WriteString(get);
