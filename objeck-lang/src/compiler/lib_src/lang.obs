@@ -714,7 +714,7 @@ bundle System {
 			return SubString(0, offset);
 		}
 
-		method : public : SubString(offset : Int, length : Int), String {
+		method : public : native : SubString(offset : Int, length : Int), String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
