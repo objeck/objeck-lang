@@ -3,13 +3,13 @@ use IO;
 use Structure;
 
 bundle Default {
-	class HttpClient {
+	class SocketTest {
 		function : Main(args : System.String[]), Nil {
 			Run(args);
 		}
 		
-		function : native : Run(args : System.String[]), Nil {
-#		function : Run(args : System.String[]), Nil {
+#		function : native : Run(args : System.String[]), Nil {
+		function : Run(args : System.String[]), Nil {
 			url := args[0];			
 			if(url->StartsWith("http://")) {
 				url := url->SubString("http://"->GetSize(), url->GetSize() - "http://"->GetSize());
@@ -36,9 +36,9 @@ bundle Default {
 	
 					return_line := socket->ReadString();
 					if(return_line->StartsWith("HTTP/1.1")) {
-						return_line := return_line->SubString("HTTP/1.1"->GetSize() + 1, 
-							return_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
+						return_line := return_line->SubString("HTTP/1.1"->GetSize() + 1, return_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
 						index := return_line->GetIndex(' ');
+index->PrintLine();						
 						return_code := return_line->SubString(index);
 						return_code->PrintLine();
 					};
@@ -59,20 +59,54 @@ bundle Default {
 					}
 					while(line->StartsWith('<') = false);
 					
-					lines := Vector->New();
 					do {
 						line := socket->ReadString();
 						if(line->GetSize() > 0) {
-							line := line->Trim();
-							lines->AddBack(line->As(Base));
-							line->PrintLine();					
+							trim := line->Trim();
+							trim->PrintLine();
+#~											
+							start : Int;
+							end : Int;
+							for(i := 0; i < trim->GetSize(); i := i + 1;) {
+								# find tag start
+								if(trim->GetChar(i) = '<') {
+									start := i;
+								};
+		
+								# find tag end
+								if(trim->GetChar(i) = '>') {
+									end := i;
+									len := i - start;
+									# print tag
+									if(len > 0) {
+										tag := trim->SubString(start + 1, len - 1);
+										if(tag->GetSize() > 0) {
+											if(tag->GetChar(0) <> '/') {
+												tag_end := 0;
+												while(tag_end < tag->GetSize() & 
+													tag->GetChar(tag_end) <> ' ') {
+													tag_end := tag_end + 1;
+												};
+												"start tag: |"->Print(); tag->SubString(tag_end)->Print(); "|"->PrintLine();			
+											}
+											else {
+												tag_end := 1;
+												while(tag_end < tag->GetSize() & 
+													tag->GetChar(tag_end) <> ' ') {
+													tag_end := tag_end + 1;
+												};
+												"end tag: |"->Print(); tag->SubString(1, tag_end - 1)->Print(); "|"->PrintLine();
+											};
+										};											
+									};
+								};
+							};
+~#							
 						};
+						
 					}
 					while(line->GetSize() > 0);
 					socket->Close();
-					
-					headers->GetSize()->PrintLine();
-					lines->GetSize()->PrintLine();
 				}
 				else {
 					error := "unable to connect to: ";

@@ -624,6 +624,11 @@ bundle System {
 			return 0.0;
 		}
 
+		method : public : native : StartsWith(c : Char), Bool {
+			sc : Char := GetChar(0);
+			return sc <> '\0' & c = sc;
+		}
+
 		method : public : native : StartsWith(s : String), Bool {
 			if(s->GetSize() < @pos) {
 				for(i := 0; i < s->GetSize(); i := i + 1;) {
