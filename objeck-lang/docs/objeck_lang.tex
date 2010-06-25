@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{0.9.11}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{1.0.0}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -449,7 +449,7 @@ obc -src test_src\debug.obs -dest a.obe -debug
 obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
 
 -------------------------------------
-Objeck v0.9.11 - Interactive Debugger
+Objeck v1.0.0 - Interactive Debugger
 -------------------------------------
 loaded executable: file='../../compiler/a.obe'
 source files: path='../../compiler/test_src/'
@@ -1078,71 +1078,148 @@ bundle Default {
 
 \subsection{Simple HTTP client}
 \begin{verbatim}
+# Basic HTTP Client
+# R. Hollines
+
 use Net;
 use IO;
+use Structure;
 
 bundle Default {
-  class SocketTest {
-    function : Main(args : String[]), Nil {
-      address := "www.du.edu";
-
-      socket := TCPSocket->New(address, 80);
-      if(socket->IsOpen()) {
-        get := "GET / HTTP/1.1\r\nHost: ";
-        get->Append(address);
-        get->Append("\r\n\r\n");
-        socket->WriteString(get);
-
-        line := socket->ReadString();
-        while(line->GetSize() > 0) {  
-          trim := line->Trim();
-          start : Int;
-          end : Int;
-          for(i := 0; i < trim->GetSize(); i := i + 1;) {
-            # find tag start
-            if(trim->GetChar(i) = '<') {
-              start := i;
-            };
-
-            # find tag end
-            if(trim->GetChar(i) = '>') {
-              end := i;
-              len := i - start;
-              # print tag
-              if(len > 0) {
-                tag := trim->SubString(start + 1, len - 1);
-                if(tag->GetSize() > 0) {
-                  if(tag->GetChar(0) <> '/') {
-                    tag_end := 0;
-                    while(tag_end < tag->GetSize() & 
-                    	tag->GetChar(tag_end) <> ' ') {
-                      tag_end := tag_end + 1;
-                    };
-                    Console->GetInstance()->Print("start tag: |")->
-                    	Print(tag->SubString(tag_end))->PrintLine("|");      
-                  }
-                  else {
-                    tag_end := 1;
-                    while(tag_end < tag->GetSize() & 
-                    	tag->GetChar(tag_end) <> ' ') {
-                      tag_end := tag_end + 1;
-                    };
-                    Console->GetInstance()->Print("end tag: |")->
-                    	Print(tag->SubString(1, tag_end - 1))->PrintLine("|");
-                  };
-                };                      
-              };
-            };
-          };
-          line := socket->ReadString();
+  class HttpClient {
+    @headers : BinaryTree;
+    @url : String;
+    @port : Int;
+    @content_type : String;
+    
+    function : Main(args : System.String[]), Nil {
+      client := HttpClient->New(args[0], 80);
+      lines := client->Get();
+      
+      for(i := 0; i < lines->GetSize(); i := i + 1;) {
+        lines->GetValue(i)->As(String)->PrintLine();
+      };
+    }
+    
+    New(url : String, port : Int) {
+      @url := url;
+      @port := port;
+      @content_type := "text/plain";
+      @headers := BinaryTree->New();
+    }
+    
+    New(url : String, port : Int, content_type : String) {
+      @url := url;
+      @port := port;
+      @content_type := content_type;
+      @headers := BinaryTree->New();
+    }
+    
+    method : native : GetHeaders(), BinaryTree {
+      return @headers;
+    }
+    
+    method : public : native : Post(content : String), Bool {
+      content := Vector->New();
+      if(@url->StartsWith("http://")) {
+        @url := @url->SubString("http://"->GetSize(), 
+          @url->GetSize() - "http://"->GetSize());
+        index := @url->GetIndex('/');
+        address := "";
+        location := "/";
+        if(index > -1) {
+          address := @url->SubString(index);
+          index->PrintLine();
+          location := @url->SubString(index + 1, @url->GetSize() - index - 1);
+        }
+        else {
+          address := @url;
         };
-        socket->Close();
+        
+        socket := TCPSocket->New(address, @port);
+        if(socket->IsOpen()) {
+          post := "POST ";
+          post->Append(location);
+          post->Append(" HTTP/1.1\r\nHost: ");
+          post->Append(address);
+          post->Append("\r\nContent-Length: ");
+          post->Append(content->GetSize()->ToString());
+          post->Append("\r\nContent-Type: ");
+          post->Append(@content_type);
+          post->Append("\r\n\r\n");
+          socket->WriteString(post);
+          post->Append(content);
+        };
       }
       else {
-        error := "unable to connect to: ";
-        error->Append(address);
-        error->PrintLine();
+        return false;
       };
+      
+      return true;
+    }
+    
+    method : public : native : Get(), Vector {
+      content := Vector->New();
+      if(@url->StartsWith("http://")) {
+        @url := @url->SubString("http://"->GetSize(), 
+          @url->GetSize() - "http://"->GetSize());
+        index := @url->GetIndex('/');
+        address := "";
+        location := "/";
+        if(index > -1) {
+          address := @url->SubString(index);
+          location := @url->SubString(index + 1, @url->GetSize() - index - 1);
+        }
+        else {
+          address := @url;
+        };
+        
+        socket := TCPSocket->New(address, @port);
+        if(socket->IsOpen()) {
+          get := "GET ";
+          get->Append(location);
+          get->Append(" HTTP/1.1\r\nHost: ");
+          get->Append(address);
+          get->Append("\r\n\r\n");
+          socket->WriteString(get);
+  
+          status_code := 500;
+          status_line := socket->ReadString();
+          if(status_line->StartsWith("HTTP/1.1")) {
+            status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
+              status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
+            index := status_line->GetIndex(' ');
+            status_code := status_line->SubString(index)->ToInt();
+          };
+          
+          if(status_code = 200) {
+            do {
+              line := socket->ReadString();
+              if(line->GetSize() > 0 & line->StartsWith('<') = false) {
+                index := line->GetIndex(':');
+                name := line->SubString(index);
+                value := line->SubString(index + 1, line->GetSize() - index - 1);      
+                @headers->Insert(name->As(Compare), value->As(Base));
+              };
+            }
+            while(line->GetSize() > 0 & line->StartsWith('<') = false);
+            
+            do {
+              line := socket->ReadString();
+              if(line->GetSize() > 0) {
+                content->AddBack(line->Trim()->As(Base));  
+              };
+            }
+            while(line->GetSize() > 0);
+          };
+          socket->Close();
+        }
+        else {
+          return Nil;
+        };
+      };  
+      
+      return content;
     }
   }
 }
@@ -1230,6 +1307,14 @@ LES\_FLOAT & n/a & pops top two floats values and pushes result of less-than ope
 GTR\_FLOAT & n/a & pops top two floats values and pushes result of greater-than operation \\ \hline
 LES\_EQL\_FLOAT & n/a & pops top two floats values and pushes result of less-than-equal operation \\ \hline
 GTR\_EQL\_FLOAT & n/a & pops top two floats values and pushes result of greater-than-equal operation \\ \hline
+\end{tabular}
+
+\vspace{\baselineskip}
+\begin{tabular}{| l | l | p{6 cm} |}
+\hline
+\multicolumn{3}{|c|}{\textbf{Logical Operators}} \\
+\hline
+\emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
 AND\_INT & n/a & pops top two integer values and pushes result of add operation \\ \hline
 OR\_INT & n/a & pops top two integer values and pushes result of or operation \\ \hline
 \end{tabular}
@@ -1275,6 +1360,14 @@ NEW\_INT\_ARY & array dimension & pushes address of new integer array \\ \hline
 NEW\_FLOAT\_ARY & array dimension & pushes address of new float array \\ \hline
 NEW\_OBJ\_INST & integer value for class id & pushes address of new class instance \\ \hline
 OBJ\_INST\_CAST & integer values for ``from'' class and ``to'' class & performs runtime class cast check (note: only required for up casting) \\ \hline
+\end{tabular}
+
+\vspace{\baselineskip}
+\begin{tabular}{| l | p{4 cm} | p{6 cm} |}
+\hline
+\multicolumn{3}{|c|}{\textbf{Objects/Methods/Traps}} \\
+\hline
+\emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
 THREAD\_CREATE & n/a & creates an new thread instance (calculation stack and  stack pointer) \\ \hline
 THREAD\_WAIT & n/a & waits for worker threads to stop execution \\ \hline
 CRITICAL\_START & n/a & creates a mutex such that only one thread can execute in a given section \\ \hline
