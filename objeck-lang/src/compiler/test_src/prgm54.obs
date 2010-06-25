@@ -4,25 +4,51 @@ use Structure;
 
 bundle Default {
 	class HttpClient {
+		@headers : BinaryTree;
+		@content : Vector;
+		@url : String;
+		
 		function : Main(args : System.String[]), Nil {
-			Run(args);
+			client := HttpClient->New(args[0]);
+			lines : Vector := client->GetContent();
+			
+			for(i := 0; i < lines->GetSize(); i := i + 1;) {
+				lines->GetValue(i)->As(String)->PrintLine();
+			};
 		}
 		
-		function : native : Run(args : System.String[]), Nil {
-#		function : Run(args : System.String[]), Nil {
-			url := args[0];			
-			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->GetSize(), url->GetSize() - "http://"->GetSize());
-				index := url->GetIndex('/');
+		New(url : String) {
+			@url := url;
+			@headers := BinaryTree->New();
+			@content := Vector->New();
+		}
+		
+		method : native : GetHeaders(), BinaryTree {
+			return @headers;
+		}
+		
+		method : public : native : GetContent(), Vector {
+			if(@content->GetSize() = 0) {
+				Get();
+			};
+			
+			return @content;
+		}
+		
+		method : native : Get(), Nil {
+			if(@url->StartsWith("http://")) {
+				@url := @url->SubString("http://"->GetSize(), 
+					@url->GetSize() - "http://"->GetSize());
+				index := @url->GetIndex('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
-					address := url->SubString(index);
+					address := @url->SubString(index);
 					index->PrintLine();
-					location := url->SubString(index + 1, url->GetSize() - index - 1);
+					location := @url->SubString(index + 1, @url->GetSize() - index - 1);
 				}
 				else {
-					address := url;
+					address := @url;
 				};
 				
 				socket := TCPSocket->New(address, 80);
@@ -34,45 +60,36 @@ bundle Default {
 					get->Append("\r\n\r\n");
 					socket->WriteString(get);
 	
-					return_line := socket->ReadString();
-					if(return_line->StartsWith("HTTP/1.1")) {
-						return_line := return_line->SubString("HTTP/1.1"->GetSize() + 1, 
-							return_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
-						index := return_line->GetIndex(' ');
-						return_code := return_line->SubString(index);
+					status_line := socket->ReadString();
+					if(status_line->StartsWith("HTTP/1.1")) {
+						status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
+							status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
+						index := status_line->GetIndex(' ');
+						return_code := status_line->SubString(index);
 						return_code->PrintLine();
 					};
 					
-					headers := BinaryTree->New();
+					
 					do {
 						line := socket->ReadString();
 						if(line->GetSize() > 0 & line->StartsWith('<') = false) {
 							index := line->GetIndex(':');
 							name := line->SubString(index);
 							value := line->SubString(index + 1, line->GetSize() - index - 1);			
-							headers->Insert(name->As(Compare), value->As(Base));
-							
-							name->Trim()->PrintLine();
-							value->Trim()->PrintLine();
-							"------"->PrintLine();
+							@headers->Insert(name->As(Compare), value->As(Base));
 						};
 					}
 					while(line->StartsWith('<') = false);
 					
-					lines := Vector->New();
 					do {
 						line := socket->ReadString();
 						if(line->GetSize() > 0) {
 							line := line->Trim();
-							lines->AddBack(line->As(Base));
-							line->PrintLine();					
+							@content->AddBack(line->As(Base));	
 						};
 					}
 					while(line->GetSize() > 0);
 					socket->Close();
-					
-					headers->GetSize()->PrintLine();
-					lines->GetSize()->PrintLine();
 				}
 				else {
 					error := "unable to connect to: ";
