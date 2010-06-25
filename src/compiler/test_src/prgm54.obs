@@ -40,7 +40,6 @@ bundle Default {
 		}
 		
 		method : public : native : Post(content : String), Bool {
-			content := Vector->New();
 			if(@url->StartsWith("http://")) {
 				@url := @url->SubString("http://"->GetSize(), 
 					@url->GetSize() - "http://"->GetSize());
