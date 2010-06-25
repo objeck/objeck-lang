@@ -8,37 +8,39 @@ use Structure;
 bundle Default {
 	class HttpClient {
 		@headers : BinaryTree;
-		@content : Vector;
 		@url : String;
+		@port : Int;
+		@content_type : String;
 		
 		function : Main(args : System.String[]), Nil {
-			client := HttpClient->New(args[0]);
-			lines : Vector := client->GetContent();
+			client := HttpClient->New(args[0], 80);
+			lines := client->Get();
 			
 			for(i := 0; i < lines->GetSize(); i := i + 1;) {
 				lines->GetValue(i)->As(String)->PrintLine();
 			};
 		}
 		
-		New(url : String) {
+		New(url : String, port : Int) {
 			@url := url;
+			@port := port;
+			@content_type := "text/plain";
 			@headers := BinaryTree->New();
-			@content := Vector->New();
+		}
+		
+		New(url : String, port : Int, content_type : String) {
+			@url := url;
+			@port := port;
+			@content_type := content_type;
+			@headers := BinaryTree->New();
 		}
 		
 		method : native : GetHeaders(), BinaryTree {
 			return @headers;
 		}
 		
-		method : public : native : GetContent(), Vector {
-			if(@content->GetSize() = 0) {
-				Get();
-			};
-			
-			return @content;
-		}
-		
-		method : native : Get(), Nil {
+		method : public : native : Post(content : String), Bool {
+			content := Vector->New();
 			if(@url->StartsWith("http://")) {
 				@url := @url->SubString("http://"->GetSize(), 
 					@url->GetSize() - "http://"->GetSize());
@@ -54,7 +56,45 @@ bundle Default {
 					address := @url;
 				};
 				
-				socket := TCPSocket->New(address, 80);
+				socket := TCPSocket->New(address, @port);
+				if(socket->IsOpen()) {
+					post := "POST ";
+					post->Append(location);
+					post->Append(" HTTP/1.1\r\nHost: ");
+					post->Append(address);
+					post->Append("\r\nContent-Length: ");
+					post->Append(content->GetSize()->ToString());
+					post->Append("\r\nContent-Type: ");
+					post->Append(@content_type);
+					post->Append("\r\n\r\n");
+					socket->WriteString(post);
+					post->Append(content);
+				};
+			}
+			else {
+				return false;
+			};
+			
+			return true;
+		}
+		
+		method : public : native : Get(), Vector {
+			content := Vector->New();
+			if(@url->StartsWith("http://")) {
+				@url := @url->SubString("http://"->GetSize(), 
+					@url->GetSize() - "http://"->GetSize());
+				index := @url->GetIndex('/');
+				address := "";
+				location := "/";
+				if(index > -1) {
+					address := @url->SubString(index);
+					location := @url->SubString(index + 1, @url->GetSize() - index - 1);
+				}
+				else {
+					address := @url;
+				};
+				
+				socket := TCPSocket->New(address, @port);
 				if(socket->IsOpen()) {
 					get := "GET ";
 					get->Append(location);
@@ -63,43 +103,43 @@ bundle Default {
 					get->Append("\r\n\r\n");
 					socket->WriteString(get);
 	
+					status_code := 500;
 					status_line := socket->ReadString();
 					if(status_line->StartsWith("HTTP/1.1")) {
 						status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
 							status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
 						index := status_line->GetIndex(' ');
-						return_code := status_line->SubString(index);
-						return_code->PrintLine();
+						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-					
-					do {
-						line := socket->ReadString();
-						if(line->GetSize() > 0 & line->StartsWith('<') = false) {
-							index := line->GetIndex(':');
-							name := line->SubString(index);
-							value := line->SubString(index + 1, line->GetSize() - index - 1);			
-							@headers->Insert(name->As(Compare), value->As(Base));
-						};
-					}
-					while(line->GetSize() > 0 & line->StartsWith('<') = false);
-					
-					do {
-						line := socket->ReadString();
-						if(line->GetSize() > 0) {
-							line := line->Trim();
-							@content->AddBack(line->As(Base));	
-						};
-					}
-					while(line->GetSize() > 0);
+					if(status_code = 200) {
+						do {
+							line := socket->ReadString();
+							if(line->GetSize() > 0 & line->StartsWith('<') = false) {
+								index := line->GetIndex(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->GetSize() - index - 1);			
+								@headers->Insert(name->As(Compare), value->As(Base));
+							};
+						}
+						while(line->GetSize() > 0 & line->StartsWith('<') = false);
+						
+						do {
+							line := socket->ReadString();
+							if(line->GetSize() > 0) {
+								content->AddBack(line->Trim()->As(Base));	
+							};
+						}
+						while(line->GetSize() > 0);
+					};
 					socket->Close();
 				}
 				else {
-					error := "unable to connect to: ";
-					error->Append(address);
-					error->PrintLine();
+					return Nil;
 				};
-			};			
+			};	
+			
+			return content;
 		}
 	}
 }
