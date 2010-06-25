@@ -2,6 +2,9 @@
 # Basic data structures
 ~~#	
 
+use IO;
+use Structure;
+
 bundle Structure {
 	# Integer Vector
 	class IntVector {
