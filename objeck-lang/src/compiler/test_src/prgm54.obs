@@ -1,3 +1,6 @@
+# Basic HTTP Client
+# R. Hollines
+
 use Net;
 use IO;
 use Structure;
@@ -79,7 +82,7 @@ bundle Default {
 							@headers->Insert(name->As(Compare), value->As(Base));
 						};
 					}
-					while(line->StartsWith('<') = false);
+					while(line->GetSize() > 0 & line->StartsWith('<') = false);
 					
 					do {
 						line := socket->ReadString();
