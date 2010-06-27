@@ -1512,7 +1512,13 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
   }
   // note: method ID is position dependant
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+									       "System.String", "System.String:New:c*,"));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
+  }
   // new basic block
   NewBlock();
   // check for stack swap
