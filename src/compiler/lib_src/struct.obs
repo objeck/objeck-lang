@@ -4,6 +4,7 @@
 
 use IO;
 use Structure;
+use Net;
 
 bundle Structure {
 	# Integer Vector
