@@ -542,17 +542,17 @@ public:
  ****************************/
 typedef struct _CharStringInstruction {
   string value;
-  LibraryInstr* instr;
+  vector<LibraryInstr*> instrs;
 } CharStringInstruction;
 
 typedef struct _IntStringInstruction {
   frontend::IntStringHolder* value;
-  LibraryInstr* instr;
+  vector<LibraryInstr*> instrs;
 } IntStringInstruction;
 
 typedef struct _FloatStringInstruction {
   frontend::FloatStringHolder* value;
-  LibraryInstr* instr;
+  vector<LibraryInstr*> instrs;
 } FloatStringInstruction;
 
 class Library {
