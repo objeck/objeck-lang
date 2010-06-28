@@ -204,9 +204,8 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
 void IntermediateEmitter::Translate()
 {
   parsed_program->GetLinker()->ResloveExternalClasses();
-
-
   int class_id = 0;
+  
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
   for(unsigned int i = 0; i < lib_classes.size(); i++) {
@@ -215,7 +214,18 @@ void IntermediateEmitter::Translate()
     }
   }
 #endif
-
+  
+  Linker* linker = parsed_program->GetLinker();
+  if(linker && is_lib) {
+    map<const string, Library*> libraries = linker->GetAllLibraries();
+    map<const string, Library*>::iterator iter;
+    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+      char_str_offset += iter->second->GetCharStringInstructions().size();
+      int_str_offset += iter->second->GetIntStringInstructions().size();
+      float_str_offset += iter->second->GetFloatStringInstructions().size();
+    }
+  }
+  
   // process bundles
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
   for(unsigned int i = 0; i < bundles.size(); i++) {
@@ -230,7 +240,7 @@ void IntermediateEmitter::Translate()
   // emit strings
   EmitStrings();
   // emit libraries
-  EmitLibraries(parsed_program->GetLinker());
+  EmitLibraries(linker);
   // emit program
   EmitBundles();
   Class* start_class = parsed_program->GetStartClass();
@@ -308,6 +318,7 @@ void IntermediateEmitter::EmitStrings()
       }  
     }
   }
+  
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
@@ -1442,21 +1453,21 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     switch(array->GetType()) {
     case frontend::INT_TYPE:    
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + int_str_offset));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_INT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
     
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FLOAT_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + float_str_offset));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_FLOAT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
     
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + char_str_offset));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
@@ -1491,7 +1502,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size() + 1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
   // TODO: Fix for shared libs
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId() + char_str_offset));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
 
