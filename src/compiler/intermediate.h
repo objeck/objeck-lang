@@ -175,6 +175,9 @@ class IntermediateEmitter {
   // method parameters
   int new_char_str_count; 
   int cur_line_num;
+  int char_str_offset;
+  int int_str_offset;
+  int float_str_offset;
   
   // emit operations
   void EmitStrings();
@@ -310,7 +313,7 @@ class IntermediateEmitter {
   }
 
  public:
-  IntermediateEmitter(ParsedProgram* p, bool l, bool d) {
+  IntermediateEmitter(ParsedProgram* p, bool l, bool d) {      
     parsed_program = p;
     is_lib = l;
     is_debug = d;
@@ -325,6 +328,7 @@ class IntermediateEmitter {
     is_new_inst = false;
     new_char_str_count = 0;
     cur_line_num = -1;
+    char_str_offset = int_str_offset = float_str_offset = 0;  
   }
 
   ~IntermediateEmitter() {
