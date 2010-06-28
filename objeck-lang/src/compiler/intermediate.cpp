@@ -358,14 +358,16 @@ void IntermediateEmitter::EmitStrings()
 	bool found = false;
 	for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
 	  if(char_str_insts[i]->value == char_string_values[j]) {
-	    char_str_insts[i]->instr->SetOperand(j);
+	    vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
+	    for(int k = 0; k < instrs.size(); k++) {
+	      instrs[k]->SetOperand(j);
+	    }
 	    found = true;
 	  }
 	}
 #ifdef _DEBUG
 	assert(found);
 #endif
-	// TODO:
       }
       // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
@@ -378,15 +380,7 @@ void IntermediateEmitter::EmitStrings()
 	// TODO:
       }
     }
-    
-    // get current index
-    int char_index = (int)char_string_values.size();
-    int int_index = (int)int_string_values.size();
-    int float_index = (int)float_string_values.size();
   }
-
-
-  
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
