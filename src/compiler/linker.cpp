@@ -621,21 +621,19 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       if(id == instructions::CPY_CHAR_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         CharStringInstruction* str_instr = char_strings[cpy_instr->GetOperand()];
-        str_instr->instr = cpy_instr;
+        str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_INT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         IntStringInstruction* str_instr = int_strings[cpy_instr->GetOperand()];
-        str_instr->instr = cpy_instr;
+	str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_FLOAT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand()];
-        str_instr->instr = cpy_instr;
+	str_instr->instrs.push_back(cpy_instr);
       }
-
       instrs.push_back(new LibraryInstr(line_num, TRAP_RTRN, ReadInt()));
-
       break;
     }
 
