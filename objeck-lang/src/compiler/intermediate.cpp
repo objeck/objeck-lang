@@ -215,17 +215,6 @@ void IntermediateEmitter::Translate()
   }
 #endif
   
-  Linker* linker = parsed_program->GetLinker();
-  if(linker && is_lib) {
-    map<const string, Library*> libraries = linker->GetAllLibraries();
-    map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
-      char_str_offset += iter->second->GetCharStringInstructions().size();
-      int_str_offset += iter->second->GetIntStringInstructions().size();
-      float_str_offset += iter->second->GetFloatStringInstructions().size();
-    }
-  }
-  
   // process bundles
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
   for(unsigned int i = 0; i < bundles.size(); i++) {
@@ -240,7 +229,7 @@ void IntermediateEmitter::Translate()
   // emit strings
   EmitStrings();
   // emit libraries
-  EmitLibraries(linker);
+  EmitLibraries(parsed_program->GetLinker());
   // emit program
   EmitBundles();
   Class* start_class = parsed_program->GetStartClass();
@@ -287,37 +276,116 @@ void IntermediateEmitter::EmitStrings()
   
   Linker* linker = parsed_program->GetLinker();
   if(linker && !is_lib) {
+    map<const string, Library*> libraries = linker->GetAllLibraries();
+    map<const string, Library*>::iterator iter;
+    
+    // create master list of library strings
+    vector<string> lib_char_string_values;
+    vector<IntStringHolder*> lib_int_string_values;
+    vector<FloatStringHolder*> lib_float_string_values;
+    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+      // char string processing
+      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
+      for(unsigned int i = 0; i < char_str_insts.size(); i++) {
+	// check for dups
+	bool found = false;
+	for(unsigned int j = 0; !found && j < lib_char_string_values.size(); j++) {
+	  if(char_str_insts[i]->value == lib_char_string_values[j]) {
+	    found = true;
+	  }
+	}
+	// add string
+	if(!found) {
+	  lib_char_string_values.push_back(char_str_insts[i]->value);
+	}
+      }      
+      // int string processing
+      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
+      for(unsigned int i = 0; i < int_str_insts.size(); i++) {
+	// check for dups
+	bool found = false;
+	for(unsigned int j = 0; !found && j < lib_int_string_values.size(); j++) {
+	  // TODO: add == support
+	  if(int_str_insts[i]->value == lib_int_string_values[j]) {
+	    found = true;
+	  }
+	}
+	// add string
+	if(!found) {
+	  lib_int_string_values.push_back(int_str_insts[i]->value);
+	}
+      }
+      // float string processing
+      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
+      for(unsigned int i = 0; i < float_str_insts.size(); i++) {
+	// check for dups
+	bool found = false;
+	for(unsigned int j = 0; !found && j < lib_float_string_values.size(); j++) {
+	  // TODO: add == support
+	  if(float_str_insts[i]->value == lib_float_string_values[j]) {
+	    found = true;
+	  }
+	}
+	// add string
+	if(!found) {
+	  lib_float_string_values.push_back(float_str_insts[i]->value);
+	}
+      }  
+    }
+
+    // merge in library strings
+    for(unsigned int i = 0; i < lib_char_string_values.size(); i++) {
+      // check for dups
+      bool found = false;
+      for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
+	if(lib_char_string_values[i] == char_string_values[j]) {
+	  found = true;
+	}
+      }
+      // add string
+      if(!found) {
+	char_string_values.push_back(lib_char_string_values[i]);
+      }
+    }
+
+    // TODO: int & float string support
+    
+    // update indices
+    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+      // char string processing
+      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
+      for(unsigned int i = 0; i < char_str_insts.size(); i++) {
+	bool found = false;
+	for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
+	  if(char_str_insts[i]->value == char_string_values[j]) {
+	    char_str_insts[i]->instr->SetOperand(j);
+	    found = true;
+	  }
+	}
+#ifdef _DEBUG
+	assert(found);
+#endif
+	// TODO:
+      }
+      // int string processing
+      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
+      for(unsigned int i = 0; i < int_str_insts.size(); i++) {
+	// TODO:
+      }
+      // float string processing
+      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
+      for(unsigned int i = 0; i < float_str_insts.size(); i++) {
+	// TODO:
+      }
+    }
+    
     // get current index
     int char_index = (int)char_string_values.size();
     int int_index = (int)int_string_values.size();
     int float_index = (int)float_string_values.size();
-    // get all libraries
-    map<const string, Library*> libraries = linker->GetAllLibraries();
-    map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
-      // char string processing
-      vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
-      for(unsigned int i = 0; i < char_str_insts.size(); i++, char_index++) {
-        // update index and add string
-        char_str_insts[i]->instr->SetOperand(char_index);
-        char_string_values.push_back(char_str_insts[i]->value);
-      }      
-      // int string processing
-      vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
-      for(unsigned int i = 0; i < int_str_insts.size(); i++, int_index++) {
-        // update index and add string
-        int_str_insts[i]->instr->SetOperand(int_index);
-        int_string_values.push_back(int_str_insts[i]->value);
-      }
-      // float string processing
-      vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
-      for(unsigned int i = 0; i < float_str_insts.size(); i++, float_index++) {
-        // update index and add string
-        float_str_insts[i]->instr->SetOperand(float_index);
-        float_string_values.push_back(float_str_insts[i]->value);
-      }  
-    }
   }
+
+
   
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetIntStrings(int_string_values);
@@ -1453,21 +1521,21 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     switch(array->GetType()) {
     case frontend::INT_TYPE:    
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + int_str_offset));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_INT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
     
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FLOAT_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + float_str_offset));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_FLOAT_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
     
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)array->GetDimension()));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId() + char_str_offset));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
@@ -1502,7 +1570,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size() + 1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
   // TODO: Fix for shared libs
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId() + char_str_offset));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId()));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
 
