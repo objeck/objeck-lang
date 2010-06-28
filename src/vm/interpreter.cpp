@@ -947,7 +947,8 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 #endif
     called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
   }
-
+  
+#ifdef _NOJIT
   // execute JIT call
   if(instr->GetOperand3()) {
     ProcessJitMethodCall(called, instance);
@@ -956,6 +957,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
   else {
     ProcessInterpretedMethodCall(called, instance);
   }
+#else
+  ProcessInterpretedMethodCall(called, instance);
+#endif
 }
 
 /********************************
@@ -964,10 +968,6 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
  ********************************/
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 {
-  // #ifdef _X64
-  // ProcessInterpretedMethodCall(called, instance);
-  // #else
-
 #ifdef _DEBUGGER
   ProcessInterpretedMethodCall(called, instance);
 #else
@@ -1220,7 +1220,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       str[i] = value_str[i];
     }
 #ifdef _DEBUG
-    cout << "stack oper: CPY_CHAR_STR_ARY" << endl;
+    cout << "stack oper: CPY_CHAR_STR_ARY: index=" << index << ", string='" << value_str << "'" << endl;
 #endif
     PushInt((long)array);
   }
