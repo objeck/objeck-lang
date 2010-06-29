@@ -305,8 +305,7 @@ void IntermediateEmitter::EmitStrings()
 	// check for dups
 	bool found = false;
 	for(unsigned int j = 0; !found && j < lib_int_string_values.size(); j++) {
-	  // TODO: add == support
-	  if(int_str_insts[i]->value == lib_int_string_values[j]) {
+	  if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
 	    found = true;
 	  }
 	}
@@ -321,8 +320,7 @@ void IntermediateEmitter::EmitStrings()
 	// check for dups
 	bool found = false;
 	for(unsigned int j = 0; !found && j < lib_float_string_values.size(); j++) {
-	  // TODO: add == support
-	  if(float_str_insts[i]->value == lib_float_string_values[j]) {
+	  if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
 	    found = true;
 	  }
 	}
@@ -347,8 +345,32 @@ void IntermediateEmitter::EmitStrings()
 	char_string_values.push_back(lib_char_string_values[i]);
       }
     }
-
-    // TODO: int & float string support
+    for(unsigned int i = 0; i < lib_int_string_values.size(); i++) {
+      // check for dups
+      bool found = false;
+      for(unsigned int j = 0; !found && j < int_string_values.size(); j++) {
+	if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
+	  found = true;
+	}
+      }
+      // add string
+      if(!found) {
+	int_string_values.push_back(lib_int_string_values[i]);
+      }
+    }
+    for(unsigned int i = 0; i < lib_float_string_values.size(); i++) {
+      // check for dups
+      bool found = false;
+      for(unsigned int j = 0; !found && j < float_string_values.size(); j++) {
+	if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
+	  found = true;
+	}
+      }
+      // add string
+      if(!found) {
+	float_string_values.push_back(lib_float_string_values[i]);
+      }
+    }
     
     // update indices
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
@@ -372,12 +394,36 @@ void IntermediateEmitter::EmitStrings()
       // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(unsigned int i = 0; i < int_str_insts.size(); i++) {
-	// TODO:
+	bool found = false;
+	for(unsigned int j = 0; !found && j < int_string_values.size(); j++) {
+	  if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
+	    vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
+	    for(int k = 0; k < instrs.size(); k++) {
+	      instrs[k]->SetOperand(j);
+	    }
+	    found = true;
+	  }
+	}
+#ifdef _DEBUG
+	assert(found);
+#endif
       }
       // float string processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(unsigned int i = 0; i < float_str_insts.size(); i++) {
-	// TODO:
+	bool found = false;
+	for(unsigned int j = 0; !found && j < float_string_values.size(); j++) {
+	  if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
+	    vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
+	    for(int k = 0; k < instrs.size(); k++) {
+	      instrs[k]->SetOperand(j);
+	    }
+	    found = true;
+	  }
+	}
+#ifdef _DEBUG
+	assert(found);
+#endif
       }
     }
   }
