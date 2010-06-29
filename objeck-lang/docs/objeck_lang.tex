@@ -914,6 +914,27 @@ The TCPSocket class allows programmers connect to TCP/IP socket servers.    The 
 	\end{itemize}
 \end{itemize}
 
+\subsubsection{HttpClient}
+The HttpClient class allows programmers access HTTP 1.1 websites:
+\begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(url : String, port : Int)
+	\end{itemize}
+    \item \texttt{Post} - Performs a HTTP POST to the connected website, returns true is successful
+    	\begin{itemize}
+	\item method : public : Post(content : String), Bool
+	\end{itemize}
+    \item \texttt{Get} - Performs a HTTP GET from the connected website, returns a \texttt{Vector} of strings
+    	\begin{itemize}
+	\item method : public : Get(), Vector
+	\end{itemize}
+    \item \texttt{GetHeaders} - Returns a \texttt{BinaryTree} of headers information.  HTTP header information is populated after a HTTP GET request.
+    	\begin{itemize}
+	\item method : GetHeaders(), BinaryTree
+	\end{itemize}
+\end{itemize}
+
 \subsubsection{LinkedList/IntLinkedList/FloatLinkedList}
 The LinkedList class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntLinkedList} and \texttt{FloatLinkedList}.  The general class supports the following operations:
 \begin{itemize}
