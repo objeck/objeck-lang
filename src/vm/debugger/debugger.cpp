@@ -1160,7 +1160,7 @@ void Runtime::Debugger::ClearProgram() {
 
 void Runtime::Debugger::Debug() {
   cout << "-------------------------------------" << endl;
-  cout << "Objeck v0.9.10 - Interactive Debugger" << endl;
+  cout << "Objeck v1.0.0 - Interactive Debugger" << endl;
   cout << "-------------------------------------" << endl << endl;
 
   if(FileExists(program_file, true) && DirectoryExists(base_path)) {
