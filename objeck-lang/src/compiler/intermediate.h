@@ -309,6 +309,34 @@ class IntermediateEmitter {
     }
   }
 
+  inline bool IntStringHolderEqual(IntStringHolder* lhs, IntStringHolder* rhs) {
+    if(lhs->length != rhs->length) {
+      return false;
+    }
+    
+    for(int i = 0; i < lhs->length; i++) {
+      if(lhs->value[i] != rhs->value[i]) {
+	return false;
+      }
+    }
+    
+    return true;
+  }
+
+  inline bool FloatStringHolderEqual(FloatStringHolder* lhs, FloatStringHolder* rhs) {
+    if(lhs->length != rhs->length) {
+      return false;
+    }
+    
+    for(int i = 0; i < lhs->length; i++) {
+      if(lhs->value[i] != rhs->value[i]) {
+	return false;
+      }
+    }
+    
+    return true;
+  }
+
  public:
   IntermediateEmitter(ParsedProgram* p, bool l, bool d) {      
     parsed_program = p;
