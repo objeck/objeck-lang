@@ -427,6 +427,7 @@ void IntermediateEmitter::EmitStrings()
       }
     }
   }
+  // set static strings
   imm_program->SetCharStrings(char_string_values);
   imm_program->SetIntStrings(int_string_values);
   imm_program->SetFloatStrings(float_string_values);
