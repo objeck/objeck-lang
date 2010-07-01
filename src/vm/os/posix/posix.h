@@ -76,7 +76,7 @@ class File {
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
-    FILE* file = fopen(name, "r");
+    FILE* file = fopen(name, mode);
     if(file < 0) {
       return NULL;
     }
