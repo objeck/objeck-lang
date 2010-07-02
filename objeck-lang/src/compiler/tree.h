@@ -428,6 +428,7 @@ namespace frontend {
     Expression* prev_expr;
     Class* to_class;
     LibraryClass* to_lib_class;
+    bool is_enum;
 
   Expression(const string &f, const int l) : ParseNode(f, l) {
       base_type = eval_type = cast_type = NULL;
@@ -435,6 +436,7 @@ namespace frontend {
       prev_expr = NULL;
       to_class = NULL;
       to_lib_class = NULL;
+      is_enum = false;
     }
 
   Expression(const string &f, const int l, Type* t) : ParseNode(f, l) {
@@ -444,6 +446,7 @@ namespace frontend {
       prev_expr = NULL;
       to_class = NULL;
       to_lib_class = NULL;
+      is_enum = false;
     }
 
     ~Expression() {
@@ -456,6 +459,14 @@ namespace frontend {
 
     Class* GetToClass() {
       return to_class;
+    }
+
+    void SetEnumCall(bool e) {
+      is_enum = e;
+    }
+
+    bool IsEnumCall() {
+      return is_enum;
     }
 
     void SetToLibraryClass(LibraryClass* t) {
