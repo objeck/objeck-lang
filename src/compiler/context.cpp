@@ -873,8 +873,11 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
   }
 
   if(type) {
+    bool is_enum = false;
     const int dimension = IsScalar(expression) ? 0 : type->GetDimension();
-    return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass);
+    bool result = AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum);
+    expression->SetEnumCall(is_enum);    
+    return result;
   }
 
   return false;
@@ -889,8 +892,9 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
 {
   Type* type = entry->GetType();
   if(type) {
+    bool is_enum = false;
     return AnalyzeExpressionMethodCall(type, type->GetDimension(),
-                                       encoding, klass, lib_klass);
+                                       encoding, klass, lib_klass, is_enum);
   }
 
   return false;
@@ -902,7 +906,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
 						  string &encoding, Class* &klass,
-						  LibraryClass* &lib_klass)
+						  LibraryClass* &lib_klass, bool &is_enum)
 {
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
@@ -954,6 +958,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
           klass = program->GetClass(INT_CLASS_ID);
           lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses());
           encoding = "i,";
+	  is_enum = true;
         }
       }
     }
@@ -1048,6 +1053,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int de
     if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass)) {
       ProcessError(static_cast<Expression*>(method_call), "Invalid class type or assignment");
     }
+    // TODO: Hack'olic 'is_enum'
+    method_call->SetEnumCall(expression->IsEnumCall());
     // check methods
     if(klass) {
       AnalyzeMethodCall(klass, method_call, true, encoding, depth);
