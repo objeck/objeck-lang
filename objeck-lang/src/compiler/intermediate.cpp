@@ -2205,7 +2205,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         }
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      } else if(!entry->IsSelf()) {
+      } 
+      else if(!entry->IsSelf()) {
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
         case frontend::BYTE_TYPE:
@@ -2225,13 +2226,15 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           // load instance or class memory
           if(mem_context == INST) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-          } else if(mem_context == CLS) {
+          } 
+	  else if(mem_context == CLS) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
           }
 
           if(entry->GetType()->GetDimension() > 0) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
-          } else {
+          } 
+	  else {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, entry->GetId(), mem_context));
           }
           break;
@@ -2258,6 +2261,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
           }
+	  // enum check
+	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+	     SearchProgramEnums(entry->GetType()->GetClassName())) {
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+	  }
         }
         // TODO: this needs to be looked at... simpiler?
         else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
@@ -2283,6 +2291,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
           }
+	  // enum check
+	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+	     parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+	  }
         }
         // TODO: this needs to be looked at... simpiler?
         else if(!is_nested && (!variable || !variable->GetIndices() ||
@@ -2293,11 +2306,19 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
-    }
-
+    }    
+    
     // program method call
     if(method_call->GetMethod()) {
       Method* method = method_call->GetMethod();
+      /*
+      // TODO: enum support?
+      if(method->GetMethodType() != NEW_PUBLIC_METHOD && 
+	 method->GetMethodType() != NEW_PRIVATE_METHOD & 
+	 !entry && !variable) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      }  
+      */
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, method->IsNative(),
 										   method->GetClass()->GetName(),
@@ -2312,6 +2333,14 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     // library method call
     else if(method_call->GetLibraryMethod()) {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
+      /*
+      // TODO: enum support?
+      if(lib_method->GetMethodType() != NEW_PUBLIC_METHOD && 
+	 lib_method->GetMethodType() != NEW_PRIVATE_METHOD & 
+	 !entry && !variable) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      */
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, lib_method->IsNative(),
 										   lib_method->GetLibraryClass()->GetName(),
