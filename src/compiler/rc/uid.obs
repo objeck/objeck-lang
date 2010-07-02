@@ -7,10 +7,12 @@ bundle Default {
   class UID {
     function : Main(args : System.String[]), Nil {
 #~
+      Float->Pi()->PrintLine();
+~#
+
       s := String->New();
       i := s->GetClassID();
       i->PrintLine();
-~#
 
       s := String->New();
       s->GetClassID()->PrintLine();
