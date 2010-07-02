@@ -1,0 +1,19 @@
+bundle Default {
+  class Foo {
+    New() {
+    }
+  }
+
+  class UID {
+    function : Main(args : System.String[]), Nil {
+#~
+      s := String->New();
+      i := s->GetClassID();
+      i->PrintLine();
+~#
+
+      s := String->New();
+      s->GetClassID()->PrintLine();
+    }
+  }
+}
