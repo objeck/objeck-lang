@@ -428,7 +428,6 @@ namespace frontend {
     Expression* prev_expr;
     Class* to_class;
     LibraryClass* to_lib_class;
-    bool is_enum;
 
   Expression(const string &f, const int l) : ParseNode(f, l) {
       base_type = eval_type = cast_type = NULL;
@@ -436,7 +435,6 @@ namespace frontend {
       prev_expr = NULL;
       to_class = NULL;
       to_lib_class = NULL;
-      is_enum = false;
     }
 
   Expression(const string &f, const int l, Type* t) : ParseNode(f, l) {
@@ -446,7 +444,6 @@ namespace frontend {
       prev_expr = NULL;
       to_class = NULL;
       to_lib_class = NULL;
-      is_enum = false;
     }
 
     ~Expression() {
@@ -459,14 +456,6 @@ namespace frontend {
 
     Class* GetToClass() {
       return to_class;
-    }
-
-    void SetEnumCall(bool e) {
-      is_enum = e;
-    }
-
-    bool IsEnumCall() {
-      return is_enum;
     }
 
     void SetToLibraryClass(LibraryClass* t) {
@@ -1798,6 +1787,7 @@ namespace frontend {
     MethodCallType call_type;
     Type* array_type;
     Variable* variable;
+    bool is_enum_call;
 
   MethodCall(const string &f, const int l, MethodCallType t,
              const string &v, ExpressionList* e) :
@@ -1816,6 +1806,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
+      is_enum_call = false;
 
       if(variable_name == BOOL_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
@@ -1856,6 +1847,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
+      is_enum_call = false;
     }
 
   MethodCall(const string &f, const int l,
@@ -1875,6 +1867,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
+      is_enum_call = false;
     }
 
   MethodCall(const string &f, const int l,
@@ -1894,12 +1887,21 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
+      is_enum_call = false;
     }
-
+    
     ~MethodCall() {
     }
 
   public:
+    void SetEnumCall(bool e) {
+      is_enum_call = e;
+    }
+
+    bool IsEnumCall() {
+      return is_enum_call;
+    }
+
     MethodCallType GetCallType() {
       return call_type;
     }
