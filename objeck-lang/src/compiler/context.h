@@ -436,9 +436,9 @@ class ContextAnalyzer {
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,
                                    Class* &klass, LibraryClass* &lib_klass);
   bool AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass);
+                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   bool AnalyzeExpressionMethodCall(Type* type, const int dimension, string &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum);
+                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   void AnalyzeMethodCall(MethodCall* method_call, int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, int depth);
   void AnalyzeParentCall(MethodCall* method_call, int depth);

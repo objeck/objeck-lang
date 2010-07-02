@@ -832,7 +832,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry) {
       if(method_call->GetVariable()) {
-        if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding, klass, lib_klass)) {
+	bool is_enum_call = false;
+        if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
+					klass, lib_klass, is_enum_call)) {
           ProcessError(static_cast<Expression*>(method_call), "Invalid class type or assignment");
         }
       } else {
@@ -862,7 +864,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
  * method call
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
-						  Class* &klass, LibraryClass* &lib_klass)
+						  Class* &klass, LibraryClass* &lib_klass, 
+						  bool &is_enum_call)
 {
   // data type call
   Type* type;
@@ -873,13 +876,10 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
   }
 
   if(type) {
-    bool is_enum = false;
     const int dimension = IsScalar(expression) ? 0 : type->GetDimension();
-    bool result = AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum);
-    expression->SetEnumCall(is_enum);    
-    return result;
+    return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
   }
-
+  
   return false;
 }
 
@@ -892,9 +892,9 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
 {
   Type* type = entry->GetType();
   if(type) {
-    bool is_enum = false;
+    bool is_enum_call = false;
     return AnalyzeExpressionMethodCall(type, type->GetDimension(),
-                                       encoding, klass, lib_klass, is_enum);
+                                       encoding, klass, lib_klass, is_enum_call);
   }
 
   return false;
@@ -906,7 +906,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, string &en
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
 						  string &encoding, Class* &klass,
-						  LibraryClass* &lib_klass, bool &is_enum)
+						  LibraryClass* &lib_klass, bool &is_enum_call)
 {
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
@@ -958,7 +958,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
           klass = program->GetClass(INT_CLASS_ID);
           lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses());
           encoding = "i,";
-	  is_enum = true;
+	  is_enum_call = true;
         }
       }
     }
@@ -1050,11 +1050,11 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int de
     LibraryClass* lib_klass = NULL;
 
     // check expression class
-    if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass)) {
+    bool is_enum_call = false;
+    if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
       ProcessError(static_cast<Expression*>(method_call), "Invalid class type or assignment");
     }
-    // TODO: Hack'olic 'is_enum'
-    method_call->SetEnumCall(expression->IsEnumCall());
+    method_call->SetEnumCall(is_enum_call);
     // check methods
     if(klass) {
       AnalyzeMethodCall(klass, method_call, true, encoding, depth);
