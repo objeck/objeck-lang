@@ -722,13 +722,19 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::LOAD_ARY_SIZE);
       NextToken();
       break;
-
+      
     case LOAD_CLS_INST_ID:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::LOAD_CLS_INST_ID);
       NextToken();
       break;
-
+      
+    case LOAD_INST_UID:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::LOAD_INST_UID);
+      NextToken();
+      break;
+      
     case STD_OUT_CHAR_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::STD_OUT_CHAR_ARY);

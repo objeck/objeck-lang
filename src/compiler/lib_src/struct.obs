@@ -640,7 +640,7 @@ bundle Structure {
 		}
 	}
 
-	class BinaryTree {
+	class Map {
 		@root : TreeNode;
 		@last : TreeNode;
 		@deleted : TreeNode;
@@ -877,7 +877,7 @@ bundle Structure {
 
 bundle Net {
 	class HttpClient {
-		@headers : BinaryTree;
+		@headers : Map;
 		@url : String;
 		@port : Int;
 		@content_type : String;
@@ -886,17 +886,17 @@ bundle Net {
 			@url := url;
 			@port := port;
 			@content_type := "text/plain";
-			@headers := BinaryTree->New();
+			@headers := Map->New();
 		}
 		
 		New(url : String, port : Int, content_type : String) {
 			@url := url;
 			@port := port;
 			@content_type := content_type;
-			@headers := BinaryTree->New();
+			@headers := Map->New();
 		}
 		
-		method : GetHeaders(), BinaryTree {
+		method : GetHeaders(), Map {
 			return @headers;
 		}
 		

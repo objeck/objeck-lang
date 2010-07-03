@@ -43,7 +43,7 @@ index->PrintLine();
 						return_code->PrintLine();
 					};
 					
-					headers := BinaryTree->New();
+					headers := Map->New();
 					do {
 						line := socket->ReadString();
 						if(line->GetSize() > 0 & line->StartsWith('<') = false) {
