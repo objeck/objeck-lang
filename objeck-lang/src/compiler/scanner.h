@@ -123,6 +123,7 @@ enum TokenType {
   FLOR_FLOAT,
   CEIL_FLOAT,
   LOAD_CLS_INST_ID,
+  LOAD_INST_UID,
   // standard i/o
   STD_OUT_BOOL,
   STD_OUT_BYTE,

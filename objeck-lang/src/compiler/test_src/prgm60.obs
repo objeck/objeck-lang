@@ -1,7 +1,22 @@
 bundle Default {
+	class MyString from String {
+		New(s : String) {
+			Parent(s);
+		}
+
+		method : public : GetSize(), Int {
+			return 10;
+		}
+	}
+		
 	class Test {
 		function : Main(args : System.String[]), Nil {
-			address := args[0]->SubString("http://"->GetSize());
+			Run();
+		}
+	
+		function : native : Run(), Nil {
+			ms := MyString->New("Hello");
+			ms->GetSize()->PrintLine();	
 		}
 	}
 }
