@@ -338,7 +338,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
     method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
     method->AddInstruction(new StackInstr(-1, NEW_BYTE_ARY, 1L));
     method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, -3998L));
+    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
     method->AddInstruction(new StackInstr(-1, TRAP_RTRN, 3L));
 
     method->AddInstruction(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));

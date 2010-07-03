@@ -340,7 +340,7 @@ bundle System {
 			LOAD_CLS_INST_ID;
 		}
 
-		method : public : native : GetUniqueID(), ClassID {
+		method : public : native : GetUniqueID(), Int {
 			LOAD_INST_UID;
 		}
 	}
