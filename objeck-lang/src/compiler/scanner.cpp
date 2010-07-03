@@ -74,6 +74,9 @@ Scanner::~Scanner()
 ****************************/
 void Scanner::LoadKeywords()
 {
+  ident_map["and"] = TOKEN_AND_ID,
+  ident_map["or"] = TOKEN_OR_ID,
+  ident_map["xor"] = TOKEN_XOR_ID,
   ident_map["virtual"] = TOKEN_VIRTUAL_ID;
   ident_map["if"] = TOKEN_IF_ID;
   ident_map["else"] = TOKEN_ELSE_ID;
@@ -175,6 +178,9 @@ void Scanner::CheckIdentifier(int index)
   // check string
   TokenType ident_type = ident_map[ident];
   switch(ident_type) {
+  case TOKEN_AND_ID:
+  case TOKEN_OR_ID:
+  case TOKEN_XOR_ID:
   case TOKEN_CRITICAL_ID:
   case TOKEN_VIRTUAL_ID:
   case TOKEN_FROM_ID:

@@ -308,6 +308,27 @@ void StackInterpreter::Execute()
       PushInt(PopInt() % PopInt());
       break;
 
+    case BIT_AND_INT:
+#ifdef _DEBUG
+      cout << "stack oper: BIT_AND; call_pos=" << call_stack_pos << endl;
+#endif
+      PushInt(PopInt() & PopInt());
+      break;
+      
+    case BIT_OR_INT:
+#ifdef _DEBUG
+      cout << "stack oper: BIT_OR; call_pos=" << call_stack_pos << endl;
+#endif
+      PushInt(PopInt() | PopInt());
+      break;
+      
+    case BIT_XOR_INT:
+#ifdef _DEBUG
+      cout << "stack oper: BIT_XOR; call_pos=" << call_stack_pos << endl;
+#endif
+      PushInt(PopInt() ^ PopInt());
+      break;
+      
     case LES_EQL_INT:
 #ifdef _DEBUG
       cout << "stack oper: LES_EQL; call_pos=" << call_stack_pos << endl;
