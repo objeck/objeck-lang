@@ -1,0 +1,15 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]), Nil {
+			Run();
+		}
+
+#		function : Run(), Nil {
+		function : native : Run(), Nil {		
+			(13 and 7)->PrintLine();
+			a : Int := 13;
+			(a and 7)->PrintLine();
+			(7 and a)->PrintLine();
+		}
+	}
+}
