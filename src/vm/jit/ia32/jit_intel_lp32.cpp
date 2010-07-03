@@ -3002,7 +3002,7 @@ void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
 
 void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [addl %" << GetRegisterName(src) 
+  cout << "  " << (++instr_count) << ": [andl %" << GetRegisterName(src) 
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
   // encode
@@ -3041,6 +3041,7 @@ void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
   AddImm(imm);
 }
 
+
 void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [orl %" << GetRegisterName(src) 
@@ -3068,6 +3069,20 @@ void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
+#ifdef _DEBUG
+  cout << "  " << (++instr_count) << ": [andl $" << imm << ", %"
+       << GetRegisterName(reg) << "]" << endl;
+#endif
+  // encode
+  AddMachineCode(0x81);
+  BYTE_VALUE code = 0xe0;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+  // write value
+  AddImm(imm);
+}
+
 void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [xor %" << GetRegisterName(src) 
@@ -3080,6 +3095,19 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
   RegisterEncode3(code, 2, src);
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
+}
+
+void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
+#ifdef _DEBUG
+  cout << "  " << (++instr_count) << ": [xorl " << offset << "(%" 
+       << GetRegisterName(src) << "), %" << GetRegisterName(dest) 
+       << "]" << endl;
+#endif
+  // encode
+  AddMachineCode(0x33);
+  AddMachineCode(ModRM(src, dest));
+  // write value
+  AddImm(offset);
 }
 
 /********************************
