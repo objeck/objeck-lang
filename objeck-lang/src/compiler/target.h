@@ -387,6 +387,18 @@ public:
       cout << "MOD_INT" << endl;
       break;
 
+    case BIT_AND_INT:
+      cout << "BIT_AND_INT" << endl;
+      break;
+
+    case BIT_OR_INT:
+      cout << "BIT_OR_INT" << endl;
+      break;
+      
+    case BIT_XOR_INT:
+      cout << "BIT_XOR_INT" << endl;
+      break;
+      
     case EQL_INT:
       cout << "EQL_INT" << endl;
       break;

@@ -1492,6 +1492,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
   }
@@ -1723,6 +1726,9 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(right));
     break;
 
@@ -1744,6 +1750,9 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(left));
     break;
 
@@ -1852,6 +1861,21 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 
   case MOD_EXPR:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+    EmitCast(expression);
+    break;
+    
+  case BIT_AND_EXPR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, BIT_AND_INT));
+    EmitCast(expression);
+    break;
+    
+  case BIT_OR_EXPR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, BIT_OR_INT));
+    EmitCast(expression);
+    break;
+    
+  case BIT_XOR_EXPR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, BIT_XOR_INT));
     EmitCast(expression);
     break;
   }

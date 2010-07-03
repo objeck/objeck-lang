@@ -707,8 +707,10 @@ namespace Runtime {
     void or_imm_reg(int32_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);
     void or_mem_reg(int32_t offset, Register src, Register dest);
+    void xor_imm_reg(int32_t imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
-
+    void xor_mem_reg(int32_t offset, Register src, Register dest);
+    
     // add instructions
     void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
     void add_imm_reg(int32_t imm, Register reg);    
