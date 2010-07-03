@@ -10,6 +10,9 @@ bundle Default {
 			a : Int := 13;
 			(a and 7)->PrintLine();
 			(7 and a)->PrintLine();
+
+			s := String->New();
+			s->GetUniqueID()->PrintLine();
 		}
 	}
 }
