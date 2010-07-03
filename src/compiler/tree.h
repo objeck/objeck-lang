@@ -410,10 +410,13 @@ namespace frontend {
     MUL_EXPR,
     DIV_EXPR,
     MOD_EXPR,
+    BIT_AND_EXPR,
+    BIT_OR_EXPR,
+    BIT_XOR_EXPR,
     CHAR_STR_EXPR,
     STAT_ARY_EXPR
   } ExpressionType;
-
+  
   /****************************
    * Expression base class
    ****************************/
