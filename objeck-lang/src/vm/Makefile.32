@@ -9,10 +9,10 @@
 ##############
 # For Linux
 ##############
+# ARGS=-pthread -D_TIMING -O3
 # ARGS=-g -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
-ARGS=-g -Wunused -D_JIT_SERIAL -pthread
 # ARGS=-O3 -pthread
 
 CC=g++

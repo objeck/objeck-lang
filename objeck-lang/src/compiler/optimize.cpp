@@ -465,6 +465,9 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
     case MUL_INT:
     case DIV_INT:
     case MOD_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
       CalculateIntFold(instr, calc_stack, outputs);
       break;
 
@@ -507,31 +510,49 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
       INT_VALUE value = left->GetOperand() + right->GetOperand();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    break;
+      break;
 
     case SUB_INT: {
       INT_VALUE value = left->GetOperand() - right->GetOperand();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    break;
+      break;
 
     case MUL_INT: {
       INT_VALUE value = left->GetOperand() * right->GetOperand();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    break;
+      break;
 
     case DIV_INT: {
       INT_VALUE value = left->GetOperand() / right->GetOperand();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    break;
+      break;
 
     case MOD_INT: {
       INT_VALUE value = left->GetOperand() % right->GetOperand();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
-    break;
+      break;
+      
+    case BIT_AND_INT: {
+      INT_VALUE value = left->GetOperand() & right->GetOperand();
+      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+    }
+      break;
+
+    case BIT_OR_INT: {
+      INT_VALUE value = left->GetOperand() | right->GetOperand();
+      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+    }
+      break;
+
+    case BIT_XOR_INT: {
+      INT_VALUE value = left->GetOperand() ^ right->GetOperand();
+      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+    }
+      break;
     }
   } else {
     outputs->AddInstruction(instr);
