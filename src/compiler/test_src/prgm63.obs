@@ -17,6 +17,9 @@ bundle Default {
 			a := 13;
 			b := 7;
 			(a xor b)->PrintLine();
+			(13 xor b)->PrintLine();
+			(7 xor a)->PrintLine();
+			(7 xor 13)->PrintLine();
 		}
 	}
 }
