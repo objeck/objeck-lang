@@ -13,7 +13,7 @@ bundle Default {
       Run();
     }
     function : native : Run(), Nil {
-      reserved := BinaryTree->New();
+      reserved := Map->New();
       reserved->Insert("function"->As(Compare), "keyword: function"->As(Base));
       reserved->Insert("Int"->As(Compare), "keyword: Int"->As(Base));
       reserved->Insert("Float"->As(Compare), "keyword: Float"->As(Base));
