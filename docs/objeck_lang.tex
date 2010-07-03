@@ -714,7 +714,7 @@ The following data structures are supported:
     \item Stack
     \item IntStack
     \item FloatStack
-    \item BinaryTree
+    \item Map
 \end{itemize}
 
 \subsubsection{Console}
@@ -933,9 +933,9 @@ The HttpClient class allows programmers access HTTP 1.1 websites:
     	\begin{itemize}
 	\item method : public : Get(), Vector
 	\end{itemize}
-    \item \texttt{GetHeaders} - Returns a \texttt{BinaryTree} of headers information.  HTTP header information is populated after a HTTP GET request.
+    \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers information.  HTTP header information is populated after a HTTP GET request.
     	\begin{itemize}
-	\item method : GetHeaders(), BinaryTree
+	\item method : GetHeaders(), Map
 	\end{itemize}
 \end{itemize}
 
@@ -1039,8 +1039,8 @@ The Vector class support the concept of a growing array.  There are two speciali
 	\end{itemize}
 \end{itemize}
 
-\subsubsection{BinaryTree}
-The BinaryTree class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$:
+\subsubsection{Map}
+The Map class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$:
 \begin{itemize}
     \item \texttt{Insert} - adds a new value to the tree
     	\begin{itemize}
@@ -1112,7 +1112,7 @@ use Structure;
 
 bundle Default {
   class HttpClient {
-    @headers : BinaryTree;
+    @headers : Map;
     @url : String;
     @port : Int;
     @content_type : String;
@@ -1130,17 +1130,17 @@ bundle Default {
       @url := url;
       @port := port;
       @content_type := "text/plain";
-      @headers := BinaryTree->New();
+      @headers := Map->New();
     }
     
     New(url : String, port : Int, content_type : String) {
       @url := url;
       @port := port;
       @content_type := content_type;
-      @headers := BinaryTree->New();
+      @headers := Map->New();
     }
     
-    method : native : GetHeaders(), BinaryTree {
+    method : native : GetHeaders(), Map {
       return @headers;
     }
     
