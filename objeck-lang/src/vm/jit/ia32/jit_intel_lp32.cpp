@@ -314,6 +314,9 @@ void JitCompilerIA32::ProcessInstructions() {
     case MUL_INT:
     case DIV_INT:
     case MOD_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
       // comparison
     case LES_INT:
     case GTR_INT:
@@ -322,7 +325,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case EQL_INT:
     case NEQL_INT:
 #ifdef _DEBUG
-      cout << "INT ADD/SUB/MUL/DIV/MOD/LES/GTR/EQL/NEQL: regs=" 
+      cout << "INT ADD/SUB/MUL/DIV/MOD/BIT_AND/BIT_OR/BIT_XOR/LES/GTR/EQL/NEQL: regs=" 
 	   << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       ProcessIntCalculation(instr);
@@ -1951,7 +1954,19 @@ void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType ty
   case MOD_INT:
     div_imm_reg(imm, reg, true);
     break;
-
+    
+  case BIT_AND_INT:
+    and_imm_reg(imm, reg);
+    break;
+    
+  case BIT_OR_INT:
+    or_imm_reg(imm, reg);
+    break;
+    
+  case BIT_XOR_INT:
+    xor_imm_reg(imm, reg);
+    break;
+    
   case LES_INT:	
   case GTR_INT:
   case EQL_INT:
@@ -1996,6 +2011,18 @@ void JitCompilerIA32::math_reg_reg(Register src, Register dest, InstructionType 
     div_reg_reg(src, dest, true);
     break;
 
+  case BIT_AND_INT:
+    and_reg_reg(src, dest);
+    break;
+
+  case BIT_OR_INT:
+    or_reg_reg(src, dest);
+    break;
+
+  case BIT_XOR_INT:
+    xor_reg_reg(src, dest);
+    break;
+    
   case LES_INT:	
   case GTR_INT:
   case EQL_INT:
@@ -2038,6 +2065,18 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
     
   case MOD_INT:
     div_mem_reg(offset, EBP, reg, true);
+    break;
+
+  case BIT_AND_INT:
+    and_mem_reg(offset, EBP, reg);
+    break;
+
+  case BIT_OR_INT:
+    or_mem_reg(offset, EBP, reg);
+    break;
+
+  case BIT_XOR_INT:
+    xor_mem_reg(offset, EBP, reg);
     break;
     
   case LES_INT:
