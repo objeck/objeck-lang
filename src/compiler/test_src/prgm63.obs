@@ -13,6 +13,10 @@ bundle Default {
 
 			s := String->New();
 			s->GetUniqueID()->PrintLine();
+
+			a := 13;
+			b := 7;
+			(a xor b)->PrintLine();
 		}
 	}
 }
