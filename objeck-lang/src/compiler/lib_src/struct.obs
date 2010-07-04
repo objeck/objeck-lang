@@ -981,8 +981,6 @@ bundle Net {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->GetSize() - index - 1)->Trim();			
 								@headers->Insert(name->As(Compare), value->As(Base));
-								"------------"->PrintLine();
-								IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->GetSize() > 0 & line->StartsWith('<') = false);
