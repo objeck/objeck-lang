@@ -20,6 +20,21 @@ bundle Default {
 			(13 xor b)->PrintLine();
 			(7 xor a)->PrintLine();
 			(7 xor 13)->PrintLine();
+
+			i := "hollines"->GetUniqueID();
+			i->PrintLine();
+			hash := 2 xor i % 4001;
+			hash->PrintLine();
+
+			i := "randy"->GetUniqueID();
+			i->PrintLine();
+			hash := 2 xor i % 4001;
+			hash->PrintLine();
+
+			i := "pug"->GetUniqueID();
+			i->PrintLine();
+			hash := 2 xor i % 4001;
+			hash->PrintLine();
 		}
 	}
 }
