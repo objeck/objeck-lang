@@ -180,7 +180,7 @@ class IPSocket {
     return value;
   }
   
-  static char ReadBytes(char* values, int len, SOCKET sock) {
+  static int ReadBytes(char* values, int len, SOCKET sock) {
     return recv(sock, values, len, 0);
   }
   
