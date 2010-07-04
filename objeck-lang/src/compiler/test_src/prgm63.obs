@@ -23,17 +23,17 @@ bundle Default {
 
 			i := "hollines"->GetUniqueID();
 			i->PrintLine();
-			hash := 2 xor i % 4001;
+			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
 			i := "randy"->GetUniqueID();
 			i->PrintLine();
-			hash := 2 xor i % 4001;
+			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
 			i := "pug"->GetUniqueID();
 			i->PrintLine();
-			hash := 2 xor i % 4001;
+			hash := 2 xor i % 4027;
 			hash->PrintLine();
 		}
 	}
