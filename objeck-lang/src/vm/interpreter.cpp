@@ -1393,6 +1393,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     int status;
     if(sock >= 0) {
+      // IPSocket::ReadBytes(buffer, num, socket);
       int index = 0;   
       BYTE_VALUE value = IPSocket::ReadByte(sock, status);
       while((value == '\r' || value == '\n') && index < num && status > 0) {
@@ -1405,7 +1406,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 	  value = IPSocket::ReadByte(sock, status);
 	}
 	while(value != '\r' && value != '\n' && index < num && status > 0);
-      }
+      }      
     }
   }
     break;
@@ -1527,13 +1528,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case SOCK_TCP_IN_BYTE: {
-    long value = PopInt();
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
-    
-    IPSocket::WriteByte((char)value, sock);
-    PushInt(1);
-
+    int status;
+    PushInt(IPSocket::ReadByte(sock, status));
   }
     break;
 

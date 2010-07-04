@@ -573,7 +573,7 @@ namespace Runtime {
     
     /***********************************
      * Gets an avaiable register from
-    ***********************************/
+     ***********************************/
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -1005,6 +1005,74 @@ namespace Runtime {
 	}
 	  break;
 	  
+	  // ---------------- ip socket i/o ----------------
+	case SOCK_TCP_CONNECT: {
+	  long port = PopInt(op_stack, stack_pos);
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  array = (long*)array[0];
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  const char* addr = (char*)(array + 3);
+	  SOCKET sock = IPSocket::Open(addr, port);
+#ifdef _DEBUG
+	  cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
+	    "; addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+	  instance[0] = (long)sock;
+	}
+	  break;  
+    
+	case SOCK_TCP_CLOSE: {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+
+#ifdef _DEBUG
+	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+	  if(sock >= 0) {
+	    instance[0] = NULL;
+	    IPSocket::Close(sock);
+	  }
+	}
+	  break;
+
+	case SOCK_TCP_OUT_STRING: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+	  char* data = (char*)(array + 3);
+    
+	  if(sock >= 0) {
+	    IPSocket::WriteBytes(data, strlen(data), sock);
+	  }
+	}
+	  break;
+
+	case SOCK_TCP_IN_STRING: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  char* buffer = (char*)(array + 3);
+	  const long num = array[0] - 1;
+	  SOCKET sock = (SOCKET)instance[0];
+
+	  int status;
+	  if(sock >= 0) {
+	    int index = 0;   
+	    BYTE_VALUE value = IPSocket::ReadByte(sock, status);
+	    while((value == '\r' || value == '\n') && index < num && status > 0) {
+	      value = IPSocket::ReadByte(sock, status);
+	    }
+
+	    if(status > 0) {
+	      do {
+		buffer[index++] = value;
+		value = IPSocket::ReadByte(sock, status);
+	      }
+	      while(value != '\r' && value != '\n' && index < num && status > 0);
+	    }      
+	  }
+	}
+	  break;
+	  
 	  // ---------------- file i/o ----------------
 	case FILE_OPEN_READ: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1161,14 +1229,12 @@ namespace Runtime {
 	  }
 	}
 	  break;
-
+	  
 	case SOCK_TCP_IN_BYTE: {
-	  long value = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  SOCKET sock = (SOCKET)instance[0];
-    
-	  IPSocket::WriteByte((char)value, sock);
-	  PushInt(op_stack, stack_pos, 1);
+	  int status;
+	  PushInt(op_stack, stack_pos, IPSocket::ReadByte(sock, status));
 
 	}
 	  break;
@@ -1499,8 +1565,8 @@ namespace Runtime {
 	 const int32_t dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	   index *= array[i];
-	   index += PopInt();
+	 index *= array[i];
+	 index += PopInt();
 	 }
       */
 
