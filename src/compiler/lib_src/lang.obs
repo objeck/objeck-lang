@@ -410,6 +410,22 @@ bundle System {
 
 			Append(array);
 		}
+		
+		New(array : Byte[]) {
+			Parent();
+			
+			if(array->GetSize() < 8) {
+				@max := 8;
+			}
+			else {
+				@max := array->GetSize();
+			};
+			
+			@string := Char->New[@max];
+			@pos := 0;
+
+			Append(array);
+		}
 
 		method : public : native : ToCharArray(), Char[] {
 			array : Char[] := Char->New[@pos];
@@ -449,8 +465,42 @@ bundle System {
 				@pos := @pos + 1;
 			};
 		}
+		
+		method : public : native : Append(array : Byte[]), Nil {
+			if(@pos + array->GetSize() >= @max) {
+				# expand string
+				@max := (@max + array->GetSize()) * 2;
+				tmp : Char[] := Char->New[@max];
+				# copy elements
+				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+					tmp[i] := @string[i];	
+				};
+				@string := tmp;
+			};
+			
+			for(i : Int := 0; i < array->GetSize() & array[i] <> '\0'; i := i + 1;) {
+				@string[@pos] := array[i];
+				@pos := @pos + 1;
+			};
+		}
 
 		method : public : native : Append(c : Char), Nil {
+			if(@pos >= @max) {
+				# expand string
+                		@max := @max * 3;
+                		tmp : Char[] := Char->New[@max];
+                		# copy elements
+                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                        		tmp[i] := @string[i];
+                		};
+                		@string := tmp;
+			};
+
+			@string[@pos] := c;
+			@pos := @pos + 1;
+		}
+		
+		method : public : native : Append(c : Byte), Nil {
 			if(@pos >= @max) {
 				# expand string
                 		@max := @max * 3;

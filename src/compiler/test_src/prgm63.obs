@@ -26,6 +26,11 @@ bundle Default {
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
+			i := "hollines"->GetUniqueID();
+			i->PrintLine();
+			hash := 2 xor i % 4027;
+			hash->PrintLine();
+
 			i := "randy"->GetUniqueID();
 			i->PrintLine();
 			hash := 2 xor i % 4027;

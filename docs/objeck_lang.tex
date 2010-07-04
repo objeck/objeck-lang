@@ -628,11 +628,13 @@ Objeck includes class libraries that provides access to system resources, such a
 	\item New()
 	\item New(s : String)
 	\item New(a : Char[])
+	\item New(a : Byte[])
 	\end{itemize}
     \item \texttt{Append} - Appends a \texttt{String}, \texttt{Char[]}, \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String instance
     	\begin{itemize}
 	\item method : public : native : Append(s : String), Nil
 	\item method : public : native : Append(c : Char), Nil
+	\item method : public : native : Append(b : Byte), Nil
 	\item method : public : native : Append(i : Int), Nil
 	\item method : public : native : Append(f : Float), Nil
 	\item method : public : native : Append(a : Char[]), Nil
@@ -1044,7 +1046,7 @@ The Map class supports the concept of an associative array with key/value pairs.
 \begin{itemize}
     \item \texttt{Insert} - adds a new value to the tree
     	\begin{itemize}
-	\item method : public : native : Insert(key : Compare, value : Base), Nil
+	\item method : public : Insert(key : Compare, value : Base), Nil
 	\end{itemize}
     \item \texttt{Delete} - removes a value from the tree
     	\begin{itemize}
@@ -1061,8 +1063,7 @@ The Map class supports the concept of an associative array with key/value pairs.
     \item \texttt{GetValues} - returns a vector of values
     	\begin{itemize}
 	\item method : public : GetValues(), Vector
-	\end{itemize}	
-    \item \texttt{GetValue} - returns a vector of values
+	\end{itemize}
 \end{itemize}
 
 \section{Examples}
