@@ -1,18 +1,17 @@
-# Basic HTTP Client
-# R. Hollines
-
 use Net;
 use IO;
 use Structure;
 
 bundle Default {
 	class HttpTest {
-		function : Main(args : System.String[]), Nil {
-			client := HttpClient->New(args[0], 80);
-			lines := client->Get();
-			
-			for(i := 0; i < lines->GetSize(); i := i + 1;) {
-				lines->GetValue(i)->As(String)->PrintLine();
+		function : Main(args : String[]), Nil {
+			if(args->GetSize() = 1) {
+				client := HttpClient->New(args[0], 80);
+				lines := client->Get();
+				
+				for(i := 0; i < lines->GetSize(); i := i + 1;) {
+					lines->GetValue(i)->As(String)->PrintLine();
+				};
 			};
 		}
 	}
