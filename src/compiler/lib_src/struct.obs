@@ -938,7 +938,7 @@ bundle Net {
 			return true;
 		}
 		
-		method : public : Get(), Vector {
+		method : public : native : Get(), Vector {
 			content := Vector->New();
 			if(@url->StartsWith("http://")) {
 				@url := @url->SubString("http://"->GetSize(), 
@@ -965,6 +965,7 @@ bundle Net {
 	
 					status_code := 500;
 					status_line := socket->ReadString();
+status_line->PrintLine();
 					if(status_line->StartsWith("HTTP/1.1")) {
 						status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
 							status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
@@ -972,27 +973,54 @@ bundle Net {
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-					if(status_code = 200) {
+					if(status_code <> 500) {
 					  # get headers
 						do {
 							line := socket->ReadString();
-							if(line->GetSize() > 0 & line->StartsWith('<') = false) {
+							if(line->GetSize() > 0) {
 								index := line->GetIndex(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->GetSize() - index - 1)->Trim();			
 								@headers->Insert(name->As(Compare), value->As(Base));
-							};
-						}
-						while(line->GetSize() > 0 & line->StartsWith('<') = false);
-						
-						# read content
-						do {
-							line := socket->ReadString();
-							if(line->GetSize() > 0) {
-								content->AddBack(line->Trim()->As(Base));	
+# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->GetSize() > 0);
+
+						# look for chunked blocks
+						encoding : String := @headers->Find("Transfer-Encoding"->As(Compare))->As(String);
+						if(encoding <> Nil & encoding->Equals("chunked")) {
+							done := false;
+							do {
+								size_line := "0x";
+								size_line->Append(socket->ReadString());
+								chunk_size := size_line->ToInt();
+								line := "";
+								if(chunk_size > 0) {
+									for(i := 0; i < chunk_size; i := i + 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line->As(Base));
+								}
+								else {
+									done := true;
+								};
+							}
+							while(done <> true);
+						}
+						else {
+							length_header : String := @headers->Find("Content-Length"->As(Compare))->As(String);
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								buffer := Byte->New[length];
+								for(i := 0; i < length; i := i + 1;) {
+									buffer[i] := socket->ReadByte();
+								};
+								line := String->New(buffer);
+								content->AddBack(line->As(Base));
+							};						
+						};
 					};
 					socket->Close();
 				}
