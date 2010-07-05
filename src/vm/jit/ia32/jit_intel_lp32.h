@@ -1046,14 +1046,14 @@ namespace Runtime {
 	  }
 	}
 	  break;
-
+	  
 	case SOCK_TCP_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  char* buffer = (char*)(array + 3);
 	  const long num = array[0] - 1;
 	  SOCKET sock = (SOCKET)instance[0];
-	  
+
 	  int status;
 	  if(sock >= 0) {
 	    int index = 0;
@@ -1070,7 +1070,8 @@ namespace Runtime {
 	    }
 	    while(!end_line);
       
-	    while(value == '\r' && value == '\n' && index < num && status > 0) {
+	    // assume LF
+	    if(value == '\r') {
 	      IPSocket::ReadByte(sock, status);
 	    }
 	  }
