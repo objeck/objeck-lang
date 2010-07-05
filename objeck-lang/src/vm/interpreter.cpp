@@ -1393,20 +1393,23 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     int status;
     if(sock >= 0) {
-      // IPSocket::ReadBytes(buffer, num, socket);
-      int index = 0;   
-      BYTE_VALUE value = IPSocket::ReadByte(sock, status);
-      while((value == '\r' || value == '\n') && index < num && status > 0) {
+      int index = 0;
+      BYTE_VALUE value;
+      bool end_line = false;
+      do {
 	value = IPSocket::ReadByte(sock, status);
-      }
-
-      if(status > 0) {
-	do {
+	if(value != '\r' && value != '\n' && index < num && status > 0) {
 	  buffer[index++] = value;
-	  value = IPSocket::ReadByte(sock, status);
 	}
-	while(value != '\r' && value != '\n' && index < num && status > 0);
-      }      
+	else {
+	  end_line = true;
+	}
+      }
+      while(!end_line);
+      
+      while(value == '\r' && value == '\n' && index < num && status > 0) {
+	IPSocket::ReadByte(sock, status);
+      }
     }
   }
     break;
