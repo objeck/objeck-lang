@@ -903,7 +903,7 @@ bundle Structure {
 		@buckets : LinkedList[];
 		
 		New() {
-			@buckets := LinkedList->New[521];
+			@buckets := LinkedList->New[337];
 		}
 		
 		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
