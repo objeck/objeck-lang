@@ -26,6 +26,10 @@ bundle Default {
 		method : public : native : Compare(rhs : System.Compare), Int {
 			return 0;
 		}
+
+		method : public : native : HashID(), Int {
+			return 0;
+		}
 	}
 	
 	class Test {
