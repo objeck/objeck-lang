@@ -1053,22 +1053,26 @@ namespace Runtime {
 	  char* buffer = (char*)(array + 3);
 	  const long num = array[0] - 1;
 	  SOCKET sock = (SOCKET)instance[0];
-
+	  
 	  int status;
 	  if(sock >= 0) {
-	    int index = 0;   
-	    BYTE_VALUE value = IPSocket::ReadByte(sock, status);
-	    while((value == '\r' || value == '\n') && index < num && status > 0) {
+	    int index = 0;
+	    BYTE_VALUE value;
+	    bool end_line = false;
+	    do {
 	      value = IPSocket::ReadByte(sock, status);
-	    }
-
-	    if(status > 0) {
-	      do {
+	      if(value != '\r' && value != '\n' && index < num && status > 0) {
 		buffer[index++] = value;
-		value = IPSocket::ReadByte(sock, status);
 	      }
-	      while(value != '\r' && value != '\n' && index < num && status > 0);
-	    }      
+	      else {
+		end_line = true;
+	      }
+	    }
+	    while(!end_line);
+      
+	    while(value == '\r' && value == '\n' && index < num && status > 0) {
+	      IPSocket::ReadByte(sock, status);
+	    }
 	  }
 	}
 	  break;
