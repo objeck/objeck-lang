@@ -1167,13 +1167,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     } else if(klass->GetLibraryParent()) {
       // check parent library class for method
       LibraryClass* lib_parent = klass->GetLibraryParent();
-      const string &encoded_parent_name =  lib_parent->GetName() + ":" +
-	method_call->GetMethodName() + ":" +
-	EncodeMethodCall(method_call->GetCallingParameters(), depth);
-
       method_call->SetOriginalClass(klass);
-      AnalyzeMethodCall(lib_parent->GetMethod(encoded_parent_name),
-                        method_call, klass->IsVirtual(), is_expr, depth);
+      string encoding;
+      AnalyzeMethodCall(lib_parent, method_call, is_expr, 
+			encoding, true, depth + 1);
       return;
     }
   }
