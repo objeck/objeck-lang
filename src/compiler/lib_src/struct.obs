@@ -328,6 +328,10 @@ bundle Structure {
 			
 			return 1;
 		}
+
+		method : public : HashID(), Int {
+			return @value;
+		}
 	}
 	
 	# Float Linked List
@@ -385,6 +389,10 @@ bundle Structure {
 			};
 			
 			return 1;
+		}
+		
+		method : public : HashID(), Int {
+			return @value * 10000.0;
 		}
 	}
 
@@ -475,15 +483,23 @@ bundle Structure {
 		}		
 
 		method : public : Next(), Nil {
-			@cursor := @cursor->GetNext();
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetNext();
+			};
 		}
 
 		method : public : Previous(), Nil {
-			@cursor := @cursor->GetPrevious();
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetPrevious();
+			};
 		}
 
 		method : public : GetElement(), System.Compare {
-			return @cursor->GetValue();
+			if(@cursor <> Nil) {
+				return @cursor->GetValue();
+			};
+
+			return Nil;
 		}
 
 		method : public : FindElement(value : System.Compare), Bool {
@@ -890,6 +906,10 @@ bundle Structure {
 			return @key->Compare(rhs);
 		}
 
+		method : public : HashID(), Int {
+			return @key->HashID();
+		}
+		
 		method : public : native : GetKey(), System.Compare {
 			return @key;
 		}
@@ -907,13 +927,33 @@ bundle Structure {
 		}
 		
 		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
-			hash := 2 xor key->GetUniqueID() % @buckets->GetSize();
+			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+# hash->PrintLine();
 			list := @buckets[hash];
 			if(list = Nil) {
 				list := LinkedList->New();
 				@buckets[hash] := list;
 			};
 			list->AddBack(HashPair->New(key, value)->As(Compare));
+		}
+
+		method : public : Find(key : System.Compare), System.Base {
+			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+# hash->PrintLine();
+			list := @buckets[hash];
+			if(list <> Nil) {
+				list->Rewind();
+				while(list->IsEnd() = false) {
+					pair : HashPair := list->GetElement()->As(HashPair);
+					if(pair->Compare(key) = 0) {
+						return pair->GetValue();
+					};
+				};
+
+				return Nil;
+			};
+
+			return Nil;
 		}
 	}
 }
