@@ -25,6 +25,10 @@ bundle Default {
 			
 			return 1;
 		}
+
+		method : public : native : HashID(), Int {
+			return GetUniqueID();
+		}
 	}
 	
 	class TreeNode {
