@@ -1,5 +1,6 @@
 #~~
-# Basic data structures
+# R. Hollines
+# Core Objeck class libraries
 ~~#	
 
 use IO;
@@ -871,6 +872,48 @@ bundle Structure {
 			};
 			
 			return node;
+		}
+	}
+
+	# Hash table
+	class HashPair from Compare {
+		@key : System.Compare;
+		@value : System.Base;
+
+		New(key : System.Compare, value : System.Base) {
+			Parent();
+			@key := key;
+			@value := value;
+		}
+
+		method : public : native : Compare(rhs : System.Compare), Int {		
+			return @key->Compare(rhs);
+		}
+
+		method : public : native : GetKey(), System.Compare {
+			return @key;
+		}
+
+		method : public : native : GetValue(), System.Base {
+			return @value;
+		}
+	}
+	
+	class Hash {
+		@buckets : LinkedList[];
+		
+		New() {
+			@buckets := LinkedList->New[521];
+		}
+		
+		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
+			hash := 2 xor key->GetUniqueID() % @buckets->GetSize();
+			list := @buckets[hash];
+			if(list = Nil) {
+				list := LinkedList->New();
+				@buckets[hash] := list;
+			};
+			list->AddBack(HashPair->New(key, value)->As(Compare));
 		}
 	}
 }
