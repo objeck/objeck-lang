@@ -1407,7 +1407,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       }
       while(!end_line);
       
-      while(value == '\r' && value == '\n' && index < num && status > 0) {
+      // assume LF
+      if(value == '\r') {
 	IPSocket::ReadByte(sock, status);
       }
     }
