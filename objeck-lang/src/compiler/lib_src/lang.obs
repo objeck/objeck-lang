@@ -539,7 +539,38 @@ bundle System {
 		}
 		
 		method : public : native : ToInt(), Int {
-			if(@string->GetSize() > 0) {
+			if(@pos > 1 & @string[0] = '0' & @string[1] = 'x') {
+				end := 1;			
+				mag : Int := 1;
+				val : Int := 0;
+				for(i : Int := @pos - 1; i > end; i := i - 1;) {
+					pos_val : Int := @string[i];
+					if(pos_val >= '0' & pos_val <= '9') {
+						pos_val := pos_val - 48;
+					}
+					else if(pos_val >= 'A' & pos_val <= 'F') {
+						pos_val := pos_val - 55;
+					}
+					else if(pos_val >= 'a' & pos_val <= 'f') {
+						pos_val := pos_val - 87;
+					}
+					else {
+						return 0;
+					};
+					
+					if(mag = 1) {
+						val := pos_val;
+					}
+					else {
+						val := val + pos_val * mag;	
+					};
+					# update
+					mag := mag * 16;
+				};
+				
+				return val;
+			}
+			else if(@string->GetSize() > 0) {
 				is_neg : Bool := false;
 				if(@string[0] = '-') {
 					is_neg := true;
