@@ -18,8 +18,7 @@ bundle Structure {
 			@size := 0;
 		}
 
-#		method : native : Expand(), Nil {
-		method : Expand(), Nil {
+		method : native : Expand(), Nil {
 			if(@size >= @values->GetSize()) {
 				temp : Int[] := Int->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
@@ -937,7 +936,7 @@ bundle Structure {
 			list->AddBack(HashPair->New(key, value)->As(Compare));
 		}
 
-		method : public : Find(key : System.Compare), System.Base {
+		method : public : native : Find(key : System.Compare), System.Base {
 			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
