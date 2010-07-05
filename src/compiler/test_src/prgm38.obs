@@ -79,6 +79,8 @@ bundle Default {
 #		function : Run(), Nil {
 		function : native : Run(), Nil {
 			v : IntHolder := IntHolder->New(4);
+			v->HashID()->PrintLine();
+
 			node : TreeNode :=  TreeNode->New(v->As(System.Compare), 10);
 			node->SetLeft(node);
 			node->SetRight(node);
