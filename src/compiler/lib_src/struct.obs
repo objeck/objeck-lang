@@ -941,8 +941,7 @@ bundle Net {
 		method : public : native : Get(), Vector {
 			content := Vector->New();
 			if(@url->StartsWith("http://")) {
-				@url := @url->SubString("http://"->GetSize(), 
-					@url->GetSize() - "http://"->GetSize());
+				@url := @url->SubString("http://"->GetSize(), @url->GetSize() - "http://"->GetSize());
 				index := @url->GetIndex('/');
 				address := "";
 				location := "/";
@@ -965,7 +964,6 @@ bundle Net {
 	
 					status_code := 500;
 					status_line := socket->ReadString();
-status_line->PrintLine();
 					if(status_line->StartsWith("HTTP/1.1")) {
 						status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
 							status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
