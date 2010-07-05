@@ -2139,6 +2139,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(unsigned int i = 0; i < expressions.size(); i++) {
       EmitExpression(expressions[i]);
+      new_char_str_count = 0;
     }
 
     // new object instance
@@ -2169,11 +2170,12 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(unsigned int i = 0; i < expressions.size(); i++) {
         EmitExpression(expressions[i]);
+	new_char_str_count = 0;
       }
     }
     is_new_inst = false;
   }
-  new_char_str_count = 0;
+  // new_char_str_count = 0;
 }
 
 /****************************
