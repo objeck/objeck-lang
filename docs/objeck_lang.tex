@@ -1,4 +1,4 @@
-\title{An Introduction to the Objeck Programming Language}
+\title{Objeck Programmer's Guide}
 \author{
         Randy Hollines \\
         objeck@gmail.com\\
@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-A brief introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler designers to the unique features and design of the Objeck language.   Unless otherwise noted, this article covers functionality that is included in release \textit{1.0.0}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+Provides an introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler enthusiasts to the unique features and design of the Objeck programming language.   Unless otherwise noted, this article covers functionality that is included in release \textit{1.0.0}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -369,9 +369,13 @@ Below is an example of declaring a virtual method:
 method : virtual : public : Compare(right : Base), Int;
 \end{verbatim}
 
-\section{Interactive Debugger}
+\section{Debugger}
 The Objeck compiler toolset contains a simple interactive read-only debugger, which allows programmers to inspect values within their programs.  The debugger allows programmers to set breakpoints within methods based upon source line numbers.  The debugger can also calculate simple arithmetic expressions involving variables and constants. The following commands are currently supported:
 
+\subsection{Starting the Debugger}
+The source program must be compiled with the \texttt{-debug} set. The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.  Also note, to print instance level variables the path must start with \texttt{@self$\rightarrow$}. 
+
+\subsection{Debugging Commands}
 \begin{center}
 \begin{tabular}{| l |p{4 cm} |p{6 cm} |}
 \hline
@@ -394,118 +398,24 @@ The Objeck compiler toolset contains a simple interactive read-only debugger, wh
 \end{tabular}
 \end{center}
 
-\subsection{Starting the Debugger}
-The source program must be compiled with the \texttt{-debug} set. The command line debugger is started up running the \texttt{odb} executable. The \texttt{-exe} option must be present and specify the path to the executable.  The The \texttt{-src} option is optional and specifies the path to the program source.  Also note, to print instance level variables the path must start with \texttt{@self$\rightarrow$}. 
-
-\subsection{Example Debugging Session}
-\subsubsection{Sample Source}
-\begin{verbatim}
-bundle Default {
-  class Bar {
-    v1 : Float;
-    v2 : Int;
-
-    New() {
-      v1 := 2.31;
-      v2 := 26;
-    }
-  }
-
-  class Foo {
-    bar : Bar;
-    value : Int;
-
-    New(v : Int) {
-      value := v;z
-    }
-
-    method : public : GetValue(), Int {
-      return value;
-    }
-
-    method : public : SetBar(), Nil {
-      bar := Bar->New();
-    }
-  }
-
-  class Test {
-    function : Main(args : System.String[]), Nil {
-      d : Float := 11.12;
-      z := Int->New[5,6];
-      z[2,3] := 27;
-
-      f := Foo->New(24);
-      f->SetBar();
-      v := f->GetValue();
-    }
-  }
-}
-\end{verbatim}
-The sample file is named \texttt{debug.obs}.
-
-\subsubsection{Compiling the Source and Starting the Debugger}
-\begin{verbatim}
-obc -src test_src\debug.obs -dest a.obe -debug
-obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
-
--------------------------------------
-Objeck v1.0.0 - Interactive Debugger
--------------------------------------
-loaded executable: file='../../compiler/a.obe'
-source files: path='../../compiler/test_src/'
-\end{verbatim}
-
-\subsubsection{Setting a Breakpoint and Running the Program}
-\begin{verbatim}
-> b debug.obs:31
-added break point: file='debug.obs:31'
-> r
-break: file='debug.obs:31', method='Test->Main(..)'
-> l
-  List
-     26: 		}
-     27: 	}
-     28: 
-     29: 	class Test {
-     30: 		function : Main(args : System.String[]), Nil {
-=>   31: 			d : Float := 11.12;
-     32: 			z := Int->New[5,6];	
-     33: 			z[2,3] := 27;
-     34: 
-     35: 			f := Foo->New(24);
-     36: 			f->SetBar();
-> n
-break: file='debug2.obs:32', method='Test->Main(..)'
-\end{verbatim}
-
-\subsubsection{Printing a Value}
-\begin{verbatim}
-> p d
-print: type=Float, value=11.12
-> b debug.obs:37
-added break point: file='debug.obs:37'
-> c
-break: file='debug2.obs:37', method='Test->Main(..)'
-> p z
-print: type=Int[], value=2197556(0x218834), dimension=2, size=30
-> p z[2,3]
-print: type=Int[], value=27(0x1b)
->  p f->value
-print: type=Int, value=24
-> p f->bar
-print: type=Bar, value=0x218864
-> p f->bar->v1
-print: type=Float, value=2.31
-> q
-> p f->bar->v1 * 3.5
-print: type=Float, value=8.085
-goodbye.
-\end{verbatim}
-
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system resources, such as files and sockets, while also providing support for  basic data structures like lists and vectors.  As new class libraries are added they will be documented in this section.
 
-\subsection{Bool}
+\subsection{Core Libraries}
+\subsubsection{Base}
+Base class for all objects.
+\begin{itemize}
+    \item \texttt{GetClassID} - returns the class ID
+    	\begin{itemize}
+	\item method : public : native : GetClassID(), ClassID
+	\end{itemize}
+   \item \texttt{GetInstanceID} - returns a unique instance ID
+    	\begin{itemize}
+	\item method : public : native : GetInstanceID(), Int
+	\end{itemize}
+\end{itemize}
+
+\subsubsection{Bool}
 \begin{itemize}
     \item \texttt{Print} - prints the current value
     	\begin{itemize}
@@ -521,7 +431,7 @@ Objeck includes class libraries that provides access to system resources, such a
 	\end{itemize}
 \end{itemize}
 
-\subsection{Char}
+\subsubsection{Char}
 \begin{itemize}
     \item \texttt{IsDigit} - determines if the character is a digit (in the range of \texttt{0-9})
     	\begin{itemize}
@@ -553,7 +463,7 @@ Objeck includes class libraries that provides access to system resources, such a
 	\end{itemize}
 \end{itemize}
 
-\subsection{Byte/Int}
+\subsubsection{Byte/Int}
 \begin{itemize}
     \item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
     	\begin{itemize}
@@ -581,7 +491,7 @@ Objeck includes class libraries that provides access to system resources, such a
 	\end{itemize}
 \end{itemize}
 
-\subsection{Float}
+\subsubsection{Float}
 \begin{itemize}
     \item \texttt{Min} - returns the smallest of the two numbers; returns the same number if they are equal
     	\begin{itemize}
@@ -621,7 +531,7 @@ Objeck includes class libraries that provides access to system resources, such a
 	\end{itemize}
 \end{itemize}
 
-\subsection{String}
+\subsubsection{String}
 \begin{itemize}
     \item \texttt{New} 
     	\begin{itemize}
@@ -702,23 +612,179 @@ Objeck includes class libraries that provides access to system resources, such a
 	\end{itemize}
 \end{itemize}
 
-\subsection{System Libraries and Data Structures}
-The following data structures are supported:
+\subsection{Data Structures}
+\subsubsection{Compare}
+Base class for all objects that use comparative algorithms.
 \begin{itemize}
-    \item Console
-    \item Time
-    \item List
-    \item IntList
-    \item FloatList
-    \item Vector
-    \item IntVector
-    \item FloatVector
-    \item Stack
-    \item IntStack
-    \item FloatStack
-    \item Map
+    \item \texttt{Compare} - compares two object instances; 0 if equal, less-then 0 if less and greater-then 0 if greater. 
+    	\begin{itemize}
+	\item method : virtual : public : Compare(rhs : System.Compare), Int
+	\end{itemize}
+   \item \texttt{HashID} - returns a unique value for the given class type
+    	\begin{itemize}
+	\item method : virtual : public : HashID(), Int
+	\end{itemize}	
 \end{itemize}
 
+\subsubsection{List/IntList/FloatList}
+The List class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntList} and \texttt{FloatList}.  The general class supports the following operations:
+\begin{itemize}
+    \item \texttt{AddBack} - adds a new value to the back of the list
+    	\begin{itemize}
+	\item method : public : native : AddBack(value : Compare), Nil
+	\end{itemize}
+    \item \texttt{RemoveBack} - removes the last element in the list
+    	\begin{itemize}
+	\item method : public : RemoveBack(), Nil
+	\end{itemize}
+    \item \texttt{AddFront} - adds a new value to the front of the list
+    	\begin{itemize}
+	\item method : public : native : AddFront(value : Compare), Nil
+	\end{itemize}
+    \item \texttt{RemoveFront} - removes the first element in the list
+    	\begin{itemize}
+	\item method : public : RemoveFront(), Nil
+	\end{itemize}
+    \item \texttt{Find} - finds an element in the list
+    	\begin{itemize}
+	\item method : public : Find(value : Compare), Bool
+	\end{itemize}
+    \item \texttt{Insert} - inserts a new value in the position pointed to the cursor
+    	\begin{itemize}
+	\item method : public : Insert(value : Compare), Bool
+	\end{itemize}
+    \item \texttt{Remove} - removes the last element in the list
+    	\begin{itemize}
+	\item method : public : Remove(), Nil
+	\end{itemize}
+    \item \texttt{Insert} - inserts an element into the current cursor position
+    	\begin{itemize}
+	\item method : public : Insert(value : Compare), Bool
+	\end{itemize}	
+    \item \texttt{Next} - advances the internal cursor by one element
+    	\begin{itemize}
+	\item method : public : Next(), Nil
+	\end{itemize}
+    \item \texttt{Pervious} - retreats the internal cursor by one element
+    	\begin{itemize}
+	\item method : public : Pervious(), Nil
+	\end{itemize}
+    \item \texttt{Get} - returns the value of the element  pointed to by the cursor
+    	\begin{itemize}
+	\item method : public : Get(), Compare
+	\end{itemize}
+    \item \texttt{Forward} - moves the cursor to the end of the list
+    	\begin{itemize}
+	\item method : public : Forward(), Nil
+	\end{itemize}
+    \item \texttt{Rewind} - moves the cursor to the start of the list
+    	\begin{itemize}
+	\item method : public : Rewind(), Nil
+	\end{itemize}
+    \item \texttt{IsStart} - returns true if cursor is at the start of the list
+    	\begin{itemize}
+	\item method : public : IsStart(), Bool
+	\end{itemize}
+    \item \texttt{IsEnd} - returns true if cursor is at the end of the list
+    	\begin{itemize}
+	\item method : public : IsEnd(), Bool
+	\end{itemize}		
+    \item \texttt{GetSize} - returns the size of the list
+\end{itemize}
+
+\subsubsection{Stack/IntStack/FloatStack}
+The Stack class support the concept of a growing stack.  There are two specialized version of this class: \texttt{IntStack} and \texttt{FloatStack}.  The general class supports the following operations:
+\begin{itemize}
+    \item \texttt{Push} - pushes a new value onto the stack
+    	\begin{itemize}
+	\item method : public : Push(value : Base), Nil
+	\end{itemize}
+    \item \texttt{Pop} - pops a values from the top of the stack
+    	\begin{itemize}
+	\item method : public : Pop(), Base
+	\end{itemize}
+    \item \texttt{Top} - retrieves the top value from the stack (without popping the stack)
+    	\begin{itemize}
+	\item method : public : Top(), Base
+	\end{itemize}
+\end{itemize}
+
+\subsubsection{Vector/IntVector/FloatVector}
+The Vector class support the concept of a growing array.  There are two specialized version of this class: \texttt{IntVector} and \texttt{FloatVector}.  The general class supports the following operations:
+\begin{itemize}
+    \item \texttt{AddBack} - adds a new value to the back of the vector
+    	\begin{itemize}
+	\item method : public : AddBack(value : Base), Nil
+	\end{itemize}
+    \item \texttt{RemoveBack} - removes the last element in the vector
+    	\begin{itemize}
+	\item method : public : RemoveBack(), Nil
+	\end{itemize}
+    \item \texttt{GetValue} - returns the value of the element  pointed to by the cursor
+    	\begin{itemize}
+	\item method : public : GetValue(index : Int), Base
+	\end{itemize}
+    \item \texttt{SetValue} - replaces the list value based upon the given index
+    	\begin{itemize}
+	\item method : public : SetValue(value : Base, index : Int), Bool
+	\end{itemize}
+    \item \texttt{GetSize} - returns the size of the list
+    	\begin{itemize}
+	\item method : public : GetSize(), Int
+	\end{itemize}
+\end{itemize}
+
+\subsubsection{Map}
+The Map class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$.
+\begin{itemize}
+    \item \texttt{Insert} - adds a new value to the tree
+    	\begin{itemize}
+	\item method : public : Insert(key : Compare, value : Base), Nil
+	\end{itemize}
+    \item \texttt{Remove} - removes a value from the tree
+    	\begin{itemize}
+	\item method : public : Remove(key : Compare), Nil
+	\end{itemize}
+    \item \texttt{Find} - searches for a value based upon a key
+    	\begin{itemize}
+	\item method : public : Find(key : Compare), Base
+	\end{itemize}
+    \item \texttt{GetKeys} - returns a vector of keys
+    	\begin{itemize}
+	\item method : public : GetKeys(), Vector
+	\end{itemize}
+    \item \texttt{GetValues} - returns a vector of values
+    	\begin{itemize}
+	\item method : public : GetValues(), Vector
+	\end{itemize}
+\end{itemize}
+
+\subsubsection{Hash}
+The Hash class supports the concept of an associative array with key/value pairs.  The class implements a hashing algorithm that is optimized for pairs of 256 or less  (consider using the \texttt{Map} class for larger sets):
+\begin{itemize}
+    \item \texttt{Insert} - adds a new value to the hash table
+    	\begin{itemize}
+	\item method : public : Insert(key : Compare, value : Base), Nil
+	\end{itemize}
+    \item \texttt{Remove} - removes a value from the hash table
+    	\begin{itemize}
+	\item method : public : Remove(key : Compare), Nil
+	\end{itemize}
+    \item \texttt{Find} - searches for a value based upon a key
+    	\begin{itemize}
+	\item method : public : Find(key : Compare), Base
+	\end{itemize}
+    \item \texttt{GetKeys} - returns a vector of keys
+    	\begin{itemize}
+	\item method : public : GetKeys(), Vector
+	\end{itemize}
+    \item \texttt{GetValues} - returns a vector of values
+    	\begin{itemize}
+	\item method : public : GetValues(), Vector
+	\end{itemize}
+\end{itemize}.
+
+\subsection{System Libraries}
 \subsubsection{Console}
 The Console class allows programmers to read and write information to the system console.    The class supports the following operations:
 \begin{itemize}
@@ -941,131 +1007,6 @@ The HttpClient class allows programmers access HTTP 1.1 websites:
 	\end{itemize}
 \end{itemize}
 
-\subsubsection{List/IntList/FloatList}
-The List class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntList} and \texttt{FloatList}.  The general class supports the following operations:
-\begin{itemize}
-    \item \texttt{AddBack} - adds a new value to the back of the list
-    	\begin{itemize}
-	\item method : public : native : AddBack(value : Compare), Nil
-	\end{itemize}
-    \item \texttt{AddFront} - adds a new value to the front of the list
-    	\begin{itemize}
-	\item method : public : native : AddFront(value : Compare), Nil
-	\end{itemize}
-    \item \texttt{FindElement} - finds an element in the list
-    	\begin{itemize}
-	\item method : public : FindElement(value : Compare), Bool
-	\end{itemize}
-    \item \texttt{InsertElement} - inserts a new value in the position pointed to the cursor
-    	\begin{itemize}
-	\item method : public : InsertElement(value : Compare), Bool
-	\end{itemize}
-    \item \texttt{RemoveElement} - removes the last element in the list
-    	\begin{itemize}
-	\item method : public : RemoveElement(), Nil
-	\end{itemize}
-    \item \texttt{InsertElement} - inserts an element into the current cursor position
-    	\begin{itemize}
-	\item method : public : InsertElement(value : Compare), Bool
-	\end{itemize}	
-    \item \texttt{Next} - advances the internal cursor by one element
-    	\begin{itemize}
-	\item method : public : Next(), Nil
-	\end{itemize}
-    \item \texttt{Pervious} - retreats the internal cursor by one element
-    	\begin{itemize}
-	\item method : public : Pervious(), Nil
-	\end{itemize}
-    \item \texttt{GetElement} - returns the value of the element  pointed to by the cursor
-    	\begin{itemize}
-	\item method : public : GetElement(), Compare
-	\end{itemize}
-    \item \texttt{Forward} - moves the cursor to the end of the list
-    	\begin{itemize}
-	\item method : public : Forward(), Nil
-	\end{itemize}
-    \item \texttt{Rewind} - moves the cursor to the start of the list
-    	\begin{itemize}
-	\item method : public : Rewind(), Nil
-	\end{itemize}
-    \item \texttt{IsStart} - returns true if cursor is at the start of the list
-    	\begin{itemize}
-	\item method : public : IsStart(), Bool
-	\end{itemize}
-    \item \texttt{IsEnd} - returns true if cursor is at the end of the list
-    	\begin{itemize}
-	\item method : public : IsEnd(), Bool
-	\end{itemize}		
-    \item \texttt{GetSize} - returns the size of the list
-\end{itemize}
-
-\subsubsection{Stack/IntStack/FloatStack}
-The Stack class support the concept of a growing stack.  There are two specialized version of this class: \texttt{IntStack} and \texttt{FloatStack}.  The general class supports the following operations:
-\begin{itemize}
-    \item \texttt{Push} - pushes a new value onto the stack
-    	\begin{itemize}
-	\item method : public : Push(value : Base), Nil
-	\end{itemize}
-    \item \texttt{Pop} - pops a values from the top of the stack
-    	\begin{itemize}
-	\item method : public : Pop(), Base
-	\end{itemize}
-    \item \texttt{Top} - retrieves the top value from the stack (without popping the stack)
-    	\begin{itemize}
-	\item method : public : Top(), Base
-	\end{itemize}
-\end{itemize}
-
-\subsubsection{Vector/IntVector/FloatVector}
-The Vector class support the concept of a growing array.  There are two specialized version of this class: \texttt{IntVector} and \texttt{FloatVector}.  The general class supports the following operations:
-\begin{itemize}
-    \item \texttt{AddBack} - adds a new value to the back of the vector
-    	\begin{itemize}
-	\item method : public : AddBack(value : Base), Nil
-	\end{itemize}
-    \item \texttt{RemoveBack} - removes the last element in the vector
-    	\begin{itemize}
-	\item method : public : RemoveBack(), Nil
-	\end{itemize}
-    \item \texttt{GetValue} - returns the value of the element  pointed to by the cursor
-    	\begin{itemize}
-	\item method : public : GetValue(index : Int), Base
-	\end{itemize}
-    \item \texttt{SetValue} - replaces the list value based upon the given index
-    	\begin{itemize}
-	\item method : public : SetValue(value : Base, index : Int), Bool
-	\end{itemize}
-    \item \texttt{GetSize} - returns the size of the list
-    	\begin{itemize}
-	\item method : public : GetSize(), Int
-	\end{itemize}
-\end{itemize}
-
-\subsubsection{Map}
-The Map class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$:
-\begin{itemize}
-    \item \texttt{Insert} - adds a new value to the tree
-    	\begin{itemize}
-	\item method : public : Insert(key : Compare, value : Base), Nil
-	\end{itemize}
-    \item \texttt{Remove} - removes a value from the tree
-    	\begin{itemize}
-	\item method : public : Remove(key : Compare), Nil
-	\end{itemize}
-    \item \texttt{Find} - searches for a value based upon a key
-    	\begin{itemize}
-	\item method : public : Find(key : Compare), Base
-	\end{itemize}
-    \item \texttt{GetKeys} - returns a vector of keys
-    	\begin{itemize}
-	\item method : public : GetKeys(), Vector
-	\end{itemize}
-    \item \texttt{GetValues} - returns a vector of values
-    	\begin{itemize}
-	\item method : public : GetValues(), Vector
-	\end{itemize}
-\end{itemize}
-
 \section{Examples}
 \subsection{Prime Numbers}
 \begin{verbatim}
@@ -1104,156 +1045,133 @@ bundle Default {
 
 \subsection{Simple HTTP client}
 \begin{verbatim}
-# Basic HTTP Client
-# R. Hollines
-
 use Net;
 use IO;
 use Structure;
 
 bundle Default {
-  class HttpClient {
-    @headers : Map;
-    @url : String;
-    @port : Int;
-    @content_type : String;
-    
-    function : Main(args : System.String[]), Nil {
-      client := HttpClient->New(args[0], 80);
-      lines := client->Get();
-      
-      for(i := 0; i < lines->GetSize(); i := i + 1;) {
-        lines->GetValue(i)->As(String)->PrintLine();
+  class HttpTest {
+    function : Main(args : String[]), Nil {
+      if(args->GetSize() = 1) {
+        client := HttpClient->New(args[0], 80);
+        lines := client->Get();
+
+        for(i := 0; i < lines->GetSize(); i := i + 1;) {
+          lines->GetValue(i)->As(String)->PrintLine();
+        };
       };
-    }
-    
-    New(url : String, port : Int) {
-      @url := url;
-      @port := port;
-      @content_type := "text/plain";
-      @headers := Map->New();
-    }
-    
-    New(url : String, port : Int, content_type : String) {
-      @url := url;
-      @port := port;
-      @content_type := content_type;
-      @headers := Map->New();
-    }
-    
-    method : native : GetHeaders(), Map {
-      return @headers;
-    }
-    
-    method : public : native : Post(content : String), Bool {
-      content := Vector->New();
-      if(@url->StartsWith("http://")) {
-        @url := @url->SubString("http://"->GetSize(), 
-          @url->GetSize() - "http://"->GetSize());
-        index := @url->GetIndex('/');
-        address := "";
-        location := "/";
-        if(index > -1) {
-          address := @url->SubString(index);
-          index->PrintLine();
-          location := @url->SubString(index + 1, @url->GetSize() - index - 1);
-        }
-        else {
-          address := @url;
-        };
-        
-        socket := TCPSocket->New(address, @port);
-        if(socket->IsOpen()) {
-          post := "POST ";
-          post->Append(location);
-          post->Append(" HTTP/1.1\r\nHost: ");
-          post->Append(address);
-          post->Append("\r\nContent-Length: ");
-          post->Append(content->GetSize()->ToString());
-          post->Append("\r\nContent-Type: ");
-          post->Append(@content_type);
-          post->Append("\r\n\r\n");
-          socket->WriteString(post);
-          post->Append(content);
-        };
-      }
-      else {
-        return false;
-      };
-      
-      return true;
-    }
-    
-    method : public : native : Get(), Vector {
-      content := Vector->New();
-      if(@url->StartsWith("http://")) {
-        @url := @url->SubString("http://"->GetSize(), 
-          @url->GetSize() - "http://"->GetSize());
-        index := @url->GetIndex('/');
-        address := "";
-        location := "/";
-        if(index > -1) {
-          address := @url->SubString(index);
-          location := @url->SubString(index + 1, @url->GetSize() - index - 1);
-        }
-        else {
-          address := @url;
-        };
-        
-        socket := TCPSocket->New(address, @port);
-        if(socket->IsOpen()) {
-          get := "GET ";
-          get->Append(location);
-          get->Append(" HTTP/1.1\r\nHost: ");
-          get->Append(address);
-          get->Append("\r\n\r\n");
-          socket->WriteString(get);
-  
-          status_code := 500;
-          status_line := socket->ReadString();
-          if(status_line->StartsWith("HTTP/1.1")) {
-            status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
-              status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
-            index := status_line->GetIndex(' ');
-            status_code := status_line->SubString(index)->ToInt();
-          };
-          
-          if(status_code = 200) {
-            do {
-              line := socket->ReadString();
-              if(line->GetSize() > 0 & line->StartsWith('<') = false) {
-                index := line->GetIndex(':');
-                name := line->SubString(index);
-                value := line->SubString(index + 1, line->GetSize() - index - 1);      
-                @headers->Insert(name->As(Compare), value->As(Base));
-              };
-            }
-            while(line->GetSize() > 0 & line->StartsWith('<') = false);
-            
-            do {
-              line := socket->ReadString();
-              if(line->GetSize() > 0) {
-                content->AddBack(line->Trim()->As(Base));  
-              };
-            }
-            while(line->GetSize() > 0);
-          };
-          socket->Close();
-        }
-        else {
-          return Nil;
-        };
-      };  
-      
-      return content;
     }
   }
 }
 \end{verbatim}
-
 \newpage
 
-\section{Appendix A: General Compiler Design}
+\section{Appendix A: Example Debugging Session}
+\subsection{Sample Source}
+\begin{verbatim}
+bundle Default {
+  class Bar {
+    v1 : Float;
+    v2 : Int;
+
+    New() {
+      v1 := 2.31;
+      v2 := 26;
+    }
+  }
+
+  class Foo {
+    bar : Bar;
+    value : Int;
+
+    New(v : Int) {
+      value := v;z
+    }
+
+    method : public : GetValue(), Int {
+      return value;
+    }
+
+    method : public : SetBar(), Nil {
+      bar := Bar->New();
+    }
+  }
+
+  class Test {
+    function : Main(args : System.String[]), Nil {
+      d : Float := 11.12;
+      z := Int->New[5,6];
+      z[2,3] := 27;
+
+      f := Foo->New(24);
+      f->SetBar();
+      v := f->GetValue();
+    }
+  }
+}
+\end{verbatim}
+The sample file is named \texttt{debug.obs}.
+
+\subsection{Compiling the Source and Starting the Debugger}
+\begin{verbatim}
+obc -src test_src\debug.obs -dest a.obe -debug
+obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
+
+-------------------------------------
+Objeck v1.0.0 - Interactive Debugger
+-------------------------------------
+loaded executable: file='../../compiler/a.obe'
+source files: path='../../compiler/test_src/'
+\end{verbatim}
+
+\subsection{Setting a Breakpoint and Running the Program}
+\begin{verbatim}
+> b debug.obs:31
+added break point: file='debug.obs:31'
+> r
+break: file='debug.obs:31', method='Test->Main(..)'
+> l
+  List
+     26: 		}
+     27: 	}
+     28: 
+     29: 	class Test {
+     30: 		function : Main(args : System.String[]), Nil {
+=>   31: 			d : Float := 11.12;
+     32: 			z := Int->New[5,6];	
+     33: 			z[2,3] := 27;
+     34: 
+     35: 			f := Foo->New(24);
+     36: 			f->SetBar();
+> n
+break: file='debug2.obs:32', method='Test->Main(..)'
+\end{verbatim}
+
+\subsection{Printing a Value}
+\begin{verbatim}
+> p d
+print: type=Float, value=11.12
+> b debug.obs:37
+added break point: file='debug.obs:37'
+> c
+break: file='debug2.obs:37', method='Test->Main(..)'
+> p z
+print: type=Int[], value=2197556(0x218834), dimension=2, size=30
+> p z[2,3]
+print: type=Int[], value=27(0x1b)
+>  p f->value
+print: type=Int, value=24
+> p f->bar
+print: type=Bar, value=0x218864
+> p f->bar->v1
+print: type=Float, value=2.31
+> q
+> p f->bar->v1 * 3.5
+print: type=Float, value=8.085
+goodbye.
+\end{verbatim}
+
+\section{Appendix B: Compiler and VM Design}
 \includegraphics[scale=0.60]{../images/compiler_data_flow.png}
 
 The following section gives a brief overview of the major architectural components the comprise the Objeck language compiler and virtual machine.
@@ -1288,7 +1206,7 @@ The JIT compiler translates stack based VM instruction into processor specific m
 \subsubsection{Memory Manager}
 The Memory Manager component allows the runtime system to manage the user allocation/deallocation of heap memory.  The memory mangers implementes a multi-thread ``mark and sweep'' algorithm.  The marking stage of the process is multi-thread, such that, each root in scanned in a separate thread.  The sweeping stage is done in a single thread since the data structures that are needed to manage the state of the running program are modified.
 
-\section{Appendix B: VM Instructions}
+\section{Appendix C: VM Instruction Set}
 The appendix below lists the types of stack instructions that are executed by the Objeck VM.  The VM was designed to be portable and language independent.  Early development versions of the VM included an inline assembler, which may be re-added in future releases.
 
 \begin{center}
