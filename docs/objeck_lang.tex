@@ -707,9 +707,9 @@ The following data structures are supported:
 \begin{itemize}
     \item Console
     \item Time
-    \item LinkedList
-    \item IntLinkedList
-    \item FloatLinkedList
+    \item List
+    \item IntList
+    \item FloatList
     \item Vector
     \item IntVector
     \item FloatVector
@@ -798,9 +798,9 @@ The File class allows programmers manipulate system files.    The class supports
     	\begin{itemize}
 	\item function : GetSize(name : String), Int
 	\end{itemize}
-    \item \texttt{Delete} - deletes a file.
+    \item \texttt{Remove} - deletes a file.
     	\begin{itemize}
-	\item function : Delete(n : String), Bool
+	\item function : Remove(n : String), Bool
 	\end{itemize}
     \item \texttt{Exists} - returns true if the file exists.
     	\begin{itemize}
@@ -941,8 +941,8 @@ The HttpClient class allows programmers access HTTP 1.1 websites:
 	\end{itemize}
 \end{itemize}
 
-\subsubsection{LinkedList/IntLinkedList/FloatLinkedList}
-The LinkedList class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntLinkedList} and \texttt{FloatLinkedList}.  The general class supports the following operations:
+\subsubsection{List/IntList/FloatList}
+The List class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntList} and \texttt{FloatList}.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the list
     	\begin{itemize}
@@ -1048,9 +1048,9 @@ The Map class supports the concept of an associative array with key/value pairs.
     	\begin{itemize}
 	\item method : public : Insert(key : Compare, value : Base), Nil
 	\end{itemize}
-    \item \texttt{Delete} - removes a value from the tree
+    \item \texttt{Remove} - removes a value from the tree
     	\begin{itemize}
-	\item method : public : Delete(key : Compare), Nil
+	\item method : public : Remove(key : Compare), Nil
 	\end{itemize}
     \item \texttt{Find} - searches for a value based upon a key
     	\begin{itemize}
