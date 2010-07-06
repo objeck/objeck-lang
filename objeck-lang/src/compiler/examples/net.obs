@@ -1,0 +1,20 @@
+use Net;
+use IO;
+use Structure;
+
+# to compile: -lib struct.obl
+
+bundle Default {
+  class HttpTest {
+    function : Main(args : System.String[]), Nil {
+      if(args->GetSize() = 1) {
+        client := HttpClient->New("http://www.du.edu", 80);
+        lines := client->Get();
+      
+        for(i := 0; i < lines->GetSize(); i := i + 1;) {
+          lines->GetValue(i)->As(String)->PrintLine();
+        };
+      };
+    }
+  }
+}
