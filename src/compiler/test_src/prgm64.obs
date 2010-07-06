@@ -8,26 +8,26 @@ bundle Default {
 
 #		function : Run(), Nil {
 		function : native : Run(), Nil {		
-			hash := Hash->New();
-			hash->Insert("pug"->As(Compare), "aa"->As(Base));
-			hash->Insert("terrier"->As(Compare), "ca"->As(Base));
-			hash->Insert("bangel"->As(Compare), "ab"->As(Base));
+			hash := StringHash->New();
+			hash->Insert("pug", "aa"->As(Base));
+			hash->Insert("terrier", "ca"->As(Base));
+			hash->Insert("bangel", "ab"->As(Base));
 
-			hash->Remove("pug"->As(Compare))->As(String);
+			hash->Remove("pug");
 
-			value : String := hash->Find("pug"->As(Compare))->As(String);
+			value : String := hash->Find("pug");
 			if(value <> Nil) {
 				value->PrintLine();
 			};
 
-#			hash->Remove("bangel"->As(Compare))->As(String);
+#			hash->Remove("bangel");
 
-			value := hash->Find("bangel"->As(Compare))->As(String);
+			value := hash->Find("bangel");
 			if(value <> Nil) {
 				value->PrintLine();
 			};
 
-			value := hash->Find("terrier"->As(Compare))->As(String);
+			value := hash->Find("terrier");
 			if(value <> Nil) {
 				value->PrintLine();
 			};
