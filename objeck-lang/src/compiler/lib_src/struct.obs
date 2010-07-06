@@ -119,17 +119,17 @@ bundle Structure {
 	
 	# Object Vector
 	class Vector {
-		@values : System.Base[];
+		@values : Base[];
 		@size : Int;
 		
 		New() {
-			@values := System.Base->New[16];
+			@values := Base->New[16];
 			@size := 0;
 		}
 
 		method : native : Expand(), Nil {
 			if(@size >= @values->GetSize()) {
-				temp : System.Base[] := System.Base->New[@size * 2];
+				temp : Base[] := Base->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
 					temp[i] := @values[i];
 				};
@@ -137,7 +137,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : AddBack(value : System.Base), Nil {
+		method : public : AddBack(value : Base), Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
@@ -149,7 +149,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetValue(index : Int), System.Base {
+		method : public : GetValue(index : Int), Base {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
@@ -157,7 +157,7 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : SetValue(value : System.Base, index : Int), Bool {
+		method : public : SetValue(value : Base, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
@@ -179,14 +179,14 @@ bundle Structure {
 			values := Vector->New();
 		}
 		
-		method : public: native : Push(value : System.Base), Nil {
+		method : public: native : Push(value : Base), Nil {
 			v := value;
 			values->AddBack(v);
 		}
 		
-		method : public : native : Pop(), System.Base {
+		method : public : native : Pop(), Base {
 			if(values->GetSize() > 0) {
-				value : System.Base := values->GetValue(values->GetSize() - 1);
+				value : Base := values->GetValue(values->GetSize() - 1);
 				values->RemoveBack();
 				
 				return value;
@@ -195,7 +195,7 @@ bundle Structure {
 			return Nil;
 		}
 		
-		method : public: native : Top(), System.Base {
+		method : public: native : Top(), Base {
 			if(values->GetSize() > 0) {
 				return values->GetValue(values->GetSize() - 1);
 			};
@@ -271,40 +271,40 @@ bundle Structure {
 	}
 	
 	# Integer Linked List
-	class IntLinkedList from LinkedList {
+	class IntList from List {
 		New() {
 			Parent();
 		}
 
 		method : public : AddBack(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			AddBack(holder->As(System.Compare));
+			AddBack(holder->As(Compare));
 		}
 
 		method : public : AddFront(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			AddFront(holder->As(System.Compare));
+			AddFront(holder->As(Compare));
 		}
 
 		method : public : GetValue(), Int {
-			temp : System.Compare := GetElement();
+			temp : Compare := GetElement();
 			holder : IntHolder := temp->As(IntHolder);
 			return holder->GetValue();
 		}
 		
 		method : public : FindElement(value : Int), Bool {
 			holder : IntHolder := IntHolder->New(value);
-			return FindElement(holder->As(System.Compare));
+			return FindElement(holder->As(Compare));
 		}
 		
 		method : public : InsertElement(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			InsertElement(holder->As(System.Compare));
+			InsertElement(holder->As(Compare));
 		}
 
 	}
 
-	class IntHolder from System.Compare {
+	class IntHolder from Compare {
 		@value : Int;
 
 		New(value : Int) {
@@ -316,7 +316,7 @@ bundle Structure {
 			return @value;
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {
+		method : public : native : Compare(rhs : Compare), Int {
 			right : IntHolder := rhs->As(IntHolder);
 			if(@value = right->GetValue()) {
 				return 0;
@@ -334,39 +334,39 @@ bundle Structure {
 	}
 	
 	# Float Linked List
-	class FloatLinkedList from LinkedList {
+	class FloatList from List {
 		New() {
 			Parent();
 		}
 
 		method : public : AddBack(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			AddBack(holder->As(System.Compare));
+			AddBack(holder->As(Compare));
 		}
 
 		method : public : AddFront(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			AddFront(holder->As(System.Compare));
+			AddFront(holder->As(Compare));
 		}
 
 		method : public : GetValue(), Float {
-			temp : System.Compare := GetElement();
+			temp : Compare := GetElement();
 			holder : FloatHolder := temp->As(FloatHolder);
 			return holder->GetValue();
 		}
 		
 		method : public : FindElement(value : Float), Bool {
 			holder : FloatHolder := FloatHolder->New(value);
-			return FindElement(holder->As(System.Compare));
+			return FindElement(holder->As(Compare));
 		}
 		
 		method : public : InsertElement(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			InsertElement(holder->As(System.Compare));
+			InsertElement(holder->As(Compare));
 		}
 	}
 
-	class FloatHolder from System.Compare {
+	class FloatHolder from Compare {
 		@value : Float;
 
 		New(value : Float) {
@@ -378,7 +378,7 @@ bundle Structure {
 			return @value;
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {
+		method : public : native : Compare(rhs : Compare), Int {
 			right : FloatHolder := rhs->As(FloatHolder);
 			if(@value = right->GetValue()) {
 				return 0;
@@ -397,19 +397,19 @@ bundle Structure {
 
 	# Linked List
 	class ListNode {
-		@value : System.Compare;
+		@value : Compare;
 		@next : ListNode;
 		@previous: ListNode;
 
-		New(value : System.Compare) {
+		New(value : Compare) {
 			@value := value;
 		}
 		
-		method : public : SetValue(value : System.Compare), Nil {
+		method : public : SetValue(value : Compare), Nil {
 			@value := value;
 		}
 	
-		method : public : GetValue(), System.Compare {
+		method : public : GetValue(), Compare {
 			return @value;
 		}
 
@@ -430,8 +430,8 @@ bundle Structure {
 		}
 	}
 
-	# LinkedList class
-	class LinkedList {
+	# List class
+	class List {
 		@size : Int;
 		@head : ListNode;
 		@tail : ListNode;
@@ -441,7 +441,7 @@ bundle Structure {
 			@size := 0;
 		}
 
-		method : public : native : AddBack(value : System.Compare), Nil {
+		method : public : native : AddBack(value : Compare), Nil {
 			node : ListNode := ListNode->New(value);
 			if(@head = Nil) {
 				@head := node;
@@ -457,7 +457,7 @@ bundle Structure {
 			@size := @size + 1;
 		}
 
-		method : public : native : AddFront(value : System.Compare), Nil {
+		method : public : native : AddFront(value : Compare), Nil {
 			node : ListNode := ListNode->New(value);
 			if(@head = Nil) {
 				@head := node;
@@ -493,7 +493,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetElement(), System.Compare {
+		method : public : GetElement(), Compare {
 			if(@cursor <> Nil) {
 				return @cursor->GetValue();
 			};
@@ -501,7 +501,7 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : FindElement(value : System.Compare), Bool {
+		method : public : FindElement(value : Compare), Bool {
 			@cursor := @head;
 			while(@cursor <> Nil) {
 				if(value->Compare(@cursor->GetValue()) = 0) {
@@ -513,7 +513,7 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : InsertElement(value : System.Compare), Bool {
+		method : public : InsertElement(value : Compare), Bool {
 			if(@cursor <> Nil) {
 				node : ListNode := ListNode->New(value);
 				@cursor->SetNext(node);
@@ -529,7 +529,12 @@ bundle Structure {
 		
 		method : public : RemoveElement(), Nil {
 			if(@cursor <> Nil) {
-				@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				if(@cursor->GetPrevious() <> Nil) {
+					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				}
+				else {
+					@head := @cursor->GetNext();
+				};
 				@cursor := @cursor->GetNext();
 				@size := @size - 1;
 			};
@@ -550,13 +555,13 @@ bundle Structure {
 
 	# TreeNode class
 	class TreeNode {
-		@key : System.Compare;
-		@value : System.Base;
+		@key : Compare;
+		@value : Base;
 		@left : Structure.TreeNode;
 		@right : Structure.TreeNode;
 		@level : Int;
 		
-		New(key : System.Compare, value : System.Base, level : Int) {
+		New(key : Compare, value : Base, level : Int) {
 			@key := key;
 			@value := value;
 			@level := level;
@@ -564,16 +569,16 @@ bundle Structure {
 			@right := Nil;
 		}
 
-		method : public : SetKey(key : System.Compare), Nil {
+		method : public : SetKey(key : Compare), Nil {
 			@key := key;
 				
 		}
 		
-		method : public : native : GetKey(), System.Compare {
+		method : public : native : GetKey(), Compare {
 			return @key;
 		}
 
-		method : public : GetValue(), System.Base {
+		method : public : GetValue(), Base {
 			return @value;
 		}
 		
@@ -604,13 +609,13 @@ bundle Structure {
 
 	# Tree
 	class TreeNode {
-		@key : System.Compare;
-		@value : System.Base;
+		@key : Compare;
+		@value : Base;
 		@left : TreeNode;
 		@right : TreeNode;
 		@level : Int;
 		
-		New(key : System.Compare, value : System.Base, level : Int) {
+		New(key : Compare, value : Base, level : Int) {
 			@key := key;
 			@value := value;
 			@level := level;
@@ -618,16 +623,16 @@ bundle Structure {
 			@right := Nil;
 		}
 
-		method : public : SetKey(key : System.Compare), Nil {
+		method : public : SetKey(key : Compare), Nil {
 			@key := key;
 				
 		}
 		
-		method : public : native : GetKey(), System.Compare {
+		method : public : native : GetKey(), Compare {
 			return @key;
 		}
 
-		method : public : GetValue(), System.Base {
+		method : public : GetValue(), Base {
 			return @value;
 		}
 		
@@ -659,7 +664,7 @@ bundle Structure {
 	class Map {
 		@root : TreeNode;
 		@last : TreeNode;
-		@deleted : TreeNode;
+		@Removed : TreeNode;
 		@size : Int;
 		@found : Bool;
 
@@ -705,11 +710,11 @@ bundle Structure {
 			return node;
 		}
 		
-		method : public : Find(key : System.Compare), System.Base {
+		method : public : Find(key : Compare), Base {
 			return Find(key, @root);
 		}
 		
-		method : Find(key : System.Compare, node : Structure.TreeNode), System.Base {
+		method : Find(key : Compare, node : Structure.TreeNode), Base {
 			if(node <> Nil) {
 				if(key->Compare(node->GetKey()) < 0) {
 					return Find(key, node->GetLeft());
@@ -737,8 +742,8 @@ bundle Structure {
 				# process left 
 				GetKeys(node->GetLeft(), vector);
 				
-				key : System.Compare := node->GetKey();
-				vector->AddBack(key->As(System.Base));
+				key : Compare := node->GetKey();
+				vector->AddBack(key->As(Base));
 				
 				# process right
 				GetKeys(node->GetRight(), vector);
@@ -757,7 +762,7 @@ bundle Structure {
 				# process left 
 				GetValues(node->GetLeft(), vector);
 				
-				value : System.Base := node->GetValue();
+				value : Base := node->GetValue();
 				vector->AddBack(value);
 				
 				# process right
@@ -765,7 +770,7 @@ bundle Structure {
 			};
 		}
 		
-		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
+		method : public : native : Insert(key : Compare, value : Base), Nil {
 			if(@root = Nil) {
 				@root := Insert(key, value, Nil->As(Structure.TreeNode));
 			}
@@ -774,7 +779,7 @@ bundle Structure {
 			};
 		}
 		
-		method : native : Insert(key : System.Compare, value : System.Base, node : Structure.TreeNode), Structure.TreeNode {
+		method : native : Insert(key : Compare, value : Base, node : Structure.TreeNode), Structure.TreeNode {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1);
 				@size := @size + 1;
@@ -796,38 +801,38 @@ bundle Structure {
 			return node;
 		}
 
-		method : public : Delete(key : System.Compare), Nil {
+		method : public : Remove(key : Compare), Nil {
 			@found := true;
-			@root := Delete(key, @root);
+			@root := Remove(key, @root);
 			if(@found) {
 				@size := @size - 1;
 			};
 		}
 		
-		method : native : Delete(key : System.Compare, node : Structure.TreeNode), Structure.TreeNode {
+		method : native : Remove(key : Compare, node : Structure.TreeNode), Structure.TreeNode {
 			if(node = Nil) {
 				@found := false;
 				return Nil;
 			};
 
 			if(key->Compare(node->GetKey()) < 0) {
-				node->SetLeft(Delete(key, node->GetLeft()));
+				node->SetLeft(Remove(key, node->GetLeft()));
 			}
 			else if(key->Compare(node->GetKey()) > 0) {
-				node->SetRight(Delete(key, node->GetRight()));
+				node->SetRight(Remove(key, node->GetRight()));
 			}
 			else {
 				if(node->GetLeft() = Nil & node->GetRight() = Nil) {
 					return Nil;
 				}
 				else if(node->GetLeft() = Nil) {
-					left : System.Compare := Successor(node);
-					node->SetRight(Delete(left, node->GetRight()));
+					left : Compare := Successor(node);
+					node->SetRight(Remove(left, node->GetRight()));
 					node->SetKey(left);
 				} 
 				else {
-					left : System.Compare := Predecessor(node);
-					node->SetLeft(Delete(left, node->GetLeft()));
+					left : Compare := Predecessor(node);
+					node->SetLeft(Remove(left, node->GetLeft()));
 					node->SetKey(left);
 				};
 				
@@ -846,7 +851,7 @@ bundle Structure {
 			return node;
 		}
 		
-		method : Predecessor(node : Structure.TreeNode), System.Compare {
+		method : Predecessor(node : Structure.TreeNode), Compare {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
@@ -859,7 +864,7 @@ bundle Structure {
 			return node->GetKey();
 		}
 
-		method : Successor(node : Structure.TreeNode), System.Compare {
+		method : Successor(node : Structure.TreeNode), Compare {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode := node->GetRight();
 				while(right->GetRight() <> Nil) {
@@ -892,16 +897,16 @@ bundle Structure {
 
 	# Hash table
 	class HashPair from Compare {
-		@key : System.Compare;
-		@value : System.Base;
+		@key : Compare;
+		@value : Base;
 
-		New(key : System.Compare, value : System.Base) {
+		New(key : Compare, value : Base) {
 			Parent();
 			@key := key;
 			@value := value;
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {		
+		method : public : native : Compare(rhs : Compare), Int {		
 			return @key->Compare(rhs);
 		}
 
@@ -909,34 +914,34 @@ bundle Structure {
 			return @key->HashID();
 		}
 		
-		method : public : native : GetKey(), System.Compare {
+		method : public : native : GetKey(), Compare {
 			return @key;
 		}
 
-		method : public : native : GetValue(), System.Base {
+		method : public : native : GetValue(), Base {
 			return @value;
 		}
 	}
 	
 	class Hash {
-		@buckets : LinkedList[];
+		@buckets : List[];
 		
 		New() {
-			@buckets := LinkedList->New[337];
+			@buckets := List->New[337];
 		}
 		
-		method : public : native : Insert(key : System.Compare, value : System.Base), Nil {
+		method : public : native : Insert(key : Compare, value : Base), Nil {
 			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
 			if(list = Nil) {
-				list := LinkedList->New();
+				list := List->New();
 				@buckets[hash] := list;
 			};
 			list->AddBack(HashPair->New(key, value)->As(Compare));
 		}
 
-		method : public : native : Find(key : System.Compare), System.Base {
+		method : public : native : Find(key : Compare), Base {
 			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
@@ -947,12 +952,34 @@ bundle Structure {
 					if(pair->Compare(key) = 0) {
 						return pair->GetValue();
 					};
+					list->Next();
 				};
 
 				return Nil;
 			};
 
 			return Nil;
+		}
+		
+		method : public : Remove(key : Compare), Bool {
+			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+# hash->PrintLine();
+			list := @buckets[hash];
+			if(list <> Nil) {
+				list->Rewind();
+				while(list->IsEnd() = false) {
+					pair : HashPair := list->GetElement()->As(HashPair);
+					if(pair->Compare(key) = 0) {
+						list->RemoveElement();
+						return true;
+					};
+					list->Next();
+				};
+
+				return false;
+			};
+
+			return false;
 		}
 	}
 }
