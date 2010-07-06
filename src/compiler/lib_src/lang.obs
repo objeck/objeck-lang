@@ -340,7 +340,7 @@ bundle System {
 			LOAD_CLS_INST_ID;
 		}
 
-		method : public : native : GetUniqueID(), Int {
+		method : public : native : GetInstanceID(), Int {
 			LOAD_INST_UID;
 		}
 	}
@@ -360,7 +360,7 @@ bundle System {
 		method : virtual : public : Compare(rhs : System.Compare), Int;
 
 		#~~
-		# Returns a hash ID
+		# Returns a unique hash ID for the given class
 		# @return hash ID
 		~~#
 		method : virtual : public : HashID(), Int;

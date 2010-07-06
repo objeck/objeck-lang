@@ -55,13 +55,13 @@ bundle Default {
 			};
 			
 			v : IntHolder := IntHolder->New(10);
-			tree->Delete(v->As(System.Compare));
+			tree->Remove(v->As(System.Compare));
 			
 			v := IntHolder->New(5);
-			tree->Delete(v->As(System.Compare));
+			tree->Remove(v->As(System.Compare));
 			
 			v := IntHolder->New(55);
-			tree->Delete(v->As(System.Compare));
+			tree->Remove(v->As(System.Compare));
 
 			vv : Vector := tree->GetKeys();
 			for(i : Int := 0; i < vv->GetSize(); i := i + 1;) {
