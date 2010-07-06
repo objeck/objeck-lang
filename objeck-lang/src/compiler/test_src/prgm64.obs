@@ -1,0 +1,29 @@
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]), Nil {
+			Run();
+		}
+
+#		function : Run(), Nil {
+		function : native : Run(), Nil {		
+			hash := Hash->New();
+			hash->Insert("pug"->As(Compare), "aa"->As(Base));
+			hash->Insert("terrier"->As(Compare), "ca"->As(Base));
+			hash->Insert("bangel"->As(Compare), "ab"->As(Base));
+
+			value : String := hash->Find("pug"->As(Compare))->As(String);
+			if(value <> Nil) {
+				value->PrintLine();
+			};
+
+			hash->Remove("bangel"->As(Compare))->As(String);
+
+			value := hash->Find("bangel"->As(Compare))->As(String);
+			if(value <> Nil) {
+				value->PrintLine();
+			};
+		}
+	}
+}
