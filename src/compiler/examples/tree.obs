@@ -1,0 +1,35 @@
+# Use of binary balanced tree
+
+use Structure;
+
+bundle Default {
+  class Test {
+    function : Main(args : String[]), Nil {
+      Run(args);
+      "Fin/Done"->PrintLine();
+    }
+    
+    function : native : Run(args : String[]), Nil {
+      tree := StringHash->New();
+
+      tree->Insert("Boxer", IntHolder->New(23)->As(Base));
+      tree->Insert("Anderson", IntHolder->New(13)->As(Base));
+      tree->Insert("Pug", IntHolder->New(7)->As(Base));
+      tree->Insert("Boston", IntHolder->New(33)->As(Base));
+      tree->Insert("Bangel", IntHolder->New(4)->As(Base));
+
+      keys : Vector := tree->GetKeys();
+      for(i : Int := 0; i < keys->GetSize(); i := i + 1;) {
+        x : String := keys->GetValue(i)->As(String);
+        x->PrintLine();
+      };
+      "---------------------"->PrintLine();
+      
+      values := tree->GetValues();
+      for(i : Int := 0; i < values->GetSize(); i := i + 1;) {
+        values->GetValue(i)->As(Structure.IntHolder)->GetValue()->PrintLine();
+      };    
+      values->GetSize()->PrintLine();
+    }
+  }
+}
