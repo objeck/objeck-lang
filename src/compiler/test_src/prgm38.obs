@@ -27,7 +27,7 @@ bundle Default {
 		}
 
 		method : public : native : HashID(), Int {
-			return GetUniqueID();
+			return GetInstanceID();
 		}
 	}
 	
