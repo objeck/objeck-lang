@@ -696,6 +696,126 @@ bundle Structure {
 			@right := right;
 		}
 	}
+	
+	class IntMap {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Int, value : Base), Nil {
+			@map->Insert(IntHolder->New(key)->As(Compare), value);
+		}
+		
+		method : public : Remove(key : Int), Nil {
+			@map->Remove(IntHolder->New(key)->As(Compare));
+		}
+    
+		method : public : Find(key : Int), Int {
+			result : IntHolder := @map->Find(IntHolder->New(key)->As(Compare))->As(IntHolder);
+			if(result <> Nil) {
+				return result->GetValue();
+			};
+
+			return 0;
+		}
+    
+    method : public : GetKeys(), IntVector {
+			keys := IntVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < keys->GetSize(); i := i + 1;) {
+				holder_value : IntHolder := holder_keys->GetValue(i)->As(IntHolder);
+				keys->AddBack(holder_value->GetValue());   
+			};
+
+			return keys;
+		}
+    
+    method : public : GetValues(), Vector {
+			return @map->GetValues();
+		}
+
+		method : public : native : GetSize(), Int {
+			return @map->GetSize();
+		}
+	}
+
+	class FloatMap {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Float, value : Base), Nil {
+			@map->Insert(FloatHolder->New(key)->As(Compare), value);
+		}
+		
+		method : public : Remove(key : Float), Nil {
+			@map->Remove(FloatHolder->New(key)->As(Compare));
+		}
+    
+		method : public : Find(key : Float), Float {
+			result : FloatHolder := @map->Find(FloatHolder->New(key)->As(Compare))->As(FloatHolder);
+			if(result <> Nil) {
+				return result->GetValue();
+			};
+
+			return 0;
+		}
+    
+    method : public : GetKeys(), FloatVector {
+			keys := FloatVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < keys->GetSize(); i := i + 1;) {
+				holder_value : FloatHolder := holder_keys->GetValue(i)->As(FloatHolder);
+				keys->AddBack(holder_value->GetValue());   
+			};
+
+			return keys;
+		}
+    
+    method : public : GetValues(), Vector {
+			return @map->GetValues();
+		}
+
+		method : public : native : GetSize(), Int {
+			return @map->GetSize();
+		}
+	}
+
+	class StringMap {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : String, value : Base), Nil {
+			@map->Insert(key->As(Compare), value);
+		}
+		
+		method : public : Remove(key : String), Nil {
+			@map->Remove(key->As(Compare));
+		}
+    
+		method : public : Find(key : String), String {
+			return @map->Find(key->As(Compare))->As(String);
+		}
+    
+    method : public : GetKeys(), Vector {
+			return @map->GetKeys();
+		}
+    
+    method : public : GetValues(), Vector {
+			return @map->GetValues();
+		}
+
+		method : public : native : GetSize(), Int {
+			return @map->GetSize();
+		}
+	}
 
 	class Map {
 		@root : TreeNode;
@@ -932,6 +1052,38 @@ bundle Structure {
 	}
 
 	# Hash table
+	class StringHash {
+		@hash : Hash;
+
+		New() {
+			@hash := Hash->New();
+		}
+
+		method : public : Insert(key : String, value : Base), Nil {
+			@hash->Insert(key->As(Compare), value);
+		}
+		
+		method : public : Remove(key : String), Nil {
+			@hash->Remove(key->As(Compare));
+		}
+    
+		method : public : Find(key : String), String {
+			return @hash->Find(key->As(Compare))->As(String);
+		}
+    
+    method : public : GetKeys(), Vector {
+			return @hash->GetKeys();
+		}
+    
+    method : public : GetValues(), Vector {
+			return @hash->GetValues();
+		}
+
+		method : public : native : GetSize(), Int {
+			return @hash->GetSize();
+		}
+	}
+
 	class HashPair from Compare {
 		@key : Compare;
 		@value : Base;
