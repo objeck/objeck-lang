@@ -13,17 +13,32 @@ bundle Default {
 			hash->Insert("terrier"->As(Compare), "ca"->As(Base));
 			hash->Insert("bangel"->As(Compare), "ab"->As(Base));
 
+			hash->Remove("pug"->As(Compare))->As(String);
+
 			value : String := hash->Find("pug"->As(Compare))->As(String);
 			if(value <> Nil) {
 				value->PrintLine();
 			};
 
-			hash->Remove("bangel"->As(Compare))->As(String);
+#			hash->Remove("bangel"->As(Compare))->As(String);
 
 			value := hash->Find("bangel"->As(Compare))->As(String);
 			if(value <> Nil) {
 				value->PrintLine();
 			};
+
+			value := hash->Find("terrier"->As(Compare))->As(String);
+			if(value <> Nil) {
+				value->PrintLine();
+			};
+
+			keys := hash->GetKeys();
+			keys->GetSize()->PrintLine();
+
+			values := hash->GetValues();
+			values->GetSize()->PrintLine();
+
+			hash->GetSize()->PrintLine();
 		}
 	}
 }

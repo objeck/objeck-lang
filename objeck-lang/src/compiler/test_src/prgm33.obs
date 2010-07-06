@@ -11,7 +11,7 @@ bundle Default {
 	
 		function : native : Run(), Nil {
 #		function : Run(), Nil {
-			list : IntLinkedList := IntLinkedList->New();
+			list : IntList := IntList->New();
 
 			list->AddBack(12);
 			list->AddBack(13);

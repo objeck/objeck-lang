@@ -72,8 +72,7 @@ bundle Structure {
 			@size := 0;
 		}
 
-#		method : native : Expand(), Nil {
-		method : Expand(), Nil {
+		method : native : Expand(), Nil {
 			if(@size >= @values->GetSize()) {
 				temp : Float[] := Float->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
@@ -287,19 +286,19 @@ bundle Structure {
 		}
 
 		method : public : GetValue(), Int {
-			temp : Compare := GetElement();
+			temp : Compare := Get();
 			holder : IntHolder := temp->As(IntHolder);
 			return holder->GetValue();
 		}
 		
-		method : public : FindElement(value : Int), Bool {
+		method : public : Find(value : Int), Bool {
 			holder : IntHolder := IntHolder->New(value);
-			return FindElement(holder->As(Compare));
+			return Find(holder->As(Compare));
 		}
 		
-		method : public : InsertElement(value : Int), Nil {
+		method : public : Insert(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			InsertElement(holder->As(Compare));
+			Insert(holder->As(Compare));
 		}
 
 	}
@@ -350,19 +349,19 @@ bundle Structure {
 		}
 
 		method : public : GetValue(), Float {
-			temp : Compare := GetElement();
+			temp : Compare := Get();
 			holder : FloatHolder := temp->As(FloatHolder);
 			return holder->GetValue();
 		}
 		
-		method : public : FindElement(value : Float), Bool {
+		method : public : Find(value : Float), Bool {
 			holder : FloatHolder := FloatHolder->New(value);
-			return FindElement(holder->As(Compare));
+			return Find(holder->As(Compare));
 		}
 		
-		method : public : InsertElement(value : Float), Nil {
+		method : public : Insert(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			InsertElement(holder->As(Compare));
+			Insert(holder->As(Compare));
 		}
 	}
 
@@ -430,7 +429,7 @@ bundle Structure {
 		}
 	}
 
-	# List class
+	# Doubly linked-list
 	class List {
 		@size : Int;
 		@head : ListNode;
@@ -456,6 +455,11 @@ bundle Structure {
 			};
 			@size := @size + 1;
 		}
+		
+		method : public : RemoveBack(), Nil {
+			Forward();
+			Remove();
+		}
 
 		method : public : native : AddFront(value : Compare), Nil {
 			node : ListNode := ListNode->New(value);
@@ -471,6 +475,11 @@ bundle Structure {
 				@cursor := @head;
 			};
 			@size := @size + 1;
+		}
+		
+		method : public : RemoveFront(), Nil {
+			Rewind();
+			Remove();
 		}
 
 		method : public : Rewind(), Nil {
@@ -493,7 +502,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetElement(), Compare {
+		method : public : Get(), Compare {
 			if(@cursor <> Nil) {
 				return @cursor->GetValue();
 			};
@@ -501,7 +510,7 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : FindElement(value : Compare), Bool {
+		method : public : Find(value : Compare), Bool {
 			@cursor := @head;
 			while(@cursor <> Nil) {
 				if(value->Compare(@cursor->GetValue()) = 0) {
@@ -513,13 +522,28 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : InsertElement(value : Compare), Bool {
+		method : public : Insert(value : Compare), Bool {
 			if(@cursor <> Nil) {
 				node : ListNode := ListNode->New(value);
 				@cursor->SetNext(node);
-			 	node->SetPrevious(@cursor);	
-				@cursor := node;
-				@size := @size + 1;
+			 	node->SetPrevious(@cursor);
+			 	if(@cursor = @head & @cursor = @tail) {
+			 		@cursor := node;
+			 		@head := @cursor;
+			 		@tail := @cursor;
+			 	}
+			 	else if(@cursor = @head) {
+			 		@cursor := node;
+			 		@head := @cursor;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@cursor := node;
+			 		@tail := @cursor;
+			 	}
+			 	else {
+			 		@cursor := node;
+			 	};
+			 	@size := @size + 1;
 				
 				return true;
 			};
@@ -527,15 +551,27 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : RemoveElement(), Nil {
+		method : public : Remove(), Nil {
 			if(@cursor <> Nil) {
 				if(@cursor->GetPrevious() <> Nil) {
 					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
-				}
-				else {
-					@head := @cursor->GetNext();
 				};
-				@cursor := @cursor->GetNext();
+				if(@cursor = @head & @cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 		@tail := @cursor;
+			 	}
+			 	else if(@cursor = @head) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@tail := @cursor;
+			 	}
+			 	else {
+			 		@cursor := @cursor->GetNext();
+			 	};
 				@size := @size - 1;
 			};
 		}
@@ -925,9 +961,11 @@ bundle Structure {
 	
 	class Hash {
 		@buckets : List[];
+		@size : Int;
 		
 		New() {
 			@buckets := List->New[337];
+			@size := 0;
 		}
 		
 		method : public : native : Insert(key : Compare, value : Base), Nil {
@@ -939,6 +977,7 @@ bundle Structure {
 				@buckets[hash] := list;
 			};
 			list->AddBack(HashPair->New(key, value)->As(Compare));
+			@size := @size + 1;
 		}
 
 		method : public : native : Find(key : Compare), Base {
@@ -948,7 +987,7 @@ bundle Structure {
 			if(list <> Nil) {
 				list->Rewind();
 				while(list->IsEnd() = false) {
-					pair : HashPair := list->GetElement()->As(HashPair);
+					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						return pair->GetValue();
 					};
@@ -968,9 +1007,10 @@ bundle Structure {
 			if(list <> Nil) {
 				list->Rewind();
 				while(list->IsEnd() = false) {
-					pair : HashPair := list->GetElement()->As(HashPair);
+					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
-						list->RemoveElement();
+						list->Remove();
+						@size := @size - 1;
 						return true;
 					};
 					list->Next();
@@ -980,6 +1020,44 @@ bundle Structure {
 			};
 
 			return false;
+		}
+		
+		method : public : native : GetKeys(), Vector {
+			keys := Vector->New();
+			for(i := 0; i < @buckets->GetSize(); i := i + 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->IsEnd() = false) {
+						pair : HashPair := list->Get()->As(HashPair);
+						keys->AddBack(pair->GetKey()->As(Base));
+						list->Next();
+					};
+				};
+			};
+			
+			return keys;
+		}
+		
+		method : public : native : GetValues(), Vector {
+			values := Vector->New();
+			for(i := 0; i < @buckets->GetSize(); i := i + 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->IsEnd() = false) {
+						pair : HashPair := list->Get()->As(HashPair);
+						values->AddBack(pair->GetValue());
+						list->Next();
+					};
+				};
+			};
+			
+			return values;
+		}
+		
+		method : public : GetSize(), Int {
+			return @size;
 		}
 	}
 }
