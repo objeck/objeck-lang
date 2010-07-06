@@ -12,7 +12,7 @@ bundle Default {
 			(7 and a)->PrintLine();
 
 			s := String->New();
-			s->GetUniqueID()->PrintLine();
+			s->GetInstanceID()->PrintLine();
 
 			a := 13;
 			b := 7;
@@ -21,22 +21,22 @@ bundle Default {
 			(7 xor a)->PrintLine();
 			(7 xor 13)->PrintLine();
 
-			i := "hollines"->GetUniqueID();
+			i := "hollines"->GetInstanceID();
 			i->PrintLine();
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
-			i := "hollines"->GetUniqueID();
+			i := "hollines"->GetInstanceID();
 			i->PrintLine();
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
-			i := "randy"->GetUniqueID();
+			i := "randy"->GetInstanceID();
 			i->PrintLine();
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
 
-			i := "pug"->GetUniqueID();
+			i := "pug"->GetInstanceID();
 			i->PrintLine();
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
