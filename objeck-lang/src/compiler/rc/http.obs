@@ -3,14 +3,14 @@ use IO;
 use Structure;
 
 bundle Default {
-	class HttpTest {
-		function : Main(args : String[]), Nil {
-			client := HttpClient->New("http://rosettacode.org", 80);
-			lines := client->Get();
-			
-			for(i := 0; i < lines->GetSize(); i := i + 1;) {
-				lines->GetValue(i)->As(String)->PrintLine();
-			};
-		}
-	}
+  class HttpTest {
+    function : Main(args : String[]), Nil {
+      client := HttpClient->New("http://rosettacode.org", 80);
+      lines := client->Get();
+      
+      for(i := 0; i < lines->GetSize(); i := i + 1;) {
+        lines->GetValue(i)->As(String)->PrintLine();
+      };
+    }
+  }
 }
