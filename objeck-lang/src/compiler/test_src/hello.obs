@@ -42,7 +42,7 @@ bundle Default {
 		}
 
 		 function : native : Append(value : Int, string : String), Nil {
-			values := Structure.IntLinkedList->New();
+			values := Structure.IntList->New();
 			while(value >= 10) {
 			mod := value % 10;
 			values->AddFront(mod);
