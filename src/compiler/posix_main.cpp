@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
-  usage += "v0.9.12.\n";
+  usage += "v1.0.0.\n";
   usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n";
   usage += "example: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\n";
   usage += "options:\n";
