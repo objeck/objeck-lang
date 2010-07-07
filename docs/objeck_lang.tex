@@ -158,13 +158,20 @@ bundle Default {
 }
 \end{verbatim}
 
-The following mathematical operators are supported in the Objeck language for integers and decimal values:
+The following mathematical operators are supported in the Objeck language for integers and decimal types:
 \begin{itemize}
     \item addition (\texttt{+})
     \item subtraction (\texttt{-})
     \item multiplication (\texttt{*})
     \item division (\texttt{/})
     \item modulus -- (\texttt{\%} - for integer values only)
+\end{itemize}
+
+The following bitwise operators are supported for integer types:
+\begin{itemize}
+    \item and (\texttt{and})
+    \item or (\texttt{or})
+    \item xor (\texttt{xor})
 \end{itemize}
 
 The [\texttt{*}, \texttt{/}, \texttt{\%}] operators have a higher precedence than  the [\texttt{+}, \texttt{-}] operators. Operators of the same precedence are evaluated from left-to-right.  Logical operations are of lower precedence than mathematical operations. All logical operators are of the same precedence and order is determined via left--to--right evaluation.  The [\texttt{\&}, \texttt{|}] logical operators use short-circuit logic; meaning that some expressions may not be executed if evaluation criteria is not satisfied.
