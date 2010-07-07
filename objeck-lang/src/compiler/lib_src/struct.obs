@@ -218,7 +218,7 @@ bundle Structure {
 
 		######################## NEW ########################
 		
-		method : public : native : GetAverage(), Int {
+		method : public : native : GetAverage(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
@@ -231,7 +231,7 @@ bundle Structure {
 			return total / @size;
 		}
 		
-		method : public : native : GetMin(), Int {
+		method : public : native : GetMin(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
@@ -250,7 +250,7 @@ bundle Structure {
 			return min;
 		}
 		
-		method : public : native : GetMax(), Int {
+		method : public : native : GetMax(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
