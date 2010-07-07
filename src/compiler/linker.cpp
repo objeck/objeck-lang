@@ -758,9 +758,17 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case NEQL_FLOAT:
-      instrs.push_back(new LibraryInstr(line_num, ADD_FLOAT));
+      instrs.push_back(new LibraryInstr(line_num, NEQL_FLOAT));
       break;
 
+    case LES_EQL_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, LES_EQL_FLOAT));
+      break;
+
+    case GTR_EQL_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, GTR_EQL_FLOAT));
+      break;
+      
     case LES_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LES_FLOAT));
       break;
