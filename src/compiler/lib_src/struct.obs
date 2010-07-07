@@ -372,7 +372,54 @@ bundle Structure {
 		}
 		
 		######################## NEW ########################
+#~
+		method : public : native : Sort(), Nil {
+			a : Compare[] := @values;
+			b : Compare[] := Compare->New[@size];
+			MergeSort(0, @size - 1, a, b);
+		}
 		
+		method : public : native : MergeSort(low : Int, hi : Int, a : Compare[], b : Compare[]), Nil {
+			if(low < hi) {
+				mid := (low + hi) / 2;
+				MergeSort(low, mid, a, b);
+				MergeSort(mid + 1, hi, a, b);
+				Merge(low, mid, hi, a, b);
+			};	
+		}
+		
+		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Compare[], b : Compare[]), Nil {
+			# copy both halves of a to auxiliary array b
+			for(i := low; i <= hi; i := i + 1;) {
+				b[i] := a[i];
+			};
+
+			i := low; 
+			j := mid + 1; 
+			k := low;
+			
+			# copy back next-greatest element at each time
+			while(i <= mid & j <= hi) {
+				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
+					a[k] := b[i];
+					k := k + 1;
+					i := i + 1;
+				}
+				else {
+					a[k] := b[j];
+					k := k + 1;
+					j := j + 1;
+				};
+			};
+			
+			# copy back remaining elements of first half (if any)
+			while(i <= mid) {
+				a[k] := b[i];
+				k := k + 1;
+				i := i + 1;
+			};
+		}
+~#
 		######################## END NEW ########################
 	}
 	
