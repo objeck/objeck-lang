@@ -60,6 +60,107 @@ bundle Structure {
 		method : public : GetSize(), Int {
 			return @size;
 		}
+		
+		######################## NEW ########################
+		
+		method : public : native : GetAverage(), Int {
+			if(@size <= 0) {
+				return 0;
+			};
+			
+			total := 0;
+			for(i : Int := 0; i < @size; i := i + 1;) {
+				total := total + @values[i];
+			};
+			
+			return total / @size;
+		}
+		
+		method : public : native : GetMin(), Int {
+			if(@size <= 0) {
+				return 0;
+			};
+			
+			if(@size = 1) {
+				return @values[0];
+			};
+			
+			min := @values[0];
+			for(i : Int := 1; i < @size; i := i + 1;) {
+				if(@values[i] < min) {
+					min := @values[i];
+				};
+			};
+			
+			return min;
+		}
+		
+		method : public : native : GetMax(), Int {
+			if(@size <= 0) {
+				return 0;
+			};
+			
+			if(@size = 1) {
+				return @values[0];
+			};
+			
+			max := @values[0];
+			for(i : Int := 1; i < @size; i := i + 1;) {
+				if(@values[i] > max) {
+					max := @values[i];
+				};
+			};
+			
+			return max;
+		}
+		
+		method : public : native : Sort(), Nil {
+			a : Int[] := @values;
+			b : Int[] := Int->New[@size];
+			MergeSort(0, @size - 1, a, b);
+		}
+		
+		method : public : native : MergeSort(low : Int, hi : Int, a : Int[], b : Int[]), Nil {
+			if(low < hi) {
+				mid := (low + hi) / 2;
+				MergeSort(low, mid, a, b);
+				MergeSort(mid + 1, hi, a, b);
+				Merge(low, mid, hi, a, b);
+			};	
+		}
+		
+		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Int[], b : Int[]), Nil {
+			# copy both halves of a to auxiliary array b
+			for(i := low; i <= hi; i := i + 1;) {
+				b[i] := a[i];
+			};
+
+			i := low; 
+			j := mid + 1; 
+			k := low;
+			
+			# copy back next-greatest element at each time
+			while(i <= mid & j <= hi) {
+				if(b[i] <= b[j]) {
+					a[k] := b[i];
+					k := k + 1;
+					i := i + 1;
+				}
+				else {
+					a[k] := b[j];
+					k := k + 1;
+					j := j + 1;
+				};
+			};
+			
+			# copy back remaining elements of first half (if any)
+			while(i <= mid) {
+				a[k] := b[i];
+				k := k + 1;
+				i := i + 1;
+			};
+		}
+		######################## END NEW ########################
 	}
 	
 	# Float Vector
@@ -114,6 +215,107 @@ bundle Structure {
 		method : public : GetSize(), Int {
 			return @size;
 		}
+
+		######################## NEW ########################
+		
+		method : public : native : GetAverage(), Int {
+			if(@size <= 0) {
+				return 0.0;
+			};
+			
+			total := 0.0;
+			for(i : Int := 0; i < @size; i := i + 1;) {
+				total := total + @values[i];
+			};
+			
+			return total / @size;
+		}
+		
+		method : public : native : GetMin(), Int {
+			if(@size <= 0) {
+				return 0.0;
+			};
+			
+			if(@size = 1) {
+				return @values[0];
+			};
+			
+			min := @values[0];
+			for(i : Int := 1; i < @size; i := i + 1;) {
+				if(@values[i] < min) {
+					min := @values[i];
+				};
+			};
+			
+			return min;
+		}
+		
+		method : public : native : GetMax(), Int {
+			if(@size <= 0) {
+				return 0.0;
+			};
+			
+			if(@size = 1) {
+				return @values[0];
+			};
+			
+			max := @values[0];
+			for(i : Int := 1; i < @size; i := i + 1;) {
+				if(@values[i] > max) {
+					max := @values[i];
+				};
+			};
+			
+			return max;
+		}
+		
+		method : public : native : Sort(), Nil {
+			a : Float[] := @values;
+			b : Float[] := Float->New[@size];
+			MergeSort(0, @size - 1, a, b);
+		}
+		
+		method : public : native : MergeSort(low : Int, hi : Int, a : Float[], b : Float[]), Nil {
+			if(low < hi) {
+				mid := (low + hi) / 2;
+				MergeSort(low, mid, a, b);
+				MergeSort(mid + 1, hi, a, b);
+				Merge(low, mid, hi, a, b);
+			};	
+		}
+		
+		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Float[], b : Float[]), Nil {
+			# copy both halves of a to auxiliary array b
+			for(i := low; i <= hi; i := i + 1;) {
+				b[i] := a[i];
+			};
+
+			i := low; 
+			j := mid + 1; 
+			k := low;
+			
+			# copy back next-greatest element at each time
+			while(i <= mid & j <= hi) {
+				if(b[i] <= b[j]) {
+					a[k] := b[i];
+					k := k + 1;
+					i := i + 1;
+				}
+				else {
+					a[k] := b[j];
+					k := k + 1;
+					j := j + 1;
+				};
+			};
+			
+			# copy back remaining elements of first half (if any)
+			while(i <= mid) {
+				a[k] := b[i];
+				k := k + 1;
+				i := i + 1;
+			};
+		}
+		######################## END NEW ########################
 	}
 	
 	# Object Vector
@@ -168,6 +370,10 @@ bundle Structure {
 		method : public : GetSize(), Int {
 			return @size;
 		}
+		
+		######################## NEW ########################
+		
+		######################## END NEW ########################
 	}
 	
 	# Stack
