@@ -1,6 +1,8 @@
 #~~
 # R. Hollines
 # Core Objeck class libraries
+# 
+# H.W. Lang - merge sort implementations
 ~~#	
 
 use IO;
