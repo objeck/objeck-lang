@@ -570,37 +570,78 @@ bundle Structure {
 	
 	# TODO: refactor!
 	# Integer Linked List
-	class IntList from List {
+	class IntList {
+		@list : List;
+		
 		New() {
-			Parent();
+			@list := List->New();
 		}
 
 		method : public : AddBack(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			AddBack(holder->As(Compare));
+			@list->AddBack(holder->As(Compare));
 		}
 
 		method : public : AddFront(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			AddFront(holder->As(Compare));
+			@list->AddFront(holder->As(Compare));
 		}
 
-		method : public : GetInt(), Int {
-			temp : Compare := Get();
+		method : public : Get(), Int {
+			temp : Compare := @list->Get();
 			holder : IntHolder := temp->As(IntHolder);
 			return holder->Get();
 		}
 		
 		method : public : Find(value : Int), Bool {
 			holder : IntHolder := IntHolder->New(value);
-			return Find(holder->As(Compare));
+			return @list->Find(holder->As(Compare));
 		}
 		
 		method : public : Insert(value : Int), Nil {
 			holder : IntHolder := IntHolder->New(value);
-			Insert(holder->As(Compare));
+			@list->Insert(holder->As(Compare));
 		}
 
+		method : public : RemoveBack(), Nil {
+			@list->RemoveBack();
+		}
+		
+		method : public : RemoveFront(), Nil {
+			@list->RemoveFront();
+		}
+		
+		method : public : Rewind(), Nil {
+			@list->Rewind();
+		}
+		
+		method : public : Forward(), Nil {
+			@list->Forward();
+		}
+		
+		method : public : Next(), Nil {
+			@list->Next();
+		}
+		
+		method : public : Previous(), Nil {
+			@list->Previous();
+		}
+		
+		method : public : Remove(), Nil {
+			@list->Remove();
+		}
+		
+		method : public : IsStart(), Bool {
+			return @list->IsStart();
+		}	
+		
+		method : public : IsEnd(), Bool {
+			return @list->IsEnd();
+		}
+		
+		method : public : Size(), Int {
+			return @list->Size();
+		}
 	}
 
 	class IntHolder from Compare {
@@ -634,38 +675,80 @@ bundle Structure {
 	
 	# TODO: refactor!
 	# Float Linked List
-	class FloatList from List {
+	class FloatList {
+		@list : List;
+		
 		New() {
-			Parent();
+			@list := List->New();
 		}
 
 		method : public : AddBack(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			AddBack(holder->As(Compare));
+			@list->AddBack(holder->As(Compare));
 		}
 
 		method : public : AddFront(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			AddFront(holder->As(Compare));
+			@list->AddFront(holder->As(Compare));
 		}
 
-		method : public : GetFloat(), Float {
-			temp : Compare := Get();
+		method : public : Get(), Float {
+			temp : Compare := @list->Get();
 			holder : FloatHolder := temp->As(FloatHolder);
 			return holder->Get();
 		}
 		
 		method : public : Find(value : Float), Bool {
 			holder : FloatHolder := FloatHolder->New(value);
-			return Find(holder->As(Compare));
+			return @list->Find(holder->As(Compare));
 		}
 		
 		method : public : Insert(value : Float), Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			Insert(holder->As(Compare));
+			@list->Insert(holder->As(Compare));
+		}
+		
+		method : public : RemoveBack(), Nil {
+			@list->RemoveBack();
+		}
+		
+		method : public : RemoveFront(), Nil {
+			@list->RemoveFront();
+		}
+		
+		method : public : Rewind(), Nil {
+			@list->Rewind();
+		}
+		
+		method : public : Forward(), Nil {
+			@list->Forward();
+		}
+		
+		method : public : Next(), Nil {
+			@list->Next();
+		}
+		
+		method : public : Previous(), Nil {
+			@list->Previous();
+		}
+		
+		method : public : Remove(), Nil {
+			@list->Remove();
+		}
+		
+		method : public : IsStart(), Bool {
+			return @list->IsStart();
+		}	
+		
+		method : public : IsEnd(), Bool {
+			return @list->IsEnd();
+		}
+		
+		method : public : Size(), Int {
+			return @list->Size();
 		}
 	}
-
+	
 	class FloatHolder from Compare {
 		@value : Float;
 
