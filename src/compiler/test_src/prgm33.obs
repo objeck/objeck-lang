@@ -19,13 +19,13 @@ bundle Default {
 			list->AddFront(1);
 
 			while(list->IsEnd() <> true) {
-				list->GetInt()->PrintLine();
+				list->Get()->PrintLine();
 				list->Next();
 			};
 
 			list->Forward();
 			while(list->IsStart() <> true) {
-				list->GetInt()->PrintLine();
+				list->Get()->PrintLine();
 				list->Previous();
 			};
 			
