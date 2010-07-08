@@ -74,7 +74,7 @@ bundle Default {
       };
       
       string : System.String := "Hello World!";
-      for(i : Int := 0; i < string->GetSize(); i := i + 1;) {
+      for(i : Int := 0; i < string->Size(); i := i + 1;) {
         select(string->GetChar(i)) {
           label 'H': {
             cc : System.String := "Hello";

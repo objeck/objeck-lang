@@ -30,13 +30,13 @@ bundle Default {
                                 ["AG","Battery"]["Blaq","Poet"]];
                         ss[0,1,0]->PrintLine();
                         ss[1,1,1]->PrintLine();
-                        ss->GetSize()->PrintLine();
+                        ss->Size()->PrintLine();
 
 			values : Int[,] := [[2,3][4,5]];
 			values[1,1]->PrintLine();
 
 			strs := ["Hello","World!"];
-			strs->GetSize()->PrintLine();
+			strs->Size()->PrintLine();
 		}
 	}
 }

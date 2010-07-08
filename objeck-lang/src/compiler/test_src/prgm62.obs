@@ -12,14 +12,14 @@ bundle Default {
 		function : Run(args : System.String[]), Nil {
 			url := args[0];			
 			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->GetSize(), url->GetSize() - "http://"->GetSize());
+				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
 				index := url->GetIndex('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
 					address := url->SubString(index);
 					index->PrintLine();
-					location := url->SubString(index + 1, url->GetSize() - index - 1);
+					location := url->SubString(index + 1, url->Size() - index - 1);
 				}
 				else {
 					address := url;
@@ -36,7 +36,7 @@ bundle Default {
 	
 					return_line := socket->ReadString();
 					if(return_line->StartsWith("HTTP/1.1")) {
-						return_line := return_line->SubString("HTTP/1.1"->GetSize() + 1, return_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
+						return_line := return_line->SubString("HTTP/1.1"->Size() + 1, return_line->Size() - "HTTP/1.1"->Size() - 1);
 						index := return_line->GetIndex(' ');
 index->PrintLine();						
 						return_code := return_line->SubString(index);
@@ -46,10 +46,10 @@ index->PrintLine();
 					headers := Map->New();
 					do {
 						line := socket->ReadString();
-						if(line->GetSize() > 0 & line->StartsWith('<') = false) {
+						if(line->Size() > 0 & line->StartsWith('<') = false) {
 							index := line->GetIndex(':');
 							name := line->SubString(index);
-							value := line->SubString(index + 1, line->GetSize() - index - 1);			
+							value := line->SubString(index + 1, line->Size() - index - 1);			
 							headers->Insert(name->As(Compare), value->As(Base));
 							
 							name->Trim()->PrintLine();
@@ -61,13 +61,13 @@ index->PrintLine();
 					
 					do {
 						line := socket->ReadString();
-						if(line->GetSize() > 0) {
+						if(line->Size() > 0) {
 							trim := line->Trim();
 							trim->PrintLine();
 #~											
 							start : Int;
 							end : Int;
-							for(i := 0; i < trim->GetSize(); i := i + 1;) {
+							for(i := 0; i < trim->Size(); i := i + 1;) {
 								# find tag start
 								if(trim->GetChar(i) = '<') {
 									start := i;
@@ -80,10 +80,10 @@ index->PrintLine();
 									# print tag
 									if(len > 0) {
 										tag := trim->SubString(start + 1, len - 1);
-										if(tag->GetSize() > 0) {
+										if(tag->Size() > 0) {
 											if(tag->GetChar(0) <> '/') {
 												tag_end := 0;
-												while(tag_end < tag->GetSize() & 
+												while(tag_end < tag->Size() & 
 													tag->GetChar(tag_end) <> ' ') {
 													tag_end := tag_end + 1;
 												};
@@ -91,7 +91,7 @@ index->PrintLine();
 											}
 											else {
 												tag_end := 1;
-												while(tag_end < tag->GetSize() & 
+												while(tag_end < tag->Size() & 
 													tag->GetChar(tag_end) <> ' ') {
 													tag_end := tag_end + 1;
 												};
@@ -105,7 +105,7 @@ index->PrintLine();
 						};
 						
 					}
-					while(line->GetSize() > 0);
+					while(line->Size() > 0);
 					socket->Close();
 				}
 				else {

@@ -11,11 +11,11 @@ bundle Default {
 			@float_value := 0.0;
 			@int_value := 13;
 			
-			for(i : Int := 0; i < @float_array->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < @float_array->Size(); i := i + 1;) {
 				@float_array[i] := i * 3.5;
 			};
 			
-			for(i : Int := 0; i < @int_array->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < @int_array->Size(); i := i + 1;) {
 				@int_array[i] := @float_array[i] * 10;
 			};
 		}
