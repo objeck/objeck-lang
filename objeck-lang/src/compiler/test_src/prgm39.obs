@@ -13,7 +13,7 @@ bundle Default {
 		}
 		
 		function : Run(args : System.String[]), Nil {
-			for(i : Int := 0; i < args->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < args->Size(); i := i + 1;) {
 				args[i]->PrintLine();
 			};
 			a->PrintLine();

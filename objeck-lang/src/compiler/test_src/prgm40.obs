@@ -25,7 +25,7 @@ bundle Default {
 			b : Bool := false | false | true;
 			b->PrintLine();
 
-			b := true & false & Test()->GetSize() = 8;
+			b := true & false & Test()->Size() = 8;
 			b->PrintLine();
 
 			(2-3*8)->PrintLine();	

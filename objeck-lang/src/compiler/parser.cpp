@@ -216,14 +216,16 @@ void Parser::ParseBundle(int depth)
       while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
         if(Match(TOKEN_ENUM_ID)) {
           bundle->AddEnum(ParseEnum(depth + 1));
-        } else if(Match(TOKEN_CLASS_ID)) {
-          bundle->AddClass(ParseClass(bundle_name, depth + 1));
-        } else {
-          ProcessError("Expected 'class' or 'enum'", TOKEN_SEMI_COLON);
-          NextToken();
-        }
+        } 
+	else if(Match(TOKEN_CLASS_ID)) {
+	  bundle->AddClass(ParseClass(bundle_name, depth + 1));
+	}
+	else {
+	  ProcessError("Expected 'class' or 'enum'", TOKEN_SEMI_COLON);
+	  NextToken();
+	}
       }
-
+      
       if(!Match(TOKEN_CLOSED_BRACE)) {
         ProcessError(TOKEN_CLOSED_BRACE);
       }
@@ -341,6 +343,11 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     cls_name.insert(0, ".");
     cls_name.insert(0, bundle_name);
   }
+
+  if(current_bundle->GetClass(cls_name)) {
+    ProcessError("Class has already been defined");
+  }
+  
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name);
   current_class = klass;
 

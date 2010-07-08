@@ -28,14 +28,14 @@ bundle Default {
         line_num := line_num + 1;
                   
         i := 0;  
-        while(i < line->GetSize()) {    
+        while(i < line->Size()) {    
           # skip whitespace
-          while((line->GetChar(i) = ' ' | line->GetChar(i) = '\t') & i < line->GetSize()) {
+          while((line->GetChar(i) = ' ' | line->GetChar(i) = '\t') & i < line->Size()) {
             i := i + 1;
           };
           
           # parse
-          if(i < line->GetSize()) {
+          if(i < line->Size()) {
             # word
             if(line->GetChar(i)->IsChar() = true) {
               string := "";

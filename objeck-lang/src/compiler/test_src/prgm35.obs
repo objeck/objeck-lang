@@ -5,7 +5,7 @@ bundle Default {
 		New() {
 		}
 
-		method : virtual : public : GetValue(), Int;
+		method : virtual : public : Get(), Int;
 	}
 
 	class Y from X {
@@ -13,7 +13,7 @@ bundle Default {
 			Parent();
 		}
 		
-		method : public : GetValue(), Int {
+		method : public : Get(), Int {
 			return 13;
 		}
 	}
@@ -36,13 +36,13 @@ bundle Default {
 		function : Main(args : System.String[]), Nil {
 
 			x : Compare[] := Compare->New[10];
-			x->GetSize()->PrintLine();
+			x->Size()->PrintLine();
 
 #			x : X := X->New();			
 #			xx : Compare := Compare->New();
 
 			y : Y := Y->New();			
-			y->GetValue()->Print();
+			y->Get()->Print();
 		}
 	}
 }	

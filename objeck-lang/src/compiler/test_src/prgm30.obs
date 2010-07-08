@@ -11,7 +11,7 @@ bundle Default {
 			};
 		}
 
-		method : public : GetValue(), Int {
+		method : public : Get(), Int {
 			return @value;
 		}
 	}
@@ -23,10 +23,10 @@ bundle Default {
 			
 		function : native : DoStuff(), Nil {
 			b : Blah := Blah->New();
-			b->GetValue()->PrintLine();
+			b->Get()->PrintLine();
 
 			bb : Blah := Blah->New();
-			bb->GetValue()->PrintLine();
+			bb->Get()->PrintLine();
 		}
 	}
 }

@@ -56,7 +56,7 @@ bundle Default {
 			# Test->VALUE_2->PrintLine();
 
 			xx : Int[] := Int->New[7];
-			for(i : Int := 0; i < xx->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < xx->Size(); i := i + 1;) {
 				xx[i] := i * 5;
 			};
 			(xx[4] + xx[5])->PrintLine();
