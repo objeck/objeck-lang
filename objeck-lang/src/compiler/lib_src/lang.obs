@@ -721,7 +721,7 @@ bundle System {
 		}
 
 		method : public : native : StartsWith(s : String), Bool {
-			if(s->Size() < @pos) {
+			if(s->Size() <= @pos) {
 				for(i := 0; i < s->Size(); i := i + 1;) {
 					if(s->GetChar(i) <> @string[i]) {
 						return false;
@@ -735,7 +735,7 @@ bundle System {
 		}
 
 		method : public : native : EndsWith(s : String), Bool {
-			if(s->Size() < @pos) {
+			if(s->Size() <= @pos) {
 				i := s->Size() - 1;
 				j := @pos - 1;
 				while(i > -1) {

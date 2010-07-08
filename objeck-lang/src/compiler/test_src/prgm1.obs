@@ -1,4 +1,8 @@
 bundle Default {
+	#~~~
+	Hello
+	World!
+	~~~#
 	class Test {
 		function : Main(args : System.String[]), Nil {
 			Run();
