@@ -969,7 +969,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
     called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
   }
   
-#ifdef _NOJIT
+#ifndef _NO_JIT
   // execute JIT call
   if(instr->GetOperand3()) {
     ProcessJitMethodCall(called, instance);
