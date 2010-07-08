@@ -158,7 +158,6 @@ bundle Structure {
 				i := i + 1;
 			};
 		}
-		######################## END NEW ########################
 	}
 	
 	# Float Vector
@@ -311,7 +310,6 @@ bundle Structure {
 				i := i + 1;
 			};
 		}
-		######################## END NEW ########################
 	}
 	
 	# Compare Vector
