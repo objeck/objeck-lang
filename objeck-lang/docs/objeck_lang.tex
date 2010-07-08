@@ -200,13 +200,13 @@ values : Int[,] := [[2,3][4,5]];
 values[1,1]->PrintLine();
 \end{verbatim}
 
-The size of an array can be obtained by calling the array's \texttt{GetSize()} method.  The \texttt{GetSize()} method will return the number of elements in a given array.  For a multi-dimensional array the size method returns the number of elements in the first dimension.  Character array literals are allocated as \texttt{String} objects.  It should also be noted that language has a \texttt{String} class that provides support for advanced string operations.
+The size of an array can be obtained by calling the array's \texttt{Size()} method.  The \texttt{Size()} method will return the number of elements in a given array.  For a multi-dimensional array the size method returns the number of elements in the first dimension.  Character array literals are allocated as \texttt{String} objects.  It should also be noted that language has a \texttt{String} class that provides support for advanced string operations.
 
 \begin{verbatim}
 str := "Hello World!";
-str->GetSize()->PrintLine();
+str->Size()->PrintLine();
 strs := ["Hello","World!"];
-strs->GetSize()->PrintLine();
+strs->Size()->PrintLine();
 \end{verbatim}
 
 \subsection{Statements}
@@ -281,7 +281,7 @@ The \texttt{for} statement is another common looping construct.  The \texttt{for
 
 \begin{verbatim}
 name : Char[] := "John"->ToCharArray();
-for(i : Int := 0; i < name->GetSize(); i := i + 1;) {
+for(i : Int := 0; i < name->Size(); i := i + 1;) {
   name[i]->PrintLine();
 }
 \end{verbatim}
@@ -356,7 +356,7 @@ method : public : Compare(right : Base), Int {
     if(GetClassID() = right->GetClassID()) {
       a : A := right->As(A);
 
-      if(@value = a->GetValue()) {
+      if(@value = a->Get()) {
         return 0;
       };
     ...	
@@ -560,9 +560,9 @@ Base class for all objects.
     	\begin{itemize}
 	\item method : public : native : GetIndex(c : Char), Int
 	\end{itemize}
-    \item \texttt{GetSize} - returns the size of the String
+    \item \texttt{Size} - returns the size of the String
     	\begin{itemize}
-	\item method : public : native : GetSize(), Int
+	\item method : public : native : Size(), Int
 	\end{itemize}
     \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
     	\begin{itemize}
@@ -634,7 +634,7 @@ Base class for all objects that use comparative algorithms.
 \end{itemize}
 
 \subsubsection{List/IntList/FloatList}
-The List class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntList} and \texttt{FloatList}.  The general class supports the following operations:
+The List class allow values to be added, removed and deleted from a list.  There are two specialized version of this class: \texttt{IntList} and \texttt{FloatList}.  The \texttt{IntList} and \texttt{FloatList} classes use \texttt{Int} and \texttt{Float} types respectively instead of \texttt{Compare} type.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the list
     	\begin{itemize}
@@ -696,11 +696,11 @@ The List class allow values to be added, removed and deleted from a list.  There
     	\begin{itemize}
 	\item method : public : IsEnd(), Bool
 	\end{itemize}		
-    \item \texttt{GetSize} - returns the size of the list
+    \item \texttt{Size} - returns the size of the list
 \end{itemize}
 
 \subsubsection{Stack/IntStack/FloatStack}
-The Stack class support the concept of a growing stack.  There are two specialized version of this class: \texttt{IntStack} and \texttt{FloatStack}.  The general class supports the following operations:
+The Stack class support the concept of a growing stack.  There are two specialized version of this class: \texttt{IntStack} and \texttt{FloatStack}.  The \texttt{IntStack} and \texttt{FloatStack} classes use \texttt{Int} and \texttt{Float} types respectively instead of \texttt{Base} type.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{Push} - pushes a new value onto the stack
     	\begin{itemize}
@@ -716,8 +716,8 @@ The Stack class support the concept of a growing stack.  There are two specializ
 	\end{itemize}
 \end{itemize}
 
-\subsubsection{Vector/IntVector/FloatVector}
-The Vector class support the concept of a growing array.  There are two specialized version of this class: \texttt{IntVector} and \texttt{FloatVector}.  The general class supports the following operations:
+\subsubsection{Vector/CompareVector/IntVector/FloatVector}
+The Vector class support the concept of a growing array.  There are three specialized version of this class: \texttt{CompareVector}, \texttt{IntVector} and \texttt{FloatVector}.  The \texttt{IntVector}, \texttt{FloatVector} and \texttt{CompareVector} classes use \texttt{Int}, \texttt{Float} and \texttt{Compare} types respectively instead of \texttt{Base} type.  The general class supports the following operations:
 \begin{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the vector
     	\begin{itemize}
@@ -727,17 +727,35 @@ The Vector class support the concept of a growing array.  There are two speciali
     	\begin{itemize}
 	\item method : public : RemoveBack(), Nil
 	\end{itemize}
-    \item \texttt{GetValue} - returns the value of the element  pointed to by the cursor
+    \item \texttt{Get} - returns the value of the element  pointed to by the cursor
     	\begin{itemize}
-	\item method : public : GetValue(index : Int), Base
+	\item method : public : Get(index : Int), Base
 	\end{itemize}
-    \item \texttt{SetValue} - replaces the list value based upon the given index
+    \item \texttt{Set} - replaces the list value based upon the given index
     	\begin{itemize}
-	\item method : public : SetValue(value : Base, index : Int), Bool
+	\item method : public : Set(value : Base, index : Int), Bool
 	\end{itemize}
-    \item \texttt{GetSize} - returns the size of the list
+    \item \texttt{Size} - returns the size of the list
     	\begin{itemize}
-	\item method : public : GetSize(), Int
+	\item method : public : Size(), Int
+	\end{itemize}
+Additional methods for CompareVector/IntVector/FloatVector
+    \item \texttt{Sort} - sorts a vector of values using a merge sort algorithm in $O(n \log_2 n)$ time.
+    	\begin{itemize}
+	\item method : public : Sort(), Nil
+	\end{itemize}
+Additional methods for IntVector/FloatVector
+    \item \texttt{Min} - returns the smallest value in the vector
+    	\begin{itemize}
+	\item method : public : native : Min(), Int/Float
+	\end{itemize}
+    \item \texttt{Max} - returns the largest value in the vector
+    	\begin{itemize}
+	\item method : public : native : Max(), Int/Float
+	\end{itemize}
+    \item \texttt{Average} - returns the calculated average for all values in the list
+    	\begin{itemize}
+	\item method : public : native : Average(), Int/Float
 	\end{itemize}
 \end{itemize}
 
@@ -760,9 +778,9 @@ The Map class supports the concept of an associative array with key/value pairs.
     	\begin{itemize}
 	\item method : public : GetKeys(), Vector
 	\end{itemize}
-    \item \texttt{GetValues} - returns a vector of values
+    \item \texttt{Gets} - returns a vector of values
     	\begin{itemize}
-	\item method : public : GetValues(), Vector
+	\item method : public : Gets(), Vector
 	\end{itemize}
 \end{itemize}
 
@@ -785,9 +803,9 @@ The Hash class supports the concept of an associative array with key/value pairs
     	\begin{itemize}
 	\item method : public : GetKeys(), Vector
 	\end{itemize}
-    \item \texttt{GetValues} - returns a vector of values
+    \item \texttt{Gets} - returns a vector of values
     	\begin{itemize}
-	\item method : public : GetValues(), Vector
+	\item method : public : Gets(), Vector
 	\end{itemize}
 \end{itemize}.
 
@@ -867,9 +885,9 @@ The File class allows programmers manipulate system files.    The class supports
     	\begin{itemize}
 	\item method : public : Rewind(), Nil
 	\end{itemize}
-    \item \texttt{GetSize} - returns the size of the file.
+    \item \texttt{Size} - returns the size of the file.
     	\begin{itemize}
-	\item function : GetSize(name : String), Int
+	\item function : Size(name : String), Int
 	\end{itemize}
     \item \texttt{Remove} - deletes a file.
     	\begin{itemize}
@@ -1059,12 +1077,12 @@ use Structure;
 bundle Default {
   class HttpTest {
     function : Main(args : String[]), Nil {
-      if(args->GetSize() = 1) {
+      if(args->Size() = 1) {
         client := HttpClient->New(args[0], 80);
         lines := client->Get();
 
-        for(i := 0; i < lines->GetSize(); i := i + 1;) {
-          lines->GetValue(i)->As(String)->PrintLine();
+        for(i := 0; i < lines->Size(); i := i + 1;) {
+          lines->Get(i)->As(String)->PrintLine();
         };
       };
     }
@@ -1095,7 +1113,7 @@ bundle Default {
       value := v;z
     }
 
-    method : public : GetValue(), Int {
+    method : public : Get(), Int {
       return value;
     }
 
@@ -1112,7 +1130,7 @@ bundle Default {
 
       f := Foo->New(24);
       f->SetBar();
-      v := f->GetValue();
+      v := f->Get();
     }
   }
 }

@@ -19,7 +19,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : GetSize(b : Bool[]), Int {
+		function : native : Size(b : Bool[]), Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -74,7 +74,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : GetSize(b : Byte[]), Int {
+		function : native : Size(b : Byte[]), Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -171,7 +171,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : GetSize(c : Char[]), Int {
+		function : native : Size(c : Char[]), Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -239,7 +239,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : GetSize(i : Int[]), Int {
+		function : native : Size(i : Int[]), Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -299,7 +299,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : GetSize(f : Float[]), Int {
+		function : native : Size(f : Float[]), Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -318,7 +318,7 @@ bundle System {
 	# Array class support
 	~~#	
 	class $BaseArray {
-		function : native : GetSize(f : System.Base[]), Int {
+		function : native : Size(f : System.Base[]), Int {
 			LOAD_ARY_SIZE;
 		}
 	}
@@ -404,11 +404,11 @@ bundle System {
 		New(array : Char[]) {
 			Parent();
 			
-			if(array->GetSize() < 8) {
+			if(array->Size() < 8) {
 				@max := 8;
 			}
 			else {
-				@max := array->GetSize();
+				@max := array->Size();
 			};
 			
 			@string := Char->New[@max];
@@ -420,11 +420,11 @@ bundle System {
 		New(array : Byte[]) {
 			Parent();
 			
-			if(array->GetSize() < 8) {
+			if(array->Size() < 8) {
 				@max := 8;
 			}
 			else {
-				@max := array->GetSize();
+				@max := array->Size();
 			};
 			
 			@string := Char->New[@max];
@@ -455,36 +455,36 @@ bundle System {
 		}
 		
 		method : public : native : Append(array : Char[]), Nil {
-			if(@pos + array->GetSize() >= @max) {
+			if(@pos + array->Size() >= @max) {
 				# expand string
-				@max := (@max + array->GetSize()) * 2;
+				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
-				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+				for(i : Int := 0; i < @string->Size(); i := i + 1;) {
 					tmp[i] := @string[i];	
 				};
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->GetSize() & array[i] <> '\0'; i := i + 1;) {
+			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i := i + 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};
 		}
 		
 		method : public : native : Append(array : Byte[]), Nil {
-			if(@pos + array->GetSize() >= @max) {
+			if(@pos + array->Size() >= @max) {
 				# expand string
-				@max := (@max + array->GetSize()) * 2;
+				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
-				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+				for(i : Int := 0; i < @string->Size(); i := i + 1;) {
 					tmp[i] := @string[i];	
 				};
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->GetSize() & array[i] <> '\0'; i := i + 1;) {
+			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i := i + 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};
@@ -496,7 +496,7 @@ bundle System {
                 		@max := @max * 3;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
-                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                		for(i : Int := 0; i < @string->Size(); i := i + 1;) {
                         		tmp[i] := @string[i];
                 		};
                 		@string := tmp;
@@ -512,7 +512,7 @@ bundle System {
                 		@max := @max * 3;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
-                		for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+                		for(i : Int := 0; i < @string->Size(); i := i + 1;) {
                         		tmp[i] := @string[i];
                 		};
                 		@string := tmp;
@@ -532,7 +532,7 @@ bundle System {
 			return -1;			
 		}
 
-		method : public : native : GetSize(), Int {
+		method : public : native : Size(), Int {
 			return @pos;			
 		}
 
@@ -576,7 +576,7 @@ bundle System {
 				
 				return val;
 			}
-			else if(@string->GetSize() > 0) {
+			else if(@string->Size() > 0) {
 				is_neg : Bool := false;
 				if(@string[0] = '-') {
 					is_neg := true;
@@ -620,7 +620,7 @@ bundle System {
 		}
 
 		method : public : native : ToFloat(), Float {
-			if(@string->GetSize() > 0) {
+			if(@string->Size() > 0) {
 				val : Float := 0;
 				is_neg : Bool := false;
 				if(@string[0] = '-') {
@@ -721,8 +721,8 @@ bundle System {
 		}
 
 		method : public : native : StartsWith(s : String), Bool {
-			if(s->GetSize() < @pos) {
-				for(i := 0; i < s->GetSize(); i := i + 1;) {
+			if(s->Size() < @pos) {
+				for(i := 0; i < s->Size(); i := i + 1;) {
 					if(s->GetChar(i) <> @string[i]) {
 						return false;
 					};
@@ -735,8 +735,8 @@ bundle System {
 		}
 
 		method : public : native : EndsWith(s : String), Bool {
-			if(s->GetSize() < @pos) {
-				i := s->GetSize() - 1;
+			if(s->Size() < @pos) {
+				i := s->Size() - 1;
 				j := @pos - 1;
 				while(i > -1) {
 					if(s->GetChar(i) <> @string[j]) {
@@ -757,12 +757,12 @@ bundle System {
 
 			i := 0;	
 			c : Char := @string[i];
-			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->GetSize()) {
+			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->Size()) {
 				i := i + 1;
 				c := @string[i];
 			};
 
-			j := @string->GetSize() - 1;
+			j := @string->Size() - 1;
 			c := @string[j];
 			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & j > -1) {
 				j := j - 1;
@@ -1103,7 +1103,7 @@ bundle IO {
 			FILE_EOF;
 		}
 		
-		function : GetSize(n : System.String), Int {
+		function : Size(n : System.String), Int {
 			FILE_SIZE;
 		}		
 		

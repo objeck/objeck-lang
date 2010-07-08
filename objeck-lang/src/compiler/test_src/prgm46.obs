@@ -33,7 +33,7 @@ bundle Default {
 			};
 
 			
-			File->GetSize("../compiler/a.obe")->PrintLine();
+			File->Size("../compiler/a.obe")->PrintLine();
 			
 
 			ff := FileWriter->New("out1.txt");

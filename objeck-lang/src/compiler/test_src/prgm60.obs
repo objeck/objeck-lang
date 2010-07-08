@@ -4,7 +4,7 @@ bundle Default {
 			Parent(s);
 		}
 
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return 10;
 		}
 	}
@@ -16,7 +16,7 @@ bundle Default {
 	
 		function : native : Run(), Nil {
 			ms := MyString->New("Hello");
-			ms->GetSize()->PrintLine();	
+			ms->Size()->PrintLine();	
 		}
 	}
 }

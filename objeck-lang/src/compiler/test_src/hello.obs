@@ -51,7 +51,7 @@ bundle Default {
 			values->AddFront(value);
 
 			while(values->IsEnd() = false) {
-				string->Append((values->GetValue() + 48)->As(Char));
+				string->Append((values->Get() + 48)->As(Char));
 				values->Next();
 			};      
 		}
