@@ -91,10 +91,20 @@ namespace Runtime {
 #endif
   
     inline void PushFrame(StackFrame* f) {
+      if(call_stack_pos >= STACK_SIZE) {
+        cerr << ">>> method calling stack bounds have been exceeded! <<<" << endl;
+        exit(1);
+      }
+      
       call_stack[call_stack_pos++] = f;
     }
 
     inline StackFrame* PopFrame() {
+      if(call_stack_pos <= 0) {
+        cerr << ">>> method calling stack size bounds have been exceeded! <<<" << endl;
+        exit(1);
+      }
+      
       return call_stack[--call_stack_pos];
     }
 
