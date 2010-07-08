@@ -20,28 +20,28 @@ bundle Test {
 		
 		method : public : native : Append(array : Char[]), Nil {
 #		method : public : Append(array : Char[]), Nil {
-			v : Int := @pos + array->GetSize() * 4.9;
+			v : Int := @pos + array->Size() * 4.9;
 			v->PrintLine();
 
 #~
-			if(2.3 - @pos + array->GetSize() * 4.9 >= @max) {
+			if(2.3 - @pos + array->Size() * 4.9 >= @max) {
 			};
-			v : Int := @pos + 33.3 + array->GetSize();
+			v : Int := @pos + 33.3 + array->Size();
 			if(v >= @max) {
 			};
 ~#
 #~
 				# expand array
-				@max := (@max + array->GetSize()) * 2;
+				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
-				for(i : Int := 0; i < @string->GetSize(); i := i + 1;) {
+				for(i : Int := 0; i < @string->Size(); i := i + 1;) {
 					tmp[i] := @string[i];	
 				};
 				@string := tmp;
 			};
 
-			for(i : Int := 0; i < array->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < array->Size(); i := i + 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};	
@@ -50,7 +50,7 @@ bundle Test {
 		
 		method : public : native : ToInt(), Int {
 #		method : public : ToInt(), Int {
-			if(@string->GetSize() > 0) {
+			if(@string->Size() > 0) {
 				is_neg : Bool := false;
 				if(@string[0] = '-') {
 					is_neg := true;
@@ -120,7 +120,7 @@ bundle Default {
 		}
 		
 		method : Do(), Nil {
-				ff->GetSize()->PrintLine();
+				ff->Size()->PrintLine();
 		}
 		
 		function : Main(args : System.String[]), Nil {
@@ -138,7 +138,7 @@ bundle Default {
 			cc->PrintLine();
 
 			cc[0]->PrintLine();
-			for(i : Int := 0; i < cc->GetSize(); i := i + 1;) {
+			for(i : Int := 0; i < cc->Size(); i := i + 1;) {
 				cc[i]->PrintLine();
 			};
 			

@@ -33,12 +33,12 @@ bundle Default {
 			};
 
 			keys := hash->GetKeys();
-			keys->GetSize()->PrintLine();
+			keys->Size()->PrintLine();
 
 			values := hash->GetValues();
-			values->GetSize()->PrintLine();
+			values->Size()->PrintLine();
 
-			hash->GetSize()->PrintLine();
+			hash->Size()->PrintLine();
 		}
 	}
 }

@@ -19,7 +19,7 @@ bundle Structure {
 		}
 
 		method : native : Expand(), Nil {
-			if(@size >= @values->GetSize()) {
+			if(@size >= @values->Size()) {
 				temp : Int[] := Int->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
 					temp[i] := @values[i];
@@ -40,7 +40,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetValue(index : Int), Int {
+		method : public : Get(index : Int), Int {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
@@ -48,7 +48,7 @@ bundle Structure {
 			return 0;
 		}
 
-		method : public : SetValue(value : Int, index : Int), Bool {
+		method : public : Set(value : Int, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
@@ -57,13 +57,11 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return @size;
 		}
 		
-		######################## NEW ########################
-		
-		method : public : native : GetAverage(), Int {
+		method : public : native : Average(), Int {
 			if(@size <= 0) {
 				return 0;
 			};
@@ -76,7 +74,7 @@ bundle Structure {
 			return total / @size;
 		}
 		
-		method : public : native : GetMin(), Int {
+		method : public : native : Min(), Int {
 			if(@size <= 0) {
 				return 0;
 			};
@@ -95,7 +93,7 @@ bundle Structure {
 			return min;
 		}
 		
-		method : public : native : GetMax(), Int {
+		method : public : native : Max(), Int {
 			if(@size <= 0) {
 				return 0;
 			};
@@ -174,7 +172,7 @@ bundle Structure {
 		}
 
 		method : native : Expand(), Nil {
-			if(@size >= @values->GetSize()) {
+			if(@size >= @values->Size()) {
 				temp : Float[] := Float->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
 					temp[i] := @values[i];
@@ -195,7 +193,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetValue(index : Int), Float {
+		method : public : Get(index : Int), Float {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
@@ -203,7 +201,7 @@ bundle Structure {
 			return 0.0;
 		}
 
-		method : public : SetValue(value : Float, index : Int), Bool {
+		method : public : Set(value : Float, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
@@ -212,13 +210,11 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return @size;
 		}
 
-		######################## NEW ########################
-		
-		method : public : native : GetAverage(), Float {
+		method : public : native : Average(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
@@ -231,7 +227,7 @@ bundle Structure {
 			return total / @size;
 		}
 		
-		method : public : native : GetMin(), Float {
+		method : public : native : Min(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
@@ -250,7 +246,7 @@ bundle Structure {
 			return min;
 		}
 		
-		method : public : native : GetMax(), Float {
+		method : public : native : Max(), Float {
 			if(@size <= 0) {
 				return 0.0;
 			};
@@ -318,19 +314,19 @@ bundle Structure {
 		######################## END NEW ########################
 	}
 	
-	# Object Vector
-	class Vector {
-		@values : Base[];
+	# Compare Vector
+	class CompareVector {
+		@values : Compare[];
 		@size : Int;
 		
 		New() {
-			@values := Base->New[16];
+			@values := Compare->New[16];
 			@size := 0;
 		}
 
 		method : native : Expand(), Nil {
-			if(@size >= @values->GetSize()) {
-				temp : Base[] := Base->New[@size * 2];
+			if(@size >= @values->Size()) {
+				temp : Compare[] := Compare->New[@size * 2];
 				for(i : Int := 0; i < @size; i := i + 1;) {
 					temp[i] := @values[i];
 				};
@@ -338,7 +334,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : AddBack(value : Base), Nil {
+		method : public : AddBack(value : Compare), Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
@@ -350,7 +346,7 @@ bundle Structure {
 			};
 		}
 
-		method : public : GetValue(index : Int), Base {
+		method : public : Get(index : Int), Compare {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
@@ -358,7 +354,7 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : SetValue(value : Base, index : Int), Bool {
+		method : public : Set(value : Compare, index : Int), Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
@@ -367,12 +363,10 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return @size;
 		}
-		
-		######################## NEW ########################
-#~
+				
 		method : public : native : Sort(), Nil {
 			a : Compare[] := @values;
 			b : Compare[] := Compare->New[@size];
@@ -419,8 +413,60 @@ bundle Structure {
 				i := i + 1;
 			};
 		}
-~#
-		######################## END NEW ########################
+	}
+	
+	# Object Vector
+	class Vector {
+		@values : Base[];
+		@size : Int;
+		
+		New() {
+			@values := Base->New[16];
+			@size := 0;
+		}
+
+		method : native : Expand(), Nil {
+			if(@size >= @values->Size()) {
+				temp : Base[] := Base->New[@size * 2];
+				for(i : Int := 0; i < @size; i := i + 1;) {
+					temp[i] := @values[i];
+				};
+				@values := temp;
+			};
+		}
+
+		method : public : AddBack(value : Base), Nil {
+			Expand();
+			@values[@size] := value;
+			@size := @size + 1;
+		}
+
+		method : public : RemoveBack(), Nil {
+			if(@size > 0) {
+				@size := @size - 1;
+			};
+		}
+
+		method : public : Get(index : Int), Base {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return Nil;
+		}
+
+		method : public : Set(value : Base, index : Int), Bool {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+				return true;
+			};
+			
+			return false;
+		}
+		
+		method : public : Size(), Int {
+			return @size;
+		}
 	}
 	
 	# Stack
@@ -437,8 +483,8 @@ bundle Structure {
 		}
 		
 		method : public : native : Pop(), Base {
-			if(values->GetSize() > 0) {
-				value : Base := values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				value : Base := values->Get(values->Size() - 1);
 				values->RemoveBack();
 				
 				return value;
@@ -448,8 +494,8 @@ bundle Structure {
 		}
 		
 		method : public: native : Top(), Base {
-			if(values->GetSize() > 0) {
-				return values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				return values->Get(values->Size() - 1);
 			};
 			
 			return Nil;
@@ -470,8 +516,8 @@ bundle Structure {
 		}
 		
 		method : public: native : Pop(), Int {
-			if(values->GetSize() > 0) {
-				value : Int := values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				value : Int := values->Get(values->Size() - 1);
 				values->RemoveBack();
 				
 				return value;
@@ -481,8 +527,8 @@ bundle Structure {
 		}
 		
 		method : public: native : Top(), Int {
-			if(values->GetSize() > 0) {
-				return values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				return values->Get(values->Size() - 1);
 			};
 			
 			return 0;
@@ -503,8 +549,8 @@ bundle Structure {
 		}
 		
 		method : public: native : Pop(), Float {
-			if(values->GetSize() > 0) {
-				value : Float := values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				value : Float := values->Get(values->Size() - 1);
 				values->RemoveBack();
 				
 				return value;
@@ -514,14 +560,15 @@ bundle Structure {
 		}
 		
 		method : public: native : Top(), Float {
-			if(values->GetSize() > 0) {
-				return values->GetValue(values->GetSize() - 1);
+			if(values->Size() > 0) {
+				return values->Get(values->Size() - 1);
 			};
 			
 			return 0.0;
 		}
 	}
 	
+	# TODO: refactor!
 	# Integer Linked List
 	class IntList from List {
 		New() {
@@ -538,10 +585,10 @@ bundle Structure {
 			AddFront(holder->As(Compare));
 		}
 
-		method : public : GetValue(), Int {
+		method : public : GetInt(), Int {
 			temp : Compare := Get();
 			holder : IntHolder := temp->As(IntHolder);
-			return holder->GetValue();
+			return holder->Get();
 		}
 		
 		method : public : Find(value : Int), Bool {
@@ -564,16 +611,16 @@ bundle Structure {
 			@value := value;
 		}
 
-		method : public : GetValue(), Int {
+		method : public : Get(), Int {
 			return @value;
 		}
 
 		method : public : native : Compare(rhs : Compare), Int {
 			right : IntHolder := rhs->As(IntHolder);
-			if(@value = right->GetValue()) {
+			if(@value = right->Get()) {
 				return 0;
 			}
-			else if(@value < right->GetValue()) {
+			else if(@value < right->Get()) {
 				return -1;
 			};
 			
@@ -585,6 +632,7 @@ bundle Structure {
 		}
 	}
 	
+	# TODO: refactor!
 	# Float Linked List
 	class FloatList from List {
 		New() {
@@ -601,10 +649,10 @@ bundle Structure {
 			AddFront(holder->As(Compare));
 		}
 
-		method : public : GetValue(), Float {
+		method : public : GetFloat(), Float {
 			temp : Compare := Get();
 			holder : FloatHolder := temp->As(FloatHolder);
-			return holder->GetValue();
+			return holder->Get();
 		}
 		
 		method : public : Find(value : Float), Bool {
@@ -626,16 +674,16 @@ bundle Structure {
 			@value := value;
 		}
 
-		method : public : GetValue(), Float {
+		method : public : Get(), Float {
 			return @value;
 		}
 
 		method : public : native : Compare(rhs : Compare), Int {
 			right : FloatHolder := rhs->As(FloatHolder);
-			if(@value = right->GetValue()) {
+			if(@value = right->Get()) {
 				return 0;
 			}
-			else if(@value < right->GetValue()) {
+			else if(@value < right->Get()) {
 				return -1;
 			};
 			
@@ -657,11 +705,11 @@ bundle Structure {
 			@value := value;
 		}
 		
-		method : public : SetValue(value : Compare), Nil {
+		method : public : Set(value : Compare), Nil {
 			@value := value;
 		}
 	
-		method : public : GetValue(), Compare {
+		method : public : Get(), Compare {
 			return @value;
 		}
 
@@ -757,7 +805,7 @@ bundle Structure {
 
 		method : public : Get(), Compare {
 			if(@cursor <> Nil) {
-				return @cursor->GetValue();
+				return @cursor->Get();
 			};
 
 			return Nil;
@@ -766,7 +814,7 @@ bundle Structure {
 		method : public : Find(value : Compare), Bool {
 			@cursor := @head;
 			while(@cursor <> Nil) {
-				if(value->Compare(@cursor->GetValue()) = 0) {
+				if(value->Compare(@cursor->Get()) = 0) {
 					return true;
 				};
 				@cursor := @cursor->GetNext();
@@ -837,64 +885,12 @@ bundle Structure {
 			return @cursor = Nil;
 		}		
 
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return @size;
 		}
 	}
 
-	# TreeNode class
-	class TreeNode {
-		@key : Compare;
-		@value : Base;
-		@left : Structure.TreeNode;
-		@right : Structure.TreeNode;
-		@level : Int;
-		
-		New(key : Compare, value : Base, level : Int) {
-			@key := key;
-			@value := value;
-			@level := level;
-			@left := Nil;
-			@right := Nil;
-		}
-
-		method : public : SetKey(key : Compare), Nil {
-			@key := key;
-				
-		}
-		
-		method : public : native : GetKey(), Compare {
-			return @key;
-		}
-
-		method : public : GetValue(), Base {
-			return @value;
-		}
-		
-		method : public : GetLevel(), Int {
-			return @level;
-		}
-
-		method : public : SetLevel(level : Int), Nil {
-			@level := level;
-		}
-
-		method : public : GetLeft(), Structure.TreeNode {
-			return @left;
-		}
-
-		method : public : SetLeft(left : Structure.TreeNode), Nil {
-			@left := left;
-		}
-
-		method : public : GetRight(), Structure.TreeNode {
-			return @right;
-		}
-
-		method : public : SetRight(right : Structure.TreeNode), Nil {
-			@right := right;
-		}
-	}
+	
 
 	# Tree
 	class TreeNode {
@@ -921,7 +917,7 @@ bundle Structure {
 			return @key;
 		}
 
-		method : public : GetValue(), Base {
+		method : public : Get(), Base {
 			return @value;
 		}
 		
@@ -968,7 +964,7 @@ bundle Structure {
 		method : public : Find(key : Int), Int {
 			result : IntHolder := @map->Find(IntHolder->New(key)->As(Compare))->As(IntHolder);
 			if(result <> Nil) {
-				return result->GetValue();
+				return result->Get();
 			};
 
 			return 0;
@@ -977,9 +973,9 @@ bundle Structure {
     method : public : GetKeys(), IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->GetSize(); i := i + 1;) {
-				holder_value : IntHolder := holder_keys->GetValue(i)->As(IntHolder);
-				keys->AddBack(holder_value->GetValue());   
+			for(i := 0; i < keys->Size(); i := i + 1;) {
+				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
+				keys->AddBack(holder_value->Get());   
 			};
 
 			return keys;
@@ -989,8 +985,8 @@ bundle Structure {
 			return @map->GetValues();
 		}
 
-		method : public : native : GetSize(), Int {
-			return @map->GetSize();
+		method : public : native : Size(), Int {
+			return @map->Size();
 		}
 	}
 
@@ -1012,7 +1008,7 @@ bundle Structure {
 		method : public : Find(key : Float), Float {
 			result : FloatHolder := @map->Find(FloatHolder->New(key)->As(Compare))->As(FloatHolder);
 			if(result <> Nil) {
-				return result->GetValue();
+				return result->Get();
 			};
 
 			return 0;
@@ -1021,9 +1017,9 @@ bundle Structure {
     method : public : GetKeys(), FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->GetSize(); i := i + 1;) {
-				holder_value : FloatHolder := holder_keys->GetValue(i)->As(FloatHolder);
-				keys->AddBack(holder_value->GetValue());   
+			for(i := 0; i < keys->Size(); i := i + 1;) {
+				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
+				keys->AddBack(holder_value->Get());   
 			};
 
 			return keys;
@@ -1033,8 +1029,8 @@ bundle Structure {
 			return @map->GetValues();
 		}
 
-		method : public : native : GetSize(), Int {
-			return @map->GetSize();
+		method : public : native : Size(), Int {
+			return @map->Size();
 		}
 	}
 
@@ -1065,8 +1061,8 @@ bundle Structure {
 			return @map->GetValues();
 		}
 
-		method : public : native : GetSize(), Int {
-			return @map->GetSize();
+		method : public : native : Size(), Int {
+			return @map->Size();
 		}
 	}
 
@@ -1097,7 +1093,7 @@ bundle Structure {
 			return node;
 		}
 
-		method : public : native : GetSize(), Int {
+		method : public : native : Size(), Int {
 			return @size;
 		}
 
@@ -1132,7 +1128,7 @@ bundle Structure {
 					return Find(key, node->GetRight());
 				}
 				else {
-					return node->GetValue();		
+					return node->Get();		
 				};
 			};
 			
@@ -1171,7 +1167,7 @@ bundle Structure {
 				# process left 
 				GetValues(node->GetLeft(), vector);
 				
-				value : Base := node->GetValue();
+				value : Base := node->Get();
 				vector->AddBack(value);
 				
 				# process right
@@ -1332,8 +1328,8 @@ bundle Structure {
 			return @hash->GetValues();
 		}
 
-		method : public : native : GetSize(), Int {
-			return @hash->GetSize();
+		method : public : native : Size(), Int {
+			return @hash->Size();
 		}
 	}
 
@@ -1359,7 +1355,7 @@ bundle Structure {
 			return @key;
 		}
 
-		method : public : native : GetValue(), Base {
+		method : public : native : Get(), Base {
 			return @value;
 		}
 	}
@@ -1374,7 +1370,7 @@ bundle Structure {
 		}
 		
 		method : public : native : Insert(key : Compare, value : Base), Nil {
-			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
 			if(list = Nil) {
@@ -1386,7 +1382,7 @@ bundle Structure {
 		}
 
 		method : public : native : Find(key : Compare), Base {
-			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
 			if(list <> Nil) {
@@ -1394,7 +1390,7 @@ bundle Structure {
 				while(list->IsEnd() = false) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
-						return pair->GetValue();
+						return pair->Get();
 					};
 					list->Next();
 				};
@@ -1406,7 +1402,7 @@ bundle Structure {
 		}
 		
 		method : public : Remove(key : Compare), Bool {
-			hash := (2 xor key->HashID() % @buckets->GetSize())->Abs();
+			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
 # hash->PrintLine();
 			list := @buckets[hash];
 			if(list <> Nil) {
@@ -1429,7 +1425,7 @@ bundle Structure {
 		
 		method : public : native : GetKeys(), Vector {
 			keys := Vector->New();
-			for(i := 0; i < @buckets->GetSize(); i := i + 1;) {
+			for(i := 0; i < @buckets->Size(); i := i + 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
@@ -1446,13 +1442,13 @@ bundle Structure {
 		
 		method : public : native : GetValues(), Vector {
 			values := Vector->New();
-			for(i := 0; i < @buckets->GetSize(); i := i + 1;) {
+			for(i := 0; i < @buckets->Size(); i := i + 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
 					while(list->IsEnd() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
-						values->AddBack(pair->GetValue());
+						values->AddBack(pair->Get());
 						list->Next();
 					};
 				};
@@ -1461,7 +1457,7 @@ bundle Structure {
 			return values;
 		}
 		
-		method : public : GetSize(), Int {
+		method : public : Size(), Int {
 			return @size;
 		}
 	}
@@ -1494,15 +1490,15 @@ bundle Net {
 		
 		method : public : Post(content : String), Bool {
 			if(@url->StartsWith("http://")) {
-				@url := @url->SubString("http://"->GetSize(), 
-					@url->GetSize() - "http://"->GetSize());
+				@url := @url->SubString("http://"->Size(), 
+					@url->Size() - "http://"->Size());
 				index := @url->GetIndex('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
 					address := @url->SubString(index);
 					index->PrintLine();
-					location := @url->SubString(index + 1, @url->GetSize() - index - 1);
+					location := @url->SubString(index + 1, @url->Size() - index - 1);
 				}
 				else {
 					address := @url;
@@ -1515,7 +1511,7 @@ bundle Net {
 					post->Append(" HTTP/1.1\r\nHost: ");
 					post->Append(address);
 					post->Append("\r\nContent-Length: ");
-					post->Append(content->GetSize()->ToString());
+					post->Append(content->Size()->ToString());
 					post->Append("\r\nContent-Type: ");
 					post->Append(@content_type);
 					post->Append("\r\n\r\n");
@@ -1533,13 +1529,13 @@ bundle Net {
 		method : public : native : Get(), Vector {
 			content := Vector->New();
 			if(@url->StartsWith("http://")) {
-				@url := @url->SubString("http://"->GetSize(), @url->GetSize() - "http://"->GetSize());
+				@url := @url->SubString("http://"->Size(), @url->Size() - "http://"->Size());
 				index := @url->GetIndex('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
 					address := @url->SubString(index);
-					location := @url->SubString(index + 1, @url->GetSize() - index - 1);
+					location := @url->SubString(index + 1, @url->Size() - index - 1);
 				}
 				else {
 					address := @url;
@@ -1557,8 +1553,8 @@ bundle Net {
 					status_code := 500;
 					status_line := socket->ReadString();
 					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->GetSize() + 1, 
-							status_line->GetSize() - "HTTP/1.1"->GetSize() - 1);
+						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
+							status_line->Size() - "HTTP/1.1"->Size() - 1);
 						index := status_line->GetIndex(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -1567,15 +1563,15 @@ bundle Net {
 					  # get headers
 						do {
 							line := socket->ReadString();
-							if(line->GetSize() > 0) {
+							if(line->Size() > 0) {
 								index := line->GetIndex(':');
 								name := line->SubString(index);
-								value := line->SubString(index + 1, line->GetSize() - index - 1)->Trim();			
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
 								@headers->Insert(name->As(Compare), value->As(Base));
 # IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
-						while(line->GetSize() > 0);
+						while(line->Size() > 0);
 
 						# look for chunked blocks
 						encoding : String := @headers->Find("Transfer-Encoding"->As(Compare))->As(String);

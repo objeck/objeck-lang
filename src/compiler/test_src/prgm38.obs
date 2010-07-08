@@ -10,16 +10,16 @@ bundle Default {
 			@value := value;
 		}
 
-		method : public : GetValue(), Int {
+		method : public : Get(), Int {
 			return @value;
 		}
 
 		method : public : native : Compare(rhs : System.Compare), Int {
 			right : IntHolder := rhs->As(IntHolder);
-			if(@value = right->GetValue()) {
+			if(@value = right->Get()) {
 				return 0;
 			}
-			else if(@value < right->GetValue()) {
+			else if(@value < right->Get()) {
 				return -1;
 			};
 			
@@ -42,7 +42,7 @@ bundle Default {
 			@level := level;
 		}
 
-		method : public : GetValue(), System.Compare {
+		method : public : Get(), System.Compare {
 			return @value;
 		}
 

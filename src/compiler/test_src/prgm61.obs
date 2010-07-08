@@ -8,9 +8,9 @@ bundle Default {
 #		function : native : Run(), Nil {		
 			s := "../..";
 			i := s->GetIndex('/');
-#			v := s->SubString(i, s->GetSize() - i);
-#			v := s->SubString(i + 1, s->GetSize() - i);
-			v := s->SubString(i + 1, s->GetSize() - i - 1);
+#			v := s->SubString(i, s->Size() - i);
+#			v := s->SubString(i + 1, s->Size() - i);
+			v := s->SubString(i + 1, s->Size() - i - 1);
 #			v := s->SubString(3, 2);
 			v->PrintLine();
 		}

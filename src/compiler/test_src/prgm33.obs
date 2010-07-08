@@ -19,18 +19,18 @@ bundle Default {
 			list->AddFront(1);
 
 			while(list->IsEnd() <> true) {
-				list->GetValue()->PrintLine();
+				list->GetInt()->PrintLine();
 				list->Next();
 			};
 
 			list->Forward();
 			while(list->IsStart() <> true) {
-				list->GetValue()->PrintLine();
+				list->GetInt()->PrintLine();
 				list->Previous();
 			};
 			
 			"size: "->Print();
-			list->GetSize()->PrintLine();
+			list->Size()->PrintLine();
 		}		
 	}
 }

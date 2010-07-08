@@ -64,16 +64,16 @@ bundle Default {
 			tree->Remove(v->As(System.Compare));
 
 			vv : Vector := tree->GetKeys();
-			for(i : Int := 0; i < vv->GetSize(); i := i + 1;) {
-				vv->GetValue(i)->As(Structure.IntHolder)->GetValue()->PrintLine();
+			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
+				vv->Get(i)->As(Structure.IntHolder)->Get()->PrintLine();
 			};
 			"---------------------"->PrintLine();
 #~
 			vv := tree->GetValues();
-			for(i : Int := 0; i < vv->GetSize(); i := i + 1;) {
-				vv->GetValue(i)->As(Structure.IntHolder)->GetValue()->PrintLine();
+			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
+				vv->Get(i)->As(Structure.IntHolder)->Get()->PrintLine();
 			};		
-			vv->GetSize()->PrintLine();
+			vv->Size()->PrintLine();
 ~#
 		}
 	}
