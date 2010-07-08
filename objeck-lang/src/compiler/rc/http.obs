@@ -8,8 +8,8 @@ bundle Default {
       client := HttpClient->New("http://rosettacode.org", 80);
       lines := client->Get();
       
-      for(i := 0; i < lines->GetSize(); i := i + 1;) {
-        lines->GetValue(i)->As(String)->PrintLine();
+      for(i := 0; i < lines->Size(); i := i + 1;) {
+        lines->Get(i)->As(String)->PrintLine();
       };
     }
   }
