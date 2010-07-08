@@ -6,8 +6,8 @@ bundle Default {
       @blah := blah;  
     }
 
-    method : public : GetValue(), Int {
-      return @blah->GetValue();
+    method : public : Get(), Int {
+      return @blah->Get();
     }
   }
   
@@ -21,11 +21,11 @@ bundle Default {
       else {
         "set"->PrintLine();
         f : Foo := Foo->New(@self);
-        (f->GetValue() + 3)->PrintLine();
+        (f->Get() + 3)->PrintLine();
       };
     }
 
-    method : public : GetValue(), Int {
+    method : public : Get(), Int {
       return @value;
     }
   }
@@ -37,10 +37,10 @@ bundle Default {
       
     function : native : DoStuff(), Nil {
       b : Blah := Blah->New();
-      b->GetValue()->PrintLine();
+      b->Get()->PrintLine();
 
       bb : Blah := Blah->New();
-      bb->GetValue()->PrintLine();
+      bb->Get()->PrintLine();
 
       "Fin"->PrintLine();
     }

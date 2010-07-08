@@ -21,14 +21,14 @@ bundle Default {
 			};
 
 			v : Vector := tree->GetKeys();
-			for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-				h : IntHolder := v->GetValue(i)->As(Structure.IntHolder);
-				h->GetValue()->PrintLine();
+			for(i : Int := 0; i < v->Size(); i := i + 1;) {
+				h : IntHolder := v->Get(i)->As(Structure.IntHolder);
+				h->Get()->PrintLine();
 			};
 
 			v := tree->GetValues();
-			for(i : Int := 0; i < v->GetSize(); i := i + 1;) {
-				v->GetValue(i)->As(System.String)->PrintLine();
+			for(i : Int := 0; i < v->Size(); i := i + 1;) {
+				v->Get(i)->As(System.String)->PrintLine();
 			};		
 		}
 	}
