@@ -8,7 +8,7 @@ bundle Default {
 			value := 13;
 		}
 
-		method : public : native : GetValue(), Int {
+		method : public : native : Get(), Int {
 			return value;
 		}
 	}
@@ -23,7 +23,7 @@ bundle Default {
 			"Hello World"->PrintLine();
 
 			b : Bar := Bar->New();
-			b->GetValue()->PrintLine();	
+			b->Get()->PrintLine();	
 		}
 	}
 }

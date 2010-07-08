@@ -211,7 +211,11 @@ namespace frontend {
     }
 
     ScopeTable* GetNextChild() {
-      return children[child_pos++];
+      if(child_pos < children.size()) {
+	return children[child_pos++];
+      }
+
+      return NULL;
     }
 
     void AddChild(ScopeTable* c) {
@@ -277,15 +281,21 @@ namespace frontend {
     }
 
     void PreviousParseScope() {
-      parse_ptr = parse_ptr->GetParent();
+      if(parse_ptr) {
+	parse_ptr = parse_ptr->GetParent();
+      }
     }
 
     void NewScope() {
-      iter_ptr = iter_ptr->GetNextChild();
+      if(iter_ptr) {
+	iter_ptr = iter_ptr->GetNextChild();
+      }
     }
 
     void PreviousScope() {
-      iter_ptr = iter_ptr->GetParent();
+      if(iter_ptr) {
+	iter_ptr = iter_ptr->GetParent();
+      }
     }
   };
 

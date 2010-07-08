@@ -17,12 +17,12 @@ bundle Default {
 			vector->AddBack(13);
 			vector->AddBack(18);
 
-			for(i : Int := 0; i < vector->GetSize(); i := i + 1;) {
-				vector->GetValue(i)->PrintLine();
+			for(i : Int := 0; i < vector->Size(); i := i + 1;) {
+				vector->Get(i)->PrintLine();
 			};
 
 			"size: "->Print();
-			vector->GetSize()->PrintLine();
+			vector->Size()->PrintLine();
 		}		
 	}
 }
