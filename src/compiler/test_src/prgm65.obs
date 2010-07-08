@@ -13,18 +13,18 @@ bundle Default {
 			ints->AddBack(17);
 			ints->AddBack(8);
 
-			for(i := 0; i < ints->GetSize(); i := i + 1;) {
-				ints->GetValue(i)->PrintLine();
+			for(i := 0; i < ints->Size(); i := i + 1;) {
+				ints->Get(i)->PrintLine();
 			};
 			
-			ints->GetMin()->PrintLine();
-			ints->GetMax()->PrintLine();
-			ints->GetAverage()->PrintLine();
+			ints->Min()->PrintLine();
+			ints->Max()->PrintLine();
+			ints->Average()->PrintLine();
 
 			ints->Sort();
 
-			for(i := 0; i < ints->GetSize(); i := i + 1;) {
-				ints->GetValue(i)->PrintLine();
+			for(i := 0; i < ints->Size(); i := i + 1;) {
+				ints->Get(i)->PrintLine();
 			};
 			
 
@@ -36,18 +36,18 @@ bundle Default {
 			floats->AddBack(6.2);
 			floats->AddBack(46.12);
 
-			for(i := 0; i < floats->GetSize(); i := i + 1;) {
-				floats->GetValue(i)->PrintLine();
+			for(i := 0; i < floats->Size(); i := i + 1;) {
+				floats->Get(i)->PrintLine();
 			};
 
-			floats->GetMin()->PrintLine();
-			floats->GetMax()->PrintLine();
-			floats->GetAverage()->PrintLine();
+			floats->Min()->PrintLine();
+			floats->Max()->PrintLine();
+			floats->Average()->PrintLine();
 	
 			floats->Sort();
 				
-			for(i := 0; i < floats->GetSize(); i := i + 1;) {
-				floats->GetValue(i)->PrintLine();
+			for(i := 0; i < floats->Size(); i := i + 1;) {
+				floats->Get(i)->PrintLine();
 			};
 		}
 	}
