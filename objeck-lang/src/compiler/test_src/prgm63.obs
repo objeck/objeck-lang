@@ -1,16 +1,36 @@
+use Structure;
+
 bundle Default {
 	class Test {
 		function : Main(args : System.String[]), Nil {
 			Run();
 		}
+		
+#	function : Find(key : Compare), Nil {
+	function : native : Find(key : Compare), Nil {
+		hash := (2 xor key->HashID() % 337)->Abs();
+		hash->PrintLine();
+	}
 
 #		function : Run(), Nil {
-		function : native : Run(), Nil {		
+		function : native : Run(), Nil {
+			@buckets := List->New[337];
+			
 			(13 and 7)->PrintLine();
 			a : Int := 13;
 			(a and 7)->PrintLine();
 			(7 and a)->PrintLine();
-
+			
+			(13 or 7)->PrintLine();
+			(a or 7)->PrintLine();
+			(7 or a)->PrintLine();
+			
+			(13 xor 7)->PrintLine();
+			(a xor 7)->PrintLine();
+			(7 xor a)->PrintLine();
+			
+			Find("Int"->As(Compare));
+#~
 			s := String->New();
 			s->GetInstanceID()->PrintLine();
 
@@ -40,6 +60,7 @@ bundle Default {
 			i->PrintLine();
 			hash := 2 xor i % 4027;
 			hash->PrintLine();
+~#			
 		}
 	}
 }
