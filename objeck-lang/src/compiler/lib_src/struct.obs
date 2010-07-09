@@ -1,13 +1,11 @@
 #~~
 # R. Hollines
-# Core Objeck class libraries
+# Core Objeck class libraries - "...doing it real algorithmic; know what I mean?"
 # 
 # H.W. Lang - merge sort implementations
 ~~#	
 
-use IO;
-use Structure;
-use Net;
+use IO; use Structure; use Net;
 
 bundle Structure {
 	# Integer Vector
@@ -906,7 +904,7 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : Insert(value : Compare), Bool {
+		method : public : native : Insert(value : Compare), Bool {
 			if(@cursor <> Nil) {
 				node : ListNode := ListNode->New(value);
 				@cursor->SetNext(node);
@@ -935,7 +933,7 @@ bundle Structure {
 			return false;
 		}
 		
-		method : public : Remove(), Nil {
+		method : public : native : Remove(), Nil {
 			if(@cursor <> Nil) {
 				if(@cursor->GetPrevious() <> Nil) {
 					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
@@ -972,9 +970,7 @@ bundle Structure {
 			return @size;
 		}
 	}
-
 	
-
 	# Tree
 	class TreeNode {
 		@key : Compare;
@@ -1053,7 +1049,7 @@ bundle Structure {
 			return 0;
 		}
     
-    method : public : GetKeys(), IntVector {
+    method : public : native : GetKeys(), IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < keys->Size(); i := i + 1;) {
@@ -1097,7 +1093,7 @@ bundle Structure {
 			return 0;
 		}
     
-    method : public : GetKeys(), FloatVector {
+    method : public: native : GetKeys(), FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < keys->Size(); i := i + 1;) {
@@ -1339,7 +1335,7 @@ bundle Structure {
 			return node;
 		}
 		
-		method : Predecessor(node : Structure.TreeNode), Compare {
+		method : native : Predecessor(node : Structure.TreeNode), Compare {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
@@ -1352,7 +1348,7 @@ bundle Structure {
 			return node->GetKey();
 		}
 
-		method : Successor(node : Structure.TreeNode), Compare {
+		method : native : Successor(node : Structure.TreeNode), Compare {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode := node->GetRight();
 				while(right->GetRight() <> Nil) {
@@ -1365,7 +1361,7 @@ bundle Structure {
 			return node->GetKey();
 		}
 
-		 method : DecreaseLevel(node : Structure.TreeNode), TreeNode {
+		 method : native : DecreaseLevel(node : Structure.TreeNode), TreeNode {
 			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
 				left : Int := node->GetLeft()->GetLevel();
 				right : Int := node->GetRight()->GetLevel();
@@ -1452,9 +1448,8 @@ bundle Structure {
 			@size := 0;
 		}
 		
-		method : public : native : Insert(key : Compare, value : Base), Nil {
+		method : public : Insert(key : Compare, value : Base), Nil {
 			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
-# hash->PrintLine();
 			list := @buckets[hash];
 			if(list = Nil) {
 				list := List->New();
@@ -1466,7 +1461,6 @@ bundle Structure {
 
 		method : public : native : Find(key : Compare), Base {
 			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
-# hash->PrintLine();
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
@@ -1484,9 +1478,8 @@ bundle Structure {
 			return Nil;
 		}
 		
-		method : public : Remove(key : Compare), Bool {
+		method : public : native : Remove(key : Compare), Bool {
 			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
-# hash->PrintLine();
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
