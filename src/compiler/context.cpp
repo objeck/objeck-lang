@@ -2514,7 +2514,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
       ProcessError(expression, "Invalid cast between class and enum");
     }
   } else {
-    Show("Invalid class or enum cast", expression->GetLineNumber(), depth);
+    ProcessError(expression, "Invalid class or enum cast");
   }
 }
 
