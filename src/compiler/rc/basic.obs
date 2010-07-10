@@ -1,0 +1,23 @@
+bundle Default {
+  class Basic {
+    function : Main(args : String[]), Nil {
+      Run();
+    }
+
+    function : native : Run(), Nil {
+      3.5->PrintLine();
+      3.5->Floor()->PrintLine();
+      "------------"->PrintLine();
+
+      "Hello World"->ToUpper()->PrintLine();
+      (Float->Pi() * 4)->PrintLine();
+      "------------"->PrintLine();
+
+      lower := "Hello World"->ToLower();
+      for(i := 0; i < lower->GetSize(); i := i + 1;) {
+        lower->GetChar(i)->PrintLine();
+      };
+      "------------"->PrintLine();
+    }
+  }
+}
