@@ -27,6 +27,9 @@ bundle Default {
 				value->PrintLine();
 			};
 
+			hash->Has("terrier")->PrintLine();
+			hash->Has("randy")->PrintLine();
+
 			value := hash->Find("terrier");
 			if(value <> Nil) {
 				value->PrintLine();

@@ -594,7 +594,7 @@ bundle Structure {
 		
 		method : public : Find(value : Int), Bool {
 			holder : IntHolder := IntHolder->New(value);
-			return @list->Find(holder->As(Compare));
+			return holder <> Nil;
 		}
 		
 		method : public : Insert(value : Int), Nil {
@@ -699,7 +699,7 @@ bundle Structure {
 		
 		method : public : Find(value : Float), Bool {
 			holder : FloatHolder := FloatHolder->New(value);
-			return @list->Find(holder->As(Compare));
+			return holder <> Nil;
 		}
 		
 		method : public : Insert(value : Float), Nil {
@@ -893,16 +893,39 @@ bundle Structure {
 			return Nil;
 		}
 
-		method : public : Find(value : Compare), Bool {
+		method : public : Has(value : Compare), Bool {
+			start := @head;
+			end := @tail;
+			
+			while(start <> end) {
+				if(value->Compare(start->Get()) = 0) {
+					return true;
+				}
+				else if(value->Compare(end->Get()) = 0) {
+					return true;
+				};
+				
+				start := start->GetNext();
+				end := end->GetPrevious();
+			};
+			
+			if(start <> Nil & value->Compare(start->Get()) = 0) {
+				return true;
+			}; 
+
+			return false;
+		}
+		
+		method : public : Find(value : Compare), Compare {
 			@cursor := @head;
 			while(@cursor <> Nil) {
 				if(value->Compare(@cursor->Get()) = 0) {
-					return true;
+					return value;
 				};
 				@cursor := @cursor->GetNext();
 			};
-
-			return false;
+			
+			return Nil;
 		}
 		
 		method : public : native : Insert(value : Compare), Bool {
@@ -1049,6 +1072,11 @@ bundle Structure {
 
 			return 0;
 		}
+		
+		method : public : Has(key : Int), Bool {
+			result : IntHolder := @map->Find(IntHolder->New(key)->As(Compare))->As(IntHolder);
+			return result <> Nil;
+		}
     
     method : public : native : GetKeys(), IntVector {
 			keys := IntVector->New();
@@ -1091,7 +1119,12 @@ bundle Structure {
 				return result->Get();
 			};
 
-			return 0;
+			return 0.0;
+		}
+		
+		method : public : Has(key : Float), Bool {
+			result : FloatHolder := @map->Find(FloatHolder->New(key)->As(Compare))->As(FloatHolder);
+			return result <> Nil;
 		}
     
     method : public: native : GetKeys(), FloatVector {
@@ -1131,6 +1164,11 @@ bundle Structure {
     
 		method : public : Find(key : String), String {
 			return @map->Find(key->As(Compare))->As(String);
+		}
+		
+		method : public : Has(key : String), Bool {
+			result := @map->Find(key->As(Compare));
+			return result <> Nil;
 		}
     
     method : public : GetKeys(), Vector {
@@ -1197,6 +1235,11 @@ bundle Structure {
 		
 		method : public : Find(key : Compare), Base {
 			return Find(key, @root);
+		}
+		
+		method : public : Has(key : Compare), Bool {
+			result := Find(key, @root);
+			return result <> Nil;
 		}
 		
 		method : Find(key : Compare, node : Structure.TreeNode), Base {
@@ -1399,6 +1442,11 @@ bundle Structure {
 		method : public : Find(key : String), String {
 			return @hash->Find(key->As(Compare))->As(String);
 		}
+		
+		method : public : Has(key : String), Bool {
+			result := @hash->Find(key->As(Compare));
+			return result <> Nil;
+		}
     
     method : public : GetKeys(), Vector {
 			return @hash->GetKeys();
@@ -1479,6 +1527,11 @@ bundle Structure {
 			return Nil;
 		}
 		
+		method : public : native : Has(key : Compare), Bool {
+			result := Find(key);
+			return result <> Nil;
+		}
+		
 		method : public : native : Remove(key : Compare), Bool {
 			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
@@ -1542,7 +1595,7 @@ bundle Structure {
 
 bundle Net {
 	class HttpClient {
-		@headers : Map;
+		@headers : Hash;
 		@url : String;
 		@port : Int;
 		@content_type : String;
@@ -1551,17 +1604,17 @@ bundle Net {
 			@url := url;
 			@port := port;
 			@content_type := "text/plain";
-			@headers := Map->New();
+			@headers := Hash->New();
 		}
 		
 		New(url : String, port : Int, content_type : String) {
 			@url := url;
 			@port := port;
 			@content_type := content_type;
-			@headers := Map->New();
+			@headers := Hash->New();
 		}
 		
-		method : GetHeaders(), Map {
+		method : GetHeaders(), Hash {
 			return @headers;
 		}
 		
@@ -1612,7 +1665,7 @@ bundle Net {
 				location := "/";
 				if(index > -1) {
 					address := @url->SubString(index);
-					location := @url->SubString(index + 1, @url->Size() - index - 1);
+					location->Append(@url->SubString(index + 1, @url->Size() - index - 1));
 				}
 				else {
 					address := @url;
@@ -1624,9 +1677,9 @@ bundle Net {
 					get->Append(location);
 					get->Append(" HTTP/1.1\r\nHost: ");
 					get->Append(address);
-					get->Append("\r\n\r\n");
+					get->Append("\r\n\r\n");					
 					socket->WriteString(get);
-	
+					
 					status_code := 500;
 					status_line := socket->ReadString();
 					if(status_line->StartsWith("HTTP/1.1")) {

@@ -656,6 +656,10 @@ The List class allow values to be added, removed and deleted from a list.  There
     	\begin{itemize}
 	\item method : public : Find(value : Compare), Bool
 	\end{itemize}
+    \item \texttt{Has} - returns true if item is in list
+    	\begin{itemize}
+	\item method : public : Has(value : Compare), Bool
+	\end{itemize}
     \item \texttt{Insert} - inserts a new value in the position pointed to the cursor
     	\begin{itemize}
 	\item method : public : Insert(value : Compare), Bool
@@ -774,6 +778,10 @@ The Map class supports the concept of an associative array with key/value pairs.
     	\begin{itemize}
 	\item method : public : Find(key : Compare), Base
 	\end{itemize}
+    \item \texttt{Has} - returns true if item is in map
+    	\begin{itemize}
+	\item method : public : Has(value : Compare), Bool
+	\end{itemize}
     \item \texttt{GetKeys} - returns a vector of keys
     	\begin{itemize}
 	\item method : public : GetKeys(), Vector
@@ -798,6 +806,10 @@ The Hash class supports the concept of an associative array with key/value pairs
     \item \texttt{Find} - searches for a value based upon a key
     	\begin{itemize}
 	\item method : public : Find(key : Compare), Base
+	\end{itemize}
+    \item \texttt{Has} - returns true if item is in hash
+    	\begin{itemize}
+	\item method : public : Has(value : Compare), Bool
 	\end{itemize}
     \item \texttt{GetKeys} - returns a vector of keys
     	\begin{itemize}
