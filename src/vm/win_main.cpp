@@ -61,7 +61,7 @@ int main(const int argc, const char* argv[])
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
-    usage += "v1.0.0.\n";
+    usage += "v1.0.0.1.\n";
     usage += "usage: obr <program>\n\n";
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;
