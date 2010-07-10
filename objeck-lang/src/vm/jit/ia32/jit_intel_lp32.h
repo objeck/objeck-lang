@@ -1795,7 +1795,117 @@ namespace Runtime {
       }
     }
     
-    bool Compile(StackMethod* cm);
+    //
+    // Compiles stack code into IA-32 machine code
+    //
+    inline bool Compile(StackMethod* cm) {
+      compile_success = true;
+      skip_jump = false;
+      
+      if(!cm->GetNativeCode()) {
+	method = cm;
+	int32_t cls_id = method->GetClass()->GetId();
+	int32_t mthd_id = method->GetId();
+	
+#ifdef _DEBUG
+	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
+	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
+	     << method->GetParamCount() << " ----------" << endl;
+#endif
+	
+	code_buf_max = PAGE_SIZE;
+#ifdef _WIN32
+	code = (BYTE_VALUE*)malloc(code_buf_max);
+	floats = new FLOAT_VALUE[MAX_DBLS];
+#else
+	if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max)) {
+	  cerr << "Unable to allocate JIT memory!" << endl;
+	  exit(1);
+	}
+	
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
+	  cerr << "Unable to allocate JIT memory!" << endl;
+	  exit(1);
+	}
+#endif
+
+	floats_index = instr_index = code_index = instr_count = 0;
+	// general use registers
+	aval_regs.push_back(new RegisterHolder(EDX));
+	aval_regs.push_back(new RegisterHolder(ECX));
+	aval_regs.push_back(new RegisterHolder(EBX));
+	aval_regs.push_back(new RegisterHolder(EAX));
+	// aux general use registers
+	aux_regs.push(new RegisterHolder(EDI));
+	aux_regs.push(new RegisterHolder(ESI));
+	// floating point registers
+	aval_xregs.push_back(new RegisterHolder(XMM7));
+	aval_xregs.push_back(new RegisterHolder(XMM6));
+	aval_xregs.push_back(new RegisterHolder(XMM5));
+	aval_xregs.push_back(new RegisterHolder(XMM4)); 
+	aval_xregs.push_back(new RegisterHolder(XMM3));
+	aval_xregs.push_back(new RegisterHolder(XMM2)); 
+	aval_xregs.push_back(new RegisterHolder(XMM1));
+	aval_xregs.push_back(new RegisterHolder(XMM0));   
+#ifdef _DEBUG
+	cout << "Compiling code for IA-32 architecture..." << endl;
+#endif
+	
+	// process offsets
+	ProcessIndices();
+	// setup
+	Prolog();
+	// method information
+	move_imm_mem(cls_id, CLS_ID, EBP);
+	move_imm_mem(mthd_id, MTHD_ID, EBP);
+	// register root
+	RegisterRoot();
+	// translate parameters
+	ProcessParameters(method->GetParamCount());
+	// tranlsate program
+	ProcessInstructions();
+	if(!compile_success) {
+	  return false;
+	}
+
+	// show content
+	map<int32_t, StackInstr*>::iterator iter;
+	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
+	  StackInstr* instr = iter->second;
+	  int32_t src_offset = iter->first;
+	  int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+	  int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
+	  int32_t offset = dest_offset - src_offset - 4;
+	  memcpy(&code[src_offset], &offset, 4); 
+#ifdef _DEBUG
+	  cout << "jump update: src=" << src_offset 
+	       << "; dest=" << dest_offset << endl;
+#endif
+	}
+#ifdef _DEBUG
+	cout << "Caching JIT code: actual=" << code_index 
+	     << ", buffer=" << code_buf_max << " byte(s)" << endl;
+#endif
+	// store compiled code
+#ifndef _WIN32
+	if(mprotect(code, code_index, PROT_EXEC)) {
+	  perror("Couldn't mprotect");
+	  exit(errno);
+	}
+#endif
+	method->SetNativeCode(new NativeCode(code, code_index, floats));
+	compile_success = true;
+      }
+
+      // release our lock, native code has been compiled and set
+#ifdef _WIN32
+      LeaveCriticalSection(&cm->jit_cs);
+#else
+      pthread_mutex_unlock(&cm->jit_mutex);
+#endif
+
+      return compile_success;
+    }
   };    
   
   /********************************
@@ -1822,7 +1932,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
+    inline long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();
       int32_t mthd_id = method->GetId();

@@ -55,8 +55,12 @@
 #include <hash_map>
 using namespace stdext;
 #else
+#include <ext/hash_map>
 #include <pthread.h>
 #include <stdint.h>
+namespace std { 
+  using namespace __gnu_cxx; 
+}
 #endif
 
 using namespace std;
@@ -70,94 +74,6 @@ inline string IntToString(int v)
   str << v;
   return str.str();
 }
-
-
-/********************************
- * Jump address jump table
- ********************************/
-#define NUM_BUCKETS 150061
-struct JumpBucket 
-{
-  int key;
-  int value;
-  JumpBucket* next;
-};
-
-class JumpTable 
-{
-  JumpBucket* buckets[NUM_BUCKETS];
-  
-  int hash(int key) {
-    key = (key ^ 61) ^ (key >> 16);
-    key = key + (key << 3);
-    key = key ^ (key >> 4);
-    key = key * 0x27d4eb2d;
-    key = key ^ (key >> 15);
-
-    return key % NUM_BUCKETS;
-  }
-  
- public:
-  JumpTable() {
-    memset(&buckets, 0, sizeof(JumpBucket*) * NUM_BUCKETS);
-  }
-
-  JumpTable(JumpTable &t) {
-    memcpy(buckets, t.buckets, sizeof(JumpBucket*) * NUM_BUCKETS);
-  }
-  
-  ~JumpTable() {
-    for(int i = 0; i < NUM_BUCKETS; i++) {
-      JumpBucket* bucket = buckets[i];
-      if(bucket) {
-	JumpBucket* temp = bucket;
-	bucket = bucket->next;
-	// remove
-	delete temp;
-	temp = NULL;
-      }
-    }
-  }
-  
-  int Find(int key) {
-    JumpBucket* bucket = buckets[hash(key)];
-    if(!bucket) {
-      return -1;
-    }
-    else {
-      while(bucket) {
-	if(bucket->key == key) {
-	  return bucket->value;	
-	}
-	bucket = bucket->next;
-      }
-    }
-
-    return -1;
-  }
-  
-  void Insert(int key, int value) {
-    const int hash_key = hash(key);
-    JumpBucket* bucket = buckets[hash_key];
-    if(!bucket) {
-      bucket = new JumpBucket;
-      bucket->key = key;
-      bucket->value = value;
-      bucket->next = NULL;	
-      buckets[hash_key] = bucket;
-    }
-    else {
-      while(bucket->next) {
-	bucket = bucket->next;
-      }
-      JumpBucket* temp = new JumpBucket;
-      temp->key = key;
-      temp->value = value;
-      temp->next = NULL;
-      bucket->next = temp;
-    }
-  }		
-};
 
 /********************************
  * StackDclr struct
@@ -325,11 +241,7 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   vector<StackInstr*> instrs;
-#ifdef _WIN32
   hash_map<long, long> jump_table;
-#else
-  JumpTable jump_table;
-#endif
   
   long param_count;
   long mem_size;
@@ -585,27 +497,18 @@ public:
   MemoryType GetReturn() {
     return rtrn_type;
   }
-
-  void AddLabel(long label_id, long index) {
-#ifdef _WIN32
-    jump_table[label_id] = index;
-#else
-    jump_table.Insert(label_id, index);
-#endif
+  
+  inline void AddLabel(long label_id, long index) {
+    jump_table.insert(pair<long, long>(label_id, index));
   }
-
+  
   inline long GetLabelIndex(long label_id) {
-#ifdef _WIN32
     hash_map<long, long>::iterator find = jump_table.find(label_id);
     if(find != jump_table.end()) {
       return find->second;
     }    
     
     return -1;
-    
-#else    
-    return jump_table.Find(label_id);
-#endif
   }
   
   void SetInstructions(vector<StackInstr*> i) {
