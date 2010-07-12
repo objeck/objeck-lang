@@ -12,9 +12,11 @@ bundle Default {
 			ints->AddBack(145);
 			ints->AddBack(17);
 			ints->AddBack(8);
+			
+			ints->Sort();
 
 			each(i : ints) {
-				ints->Get(i)->PrintLine();
+				IO.Console->GetInstance()->Print(i)->Print(": ")->PrintLine(ints->Get(i));
 			};
 		}
 	}
