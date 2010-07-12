@@ -567,7 +567,6 @@ bundle Structure {
 		}
 	}
 	
-	# TODO: refactor!
 	# Integer Linked List
 	class IntList {
 		@list : List;
@@ -672,7 +671,6 @@ bundle Structure {
 		}
 	}
 	
-	# TODO: refactor!
 	# Float Linked List
 	class FloatList {
 		@list : List;
