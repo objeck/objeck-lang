@@ -2038,7 +2038,7 @@ CriticalSection* Parser::ParseCritical(int depth)
 }
 
 /****************************
- * Parses a 'each' statement
+ * Parses an 'each' statement
  ****************************/
 For* Parser::ParseEach(int depth)
 {
