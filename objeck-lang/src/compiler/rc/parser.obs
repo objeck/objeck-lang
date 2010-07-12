@@ -33,7 +33,7 @@ bundle Default {
         while(i < line->Size()) {    
           # skip whitespace
           while((line->GetChar(i) = ' ' | line->GetChar(i) = '\t') & i < line->Size()) {
-            i := i + 1;
+            i += 1;
           };
           
           # parse
@@ -43,7 +43,7 @@ bundle Default {
               string := "";
               while(line->GetChar(i)->IsChar() = true | line->GetChar(i) = '.') {
               string->Append(line->GetChar(i));
-              i := i + 1;
+              i += 1;
             };
   
             result : String := reserved->Find(string);
@@ -64,7 +64,7 @@ bundle Default {
               };
               
               number->Append(line->GetChar(i));
-              i := i + 1;
+              i += 1;
             };
   
             if(is_dec) {
@@ -131,7 +131,7 @@ bundle Default {
               }
 ~#
             };
-            i := i + 1;
+            i += 1;
             };  
           };
         };
