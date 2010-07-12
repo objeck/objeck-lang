@@ -5,14 +5,20 @@ bundle Default {
 	~~~#
 	class Test {
 		function : Main(args : System.String[]), Nil {
-			Run();
+			Run(args);
 		}
 
 #		function : Run(), Nil {
-		function : native : Run(), Nil {		
+		function : native : Run(args : String[]), Nil {		
+			x := 1;
+			x += (8 * 2);
+			x->PrintLine();
+
+			y *= args->Size();
+			y->PrintLine();
+
 			"0x53f"->ToInt()->PrintLine();
 			"0x1c72"->ToInt()->PrintLine();
-#~
 			55.141->As(Char)->PrintLine();	
 
 			(9/3)->PrintLine();
@@ -56,7 +62,6 @@ bundle Default {
 
 			(g-h)->PrintLine();
 			(h-g)->PrintLine();		
-~#
 		}
 	}
 }

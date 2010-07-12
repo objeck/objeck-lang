@@ -76,6 +76,10 @@ namespace frontend {
   typedef enum _StatementType {
     DECLARATION_STMT,
     ASSIGN_STMT,
+    ADD_ASSIGN_STMT,
+    SUB_ASSIGN_STMT,
+    MUL_ASSIGN_STMT,
+    DIV_ASSIGN_STMT,
     METHOD_CALL_STMT,
     SIMPLE_STMT,
     IF_STMT,
@@ -1331,6 +1335,7 @@ namespace frontend {
    * Assignment class
    ****************************/
   class Assignment : public Statement {
+  protected:
     friend class TreeFactory;
     Variable* variable;
     Expression* expression;
@@ -1353,11 +1358,33 @@ namespace frontend {
       return expression;
     }
 
-    const StatementType GetStatementType() {
+    virtual const StatementType GetStatementType() {
       return ASSIGN_STMT;
     }
   };
 
+  /****************************
+   * Assignment class
+   ****************************/
+  class OperationAssignment : public Assignment {
+    friend class TreeFactory;
+    StatementType stmt_type;
+    
+    OperationAssignment(const string &f, const int l, Variable* v, 
+			Expression* e, StatementType t) : 
+    Assignment(f, l, v, e) {
+      stmt_type = t;
+    }
+    
+    ~OperationAssignment() {
+    }
+    
+  public:
+    const StatementType GetStatementType() {
+      return stmt_type;
+    }
+  };
+  
   /****************************
    * Declaration class
    ****************************/
@@ -2318,6 +2345,15 @@ namespace frontend {
       return tmp;
     }
 
+    OperationAssignment* MakeOperationAssignment(const string &file_name, const int line_num,
+						 Variable* variable, Expression* expression, 
+						 StatementType stmt_type) {
+      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
+							 expression, stmt_type);
+      statements.push_back(tmp);
+      return tmp;
+    }
+    
     SymbolEntry* MakeSymbolEntry(const string &f, int l, const string &n,
 				 Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);

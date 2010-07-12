@@ -630,7 +630,8 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      } else {
+      } 
+      else {
         tokens[index]->SetType(TOKEN_COLON);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
@@ -646,7 +647,15 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      } else {
+      } 
+      else if(nxt_char == '=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SUB_ASSIGN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      } 
+      else {
         tokens[index]->SetType(TOKEN_SUB);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
@@ -746,13 +755,15 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      } else if(nxt_char == '=') {
+      } 
+      else if(nxt_char == '=') {
         NextChar();
         tokens[index]->SetType(TOKEN_LEQL);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      } else {
+      } 
+      else {
         tokens[index]->SetType(TOKEN_LES);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
@@ -776,24 +787,51 @@ void Scanner::ParseToken(int index)
       break;
 
     case '+':
-      tokens[index]->SetType(TOKEN_ADD);
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetFileName(filename);
-      NextChar();
+      if(nxt_char == '=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ADD_ASSIGN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      }
+      else {
+	tokens[index]->SetType(TOKEN_ADD);
+	tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetFileName(filename);
+	NextChar();
+      }
       break;
 
     case '*':
-      tokens[index]->SetType(TOKEN_MUL);
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetFileName(filename);
-      NextChar();
+      if(nxt_char == '=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_MUL_ASSIGN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      }
+      else {
+	tokens[index]->SetType(TOKEN_MUL);
+	tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetFileName(filename);
+	NextChar();
+      }
       break;
 
     case '/':
-      tokens[index]->SetType(TOKEN_DIV);
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetFileName(filename);
-      NextChar();
+      if(nxt_char == '=') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_DIV_ASSIGN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      }
+      else {
+	tokens[index]->SetType(TOKEN_DIV);
+	tokens[index]->SetLineNbr(line_nbr);
+	tokens[index]->SetFileName(filename);
+	NextChar();
+      }
       break;
 
     case '%':
