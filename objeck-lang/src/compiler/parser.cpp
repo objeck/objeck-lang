@@ -424,7 +424,8 @@ Method* Parser::ParseMethod(bool is_function, int depth)
     }
 
     method_name = current_class->GetName() + ":New";
-  } else {
+  } 
+  else {
     NextToken();
 
     if(!Match(TOKEN_COLON)) {
@@ -706,6 +707,10 @@ Statement* Parser::ParseStatement(int depth)
 
     case TOKEN_FOR_ID:
       statement = ParseFor(depth + 1);
+      break;
+      
+    case TOKEN_EACH_ID:
+      statement = ParseEach(depth + 1);
       break;
 
     case TOKEN_CRITICAL_ID:
@@ -1192,7 +1197,8 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
     // FYI: can not specify array indices here
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
 							   ParseAssignment(variable, depth + 1));
-  } else {
+  } 
+  else {
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
   }
 
@@ -1585,7 +1591,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       ident = BOOL_CLASS_ID;
       NextToken();
       break;
-
+      
     case TOKEN_BYTE_ID:
       ident = BYTE_CLASS_ID;
       NextToken();
@@ -1802,7 +1808,8 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       if(Match(TOKEN_OPEN_PAREN)) {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident,
 							      ParseExpressionList(depth + 1));
-      } else {
+      } 
+      else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident);
       }
     }
@@ -2028,6 +2035,95 @@ CriticalSection* Parser::ParseCritical(int depth)
   symbol_table->CurrentParseScope()->PreviousParseScope();
   
   return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, statements);
+}
+
+/****************************
+ * Parses a 'each' statement
+ ****************************/
+For* Parser::ParseEach(int depth)
+{
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+  
+#ifdef _DEBUG
+  Show("Each", depth);
+#endif
+
+  NextToken();
+  symbol_table->CurrentParseScope()->NewParseScope();
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    ProcessError(TOKEN_OPEN_PAREN);
+  }
+  NextToken();
+  
+  // initialization statement
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  const string count_ident = scanner->GetToken()->GetIdentifier();
+  NextToken();
+  
+  // add entry
+  Type* type = TypeFactory::Instance()->MakeType(INT_TYPE);
+  const string count_scope_name = GetScopeName(count_ident);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+								count_scope_name, type, false,
+								current_method != NULL);
+  
+#ifdef _DEBUG
+  Show("Adding variable: '" + count_scope_name + "'", depth + 2);
+#endif
+  
+  bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+  if(!was_added) {
+    ProcessError("Variable already defined in this scope: '" + count_ident + "'");
+  }
+  Variable* count_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+  Expression* count_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 0);
+  Assignment* count_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, 
+								     count_left, count_right);					  
+  Statement* pre_stmt = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, 
+								 entry, count_assign);
+  
+  if(!Match(TOKEN_COLON)) {
+    ProcessError(TOKEN_COLON);
+  }
+  NextToken();
+  
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  const string list_ident = scanner->GetToken()->GetIdentifier();
+  NextToken();
+  
+  // conditional expression
+  Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+  ExpressionList* list_expressions = TreeFactory::Instance()->MakeExpressionList();
+  Variable* call_param = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+  Expression* list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, 
+								   "Size", list_expressions);  
+  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
+  cond_expr->SetLeft(list_left);
+  cond_expr->SetRight(list_right);
+  symbol_table->CurrentParseScope()->NewParseScope();
+
+  // update statement
+  Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
+  Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);  
+  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left,
+									    update_right, ADD_ASSIGN_STMT);
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+  
+  // statement list
+  StatementList* statements =  ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  return TreeFactory::Instance()->MakeFor(file_name, line_num, pre_stmt, 
+					  cond_expr, update_stmt, statements);
 }
 
 /****************************

@@ -158,6 +158,7 @@ class Parser {
   Select* ParseSelect(int depth);
   Enum* ParseEnum(int depth);
   For* ParseFor(int depth);
+  For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Declaration* ParseDeclaration(const string &ident, bool allow_assign, int depth);
