@@ -470,9 +470,13 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
     break;
 
   case ASSIGN_STMT:
+  case ADD_ASSIGN_STMT:
+  case SUB_ASSIGN_STMT:
+  case MUL_ASSIGN_STMT:
+  case DIV_ASSIGN_STMT:
     AnalyzeAssignment(static_cast<Assignment*>(statement), depth);
     break;
-
+    
   case SIMPLE_STMT:
     AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
     break;
