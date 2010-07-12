@@ -95,6 +95,7 @@ void Scanner::LoadKeywords()
   ident_map["other"] = TOKEN_OTHER_ID;
   ident_map["enum"] = TOKEN_ENUM_ID;
   ident_map["for"] = TOKEN_FOR_ID;
+  ident_map["each"] = TOKEN_EACH_ID;
   ident_map["label"] = TOKEN_LABEL_ID;
   ident_map["return"] = TOKEN_RETURN_ID;
   ident_map["Byte"] = TOKEN_BYTE_ID;
@@ -187,6 +188,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_OTHER_ID:
   case TOKEN_ENUM_ID:
   case TOKEN_FOR_ID:
+  case TOKEN_EACH_ID:
   case TOKEN_SELECT_ID:
   case TOKEN_LABEL_ID:
   case TOKEN_NATIVE_ID:
