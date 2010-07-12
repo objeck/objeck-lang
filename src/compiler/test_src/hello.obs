@@ -1,13 +1,13 @@
 bundle Default {
 	class Hello {
 		function : Main(args : System.String[]), Nil {
-			Test1();
+			Test1(2);
 #			Test2();
 #			Test3();
 		}
 	
 #		function : native : Run(), Nil {
-		function : Test1(), Nil {
+		function : Test1(x : Int), Nil {
 			f := 10.3;
 			remainder := f - f->Floor();
 			(1000.0 * remainder)->As(Int)->PrintLine();

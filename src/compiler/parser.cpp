@@ -583,9 +583,41 @@ Statement* Parser::ParseStatement(int depth)
 
     case TOKEN_OPEN_BRACKET: {
       Variable* variable = ParseVariable(ident, depth + 1);
-      if(Match(TOKEN_ASSIGN)) {
+
+      switch(GetToken()) {
+      case TOKEN_ASSIGN:
         statement = ParseAssignment(variable, depth + 1);
-      } else if(Match(TOKEN_ASSESSOR)) {
+	break;
+
+      case TOKEN_ADD_ASSIGN:
+	NextToken();
+	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+								     ParseSimpleExpression(depth + 1), 
+								     ADD_ASSIGN_STMT);
+	break;
+	
+      case TOKEN_SUB_ASSIGN:
+	NextToken();
+	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+								     ParseSimpleExpression(depth + 1), 
+								     SUB_ASSIGN_STMT);
+	break;
+
+      case TOKEN_MUL_ASSIGN:
+	NextToken();
+	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+								     ParseSimpleExpression(depth + 1), 
+								     MUL_ASSIGN_STMT);
+	break;
+	
+      case TOKEN_DIV_ASSIGN:
+	NextToken();
+	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+								     ParseSimpleExpression(depth + 1), 
+								     DIV_ASSIGN_STMT);
+	break;
+	
+      case TOKEN_ASSESSOR:
         // subsequent method
         if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
           statement = ParseMethodCall(variable, depth + 1);
@@ -595,8 +627,11 @@ Statement* Parser::ParseStatement(int depth)
           ParseCast(variable, depth + 1);
           statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
         }
-      } else {
+	break;
+	
+      default:
         ProcessError("Expected statement", TOKEN_SEMI_COLON);
+	break;
       }
     }
       break;
@@ -605,6 +640,38 @@ Statement* Parser::ParseStatement(int depth)
       statement = ParseAssignment(ParseVariable(ident, depth + 1), depth + 1);
       break;
 
+    case TOKEN_ADD_ASSIGN:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
+								   ParseVariable(ident, depth + 1),
+								   ParseSimpleExpression(depth + 1), 
+								   ADD_ASSIGN_STMT);
+      break;
+      
+    case TOKEN_SUB_ASSIGN:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
+								   ParseVariable(ident, depth + 1),
+								   ParseSimpleExpression(depth + 1), 
+								   SUB_ASSIGN_STMT);
+      break;
+      
+    case TOKEN_MUL_ASSIGN:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
+								   ParseVariable(ident, depth + 1),
+								   ParseSimpleExpression(depth + 1), 
+								   MUL_ASSIGN_STMT);
+      break;
+      
+    case TOKEN_DIV_ASSIGN:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
+								   ParseVariable(ident, depth + 1),
+								   ParseSimpleExpression(depth + 1), 
+								   DIV_ASSIGN_STMT);
+      break;
+      
     default:
       ProcessError("Expected statement", TOKEN_CLOSED_PAREN);
       break;
