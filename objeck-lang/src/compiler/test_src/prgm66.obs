@@ -7,16 +7,25 @@ bundle Default {
 		}
 
 		function : native : Run(), Nil {		
+#~
 			ints := IntVector->New();
 			ints->AddBack(23);
 			ints->AddBack(145);
 			ints->AddBack(17);
 			ints->AddBack(8);
-			
-			ints->Sort();
+~#
+			ints := Int->New[3];
+			ints[0] := 3;
+			ints[1] := 9;
+			ints[2] := 1;
 
 			each(i : ints) {
-				IO.Console->GetInstance()->Print(i)->Print(": ")->PrintLine(ints->Get(i));
+				IO.Console->GetInstance()->Print(i)->Print(": ")->PrintLine(ints[i]);
+			};
+
+			things := ["Apple", "Banana", "Coconut"];
+			each(i : things) {
+				things[i]->PrintLine();
 			};
 		}
 	}
