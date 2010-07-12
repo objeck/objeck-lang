@@ -714,9 +714,13 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   case ASSIGN_STMT:
+  case ADD_ASSIGN_STMT:
+  case SUB_ASSIGN_STMT:
+  case MUL_ASSIGN_STMT:
+  case DIV_ASSIGN_STMT:
     EmitAssignment(static_cast<Assignment*>(statement));
     break;
-
+    
   case SIMPLE_STMT:
     EmitExpression(static_cast<SimpleStatement*>(statement)->GetExpression());
     break;
@@ -2026,9 +2030,11 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
   // memory context
   if(variable->GetEntry()->IsLocal()) {
     mem_context = LOCL;
-  } else if(variable->GetEntry()->IsStatic()) {
+  } 
+  else if(variable->GetEntry()->IsStatic()) {
     mem_context = CLS;
-  } else {
+  } 
+  else {
     mem_context = INST;
   }
 
@@ -2072,7 +2078,51 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
     }
-
+    
+    // operation assignment
+    EntryType eval_type = variable->GetEvalType()->GetType();      
+    switch(assignment->GetStatementType()) {
+    case ADD_ASSIGN_STMT:
+      EmitVariable(variable);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
+      }
+      break;
+      
+    case SUB_ASSIGN_STMT:
+      EmitVariable(variable);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
+      }
+      break;
+      
+    case MUL_ASSIGN_STMT:
+      EmitVariable(variable);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
+      }
+      break;
+      
+    case DIV_ASSIGN_STMT:
+      EmitVariable(variable);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
+      }
+      break;
+    }
+    
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
