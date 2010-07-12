@@ -22,7 +22,7 @@ bundle Structure {
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Int[] := Int->New[@size * 2];
-				for(i : Int := 0; i < @size; i := i + 1;) {
+				for(i : Int := 0; i < @size; i += 1;) {
 					temp[i] := @values[i];
 				};
 				@values := temp;
@@ -68,7 +68,7 @@ bundle Structure {
 			};
 			
 			total := 0;
-			for(i : Int := 0; i < @size; i := i + 1;) {
+			for(i : Int := 0; i < @size; i += 1;) {
 				total := total + @values[i];
 			};
 			
@@ -85,7 +85,7 @@ bundle Structure {
 			};
 			
 			min := @values[0];
-			for(i : Int := 1; i < @size; i := i + 1;) {
+			for(i : Int := 1; i < @size; i += 1;) {
 				if(@values[i] < min) {
 					min := @values[i];
 				};
@@ -104,7 +104,7 @@ bundle Structure {
 			};
 			
 			max := @values[0];
-			for(i : Int := 1; i < @size; i := i + 1;) {
+			for(i : Int := 1; i < @size; i += 1;) {
 				if(@values[i] > max) {
 					max := @values[i];
 				};
@@ -130,7 +130,7 @@ bundle Structure {
 		
 		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Int[], b : Int[]), Nil {
 			# copy both halves of a to auxiliary array b
-			for(i := low; i <= hi; i := i + 1;) {
+			for(i := low; i <= hi; i += 1;) {
 				b[i] := a[i];
 			};
 
@@ -143,7 +143,7 @@ bundle Structure {
 				if(b[i] <= b[j]) {
 					a[k] := b[i];
 					k := k + 1;
-					i := i + 1;
+					i += 1;
 				}
 				else {
 					a[k] := b[j];
@@ -156,7 +156,7 @@ bundle Structure {
 			while(i <= mid) {
 				a[k] := b[i];
 				k := k + 1;
-				i := i + 1;
+				i += 1;
 			};
 		}
 	}
@@ -174,7 +174,7 @@ bundle Structure {
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Float[] := Float->New[@size * 2];
-				for(i : Int := 0; i < @size; i := i + 1;) {
+				for(i : Int := 0; i < @size; i += 1;) {
 					temp[i] := @values[i];
 				};
 				@values := temp;
@@ -220,7 +220,7 @@ bundle Structure {
 			};
 			
 			total := 0.0;
-			for(i : Int := 0; i < @size; i := i + 1;) {
+			for(i : Int := 0; i < @size; i += 1;) {
 				total := total + @values[i];
 			};
 			
@@ -237,7 +237,7 @@ bundle Structure {
 			};
 			
 			min := @values[0];
-			for(i : Int := 1; i < @size; i := i + 1;) {
+			for(i : Int := 1; i < @size; i += 1;) {
 				if(@values[i] < min) {
 					min := @values[i];
 				};
@@ -256,7 +256,7 @@ bundle Structure {
 			};
 			
 			max := @values[0];
-			for(i : Int := 1; i < @size; i := i + 1;) {
+			for(i : Int := 1; i < @size; i += 1;) {
 				if(@values[i] > max) {
 					max := @values[i];
 				};
@@ -282,7 +282,7 @@ bundle Structure {
 		
 		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Float[], b : Float[]), Nil {
 			# copy both halves of a to auxiliary array b
-			for(i := low; i <= hi; i := i + 1;) {
+			for(i := low; i <= hi; i += 1;) {
 				b[i] := a[i];
 			};
 
@@ -295,7 +295,7 @@ bundle Structure {
 				if(b[i] <= b[j]) {
 					a[k] := b[i];
 					k := k + 1;
-					i := i + 1;
+					i += 1;
 				}
 				else {
 					a[k] := b[j];
@@ -308,7 +308,7 @@ bundle Structure {
 			while(i <= mid) {
 				a[k] := b[i];
 				k := k + 1;
-				i := i + 1;
+				i += 1;
 			};
 		}
 	}
@@ -326,7 +326,7 @@ bundle Structure {
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Compare[] := Compare->New[@size * 2];
-				for(i : Int := 0; i < @size; i := i + 1;) {
+				for(i : Int := 0; i < @size; i += 1;) {
 					temp[i] := @values[i];
 				};
 				@values := temp;
@@ -383,7 +383,7 @@ bundle Structure {
 		
 		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Compare[], b : Compare[]), Nil {
 			# copy both halves of a to auxiliary array b
-			for(i := low; i <= hi; i := i + 1;) {
+			for(i := low; i <= hi; i += 1;) {
 				b[i] := a[i];
 			};
 
@@ -396,7 +396,7 @@ bundle Structure {
 				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
 					a[k] := b[i];
 					k := k + 1;
-					i := i + 1;
+					i += 1;
 				}
 				else {
 					a[k] := b[j];
@@ -409,7 +409,7 @@ bundle Structure {
 			while(i <= mid) {
 				a[k] := b[i];
 				k := k + 1;
-				i := i + 1;
+				i += 1;
 			};
 		}
 	}
@@ -427,7 +427,7 @@ bundle Structure {
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Base[] := Base->New[@size * 2];
-				for(i : Int := 0; i < @size; i := i + 1;) {
+				for(i : Int := 0; i < @size; i += 1;) {
 					temp[i] := @values[i];
 				};
 				@values := temp;
@@ -1081,7 +1081,7 @@ bundle Structure {
     method : public : native : GetKeys(), IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i := i + 1;) {
+			for(i := 0; i < keys->Size(); i += 1;) {
 				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
 				keys->AddBack(holder_value->Get());   
 			};
@@ -1130,7 +1130,7 @@ bundle Structure {
     method : public: native : GetKeys(), FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i := i + 1;) {
+			for(i := 0; i < keys->Size(); i += 1;) {
 				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
 				keys->AddBack(holder_value->Get());   
 			};
@@ -1555,7 +1555,7 @@ bundle Structure {
 		
 		method : public : native : GetKeys(), Vector {
 			keys := Vector->New();
-			for(i := 0; i < @buckets->Size(); i := i + 1;) {
+			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
@@ -1572,7 +1572,7 @@ bundle Structure {
 		
 		method : public : native : GetValues(), Vector {
 			values := Vector->New();
-			for(i := 0; i < @buckets->Size(); i := i + 1;) {
+			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
@@ -1713,7 +1713,7 @@ bundle Net {
 								chunk_size := size_line->ToInt();
 								line := "";
 								if(chunk_size > 0) {
-									for(i := 0; i < chunk_size; i := i + 1;) {
+									for(i := 0; i < chunk_size; i += 1;) {
 										line->Append(socket->ReadByte());
 									};
 									socket->ReadString();
@@ -1730,7 +1730,7 @@ bundle Net {
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
-								for(i := 0; i < length; i := i + 1;) {
+								for(i := 0; i < length; i += 1;) {
 									buffer[i] := socket->ReadByte();
 								};
 								line := String->New(buffer);
