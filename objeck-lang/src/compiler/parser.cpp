@@ -2099,7 +2099,6 @@ For* Parser::ParseEach(int depth)
   // conditional expression
   Variable* list_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
   ExpressionList* list_expressions = TreeFactory::Instance()->MakeExpressionList();
-  Variable* call_param = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
   Expression* list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, 
 								   "Size", list_expressions);  
   CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
