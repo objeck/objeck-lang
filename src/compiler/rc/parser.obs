@@ -32,17 +32,17 @@ bundle Default {
         i := 0;  
         while(i < line->Size()) {    
           # skip whitespace
-          while((line->GetChar(i) = ' ' | line->GetChar(i) = '\t') & i < line->Size()) {
+          while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
             i += 1;
           };
           
           # parse
           if(i < line->Size()) {
             # word
-            if(line->GetChar(i)->IsChar() = true) {
+            if(line->Get(i)->IsChar() = true) {
               string := "";
-              while(line->GetChar(i)->IsChar() = true | line->GetChar(i) = '.') {
-              string->Append(line->GetChar(i));
+              while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+              string->Append(line->Get(i));
               i += 1;
             };
   
@@ -55,15 +55,15 @@ bundle Default {
             };
           }
           # number
-          else if(line->GetChar(i)->IsDigit() = true) {
+          else if(line->Get(i)->IsDigit() = true) {
             number := "";
             is_dec := false;
-            while(line->GetChar(i)->IsDigit() = true | line->GetChar(i) = '.') {
-              if(line->GetChar(i) = '.') {
+            while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
+              if(line->Get(i) = '.') {
               is_dec := true;
               };
               
-              number->Append(line->GetChar(i));
+              number->Append(line->Get(i));
               i += 1;
             };
   
@@ -76,7 +76,7 @@ bundle Default {
           }
           # other
           else {
-            select(line->GetChar(i)) {
+            select(line->Get(i)) {
               label '(': {
               "opren"->PrintLine();
               }
@@ -127,7 +127,7 @@ bundle Default {
               }
 #~              
               other: {
-              Console->GetInstance()->Print("char='")->Print(line->GetChar(i))->PrintLine("'");
+              Console->GetInstance()->Print("char='")->Print(line->Get(i))->PrintLine("'");
               }
 ~#
             };

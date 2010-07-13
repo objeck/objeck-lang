@@ -2101,7 +2101,9 @@ For* Parser::ParseEach(int depth)
   ExpressionList* list_expressions = TreeFactory::Instance()->MakeExpressionList();
   Expression* list_right = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, list_ident, 
 								   "Size", list_expressions);  
-  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
+  CalculatedExpression* cond_expr = TreeFactory::Instance()->MakeCalculatedExpression(file_name, 
+										      line_num, 
+										      LES_EXPR);
   cond_expr->SetLeft(list_left);
   cond_expr->SetRight(list_right);
   symbol_table->CurrentParseScope()->NewParseScope();
@@ -2109,8 +2111,9 @@ For* Parser::ParseEach(int depth)
   // update statement
   Variable* update_left = TreeFactory::Instance()->MakeVariable(file_name, line_num, count_ident);
   Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1);  
-  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, update_left,
-									    update_right, ADD_ASSIGN_STMT);
+  Statement* update_stmt = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
+									    update_left, update_right,
+									    ADD_ASSIGN_STMT);
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(TOKEN_CLOSED_PAREN);
   }
