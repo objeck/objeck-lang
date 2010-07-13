@@ -906,6 +906,10 @@ public:
     return id;
   }
 
+  const string& GetName() {
+    return name;
+  }
+
   bool IsLibrary() {
     return is_lib;
   }
@@ -1165,6 +1169,14 @@ public:
   void SetStartIds(int c, int m) {
     class_id = c;
     method_id = m;
+  }
+
+  int GetStartClassId() {
+    return class_id;
+  }
+
+  int GetStartMethodId() {
+    return method_id;
   }
 
   void SetBundleNames(vector<string> n) {
