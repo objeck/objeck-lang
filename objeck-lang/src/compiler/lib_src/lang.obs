@@ -522,7 +522,7 @@ bundle System {
 			@pos := @pos + 1;
 		}
 
-		method : public : native : GetIndex(c : Char), Int {
+		method : public : native : Find(c : Char), Int {
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				if(@string[i] = c) {
 					return i;
@@ -531,12 +531,32 @@ bundle System {
 			
 			return -1;			
 		}
+		
+		method : public : native : Find(s : String), Int {
+			if(s->Size() > 0) {
+				i := Find(s->Get(0));
+				if(i > -1) {
+					j := i;
+					while(j < @pos & j < s->Size()) {
+						if(s->Get(j) <> @string[j]) {
+							return -1;
+						};
+					};
+					
+					return i;
+				};
+				
+				return -1;
+			};
+			
+			return -1;
+		}
 
 		method : public : native : Size(), Int {
 			return @pos;			
 		}
 
-		method : public : native : GetChar(index : Int), Char {
+		method : public : native : Get(index : Int), Char {
 			if(index < @pos) {
 				return @string[index];
 			};
@@ -716,14 +736,14 @@ bundle System {
 		}
 
 		method : public : native : StartsWith(c : Char), Bool {
-			sc : Char := GetChar(0);
+			sc : Char := Get(0);
 			return sc <> '\0' & c = sc;
 		}
 
 		method : public : native : StartsWith(s : String), Bool {
 			if(s->Size() <= @pos) {
 				for(i := 0; i < s->Size(); i := i + 1;) {
-					if(s->GetChar(i) <> @string[i]) {
+					if(s->Get(i) <> @string[i]) {
 						return false;
 					};
 				};
@@ -739,7 +759,7 @@ bundle System {
 				i := s->Size() - 1;
 				j := @pos - 1;
 				while(i > -1) {
-					if(s->GetChar(i) <> @string[j]) {
+					if(s->Get(i) <> @string[j]) {
 						return false;
 					};
 					i := i - 1;
@@ -846,7 +866,7 @@ bundle System {
 				right_string : String := rhs->As(String);
 				for(i : Int := 0; i < @pos; i := i + 1;) {
 					left : Char := @string[i];
-					right : Char := right_string->GetChar(i);
+					right : Char := right_string->Get(i);
 					if(left > right) {
 						return 1;
 					}

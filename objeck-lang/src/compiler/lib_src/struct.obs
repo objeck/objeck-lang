@@ -1620,7 +1620,7 @@ bundle Net {
 			if(@url->StartsWith("http://")) {
 				@url := @url->SubString("http://"->Size(), 
 					@url->Size() - "http://"->Size());
-				index := @url->GetIndex('/');
+				index := @url->Find('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
@@ -1658,7 +1658,7 @@ bundle Net {
 			content := Vector->New();
 			if(@url->StartsWith("http://")) {
 				@url := @url->SubString("http://"->Size(), @url->Size() - "http://"->Size());
-				index := @url->GetIndex('/');
+				index := @url->Find('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
@@ -1683,7 +1683,7 @@ bundle Net {
 					if(status_line->StartsWith("HTTP/1.1")) {
 						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
 							status_line->Size() - "HTTP/1.1"->Size() - 1);
-						index := status_line->GetIndex(' ');
+						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
@@ -1692,7 +1692,7 @@ bundle Net {
 						do {
 							line := socket->ReadString();
 							if(line->Size() > 0) {
-								index := line->GetIndex(':');
+								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
 								@headers->Insert(name->As(Compare), value->As(Base));
