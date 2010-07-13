@@ -564,13 +564,21 @@ Base class for all objects.
 	\item method : public : native : Append(f : Float), Nil
 	\item method : public : native : Append(a : Char[]), Nil
 	\end{itemize}
-    \item \texttt{GetIndex} - returns the index of the first occurrence of a given Character
+    \item \texttt{Find} - returns the index of the first occurrence of a given Character
     	\begin{itemize}
-	\item method : public : native : GetIndex(c : Char), Int
+	\item method : public : native : Find(c : Char), Int
+	\end{itemize}
+     \item \texttt{Find} - returns the index of the first occurrence of a given String
+    	\begin{itemize}
+	\item method : public : native : Find(s : String), Int
 	\end{itemize}
     \item \texttt{Size} - returns the size of the String
     	\begin{itemize}
 	\item method : public : native : Size(), Int
+	\end{itemize}
+     \item \texttt{Get} - returns the Character at the given index or -1 if not found
+    	\begin{itemize}
+	\item method : public : native : Get(i : Int), Char
 	\end{itemize}
     \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
     	\begin{itemize}
