@@ -152,6 +152,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   return method_lnlined_blocks;
 }
 
+// Note: this code collapses basic block
 IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
@@ -193,20 +194,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
     vector<IntermediateInstruction*> instrs = block->GetInstructions();
     for(unsigned int j = 0; j < instrs.size(); j++) {
       IntermediateInstruction* instr = instrs[j];
-      switch(instr->GetType()) {
-        // inline additional candidates
-	/*
-	  case MTHD_CALL: {
-	  IntermediateMethod* another_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-	  if(another_call->GetInstructionCount() < 8) {
-          InlineMethodCall(another_call, outputs);
-	  } 
-	  else {
-          outputs->AddInstruction(instr);
-	  }
-	  }
-	  break;
-	*/
+      switch(instr->GetType()) {        
       case LOAD_INT_VAR:
       case STOR_INT_VAR:
       case COPY_INT_VAR:
@@ -228,17 +216,18 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       case LOAD_INST_MEM:
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, locl_offset, LOCL));
         break;
-
+	
       case RTRN:
         // note: code generates an extra empty block if there's more than 1 block
         if(!((blocks.size() == 1 || i == blocks.size() - 2) && j == instrs.size() - 1)) {
           outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end, -1));
           needs_jump = true;
-        } else {
+        } 
+	else {
           merge_blocks = true;
         }
         break;
-
+	
       default:
         outputs->AddInstruction(instr);
         break;
