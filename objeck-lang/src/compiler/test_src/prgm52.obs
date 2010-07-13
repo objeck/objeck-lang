@@ -7,15 +7,14 @@ bundle Default {
 			h := "Hello World!";
 			h->SubString(3, 3)->PrintLine();
 			h->SubString(0, 3)->PrintLine();
-			
 
-			Run(args);
+			Time();
 		}
 
-#		function : native : Run(args : String[]), Nil {
-		function : Run(args : String[]), Nil {
+		function : native : Time(), Nil {
+#		function : Time(), Nil {
 			t := Time->New();
-			t->GetHours()->Print(); ":"->Print(); t->GetMinutes()->Print(); ":"->Print(); t->GetSeconds()->PrintLine();
+			IO.Console->GetInstance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
 }
