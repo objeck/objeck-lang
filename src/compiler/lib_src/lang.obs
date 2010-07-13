@@ -772,6 +772,17 @@ bundle System {
 			return false;
 		}
 		
+		method : public : native : Reverse(), String {
+			tmp : Char[] := Char->New[@max];
+			i := 0; j := @pos - 1;
+			while(j > -1) {
+				tmp[i] := @string[j];
+				j -= 1;	i += 1;
+			};
+			
+			return String->New(tmp);
+		}
+		
 		method : public : native : Trim(), String {
 			# copy elements
 
