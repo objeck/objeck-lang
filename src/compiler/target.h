@@ -914,6 +914,18 @@ public:
     return inst_space;
   }
 
+  void SetInstanceSpace(int s) {
+    inst_space = s;
+  }
+
+  int GetClassSpace() {
+    return cls_space;
+  }
+
+  void SetClassSpace(int s) {
+    cls_space = s;
+  }
+  
   void AddMethod(IntermediateMethod* m) {
     methods.push_back(m);
     method_map.insert(pair<int, IntermediateMethod*>(m->GetId(), m));
