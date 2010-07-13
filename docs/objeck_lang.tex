@@ -294,6 +294,21 @@ for(i : Int := 0; i < name->Size(); i := i + 1;) {
 }
 \end{verbatim}
 
+\subsubsection{Each Statements}
+
+The \texttt{each} statement is a specialized version of a \texttt{for} statement.  The \texttt{each} loop consists of a counter variable and a data structure that has a \texttt{Size} method, such as arrays and \texttt{Vector} classes.  The statement iterates thru all elements in the data structure.
+
+\begin{verbatim}
+values := Int->New[3];
+values[0] := 3;
+values[1] := 9;
+values[2] := 1;
+
+each(i : values) {
+  ints[i]->PrintLine();
+};
+\end{verbatim}
+
 \section{User Defined Types}
 
 \subsection{Enums}
