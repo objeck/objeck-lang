@@ -15,7 +15,7 @@ bundle Default {
 
       lower := "Hello World"->ToLower();
       for(i := 0; i < lower->GetSize(); i := i + 1;) {
-        lower->GetChar(i)->PrintLine();
+        lower->Get(i)->PrintLine();
       };
       "------------"->PrintLine();
     }
