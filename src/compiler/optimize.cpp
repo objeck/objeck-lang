@@ -152,7 +152,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   return method_lnlined_blocks;
 }
 
-// Note: this code collapses basic block
+// Note: this code collapses basic block... refractor so optimizations can be re-ordered 
 IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
@@ -162,10 +162,18 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-      if(!called->IsVirtual() && called->GetInstructionCount() < 16) {
+      if(!called->IsVirtual() && called->GetInstructionCount() < 16 && 
+	 !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
+	   current_method->GetId() == program->GetStartMethodId()) &&
+	 // TODO: pass constructor flag
+	 current_method->GetName().find(current_method->GetClass()->GetName() + ":New") != 0) {
         InlineMethodCall(called, outputs);
       }
-    } else {
+      else {
+	outputs->AddInstruction(instr);
+      }
+    } 
+    else {
       outputs->AddInstruction(instr);
     }
   }
@@ -176,7 +184,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs)
 {
   const int locl_offset = current_method->GetSpace() / sizeof(INT_VALUE);
-  current_method->SetSpace(current_method->GetSpace() + called->GetSpace() + 4);
+  current_method->SetSpace(current_method->GetSpace() + called->GetSpace() + sizeof(INT_VALUE));
   
   const int inst_offset = current_method->GetClass()->GetInstanceSpace() / sizeof(INT_VALUE);
   current_method->GetClass()->SetInstanceSpace(current_method->GetClass()->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
