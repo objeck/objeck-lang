@@ -47,13 +47,11 @@ void ItermediateOptimizer::Optimize()
       vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
       for(unsigned int j = 0; j < methods.size(); j++) {
         current_method = methods[j];
-        if(!current_method->IsLibrary()) {
-          // constant folding
+	// constant folding
 #ifdef _DEBUG
-          cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
+	cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
 #endif
-          current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
-        }
+	current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
       }
     }
   }
