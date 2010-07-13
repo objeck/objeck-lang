@@ -1,0 +1,17 @@
+bundle Default {
+	class Hello {
+		function : Main(args : System.String[]), Nil {
+#			10->PrintLine();
+			Foo(8)->PrintLine();
+		}
+
+		function : Foo(v : Int), Int {
+			if(v < 10) {
+				v *= v;
+				return v;
+			};
+
+			return -1;
+		}
+	}
+}
