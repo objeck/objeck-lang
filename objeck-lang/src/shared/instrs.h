@@ -36,7 +36,7 @@ namespace instructions {
   // vm instructions
   typedef enum _InstructionType {
     // loads operations
-    LOAD_INT_LIT  = -3000,
+    LOAD_INT_LIT  = 0,
     LOAD_FLOAT_LIT,
     LOAD_INT_VAR,
     LOAD_FLOAT_VAR,
