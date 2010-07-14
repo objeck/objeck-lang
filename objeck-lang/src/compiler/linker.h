@@ -573,11 +573,18 @@ class Library {
   
   int ReadInt() {
     int value;
-    memcpy(&value, buffer, sizeof(int));
-    buffer += sizeof(int);
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
     return value;
   }
 
+  int ReadByte() {
+    char value;
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
+    return value;
+  }
+  
   string ReadString() {
     int size = ReadInt();
     string value(buffer, size);
@@ -587,8 +594,8 @@ class Library {
 
   double ReadDouble() {
     double value;
-    memcpy(&value, buffer, sizeof(double));
-    buffer += sizeof(double);
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
     return value;
   }
 
