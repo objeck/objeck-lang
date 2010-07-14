@@ -359,7 +359,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int index = 0;
-  int type = ReadInt();
+  int type = ReadByte();
   int line_num = -1;
   while(type != END_STMTS) {
     if(is_debug) {
@@ -723,7 +723,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     }
     // update
-    type = ReadInt();
+    type = ReadByte();
     index++;
   }
 }

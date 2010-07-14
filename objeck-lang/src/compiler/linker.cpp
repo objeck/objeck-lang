@@ -421,7 +421,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 {
   vector<LibraryInstr*> instrs;
-  int type = ReadInt();
+  int type = ReadByte();
   int line_num = -1;
   while(type != END_STMTS) {
     if(is_debug) {
@@ -815,7 +815,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     break;
     }
     // update    
-    type = ReadInt();
+    type = ReadByte();
   }
   method->AddInstructions(instrs);
 }

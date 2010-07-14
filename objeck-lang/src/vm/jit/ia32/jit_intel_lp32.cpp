@@ -555,16 +555,6 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessIntToFloat(instr);
       break;
       
-    case LOAD_ARY_SIZE:
-#ifdef _DEBUG
-      cout << "LOAD_ARY_SIZE: regs=" << aval_regs.size() << "," 
-	   << aux_regs.size() << endl;
-#endif
-      // note: array passed in stack
-      ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
-      ProcessReturnParameters(true);
-      break;
-
     case OBJ_INST_CAST: {
 #ifdef _DEBUG
       cout << "OBJ_INST_CAST: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;

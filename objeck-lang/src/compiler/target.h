@@ -75,6 +75,10 @@ protected:
     file_out->write(value.c_str(), value.size());
   }
 
+  void WriteByte(char value, ofstream* file_out) {
+    file_out->write(&value, sizeof(value));
+  }
+
   void WriteInt(int value, ofstream* file_out) {
     file_out->write((char*)&value, sizeof(value));
   }
@@ -177,7 +181,7 @@ public:
   }
 
   void Write(bool is_debug, ofstream* file_out) {
-    WriteInt((int)type, file_out);
+    WriteByte((int)type, file_out);
     if(is_debug) {
       WriteInt(line_num, file_out);
     }
@@ -805,7 +809,7 @@ public:
     for(unsigned int i = 0; i < blocks.size(); i++) {
       blocks[i]->Write(is_debug, file_out);
     }
-    WriteInt(END_STMTS, file_out);
+    WriteByte(END_STMTS, file_out);
   }
 
   void Debug() {
