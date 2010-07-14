@@ -56,8 +56,15 @@ class Loader {
 
   int ReadInt() {
     int32_t value;
-    memcpy(&value, buffer, sizeof(int32_t));
-    buffer += sizeof(int32_t);
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
+    return value;
+  }
+  
+  int ReadByte() {
+    char value;
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
     return value;
   }
 
@@ -70,8 +77,8 @@ class Loader {
 
   FLOAT_VALUE ReadDouble() {
     FLOAT_VALUE value;
-    memcpy(&value, buffer, sizeof(FLOAT_VALUE));
-    buffer += sizeof(FLOAT_VALUE);
+    memcpy(&value, buffer, sizeof(value));
+    buffer += sizeof(value);
     return value;
   }
 
