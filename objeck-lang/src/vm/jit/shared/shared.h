@@ -29,22 +29,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __HIR_MIR_H__
-#define __HIR_MIR_H__
+#ifndef __JIT_SHARED_H__
+#define __JIT_SHARED_H__
 
-#include shared.h
-
-class HirToMir {
- public:
-  HirToMir() {
-  }
+class Mir {
   
-  ~HirToMir() {
-  }
-
-  Mir* bool Compile(StackMethod* cm) {
-    return NULL;
-  }
 };
 
 #endif
