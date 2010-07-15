@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "optimize.h"
+#include "peephole.h"
 
 using namespace backend;
 
@@ -128,6 +128,9 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     return strength_reduced_blocks;
   }
 
+  return instruction_replaced_blocks;
+
+/*
   vector<IntermediateBlock*> method_lnlined_blocks;
   if(optimization_level > 3) {
     // instruction replacement
@@ -148,6 +151,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   }
   
   return method_lnlined_blocks;
+*/
 }
 
 // Note: this code collapses basic block... refractor so optimizations can be re-ordered 
