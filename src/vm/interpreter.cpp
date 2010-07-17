@@ -60,10 +60,8 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 {
   StackMethod* method = (StackMethod*)arg;
   JitCompilerIA32 jit_compiler;
-  if(!jit_compiler.Compile(method)) {
-    exit(1);
-  }
-
+  jit_compiler.Compile(method);
+  
   return 0;
 }
 
@@ -88,6 +86,7 @@ void* StackInterpreter::CompileMethod(void* arg)
 
 void* StackInterpreter::AsyncMethodCall(void* arg)
 {
+  /*
   AsyncMethodCallParams* params = (AsyncMethodCallParams*)arg;
   
   long* op_stack = new long[STACK_SIZE];
@@ -107,6 +106,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 
   delete params;
   params = NULL;
+  */
 }
 #endif
 
@@ -1023,7 +1023,13 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 #else
     JitCompilerIA32 jit_compiler;
 #endif
-    jit_compiler.Compile(called);      
+    if(!jit_compiler.Compile(called)) {
+      ProcessInterpretedMethodCall(called, instance);
+#ifdef _DEBUG
+      cerr << "### Unable to compile: " << called->GetName() << " ###" << endl;
+#endif
+      return;
+    }
     // execute
     JitExecutorIA32 jit_executor;
     long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
