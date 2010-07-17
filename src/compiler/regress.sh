@@ -1,5 +1,6 @@
 #!/bin/bash 
 i=64
+# i=52
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------
 
