@@ -4,8 +4,8 @@ bundle Default {
 			Run();
 		}
 
-		function : Run(), Nil {
-#		function : native : Run(), Nil {
+#		function : Run(), Nil {
+		function : native : Run(), Nil {
 			a : Bool := true;
 	
 			a->PrintLine();
@@ -47,7 +47,18 @@ bundle Default {
 			(3.3 > 33.3)->PrintLine();
 			(33.3 = 33.3)->PrintLine();
 			(93.33 <= 33.3)->PrintLine();
+			(93.33 >= 33.3)->PrintLine();
 			(33.33 >= 3.3)->PrintLine();
+			(33.33 <= 3.3)->PrintLine();
+
+			x := 3.4 + 1.2;
+			y := 3.3 + 1.2;
+			(x <= y)->PrintLine();
+			(x >= y)->PrintLine();
+			(x <> y)->PrintLine();
+			(x < y)->PrintLine();
+			(x > y)->PrintLine();
+			(x = y)->PrintLine();
 
 			13->Min(3)->PrintLine();
 			13->Max(3)->PrintLine();
