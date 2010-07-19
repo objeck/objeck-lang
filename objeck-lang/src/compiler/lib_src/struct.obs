@@ -19,6 +19,15 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : Int[]) {
+			@values := Int->New[16];
+			@size := 0;
+
+			each(i : values) {
+				AddBack(values[i]);
+			};
+		}
+
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Int[] := Int->New[@size * 2];
@@ -171,6 +180,15 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : Float[]) {
+			@values := Float->New[16];
+			@size := 0;
+			
+			each(i : values) {
+				AddBack(values[i]);
+			};
+		}
+
 		method : native : Expand(), Nil {
 			if(@size >= @values->Size()) {
 				temp : Float[] := Float->New[@size * 2];
@@ -272,6 +290,7 @@ bundle Structure {
 		}
 		
 		method : public : native : MergeSort(low : Int, hi : Int, a : Float[], b : Float[]), Nil {
+		# method : public : MergeSort(low : Int, hi : Int, a : Float[], b : Float[]), Nil {
 			if(low < hi) {
 				mid := (low + hi) / 2;
 				MergeSort(low, mid, a, b);
@@ -281,6 +300,7 @@ bundle Structure {
 		}
 		
 		method : public : native : Merge(low : Int, mid : Int, hi : Int, a : Float[], b : Float[]), Nil {
+		# method : public : Merge(low : Int, mid : Int, hi : Int, a : Float[], b : Float[]), Nil {
 			# copy both halves of a to auxiliary array b
 			for(i := low; i <= hi; i += 1;) {
 				b[i] := a[i];

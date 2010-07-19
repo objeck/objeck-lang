@@ -1,16 +1,16 @@
 bundle Default {
-  class For {
-    function : Main(args : System.String[]), Nil {
-      DoFor();
-    }
-		
-    function : native : DoFor(), Nil {
-    	for (i := 0; i < 5; i := i + 1;) {
-				for (j := 0; j <= i; j := j + 1;) {
-	      		"*"->Print();
+	class For {
+		function : Main(args : System.String[]), Nil {
+			DoFor();
+		}
+
+		function : native : DoFor(), Nil {
+			for (i := 0; i < 5; i += 1;) {
+				for (j := 0; j <= i; j += 1;) {
+					"*"->Print();
 				};
-	  		""->PrintLine();	
+				""->PrintLine();
 			};
-    }
-  }
+		}
+	}
 }
