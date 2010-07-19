@@ -53,9 +53,18 @@ void Loader::Load()
     const int float_string_length = ReadInt();
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
+#ifdef _DEBUG
+    cout << "Loaded static float string[" << i << "]: '";
+#endif
     for(unsigned int j = 0; j < float_string_length; j++) {
       float_string[j] = ReadDouble();
+#ifdef _DEBUG
+      cout << float_string[j] << ",";
+#endif
     }
+#ifdef _DEBUG
+    cout << "'" << endl;
+#endif
     float_strings[i] = float_string;
   }
   program->SetFloatStrings(float_strings, num_float_strings);
@@ -67,9 +76,18 @@ void Loader::Load()
     const int int_string_length = ReadInt();
     INT_VALUE* int_string = new INT_VALUE[int_string_length];
     // copy string    
+#ifdef _DEBUG
+    cout << "Loaded static int string[" << i << "]: '";
+#endif
     for(unsigned int j = 0; j < int_string_length; j++) {
       int_string[j] = ReadInt();
+#ifdef _DEBUG
+      cout << int_string[j] << ",";
+#endif
     }
+#ifdef _DEBUG
+    cout << "'" << endl;
+#endif
     int_strings[i] = int_string;
   }
   program->SetIntStrings(int_strings, num_int_strings);
@@ -87,7 +105,7 @@ void Loader::Load()
     }
     char_string[j] = '\0';
 #ifdef _DEBUG
-    cout << "Loaded static string: '" << char_string << "'" << endl;
+    cout << "Loaded static character string[" << i << "]: '" << char_string << "'" << endl;
 #endif
     char_strings[i] = char_string;
   }
