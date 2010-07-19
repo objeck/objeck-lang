@@ -130,7 +130,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
 
   return instruction_replaced_blocks;
 
-/*
+  /*  
   vector<IntermediateBlock*> method_lnlined_blocks;
   if(optimization_level > 3) {
     // instruction replacement
@@ -151,7 +151,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   }
   
   return method_lnlined_blocks;
-*/
+  */
 }
 
 // Note: this code collapses basic block... refractor so optimizations can be re-ordered 
@@ -188,12 +188,18 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
   const int locl_offset = current_method->GetSpace() / sizeof(INT_VALUE);
   current_method->SetSpace(current_method->GetSpace() + called->GetSpace() + sizeof(INT_VALUE));
   
-  const int inst_offset = current_method->GetClass()->GetInstanceSpace() / sizeof(INT_VALUE);
-  current_method->GetClass()->SetInstanceSpace(current_method->GetClass()->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
-
-  const int cls_offset = current_method->GetClass()->GetClassSpace() / sizeof(INT_VALUE);
-  current_method->GetClass()->SetClassSpace(current_method->GetClass()->GetClassSpace() + called->GetClass()->GetClassSpace());
-
+  int inst_offset = 0;
+  if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
+    inst_offset = current_method->GetClass()->GetInstanceSpace() / sizeof(INT_VALUE);
+    current_method->GetClass()->SetInstanceSpace(current_method->GetClass()->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
+  }
+  
+  int cls_offset = 0;
+  if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
+    cls_offset = current_method->GetClass()->GetClassSpace() / sizeof(INT_VALUE);
+    current_method->GetClass()->SetClassSpace(current_method->GetClass()->GetClassSpace() + called->GetClass()->GetClassSpace());
+  }
+  
   // manage LOAD_INST_MEM for callee
   outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, locl_offset, LOCL));
 
