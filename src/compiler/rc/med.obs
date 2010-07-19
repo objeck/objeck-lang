@@ -1,14 +1,17 @@
 use Structure;
 
 bundle Default {
+
 	class Median {
+
 		function : Main(args : System.String[]), Nil {
-#~
 			numbers := FloatVector->New([4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2]);
 			DoMedian(numbers)->PrintLine();
-~#
+
 			numbers := FloatVector->New([4.1, 7.2, 1.7, 9.3, 4.4, 3.2]);
 			DoMedian(numbers)->PrintLine();
+#~			
+~#			
 		}
 
 		function : native : DoMedian(numbers : FloatVector), Float {
@@ -19,16 +22,7 @@ bundle Default {
 				return numbers->Get(0);
 			};
 			
-each(i : numbers) {
-				numbers->Get(i)->PrintLine();
-			};
-
 			numbers->Sort();
-"-----------"->PrintLine();
-
-			each(i : numbers) {
-				numbers->Get(i)->PrintLine();
-			};
 
 			i := numbers->Size() / 2;
 			if(numbers->Size() % 2 = 0) {
@@ -39,3 +33,4 @@ each(i : numbers) {
 		}
 	}
 }
+
