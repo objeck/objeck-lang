@@ -130,6 +130,10 @@ enum TokenType {
 #ifdef _SYSTEM
   FLOR_FLOAT,
   CEIL_FLOAT,
+  SIN_FLOAT,
+  COS_FLOAT,
+  TAN_FLOAT,
+  LOG_FLOAT,
   LOAD_CLS_INST_ID,
   LOAD_INST_UID,
   // standard i/o
