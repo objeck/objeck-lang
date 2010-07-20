@@ -766,6 +766,30 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
+    case SIN_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SIN_FLOAT);
+      NextToken();
+      break;
+      
+    case COS_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::COS_FLOAT);
+      NextToken();
+      break;
+      
+    case TAN_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::TAN_FLOAT);
+      NextToken();
+      break;
+      
+    case LOG_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::LOG_FLOAT);
+      NextToken();
+      break;
+      
     case STD_OUT_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::STD_OUT_BOOL);
