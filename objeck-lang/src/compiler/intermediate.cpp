@@ -799,10 +799,30 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, FLOR_FLOAT));
     break;
-
+    
   case instructions::CEIL_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CEIL_FLOAT));
+    break;
+    
+  case instructions::SIN_FLOAT:
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SIN_FLOAT));
+    break;
+    
+  case instructions::COS_FLOAT:
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COS_FLOAT));
+    break;
+    
+  case instructions::TAN_FLOAT:
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TAN_FLOAT));
+    break;
+    
+  case instructions::LOG_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOG_FLOAT));
     break;
 
   case ASYNC_MTHD_CALL:

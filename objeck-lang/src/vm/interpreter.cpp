@@ -421,6 +421,22 @@ void StackInterpreter::Execute()
       PushFloat(floor(PopFloat()));
       break;
 
+    case SIN_FLOAT:
+      PushFloat(sin(PopFloat()));
+      break;
+      
+    case COS_FLOAT:
+      PushFloat(cos(PopFloat()));
+      break;
+      
+    case TAN_FLOAT:
+      PushFloat(tan(PopFloat()));
+      break;
+      
+    case LOG_FLOAT:
+      PushFloat(log(PopFloat()));
+      break;
+      
     case I2F:
 #ifdef _DEBUG
       cout << "stack oper: I2F; call_pos=" << call_stack_pos << endl;
