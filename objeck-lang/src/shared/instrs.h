@@ -85,9 +85,13 @@ namespace instructions {
     SUB_FLOAT,
     MUL_FLOAT,
     DIV_FLOAT,
-    // conversions
     FLOR_FLOAT,
     CEIL_FLOAT,
+    SIN_FLOAT,
+    COS_FLOAT,
+    TAN_FLOAT,
+    LOG_FLOAT,
+    // conversions
     I2F,
     F2I,
     // control

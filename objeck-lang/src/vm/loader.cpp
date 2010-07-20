@@ -572,6 +572,22 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case FLOR_FLOAT:
       method->AddInstruction(new StackInstr(line_num, FLOR_FLOAT));
       break;
+      
+    case SIN_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, SIN_FLOAT));
+      break;
+      
+    case COS_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, COS_FLOAT));
+      break;
+      
+    case TAN_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, TAN_FLOAT));
+      break;
+      
+    case LOG_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, LOG_FLOAT));
+      break;
 
     case F2I:
       method->AddInstruction(new StackInstr(line_num, F2I));
