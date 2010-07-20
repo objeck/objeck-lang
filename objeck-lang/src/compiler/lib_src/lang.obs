@@ -282,12 +282,30 @@ bundle System {
 			return v;
 		}
 		
+		# note: sse4 instruction
 		function : Floor(f : Float), Float {
 			FLOR_FLOAT;
 		}
-
+		
+		# note: sse4 instruction
 		function : Ceiling(f : Float), Float {
 			CEIL_FLOAT;
+		}
+		
+		function : Sin(f : Float), Float {
+			SIN_FLOAT;
+		}
+		
+		function : Cos(f : Float), Float {
+			COS_FLOAT;
+		}
+		
+		function : Tan(f : Float), Float {
+			TAN_FLOAT;
+		}
+		
+		function : Log(f : Float), Float {
+			LOG_FLOAT;
 		}
 
 		function : native : Print(f : Float), Nil {
