@@ -9,9 +9,9 @@
 ##############
 # For Linux
 ##############
-# ARGS=-pthread -D_TIMING -O3
+ARGS=-pthread -D_TIMING -O3 -Wno-deprecated
 # ARGS=-g -Wunused -pthread
-ARGS=-g -D_DEBUG -D_SERIAL -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wno-deprecated
 # ARGS=-g -D_DEBUG -Wunused -pthread
 # ARGS=-O3 -pthread
 
