@@ -2259,12 +2259,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     switch(method_call->GetArrayType()->GetType()) {
-    case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)expressions.size()));
       break;
 
+	case frontend::BOOLEAN_TYPE:
     case frontend::CLASS_TYPE:
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)expressions.size()));
