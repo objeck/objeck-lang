@@ -1977,11 +1977,11 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
+	case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
       break;
 
-    case frontend::BOOLEAN_TYPE:
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
@@ -2072,12 +2072,12 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BYTE_TYPE:
+    case frontend::BOOLEAN_TYPE:
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_BYTE_ARY_ELM, dimension, mem_context));
       break;
 
-    case frontend::BOOLEAN_TYPE:
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
@@ -2260,12 +2260,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     switch(method_call->GetArrayType()->GetType()) {
     case frontend::BYTE_TYPE:
+    case frontend::BOOLEAN_TYPE:
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)expressions.size()));
       break;
 
-	case frontend::BOOLEAN_TYPE:
-    case frontend::CLASS_TYPE:
+	case frontend::CLASS_TYPE:
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)expressions.size()));
       break;
