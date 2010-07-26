@@ -1198,7 +1198,7 @@ int main(int argc, char** argv)
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
-  usage += "v1.0.1.0.\n";
+  usage += "v1.0.1.0\n";
   usage += "usage: obd -exe <executable> [-src <source directory>]\n";
   usage += "example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\n";
   usage += "options:\n";
