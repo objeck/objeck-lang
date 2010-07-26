@@ -1244,7 +1244,7 @@ bundle Structure {
 			return result <> Nil;
 		}
     
-    method : public: native : GetKeys(), FloatVector {
+		method : public: native : GetKeys(), FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < keys->Size(); i += 1;) {
@@ -1255,7 +1255,7 @@ bundle Structure {
 			return keys;
 		}
     
-    method : public : GetValues(), Vector {
+		method : public : GetValues(), Vector {
 			return @map->GetValues();
 		}
 
@@ -1288,11 +1288,11 @@ bundle Structure {
 			return result <> Nil;
 		}
     
-    method : public : GetKeys(), Vector {
+		method : public : GetKeys(), Vector {
 			return @map->GetKeys();
 		}
-    
-    method : public : GetValues(), Vector {
+
+		method : public : GetValues(), Vector {
 			return @map->GetValues();
 		}
 
@@ -1565,11 +1565,11 @@ bundle Structure {
 			return result <> Nil;
 		}
     
-    method : public : GetKeys(), Vector {
+		method : public : GetKeys(), Vector {
 			return @hash->GetKeys();
 		}
     
-    method : public : GetValues(), Vector {
+		method : public : GetValues(), Vector {
 			return @hash->GetValues();
 		}
 
