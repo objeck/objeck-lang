@@ -6,7 +6,9 @@
 # Map classes uses a red-black tree variant called an Arne Andersson tree
 ~~#	
 
-use IO; use Structure; use Net;
+use IO; 
+use Structure; 
+use Net;
 
 bundle Structure {
 	# Integer Vector
@@ -188,6 +190,15 @@ bundle Structure {
 			};
 
 			return -1;
+		}
+
+		method : public : native : ToArray(), Int[] {
+			array : Int[] := Int->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+
+			return array;
 		}
 	}
 	
@@ -371,6 +382,15 @@ bundle Structure {
 
 			return -1;
 		}
+
+		method : public : native : ToArray(), Float[] {
+			array : Float[] := Float->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+
+			return array;
+		}
 	}
 	
 	# Compare Vector
@@ -493,6 +513,15 @@ bundle Structure {
 
 			return -1;
 		}
+		
+		method : public : native : ToArray(), Compare[] {
+			array : Compare[] := Compare->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+
+			return array;
+		}
 	}
 	
 	# Object Vector
@@ -546,6 +575,15 @@ bundle Structure {
 		
 		method : public : Size(), Int {
 			return @size;
+		}
+
+		method : public : native : ToArray(), Base[] {
+			array : Base[] := Base->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+
+			return array;
 		}
 	}
 	
