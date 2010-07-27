@@ -267,7 +267,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
         Method* virtual_method = parent_methods[i];
         string virtual_method_name = virtual_method->GetEncodedName();
         int offset = (int)virtual_method_name.find_first_of(':');
-        string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
+        const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
 
         // check method
         Method* impl_method = current_class->GetMethod(encoded_name);
@@ -321,7 +321,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
         // validate that methods have been implemented
         string virtual_method_name = virtual_method->GetName();
         int offset = (int)virtual_method_name.find_first_of(':');
-        string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
+        const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
 
         // check method
         Method* impl_method = current_class->GetMethod(encoded_name);
@@ -1157,7 +1157,7 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
                                         bool is_expr, string &encoding, int depth)
 {
-  string encoded_name = klass->GetName() + ":" +
+  const string encoded_name = klass->GetName() + ":" +
     method_call->GetMethodName() + ":" + encoding +
     EncodeMethodCall(method_call->GetCallingParameters(), depth);
 
@@ -1234,14 +1234,16 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     }
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
-  } else {
+  } 
+  else {
     const string &mthd_name = method_call->GetMethodName();
     const string &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
-    } else {
+    } 
+    else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    var_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
@@ -1328,11 +1330,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call),
-                   "Undefined function/method call: '" + mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   "Undefined function/method call: '" + mthd_name + 
+		   "(..)'\n\tEnsure calling parameters properly casted");
     } 
     else {
       ProcessError(static_cast<Expression*>(method_call),
-                   "Undefined function/method call: '" + var_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   "Undefined function/method call: '" + var_name +
+		   "(..)'\n\tEnsure calling parameters properly casted");
     }
   }
 }
@@ -1342,10 +1346,52 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
  ********************************/
 void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
+  const string encoded_name = klass->GetName() + ":" +
+    method_call->GetMethodName() + ":" + encoding +
+    EncodeFunctionReference(method_call->GetCallingParameters(), depth);
+  
+  Method* method = klass->GetMethod(encoded_name);
+  if(method) {
+    cout << "### " << encoded_name << " ###" << endl;
+  }
+  else {
+    const string &mthd_name = method_call->GetMethodName();
+    const string &var_name = method_call->GetVariableName();
+    
+    if(mthd_name.size() > 0) {
+      ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
+                   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+    } 
+    else {
+      ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
+                   var_name + "(..)'\n\tEnsure calling parameters properly casted");
+    }
+  }
 }
 
 void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
+  const string encoded_name = klass->GetName() + ":" +
+    method_call->GetMethodName() + ":" + encoding +
+    EncodeFunctionReference(method_call->GetCallingParameters(), depth);
+
+  LibraryMethod* method = klass->GetMethod(encoded_name);
+  if(method) {
+    cout << "### " << encoded_name << " ###" << endl;
+  }
+  else {
+    const string &mthd_name = method_call->GetMethodName();
+    const string &var_name = method_call->GetVariableName();
+    
+    if(mthd_name.size() > 0) {
+      ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
+                   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+    } 
+    else {
+      ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
+                   var_name + "(..)'\n\tEnsure calling parameters properly casted");
+    }
+  }
 }
 
 /****************************
@@ -2608,11 +2654,86 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
   }
 }
 
+/********************************
+ * Encodes a function definition
+ ********************************/
+string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, int depth)
+{
+  // TODO: return directy types vs. string literals
+  string encoded_name;
+  vector<Expression*> expressions = calling_params->GetExpressions();
+  for(unsigned int i = 0; i < expressions.size(); i++) {
+    if(expressions[i]->GetExpressionType() == VAR_EXPR) {
+      Variable* variable = static_cast<Variable*>(expressions[i]);
+      if(variable->GetName() == BOOL_CLASS_ID) {
+        encoded_name += 'l';
+      }
+      else if(variable->GetName() == BYTE_CLASS_ID) {
+        encoded_name += 'b';
+      }
+      else if(variable->GetName() == INT_CLASS_ID) {
+        encoded_name += 'i';
+      }
+      else if(variable->GetName() == FLOAT_CLASS_ID) {
+        encoded_name += 'f';
+      }
+      else if(variable->GetName() == CHAR_CLASS_ID) {
+        encoded_name += 'c';
+      }
+      else if(variable->GetName() == NIL_CLASS_ID) {
+        encoded_name += 'n';
+      }
+      else if(variable->GetName() == VAR_CLASS_ID) {
+        encoded_name += 'v';
+      }
+      else {
+        encoded_name += "o.";
+        // search program
+        string klass_name = variable->GetName();
+        Class* klass = program->GetClass(klass_name);
+        if(!klass) {
+          vector<string> uses = program->GetUses();
+          for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+            klass = program->GetClass(uses[i] + "." + klass_name);
+          }
+        }
+        if(klass) {
+          encoded_name += klass->GetName();
+        }
+        // search libaraires
+        else {
+          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
+          if(lib_klass) {
+            encoded_name += lib_klass->GetName();
+          } 
+	  else {
+            encoded_name += variable->GetName();
+          }
+        }
+      }
+      
+      // TODO:
+      // dimension
+      if(variable->GetIndices()) {
+	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
+	for(int i = 0; i < indices.size(); i++) {
+	  encoded_name += '*';
+	}
+      }
+      encoded_name += ',';
+    }
+    else {
+      // TODO: error
+    }
+  }
+  
+  return encoded_name;
+}
+
 /****************************
  * Encodes a method call
  ****************************/
-string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params,
-					 int depth)
+string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int depth)
 {
   AnalyzeExpressions(calling_params, depth + 1);
 
