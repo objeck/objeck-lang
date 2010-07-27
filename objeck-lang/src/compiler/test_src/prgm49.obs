@@ -9,10 +9,10 @@ bundle Default {
     New() {
     }
 
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       Run();
     }
-    function : native : Run(), Nil {
+    function : native : Run() ~ Nil {
       reserved := Map->New();
       reserved->Insert("function"->As(Compare), "keyword: function"->As(Base));
       reserved->Insert("Int"->As(Compare), "keyword: Int"->As(Base));

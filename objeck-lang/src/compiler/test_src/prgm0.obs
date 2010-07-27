@@ -3,12 +3,12 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run(args);
 		}
 
-#		function : Run(args : System.String[]), Nil {
-		function : Run(args : String[]), Nil {
+#		function : Run(args : System.String[]) ~ Nil {
+		function : Run(args : String[]) ~ Nil {
 			"\"Hello\""->PrintLine();
 			(3*7)->PrintLine();
 		}

@@ -4,7 +4,7 @@ use Structure;
 
 bundle Default {
 	class HttpTest {
-		function : Main(args : String[]), Nil {
+		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
 				client := HttpClient->New(args[0], 80);
 				lines := client->Get();

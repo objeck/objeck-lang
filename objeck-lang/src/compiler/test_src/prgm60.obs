@@ -4,17 +4,17 @@ bundle Default {
 			Parent(s);
 		}
 
-		method : public : Size(), Int {
+		method : public : Size() ~ Int {
 			return 10;
 		}
 	}
 		
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 	
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 			ms := MyString->New("Hello");
 			ms->Size()->PrintLine();	
 		}

@@ -8,15 +8,15 @@ bundle Default {
 			@freq := freq;
 		}
 		
-		method : public : GetId(), Int {
+		method : public : GetId() ~ Int {
 			return @id;
 		}	
 
-		method : public : GetFreq(), Float {
+		method : public : GetFreq() ~ Float {
 			return @freq;
 		}	
 
-		method : virtual : public : GetName(), System.String;
+		method : virtual : public : GetName() ~ System.String;
 	}
 
 	class Bar from Foo {
@@ -24,18 +24,18 @@ bundle Default {
 			Parent(0, 3.415);
 		}
 
-		method : public : GetName(), System.String {
+		method : public : GetName() ~ System.String {
 			x : System.String := System.String->New();
 			return x;
 		}
 	}
 
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			DoStuff();
 		}
 
-		function : native : DoStuff(), Nil {
+		function : native : DoStuff() ~ Nil {
 
 			bar : Bar := Bar->New();
 			bar->GetId()->PrintLine();
