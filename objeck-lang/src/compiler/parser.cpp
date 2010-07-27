@@ -1351,28 +1351,51 @@ ExpressionList* Parser::ParseExpressionList(int depth, TokenType open, TokenType
  ****************************/
 ExpressionList* Parser::ParseIndices(int depth)
 {
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+  
   ExpressionList* expressions = NULL;
   if(Match(TOKEN_OPEN_BRACKET)) {
     expressions = TreeFactory::Instance()->MakeExpressionList();
     NextToken();
 
-    while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
-      // expression
-      expressions->AddExpression(ParseExpression(depth + 1));
-
+    if(Match(TOKEN_CLOSED_BRACKET)) {
+      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, "#"));
+      NextToken();
+    }
+    else {
       if(Match(TOKEN_COMMA)) {
-        NextToken();
-      } 
-      else if(!Match(TOKEN_CLOSED_BRACKET)) {
-        ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
-        NextToken();
+	expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, "#"));      
+	while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+	  expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, "#"));      
+	  NextToken();
+	}
+	if(!Match(TOKEN_CLOSED_BRACKET)) {
+	  ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	  NextToken();
+	}
+	NextToken();
+      }
+      else {
+	while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+	  // expression
+	  expressions->AddExpression(ParseExpression(depth + 1));
+
+	  if(Match(TOKEN_COMMA)) {
+	    NextToken();
+	  } 
+	  else if(!Match(TOKEN_CLOSED_BRACKET)) {
+	    ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	    NextToken();
+	  }
+	}
+      
+	if(!Match(TOKEN_CLOSED_BRACKET)) {
+	  ProcessError(TOKEN_CLOSED_BRACKET);
+	}
+	NextToken();
       }
     }
-    
-    if(!Match(TOKEN_CLOSED_BRACKET)) {
-      ProcessError(TOKEN_CLOSED_BRACKET);
-    }
-    NextToken();
   }
 
   return expressions;
@@ -1911,8 +1934,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							  ident, ParseExpressionList(depth + 1));
     if(Match(TOKEN_TILDE)) {
       NextToken();
-      Type* func_rtrn = ParseType(depth + 1);
-      method_call->SetFunctionReturn(func_rtrn);
+      method_call->SetFunctionReturn(ParseType(depth + 1));
     }
   } 
   else {
