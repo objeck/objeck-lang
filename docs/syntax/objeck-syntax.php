@@ -15,7 +15,7 @@
  *  -  First Release
  *
  * 2010/7/26 (v0.0.2)
- *  -  Added new and missing keywords: 'String' and 'each'
+ *  -  Added new and missing keywords and symbols: 'String', 'each', '+=', '-=', '*=' and '/='. 
  *************************************************************************************
  *
  *     This file is part of GeSHi.
@@ -47,7 +47,7 @@ $language_data = array(
         ),
     'SYMBOLS' => array(
         1 => array(
-            '(', ')', '{', '}', '[', ']', '+', '-', '*', '/', '%', '=', '<', '>', '&', '|', ':', ';', ','
+            '(', ')', '{', '}', '[', ']', '+', '-', '*', '/', '%', '=', '<', '>', '&', '|', ':', ';', ',', '+=', '-=', '*=', '/=', 
             )
         ),
     'CASE_SENSITIVE' => array(
