@@ -2,7 +2,7 @@ use System;
 
 bundle Default {
 	class Test {
-		function : Main(v : System.String[]), Nil {
+		function : Main(v : System.String[]) ~ Nil {
 #~
 #			s : String := v[0]->ToInt()->ToString();	
 			i : Int := v[0]->ToInt();

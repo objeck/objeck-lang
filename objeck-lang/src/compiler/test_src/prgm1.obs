@@ -4,12 +4,12 @@ bundle Default {
 	World!
 	~~~#
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run(args);
 		}
 
-#		function : Run(), Nil {
-		function : native : Run(args : String[]), Nil {		
+#		function : Run() ~ Nil {
+		function : native : Run(args : String[]) ~ Nil {		
 			x := 1;
 			x += (8 * 2);
 			x->PrintLine();

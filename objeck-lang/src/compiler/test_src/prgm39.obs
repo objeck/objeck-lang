@@ -2,7 +2,7 @@ use System;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			a := 13;
 			v : String[] := String->New[3];
 			v[0] := String->New("Scan");
@@ -12,7 +12,7 @@ bundle Default {
 			Run(v);
 		}
 		
-		function : Run(args : System.String[]), Nil {
+		function : Run(args : System.String[]) ~ Nil {
 			for(i : Int := 0; i < args->Size(); i := i + 1;) {
 				args[i]->PrintLine();
 			};

@@ -1,6 +1,6 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 #~
 			f : Float := 1201.5;
 			result : Float := f / 1000000.0;
@@ -32,7 +32,7 @@ bundle Default {
 ~#
 		}
 
-		function : native : F1(), Nil {
+		function : native : F1() ~ Nil {
 			2313->ToString()->PrintLine();
 			0->ToString()->PrintLine();
 			a : Int := 15;
@@ -47,12 +47,12 @@ bundle Default {
 			string->PrintLine();
 		}
 
-		function : native : F2(s1 : System.String, s2 : System.String), Nil {
+		function : native : F2(s1 : System.String, s2 : System.String) ~ Nil {
 			s1->Append("222");
 			s2->Append("222");
 		}
 		
-		function : native : F3(), Nil {
+		function : native : F3() ~ Nil {
 			"Fin"->PrintLine();
 			23.5->As(Int)->ToString()->PrintLine();
 			23->ToString();
