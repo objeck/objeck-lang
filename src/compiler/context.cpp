@@ -1321,14 +1321,16 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
-  } else {
+  } 
+  else {
     const string &mthd_name = method_call->GetMethodName();
     const string &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call),
                    "Undefined function/method call: '" + mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
-    } else {
+    } 
+    else {
       ProcessError(static_cast<Expression*>(method_call),
                    "Undefined function/method call: '" + var_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
