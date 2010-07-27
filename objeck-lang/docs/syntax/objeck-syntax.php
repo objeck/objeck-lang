@@ -14,6 +14,8 @@
  * 2010/7/1 (v0.0.1)
  *  -  First Release
  *
+ * 2010/7/26 (v0.0.2)
+ *  -  Added new and missing keywords: 'String' and 'each'
  *************************************************************************************
  *
  *     This file is part of GeSHi.
@@ -41,7 +43,7 @@ $language_data = array(
     'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
     'QUOTEMARKS' => array('"'),
     'ESCAPE_CHAR' => '\\',
-    'KEYWORDS' => array(1 => array('virtual', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'static', 'public', 'private', 'class', 'function', 'method', 'select', 'other', 'enum', 'for', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool'), 3 => array('true', 'false')
+    'KEYWORDS' => array(1 => array('virtual', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'static', 'public', 'private', 'class', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
         ),
     'SYMBOLS' => array(
         1 => array(
