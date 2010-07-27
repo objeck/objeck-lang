@@ -52,6 +52,7 @@ void Parser::LoadErrorCodes()
   error_msgs[TOKEN_ASSIGN] = "Expected ':='";
   error_msgs[TOKEN_SEMI_COLON] = "Expected ';'";
   error_msgs[TOKEN_ASSESSOR] = "Expected '->'";
+  error_msgs[TOKEN_TILDE] = "Expected '~'";
 }
 
 /****************************
@@ -499,12 +500,13 @@ Method* Parser::ParseMethod(bool is_function, int depth)
   // return type
   Type* return_type;
   if(method_type != NEW_PUBLIC_METHOD && method_type != NEW_PRIVATE_METHOD) {
-    if(!Match(TOKEN_COMMA)) {
-      ProcessError(TOKEN_COMMA);
+    if(!Match(TOKEN_TILDE)) {
+      ProcessError(TOKEN_TILDE);
     }
     NextToken();
     return_type = ParseType(depth + 1);
-  } else {
+  } 
+  else {
     return_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, current_class->GetName());
   }
   method->SetReturn(return_type);
