@@ -1,6 +1,6 @@
 bundle Default {
 	class Hello {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			"hello world"->PrintLine();
 			"Hello WorLd"->ToUpper()->PrintLine();
 			"Hello WorLd"->ToLower()->PrintLine();

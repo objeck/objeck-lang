@@ -8,17 +8,17 @@ bundle Default {
 			@b := b;
 		}
 
-		method : public : Value(), Int {
+		method : public : Value() ~ Int {
 			return @b;
 		}
 	}
 
 	class Bar {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 	
-		function : Run(), Nil {
+		function : Run() ~ Nil {
 			s := "Hello World!";
 			s->StartsWith("Hello")->PrintLine();
 

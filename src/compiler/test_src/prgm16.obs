@@ -8,12 +8,12 @@ bundle Default {
 	}
 	
 	class Test {
-		function : native : Main(args : System.String[]), Nil {
+		function : native : Main(args : System.String[]) ~ Nil {
 			Color->Green->PrintLine();
 			Run();
 		}
 
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 			10->PrintLine();
 #			Color->Green;
 			Color->Green->PrintLine();

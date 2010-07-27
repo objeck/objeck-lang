@@ -1,11 +1,11 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 	
-#		function : native : ToString(f : Float), System.String {
-		function : ToString(f : Float), System.String {
+#		function : native : ToString(f : Float) ~ System.String {
+		function : ToString(f : Float) ~ System.String {
 			value : Float := f;
 			string : System.String := System.String->New();
 			
@@ -115,8 +115,8 @@ bundle Default {
 			return string;
 		}
 
-#		function : native : Run(), Nil {
-		function : Run(), Nil {
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 			ToString(23.5)->PrintLine(); 					
 			1003.4->ToString()->PrintLine();
 			3.14->ToString()->PrintLine();
