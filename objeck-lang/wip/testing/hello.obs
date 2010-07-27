@@ -1,0 +1,18 @@
+bundle Default {
+  class Hello {
+    function : AddTwo(x : Int), Int {
+      return x + 2;
+    }
+    
+    function : Main(args : String[]), Nil {
+      # push and pop functions refs (2 new instruction)
+      f ~= AddTwo;
+      j := 13;
+    }
+    
+    function : Merge(list : Int[], function f(Int) : Int), Nil {
+      # dynamic method call (1 new instruction)
+      v := f(list[0]);
+    }
+  }
+}
