@@ -10,11 +10,11 @@ bundle Default {
 			@value := value;
 		}
 
-		method : public : Get(), Int {
+		method : public : Get() ~ Int {
 			return @value;
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			right : IntHolder := rhs->As(IntHolder);
 			if(@value = right->Get()) {
 				return 0;
@@ -26,7 +26,7 @@ bundle Default {
 			return 1;
 		}
 
-		method : public : native : HashID(), Int {
+		method : public : native : HashID() ~ Int {
 			return GetInstanceID();
 		}
 	}
@@ -42,46 +42,46 @@ bundle Default {
 			@level := level;
 		}
 
-		method : public : Get(), System.Compare {
+		method : public : Get() ~ System.Compare {
 			return @value;
 		}
 
-		method : public : GetLevel(), Int {
+		method : public : GetLevel() ~ Int {
 			return @level;
 		}
 
-		method : public : SetLevel(level : Int), Nil {
+		method : public : SetLevel(level : Int) ~ Nil {
 			@level := level;
 		}
 
-		method : public : GetLeft(), TreeNode {
+		method : public : GetLeft() ~ TreeNode {
 			return @left;
 		}
 
-		method : public : SetLeft(left : TreeNode), Nil {
+		method : public : SetLeft(left : TreeNode) ~ Nil {
 			@left := left;
 		}
 
-		method : public : GetRight(), TreeNode {
+		method : public : GetRight() ~ TreeNode {
 			return @right;
 		}
 
-		method : public : SetRight(right : TreeNode), Nil {
+		method : public : SetRight(right : TreeNode) ~ Nil {
 			@right := right;
 		}
 	}
 	
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 		
-#		function : Run(), Nil {
-		function : native : Run(), Nil {
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
 			v : IntHolder := IntHolder->New(4);
 			v->HashID()->PrintLine();
 
-			node : TreeNode :=  TreeNode->New(v->As(System.Compare), 10);
+			node : TreeNode :=  TreeNode->New(v->As(System.Compare) , 10);
 			node->SetLeft(node);
 			node->SetRight(node);
 			

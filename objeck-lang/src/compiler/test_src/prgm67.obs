@@ -8,7 +8,7 @@ bundle Default {
 			b := 333.3;
 		}
 
-		method : public : Add(x : Int), Int {
+		method : public : Add(x : Int) ~ Int {
 			return a + b * x;
 		}
 	}
@@ -22,22 +22,22 @@ bundle Default {
 			@h := 22;
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			h := Hello->New();
 			h->Run();
 		}
 
-		method : public : Run(), Nil {
+		method : public : Run() ~ Nil {
 			Run(@g);
 		}
 
-		method : native : Run(b : Bar), Nil {
+		method : native : Run(b : Bar) ~ Nil {
 			10->PrintLine();
 			Foo(8)->PrintLine();
 			b->Add(@h)->PrintLine();
 		}
 
-		method : Foo(v : Int), Int {
+		method : Foo(v : Int) ~ Int {
 			if(v < 10) {
 				v *= v;
 				return v;

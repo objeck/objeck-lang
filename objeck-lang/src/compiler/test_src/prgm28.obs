@@ -8,18 +8,18 @@ bundle Default {
 			value := 13;
 		}
 
-		method : public : native : Get(), Int {
+		method : public : native : Get() ~ Int {
 			return value;
 		}
 	}
 
 	class Foo {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			DoStuff();
 		}
 
-		function : native : DoStuff(), Nil {
-#		function : DoStuff(), Nil {
+		function : native : DoStuff() ~ Nil {
+#		function : DoStuff() ~ Nil {
 			"Hello World"->PrintLine();
 
 			b : Bar := Bar->New();

@@ -1,10 +1,10 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 #			(5-9/3*2)->PrintLine();
 			(3*2-7)->PrintLine();
 			i : Int := 0;

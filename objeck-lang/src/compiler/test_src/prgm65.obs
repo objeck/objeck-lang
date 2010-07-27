@@ -2,11 +2,11 @@ use Structure;
 
 bundle Default {
 	class Test {
-		function : Main(args : String[]), Nil {
+		function : Main(args : String[]) ~ Nil {
 			Run();
 		}
 
-		function : native : Run(), Nil {		
+		function : native : Run() ~ Nil {		
 			ints := IntVector->New();
 			ints->AddBack(23);
 			ints->AddBack(145);

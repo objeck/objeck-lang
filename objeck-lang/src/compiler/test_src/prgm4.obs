@@ -1,6 +1,6 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 #			ff : Float[,] := Float->New[2,3];
 #			ff[0,2] := 3;
 #			ff[1,2] := 34.50;
@@ -8,11 +8,11 @@ bundle Default {
 			Run();
 		}
 		
-#		function : Run(ff : Float[,]), Nil {
-#		function : native : Run(ff : Float[,]), Nil {
-#		function : Run(), Nil {
-#		function : native : Run(), Nil {
-		function : Run(), Nil {
+#		function : Run(ff : Float[,]) ~ Nil {
+#		function : native : Run(ff : Float[,]) ~ Nil {
+#		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 #~	
 			c : Char[] := "-#";		
 			b : Bool := false;

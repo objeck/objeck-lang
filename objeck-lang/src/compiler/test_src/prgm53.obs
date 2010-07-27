@@ -1,6 +1,6 @@
 bundle Default {
 	class Hello {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			for(i := 1; i <= 13; i := i + 1;) { 
 				select(i) {
 					label 1: {

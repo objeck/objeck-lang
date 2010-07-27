@@ -4,7 +4,7 @@ bundle Default {
 			Parent();
 		}
 
-		method : public : Run(param : System.Base), Nil {
+		method : public : Run(param : System.Base) ~ Nil {
 			s : String := param->As(System.String);
 			s->PrintLine();
 			913->PrintLine();
@@ -15,7 +15,7 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			array := Int->New[3];
 			array[0] := 13;
 			j := array[0];
@@ -24,7 +24,7 @@ bundle Default {
 #			Run();
 		}
 
-		function : Run(), Nil {
+		function : Run() ~ Nil {
 			t := MyThread->New();	
 			s := "Pug";	
 			t->Execute(s->As(Base));

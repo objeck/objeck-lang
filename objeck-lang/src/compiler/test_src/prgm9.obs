@@ -20,26 +20,26 @@ bundle Default {
 			};
 		}
 		
-		method : public : GetFloatValue(i : Int), Float {
+		method : public : GetFloatValue(i : Int) ~ Float {
 			return @float_array[i] * @float_array[i];
 		}
 		
-		method : public : GetIntValue(i : Int), Int {
+		method : public : GetIntValue(i : Int) ~ Int {
 			return @int_array[i];
 		}
 	}
 		
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 			Blah();
 		}
 		
-		function : Blah(), Nil {
+		function : Blah() ~ Nil {
 			"Blah"->PrintLine();
 		}
 		
-		function : Run(), Nil {
+		function : Run() ~ Nil {
 			max : Int := 16;
 			f : Foo := Foo->New(max);
 			f->GetFloatValue(max - 1)->PrintLine();

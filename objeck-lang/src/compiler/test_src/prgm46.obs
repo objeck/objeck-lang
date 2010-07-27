@@ -2,12 +2,12 @@ use IO;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-#		function : native : Run(), Nil {
-		function : Run(), Nil {
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 			f := FileReader->New("out.txt");
 			if(f->IsOpen()) {
 #				f->ReadByte()->As(Char)->PrintLine();

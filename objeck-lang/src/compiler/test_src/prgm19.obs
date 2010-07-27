@@ -18,8 +18,8 @@ bundle Test {
 			@pos := 0;
 		}
 		
-		method : public : native : Append(array : Char[]), Nil {
-#		method : public : Append(array : Char[]), Nil {
+		method : public : native : Append(array : Char[]) ~ Nil {
+#		method : public : Append(array : Char[]) ~ Nil {
 			v : Int := @pos + array->Size() * 4.9;
 			v->PrintLine();
 
@@ -48,8 +48,8 @@ bundle Test {
 ~#
 		}
 		
-		method : public : native : ToInt(), Int {
-#		method : public : ToInt(), Int {
+		method : public : native : ToInt() ~ Int {
+#		method : public : ToInt() ~ Int {
 			if(@string->Size() > 0) {
 				is_neg : Bool := false;
 				if(@string[0] = '-') {
@@ -93,7 +93,7 @@ bundle Test {
 			return 0;
 		}
 
-		method : public : native : PrintLine(), Nil {
+		method : public : native : PrintLine() ~ Nil {
 			@string->PrintLine();
 		}
 	}
@@ -107,7 +107,7 @@ bundle Default {
 			a := 10;
 		}
 		
-		method : public : GetA(), Int {
+		method : public : GetA() ~ Int {
 			return a;
 		}
 	}
@@ -119,15 +119,15 @@ bundle Default {
 			ff := "yxfo";
 		}
 		
-		method : Do(), Nil {
+		method : Do() ~ Nil {
 				ff->Size()->PrintLine();
 		}
 		
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 		
-		function : Run(), Nil {
+		function : Run() ~ Nil {
 			x : System.String := "Ha, Ha!";
 			x->PrintLine();
 			"Done."->PrintLine();

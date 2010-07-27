@@ -5,10 +5,10 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 			reader := FileReader->New("../compiler/test_src/prgm1.obs");
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
