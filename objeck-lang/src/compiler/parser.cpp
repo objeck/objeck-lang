@@ -1207,7 +1207,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
       }
     }
     NextToken();
-
+    
     if(!Match(TOKEN_TILDE)) {
       ProcessError(TOKEN_TILDE);
     }
@@ -1876,7 +1876,8 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							      ParseExpressionList(depth + 1));
 	if(Match(TOKEN_TILDE)) {
 	  NextToken();
-	  ParseType(depth + 1);
+	  Type* func_rtrn = ParseType(depth + 1);
+	  method_call->SetFunctionReturn(func_rtrn);
 	}
       } 
       else {
@@ -1910,7 +1911,8 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							  ident, ParseExpressionList(depth + 1));
     if(Match(TOKEN_TILDE)) {
       NextToken();
-      ParseType(depth + 1);
+      Type* func_rtrn = ParseType(depth + 1);
+      method_call->SetFunctionReturn(func_rtrn);
     }
   } 
   else {
