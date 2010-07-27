@@ -2,11 +2,11 @@ use System;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 			i := 10;
 			ii := Int->New[3];
 			ii[0] := 13;
@@ -18,7 +18,7 @@ bundle Default {
 			i->PrintLine();
 		}
 
-		function : Value(), Int {
+		function : Value() ~ Int {
 			x := 10;
 			return x + 3;
 		}

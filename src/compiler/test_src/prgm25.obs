@@ -6,7 +6,7 @@ bundle Default {
 			@value := value;
 		}
 
-		method : public : Compare(right : System.Base), Int {
+		method : public : Compare(right : System.Base) ~ Int {
 			if(right <> Nil) {
 				if(GetClassID() = right->GetClassID()) {
 					a : A := right->As(A);
@@ -27,7 +27,7 @@ bundle Default {
 		}
 
 
-		method : public : Get(), Int {
+		method : public : Get() ~ Int {
 			return @value;
 		}
 	}
@@ -42,7 +42,7 @@ bundle Default {
 			@value := value;
 		}
 
-		method : public : Compare(right : System.Base), Int {
+		method : public : Compare(right : System.Base) ~ Int {
 			if(right <> Nil) {
 				if(GetClassID() = right->GetClassID()) {
 					a : A := right->As(A);
@@ -63,23 +63,23 @@ bundle Default {
 		}
 
 
-		method : public : Get(), Int {
+		method : public : Get() ~ Int {
 			return @value;
 		}
 	}
 
 	class Test {
-#		function : native : Foo(b : System.Base), Nil {
-		function : Foo(b : System.Base), Nil {
+#		function : native : Foo(b : System.Base) ~ Nil {
+		function : Foo(b : System.Base) ~ Nil {
 			a : A := b->As(A);
 			a->Get()->PrintLine();
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 #~
 			a : A := A->New(13);
 			Foo(a->As(System.Base));

@@ -3,7 +3,7 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 #~
 			h := "Hello World!";
 			h->SubString(3, 3)->PrintLine();
@@ -12,8 +12,8 @@ bundle Default {
 			Time();
 		}
 
-		function : native : Time(), Nil {
-#		function : Time(), Nil {
+		function : native : Time() ~ Nil {
+#		function : Time() ~ Nil {
 			t := Time->New();
 			IO.Console->GetInstance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}

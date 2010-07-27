@@ -6,12 +6,12 @@ use Structure;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 			"Done!"->PrintLine();
 		}
 		
-		function : native : Run(), Nil {
+		function : native : Run() ~ Nil {
 			tree : Map := Map->New();
 			for(i : Int := 0; i < 1000; i := i + 1;) {
 				v : IntHolder := IntHolder->New(i);

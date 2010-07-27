@@ -15,7 +15,7 @@ bundle Default {
 	}
 
 	class Test {
-		function : Blah(), Nil {
+		function : Blah() ~ Nil {
 			a : A;
 			b : B;	
 			c : C;	

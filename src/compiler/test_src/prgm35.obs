@@ -5,7 +5,7 @@ bundle Default {
 		New() {
 		}
 
-		method : virtual : public : Get(), Int;
+		method : virtual : public : Get() ~ Int;
 	}
 
 	class Y from X {
@@ -13,7 +13,7 @@ bundle Default {
 			Parent();
 		}
 		
-		method : public : Get(), Int {
+		method : public : Get() ~ Int {
 			return 13;
 		}
 	}
@@ -23,17 +23,17 @@ bundle Default {
 			Parent();
 		}
 
-		method : public : native : Compare(rhs : System.Compare), Int {
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			return 0;
 		}
 
-		method : public : native : HashID(), Int {
+		method : public : native : HashID() ~ Int {
 			return 0;
 		}
 	}
 	
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 
 			x : Compare[] := Compare->New[10];
 			x->Size()->PrintLine();

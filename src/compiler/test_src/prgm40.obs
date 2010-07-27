@@ -2,16 +2,16 @@ use System;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-		function : Test(), System.String {
+		function : Test() ~ System.String {
 			return Nil;
 		}
 		
-#		function : native : Run(), Nil {
-		function : Run(), Nil {
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 #~
 			b : Bool := false | true;
 			b->PrintLine();

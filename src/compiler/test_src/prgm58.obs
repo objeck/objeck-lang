@@ -1,11 +1,11 @@
 bundle Default {
 	class Hello {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 	
-#		function : native : Run(), Nil {
-		function : Run(), Nil {
+#		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 			c : Char[] := ['N','e','o'];
 			c->PrintLine();
 

@@ -4,12 +4,12 @@ use Structure;
 
 bundle Default {
 	class SocketTest {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run(args);
 		}
 		
-#		function : native : Run(args : System.String[]), Nil {
-		function : Run(args : System.String[]), Nil {
+#		function : native : Run(args : System.String[]) ~ Nil {
+		function : Run(args : System.String[]) ~ Nil {
 			url := args[0];			
 			if(url->StartsWith("http://")) {
 				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());

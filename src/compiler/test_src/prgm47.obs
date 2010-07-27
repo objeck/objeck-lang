@@ -2,12 +2,12 @@ use IO;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 
-		# function : Run(), Nil {		
-		function : native : Run(), Nil {		
+		# function : Run() ~ Nil {		
+		function : native : Run() ~ Nil {		
 			vv := Directory->List("../..");
 			vv->Size()->PrintLine();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {

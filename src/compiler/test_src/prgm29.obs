@@ -6,7 +6,7 @@ bundle Default {
       @blah := blah;  
     }
 
-    method : public : Get(), Int {
+    method : public : Get() ~ Int {
       return @blah->Get();
     }
   }
@@ -25,17 +25,17 @@ bundle Default {
       };
     }
 
-    method : public : Get(), Int {
+    method : public : Get() ~ Int {
       return @value;
     }
   }
 
   class Test {
-    function : Main(args : System.String[]), Nil {
+    function : Main(args : System.String[]) ~ Nil {
       DoStuff();
     }
       
-    function : native : DoStuff(), Nil {
+    function : native : DoStuff() ~ Nil {
       b : Blah := Blah->New();
       b->Get()->PrintLine();
 

@@ -1,10 +1,10 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			A();
 		}
 
-		function : native : A(), Nil {
+		function : native : A() ~ Nil {
 			"Hello"->Size()->PrintLine();
 			"Hello"->Size()->PrintLine();
 			(9/3)->PrintLine();
@@ -22,7 +22,7 @@ bundle Default {
 ~#
 		}
 
-		function : B(), Char[] {
+		function : B() ~ Char[] {
 			c : System.String := "A string 0.";
 			ccc : System.String := "A string 2.";
 			c->PrintLine();
@@ -31,7 +31,7 @@ bundle Default {
 			return ccc->ToCharArray();
 		}
 
-		function : native : C(), Nil {
+		function : native : C() ~ Nil {
 			13->PrintLine();
 			c : System.String := "A string.";
 			c->PrintLine();		

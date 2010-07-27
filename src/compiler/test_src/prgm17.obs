@@ -8,26 +8,26 @@ bundle Default {
 			f := v1;	
 		}
 		
-		method : public : GetFloat(), Float {
+		method : public : GetFloat() ~ Float {
 			#x : Float :=  @self->GetFloat2();
 			(@self->GetFloat2()+i)->PrintLine();
 			# (x+i)->PrintLine();
                         return i * f;
 		}
 
-		method : public : native : GetFloat2(), Float {
+		method : public : native : GetFloat2() ~ Float {
 			# a : Float := 45.5;
 			# (50.0 - a)->PrintLine();
 			return 3 / f;
 		}
 
-		method : public : native : GetInt2(), Int {
+		method : public : native : GetInt2() ~ Int {
 			return 13;
 		}	
 	}
 
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			bb : Byte[,] := Byte->New[3,3];
                         v : Int := 0;
                         i : Int := 0;
@@ -45,7 +45,7 @@ bundle Default {
 			Run(f,bb);
 		}
 		
-		function : Run(f:Foo, bb : Byte[,]), Nil {
+		function : Run(f:Foo, bb : Byte[,]) ~ Nil {
 			(f->GetFloat2() + 3)->PrintLine();
 			(f->GetInt2() + 3)->PrintLine();
 			f->GetFloat()->PrintLine();		
