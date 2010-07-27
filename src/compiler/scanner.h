@@ -54,6 +54,7 @@ enum TokenType {
   TOKEN_NO_INPUT,
   TOKEN_UNKNOWN,
   // symbols
+  TOKEN_TILDE,
   TOKEN_PERIOD,
   TOKEN_COLON,
   TOKEN_SEMI_COLON,

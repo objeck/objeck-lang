@@ -688,6 +688,13 @@ void Scanner::ParseToken(int index)
       NextChar();
       break;
 
+    case '~':
+      tokens[index]->SetType(TOKEN_TILDE);
+      tokens[index]->SetLineNbr(line_nbr);
+      tokens[index]->SetFileName(filename);
+      NextChar();
+      break;
+
     case '}':
       tokens[index]->SetType(TOKEN_CLOSED_BRACE);
       tokens[index]->SetLineNbr(line_nbr);

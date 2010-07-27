@@ -826,13 +826,23 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
     string variable_name = method_call->GetVariableName();
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
     if(klass) {
-      AnalyzeMethodCall(klass, method_call, false, encoding, depth);
+      if(method_call->IsFunctionDefinition()) {
+	AnalyzeFunctionReference(klass, method_call, encoding, depth);
+      }
+      else {
+	AnalyzeMethodCall(klass, method_call, false, encoding, depth);
+      }
       return;
     }
     // library call
     LibraryClass* lib_klass = AnalyzeLibraryMethodCall(method_call, encoding, depth);
     if(lib_klass) {
-      AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
+      if(method_call->IsFunctionDefinition()) {
+	AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
+      }
+      else {
+	AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
+      }
       return;
     }
 
@@ -1168,7 +1178,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
         // update
         parent = SearchProgramClasses(parent->GetParentName());
       }
-    } else if(klass->GetLibraryParent()) {
+    } 
+    else if(klass->GetLibraryParent()) {
       // check parent library class for method
       LibraryClass* lib_parent = klass->GetLibraryParent();
       method_call->SetOriginalClass(klass);
@@ -1322,6 +1333,17 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
                    "Undefined function/method call: '" + var_name + "(..)'\n\tEnsure calling parameters properly casted");
     }
   }
+}
+
+/********************************
+ * Analyzes a function reference
+ ********************************/
+void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
+					       string &encoding, int depth) {
+}
+
+void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
+					       string &encoding, int depth) {
 }
 
 /****************************
