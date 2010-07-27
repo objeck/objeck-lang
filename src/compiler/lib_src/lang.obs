@@ -10,20 +10,20 @@ bundle System {
 	# Boolean class support
 	~~#	
 	class $Bool {
-		function : native : Print(b : Bool), Nil {
+		function : native : Print(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 		}
 
-		function : native : PrintLine(b : Bool), Nil {
+		function : native : PrintLine(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 			'\n'->Print();
 		}
 
-		function : native : Size(b : Bool[]), Int {
+		function : native : Size(b : Bool[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : native : ToString(b : Bool), String {
+		function : native : ToString(b : Bool) ~ String {
 			string : String;
 
 			if(b = true) {
@@ -41,7 +41,7 @@ bundle System {
 	# Byte class support
 	~~#	
 	class $Byte {
-		function : native : Min(l : Byte, r : Byte), Byte {
+		function : native : Min(l : Byte, r : Byte) ~ Byte {
 			if(l < r) {
 				return l;
 			};
@@ -49,7 +49,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Max(l : Byte, r : Byte), Byte {
+		function : native : Max(l : Byte, r : Byte) ~ Byte {
 			if(l > r) {
 				return l;
 			};
@@ -57,7 +57,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Abs(v : Byte), Byte {
+		function : native : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
 				return v * -1;
 			};
@@ -65,20 +65,20 @@ bundle System {
 			return v;
 		}
 
-		function : native : Print(b : Byte), Nil {
+		function : native : Print(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 		}
 
-		function : native : PrintLine(b : Byte), Nil {
+		function : native : PrintLine(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 			'\n'->Print();
 		}
 
-		function : native : Size(b : Byte[]), Int {
+		function : native : Size(b : Byte[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : native : ToString(b : Byte), String {
+		function : native : ToString(b : Byte) ~ String {
 			string : String := String->New();
 			
 			if(b = 0) {
@@ -121,7 +121,7 @@ bundle System {
 	# Character class support
 	~~#	
 	class $Char {
-		function : native : IsDigit(c : Char), Bool {
+		function : native : IsDigit(c : Char) ~ Bool {
 			if(c >= '0' & c <= '9') {
 				return true;
 			};
@@ -129,7 +129,7 @@ bundle System {
 			return false;
 		}
 
-		function : native : IsChar(c : Char), Bool {
+		function : native : IsChar(c : Char) ~ Bool {
 			if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z')) {
 				return true;
 			};
@@ -137,7 +137,7 @@ bundle System {
 			return false;
 		}
 		
-		function : native : Min(l : Char, r : Char), Char {
+		function : native : Min(l : Char, r : Char) ~ Char {
 			if(l < r) {
 				return l;
 			};
@@ -145,7 +145,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Max(l : Char, r : Char), Char {
+		function : native : Max(l : Char, r : Char) ~ Char {
 			if(l > r) {
 				return l;
 			};
@@ -153,29 +153,29 @@ bundle System {
 			return r;
 		}
 
-		function : native : Print(c : Char), Nil {
+		function : native : Print(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 		}
 
-		function : native : PrintLine(c : Char), Nil {
+		function : native : PrintLine(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 			'\n'->Print();
 		}
 
-		function : native :  Print(c : Char[]), Nil {
+		function : native :  Print(c : Char[]) ~ Nil {
 			STD_OUT_CHAR_ARY;
 		}
 
-		function : native :  PrintLine(c : Char[]), Nil {
+		function : native :  PrintLine(c : Char[]) ~ Nil {
 			STD_OUT_CHAR_ARY;
 			'\n'->Print();
 		}
 
-		function : native : Size(c : Char[]), Int {
+		function : native : Size(c : Char[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : native : ToString(c : Char), String {
+		function : native : ToString(c : Char) ~ String {
 			string : String := String->New();
 			string->Append(c);
 			
@@ -184,7 +184,7 @@ bundle System {
 	}
 	
 	class Number {
-		function : native : IntToString(value : Int, string : String), Nil {
+		function : native : IntToString(value : Int, string : String) ~ Nil {
 			values := Int->New[16];
 			i := 0;
             while(value >= 10 & i < 16) {
@@ -206,7 +206,7 @@ bundle System {
 	# Int class support
 	~~#	
 	class $Int {
-		function : native : Min(l : Int, r : Int), Int {
+		function : native : Min(l : Int, r : Int) ~ Int {
 			if(l < r) {
 				return l;
 			};
@@ -214,7 +214,7 @@ bundle System {
 			return r;
 		}
 	
-		function : native : Max(l : Int, r : Int), Int {
+		function : native : Max(l : Int, r : Int) ~ Int {
 			if(l > r) {
 				return l;
 			};
@@ -222,7 +222,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Abs(v : Int), Int {
+		function : native : Abs(v : Int) ~ Int {
 			if(v < 0) {
 				return v * -1;
 			};
@@ -230,20 +230,20 @@ bundle System {
 			return v;
 		}
 
-		function : native : Print(i : Int), Nil {
+		function : native : Print(i : Int) ~ Nil {
 			STD_OUT_INT;
 		}
 
-		function : native : PrintLine(i : Int), Nil {
+		function : native : PrintLine(i : Int) ~ Nil {
 			STD_OUT_INT;
 			'\n'->Print();
 		}
 
-		function : native : Size(i : Int[]), Int {
+		function : native : Size(i : Int[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : native : ToString(i : Int), String {
+		function : native : ToString(i : Int) ~ String {
 			str := String->New();
 			Number->IntToString(i, str);
 			return str;
@@ -254,11 +254,11 @@ bundle System {
 	# Float class support
 	~~#	
 	class $Float {
-		function : native : Pi(), Float {
+		function : native : Pi() ~ Float {
 			return 3.14159265;
 		}
 		
-		function : native : Min(l : Float, r : Float), Float {
+		function : native : Min(l : Float, r : Float) ~ Float {
 			if(l < r) {
 				return l;
 			};
@@ -266,7 +266,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Max(l : Float, r : Float), Float {
+		function : native : Max(l : Float, r : Float) ~ Float {
 			if(l > r) {
 				return l;
 			};
@@ -274,7 +274,7 @@ bundle System {
 			return r;
 		}
 
-		function : native : Abs(v : Float), Float {
+		function : native : Abs(v : Float) ~ Float {
 			if(v < 0) {
 				return v * -1;
 			};
@@ -283,45 +283,45 @@ bundle System {
 		}
 		
 		# note: sse4 instruction
-		function : Floor(f : Float), Float {
+		function : Floor(f : Float) ~ Float {
 			FLOR_FLOAT;
 		}
 		
 		# note: sse4 instruction
-		function : Ceiling(f : Float), Float {
+		function : Ceiling(f : Float) ~ Float {
 			CEIL_FLOAT;
 		}
 		
-		function : Sin(f : Float), Float {
+		function : Sin(f : Float) ~ Float {
 			SIN_FLOAT;
 		}
 		
-		function : Cos(f : Float), Float {
+		function : Cos(f : Float) ~ Float {
 			COS_FLOAT;
 		}
 		
-		function : Tan(f : Float), Float {
+		function : Tan(f : Float) ~ Float {
 			TAN_FLOAT;
 		}
 		
-		function : Log(f : Float), Float {
+		function : Log(f : Float) ~ Float {
 			LOG_FLOAT;
 		}
 
-		function : native : Print(f : Float), Nil {
+		function : native : Print(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 		}
 
-		function : native : PrintLine(f : Float), Nil {
+		function : native : PrintLine(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
 
-		function : native : Size(f : Float[]), Int {
+		function : native : Size(f : Float[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
-		function : native : ToString(f : Float), String {
+		function : native : ToString(f : Float) ~ String {
 			str := String->New();
 			remainder := f - f->Floor();
 			Number->IntToString(f->Floor()->As(Int), str);
@@ -336,7 +336,7 @@ bundle System {
 	# Array class support
 	~~#	
 	class $BaseArray {
-		function : native : Size(f : System.Base[]), Int {
+		function : native : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 	}
@@ -354,11 +354,11 @@ bundle System {
 		New() {
 		}
 
-		method : public : native : GetClassID(), ClassID {
+		method : public : native : GetClassID() ~ ClassID {
 			LOAD_CLS_INST_ID;
 		}
 
-		method : public : native : GetInstanceID(), Int {
+		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}
 	}
@@ -375,21 +375,21 @@ bundle System {
 		# Compares two objects.
 		# @return 1 if greater, -1 if less, otherwise 0
 		~~#
-		method : virtual : public : Compare(rhs : System.Compare), Int;
+		method : virtual : public : Compare(rhs : System.Compare) ~ Int;
 
 		#~~
 		# Returns a unique hash ID for the given class
 		# @return hash ID
 		~~#
-		method : virtual : public : HashID(), Int;
+		method : virtual : public : HashID() ~ Int;
 	}
 	
 	#~~
 	# Provides useful base class functionality
 	
 	class Hash from Compare {
-		method : virtual : public : Compare(rhs : Compare), Int;
-		method : virtual : public : Hash(), Int;
+		method : virtual : public : Compare(rhs : Compare) ~ Int;
+		method : virtual : public : Hash() ~ Int;
 	}
 	~~#	
 	
@@ -451,7 +451,7 @@ bundle System {
 			Append(array);
 		}
 
-		method : public : native : ToCharArray(), Char[] {
+		method : public : native : ToCharArray() ~ Char[] {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				array[i] := @string[i];
@@ -460,19 +460,19 @@ bundle System {
 			return array;
 		}
 
-		method : public : native : Append(i : Int), Nil {
+		method : public : native : Append(i : Int) ~ Nil {
 			Append(i->ToString()->ToCharArray());
 		}
 
-		method : public : native : Append(f : Float), Nil {
+		method : public : native : Append(f : Float) ~ Nil {
 			Append(f->ToString()->ToCharArray());
 		}
 
-		method : public : native : Append(str : String), Nil {
+		method : public : native : Append(str : String) ~ Nil {
 			Append(str->ToCharArray());
 		}
 		
-		method : public : native : Append(array : Char[]), Nil {
+		method : public : native : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
 				@max := (@max + array->Size()) * 2;
@@ -490,7 +490,7 @@ bundle System {
 			};
 		}
 		
-		method : public : native : Append(array : Byte[]), Nil {
+		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
 				@max := (@max + array->Size()) * 2;
@@ -508,7 +508,7 @@ bundle System {
 			};
 		}
 
-		method : public : native : Append(c : Char), Nil {
+		method : public : native : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
                 		@max := @max * 3;
@@ -524,7 +524,7 @@ bundle System {
 			@pos := @pos + 1;
 		}
 		
-		method : public : native : Append(c : Byte), Nil {
+		method : public : native : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
                 		@max := @max * 3;
@@ -540,7 +540,7 @@ bundle System {
 			@pos := @pos + 1;
 		}
 
-		method : public : native : Find(c : Char), Int {
+		method : public : native : Find(c : Char) ~ Int {
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				if(@string[i] = c) {
 					return i;
@@ -550,7 +550,7 @@ bundle System {
 			return -1;			
 		}
 		
-		method : public : native : Find(s : String), Int {
+		method : public : native : Find(s : String) ~ Int {
 			if(s->Size() > 0) {
 				i := Find(s->Get(0));
 				if(i > -1) {
@@ -570,11 +570,11 @@ bundle System {
 			return -1;
 		}
 
-		method : public : native : Size(), Int {
+		method : public : native : Size() ~ Int {
 			return @pos;			
 		}
-
-		method : public : native : Get(index : Int), Char {
+  
+		method : public : native : Get(index : Int) ~ Char {
 			if(index < @pos) {
 				return @string[index];
 			};
@@ -582,7 +582,7 @@ bundle System {
 			return '\0';
 		}
 		
-		method : public : native : ToInt(), Int {
+		method : public : native : ToInt() ~ Int {
 			if(@pos > 1 & @string[0] = '0' & @string[1] = 'x') {
 				end := 1;			
 				mag : Int := 1;
@@ -657,7 +657,7 @@ bundle System {
 			return 0;
 		}
 
-		method : public : native : ToFloat(), Float {
+		method : public : native : ToFloat() ~ Float {
 			if(@string->Size() > 0) {
 				val : Float := 0;
 				is_neg : Bool := false;
@@ -753,12 +753,12 @@ bundle System {
 			return 0.0;
 		}
 
-		method : public : native : StartsWith(c : Char), Bool {
+		method : public : native : StartsWith(c : Char) ~ Bool {
 			sc : Char := Get(0);
 			return sc <> '\0' & c = sc;
 		}
 
-		method : public : native : StartsWith(s : String), Bool {
+		method : public : native : StartsWith(s : String) ~ Bool {
 			if(s->Size() <= @pos) {
 				for(i := 0; i < s->Size(); i := i + 1;) {
 					if(s->Get(i) <> @string[i]) {
@@ -772,7 +772,7 @@ bundle System {
 			return false;
 		}
 
-		method : public : native : EndsWith(s : String), Bool {
+		method : public : native : EndsWith(s : String) ~ Bool {
 			if(s->Size() <= @pos) {
 				i := s->Size() - 1;
 				j := @pos - 1;
@@ -790,7 +790,7 @@ bundle System {
 			return false;
 		}
 		
-		method : public : native : Reverse(), String {
+		method : public : native : Reverse() ~ String {
 			tmp : Char[] := Char->New[@max];
 			i := 0; j := @pos - 1;
 			while(j > -1) {
@@ -801,7 +801,7 @@ bundle System {
 			return String->New(tmp);
 		}
 		
-		method : public : native : Trim(), String {
+		method : public : native : Trim() ~ String {
 			# copy elements
 
 			i := 0;	
@@ -829,7 +829,7 @@ bundle System {
 			return String->New(tmp);
 		}
 		
-		method : public : native : ToUpper(), String {
+		method : public : native : ToUpper() ~ String {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				c := @string[i];
@@ -842,7 +842,7 @@ bundle System {
 			return String->New(array);
 		}
 		
-		method : public : native : ToLower(), String {
+		method : public : native : ToLower() ~ String {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i := i + 1;) {
 				c := @string[i];
@@ -855,11 +855,11 @@ bundle System {
 			return String->New(array);
 		}
 
-		method : public : SubString(offset : Int), String {
+		method : public : SubString(offset : Int) ~ String {
 			return SubString(0, offset);
 		}
 
-		method : public : native : SubString(offset : Int, length : Int), String {
+		method : public : native : SubString(offset : Int, length : Int) ~ String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
@@ -877,11 +877,11 @@ bundle System {
 			return String->New(array);
 		}
 	
-		method : public : Equals(rhs : String), Bool {
+		method : public : Equals(rhs : String) ~ Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
-		method : public : HashID(), Int {
+		method : public : HashID() ~ Int {
 			hash := 0;
 			for(i := 0; i < @pos; i := i + 1;) {
 				hash := hash * 31 + @string[i];
@@ -890,7 +890,7 @@ bundle System {
 			return hash;
 		}
 
-		method : public : Compare(rhs : System.Compare), Int {
+		method : public : Compare(rhs : System.Compare) ~ Int {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
 				for(i : Int := 0; i < @pos; i := i + 1;) {
@@ -910,11 +910,11 @@ bundle System {
 			return -1;
 		}
 
-		method : public : native : Print(), Nil {
+		method : public : native : Print() ~ Nil {
 			@string->Print();
 		}
 
-		method : public : native : PrintLine(), Nil {
+		method : public : native : PrintLine() ~ Nil {
 			@string->PrintLine();
 		}
 	}
@@ -923,15 +923,15 @@ bundle System {
 	# Runtime system class
 	~~#	
 	class Runtime {
-		function : Join(), Nil {
+		function : Join() ~ Nil {
 			THREAD_JOIN;
 		}
 		
-		function : GetTime(), System.Time {
+		function : GetTime() ~ System.Time {
 			return Time->New();
 		}
 		
-		function : Sleep(t : Int), Nil {
+		function : Sleep(t : Int) ~ Nil {
 			THREAD_SLEEP;
 		}
 	}
@@ -952,31 +952,31 @@ bundle System {
 			SYS_TIME;
 		}
 		
-		method : public : GetDay(), Int {
+		method : public : GetDay() ~ Int {
 			return @day;
 		}
 		
-		method : public : GetMonth(), Int {
+		method : public : GetMonth() ~ Int {
 			return @month;
 		}
 		
-		method : public : GetYear(), Int {
+		method : public : GetYear() ~ Int {
 			return @year;
 		}
 		
-		method : public : GetHours(), Int {
+		method : public : GetHours() ~ Int {
 			return @hours;
 		}
 		
-		method : public : GetMinutes(), Int {
+		method : public : GetMinutes() ~ Int {
 			return @mins;
 		}
 		
-		method : public : GetSeconds(), Int {
+		method : public : GetSeconds() ~ Int {
 			return @secs;
 		}
 		
-		method : public : IsSavingsTime(), Bool {
+		method : public : IsSavingsTime() ~ Bool {
 			return @is_savings;
 		}
 	}
@@ -990,15 +990,15 @@ bundle System {
 		New() {
 		}
 		
-		method : public : Start(), Void {
+		method : public : Start() ~ Void {
 			TIMER_START;
 		}
 		
-		method : public : End(), Void {
+		method : public : End() ~ Void {
 			TIMER_END;
 		}
 		
-		method : public : GetElapsedTime(), Int {
+		method : public : GetElapsedTime() ~ Int {
 			return @elapsed;
 		}
 	}	
@@ -1012,7 +1012,7 @@ bundle System {
 		New() {
 		}
 		
-		method : public : Execute(param : System.Base), Nil {
+		method : public : Execute(param : System.Base) ~ Nil {
 			@param := param;
 			ASYNC_MTHD_CALL;
 		}
@@ -1020,14 +1020,14 @@ bundle System {
 		#~~
 		# Sleeps worker thread
 		~~#
-		method : public : Sleep(t : Int), Nil {
+		method : public : Sleep(t : Int) ~ Nil {
 			THREAD_SLEEP;
 		}
 		
 		#~~
 		# Method to execute in new worker thread
 		~~#
-		method : virtual : public : Run(param : System.Base), Nil;
+		method : virtual : public : Run(param : System.Base) ~ Nil;
 	}	
 }
 
@@ -1039,7 +1039,7 @@ bundle IO {
 		New: private () {
 		}
 
-		function : GetInstance(), Console {
+		function : GetInstance() ~ Console {
 			if(@console <> Nil) {
 				@console := Console->New();
 			};
@@ -1047,82 +1047,82 @@ bundle IO {
 			return @console;
 		}
 
-		method : public : ReadString(), System.String {
+		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[256];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
 		
-		method : public : Print(b : Bool), Console {
+		method : public : Print(b : Bool) ~ Console {
 			b->Print();
 			return @console;
 		}
 		
-		method : public : PrintLine(b : Bool), Console {
+		method : public : PrintLine(b : Bool) ~ Console {
 			b->PrintLine();
 			return @console;
 		}
 
-		method : ReadString(buffer : Char[]), Nil {
+		method : ReadString(buffer : Char[]) ~ Nil {
 			STD_IN_STRING;
 		}
 		
-		method : public : Print(b : Byte), Console {
+		method : public : Print(b : Byte) ~ Console {
 			b->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(b : Byte), Console {
+		method : public : PrintLine(b : Byte) ~ Console {
 			b->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(c : Char), Console {
+		method : public : Print(c : Char) ~ Console {
 			c->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(c : Char), Console {
+		method : public : PrintLine(c : Char) ~ Console {
 			c->PrintLine();
 			return @console;
 		}
 
-		method : public : Print(i : Int), Console {
+		method : public : Print(i : Int) ~ Console {
 			i->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(i : Int), Console {
+		method : public : PrintLine(i : Int) ~ Console {
 			i->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(f : Float), Console {
+		method : public : Print(f : Float) ~ Console {
 			f->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(f : Float), Console {
+		method : public : PrintLine(f : Float) ~ Console {
 			f->PrintLine();
 			return @console;
 		}
 
-		method : public : Print(cc : Char[]), Console {
+		method : public : Print(cc : Char[]) ~ Console {
 			cc->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(cc : Char[]), Console {
+		method : public : PrintLine(cc : Char[]) ~ Console {
 			cc->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(s : System.String), Console {
+		method : public : Print(s : System.String) ~ Console {
 			s->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(s : System.String), Console {
+		method : public : PrintLine(s : System.String) ~ Console {
 			s->PrintLine();
 			return @console;
 		}
@@ -1136,35 +1136,35 @@ bundle IO {
 			@name := name;
 		}
 		
-		method : public : IsOpen(), Bool {
+		method : public : IsOpen() ~ Bool {
 			FILE_IS_OPEN;
 		}
 
-		method : public : Seek(p : Int), Bool {
+		method : public : Seek(p : Int) ~ Bool {
 			FILE_SEEK;
 		}
 		
-		method : public : Rewind(), Nil {
+		method : public : Rewind() ~ Nil {
 			FILE_REWIND;
 		}
 
-		method : public : IsEOF(), Bool {
+		method : public : IsEOF() ~ Bool {
 			FILE_EOF;
 		}
 		
-		function : Size(n : System.String), Int {
+		function : Size(n : System.String) ~ Int {
 			FILE_SIZE;
 		}		
 		
-		function : Delete(n : System.String), Bool {
+		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
 		}
 		
-		function : Exists(n : System.String), Bool {
+		function : Exists(n : System.String) ~ Bool {
 			FILE_EXISTS;
 		}
 		
-		function : Rename(o : System.String, n : System.String), Bool {
+		function : Rename(o : System.String, n : System.String) ~ Bool {
 			FILE_RENAME;
 		}
 	}
@@ -1175,25 +1175,25 @@ bundle IO {
 			FILE_OPEN_READ;
 		}	
 		
-		method : public : Close(), Nil {
+		method : public : Close() ~ Nil {
 			FILE_CLOSE;
 		}
 
-		method : public : ReadByte(), Byte {
+		method : public : ReadByte() ~ Byte {
 			FILE_IN_BYTE;
 		}
 
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_IN_BYTE_ARY;
 		}
 
-		method : public : ReadString(), System.String {
+		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[256];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
 
-		method : ReadString(buffer : Char[]), Nil {
+		method : ReadString(buffer : Char[]) ~ Nil {
 			FILE_IN_STRING;
 		}
 	}
@@ -1204,37 +1204,37 @@ bundle IO {
 			FILE_OPEN_WRITE;
 		}	
 		
-		method : public : Close(), Nil {
+		method : public : Close() ~ Nil {
 			FILE_CLOSE;
 		}
 
-		method : public : WriteByte(b : Int), Bool {
+		method : public : WriteByte(b : Int) ~ Bool {
 			FILE_OUT_BYTE;
 		}
 
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_OUT_BYTE_ARY;
 		}
 		
-		method : public : WriteString(str : System.String), Nil {
+		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
 		}
 
-		method : WriteString(buffer : Char[]), Nil {
+		method : WriteString(buffer : Char[]) ~ Nil {
 			FILE_OUT_STRING;
 		}
 	}
 	
 	class Directory {
-		function : Create(n : System.String), Bool {
+		function : Create(n : System.String) ~ Bool {
 			DIR_CREATE;
 		}
 		
-		function : Exists(n : System.String), Bool {
+		function : Exists(n : System.String) ~ Bool {
 			DIR_EXISTS;
 		}
 		
-		function : List(n : System.String), System.String[] {
+		function : List(n : System.String) ~ System.String[] {
 			DIR_LIST;
 		}
 	}
@@ -1253,45 +1253,45 @@ bundle Net {
 			SOCK_TCP_CONNECT;
 		}
 		
-		method : public : IsOpen(), Bool {
+		method : public : IsOpen() ~ Bool {
 			SOCK_TCP_IS_CONNECTED;
 		}
 		
-		method : public : Close(), Nil {
+		method : public : Close() ~ Nil {
 			SOCK_TCP_CLOSE;
 		}
 	
-		method : public : WriteByte(b : Int), Bool {
+		method : public : WriteByte(b : Int) ~ Bool {
 			SOCK_TCP_OUT_BYTE;
 		}
 		
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_OUT_BYTE_ARY;
 		}
 		
-		method : public : ReadByte(), Byte {
+		method : public : ReadByte() ~ Byte {
 			SOCK_TCP_IN_BYTE;
 		}
 		
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_IN_BYTE_ARY;
 		}
 		
-		method : public : WriteString(str : System.String), Nil {
+		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
 		}
 
-		method : WriteString(buffer : Char[]), Nil {
+		method : WriteString(buffer : Char[]) ~ Nil {
 			SOCK_TCP_OUT_STRING;
 		}
 		
-		method : public : ReadString(), System.String {
+		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[256];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
 
-		method : ReadString(buffer : Char[]), Nil {
+		method : ReadString(buffer : Char[]) ~ Nil {
 			SOCK_TCP_IN_STRING;
 		}
 	}	
