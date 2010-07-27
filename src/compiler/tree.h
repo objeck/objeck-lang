@@ -1849,7 +1849,7 @@ namespace frontend {
       original_klass = NULL;
       original_lib_klass = NULL;
       is_enum_call = is_func_def = false;
-      func_rtrn  = NULL;
+      func_rtrn = NULL;
       
       if(variable_name == BOOL_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
@@ -1891,7 +1891,7 @@ namespace frontend {
       original_klass = NULL;
       original_lib_klass = NULL;
       is_enum_call = is_func_def = false;
-      func_rtrn  = NULL;
+      func_rtrn = NULL;
     }
 
   MethodCall(const string &f, const int l,
@@ -1912,7 +1912,7 @@ namespace frontend {
       original_klass = NULL;
       original_lib_klass = NULL;
       is_enum_call = is_func_def = false;
-      func_rtrn  = NULL;
+      func_rtrn = NULL;
     }
 
   MethodCall(const string &f, const int l,
@@ -1933,7 +1933,7 @@ namespace frontend {
       original_klass = NULL;
       original_lib_klass = NULL;
       is_enum_call = is_func_def = false;
-      func_rtrn  = NULL;
+      func_rtrn = NULL;
     }
     
     ~MethodCall() {
