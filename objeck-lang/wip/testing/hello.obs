@@ -1,18 +1,18 @@
 bundle Default {
   class Hello {
-    function : AddTwo(x : Int), Int {
+    function : AddTwo(x : Int) ~ Int {
       return x + 2;
     }
     
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      f ~= AddTwo;
+      f := AddTwo(Int) ~ Int;
       j := 13;
     }
     
-    function : Merge(list : Int[], function f(Int) : Int), Nil {
+    function : Merge(list : Int[], func : (Int) ~ Int) ~ Nil {
       # dynamic method call (1 new instruction)
-      v := f(list[0]);
+      v := func(list[0]);
     }
   }
 }

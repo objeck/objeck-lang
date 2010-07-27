@@ -1828,9 +1828,11 @@ namespace frontend {
     Type* array_type;
     Variable* variable;
     bool is_enum_call;
-
-  MethodCall(const string &f, const int l, MethodCallType t,
-             const string &v, ExpressionList* e) :
+    Type* func_rtrn;
+    bool is_func_def;
+    
+    MethodCall(const string &f, const int l, MethodCallType t,
+	       const string &v, ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = t;
@@ -1846,8 +1848,9 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = false;
-
+      is_enum_call = is_func_def = false;
+      func_rtrn  = NULL;
+      
       if(variable_name == BOOL_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
       } else if(variable_name == BYTE_CLASS_ID) {
@@ -1887,7 +1890,8 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = false;
+      is_enum_call = is_func_def = false;
+      func_rtrn  = NULL;
     }
 
   MethodCall(const string &f, const int l,
@@ -1907,7 +1911,8 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = false;
+      is_enum_call = is_func_def = false;
+      func_rtrn  = NULL;
     }
 
   MethodCall(const string &f, const int l,
@@ -1927,13 +1932,23 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = false;
+      is_enum_call = is_func_def = false;
+      func_rtrn  = NULL;
     }
     
     ~MethodCall() {
     }
 
   public:
+    void SetFunctionReturn(Type* r) {
+      func_rtrn = r;
+      is_func_def = true;
+    }
+    
+    bool IsFunctionDefinition() {
+      return is_func_def;
+    }
+    
     void SetEnumCall(bool e) {
       is_enum_call = e;
     }
