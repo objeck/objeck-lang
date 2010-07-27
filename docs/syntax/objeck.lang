@@ -171,6 +171,7 @@
                     <keyword>Char</keyword>
                     <keyword>Bool</keyword>
                     <keyword>Nil</keyword>
+                    <keyword>String</keyword>
                 </context>
 
                 <!-- C99 booleans -->
