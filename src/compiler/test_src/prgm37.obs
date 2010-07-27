@@ -6,17 +6,17 @@ use Structure;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run(args);
 			"Fin"->PrintLine();
 		}
 		
-#		function : native : Run(), Nil {
-		function : Run(args : System.String[]), Nil {
+#		function : native : Run() ~ Nil {
+		function : Run(args : System.String[]) ~ Nil {
 #~
 			tree : Map := Map->New();
 			s : System.String := System.String->New("Boxer");
-			tree->Insert(s->As(System.Compare), 
+			tree->Insert(s->As(System.Compare) ~ 
 				IntHolder->New(23)->As(System.Base));
 
 			s := System.String->New("Anderson");

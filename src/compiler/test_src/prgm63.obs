@@ -2,18 +2,18 @@ use Structure;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 		
-#	function : Find(key : Compare), Nil {
-	function : native : Find(key : Compare), Nil {
+#	function : Find(key : Compare) ~ Nil {
+	function : native : Find(key : Compare) ~ Nil {
 		hash := (2 xor key->HashID() % 337)->Abs();
 		hash->PrintLine();
 	}
 
-#		function : Run(), Nil {
-		function : native : Run(), Nil {
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
 			@buckets := List->New[337];
 			
 			(13 and 7)->PrintLine();

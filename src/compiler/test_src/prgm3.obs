@@ -1,11 +1,11 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 		
-		function : Run(), Nil {
-#		function : native : Run(), Nil {
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 			ss : System.String := "Blah";
 			ii : Byte[,,] := Byte->New[2,2,2];
 
@@ -44,8 +44,8 @@ bundle Default {
 ~#
 		}
 			
-		function : PrintLine(ii : Byte[,,], ss : System.String), Nil {
-#		function : native : PrintLine(ii : Byte[,,], ss : System.String), Nil {
+		function : PrintLine(ii : Byte[,,], ss : System.String) ~ Nil {
+#		function : native : PrintLine(ii : Byte[,,], ss : System.String) ~ Nil {
 #			ii[0,1,1]->PrintLine();
 #			ii[1,1,1]->PrintLine();
 
@@ -62,8 +62,8 @@ bundle Default {
 		}
 
 #~
-		function : native : PrintLine(ff :  Float[,]), Nil {
-#		function : PrintLine(ff :  Float[,]), Nil {
+		function : native : PrintLine(ff :  Float[,]) ~ Nil {
+#		function : PrintLine(ff :  Float[,]) ~ Nil {
 			ff[0,0]->PrintLine();
 			ff[2,1]->PrintLine();
 			ff[1,1]->PrintLine();

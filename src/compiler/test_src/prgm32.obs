@@ -1,11 +1,11 @@
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]), Nil {
+		function : Main(args : System.String[]) ~ Nil {
 			Run();
 		}
 	
-		function : native : Run(), Nil {
-#		function : Run(), Nil {
+		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
 			a : Float := 5.67;
 			(13.5 - a)->PrintLine();
 			(a - 44.5)->PrintLine();
