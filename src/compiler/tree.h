@@ -1743,6 +1743,8 @@ namespace frontend {
 	}
       }
     
+      cout << "$$$ '" << parsed_name << "' $$$" << endl;
+
       method_list.push_back(m);
       m->SetClass(this);
       return true;
