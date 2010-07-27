@@ -42,9 +42,11 @@ namespace instructions {
     LOAD_FLOAT_VAR,
     LOAD_CLS_MEM,
     LOAD_INST_MEM,
+    LOAD_FUNC,
     // stores operations
     STOR_INT_VAR,
     STOR_FLOAT_VAR,
+    STOR_FUNC,
     // copy operations
     COPY_INT_VAR,
     COPY_FLOAT_VAR,
@@ -95,10 +97,11 @@ namespace instructions {
     I2F,
     F2I,
     // control
-    RTRN,
     MTHD_CALL,
-    LBL,
+    DYN_MTHD_CALL,
     JMP,
+    LBL,
+    RTRN,
     // memory allocation
     NEW_BYTE_ARY,
     NEW_INT_ARY,

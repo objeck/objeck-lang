@@ -39,6 +39,7 @@
     <string>Float</string>
     <string>Char</string>
     <string>Bool</string>
+    <string>String</string>
     <string>Nil</string>
     <string>true</string>
     <string>false</string>
