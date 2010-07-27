@@ -1177,7 +1177,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
 {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
-
+  
 #ifdef _DEBUG
   Show("Declaration", depth);
 #endif
@@ -1186,48 +1186,87 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
     ProcessError(TOKEN_COLON);
   }
   NextToken();
-
-  // static
-  bool is_static = false;
-  if(Match(TOKEN_STATIC_ID)) {
-    is_static = true;
+  
+  Declaration* declaration;
+  if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
 
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
+    vector<Type*> func_params;
+    while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_END_OF_STREAM)) {
+      Type* param = ParseType(depth + 1);
+      if(param) {
+	func_params.push_back(param);
+      }
+      
+      if(Match(TOKEN_COMMA)) {
+	NextToken();
+      } 
+      else if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+	NextToken();
+      }
     }
     NextToken();
-  }
 
-  // type
-  Type* type = ParseType(depth + 1);
-
-  // add entry
-  string scope_name = GetScopeName(ident);
-  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-								scope_name, type, is_static,
-								current_method != NULL);
-
-#ifdef _DEBUG
-  Show("Adding variable: '" + scope_name + "'", depth + 2);
-#endif
-  
-  bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-  if(!was_added) {
-    ProcessError("Variable already defined in this scope: '" + ident + "'");
-  }
-
-  Declaration* declaration;
-  if(allow_assign && Match(TOKEN_ASSIGN)) {
-    Variable* variable = ParseVariable(ident, depth + 1);
-    // FYI: can not specify array indices here
-    declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
-							   ParseAssignment(variable, depth + 1));
-  } 
-  else {
+    if(!Match(TOKEN_TILDE)) {
+      ProcessError(TOKEN_TILDE);
+    }
+    NextToken();
+    
+    Type* func_rtrn = ParseType(depth + 1);
+    
+    // type
+    Type* type = TypeFactory::Instance()->MakeType(ident, func_params, func_rtrn);
+    
+    // add entry
+    string scope_name = GetScopeName(ident);
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+   	   							  scope_name, type, false,
+	 							  current_method != NULL);
     declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
   }
+  else {    
+    // static
+    bool is_static = false;
+    if(Match(TOKEN_STATIC_ID)) {
+      is_static = true;
+      NextToken();
 
+      if(!Match(TOKEN_COLON)) {
+	ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+    }
+
+    // type
+    Type* type = ParseType(depth + 1);
+
+    // add entry
+    string scope_name = GetScopeName(ident);
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+								  scope_name, type, is_static,
+								  current_method != NULL);
+
+#ifdef _DEBUG
+    Show("Adding variable: '" + scope_name + "'", depth + 2);
+#endif
+  
+    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+    if(!was_added) {
+      ProcessError("Variable already defined in this scope: '" + ident + "'");
+    }
+  
+    if(allow_assign && Match(TOKEN_ASSIGN)) {
+      Variable* variable = ParseVariable(ident, depth + 1);
+      // FYI: can not specify array indices here
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
+							     ParseAssignment(variable, depth + 1));
+    } 
+    else {
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
+    }
+  }
+  
   return declaration;
 }
 
@@ -1258,7 +1297,8 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
-    } else if(!Match(TOKEN_CLOSED_PAREN)) {
+    } 
+    else if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
       NextToken();
     }
@@ -1834,6 +1874,10 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       if(Match(TOKEN_OPEN_PAREN)) {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident,
 							      ParseExpressionList(depth + 1));
+	if(Match(TOKEN_TILDE)) {
+	  NextToken();
+	  ParseType(depth + 1);
+	}
       } 
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident);
@@ -1854,7 +1898,8 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
 							      ParseExpressionList(depth + 1));
       }
-    } else {
+    } 
+    else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
     }
   }
@@ -1863,7 +1908,12 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
     string klass_name = current_class->GetName();
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name,
 							  ident, ParseExpressionList(depth + 1));
-  } else {
+    if(Match(TOKEN_TILDE)) {
+      NextToken();
+      ParseType(depth + 1);
+    }
+  } 
+  else {
     ProcessError("Expected identifier", TOKEN_SEMI_COLON);
   }
 
