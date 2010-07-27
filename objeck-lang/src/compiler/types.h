@@ -82,6 +82,7 @@ namespace frontend {
     INT_TYPE,
     FLOAT_TYPE,
     CLASS_TYPE,
+    FUNC_TYPE,
     VAR_TYPE
   } EntryType;
 
@@ -114,22 +115,35 @@ namespace frontend {
     EntryType type;
     int dimension;
     string class_name;
-
+    vector<Type*> func_params;
+    Type* func_rtrn;
+    
     Type(Type* t) {
       type = t->type;
       dimension = t->dimension;
       class_name = t->class_name;
+      func_rtrn = NULL;
     }
 
     Type(EntryType t) {
       type = t;
       dimension = 0;
+      func_rtrn = NULL;
     }
 
     Type(EntryType t, const string &n) {
       type = t;
       class_name = n;
       dimension = 0;
+      func_rtrn = NULL;
+    }
+    
+    Type(const string &n, vector<Type*>& p, Type* r) {
+      type = FUNC_TYPE;
+      class_name = n;
+      dimension = 0;
+      func_params = p;
+      func_rtrn = r;
     }
 
     ~Type() {
@@ -203,7 +217,13 @@ namespace frontend {
       types.push_back(tmp);
       return tmp;
     }
-
+    
+    Type* MakeType(const string &name, vector<Type*>& func_params, Type* rtrn_type) {
+      Type* tmp = new Type(name, func_params, rtrn_type);
+      types.push_back(tmp);
+      return tmp;
+    }
+    
     Type* MakeType(Type* type) {
       Type* tmp = new Type(type);
       types.push_back(tmp);

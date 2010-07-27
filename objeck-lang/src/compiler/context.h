@@ -451,7 +451,12 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
-
+  
+  void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
+				string &encoding, int depth);
+  void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
+				string &encoding, int depth);
+  
 public:
   ContextAnalyzer(ParsedProgram* p, string lib_path, bool l) {
     program = p;
