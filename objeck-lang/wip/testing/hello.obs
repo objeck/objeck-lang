@@ -1,12 +1,14 @@
 bundle Default {
-  class Hello {
+  class Bar {
     function : AddTwo(x : Int) ~ String {
       return "hello";
     }
-    
+  }   
+  
+  class Hello {
     function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      f : (Int) ~ String := AddTwo(Int) ~ String;
+      f : (Int) ~ String := Bar->AddTwo(Int) ~ String;
       Foo(f);
       # f : Int := AddTwo(Int) ~ Bar;
       # j := 13;
