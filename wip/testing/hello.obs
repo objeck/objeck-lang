@@ -8,7 +8,7 @@ bundle Default {
   class Hello {
     function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      f : (Int) ~ String := Bar->AddTwo(Int) ~ String;
+      f : (Int) ~ String := Foo(Int) ~ String;
       Foo(f);
       # f : Int := AddTwo(Int) ~ Bar;
       # j := 13;
@@ -25,3 +25,7 @@ bundle Default {
 ~#    
   }
 }
+
+# limits:
+# functions refs cannot contain function definitions
+# no support for function reference arrays
