@@ -1352,7 +1352,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
-    cout << "### " << encoded_name << " ###" << endl;
+    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE), true);    
+    // cout << "### " << encoded_name << " ###" << endl;
   }
   else {
     const string &mthd_name = method_call->GetMethodName();
@@ -1377,7 +1378,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
-    cout << "### " << encoded_name << " ###" << endl;
+    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE), true);
+    // cout << "### " << encoded_name << " ###" << endl;
   }
   else {
     const string &mthd_name = method_call->GetMethodName();
@@ -1839,17 +1841,22 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
 
   if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
     ProcessError(left_expr, "Invalid array calculation");
-  } else {
+  } 
+  else {
     switch(left->GetType()) {
     case VAR_TYPE:
       // VAR
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Var and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Var and Var");
         break;
 
       case NIL_TYPE:
-        ProcessError(left_expr, "Invalid operation using classes: Nil and Var");
+        ProcessError(left_expr, "Invalid operation using classes: Var and Nil");
         break;
 
       case BYTE_TYPE:
@@ -1880,6 +1887,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case NIL_TYPE:
       // NIL
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Nil and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Nil and Var");
         break;
@@ -1916,6 +1927,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case BYTE_TYPE:
       // BYTE
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Byte and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Byte and Var");
         break;
@@ -1949,6 +1964,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case CHAR_TYPE:
       // CHAR
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Char and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Char and Var");
         break;
@@ -1982,6 +2001,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case INT_TYPE:
       // INT
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Int and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Int and Var");
         break;
@@ -2014,6 +2037,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case FLOAT_TYPE:
       // FLOAT
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Float and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Float and Var");
         break;
@@ -2047,6 +2074,11 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case CLASS_TYPE:
       // CLASS
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: " +
+                     left->GetClassName() + " and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: " +
                      left->GetClassName() + " and Var");
@@ -2090,6 +2122,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     case BOOLEAN_TYPE:
       // BOOLEAN
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Bool and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Bool and Var");
         break;
@@ -2121,6 +2157,48 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
 
       case BOOLEAN_TYPE:
         expression->SetEvalType(left, true);
+        break;
+      }
+      break;
+      
+    case FUNC_TYPE:
+      // FUNCTION
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        // TODO: Check
+        break;
+	
+      case VAR_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Nil");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and " +
+                     right->GetClassName());
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, "Invalid operation using classes: Function and Bool");
         break;
       }
       break;
@@ -2173,6 +2251,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case NIL_TYPE:
       // NIL
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Nil and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Nil and Var");
         break;
@@ -2210,6 +2292,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case BYTE_TYPE:
       // BYTE
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Byte and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Byte and Var");
         break;
@@ -2242,6 +2328,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case CHAR_TYPE:
       // CHAR
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Char and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Char and Var");
         break;
@@ -2274,6 +2364,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case INT_TYPE:
       // INT
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Int and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Var and Int");
         break;
@@ -2306,6 +2400,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case FLOAT_TYPE:
       // FLOAT
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Float and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Nil and Var");
         break;
@@ -2338,6 +2436,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case CLASS_TYPE:
       // CLASS
       switch(right->GetType()) {
+      case FUNC_TYPE:
+	ProcessError(expression, "Invalid operation using classes: " + left->GetClassName() + " and Function");
+        break;
+	
       case VAR_TYPE:
         ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Var");
         break;
@@ -2375,6 +2477,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     case BOOLEAN_TYPE:
       // BOOLEAN
       switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Bool and Function");
+        break;
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Bool and Var");
         break;
@@ -2404,6 +2510,47 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case BOOLEAN_TYPE:
+        break;
+      }
+      break;
+
+    case FUNC_TYPE:
+      // FUNCTION
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        // TODO:
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, "Invalid operation using classes: Function and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and Nil");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(expression, "Invalid cast with classes: Function and " + right->GetClassName());
+        break;
+
+      case BOOLEAN_TYPE:
+	ProcessError(expression, "Invalid cast with classes: Function and Bool");
         break;
       }
       break;

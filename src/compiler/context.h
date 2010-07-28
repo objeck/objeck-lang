@@ -279,7 +279,8 @@ class ContextAnalyzer {
         type = mthd_call->GetEvalType();
         mthd_call = mthd_call->GetMethodCall();
       }
-    } else {
+    } 
+    else {
       type = expression->GetEvalType();
     }
 
