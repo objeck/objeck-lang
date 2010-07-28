@@ -6,14 +6,16 @@ bundle Default {
     
     function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      # f : (Int) ~ Int := AddTwo(Int) ~ Int;
-      f : Int := AddTwo(Int) ~ Bar;
+      f : (Int) ~ Int := AddTwo(Int) ~ Int;
+      # f : Int := AddTwo(Int) ~ Bar;
       # j := 13;
     }
     
+#~   
     function : Merge(list : Int[], func : (Int) ~ Int) ~ Nil {
-      # dynamic method call (1 new instruction)
-      # v := func(list[0]);
+      dynamic method call (1 new instruction)
+      v := func(list[0]);
     }
+~#    
   }
 }

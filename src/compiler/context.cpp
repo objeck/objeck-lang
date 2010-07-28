@@ -1346,14 +1346,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
  ********************************/
 void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
-  const string encoded_name = klass->GetName() + ":" +
-    method_call->GetMethodName() + ":" + encoding +
-    EncodeFunctionReference(method_call->GetCallingParameters(), depth);
+  const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + 
+    ":" + encoding + func_encoding;
   
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
-    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE), true);    
-    // cout << "### " << encoded_name << " ###" << endl;
+    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
+    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    // cout << "### " << func_type_id << " ###" << endl;
   }
   else {
     const string &mthd_name = method_call->GetMethodName();
@@ -2518,6 +2519,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE:
+	cout << "### " << left->GetClassName() << ", " << right->GetClassName() << " ###" << endl;
         // TODO:
         break;
 
@@ -2747,6 +2749,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+      // resolve class name
       Type* type = entry->GetType();
 
       bool found = false;
@@ -2780,14 +2783,25 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
         ProcessError(entry, "Undefined class or enum: '" + type->GetClassName() + "'");
       }
     }
-  } else {
+    else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+      // resolve function name
+      Type* type = entry->GetType();      
+      const string encoded_name = EncodeFunctionType(type->GetFunctionParameters(), 
+							 type->GetFunctionReturn());      
+#ifdef _DEBUG
+      cout << "Encoded function declaration: |" << encoded_name << "|" << endl;
+#endif      
+      type->SetClassName(encoded_name);
+    }
+    
+    Statement* statement = declaration->GetAssignment();
+    if(statement) {
+      AnalyzeStatement(statement, depth);
+    }
+  }
+  else {
     ProcessError(declaration, "Undefined variable entry");
-  }
-
-  Statement* statement = declaration->GetAssignment();
-  if(statement) {
-    AnalyzeStatement(statement, depth);
-  }
+  }  
 }
 
 /****************************
@@ -2806,8 +2820,9 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
  ********************************/
 string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, int depth)
 {
-  // TODO: return directy types vs. string literals
+  // TODO: return direct types vs. string literals
   string encoded_name;
+  
   vector<Expression*> expressions = calling_params->GetExpressions();
   for(unsigned int i = 0; i < expressions.size(); i++) {
     if(expressions[i]->GetExpressionType() == VAR_EXPR) {
@@ -2859,7 +2874,6 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
         }
       }
       
-      // TODO:
       // dimension
       if(variable->GetIndices()) {
 	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
@@ -2867,13 +2881,38 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
 	  encoded_name += '*';
 	}
       }
+      
       encoded_name += ',';
     }
     else {
-      // TODO: error
+      // induce error condition
+      encoded_name += '#';
     }
   }
   
+  return encoded_name;
+}
+
+/****************************
+ * Encodes a function type
+ ****************************/
+string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {  
+  string encoded_name = "(";
+  for(int i = 0; i < func_params.size(); i++) {
+    // encode params
+    encoded_name += EncodeType(func_params[i]);
+    
+    // encode dimension   
+    for(int i = 0; i < func_params[i]->GetDimension(); i++) {
+      encoded_name += '*';
+    }    
+    encoded_name += ',';
+  }
+  
+  // encode return
+  encoded_name += ")~";
+  encoded_name += EncodeType(func_rtrn);
+
   return encoded_name;
 }
 
@@ -2891,6 +2930,7 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
+    
     Type* type;
     if(expression->GetCastType()) {
       type = expression->GetCastType();
@@ -2900,70 +2940,17 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
     }
     
     if(type) {
-      switch(type->GetType()) {
-      case BOOLEAN_TYPE:
-        encoded_name += 'l';
-        break;
-
-      case BYTE_TYPE:
-        encoded_name += 'b';
-        break;
-
-      case INT_TYPE:
-        encoded_name += 'i';
-        break;
-
-      case FLOAT_TYPE:
-        encoded_name += 'f';
-        break;
-
-      case CHAR_TYPE:
-        encoded_name += 'c';
-        break;
-
-      case NIL_TYPE:
-        encoded_name += 'n';
-        break;
-
-      case VAR_TYPE:
-        encoded_name += 'v';
-        break;
-
-      case CLASS_TYPE: {
-        encoded_name += "o.";
-
-        // search program
-        string klass_name = type->GetClassName();
-        Class* klass = program->GetClass(klass_name);
-        if(!klass) {
-          vector<string> uses = program->GetUses();
-          for(unsigned int i = 0; !klass && i < uses.size(); i++) {
-            klass = program->GetClass(uses[i] + "." + klass_name);
-          }
-        }
-        if(klass) {
-          encoded_name += klass->GetName();
-        }
-        // search libaraires
-        else {
-          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
-          if(lib_klass) {
-            encoded_name += lib_klass->GetName();
-          } else {
-            encoded_name += type->GetClassName();
-          }
-        }
-      }
-	break;
-      }
-      // dimension
+      // encode params
+      encoded_name += EncodeType(type);
+      
+      // encode dimension
       for(int i = 0; !IsScalar(expression) && i < type->GetDimension(); i++) {
         encoded_name += '*';
       }
       encoded_name += ',';
     }
   }
-
+  
   return encoded_name;
 }
 
@@ -2974,7 +2961,6 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
  ****************************/
 void ContextAnalyzer::AnalyzeEntries(ParseNode* node, const string &scope, int depth)
 {
-
   vector<SymbolEntry*> entries = symbol_table->GetEntries(scope);
   for(unsigned int i = 0; i < entries.size(); i++) {
     SymbolEntry* entry = entries[i];
@@ -3042,4 +3028,3 @@ void ContextAnalyzer::AnalyzeEntries(ParseNode* node, const string &scope, int d
 #endif
   }
 }
-
