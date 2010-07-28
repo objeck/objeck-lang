@@ -1354,6 +1354,24 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   if(method) {
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
     method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    
+    // check return type
+    Type* rtrn_type = method_call->GetFunctionReturn();    
+    if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
+    }
+    else if(rtrn_type->GetType() == CLASS_TYPE) {
+      if(ResolveClassEnumType(rtrn_type)) {
+	const string rtrn_encoded_name = "o."+ rtrn_type->GetClassName();
+	if(rtrn_encoded_name != method->GetEncodedReturn()) {
+	  ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
+	}
+      }
+      else {
+	ProcessError(static_cast<Expression*>(method_call), 
+		     "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
+      }	
+    }
     // cout << "### " << func_type_id << " ###" << endl;
   }
   else {
@@ -1636,33 +1654,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, int depth)
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
     if(type->GetType() == CLASS_TYPE) {
-      bool found = false;
-      Class* klass = SearchProgramClasses(type->GetClassName());
-      if(klass) {
-        klass->SetCalled(true);
-        type->SetClassName(klass->GetName());
-        found = true;
-      }
-
-      LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
-      if(lib_klass) {
-        type->SetClassName(lib_klass->GetName());
-        found = true;
-      }
-
-      Enum* eenum = SearchProgramEnums(type->GetClassName());
-      if(eenum) {
-        type->SetClassName(eenum->GetName());
-        found = true;
-      }
-
-      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
-      if(lib_eenum) {
-        type->SetClassName(lib_eenum->GetName());
-        found = true;
-      }
-
-      if(!found) {
+      if(!ResolveClassEnumType(type)) {
         ProcessError(rtrn, "Undefined class or enum: '" + type->GetClassName() + "'");
       }
     }
@@ -2753,37 +2745,8 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
   if(entry) {
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
       // resolve class name
-      Type* type = entry->GetType();
-
-      bool found = false;
-      Class* klass = SearchProgramClasses(type->GetClassName());
-      if(klass) {
-        klass->SetCalled(true);
-        type->SetClassName(klass->GetName());
-        found = true;
-      }
-
-      LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
-      if(lib_klass) {
-        lib_klass->SetCalled(true);
-        type->SetClassName(lib_klass->GetName());
-        found = true;
-      }
-
-      Enum* eenum = SearchProgramEnums(type->GetClassName());
-      if(eenum) {
-        type->SetClassName(eenum->GetName());
-        found = true;
-      }
-
-      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
-      if(lib_eenum) {
-        type->SetClassName(lib_eenum->GetName());
-        found = true;
-      }
-
-      if(!found) {
-        ProcessError(entry, "Undefined class or enum: '" + type->GetClassName() + "'");
+      if(!ResolveClassEnumType(entry->GetType())) {
+        ProcessError(entry, "Undefined class or enum: '" + entry->GetType()->GetClassName() + "'");
       }
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
