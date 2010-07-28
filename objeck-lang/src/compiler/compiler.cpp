@@ -98,6 +98,7 @@ int Compile(map<const string, string> arguments, const string usage)
     ParsedProgram* program = parser.GetProgram();
     ContextAnalyzer analyzer(program, libs_path, is_lib);
     if(analyzer.Analyze()) {
+      /*
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
@@ -107,7 +108,8 @@ int Compile(map<const string, string> arguments, const string usage)
       // emit target code
       TargetEmitter target(optimizer.GetProgram(), is_lib, arguments["dest"]);;
       target.Emit();
-      
+      */
+      cout << "### DONE DEBUGGING ###" << endl;
       return SUCCESS;
     }
     else {

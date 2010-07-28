@@ -2044,11 +2044,13 @@ namespace frontend {
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
 
-    void SetMethod(Method* m) {
+    void SetMethod(Method* m, bool set_rtrn = true) {
       method = m;
-      eval_type = m->GetReturn();
-      if(method_call) {
-	method_call->SetEvalType(eval_type, false);
+      if(set_rtrn) {
+	eval_type = m->GetReturn();
+	if(method_call) {
+	  method_call->SetEvalType(eval_type, false);
+	}
       }
     }
 
@@ -2057,11 +2059,13 @@ namespace frontend {
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
 
-    void SetLibraryMethod(LibraryMethod* l) {
+    void SetLibraryMethod(LibraryMethod* l, bool set_rtrn = true) {
       lib_method = l;
-      eval_type = l->GetReturn();
-      if(method_call) {
-	method_call->SetEvalType(eval_type, false);
+      if(set_rtrn) {
+	eval_type = l->GetReturn();
+	if(method_call) {
+	  method_call->SetEvalType(eval_type, false);
+	}
       }
     }
 
