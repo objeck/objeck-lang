@@ -6,7 +6,7 @@ bundle Default {
     
     function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      f := AddTwo(Int) ~ Int;
+      f : (Int) ~ Int := AddTwo(Int) ~ Int;
       j := 13;
     }
     
