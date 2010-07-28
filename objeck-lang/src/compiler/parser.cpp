@@ -1216,13 +1216,22 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
     Type* func_rtrn = ParseType(depth + 1);
     
     // type
-    Type* type = TypeFactory::Instance()->MakeType(ident, func_params, func_rtrn);
+    Type* type = TypeFactory::Instance()->MakeType(func_params, func_rtrn);
     
     // add entry
     string scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
    	   							  scope_name, type, false,
 	 							  current_method != NULL);
+    
+#ifdef _DEBUG
+    Show("Adding variable: '" + scope_name + "'", depth + 2);
+#endif
+  
+    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+    if(!was_added) {
+      ProcessError("Variable already defined in this scope: '" + ident + "'");
+    }
 
     if(allow_assign && Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
