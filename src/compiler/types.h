@@ -138,14 +138,13 @@ namespace frontend {
       func_rtrn = NULL;
     }
     
-    Type(const string &n, vector<Type*>& p, Type* r) {
+    Type(vector<Type*>& p, Type* r) {
       type = FUNC_TYPE;
-      class_name = n;
       dimension = 0;
       func_params = p;
       func_rtrn = r;
     }
-
+    
     ~Type() {
     }
 
@@ -163,7 +162,15 @@ namespace frontend {
     void SetDimension(int d) {
       dimension = d;
     }
+    
+    vector<Type*>& GetFunctionParameters() {
+      return func_params;
+    }
 
+    Type* GetFunctionReturn() {
+      return func_rtrn;
+    }
+    
     const int GetDimension() {
       return dimension;
     }
@@ -218,8 +225,8 @@ namespace frontend {
       return tmp;
     }
     
-    Type* MakeType(const string &name, vector<Type*>& func_params, Type* rtrn_type) {
-      Type* tmp = new Type(name, func_params, rtrn_type);
+    Type* MakeType(vector<Type*>& func_params, Type* rtrn_type) {
+      Type* tmp = new Type(func_params, rtrn_type);
       types.push_back(tmp);
       return tmp;
     }
