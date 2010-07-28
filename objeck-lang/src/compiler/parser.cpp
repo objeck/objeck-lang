@@ -1189,34 +1189,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
   
   Declaration* declaration;
   if(Match(TOKEN_OPEN_PAREN)) {
-    NextToken();
-
-    vector<Type*> func_params;
-    while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_END_OF_STREAM)) {
-      Type* param = ParseType(depth + 1);
-      if(param) {
-	func_params.push_back(param);
-      }
-      
-      if(Match(TOKEN_COMMA)) {
-	NextToken();
-      } 
-      else if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
-	NextToken();
-      }
-    }
-    NextToken();
-    
-    if(!Match(TOKEN_TILDE)) {
-      ProcessError(TOKEN_TILDE);
-    }
-    NextToken();
-    
-    Type* func_rtrn = ParseType(depth + 1);
-    
-    // type
-    Type* type = TypeFactory::Instance()->MakeType(func_params, func_rtrn);
+    Type* type = ParseType(depth + 1);
     
     // add entry
     string scope_name = GetScopeName(ident);
@@ -2448,6 +2421,37 @@ Type* Parser::ParseType(int depth)
   case TOKEN_IDENT: {
     const string ident = ParseBundleName();
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
+  }
+    break;
+
+  case TOKEN_OPEN_PAREN: {
+    NextToken();
+    
+    vector<Type*> func_params;
+    while(!Match(TOKEN_CLOSED_PAREN) && !Match(TOKEN_END_OF_STREAM)) {
+      Type* param = ParseType(depth + 1);
+      if(param) {
+	func_params.push_back(param);
+      }
+      
+      if(Match(TOKEN_COMMA)) {
+	NextToken();
+      } 
+      else if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+	NextToken();
+      }
+    }
+    NextToken();
+    
+    if(!Match(TOKEN_TILDE)) {
+      ProcessError(TOKEN_TILDE);
+    }
+    NextToken();
+    
+    Type* func_rtrn = ParseType(depth + 1);
+    
+    return TypeFactory::Instance()->MakeType(func_params, func_rtrn);
   }
     break;
 

@@ -8,14 +8,14 @@ bundle Default {
   class Hello {
     function : Main(args : String[]) ~ Nil {
       # push and pop functions refs (2 new instruction)
-      f : (Int) ~ String := Foo(Int) ~ String;
+      f : (Int) ~ String := Bar->AddTwo(Int) ~ String;
       Foo(f);
       # f : Int := AddTwo(Int) ~ Bar;
       # j := 13;
     }
     
-    function : Foo(f : (Int) ~ String) ~ Nil {
-      
+    function : Foo(f : (Int) ~ String) ~ (Int) ~ String {
+      return Bar->AddTwo(Int) ~ String;
     }
 #~   
     function : Merge(list : Int[], func : (Int) ~ Int) ~ Nil {
