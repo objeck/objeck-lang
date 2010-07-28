@@ -1746,9 +1746,6 @@ namespace frontend {
 	  return false;
 	}
       }
-    
-      cout << "$$$ '" << parsed_name << "' $$$" << endl;
-
       method_list.push_back(m);
       m->SetClass(this);
       return true;
@@ -1859,28 +1856,35 @@ namespace frontend {
       
       if(variable_name == BOOL_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
-      } else if(variable_name == BYTE_CLASS_ID) {
+      } 
+      else if(variable_name == BYTE_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
-      } else if(variable_name == INT_CLASS_ID) {
+      } 
+      else if(variable_name == INT_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(INT_TYPE);
-      } else if(variable_name == FLOAT_CLASS_ID) {
+      } 
+      else if(variable_name == FLOAT_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
-      } else if(variable_name == CHAR_CLASS_ID) {
+      } 
+      else if(variable_name == CHAR_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
-      } else if(variable_name == NIL_CLASS_ID) {
+      } 
+      else if(variable_name == NIL_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(NIL_TYPE);
-      } else if(variable_name == VAR_CLASS_ID) {
+      } 
+      else if(variable_name == VAR_CLASS_ID) {
 	array_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-      } else {
+      }
+      else {
 	array_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, variable_name);
       }
       array_type->SetDimension((int)expressions->GetExpressions().size());
       SetEvalType(array_type, false);
     }
-
-  MethodCall(const string &f, const int l,
-             const string &v, const string &m,
-             ExpressionList* e) :
+    
+    MethodCall(const string &f, const int l,
+	       const string &v, const string &m,
+	       ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = METHOD_CALL;
@@ -1949,6 +1953,10 @@ namespace frontend {
     void SetFunctionReturn(Type* r) {
       func_rtrn = r;
       is_func_def = true;
+    }
+
+    Type* GetFunctionReturn() {
+      return func_rtrn;
     }
     
     bool IsFunctionDefinition() {
