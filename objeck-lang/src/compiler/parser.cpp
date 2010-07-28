@@ -1223,6 +1223,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
    	   							  scope_name, type, false,
 	 							  current_method != NULL);
+
     if(allow_assign && Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       // FYI: can not specify array indices here
