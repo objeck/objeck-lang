@@ -461,12 +461,10 @@ class ContextAnalyzer {
     case FUNC_TYPE: {
       encoded_name += "m.";
       if(type->GetClassName().size() == 0) {
-	encoded_name += EncodeFunctionType(type->GetFunctionParameters(), 
-					   type->GetFunctionReturn());
+	type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), 
+					      type->GetFunctionReturn()));
       }
-      else {
-	encoded_name += type->GetClassName();
-      }
+      encoded_name += type->GetClassName();
     }
       break;
     }
