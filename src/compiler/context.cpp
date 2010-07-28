@@ -1372,6 +1372,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 		     "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
       }	
     }
+    
+    method->GetClass()->SetCalled(true);
+    method_call->SetOriginalClass(klass);
+    method_call->SetMethod(method, false);
     // cout << "### " << func_type_id << " ###" << endl;
   }
   else {
