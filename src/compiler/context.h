@@ -398,6 +398,70 @@ class ContextAnalyzer {
     return eenum;
   }
 
+  inline const string EncodeType(Type* type) {
+    string encoded_name;
+    
+    switch(type->GetType()) {
+    case BOOLEAN_TYPE:
+      encoded_name += 'l';
+      break;
+
+    case BYTE_TYPE:
+      encoded_name += 'b';
+      break;
+
+    case INT_TYPE:
+      encoded_name += 'i';
+      break;
+
+    case FLOAT_TYPE:
+      encoded_name += 'f';
+      break;
+
+    case CHAR_TYPE:
+      encoded_name += 'c';
+      break;
+
+    case NIL_TYPE:
+      encoded_name += 'n';
+      break;
+
+    case VAR_TYPE:
+      encoded_name += 'v';
+      break;
+
+    case CLASS_TYPE: {
+      encoded_name += "o.";
+
+      // search program
+      string klass_name = type->GetClassName();
+      Class* klass = program->GetClass(klass_name);
+      if(!klass) {
+	vector<string> uses = program->GetUses();
+	for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+	  klass = program->GetClass(uses[i] + "." + klass_name);
+	}
+      }
+      if(klass) {
+	encoded_name += klass->GetName();
+      }
+      // search libaraires
+      else {
+	LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
+	if(lib_klass) {
+	  encoded_name += lib_klass->GetName();
+	} 
+	else {
+	  encoded_name += type->GetClassName();
+	}
+      }
+    }
+      break;
+    }
+    
+    return encoded_name;
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
   void ProcessError(const string &msg);
@@ -452,6 +516,7 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
+  string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
 				string &encoding, int depth);
