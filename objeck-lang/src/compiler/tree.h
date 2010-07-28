@@ -1524,8 +1524,12 @@ namespace frontend {
 	  name = "o.";
 	  name += type->GetClassName();
 	  break;
+	  
+	case FUNC_TYPE:
+	  name = 'm';
+	  break;
 	}
-
+	
 	// dimension
 	for(int i = 0; i < type->GetDimension(); i++) {
 	  name += '*';

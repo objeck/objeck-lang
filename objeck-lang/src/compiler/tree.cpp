@@ -132,7 +132,10 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
         }
       }
     }
-    break;
+      break;
+      
+    case FUNC_TYPE:
+      break;
     }
     // dimension
     for(int i = 0; i < type->GetDimension(); i++) {

@@ -2166,7 +2166,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE:
-        // TODO: Check
+	if(left->GetClassName() != right->GetClassName()) {
+	  ProcessError(expression, "Invalid operation using mismatch functions");
+	}
         break;
 	
       case VAR_TYPE:
@@ -2519,8 +2521,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE:
-	cout << "### " << left->GetClassName() << ", " << right->GetClassName() << " ###" << endl;
-        // TODO:
+	if(left->GetClassName() != right->GetClassName()) {
+	  ProcessError(expression, "Invalid operation using mismatch functions");
+	}
         break;
 
       case VAR_TYPE:
