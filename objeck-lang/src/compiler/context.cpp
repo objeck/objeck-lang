@@ -2795,24 +2795,31 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
       Variable* variable = static_cast<Variable*>(expressions[i]);
       if(variable->GetName() == BOOL_CLASS_ID) {
         encoded_name += 'l';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
       }
       else if(variable->GetName() == BYTE_CLASS_ID) {
         encoded_name += 'b';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(BYTE_TYPE), true);
       }
       else if(variable->GetName() == INT_CLASS_ID) {
         encoded_name += 'i';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
       }
       else if(variable->GetName() == FLOAT_CLASS_ID) {
         encoded_name += 'f';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
       }
       else if(variable->GetName() == CHAR_CLASS_ID) {
         encoded_name += 'c';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(CHAR_TYPE), true);
       }
       else if(variable->GetName() == NIL_CLASS_ID) {
         encoded_name += 'n';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(NIL_TYPE), true);
       }
       else if(variable->GetName() == VAR_CLASS_ID) {
         encoded_name += 'v';
+	variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
       }
       else {
         encoded_name += "o.";
@@ -2827,15 +2834,18 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
         }
         if(klass) {
           encoded_name += klass->GetName();
+	  variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
         }
         // search libaraires
         else {
           LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
           if(lib_klass) {
             encoded_name += lib_klass->GetName();
+	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
           } 
 	  else {
             encoded_name += variable->GetName();
+	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, variable->GetName()), true);
           }
         }
       }
@@ -2843,6 +2853,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
       // dimension
       if(variable->GetIndices()) {
 	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
+	variable->GetEvalType()->SetDimension(indices.size());
 	for(int i = 0; i < indices.size(); i++) {
 	  encoded_name += '*';
 	}
