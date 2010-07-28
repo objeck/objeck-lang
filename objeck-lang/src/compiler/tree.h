@@ -1487,6 +1487,30 @@ namespace frontend {
 
     string EncodeType(Type* type, ParsedProgram* program, Linker* linker);
 
+    /****************************
+     * Encodes a function type
+     ****************************/
+    string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
+			      ParsedProgram* program, Linker* linker) {  
+      string encoded_name = "(";
+      for(int i = 0; i < func_params.size(); i++) {
+	// encode params
+	encoded_name += EncodeType(func_params[i], program, linker);
+    
+	// encode dimension   
+	for(int i = 0; i < func_params[i]->GetDimension(); i++) {
+	  encoded_name += '*';
+	}    
+	encoded_name += ',';
+      }
+  
+      // encode return
+      encoded_name += ")~";
+      encoded_name += EncodeType(func_rtrn, program, linker);
+
+      return encoded_name;
+    }
+
     string EncodeType(Type* type) {
       string name;
       if(type) {
