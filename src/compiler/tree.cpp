@@ -134,7 +134,16 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
     }
       break;
       
-    case FUNC_TYPE:
+    case FUNC_TYPE:  {
+      name = "m.";
+      if(type->GetClassName().size() == 0) {
+	name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(),
+				   program, linker);
+      }
+      else {
+	name += type->GetClassName();
+      }
+    }
       break;
     }
     // dimension

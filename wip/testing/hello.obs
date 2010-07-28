@@ -12,7 +12,7 @@ bundle Default {
       # j := 13;
     }
     
-    function : Foo(f : (Int) ~ Int) ~ Nil {
+    function : Foo(f : (Int) ~ String) ~ Nil {
       
     }
 #~   
