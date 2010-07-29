@@ -1388,6 +1388,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
     method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
     
+    if(!method->IsStatic()) {
+      ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
+    }
+    
     // check return type
     Type* rtrn_type = method_call->GetFunctionReturn();    
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
@@ -1436,6 +1440,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
   if(method) {
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
     method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    
+    if(!method->IsStatic()) {
+      ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
+    }
     
     // check return type
     Type* rtrn_type = method_call->GetFunctionReturn();    
