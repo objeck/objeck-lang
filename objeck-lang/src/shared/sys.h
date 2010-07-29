@@ -51,7 +51,8 @@ typedef enum _MemoryType {
   NIL_TYPE = -1000,
   BYTE_ARY_TYPE,
   INT_TYPE,
-  FLOAT_TYPE
+  FLOAT_TYPE,
+  FUNC_TYPE
 } MemoryType;
 
 // garbage types
