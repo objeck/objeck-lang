@@ -173,6 +173,10 @@ void StackInterpreter::Execute()
       ProcessStoreInt(instr);
       break;
 
+    case STOR_FUNC_VAR:
+      ProcessStoreFunction(instr);
+      break;
+      
     case STOR_FLOAT_VAR:
       ProcessStoreFloat(instr);
       break;
@@ -221,6 +225,10 @@ void StackInterpreter::Execute()
       ProcessLoadInt(instr);
       break;
 
+    case LOAD_FUNC_VAR:
+      ProcessLoadFunction(instr);
+      break;
+      
     case LOAD_FLOAT_VAR:
       ProcessLoadFloat(instr);
       break;
@@ -496,6 +504,15 @@ void StackInterpreter::Execute()
       }
       break;
 
+    case DYN_MTHD_CALL:
+      ProcessDynamicMethodCall(instr);
+      // return directly back to JIT code
+      if(frame->IsJitCalled()) {
+        frame->SetJitCalled(false);
+        return;
+      }
+      break;
+      
     case MTHD_CALL:
       ProcessMethodCall(instr);
       // return directly back to JIT code
@@ -626,6 +643,33 @@ void StackInterpreter::ProcessCurrentTime()
 }
 
 /********************************
+ * Processes a load function
+ * variable instruction.
+ ********************************/
+void StackInterpreter::ProcessLoadFunction(StackInstr* instr)
+{
+#ifdef _DEBUG
+  cout << "stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
+       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+#endif
+  if(instr->GetOperand2() == LOCL) {
+    long* mem = frame->GetMemory();
+    PushInt(mem[instr->GetOperand() + 2]);
+    PushInt(mem[instr->GetOperand() + 1]);
+  } 
+  else {
+    long* cls_inst_mem = (long*)PopInt();
+    if(!cls_inst_mem) {
+      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
+    PushInt(cls_inst_mem[instr->GetOperand() + 1]);
+    PushInt(cls_inst_mem[instr->GetOperand()]);
+  }
+}
+
+/********************************
  * Processes a load integer
  * variable instruction.
  ********************************/
@@ -638,7 +682,8 @@ void StackInterpreter::ProcessLoadInt(StackInstr* instr)
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     PushInt(mem[instr->GetOperand() + 1]);
-  } else {
+  } 
+  else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -676,6 +721,33 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
 }
 
 /********************************
+ * Processes a store function
+ * variable instruction.
+ ********************************/
+void StackInterpreter::ProcessStoreFunction(StackInstr* instr)
+{
+#ifdef _DEBUG
+  cout << "stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
+       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+#endif
+  if(instr->GetOperand2() == LOCL) {
+    long* mem = frame->GetMemory();
+    mem[instr->GetOperand() + 1] = PopInt();
+    mem[instr->GetOperand() + 2] = PopInt();
+  } 
+  else {
+    long* cls_inst_mem = (long*)PopInt();
+    if(!cls_inst_mem) {
+      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
+    cls_inst_mem[instr->GetOperand()] = PopInt();
+    cls_inst_mem[instr->GetOperand() + 1] = PopInt();
+  }
+}
+
+/********************************
  * Processes a store integer
  * variable instruction.
  ********************************/
@@ -688,7 +760,8 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr)
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
     mem[instr->GetOperand() + 1] = PopInt();
-  } else {
+  } 
+  else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
       cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
@@ -948,6 +1021,40 @@ void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, lo
   void* status;
   if(pthread_join(jit_thread, &status));
   */
+#endif
+}
+
+
+/********************************
+ * Processes a synchronous
+ * dynamic method call.
+ ********************************/
+void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
+{
+  // save current method
+  frame->SetIp(ip);
+  PushFrame(frame);
+
+  // pop instance
+  long* instance = (long*)PopInt();
+
+  // make call
+  long* mem = frame->GetMemory();
+  int cls_id = mem[instr->GetOperand() + 1];
+  long mthd_id = mem[instr->GetOperand() + 2];
+  StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
+  
+#ifndef _NO_JIT
+  // execute JIT call
+  if(instr->GetOperand3()) {
+    ProcessJitMethodCall(called, instance);
+  }
+  // execute interpreter
+  else {
+    ProcessInterpretedMethodCall(called, instance);
+  }
+#else
+  ProcessInterpretedMethodCall(called, instance);
 #endif
 }
 
