@@ -1857,6 +1857,8 @@ namespace frontend {
     bool is_enum_call;
     Type* func_rtrn;
     bool is_func_def;
+    bool is_dyn_func_call;
+    SymbolEntry* dyn_func_entry;
     
     MethodCall(const string &f, const int l, MethodCallType t,
 	       const string &v, ExpressionList* e) :
@@ -1865,7 +1867,7 @@ namespace frontend {
       call_type = t;
       method_name = "New";
       expressions = e;
-      entry = NULL;
+      entry = dyn_func_entry = NULL;
       method = NULL;
       array_type = NULL;
       variable = NULL;
@@ -1875,7 +1877,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = is_func_def = false;
+      is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
       
       if(variable_name == BOOL_CLASS_ID) {
@@ -1914,7 +1916,7 @@ namespace frontend {
       call_type = METHOD_CALL;
       method_name = m;
       expressions = e;
-      entry = NULL;
+      entry = dyn_func_entry = NULL;
       method = NULL;
       array_type = NULL;
       variable = NULL;
@@ -1924,7 +1926,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = is_func_def = false;
+      is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
     }
 
@@ -1935,7 +1937,7 @@ namespace frontend {
       call_type = ENUM_CALL;
       method_name = m;
       expressions = NULL;
-      entry = NULL;
+      entry = dyn_func_entry = NULL;
       method = NULL;
       array_type = NULL;
       variable = NULL;
@@ -1945,7 +1947,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = is_func_def = false;
+      is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
     }
 
@@ -1957,7 +1959,7 @@ namespace frontend {
       call_type = METHOD_CALL;
       method_name = m;
       expressions = e;
-      entry = NULL;
+      entry = dyn_func_entry = NULL;
       method = NULL;
       array_type = NULL;
       enum_item = NULL;
@@ -1966,7 +1968,7 @@ namespace frontend {
       lib_enum_item = NULL;
       original_klass = NULL;
       original_lib_klass = NULL;
-      is_enum_call = is_func_def = false;
+      is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
     }
     
@@ -1982,9 +1984,22 @@ namespace frontend {
     Type* GetFunctionReturn() {
       return func_rtrn;
     }
-    
+
     bool IsFunctionDefinition() {
       return is_func_def;
+    }
+
+    void SetDynamicFunctionCall(SymbolEntry* e) {
+      dyn_func_entry = e;
+      is_dyn_func_call = true;
+    }
+    
+    bool IsDynamicFunctionCall() {
+      return is_dyn_func_call;
+    }
+
+    SymbolEntry* GetDynamicFunctionEntry() {
+      return dyn_func_entry;
     }
     
     void SetEnumCall(bool e) {
