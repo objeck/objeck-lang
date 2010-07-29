@@ -14,8 +14,8 @@ bundle Default {
       # j := 13;
     }
     
-    function : Foo(f : (Int) ~ String) ~ (Int) ~ String {
-      return Bar->AddTwo(Int) ~ String;
+    function : Foo(f : (Int) ~ String) ~ Nil {
+      f(10);
     }
 #~   
     function : Merge(list : Int[], func : (Int) ~ Int) ~ Nil {
