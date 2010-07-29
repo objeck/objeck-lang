@@ -403,6 +403,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case LOAD_FUNC_VAR: {
+      long id = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      method->AddInstruction(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+    }
+      break;
+      
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -417,6 +424,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case STOR_FUNC_VAR: {
+      long id = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      method->AddInstruction(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+    }
+      break;
+      
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
@@ -505,6 +519,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case DYN_MTHD_CALL: {
+      long mthd_id = ReadInt();
+      method->AddInstruction(new StackInstr(line_num, DYN_MTHD_CALL, mthd_id));
+    }
+      break;
+      
     case MTHD_CALL: {
       long cls_id = ReadInt();
       long mthd_id = ReadInt();

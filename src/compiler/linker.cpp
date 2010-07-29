@@ -445,8 +445,15 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
-    break;
-
+      break;
+      
+    case LOAD_FUNC_VAR: {
+      long id = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+    }
+      break;
+      
     case LOAD_FLOAT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -460,7 +467,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
     break;
-
+    
+    case STOR_FUNC_VAR: {
+      long id = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+    }
+      break;
+      
     case STOR_FLOAT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -506,7 +520,13 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
     break;
-
+    
+    case DYN_MTHD_CALL: {
+      INT_VALUE mthd_id = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, mthd_id));
+    }
+      break;
+      
     case JMP: {
       INT_VALUE label = ReadInt();
       INT_VALUE cond = ReadInt();
