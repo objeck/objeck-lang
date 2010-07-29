@@ -220,10 +220,13 @@ public:
     case JMP:
     case LOAD_INT_VAR:
     case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
     case COPY_INT_VAR:
     case COPY_FLOAT_VAR:
+    case COPY_FUNC_VAR:
     case LOAD_BYTE_ARY_ELM:
     case LOAD_INT_ARY_ELM:
     case LOAD_FLOAT_ARY_ELM:
@@ -274,6 +277,11 @@ public:
       cout << "LOAD_FLOAT_LIT: value=" << operand4 << endl;
       break;
 
+    case LOAD_FUNC_VAR:
+      cout << "LOAD_FUNC_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+      
     case LOAD_INT_VAR:
       cout << "LOAD_INT_VAR: id=" << operand << ", local="
            << (operand2 == LOCL ? "true" : "false") << endl;
@@ -306,7 +314,12 @@ public:
     case LOAD_INST_MEM:
       cout << "LOAD_INST_MEM" << endl;
       break;
-
+      
+    case STOR_FUNC_VAR:
+      cout << "STOR_FUNC_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+      
     case STOR_INT_VAR:
       cout << "STOR_INT_VAR: id=" << operand << ", local="
            << (operand2 == LOCL ? "true" : "false") << endl;
@@ -317,6 +330,11 @@ public:
            << (operand2 == LOCL ? "true" : "false") << endl;
       break;
 
+    case COPY_FUNC_VAR:
+      cout << "COPY_FUNC_VAR: id=" << operand << ", local="
+           << (operand2 == LOCL ? "true" : "false") << endl;
+      break;
+      
     case COPY_INT_VAR:
       cout << "COPY_INT_VAR: id=" << operand << ", local="
            << (operand2 == LOCL ? "true" : "false") << endl;
