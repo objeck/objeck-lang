@@ -1395,13 +1395,35 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 
 void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
-  const string encoded_name = klass->GetName() + ":" +
-    method_call->GetMethodName() + ":" + encoding +
-    EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-
+  const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + 
+    ":" + encoding + func_encoding;
+  
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
-    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE), true);
+    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
+    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    
+    // check return type
+    Type* rtrn_type = method_call->GetFunctionReturn();    
+    if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
+    }
+    else if(rtrn_type->GetType() == CLASS_TYPE) {
+      if(ResolveClassEnumType(rtrn_type)) {
+	const string rtrn_encoded_name = "o."+ rtrn_type->GetClassName();
+	if(rtrn_encoded_name != method->GetEncodedReturn()) {
+	  ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
+	}
+      }
+      else {
+	ProcessError(static_cast<Expression*>(method_call), 
+		     "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
+      }	
+    }
+    method->GetLibraryClass()->SetCalled(true);
+    method_call->SetOriginalLibraryClass(klass);
+    method_call->SetLibraryMethod(method, false);    
     // cout << "### " << encoded_name << " ###" << endl;
   }
   else {
