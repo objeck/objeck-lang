@@ -122,7 +122,8 @@ namespace frontend {
       type = t->type;
       dimension = t->dimension;
       class_name = t->class_name;
-      func_rtrn = NULL;
+      func_rtrn = t->func_rtrn;
+      func_params = t->func_params;
     }
 
     Type(EntryType t) {
