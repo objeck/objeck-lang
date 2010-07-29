@@ -1325,18 +1325,51 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   } 
   else {
-    const string &mthd_name = method_call->GetMethodName();
-    const string &var_name = method_call->GetVariableName();
+    // dynamic function call that is not bound to a class/function until runtime
+    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+    if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+      // generate parameter strings
+      Type* type = entry->GetType();
+      string dyn_func_params;
+      vector<Type*>& func_params = type->GetFunctionParameters();
+      for(int i = 0; i < func_params.size(); i++) {
+	dyn_func_params += EncodeType(func_params[i]);
+	dyn_func_params += ',';
+      }      
+      const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);      
+      
+      // check parameters again dynamic definition
+      if(dyn_func_params != call_params) {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + method_call->GetVariableName() +
+		     "(..)'\n\tEnsure calling parameters properly casted");
 
-    if(mthd_name.size() > 0) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   "Undefined function/method call: '" + mthd_name + 
-		   "(..)'\n\tEnsure calling parameters properly casted");
-    } 
+      }
+      
+      //  set entry reference and return type
+      method_call->SetDynamicFunctionCall(entry);
+      method_call->SetEvalType(type->GetFunctionReturn(), true);
+      if(method_call->GetMethodCall()) {
+	method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
+      }
+      
+      // next call
+      AnalyzeExpressionMethodCall(method_call, depth + 1);
+    }
     else {
-      ProcessError(static_cast<Expression*>(method_call),
-                   "Undefined function/method call: '" + var_name +
-		   "(..)'\n\tEnsure calling parameters properly casted");
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
+
+      if(mthd_name.size() > 0) {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + mthd_name + 
+		     "(..)'\n\tEnsure calling parameters properly casted");
+      } 
+      else {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + var_name +
+		     "(..)'\n\tEnsure calling parameters properly casted");
+      }
     }
   }
 }
