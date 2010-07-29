@@ -320,6 +320,10 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       rtrn_type = NIL_TYPE;
       break;
 
+    case 'm': // function
+      rtrn_type = FUNC_TYPE;
+      break;
+      
     default:
       cerr << ">>> unknown type <<<" << endl;
       exit(1);
