@@ -1,7 +1,8 @@
 bundle Default {
   class Bar {
     function : AddTwo(x : Int) ~ String {
-      return "hello";
+      x->PrintLine();
+      return "Ten";
     }
   }   
   
@@ -16,6 +17,7 @@ bundle Default {
     
     function : Foo(f : (Int) ~ String) ~ Nil {
       s : String := f(10);
+      s->PrintLine();
     }
 #~   
     function : Merge(list : Int[], func : (Int) ~ Int) ~ Nil {

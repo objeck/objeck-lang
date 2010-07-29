@@ -676,6 +676,20 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       }
     }
     else if(method_call->IsDynamicFunctionCall()) {
+      MethodCall* tail = method_call;
+      while(tail->GetMethodCall()) {
+	tail = tail->GetMethodCall();
+      }
+
+      // emit parameters for nested call
+      MethodCall* temp = static_cast<MethodCall*>(tail);
+      while(temp) {
+	EmitMethodCallParameters(temp);
+	// update
+	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+      }
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
     }
     else {
@@ -1462,6 +1476,20 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       }
     }
     else if(method_call->IsDynamicFunctionCall()) {
+      MethodCall* tail = method_call;
+      while(tail->GetMethodCall()) {
+	tail = tail->GetMethodCall();
+      }
+      
+      // emit parameters for nested call
+      MethodCall* temp = static_cast<MethodCall*>(tail);
+      while(temp) {
+	EmitMethodCallParameters(temp);
+	// update
+	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+      }
+      
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
     }
     else {
