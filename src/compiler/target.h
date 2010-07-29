@@ -196,6 +196,7 @@ public:
     case OBJ_INST_CAST:
     case TRAP:
     case TRAP_RTRN:
+    case DYN_MTHD_CALL:
       WriteInt(operand, file_out);
       break;
 
@@ -265,6 +266,10 @@ public:
       cout << "LOAD_INT_LIT: value=" << operand << endl;
       break;
 
+    case DYN_MTHD_CALL:
+      cout << "DYN_MTHD_CALL: id=" << operand << endl;
+      break;
+      
     case SHL_INT:
       cout << "SHL_INT: value=" << operand << endl;
       break;
