@@ -675,6 +675,9 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
       }
     }
+    else if(method_call->IsDynamicFunctionCall()) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
+    }
     else {
       MethodCall* tail = method_call;
       while(tail->GetMethodCall()) {
@@ -1457,6 +1460,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
       }
+    }
+    else if(method_call->IsDynamicFunctionCall()) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
     }
     else {
       MethodCall* tail = method_call;
