@@ -40,16 +40,17 @@ namespace instructions {
     LOAD_FLOAT_LIT,
     LOAD_INT_VAR,
     LOAD_FLOAT_VAR,
+    LOAD_FUNC_VAR,
     LOAD_CLS_MEM,
     LOAD_INST_MEM,
-    LOAD_FUNC,
     // stores operations
     STOR_INT_VAR,
     STOR_FLOAT_VAR,
-    STOR_FUNC,
+    STOR_FUNC_VAR,
     // copy operations
     COPY_INT_VAR,
     COPY_FLOAT_VAR,
+    COPY_FUNC_VAR,
     // array operations
     LOAD_BYTE_ARY_ELM,
     LOAD_INT_ARY_ELM,
