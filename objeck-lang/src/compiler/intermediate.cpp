@@ -691,7 +691,58 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
-    }
+
+
+
+      
+      ////////// 1111111111 //////////
+
+      // emit method calls
+      bool is_nested = false;
+      while(method_call) {
+	// pop return value if not used
+	if(!method_call->GetMethodCall()) {
+	  switch(OrphanReturn(method_call)) {
+	  case 0:
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	    break;
+
+	  case 1:
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+	    break;
+	  }
+	}
+	// next call
+	if(method_call->GetMethod()) {
+	  Method* method = method_call->GetMethod();
+	  if(method->GetReturn()->GetType() == CLASS_TYPE) {
+	    is_nested = true;
+	  } 
+	  else {
+	    is_nested = false;
+	  }
+	} 
+	else if(method_call->GetLibraryMethod()) {
+	  LibraryMethod* lib_method = method_call->GetLibraryMethod();
+	  if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+	    is_nested = true;
+	  } 
+	  else {
+	    is_nested = false;
+	  }
+	} 
+	else {
+	  is_nested = false;
+	}
+	method_call = method_call->GetMethodCall();
+      } 
+
+
+
+
+
+
+  }
     else {
       MethodCall* tail = method_call;
       while(tail->GetMethodCall()) {
@@ -1491,6 +1542,43 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
+
+
+      ////////// 222222222 //////////
+
+      
+      bool is_nested = false;
+      while(method_call) {
+	EmitCast(method_call);
+	// next call
+	if(method_call->GetMethod()) {
+	  Method* method = method_call->GetMethod();
+	  if(method->GetReturn()->GetType() == CLASS_TYPE) {
+	    is_nested = true;
+	  } 
+	  else {
+	    is_nested = false;
+	  }
+	} 
+	else if(method_call->GetLibraryMethod()) {
+	  LibraryMethod* lib_method = method_call->GetLibraryMethod();
+	  if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+	    is_nested = true;
+	  } 
+	  else {
+	    is_nested = false;
+	  }
+	} 
+	else {
+	  is_nested = false;
+	}
+	method_call = method_call->GetMethodCall();
+      } 
+
+
+
+
+
     }
     else {
       MethodCall* tail = method_call;
