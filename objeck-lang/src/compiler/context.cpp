@@ -1392,6 +1392,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
     }
     
+    if(method->IsVirtual()) {
+      ProcessError(static_cast<Expression*>(method_call), "References to methods cannot be virtual");
+    }
+    
     // check return type
     Type* rtrn_type = method_call->GetFunctionReturn();    
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
@@ -1443,6 +1447,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     
     if(!method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
+    }
+
+    if(method->IsVirtual()) {
+      ProcessError(static_cast<Expression*>(method_call), "References to methods cannot be virtual");
     }
     
     // check return type
