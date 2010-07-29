@@ -63,6 +63,7 @@ typedef enum _ParamType {
   FLOAT_ARY_PARM,
   OBJ_PARM,
   OBJ_ARY_PARM,
+  FUNC_PARM,
 } ParamType;
 }
 
