@@ -1,39 +1,65 @@
 bundle Default {
-  class Bar {
-    function : AddTwo(x : Int) ~ ()~Int {
-      return Value() ~ Int;
+  class Test {
+    function : Main(args : String[]) ~ Nil {
+	Run();
     }
 
-    function : Value() ~ Int {
-      return 13;
-    }
-  }   
-  
-  class Hello {
-    function : Main(args : String[]) ~ Nil {
-      # push and pop functions refs (2 new instruction)
-      f : (Int) ~ ()~Int := Bar->AddTwo(Int) ~ ()~Int ;
-      Foo(f);
-      # f : Int := AddTwo(Int) ~ Bar;
-      # j := 13;
+    function : native : Run() ~ Nil {
+#~
+	f := Func2(Int) ~ Nil;
+	f(13);
+~#
+
+	f2 := Foo->Bar(String) ~ Int;
+	f2("Hello World!")->PrintLine();
+
+#~
+  	s := Soul->New(f);
+	s->Mecca();
+
+	s->Out(Foo->Bar(String) ~ Int)->PrintLine();	
+	(f2("Hello World!") * 10)->PrintLine();
+
+	f3 := s->GetIt();
+	f3(18)->PrintLine();
+~#
     }
     
-    function : Foo(f : (Int) ~ ()~Int) ~ Nil {
-      x := f(9);
-#      x : ()~Int := f(9);
-      x()->PrintLine();
+    function : Func(v : Int) ~ Int {
+	return  v * 2;
     }
 
-#~   
-    function : Merge(list : Int[], func : (Int) ~ Int) ~ Float {
-      dynamic method call (1 new instruction)
-      v := func(list[0]);
+    function : Func2(v : Int) ~ Nil {
+	(v * 2)->PrintLine();
     }
-~#    
+  }
 
+  class Soul {
+	@f : (Int) ~ Int;
+
+	New(f : (Int) ~ Int) {
+		@f := f;	
+	}
+
+	function : Out(f : (String)~Int) ~ Int {
+		f("Hello World!")->PrintLine();
+		return 33;
+	}
+
+	method : public : Mecca() ~ Nil {
+		@f(88);
+		@f(88)->PrintLine();
+	}
+
+	method : public : GetIt() ~ (Int) ~ Int {
+		return @f;
+	}
+  }
+
+  class Foo {
+    function : Bar(s : String) ~ Int {
+   	return s->Size();
+    }
   }
 }
 
-# limits:
-# functions refs cannot contain function definitions
-# no support for function reference arrays
