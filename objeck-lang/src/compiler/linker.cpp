@@ -520,10 +520,6 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
     break;
-    
-    case DYN_MTHD_CALL:
-      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL));
-      break;
       
     case JMP: {
       INT_VALUE label = ReadInt();
@@ -546,6 +542,13 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
     break;
 
+    case DYN_MTHD_CALL: {
+      int num_params = ReadInt();
+      int rtrn_type = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
+    }
+      break;
+    
     case LIB_OBJ_INST_CAST: {
       const string& cls_name = ReadString();
 #ifdef _DEBUG

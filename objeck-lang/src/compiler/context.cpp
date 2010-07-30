@@ -1346,6 +1346,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 	  dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
 	}
       }
+      type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+
       const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);      
       
       // check parameters again dynamic definition
@@ -1397,6 +1399,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   if(method) {
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();
     Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
     method_call->SetEvalType(type, true);
     
@@ -1455,7 +1458,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
-    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+    type->SetFunctionReturn(method->GetReturn());
+    method_call->SetEvalType(type, true);
     
     if(!method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
@@ -1796,7 +1802,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
 
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* method_call = static_cast<MethodCall*>(expression);
-    if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE) {
+    if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
+       !method_call->IsFunctionDefinition()) {
       ProcessError(expression, "Invalid assignment method '" + method_call->GetMethod()->GetName() + "(..)' does not return a value");
     }
   }
