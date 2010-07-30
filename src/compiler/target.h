@@ -218,6 +218,7 @@ public:
       break;
 
     case JMP:
+    case DYN_MTHD_CALL:
     case LOAD_INT_VAR:
     case LOAD_FLOAT_VAR:
     case LOAD_FUNC_VAR:
@@ -264,9 +265,10 @@ public:
     case LOAD_INT_LIT:
       cout << "LOAD_INT_LIT: value=" << operand << endl;
       break;
-
+      
     case DYN_MTHD_CALL:
-      cout << "DYN_MTHD_CALL" << endl;
+      cout << "DYN_MTHD_CALL num_params=" << operand 
+	   << ", rtrn_type=" << operand2 << endl;
       break;
       
     case SHL_INT:

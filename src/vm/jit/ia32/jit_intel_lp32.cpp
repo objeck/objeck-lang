@@ -279,8 +279,9 @@ void JitCompilerIA32::ProcessInstructions() {
       // load variable
     case LOAD_INT_VAR:
     case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
 #ifdef _DEBUG
-      cout << "LOAD_INT_VAR/LOAD_FLOAT_VAR: id=" << instr->GetOperand() << "; regs=" 
+      cout << "LOAD_INT_VAR/LOAD_FLOAT_VAR/LOAD_FUNC_VAR: id=" << instr->GetOperand() << "; regs=" 
 	   << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       ProcessLoad(instr);
@@ -289,8 +290,9 @@ void JitCompilerIA32::ProcessInstructions() {
       // store value
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
+    case STOR_FUNC_VAR:
 #ifdef _DEBUG
-      cout << "STOR_INT_VAR/STOR_FLOAT_VAR: id=" << instr->GetOperand() 
+      cout << "STOR_INT_VAR/STOR_FLOAT_VAR/STOR_FUNC_VAR: id=" << instr->GetOperand() 
 	   << "; regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       ProcessStore(instr);
@@ -407,6 +409,21 @@ void JitCompilerIA32::ProcessInstructions() {
 	  ProcessReturnParameters(false);
 	  break;
 	}
+      }
+    }
+      break;
+      
+    case DYN_MTHD_CALL: {
+      // passing instance variable
+      ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
+      switch(instr->GetOperand2()) {
+      case INT_TYPE:
+	ProcessReturnParameters(true);      
+	break;
+	
+      case FLOAT_TYPE:
+	ProcessReturnParameters(false);
+	break;
       }
     }
       break;
@@ -661,7 +678,18 @@ void JitCompilerIA32::ProcessIntShift(StackInstr* instruction) {
 void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
   // method/function memory
   if(instr->GetOperand2() == LOCL) {
-    working_stack.push_front(new RegInstr(instr));
+    if(instr->GetType() == LOAD_FUNC_VAR) {
+      RegisterHolder* holder = GetRegister();
+      move_mem_reg(instr->GetOperand3() - sizeof(int32_t), EBP, holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
+      
+      RegisterHolder* holder2 = GetRegister();
+      move_mem_reg(instr->GetOperand3(), EBP, holder2->GetRegister());
+      working_stack.push_front(new RegInstr(holder2));
+    }
+    else {
+      working_stack.push_front(new RegInstr(instr));
+    }
   }
   // class or instance memory
   else {
@@ -672,10 +700,19 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
     move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
     CheckNilDereference(holder->GetRegister());
 
-    // int32_t value
+    // int value
     if(instr->GetType() == LOAD_INT_VAR) {
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
+    }
+    // int value
+    else if(instr->GetType() == LOAD_FUNC_VAR) {
+      move_mem_reg(instr->GetOperand3() - sizeof(int32_t), holder->GetRegister(), holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
+      
+      RegisterHolder* holder2 = GetRegister();
+      move_mem_reg(instr->GetOperand3(), holder2->GetRegister(), holder2->GetRegister());
+      working_stack.push_front(new RegInstr(holder2));
     }
     // float value
     else {
@@ -1042,23 +1079,55 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_32:
-    move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
+    if(instr->GetType() == STOR_FUNC_VAR) {
+      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
+      
+      RegInstr* left2 = working_stack.front();
+      working_stack.pop_front();
+      move_imm_mem(left2->GetOperand(), instr->GetOperand3() - sizeof(int32_t), dest);
+    }
+    else {
+      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
+    }
     break;
 
   case MEM_32: {
     RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(instr->GetType() == STOR_FUNC_VAR) {
+      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+
+      RegInstr* left2 = working_stack.front();
+      working_stack.pop_front();
+      move_mem_reg(left2->GetOperand(), EBP, holder->GetRegister());
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3() - sizeof(int32_t), dest);
+    }
+    else {      
+      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    }
     ReleaseRegister(holder);
   }
     break;
+    
   case REG_32: {
     RegisterHolder* holder = left->GetRegister();
-    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(instr->GetType() == STOR_FUNC_VAR) {
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+      
+      RegInstr* left2 = working_stack.front();
+      working_stack.pop_front();
+      RegisterHolder* holder2  = left2->GetRegister();
+      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() - sizeof(int32_t), dest);
+      ReleaseRegister(holder2);
+    }
+    else {
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    }
     ReleaseRegister(holder);
   }
     break;
-
+    
   case IMM_64:
     move_imm_memx(left, instr->GetOperand3(), dest);
     break;
