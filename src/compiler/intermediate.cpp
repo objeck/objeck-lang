@@ -689,15 +689,44 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
       }
 
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
-
-
-
+      // emit function variable
+      MemoryContext mem_context;
+      SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
+      if(entry->IsLocal()) {
+	mem_context = LOCL;
+      } 
+      else if(entry->IsStatic()) {
+	mem_context = CLS;
+      } 
+      else {
+	mem_context = INST;
+      }
+      //
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }      
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
       
-      ////////// 1111111111 //////////
+      // emit dynamic call
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL));
 
-      // emit method calls
+      if(!method_call->GetMethodCall()) {
+	switch(OrphanReturn(method_call)) {
+	case 0:
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	  break;
+	  
+	case 1:
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+	  break;
+	}
+      }
+      
+      // emit nested method calls
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
       while(method_call) {
@@ -744,7 +773,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
 
 
-  }
+    }
     else {
       MethodCall* tail = method_call;
       while(tail->GetMethodCall()) {
@@ -1541,14 +1570,33 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 	// update
 	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
       }
+
+      // emit function variable
+      MemoryContext mem_context;
+      SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
+      if(entry->IsLocal()) {
+	mem_context = LOCL;
+      } 
+      else if(entry->IsStatic()) {
+	mem_context = CLS;
+      } 
+      else {
+	mem_context = INST;
+      }
+      //
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }      
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
       
+      // emit dynamic call
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, method_call->GetDynamicFunctionEntry()->GetId()));
-
-
-      ////////// 222222222 //////////
-
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL));
       
+      // emit nested calls
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
       while(method_call) {

@@ -521,10 +521,8 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
     break;
     
-    case DYN_MTHD_CALL: {
-      INT_VALUE mthd_id = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, mthd_id));
-    }
+    case DYN_MTHD_CALL:
+      instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL));
       break;
       
     case JMP: {
