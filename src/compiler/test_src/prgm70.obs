@@ -7,8 +7,11 @@ bundle Default {
 	f2 := Foo->Bar(String) ~ Int;
 	f2("Hello World!")->PrintLine();
 
-  	s := Soul->New();
-	s->Out(Foo->Bar(String) ~ Int);	
+  	s := Soul->New(f);
+	s->Mecca();
+
+	s->Out(Foo->Bar(String) ~ Int)->PrintLine();	
+	(f2("Hello World!") * 10)->PrintLine();
     }
     
     function : Func(v : Int) ~ Int {
@@ -17,12 +20,20 @@ bundle Default {
   }
 
   class Soul {
-	New() {
+	@f : (Int) ~ Int;
+
+	New(f : (Int) ~ Int) {
+		@f := f;	
 	}
 
 	function : Out(f : (String)~Int) ~ Int {
 		f("Hello World!")->PrintLine();
 		return 33;
+	}
+
+	method : public : Mecca() ~ Nil {
+		@f(88);
+		@f(88)->PrintLine();
 	}
   }
 
