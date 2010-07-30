@@ -1039,9 +1039,8 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
   long* instance = (long*)PopInt();
 
   // make call
-  long* mem = frame->GetMemory();
-  int cls_id = mem[instr->GetOperand() + 1];
-  long mthd_id = mem[instr->GetOperand() + 2];
+  int cls_id = PopInt();
+  long mthd_id = PopInt();
   StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
   
 #ifndef _NO_JIT

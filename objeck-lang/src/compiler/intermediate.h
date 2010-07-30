@@ -221,10 +221,14 @@ class IntermediateEmitter {
     Type* rtrn = NULL;
     if(method_call->GetMethod()) {
       rtrn = method_call->GetMethod()->GetReturn();
-    } else if(method_call->GetLibraryMethod()) {
+    } 
+    else if(method_call->GetLibraryMethod()) {
       rtrn = method_call->GetLibraryMethod()->GetReturn();
     }
-
+    else if(method_call->IsDynamicFunctionCall()) {
+      rtrn =  method_call->GetDynamicFunctionEntry()->GetType()->GetFunctionReturn();
+    }
+    
     if(rtrn) {
       if(rtrn->GetType() != frontend::NIL_TYPE) {
         if(rtrn->GetDimension() > 0) {
