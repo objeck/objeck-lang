@@ -523,10 +523,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
-    case DYN_MTHD_CALL: {
-      long mthd_id = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, DYN_MTHD_CALL, mthd_id));
-    }
+    case DYN_MTHD_CALL:
+      method->AddInstruction(new StackInstr(line_num, DYN_MTHD_CALL));
       break;
       
     case MTHD_CALL: {
