@@ -81,21 +81,21 @@ SelectNode* SelectArrayTree::divide(int start, int end)
   }
   else {
     SelectNode* node;
-      const int middle = size / 2 + start;
-	if(size % 2 == 0) {
-	  SelectNode* left = divide(start, middle - 1);
-	    SelectNode* right = divide(middle, end);
-	    node = new SelectNode(++emitter->conditional_label, 
-				  values[middle], left, right);
-	}
-	else {
-	  SelectNode* left = divide(start, middle - 1);
-	    SelectNode* right = divide(middle + 1, end);
-	    node = new SelectNode(++emitter->conditional_label, values[middle], 
-				  values[middle], left, right);
-	}
+    const int middle = size / 2 + start;
+    if(size % 2 == 0) {
+      SelectNode* left = divide(start, middle - 1);
+      SelectNode* right = divide(middle, end);
+      node = new SelectNode(++emitter->conditional_label, 
+			    values[middle], left, right);
+    }
+    else {
+      SelectNode* left = divide(start, middle - 1);
+      SelectNode* right = divide(middle + 1, end);
+      node = new SelectNode(++emitter->conditional_label, values[middle], 
+			    values[middle], left, right);
+    }
 
-	return node;
+    return node;
   }  
 }
 
@@ -712,29 +712,26 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       
       // emit dynamic call
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      // if(!method_call->GetMethodCall()) {
-	switch(OrphanReturn(method_call)) {
-	case 0:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
-	  // imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  break;
-	  
-	case 1:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
-	  break;
-
-	default:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
-	  break;
+      switch(OrphanReturn(method_call)) {
+      case 0:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
+	if(!method_call->GetMethodCall()) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	}
-	/*
-      }
-      else {
+	break;
+	
+      case 1:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
+	if(!method_call->GetMethodCall()) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+	}
+	break;
+	
+      default:
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
+	break;
       }
       
-	*/
       // emit nested method calls
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
@@ -935,17 +932,17 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
   case instructions::SIN_FLOAT:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SIN_FLOAT));
     break;
     
   case instructions::COS_FLOAT:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COS_FLOAT));
     break;
     
   case instructions::TAN_FLOAT:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TAN_FLOAT));
     break;
     
@@ -2198,7 +2195,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
-	case frontend::BOOLEAN_TYPE:
+    case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
       break;
@@ -2494,7 +2491,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)expressions.size()));
       break;
 
-	case frontend::CLASS_TYPE:
+    case frontend::CLASS_TYPE:
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)expressions.size()));
       break;
