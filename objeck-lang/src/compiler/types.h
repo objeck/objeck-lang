@@ -117,6 +117,7 @@ namespace frontend {
     string class_name;
     vector<Type*> func_params;
     Type* func_rtrn;
+    int func_param_count;
     
     Type(Type* t) {
       type = t->type;
@@ -124,12 +125,14 @@ namespace frontend {
       class_name = t->class_name;
       func_rtrn = t->func_rtrn;
       func_params = t->func_params;
+      func_param_count = -1;
     }
 
     Type(EntryType t) {
       type = t;
       dimension = 0;
       func_rtrn = NULL;
+      func_param_count = -1;
     }
 
     Type(EntryType t, const string &n) {
@@ -137,6 +140,7 @@ namespace frontend {
       class_name = n;
       dimension = 0;
       func_rtrn = NULL;
+      func_param_count = -1;
     }
     
     Type(vector<Type*>& p, Type* r) {
@@ -144,6 +148,7 @@ namespace frontend {
       dimension = 0;
       func_params = p;
       func_rtrn = r;
+      func_param_count = -1;
     }
     
     ~Type() {
@@ -168,6 +173,18 @@ namespace frontend {
       return func_params;
     }
 
+    int GetFunctionParameterCount() {
+      if(func_param_count < 0) {
+	return func_params.size();
+      }
+
+      return func_param_count;
+    }
+    
+    int SetFunctionParameterCount(int c) {
+      func_param_count = c;
+    }
+    
     Type* GetFunctionReturn() {
       return func_rtrn;
     }

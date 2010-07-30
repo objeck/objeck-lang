@@ -161,6 +161,8 @@ namespace Runtime {
 
       case LOAD_INT_VAR:
       case STOR_INT_VAR:
+      case LOAD_FUNC_VAR:
+      case STOR_FUNC_VAR:
       case COPY_INT_VAR:
 	type = MEM_32;
 	operand = si->GetOperand3();
@@ -819,7 +821,8 @@ namespace Runtime {
 	   << op_stack << ", stack_addr=" << stack_pos << ", stack_pos=" << (*stack_pos) << endl;
 #endif
       switch(instr_id) {
-      case MTHD_CALL: {
+      case MTHD_CALL:
+      case DYN_MTHD_CALL: {
 #ifdef _DEBUG
         cout << "jit oper: MTHD_CALL: cls=" << instr->GetOperand() << ", mthd=" << instr->GetOperand2() << endl;
 #endif
@@ -1673,6 +1676,8 @@ namespace Runtime {
 	switch(instr->GetType()) {
 	case LOAD_INT_VAR:
 	case STOR_INT_VAR:
+	case LOAD_FUNC_VAR:
+	case STOR_FUNC_VAR:
 	case COPY_INT_VAR:
 	case LOAD_FLOAT_VAR:
 	case STOR_FLOAT_VAR:
@@ -1703,6 +1708,10 @@ namespace Runtime {
 	       instr->GetType() == STOR_INT_VAR ||
 	       instr->GetType() == COPY_INT_VAR) {
 	      index -= sizeof(int32_t);
+	    }
+	    if(instr->GetType() == LOAD_FUNC_VAR || 
+	       instr->GetType() == STOR_FUNC_VAR) {
+	      index -= sizeof(int32_t) * 2;
 	    }
 	    else {
 	      index -= sizeof(FLOAT_VALUE);
