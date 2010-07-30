@@ -6,11 +6,24 @@ bundle Default {
 
 	f2 := Foo->Bar(String) ~ Int;
 	f2("Hello World!")->PrintLine();
+
+  	s := Soul->New();
+	s->Out(Foo->Bar(String) ~ Int);	
     }
     
     function : Func(v : Int) ~ Int {
 	return  v * 2;
     }
+  }
+
+  class Soul {
+	New() {
+	}
+
+	function : Out(f : (String)~Int) ~ Int {
+		f("Hello World!")->PrintLine();
+		return 33;
+	}
   }
 
   class Foo {
