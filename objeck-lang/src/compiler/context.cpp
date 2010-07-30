@@ -3104,7 +3104,13 @@ void ContextAnalyzer::AnalyzeEntries(ParseNode* node, const string &scope, int d
       msg += ", type=variable, dimension=";
 #endif
       break;
-
+      
+    case FUNC_TYPE:
+#ifdef _DEBUG
+      msg += ", type=function, id=" + type->GetClassName() + ", dimension=";
+#endif
+      break;
+      
     default:
       ProcessError(node, "Invalid use of data type in this context");
       break;
