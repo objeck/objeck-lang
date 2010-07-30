@@ -171,6 +171,10 @@ namespace frontend {
     Type* GetFunctionReturn() {
       return func_rtrn;
     }
+
+    void SetFunctionReturn(Type* r) {
+      func_rtrn = r;
+    }
     
     const int GetDimension() {
       return dimension;

@@ -387,7 +387,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
   for(unsigned int i = 0; i < declarations.size(); i++) {
     AnalyzeDeclaration(declarations[i], depth + 1);
   }
-
+  
   // process statements if function/method is not virtual
   if(!current_method->IsVirtual()) {
     // statements
@@ -1330,18 +1330,28 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // generate parameter strings
       Type* type = entry->GetType();
-      string dyn_func_params;
-      vector<Type*>& func_params = type->GetFunctionParameters();
-      for(int i = 0; i < func_params.size(); i++) {
-	dyn_func_params += EncodeType(func_params[i]);
-	dyn_func_params += ',';
-      }      
+      string dyn_func_params = type->GetClassName();
+      if(dyn_func_params.size() == 0) {
+	vector<Type*>& func_params = type->GetFunctionParameters();
+	for(int i = 0; i < func_params.size(); i++) {
+	  dyn_func_params += EncodeType(func_params[i]);
+	  dyn_func_params += ',';
+	}      
+      }
+      else {
+	// TODO: hackish!
+	int start = dyn_func_params.find('(');
+	int end = dyn_func_params.find(')', start + 1);
+	if(start != string::npos & end != string::npos) {
+	  dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
+	}
+      }
       const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);      
       
       // check parameters again dynamic definition
       if(dyn_func_params != call_params) {
 	ProcessError(static_cast<Expression*>(method_call),
-		     "Undefined function/method call: '" + method_call->GetVariableName() +
+		     "Undefined function/method call: '" + method_call->GetMethodName() +
 		     "(..)'\n\tEnsure calling parameters properly casted");
 
       }
@@ -1385,8 +1395,10 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
-    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
-    method_call->SetEvalType(TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id), true);
+    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();
+    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    type->SetFunctionReturn(method->GetReturn());
+    method_call->SetEvalType(type, true);
     
     if(!method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
@@ -2940,7 +2952,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
           LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
           if(lib_klass) {
             encoded_name += lib_klass->GetName();
-	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
+	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
           } 
 	  else {
             encoded_name += variable->GetName();

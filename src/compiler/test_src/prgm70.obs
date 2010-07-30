@@ -1,0 +1,22 @@
+bundle Default {
+  class Test {
+    function : Main(args : String[]) ~ Nil {
+	f := Func(Int) ~ Int;
+	f(13)->PrintLine();
+
+	f2 := Foo->Bar(String) ~ Int;
+	f2("Hello World!")->PrintLine();
+    }
+    
+    function : Func(v : Int) ~ Int {
+	return  v * 2;
+    }
+  }
+
+  class Foo {
+    function : Bar(s : String) ~ Int {
+   	return s->Size();
+    }
+  }
+}
+
