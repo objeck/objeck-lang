@@ -138,8 +138,7 @@ namespace Runtime {
       }
       holder = h;
       instr = NULL;
-    }
-  
+    }  
     RegInstr(StackInstr* si, double* da) {
       type = IMM_64;
       operand = (long)da;
@@ -267,7 +266,8 @@ namespace Runtime {
 			      int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
-    void ProcessReturnParameters(bool is_int);
+    void ProcessFunctionCallParameter();
+    void ProcessReturnParameters(MemoryType type);
     void ProcessLoadByteElement(StackInstr* instr);
     void ProcessStoreByteElement(StackInstr* instr);
     void ProcessLoadIntElement(StackInstr* instr);
@@ -1545,7 +1545,7 @@ namespace Runtime {
     // with the interpreter's 'ArrayIndex'
     // method. Bounds checks are not done on
     // JIT code.
-    RegisterHolder* ArrayIndex(StackInstr* instr, int32_t type) {
+    RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type) {
       RegInstr* holder = working_stack.front();
       working_stack.pop_front();
 
