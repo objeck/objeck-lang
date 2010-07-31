@@ -9,22 +9,19 @@ bundle Default {
 #~
 	f := Func(Int) ~ Int;
 	f(13);
-~#
 
 	f2 := Foo->Bar(String) ~ Int;
-#	f2("Hello World!");
 	f2("Hello World!")->PrintLine();
 
-#~
   	s := Soul->New(f);
 	s->Mecca();
 
 	s->Out(Foo->Bar(String) ~ Int)->PrintLine();	
-	(f2("Hello World!") * 10)->PrintLine();
-
 	f3 := s->GetIt();
 	f3(18)->PrintLine();
 ~#
+	f2 := Foo->Bar(String) ~ Int;
+	(f2("Hello World!") * 10)->PrintLine();
     }
     
     function : Func(v : Int) ~ Int {
@@ -49,7 +46,10 @@ bundle Default {
 	}
 
 	method : public : Mecca() ~ Nil {
-		@f(88);
+#		f := Test->Func(Int) ~ Int;
+#		f(13);
+
+#		@f(88);
 		@f(88)->PrintLine();
 	}
 
