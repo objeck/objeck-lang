@@ -244,6 +244,15 @@ class IntermediateEmitter {
 
           case frontend::FLOAT_TYPE:
             return 1;
+
+	  case frontend::FUNC_TYPE:
+            return 2;
+
+#ifdef _DEBUG
+	  default:
+	    assert(false);
+	    break;
+#endif
           }
         }
       }
