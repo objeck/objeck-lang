@@ -736,6 +736,14 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 	}
 	break;
 	
+      case 2:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
+	if(!method_call->GetMethodCall()) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+	}
+	break;
+	
       default:
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
 	break;
@@ -755,6 +763,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
 	  case 1:
 	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+	    break;
+
+	  case 2:
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	    break;
 	  }
 	}
@@ -816,6 +829,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
 	  case 1:
 	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+	    break;
+
+	  case 2:
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	    break;
 	  }
 	}
@@ -1617,6 +1635,14 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 	
       case 1:
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
+	break;
+
+      case 2:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
+	if(!method_call->GetMethodCall()) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+	}
 	break;
 	
       default:
