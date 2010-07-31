@@ -4,7 +4,7 @@
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with%G or without 
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright 
@@ -24,7 +24,7 @@
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
  *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILSITY, OR TORT (INCLUDING 
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
@@ -206,6 +206,14 @@ void JitCompilerIA32::ProcessIntCallParameter() {
   working_stack.push_front(new RegInstr(op_stack_holder));
   
   ReleaseRegister(stack_pos_holder);
+}
+
+void JitCompilerIA32::ProcessFunctionCallParameter() {
+#ifdef _DEBUG
+  cout << "INT_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+
+  
 }
 
 void JitCompilerIA32::ProcessFloatCallParameter() {
@@ -393,41 +401,24 @@ void JitCompilerIA32::ProcessInstructions() {
       if(called_method) {
 #ifdef _DEBUG
 	assert(called_method);
-	cout << "MTHD_CALL: id="<< instr->GetOperand() << "," << instr->GetOperand2() << ", params=" 
-	     << (called_method->GetParamCount() + 1) << "; regs=" << aval_regs.size() << "," 
-	     << aux_regs.size() << endl;
+	cout << "MTHD_CALL: name='" << called_method->GetName() << "': id="<< instr->GetOperand() 
+	     << "," << instr->GetOperand2() << ", params=" << (called_method->GetParamCount() + 1) 
+	     << ": regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif      
 	// passing instance variable
 	ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
-      
-	switch(called_method->GetReturn()) {
-	case INT_TYPE:
-	  ProcessReturnParameters(true);      
-	  break;
-	
-	case FLOAT_TYPE:
-	  ProcessReturnParameters(false);
-	  break;
-	}
+	ProcessReturnParameters(called_method->GetReturn());	
       }
     }
       break;
       
     case DYN_MTHD_CALL: {
 #ifdef _DEBUG
-	cout << "DYN_MTHD_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+      cout << "DYN_MTHD_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif  
       // passing instance variable
       ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
-      switch(instr->GetOperand2()) {
-      case INT_TYPE:
-	ProcessReturnParameters(true);      
-	break;
-	
-      case FLOAT_TYPE:
-	ProcessReturnParameters(false);
-	break;
-      }
+      ProcessReturnParameters((MemoryType)instr->GetOperand2());
     }
       break;
       
@@ -437,7 +428,7 @@ void JitCompilerIA32::ProcessInstructions() {
 	   << "," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(NEW_BYTE_ARY, instr, instr_index, instr->GetOperand());
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
       break;
       
     case NEW_INT_ARY:
@@ -446,7 +437,7 @@ void JitCompilerIA32::ProcessInstructions() {
 	   << "," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(NEW_INT_ARY, instr, instr_index, instr->GetOperand());
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
       break;
 
     case NEW_FLOAT_ARY:
@@ -455,17 +446,18 @@ void JitCompilerIA32::ProcessInstructions() {
 	   << "," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(NEW_FLOAT_ARY, instr, instr_index, instr->GetOperand());
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
       break;
       
     case NEW_OBJ_INST: {
 #ifdef _DEBUG
-      cout << "NEW_OBJ_INST: id=" << instr->GetOperand() << "regs=" << aval_regs.size()
-	   << "," << aux_regs.size() << endl;
+      StackClass* called_klass = program->GetClass(instr->GetOperand());      
+      cout << "NEW_OBJ_INST: name='" << called_klass->GetName() << "': id=" << instr->GetOperand() 
+	   << ": regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       // note: object id passed in instruction param
       ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
     }
       break;
       
@@ -483,7 +475,7 @@ void JitCompilerIA32::ProcessInstructions() {
       assert(instr->GetOperand());
 #endif      
       ProcessStackCallback(TRAP_RTRN, instr, instr_index, instr->GetOperand());
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
       break;
       
     case STOR_BYTE_ARY_ELM:
@@ -580,7 +572,7 @@ void JitCompilerIA32::ProcessInstructions() {
       cout << "OBJ_INST_CAST: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       ProcessStackCallback(OBJ_INST_CAST, instr, instr_index, 1);
-      ProcessReturnParameters(true);
+      ProcessReturnParameters(INT_TYPE);
     }
       break;
       
@@ -800,12 +792,19 @@ void JitCompilerIA32::ProcessJump(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessReturnParameters(bool is_int) {
-  if(is_int) {
+void JitCompilerIA32::ProcessReturnParameters(MemoryType type) {
+  switch(type) {
+  case INT_TYPE:
     ProcessIntCallParameter();
-  }
-  else {
+    break;
+
+  case FLOAT_TYPE:
     ProcessFloatCallParameter();
+    break;
+
+  case FUNC_TYPE:
+    ProcessFunctionCallParameter();
+    break;
   }
 }
 
