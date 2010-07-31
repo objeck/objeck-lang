@@ -578,7 +578,16 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 #endif
   int space = CalculateEntrySpace(entries, false);
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-  int num_params = (int)declarations.size();
+  int num_params = 0;
+  for(int i = 0; i < declarations.size(); i++) {
+    if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
+      num_params += 2;
+    }
+    else {
+      num_params++;
+    }
+  }
+  // int num_params = (int)declarations.size();
   imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(),
                                       method->IsVirtual(), method->HasAndOr(), method->GetEncodedReturn(),
                                       method->GetMethodType(), method->IsNative(), method->IsStatic(),
@@ -1600,7 +1609,20 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       
       // emit dynamic call
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
+
+      switch(OrphanReturn(method_call)) {
+      case 0:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
+	break;
+	
+      case 1:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
+	break;
+	
+      default:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
+	break;
+      }
       
       // emit nested calls
       bool is_nested = false; // fuction call

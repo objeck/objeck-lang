@@ -414,6 +414,9 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case DYN_MTHD_CALL: {
+#ifdef _DEBUG
+	cout << "DYN_MTHD_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif  
       // passing instance variable
       ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
       switch(instr->GetOperand2()) {

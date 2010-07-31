@@ -267,15 +267,16 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // is static
     ReadInt();
     // name
-    string name = ReadString();
+    const string name = ReadString();
     // return
-    string rtrn_name = ReadString();
+    const string rtrn_name = ReadString();
     // params
     const int params = ReadInt();
     // space
     const int mem_size = ReadInt();
     // read type parameters
     const int num_dclrs = ReadInt();
+    
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
