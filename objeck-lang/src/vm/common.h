@@ -380,7 +380,7 @@ public:
   pthread_mutex_t jit_mutex;
 #endif
 
-  StackMethod(long i, string &n, bool v, bool h, StackDclr** d, long nd,
+  StackMethod(long i, const string &n, bool v, bool h, StackDclr** d, long nd,
               long p, long m, MemoryType r, StackClass* k) {
 #ifdef _WIN32
     InitializeCriticalSection(&jit_cs);
