@@ -131,6 +131,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
                                long* instance, bool jit_called)
 {
+  // TODO: if JIT called envoke method do not go into loop
+
   // inital setup
   op_stack = stack;
   stack_pos = pos;
@@ -144,8 +146,10 @@ void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* meth
   ip = i;
 
 #ifdef _DEBUG
-  cout << "\n---------- Executing Interpretered Code: method_id=" << frame->GetMethod()->GetId()
-       << "; method_name='" << frame->GetMethod()->GetName() << "' ---------\n" << endl;
+  cout << "\n---------- Executing Interpretered Code: id=" 
+       << ((frame->GetMethod()->GetClass()) ? frame->GetMethod()->GetClass()->GetId() : -1) << ","
+       << frame->GetMethod()->GetId() << "; method_name='" << frame->GetMethod()->GetName() 
+       << "' ---------\n" << endl;
 #endif
 
   // add frame
@@ -1041,7 +1045,13 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
   // make call
   int cls_id = PopInt();
   long mthd_id = PopInt();
+#ifdef _DEBUG
+  cout << "stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << "," << mthd_id << endl;
+#endif
   StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
+#ifdef _DEBUG
+  cout << "=== Binding funcion call: to: '" << called->GetName() << "' ===" << endl;
+#endif
   
 #ifndef _NO_JIT
   // execute JIT call
