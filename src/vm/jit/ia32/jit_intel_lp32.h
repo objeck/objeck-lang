@@ -1709,7 +1709,7 @@ namespace Runtime {
 	       instr->GetType() == COPY_INT_VAR) {
 	      index -= sizeof(int32_t);
 	    }
-	    if(instr->GetType() == LOAD_FUNC_VAR || 
+	    else if(instr->GetType() == LOAD_FUNC_VAR || 
 	       instr->GetType() == STOR_FUNC_VAR) {
 	      index -= sizeof(int32_t) * 2;
 	    }
