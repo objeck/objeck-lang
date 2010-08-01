@@ -381,7 +381,7 @@ void IntermediateEmitter::EmitStrings()
 	for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
 	  if(char_str_insts[i]->value == char_string_values[j]) {
 	    vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
-	    for(int k = 0; k < instrs.size(); k++) {
+	    for(unsigned int k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;

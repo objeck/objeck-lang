@@ -97,6 +97,7 @@ namespace frontend {
     friend class TreeFactory;
     bool is_float_eval;
     INT_VALUE int_value;
+	INT_VALUE int_value2;
     FLOAT_VALUE float_value;
     
   protected:    
@@ -120,6 +121,14 @@ namespace frontend {
 
     INT_VALUE GetIntValue() {
       return int_value;
+    }
+
+	void SetIntValue2(INT_VALUE i) {
+      int_value2 = i;
+    }
+
+    INT_VALUE GetIntValue2() {
+      return int_value2;
     }
 
     void SetFloatValue(FLOAT_VALUE f) {

@@ -1333,7 +1333,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       string dyn_func_params = type->GetClassName();
       if(dyn_func_params.size() == 0) {
 	vector<Type*>& func_params = type->GetFunctionParameters();
-	for(int i = 0; i < func_params.size(); i++) {
+	for(unsigned int i = 0; i < func_params.size(); i++) {
 	  dyn_func_params += EncodeType(func_params[i]);
 	  dyn_func_params += ',';
 	}      
@@ -1342,7 +1342,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 	// TODO: hackish!
 	int start = dyn_func_params.find('(');
 	int end = dyn_func_params.find(')', start + 1);
-	if(start != string::npos & end != string::npos) {
+	if(start != string::npos && end != string::npos) {
 	  dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
 	}
       }
@@ -2972,7 +2972,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
       if(variable->GetIndices()) {
 	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
 	variable->GetEvalType()->SetDimension(indices.size());
-	for(int i = 0; i < indices.size(); i++) {
+	for(unsigned int i = 0; i < indices.size(); i++) {
 	  encoded_name += '*';
 	}
       }
@@ -2993,7 +2993,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
  ****************************/
 string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {  
   string encoded_name = "(";
-  for(int i = 0; i < func_params.size(); i++) {
+  for(unsigned int i = 0; i < func_params.size(); i++) {
     // encode params
     encoded_name += EncodeType(func_params[i]);
     
