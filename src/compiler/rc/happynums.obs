@@ -3,7 +3,7 @@ use Structure;
 
 bundle Default {
 	class HappyNumbers {
-		function : native : IsHappy(n : Int), Bool {
+		function : native : IsHappy(n : Int) ~ Bool {
 			cache := IntVector->New();
 				sum := 0;
 				while(n <> 1) {
@@ -25,7 +25,7 @@ bundle Default {
 				return true;            
 			}
 
-			function : Main(args : String[]), Nil {
+			function : Main(args : String[]) ~ Nil {
 				num := 1;
 				happynums := IntVector->New();
 
