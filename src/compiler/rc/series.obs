@@ -1,10 +1,10 @@
 bundle Default {
 	class SumSeries {
-		function : Main(args : String[]), Nil {
+		function : Main(args : String[]) ~ Nil {
 			DoSumSeries();
 		}
 
-		function : native : DoSumSeries(), Nil {
+		function : native : DoSumSeries() ~ Nil {
 			start := 1;
 			end := 1000;
 
@@ -17,7 +17,7 @@ bundle Default {
 			IO.Console->GetInstance()->Print("Sum of f(x) from ")->Print(start)->Print(" to ")->Print(end)->Print(" is ")->PrintLine(sum);
 		}
 
-		function : native : f(x : Float), Float {
+		function : native : f(x : Float) ~ Float {
 			return 1.0 / (x * x);
 		}
 	}

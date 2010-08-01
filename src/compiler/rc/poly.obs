@@ -18,23 +18,23 @@ bundle Default {
       @y := p->GetY();
     }
 
-    method : public : GetX() , Int { 
+    method : public : GetX() ~ Int { 
       return @x; 
     }
     
-    method : public : GetY() , Int { 
+    method : public : GetY() ~ Int { 
       return @y; 
     }
 
-    method : public : SetX(x : Int) , Nil { 
+    method : public : SetX(x : Int) ~ Nil { 
       @x := x; 
     }
     
-    method : public : SetY(y : Int) , Nil { 
+    method : public : SetY(y : Int) ~ Nil { 
       @y := y; 
     }
 
-    method : public : Print(), Nil { 
+    method : public : Print() ~ Nil { 
       "Point"->PrintLine();
     }
   }
@@ -58,21 +58,21 @@ bundle Default {
       @r := c->GetR();
     }
     
-    method : public : GetR() , Int { 
+    method : public : GetR() ~ Int { 
       return @r; 
     }
 
-    method : public : SetR(r : Int) , Nil { 
+    method : public : SetR(r : Int) ~ Nil { 
       @r := r; 
     }    
 
-    method : public : Print(), Nil { 
+    method : public : Print() ~ Nil { 
       "Circle"->PrintLine();
     } 
   }
   
   class Poly {
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       p := Point->New();
       c := Circle->New();
       p->Print();
