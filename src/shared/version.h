@@ -1,7 +1,7 @@
 /***************************************************************************
- * Starting point for the VM.
  *
- * Copyright (c) 2008-2010 Randy Hollines
+ *
+ * Copyright (c) 2008-2009, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,27 +29,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "vm.h"
-#include "../shared/version.h"
-#include <iostream>
-#include <string>
+#ifndef __VER_H__
+#define __VER_H__
 
-using namespace std;
+#define VERSION_STRING "v1.1.0_0"
 
-int main(const int argc, const char* argv[])
-{
-  if(argc > 1) {
-    return Execute(argc, argv);
-  } 
-  else {
-    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
-    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += "FOR MORE INFORMATION.\n\n";
-    usage += VERSION_STRING;
-	usage += "\n\n";
-    usage += "usage: obr <program>\n\n";
-    usage += "example: \"obr hello.obe\"";
-    cerr << usage << endl << endl;
-  }
-}
+#endif
