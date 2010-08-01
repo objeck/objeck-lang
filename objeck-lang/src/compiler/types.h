@@ -181,7 +181,7 @@ namespace frontend {
       return func_param_count;
     }
     
-    int SetFunctionParameterCount(int c) {
+    void SetFunctionParameterCount(int c) {
       func_param_count = c;
     }
     
