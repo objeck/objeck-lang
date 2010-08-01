@@ -263,6 +263,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	case INT_PARM:
 	  cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
 	  break;
+
+	case FUNC_PARM:
+	  cout << "print: type=Function, value=" << reference->GetIntValue() <<"," << reference->GetIntValue2() << endl;
+	  break;
 	
 	case FLOAT_PARM:
 	  cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
@@ -684,6 +688,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  reference->SetIntValue(ref_mem[index]);
 	  break;
 
+	case FUNC_PARM:
+	  reference->SetIntValue(ref_mem[index]);
+	  reference->SetIntValue2(ref_mem[index + 1]);
+	  break;
+
 	case FLOAT_PARM: {
 	  FLOAT_VALUE value;
 	  memcpy(&value, &ref_mem[index], sizeof(FLOAT_VALUE));
@@ -747,6 +756,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  switch(dclr_value.type) {	  
 	  case INT_PARM:
 	    reference->SetIntValue(ref_mem[index + 1]);
+		break;
+
+	  case FUNC_PARM:
+	    reference->SetIntValue(ref_mem[index + 1]);
+		reference->SetIntValue2(ref_mem[index + 2]);
 	    break;
 
 	  case FLOAT_PARM: {
