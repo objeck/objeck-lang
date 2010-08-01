@@ -300,6 +300,24 @@ class StackMethod {
             index++;
           }
           break;
+
+		case 'm':
+          param = FUNC_PARM;
+          state = 6;
+          index++;
+          while(index < params_name.size() && params_name[index] != '~') {
+            index++;
+          }
+		  while(index < params_name.size() && params_name[index] != ',') {
+            index++;
+          }
+          break;
+
+		default:
+#ifdef _DEBUG
+			assert(false);
+#endif
+			break;
         }
 
         // check array
@@ -360,6 +378,14 @@ class StackMethod {
         case OBJ_ARY_PARM:
           cout << "  OBJ_ARY_PARM" << endl;
           break;
+
+		case FUNC_PARM:
+          cout << "  FUNC_PARM" << endl;
+          break;
+
+		default:
+			assert(false);
+			break;
         }
 #endif
 
@@ -465,7 +491,7 @@ public:
 	  return index;
 	}
 	// update
-	if(dclr->type == FLOAT_PARM) {
+	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
 	  index += 2;
 	}
 	else {
@@ -714,7 +740,7 @@ public:
 	  return index;
 	}
 	// update
-	if(dclr->type == FLOAT_PARM) {
+	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
 	  index += 2;
 	}
 	else {
