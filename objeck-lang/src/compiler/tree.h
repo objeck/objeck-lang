@@ -1493,7 +1493,7 @@ namespace frontend {
     string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
 			      ParsedProgram* program, Linker* linker) {  
       string encoded_name = "(";
-      for(int i = 0; i < func_params.size(); i++) {
+      for(unsigned int i = 0; i < func_params.size(); i++) {
 	// encode params
 	encoded_name += EncodeType(func_params[i], program, linker);
     
