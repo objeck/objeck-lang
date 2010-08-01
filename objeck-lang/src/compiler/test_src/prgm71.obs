@@ -4,7 +4,7 @@ bundle Default {
 	Run();
     }
 
-    function : native : Run() ~ Nil {
+   function : native : Run() ~ Nil {
 #    function : Run() ~ Nil {
 	f := Func(Int) ~ Int;
 	f(13);
