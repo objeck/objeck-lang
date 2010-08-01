@@ -191,7 +191,7 @@ bundle Structure {
 
 			return -1;
 		}
-
+		
 		method : public : native : ToArray() ~ Int[] {
 			array : Int[] := Int->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -199,6 +199,16 @@ bundle Structure {
 			};
 
 			return array;
+		}
+		
+		method : public : Has(value : Int) ~ Bool {
+		  for(i : Int := 0; i < @size; i += 1;) {
+			  if(@values[i] = value) {
+			    return true;
+			   };
+			};
+			
+			return false;
 		}
 	}
 	
@@ -390,6 +400,16 @@ bundle Structure {
 			};
 
 			return array;
+		}
+		
+		method : public : Has(value : Float) ~ Bool {
+		  for(i : Int := 0; i < @size; i += 1;) {
+			  if(@values[i] = value) {
+			    return true;
+			   };
+			};
+			
+			return false;
 		}
 	}
 	

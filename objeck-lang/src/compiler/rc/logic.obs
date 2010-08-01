@@ -1,6 +1,6 @@
 bundle Default {
   class Logic {
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       a := true;
       b := false;
       IO.Console->GetInstance()->Print("a and b is: ")->PrintLine(a & b);
