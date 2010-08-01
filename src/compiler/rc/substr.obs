@@ -1,6 +1,6 @@
 bundle Default {
   class SubString {
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       s := "0123456789";
  
       n := 3;
