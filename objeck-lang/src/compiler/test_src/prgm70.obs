@@ -1,6 +1,10 @@
 bundle Default {
   class Test {
     function : Main(args : String[]) ~ Nil {
+	Run();
+    }
+
+    function : native : Run() ~ Nil {
 	f := Func(Int) ~ Int;
 	f(13)->PrintLine();
 
@@ -11,7 +15,7 @@ bundle Default {
 	s->Mecca();
 
 	s->Out(Foo->Bar(String) ~ Int)->PrintLine();	
-	(f2("Hello World!") * 10)->PrintLine();
+#	(f2("Hello World!") * 10)->PrintLine();
 
 	f3 := s->GetIt();
 	f3(18)->PrintLine();
