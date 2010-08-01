@@ -210,10 +210,31 @@ void JitCompilerIA32::ProcessIntCallParameter() {
 
 void JitCompilerIA32::ProcessFunctionCallParameter() {
 #ifdef _DEBUG
-  cout << "INT_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+  cout << "FUNC_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
 
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
   
+  RegisterHolder* stack_pos_holder = GetRegister();
+  move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
+  
+  sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
+
+  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  shl_reg(stack_pos_holder->GetRegister(), 2);
+  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
+  
+  RegisterHolder* holder = GetRegister();
+  move_reg_reg(op_stack_holder->GetRegister(), holder->GetRegister());
+  
+  move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
+  working_stack.push_front(new RegInstr(op_stack_holder));
+  
+  move_mem_reg(4, holder->GetRegister(), holder->GetRegister());
+  working_stack.push_front(new RegInstr(holder));
+  
+  ReleaseRegister(stack_pos_holder);
 }
 
 void JitCompilerIA32::ProcessFloatCallParameter() {
