@@ -37,6 +37,7 @@
 
 #include "vm.h"
 #include "windows.h"
+#include "../shared/version.h"
 #include <iostream>
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -61,7 +62,8 @@ int main(const int argc, const char* argv[])
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
-    usage += "v1.0.1.0\n";
+    usage += VERSION_STRING;
+	usage += "\n\n";
     usage += "usage: obr <program>\n\n";
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;

@@ -34,6 +34,7 @@
 #define SYSTEM_ERROR -2
 
 #include "compiler.h"
+#include "../shared/version.h"
 #include <iostream>
 #include <string>
 #include <map>
@@ -51,7 +52,8 @@ int main(int argc, char* argv[])
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
-  usage += "v1.0.1.0\n";
+  usage += VERSION_STRING;
+  usage += "\n\n";
   usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n";
   usage += "example: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\n";
   usage += "options:\n";
