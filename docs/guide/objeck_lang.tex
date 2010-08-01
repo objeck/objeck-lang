@@ -20,7 +20,7 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-Provides an introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler enthusiasts to the unique features and design of the Objeck programming language.   Unless otherwise noted, this article covers functionality that is included in release \textit{1.0.1.0}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
+Provides an introduction to the Objeck programming language and it's features.  This article is intended to introduce programmers and compiler enthusiasts to the unique features and design of the Objeck programming language.   Unless otherwise noted, this article covers functionality that is included in release \textit{1.1.0}.  For additional information please refer to the \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/} and \htmladdnormallink{technical}{http://code.google.com/p/objeck-lang/} project websites.
 \end{abstract}
 
 \newpage
@@ -397,6 +397,33 @@ A function or method may be defined as \texttt{virtual} meaning that any class t
 Below is an example of declaring a virtual method:
 \begin{verbatim}
 method : virtual : public : Compare(right : Base), Int;
+\end{verbatim}
+
+\subsection{First-Class Functions}
+The Objeck language supports the notion of first-class functions such that a given function may be bound to a variable at runtime.  Variables are assigned based upon functional prototypes.  Prototypes enforce strong type checking by ensuring that a function parameters and return type are consistent between assignments.  Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked.  Please note, methods are not treated as first-class constructs only functions.  
+
+\subsubsection{Assigning and Passing Functions}
+The following example shows how a function is defined and assigned to a variable:
+\begin{verbatim}
+class Foo {
+  function : GetSize(s : String) ~ Int {
+      return s->Size();
+  }
+}
+....
+s1 : (String) ~ Int := Foo-> GetSize(String) ~ Int;
+s2 := Foo-> GetSize(String) ~ Int;
+size := EnvokeSize("Hello", s2);
+\end{verbatim}
+
+\subsubsection{Envoking Functions}
+The following example shows how a function variable is envoked:
+\begin{verbatim}
+...
+method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
+  return f(s);
+}
+...
 \end{verbatim}
 
 \section{Debugger}
@@ -1214,7 +1241,7 @@ obc -src test_src\debug.obs -dest a.obe -debug
 obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
 
 -------------------------------------
-Objeck v1.0.1.0 - Interactive Debugger
+Objeck v1.1.0 - Interactive Debugger
 -------------------------------------
 loaded executable: file='../../compiler/a.obe'
 source files: path='../../compiler/test_src/'
@@ -1268,7 +1295,7 @@ goodbye.
 \end{verbatim}
 
 \section{Appendix B: Compiler and VM Design}
-\includegraphics[scale=0.60]{../images/compiler_data_flow.png}
+\includegraphics[scale=0.60]{../../images/compiler_data_flow.png}
 
 The following section gives a brief overview of the major architectural components the comprise the Objeck language compiler and virtual machine.
 
@@ -1315,9 +1342,11 @@ LOAD\_INT\_LIT & 4-byte integer & pushes integer onto stack  \\ \hline
 LOAD\_FLOAT\_LIT & 8-byte float & pushes float onto stack \\ \hline
 LOAD\_INT\_VAR & variable index & pushes integer onto stack \\ \hline
 LOAD\_FLOAT\_VAR & variable index & pushes float onto stack \\ \hline
+LOAD\_FUNC\_VAR & variable index & pushes float onto stack \\ \hline
 LOAD\_SELF & n/a & pushes self integer on stack \\ \hline
 STOR\_INT\_VAR & variable index & pops integer from stack and saves to index location \\ \hline
 STOR\_FLOAT\_VAR & variable index & pops float from stack and saves to index location \\ \hline
+STOR\_FUNC\_VAR & variable index & pops float from stack and saves to index location \\ \hline
 COPY\_INT\_VAR & variable index & copies an integer from stack and saves to index location \\ \hline
 COPY\_FLOAT\_VAR & variable index & copies a float from stack and saves to index location \\ \hline
 LOAD\_BYTE\_ARY\_ELM & array dimension & pushes byte onto stack; assumes array address was pushed prior \\ \hline
@@ -1391,6 +1420,7 @@ POP\_INT & n/a & control pop of an integer from the stack \\ \hline
 POP\_FLOAT & n/a & control pop of a float from the stack \\ \hline
 RTRN & n/a & exits existing method returning control to callee \\ \hline
 MTHD\_CALL & integer values for class id and method id & synchronous call to given method releasing control \\ \hline
+DYN\_MTHD\_CALL & pops integer values for class id and method id & dynamic synchronous call to given method releasing control \\ \hline
 ASYNC\_MTHD\_CALL & integer values for class id and method id; pushes new thread id & asynchronous call to given method \\ \hline
 ASYNC\_JOIN & thread id & waits for identified thread to end execution \\ \hline
 LBL & label id & identifies a jump label \\ \hline
