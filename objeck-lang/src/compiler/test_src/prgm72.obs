@@ -1,0 +1,24 @@
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : Run() ~ Nil {
+			org_values := IntVector->New([2, 4, 6, 8]);
+			new_values := org_values->Apply(Math->Power(Int) ~ Int);
+			each(i : new_values) {
+				new_values->Get(i)->PrintLine();
+			};
+		}
+	}
+
+	class Math {
+		function : Power(value : Int) ~ Int {
+			return value * value;
+		}
+	}
+}
+
