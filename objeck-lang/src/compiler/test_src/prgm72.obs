@@ -6,8 +6,17 @@ bundle Default {
 			Run();
 		}
 
-		function : Run() ~ Nil {
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
 			org_values := IntVector->New([2, 4, 6, 8]);
+#~
+			org_values := IntVector->New(x);
+			org_values->AddBack(2);	
+			org_values->AddBack(4);	
+			org_values->AddBack(6);	
+			org_values->AddBack(8);	
+~#
+
 			new_values := org_values->Apply(Math->Power(Int) ~ Int);
 			each(i : new_values) {
 				new_values->Get(i)->PrintLine();
