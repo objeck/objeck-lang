@@ -212,7 +212,6 @@ bundle Structure {
 		}
 		
 		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
-#		method : public : Apply() ~ IntVector {
 			array : Int[] := Int->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := @values[i];
@@ -220,7 +219,6 @@ bundle Structure {
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 			  array[i] := f(array[i]);
-#			  array[i] := array[i];
 			};
       
 			return IntVector->New(array);
@@ -425,6 +423,19 @@ bundle Structure {
 			};
 			
 			return false;
+		}
+
+		method : public : Apply(f : (Float) ~ Float) ~ FloatVector {
+			array : Float[] := Float->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+			
+			for(i : Int := 0; i < @size; i += 1;) {
+			  array[i] := f(array[i]);
+			};
+      
+			return FloatVector->New(array);
 		}
 	}
 	
