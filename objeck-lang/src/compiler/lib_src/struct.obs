@@ -210,6 +210,19 @@ bundle Structure {
 			
 			return false;
 		}
+		
+		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
+		  array : Int[] := Int->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+			
+			for(i : Int := 0; i < @size; i += 1;) {
+			  array[i] := f(array[i]);
+			};
+      
+			return IntVector->New(array);
+		}
 	}
 	
 	# Float Vector
