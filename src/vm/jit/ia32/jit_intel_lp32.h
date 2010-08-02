@@ -1215,6 +1215,61 @@ namespace Runtime {
 	  PushInt(op_stack, stack_pos, (int32_t)array);
 	}
 	  break;
+
+	case CPY_CHAR_STR_ARYS: {
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long size = array[0];
+	  const long dim = array[1];
+	  // copy elements
+	  INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = PopInt(op_stack, stack_pos);
+	  }
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_CHAR_STR_ARYS" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
+    
+	case CPY_INT_STR_ARY: {
+	  long index = PopInt(op_stack, stack_pos);
+	  INT_VALUE* value_str = program->GetIntStrings()[index];
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);    
+	  const long size = array[0];
+	  const long dim = array[1];    
+	  INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = value_str[i];
+	  }
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_INT_STR_ARY" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
+    
+	case CPY_FLOAT_STR_ARY: {
+	  long index = PopInt(op_stack, stack_pos);
+	  FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);    
+	  const long size = array[0];
+	  const long dim = array[1];    
+	  FLOAT_VALUE* str = (FLOAT_VALUE*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = value_str[i];
+	  }
+    
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_FLOAT_STR_ARY" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
+
 	  
 	case STD_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1710,7 +1765,7 @@ namespace Runtime {
 	      index -= sizeof(int32_t);
 	    }
 	    else if(instr->GetType() == LOAD_FUNC_VAR || 
-	       instr->GetType() == STOR_FUNC_VAR) {
+		    instr->GetType() == STOR_FUNC_VAR) {
 	      index -= sizeof(int32_t) * 2;
 	    }
 	    else {
