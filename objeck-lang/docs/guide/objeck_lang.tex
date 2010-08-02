@@ -48,7 +48,7 @@ The Objeck computer language consist of a compiler and virtual machine.  The com
 \begin{verbatim}
 bundle Default {
   class Hello {
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       "Hello World!"->PrintLine();
     }
   }
@@ -104,6 +104,7 @@ In Objeck, all data types are treated as objects. Basic objects provide supports
 \texttt{Int[]} &  integer array \\ \hline
 \texttt{Float} &  8--byte decimal \\ \hline
 \texttt{Float[]} &  decimal array \\ \hline
+\texttt{Function} &  Two 4--byte integers \\ \hline
 \end{tabular}
 \end{center}
 
@@ -150,7 +151,7 @@ The following code example demonstrates two ways to printing the number \texttt{
 \begin{verbatim}
 bundle Default {
   class Test {
-    function : Main(), Nil {
+    function : Main() ~ Nil {
       42->PrintLine();
       eight := 8;
       (eight * 7)->PrintLine();
@@ -344,13 +345,13 @@ class Foo {
     @lhs := lhs;
   }
 
-  method : native : AddTwo(rhs : Int), Int {
+  method : native : AddTwo(rhs : Int) ~ Int {
     return 2 + rhs;
   }
 
-  method : virtual : AddThree(int rhs), Int;
+  method : virtual : AddThree(int rhs) ~ Int;
 
-  method : GetLhs(), Int {
+  method : GetLhs() ~ Int {
     return lhs;
   }
 }
@@ -360,11 +361,11 @@ class Bar from Foo {
     Parent(value);
   }
 
-  method : native : AddThree(rhs : Int), Int {
+  method : native : AddThree(rhs : Int) ~ Int {
     return 3 + rhs;
   }
 
-  function : Main(), Nil {
+  function : Main() ~ Nil {
     bar : b := Bar->New(31);
     b->AddThree(9)->PrintLine();
   }
@@ -375,7 +376,7 @@ class Bar from Foo {
 An object that is inherited from another object may be either upcasted or downcasted.  Object casting can be performed using the \texttt{As()} operator.  The Object language detects upcasting and downcastng at compile time. Upcasting requires a runtime check, while down casting does not. If cross casting is detected then a compile time error will be generated.
 
 \begin{verbatim}
-method : public : Compare(right : Base), Int {
+method : public : Compare(right : Base) ~ Int {
   if(right <> Nil) {
     if(GetClassID() = right->GetClassID()) {
       a : A := right->As(A);
@@ -397,7 +398,7 @@ A function or method may be defined as \texttt{virtual} meaning that any class t
 
 Below is an example of declaring a virtual method:
 \begin{verbatim}
-method : virtual : public : Compare(right : Base), Int;
+method : virtual : public : Compare(right : Base ~ Int;
 \end{verbatim}
 
 \subsection{First-Class Functions}
@@ -848,6 +849,10 @@ Additional methods for IntVector/FloatVector
     	\begin{itemize}
 	\item method : public : native : Average(), Int/Float
 	\end{itemize}
+    \item \texttt{Apply} - applys the result of the passed in function to each element in the array 
+    	\begin{itemize}
+	\item method : public : Apply(func : (Int/Float) ~ Int/Float), IntVector/FloatVector
+	\end{itemize}
 \end{itemize}
 
 \subsubsection{Map/IntMap/FloatMap/StringMap}
@@ -1136,11 +1141,11 @@ The HttpClient class allows programmers access HTTP 1.1 websites:
 \begin{verbatim}
 bundle Default {
   class FindPrime {
-    function : Main(), Nil {
+    function : Main() ~ Nil {
       Run(1000000);
     }
 
-    function : native : Run(topCandidate : Int), Nil {
+    function : native : Run(topCandidate : Int)~ Nil {
       candidate : Int := 2;
       while(candidate <= topCandidate) {
         trialDivisor : Int := 2;
@@ -1175,7 +1180,7 @@ use Structure;
 
 bundle Default {
   class HttpTest {
-    function : Main(args : String[]), Nil {
+    function : Main(args : String[]) ~ Nil {
       if(args->Size() = 1) {
         client := HttpClient->New(args[0], 80);
         lines := client->Get();
@@ -1212,17 +1217,17 @@ bundle Default {
       value := v;z
     }
 
-    method : public : Get(), Int {
+    method : public : Get() ~ Int {
       return value;
     }
 
-    method : public : SetBar(), Nil {
+    method : public : SetBar() ~ Nil {
       bar := Bar->New();
     }
   }
 
   class Test {
-    function : Main(args : System.String[]), Nil {
+    function : Main(args : System.String[]) ~ Nil {
       d : Float := 11.12;
       z := Int->New[5,6];
       z[2,3] := 27;
@@ -1260,7 +1265,7 @@ break: file='debug.obs:31', method='Test->Main(..)'
      27: 	}
      28: 
      29: 	class Test {
-     30: 		function : Main(args : System.String[]), Nil {
+     30: 		function : Main(args : System.String[]) ~ Nil {
 =>   31: 			d : Float := 11.12;
      32: 			z := Int->New[5,6];	
      33: 			z[2,3] := 27;
