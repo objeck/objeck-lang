@@ -1891,7 +1891,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     // create string array
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));        
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARYS));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, (INT_VALUE)(all_elements.size() + 2)));
   }
 }
 
