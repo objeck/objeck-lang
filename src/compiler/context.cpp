@@ -1927,7 +1927,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
   }
 
   if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
-    ProcessError(left_expr, "Invalid array calculation");
+    if(right->GetType() != NIL_TYPE) {
+      ProcessError(left_expr, "Invalid array calculation");
+    }
   } 
   else {
     switch(left->GetType()) {
