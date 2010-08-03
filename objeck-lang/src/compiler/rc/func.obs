@@ -1,0 +1,20 @@
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			Compose(F(Int) ~ Int, G(Int) ~ Int, 13)->PrintLine();
+		}
+		
+		function : F(a : Int) ~ Int {
+			return a + 14;
+		}
+
+		function : G(a : Int) ~ Int {
+			return a + 15;
+		}
+		
+		function : Compose(f : (Int) ~ Int, g : (Int) ~ Int, x : Int) ~ Int {
+			return f(g(x));
+		}
+	}
+}
+
