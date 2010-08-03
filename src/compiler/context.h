@@ -77,12 +77,21 @@ class ContextAnalyzer {
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
-    Type* type = expression->GetEvalType();
+    
+    Type* type;
+    if(expression->GetCastType()) {
+      type = expression->GetCastType();
+    }
+    else {
+      type = expression->GetEvalType();
+    }
+    
     if(type && type->GetDimension() > 0) {
       ExpressionList* indices = NULL;
       if(expression->GetExpressionType() == VAR_EXPR) {
         indices = static_cast<Variable*>(expression)->GetIndices();
-      } else {
+      } 
+      else {
         return false;
       }
 
@@ -132,7 +141,15 @@ class ContextAnalyzer {
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
-    Type* eval_type = expression->GetEvalType();
+
+    Type* eval_type;
+    if(expression->GetCastType()) {
+      eval_type = expression->GetCastType();
+    }
+    else {
+      eval_type = expression->GetEvalType();
+    }
+
     if(eval_type) {
       // integer types
       if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE) {

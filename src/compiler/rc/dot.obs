@@ -1,10 +1,10 @@
 bundle Default {
   class DotProduct {
     function : Main(args : String[]) ~ Nil {
-    	DotProduct(Nil, [4, -2, -1])->PrintLine();
+    	DotProduct(Nil->As(Int[]), [4, -2, -1])->PrintLine();
     }
   	
-		function : native : DotProduct(array_a : Int[], array_b : Int[]) ~ Int {
+	function : native : DotProduct(array_a : Int[], array_b : Int[]) ~ Int {
 			if(array_a = Nil) {
 				return 0;
 			};
