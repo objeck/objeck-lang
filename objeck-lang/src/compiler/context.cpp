@@ -888,7 +888,8 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
   Type* type;
   if(expression->GetCastType()) {
     type = expression->GetCastType();
-  } else {
+  } 
+  else {
     type = expression->GetEvalType();
   }
 
@@ -2326,7 +2327,8 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     return;
   }
 
-  if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType()->GetType() == NIL_TYPE) {
+  if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+     expression->GetEvalType()->GetType() == NIL_TYPE) {
     ProcessError(expression, "Invalid operation method does not return a value");
     return;
   }
@@ -2363,7 +2365,6 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Nil and Nil");
         break;
 
       case BYTE_TYPE:
@@ -2404,7 +2405,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Byte and Nil");
+	if(left->GetDimension() < 1) {
+	  ProcessError(expression, "Invalid cast with classes: Byte and Nil");
+	}
         break;
 
       case BYTE_TYPE:
@@ -2440,7 +2443,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Char and Nil");
+	if(left->GetDimension() < 1) {
+	  ProcessError(expression, "Invalid cast with classes: Char and Nil");
+	}
         break;
 
       case CHAR_TYPE:
@@ -2476,7 +2481,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Int and Nil");
+	if(left->GetDimension() < 1) {
+	  ProcessError(expression, "Invalid cast with classes: Int and Nil");
+	}
         break;
 
       case INT_TYPE:
@@ -2512,7 +2519,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Float and Nil");
+	if(left->GetDimension() < 1) {
+	  ProcessError(expression, "Invalid cast with classes: Float and Nil");
+	}
         break;
 
       case FLOAT_TYPE:
@@ -2589,7 +2598,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Bool and Nil");
+	if(left->GetDimension() < 1) {
+	  ProcessError(expression, "Invalid cast with classes: Bool and Nil");
+	}
         break;
 
       case BYTE_TYPE:
