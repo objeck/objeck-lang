@@ -1,7 +1,11 @@
 bundle Default {
 	class Test {
+		@f : static : (Int) ~ Int;
+		@g : static : (Int) ~ Int;
+		
 		function : Main(args : String[]) ~ Nil {
-			Compose(F(Int) ~ Int, G(Int) ~ Int, 13)->PrintLine();
+			compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
+			compose(13)->PrintLine();
 		}
 		
 		function : F(a : Int) ~ Int {
@@ -12,8 +16,14 @@ bundle Default {
 			return a + 15;
 		}
 		
-		function : Compose(f : (Int) ~ Int, g : (Int) ~ Int, x : Int) ~ Int {
-			return f(g(x));
+		function : Compose(x : Int) ~ Int {
+			return @f(@g(x));
+		}
+		
+		function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+			@f := f;
+			@g := g;
+			return Compose(Int) ~ Int;
 		}
 	}
 }
