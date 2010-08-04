@@ -51,5 +51,7 @@ int main(const int argc, const char* argv[])
     usage += "usage: obr <program>\n\n";
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;
+
+	return 1;
   }
 }
