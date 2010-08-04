@@ -46,16 +46,20 @@ int main(const int argc, const char* argv[])
   if(argc > 1) {
     WSADATA data;
     int version = MAKEWORD(2, 2);
+
+	int status;
     if(WSAStartup(version, &data)) {
       cerr << "Unable to load Winsock 2.2!" << endl;
-      return SYSTEM_ERROR;
+      status = SYSTEM_ERROR;
     }
     else {
       // execute program
-      return Execute(argc, argv);
+      status = Execute(argc, argv);
     }
     // release winsock
     WSACleanup();
+
+	return status;
   } 
   else {
     string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
@@ -68,4 +72,6 @@ int main(const int argc, const char* argv[])
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;
   }
+
+  return 1;
 }
