@@ -1336,6 +1336,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 	vector<Type*>& func_params = type->GetFunctionParameters();
 	for(unsigned int i = 0; i < func_params.size(); i++) {
 	  dyn_func_params += EncodeType(func_params[i]);
+	  // encode dimension
+	  for(int i = 0; i < type->GetDimension(); i++) {
+	    dyn_func_params += '*';
+	  }
 	  dyn_func_params += ',';
 	}      
       }
@@ -3020,7 +3024,11 @@ string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func
   // encode return
   encoded_name += ")~";
   encoded_name += EncodeType(func_rtrn);
-
+  // encode dimension
+  for(int i = 0; i < func_rtrn->GetDimension(); i++) {
+    encoded_name += '*';
+  }
+  
   return encoded_name;
 }
 
