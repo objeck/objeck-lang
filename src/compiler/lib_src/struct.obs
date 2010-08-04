@@ -560,6 +560,16 @@ bundle Structure {
 			return -1;
 		}
 		
+		method : public : Has(value : Compare) ~ Bool {
+			for(i : Int := 0; i < @size; i += 1;) {
+				if(@values[i]->Compare(value) = 0) {
+					return true;
+				};
+			};
+			
+			return false;
+		}
+		
 		method : public : native : ToArray() ~ Compare[] {
 			array : Compare[] := Compare->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
