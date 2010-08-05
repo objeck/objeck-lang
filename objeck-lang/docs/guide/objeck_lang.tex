@@ -32,7 +32,7 @@ Provides an introduction to the Objeck programming language and it's features.  
 The Objeck program language is an object-oriented computer language with functional features.  The language was designed to be an easy to use general purpose programming system.  The Objeck language allows programmers to quickly create solutions by leveraging pre-existing class libraries.  The syntax for the language was designed with symmetry in mind and enforces the notion that there should only be one way to do something. Features of this release include:
 \begin{itemize}
 	\item Support for object-oriented programming (all data types are treated as objects)
-	\item Functional support (first-class functions) 
+	\item Functional support (higer-order functions) 
 	\item Cross platform (support for OS X, Linux and Windows)
 	\item Concurrent runtime JIT support for Intel processors
 	\item Multi-threaded memory management (garbage collector)
@@ -401,8 +401,8 @@ Below is an example of declaring a virtual method:
 method : virtual : public : Compare(right : Base ~ Int;
 \end{verbatim}
 
-\subsection{First-Class Functions}
-The Objeck language supports the notion of first-class functions such that a given function may be bound to a variable at runtime.  Variables are assigned based upon functional prototypes.  Prototypes enforce strong type checking by ensuring that a function parameters and return type are consistent between assignments.  Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked.  Please note, methods are not treated as first-class constructs only functions.  
+\subsection{Higher-Order Functions}
+The Objeck language supports the notion of higher-order functions such that a given function may be bound to a variable at runtime.  Variables are assigned based upon functional prototypes.  Prototypes enforce strong type checking by ensuring that a function parameters and return type are consistent between assignments.  Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked.  Please note, methods are not treated as higher-order constructs only functions.  
 
 \subsubsection{Assigning and Passing Functions}
 The following example shows how a function is defined and assigned to a variable:
