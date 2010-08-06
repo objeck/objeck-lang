@@ -1265,34 +1265,38 @@ bundle Net {
 			SOCK_TCP_OUT_BYTE;
 		}
 		
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+		method : public : native : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_OUT_BYTE_ARY;
 		}
 		
-		method : public : ReadByte() ~ Byte {
+		method : public : native : ReadByte() ~ Byte {
 			SOCK_TCP_IN_BYTE;
 		}
 		
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+		method : public : native : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			SOCK_TCP_IN_BYTE_ARY;
 		}
 		
-		method : public : WriteString(str : System.String) ~ Nil {
+		method : public : native : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
 		}
 
-		method : WriteString(buffer : Char[]) ~ Nil {
+		method : native : WriteString(buffer : Char[]) ~ Nil {
 			SOCK_TCP_OUT_STRING;
 		}
 		
-		method : public : ReadString() ~ System.String {
+		method : public : native : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[256];
 			ReadString(buffer);
 			return System.String->New(buffer);
 		}
 
-		method : ReadString(buffer : Char[]) ~ Nil {
+		method : native : ReadString(buffer : Char[]) ~ Nil {
 			SOCK_TCP_IN_STRING;
+		}
+
+		function : HostName() ~ String {
+			SOCK_TCP_HOST_NAME;
 		}
 	}	
 }
