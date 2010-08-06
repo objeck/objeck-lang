@@ -1030,6 +1030,12 @@ Statement* Parser::ParseStatement(int depth)
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_TCP_OUT_BYTE_ARY);
       NextToken();
+      break;   
+      
+    case SOCK_TCP_HOST_NAME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_HOST_NAME);
+      NextToken();
       break;      
 #endif
 
