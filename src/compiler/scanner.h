@@ -184,6 +184,7 @@ enum TokenType {
   SOCK_TCP_OUT_BYTE,
   SOCK_TCP_OUT_BYTE_ARY,
   SOCK_TCP_OUT_STRING,
+  SOCK_TCP_HOST_NAME,
   // thread management
   ASYNC_MTHD_CALL,
   THREAD_SLEEP,
