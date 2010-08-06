@@ -168,6 +168,7 @@ void Scanner::LoadKeywords()
   ident_map["SOCK_TCP_IN_STRING"] = SOCK_TCP_IN_STRING;
   ident_map["SOCK_TCP_OUT_BYTE"] = SOCK_TCP_OUT_BYTE;
   ident_map["SOCK_TCP_OUT_BYTE_ARY"] = SOCK_TCP_OUT_BYTE_ARY;
+  ident_map["SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
 #endif
 }
 
@@ -273,6 +274,7 @@ void Scanner::CheckIdentifier(int index)
   case SOCK_TCP_OUT_STRING:
   case SOCK_TCP_OUT_BYTE:
   case SOCK_TCP_OUT_BYTE_ARY:
+  case SOCK_TCP_HOST_NAME:
 #endif
     tokens[index]->SetType(ident_type);
     break;

@@ -1481,6 +1481,29 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
     
     // ---------------- ip socket i/o ----------------
+  case SOCK_TCP_HOST_NAME: {
+    long* array = (long*)PopInt();
+    const long size = array[0];
+    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
+
+    // get host name
+    char value_str[255 + 1];    
+    if(!gethostname(value_str, 255)) {
+      // copy name    
+      for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+	str[i] = value_str[i];
+      }
+    }
+    else {
+      str[0] = '\0';
+    }
+#ifdef _DEBUG
+    cout << "stack oper: SOCK_TCP_HOST_NAME: host='" << value_str << "'" << endl;
+#endif
+    PushInt((long)array);
+  }
+    break;
+    
   case SOCK_TCP_CONNECT: {
     long port = PopInt();
     long* array = (long*)PopInt();

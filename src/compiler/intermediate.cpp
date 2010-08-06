@@ -1081,6 +1081,42 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
     //----------- ip socket methods -----------
+  case instructions::SOCK_TCP_HOST_NAME: {
+    // copy and create Char[]
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)255 + 1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_TCP_HOST_NAME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+#ifdef _SYSTEM
+    Class* klass = SearchProgramClasses("System.String");
+    assert(klass);
+    int string_cls_id = klass->GetId();
+#else
+    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
+    assert(lib_klass);
+    int string_cls_id = lib_klass->GetId();
+#endif
+    
+    // create 'System.String' instance
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+    } 
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
+    }
+    // note: method ID is position dependant
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+										 "System.String", "System.String:New:c*,"));
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
+    }
+    // new basic block
+    NewBlock();
+  }    
+    break;
+    
   case instructions::SOCK_TCP_CONNECT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
@@ -1907,7 +1943,6 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   // copy and create Char[]
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetString().size() + 1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
-  // TODO: Fix for shared libs
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)char_str->GetId()));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
