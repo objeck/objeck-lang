@@ -206,6 +206,15 @@ bundle System {
 	# Int class support
 	~~#	
 	class $Int {
+		function : native : Factorial(n : Int) ~ Int {
+			result := 1;
+			for (i := 1; i <= n; i += 1;) {
+				result *= i;
+			};
+
+			return result;
+		}
+
 		function : native : Min(l : Int, r : Int) ~ Int {
 			if(l < r) {
 				return l;
