@@ -13,7 +13,7 @@ bundle Default {
       Console->GetInstance()->Print("Enter y: ");
       y := Console->GetInstance()->ReadString()->ToInt();
       
-     	if(x <> 0 & y <> 0) {
+     	if(x > 0 & y > 0) {
         array : Int[,] := Int->New[x, y];
         array[0, 0] := 2;
         array[0, 0]->PrintLine();
