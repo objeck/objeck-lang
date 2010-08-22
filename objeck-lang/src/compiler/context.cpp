@@ -597,7 +597,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 
   // check expression method call
   AnalyzeExpressionMethodCall(expression, depth + 1);
-
+  
   // check cast
   AnalyzeCast(expression, depth + 1);
 }
@@ -891,6 +891,11 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
   } 
   else {
     type = expression->GetEvalType();
+  }
+
+  if(expression->GetExpressionType() == STAT_ARY_EXPR) {
+    ProcessError(expression, "Unable to make method calls on static arrays");
+    return false;
   }
 
   if(type) {
