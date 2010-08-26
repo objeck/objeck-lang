@@ -689,11 +689,17 @@ Base class for all objects.
     	\begin{itemize}
 	\item method : public : native : Compare(rhs : Compare), Int
 	\end{itemize}
+   
+   \item \texttt{Split} - breaks a string into tokens based upon a given delimiter
+    	\begin{itemize}
+	\item method : public : native : Split(delim : String), String[]
+	\end{itemize}
+  
    \item \texttt{Print} - prints the current value
     	\begin{itemize}
 	\item method : native : Print(), Nil
 	\end{itemize}
-    \item \texttt{PrintLine} - prints the current value along with a line return
+   \item \texttt{PrintLine} - prints the current value along with a line return
     	\begin{itemize}
 	\item method : native : PrintLine(), Nil
 	\end{itemize}
