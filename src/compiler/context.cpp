@@ -740,8 +740,9 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
       // check dimensions
       if(entry->GetType()->GetDimension() == indices->GetExpressions().size()) {
         AnalyzeIndices(indices, depth + 1);
-      } else {
-        ProcessError(variable, "Dimension size mismatch");
+      } 
+      else {
+        ProcessError(variable, "Dimension size mismatch or uninitialized type");
       }
     }
     // static check
