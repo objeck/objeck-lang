@@ -190,7 +190,7 @@ bundle System {
             while(value >= 10 & i < 16) {
             	mod := value % 10;
                 values[i] := mod;
-                i := i + 1;
+                i += 1;
                 value := value / 10;
          	};
          	values[i] := value;
@@ -462,7 +462,7 @@ bundle System {
 
 		method : public : native : ToCharArray() ~ Char[] {
 			array : Char[] := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i := i + 1;) {
+			for(i : Int := 0; i < @pos; i += 1;) {
 				array[i] := @string[i];
 			};
 
@@ -487,13 +487,13 @@ bundle System {
 				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
-				for(i : Int := 0; i < @string->Size(); i := i + 1;) {
+				for(i : Int := 0; i < @string->Size(); i += 1;) {
 					tmp[i] := @string[i];	
 				};
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i := i + 1;) {
+			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};
@@ -505,13 +505,13 @@ bundle System {
 				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
-				for(i : Int := 0; i < @string->Size(); i := i + 1;) {
+				for(i : Int := 0; i < @string->Size(); i += 1;) {
 					tmp[i] := @string[i];	
 				};
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i := i + 1;) {
+			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};
@@ -523,7 +523,7 @@ bundle System {
                 		@max := @max * 3;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
-                		for(i : Int := 0; i < @string->Size(); i := i + 1;) {
+                		for(i : Int := 0; i < @string->Size(); i += 1;) {
                         		tmp[i] := @string[i];
                 		};
                 		@string := tmp;
@@ -539,7 +539,7 @@ bundle System {
                 		@max := @max * 3;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
-                		for(i : Int := 0; i < @string->Size(); i := i + 1;) {
+                		for(i : Int := 0; i < @string->Size(); i += 1;) {
                         		tmp[i] := @string[i];
                 		};
                 		@string := tmp;
@@ -550,7 +550,7 @@ bundle System {
 		}
 
 		method : public : native : Find(c : Char) ~ Int {
-			for(i : Int := 0; i < @pos; i := i + 1;) {
+			for(i : Int := 0; i < @pos; i += 1;) {
 				if(@string[i] = c) {
 					return i;
 				};
@@ -689,7 +689,7 @@ bundle System {
 					if(@string[i] = '.') {
 						dec_index := i;
 					};
-					i := i + 1;
+					i += 1;
 				};
 
 				# calculate decimal number 
@@ -769,7 +769,7 @@ bundle System {
 
 		method : public : native : StartsWith(s : String) ~ Bool {
 			if(s->Size() <= @pos) {
-				for(i := 0; i < s->Size(); i := i + 1;) {
+				for(i := 0; i < s->Size(); i += 1;) {
 					if(s->Get(i) <> @string[i]) {
 						return false;
 					};
@@ -816,7 +816,7 @@ bundle System {
 			i := 0;	
 			c : Char := @string[i];
 			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->Size()) {
-				i := i + 1;
+				i += 1;
 				c := @string[i];
 			};
 
@@ -831,16 +831,96 @@ bundle System {
 			tmp : Char[] := Char->New[@max];
 			while(i < j) {
 				tmp[k] := @string[i];
-				i := i + 1;
+				i += 1;
 				k := k + 1;
 			};
             
 			return String->New(tmp);
 		}
 		
+		method : public : native : Split(token : String) ~ String[] {
+			if(token->Size() = 0 | @pos = 0) {
+				return Nil;
+			};
+			
+			count := 0;
+			start_index := 0;
+			found_index := -1;
+			token_index := 0;
+			
+			for(i : Int := 0; i < @pos; i += 1;) {
+				if(found_index = -1 & token->Get(0) = @string[i]) {
+					found_index := i;
+				};
+				
+				if(found_index > -1) {
+					if(token_index < token->Size() & token->Get(token_index) = @string[i]) {
+						token_index += 1;
+					}
+					else if(token_index = token->Size()) {
+						count += 1;
+						start_index := found_index + token->Size();
+						found_index := -1;
+						token_index := 0;
+					}
+					else {
+						found_index := -1;
+						token_index := 0;
+					};
+				};
+			};
+			
+			
+			if(start_index <> 0) {
+				count += 1;
+				SubString(start_index, @pos - start_index);
+			};
+			
+			#-------------
+			
+#			parsed_strings : String[] := String->New[count];
+			parsed_strings := String->New[count];
+			count := 0;
+			start_index := 0;
+			found_index := -1;
+			token_index := 0;
+			
+			for(i : Int := 0; i < @pos; i += 1;) {
+				if(found_index = -1 & token->Get(0) = @string[i]) {
+					found_index := i;
+				};
+				
+				if(found_index > -1) {
+					if(token_index < token->Size() & token->Get(token_index) = @string[i]) {
+						token_index += 1;
+					}
+					else if(token_index = token->Size()) {
+						parsed_strings[count] := SubString(start_index, found_index + token->Size() - start_index);
+						count += 1;
+						
+						start_index := found_index + token->Size();
+						found_index := -1;
+						token_index := 0;
+					}
+					else {
+						found_index := -1;
+						token_index := 0;
+					};
+				};
+			};
+			
+			
+			if(start_index <> 0) {
+				parsed_strings[count] := SubString(start_index, @pos - start_index);
+				count += 1;
+			};
+			
+			return parsed_strings;
+		}
+		
 		method : public : native : ToUpper() ~ String {
 			array : Char[] := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i := i + 1;) {
+			for(i : Int := 0; i < @pos; i += 1;) {
 				c := @string[i];
 				if(c > 96 & c < 123) {
 					c := c - 32;
@@ -853,7 +933,7 @@ bundle System {
 		
 		method : public : native : ToLower() ~ String {
 			array : Char[] := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i := i + 1;) {
+			for(i : Int := 0; i < @pos; i += 1;) {
 				c := @string[i];
 				if(c > 64 & c < 91) {
 					c := c + 32;
@@ -879,7 +959,7 @@ bundle System {
 			};
 
 			array : Char[] := Char->New[length];
-			for(i : Int := 0; i < length; i := i + 1;) {
+			for(i : Int := 0; i < length; i += 1;) {
 				array[i] := @string[i + offset];
 			};
 
@@ -892,7 +972,7 @@ bundle System {
 
 		method : public : HashID() ~ Int {
 			hash := 0;
-			for(i := 0; i < @pos; i := i + 1;) {
+			for(i := 0; i < @pos; i += 1;) {
 				hash := hash * 31 + @string[i];
 			};
 			
@@ -902,7 +982,7 @@ bundle System {
 		method : public : Compare(rhs : System.Compare) ~ Int {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
-				for(i : Int := 0; i < @pos; i := i + 1;) {
+				for(i : Int := 0; i < @pos; i += 1;) {
 					left : Char := @string[i];
 					right : Char := right_string->Get(i);
 					if(left > right) {
