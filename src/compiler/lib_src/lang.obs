@@ -316,6 +316,14 @@ bundle System {
 		function : Log(f : Float) ~ Float {
 			LOG_FLOAT;
 		}
+		
+		function : SquareRoot(f : Float) ~ Float {
+			SQRT_FLOAT;
+		}
+		
+		function : Power(f : Float, r : Float) ~ Float {
+			POW_FLOAT;
+		}
 
 		function : native : Print(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
