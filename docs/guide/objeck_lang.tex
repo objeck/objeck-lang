@@ -139,6 +139,7 @@ Types that are not initialized at declaration time are initialized with the foll
 \texttt{Float} & 0.0 \\ \hline
 Array & \texttt{Nil} \\ \hline
 Object & \texttt{Nil} \\ \hline
+Function & \texttt{Nil} \\ \hline
 \end{tabular}
 \end{center}
 
@@ -566,31 +567,39 @@ Base class for all objects.
 	\end{itemize}
     \item \texttt{Floor} - returns the floor of the current number
     	\begin{itemize}
-	\item method : native : Floor(), Float
+	\item method : Floor(), Float
 	\end{itemize}
     \item \texttt{Ceiling} - returns the ceiling of the current number
     	\begin{itemize}
-	\item method : native : Ceiling(), Float
+	\item method : Ceiling(), Float
 	\end{itemize}
     \item \texttt{Sin} - returns the sine of the radian value
     	\begin{itemize}
-	\item method : native : Sin(), Float
+	\item method : Sin(), Float
 	\end{itemize}
     \item \texttt{Cos} - returns the cosine of the radian value
     	\begin{itemize}
-	\item method : native : Cos(), Float
+	\item method : Cos(), Float
 	\end{itemize}
     \item \texttt{Tan} - returns the tangent of the radian value
     	\begin{itemize}
-	\item method : native : Tan(), Float
+	\item method : Tan(), Float
 	\end{itemize}	
     \item \texttt{Log} - returns the natural log of the radian value
     	\begin{itemize}
-	\item method : native : Long(), Float
+	\item method : Long(), Float
 	\end{itemize}
     \item \texttt{Pi} - returns the value of Pi
     	\begin{itemize}
-	\item function : native : Pi(), Float
+	\item function : Pi(), Float
+	\end{itemize}
+    \item \texttt{Power} - returns the exponential power value
+    	\begin{itemize}
+	\item function : Power(), Float
+	\end{itemize}
+    \item \texttt{SquareRoot} - returns the square root
+    	\begin{itemize}
+	\item function : SquareRoot(), Float
 	\end{itemize}
     \item \texttt{Print} - prints the current value
     	\begin{itemize}

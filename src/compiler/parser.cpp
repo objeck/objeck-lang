@@ -791,6 +791,18 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::LOG_FLOAT);
       NextToken();
       break;
+
+    case POW_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::POW_FLOAT);
+      NextToken();
+      break;
+      
+    case SQRT_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SQRT_FLOAT);
+      NextToken();
+      break;
       
     case STD_OUT_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
