@@ -705,6 +705,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case LOG_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LOG_FLOAT));
       break;
+
+    case POW_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, POW_FLOAT));
+      break;
+
+    case SQRT_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, SQRT_FLOAT));
+      break;
       
     case F2I:
       instrs.push_back(new LibraryInstr(line_num, F2I));

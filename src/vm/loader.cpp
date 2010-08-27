@@ -615,6 +615,14 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, LOG_FLOAT));
       break;
 
+    case POW_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, POW_FLOAT));
+      break;
+
+    case SQRT_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, SQRT_FLOAT));
+      break;
+
     case F2I:
       method->AddInstruction(new StackInstr(line_num, F2I));
       break;
