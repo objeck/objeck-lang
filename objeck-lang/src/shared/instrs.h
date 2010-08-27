@@ -94,6 +94,8 @@ namespace instructions {
     COS_FLOAT,
     TAN_FLOAT,
     LOG_FLOAT,
+    POW_FLOAT,
+    SQRT_FLOAT,
     // conversions
     I2F,
     F2I,

@@ -425,6 +425,7 @@ void StackInterpreter::Execute()
       PushInt(PopFloat() > PopFloat());
       break;
 
+      // Note: not supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat()));
       break;
@@ -448,6 +449,15 @@ void StackInterpreter::Execute()
     case LOG_FLOAT:
       PushFloat(log(PopFloat()));
       break;
+
+    case POW_FLOAT:
+      PushFloat(pow(PopFloat(), PopFloat()));
+      break;
+      
+    case SQRT_FLOAT:
+      PushFloat(sqrt(PopFloat()));
+      break;
+      // Note: not supported via JIT -- *end*
       
     case I2F:
 #ifdef _DEBUG
