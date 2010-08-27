@@ -450,8 +450,11 @@ void StackInterpreter::Execute()
       PushFloat(log(PopFloat()));
       break;
 
-    case POW_FLOAT:
-      PushFloat(pow(PopFloat(), PopFloat()));
+    case POW_FLOAT: {
+      FLOAT_VALUE left = PopFloat();
+      FLOAT_VALUE right = PopFloat();
+      PushFloat(pow(left, right));
+    }
       break;
       
     case SQRT_FLOAT:
