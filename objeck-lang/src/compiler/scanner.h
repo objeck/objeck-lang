@@ -135,6 +135,8 @@ enum TokenType {
   COS_FLOAT,
   TAN_FLOAT,
   LOG_FLOAT,
+  POW_FLOAT,
+  SQRT_FLOAT,
   LOAD_CLS_INST_ID,
   LOAD_INST_UID,
   // standard i/o
