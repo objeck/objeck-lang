@@ -118,6 +118,8 @@ void Scanner::LoadKeywords()
   ident_map["COS_FLOAT"] = COS_FLOAT;
   ident_map["TAN_FLOAT"] = TAN_FLOAT;
   ident_map["LOG_FLOAT"] = LOG_FLOAT;
+  ident_map["POW_FLOAT"] = POW_FLOAT;
+  ident_map["SQRT_FLOAT"] = SQRT_FLOAT;
   ident_map["LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
   ident_map["LOAD_INST_UID"] = LOAD_INST_UID;
   ident_map["LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
@@ -228,6 +230,8 @@ void Scanner::CheckIdentifier(int index)
   case COS_FLOAT:
   case TAN_FLOAT:
   case LOG_FLOAT:
+  case POW_FLOAT:
+  case SQRT_FLOAT:
   case LOAD_CLS_INST_ID:
   case LOAD_INST_UID:
   case STD_OUT_BOOL:
