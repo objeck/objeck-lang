@@ -1,0 +1,13 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+	
+		function : native : Run() ~ Nil {
+			for(i := 0; i < 5; i += 1;) {
+				Float->Random()->PrintLine();
+			};
+		}
+	}
+}

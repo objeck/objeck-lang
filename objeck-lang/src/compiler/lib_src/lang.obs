@@ -321,6 +321,10 @@ bundle System {
 			SQRT_FLOAT;
 		}
 		
+		function : Random() ~ Float {
+			RAND_FLOAT;
+		}
+		
 		function : Power(f : Float, r : Float) ~ Float {
 			POW_FLOAT;
 		}
