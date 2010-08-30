@@ -137,6 +137,7 @@ enum TokenType {
   LOG_FLOAT,
   POW_FLOAT,
   SQRT_FLOAT,
+  RAND_FLOAT,
   LOAD_CLS_INST_ID,
   LOAD_INST_UID,
   // standard i/o

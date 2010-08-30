@@ -1,0 +1,9 @@
+bundle Default {
+	class Parse {
+		function : Main(args : String[]) ~ Nil {
+			16.0->SquareRoot()->PrintLine();
+			4.5->Power(2.3)->PrintLine();
+		}
+	}
+}
+
