@@ -266,6 +266,10 @@ bundle System {
 		function : native : Pi() ~ Float {
 			return 3.14159265;
 		}
+
+		function : native : E() ~ Float {
+			return 2.71828183;
+		}	
 		
 		function : native : Min(l : Float, r : Float) ~ Float {
 			if(l < r) {
