@@ -623,6 +623,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, SQRT_FLOAT));
       break;
 
+    case RAND_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, RAND_FLOAT));
+      break;
+      
     case F2I:
       method->AddInstruction(new StackInstr(line_num, F2I));
       break;
