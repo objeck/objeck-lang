@@ -587,7 +587,7 @@ Base class for all objects.
 	\end{itemize}	
     \item \texttt{Log} - returns the natural log of the radian value
     	\begin{itemize}
-	\item method : Long(), Float
+	\item method : Log(), Float
 	\end{itemize}
     \item \texttt{Pi} - returns the value of Pi
     	\begin{itemize}
@@ -595,11 +595,15 @@ Base class for all objects.
 	\end{itemize}
     \item \texttt{Power} - returns the exponential power value
     	\begin{itemize}
-	\item function : Power(), Float
+	\item method : Power(), Float
 	\end{itemize}
     \item \texttt{SquareRoot} - returns the square root
     	\begin{itemize}
-	\item function : SquareRoot(), Float
+	\item method : SquareRoot(), Float
+	\end{itemize}
+    \item \texttt{Random} - returns a puedo-random number between 0.0 and 1.0 
+    	\begin{itemize}
+	\item function : Random(), Float
 	\end{itemize}
     \item \texttt{Print} - prints the current value
     	\begin{itemize}
@@ -868,9 +872,13 @@ Additional methods for IntVector/FloatVector
     	\begin{itemize}
 	\item method : public : native : Average(), Int/Float
 	\end{itemize}
+    \item \texttt{Filter} - applys the result of the passed in function to each element in the array 
+    	\begin{itemize}
+	\item method : public : Filter(func : (Int/Float/Compare) $\sim$ Bool), IntVector/FloatVector/CompareVector
+	\end{itemize}
     \item \texttt{Apply} - applys the result of the passed in function to each element in the array 
     	\begin{itemize}
-	\item method : public : Apply(func : (Int/Float) ~ Int/Float), IntVector/FloatVector
+	\item method : public : Apply(func : (Int/Float) $\sim$ Int/Float), IntVector/FloatVector
 	\end{itemize}
 \end{itemize}
 
