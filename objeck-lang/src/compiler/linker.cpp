@@ -713,6 +713,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case SQRT_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, SQRT_FLOAT));
       break;
+
+    case RAND_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, RAND_FLOAT));
+      break;
       
     case F2I:
       instrs.push_back(new LibraryInstr(line_num, F2I));

@@ -803,6 +803,12 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::SQRT_FLOAT);
       NextToken();
       break;
+
+    case RAND_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::RAND_FLOAT);
+      NextToken();
+      break;
       
     case STD_OUT_BOOL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,

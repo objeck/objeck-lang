@@ -96,6 +96,7 @@ namespace instructions {
     LOG_FLOAT,
     POW_FLOAT,
     SQRT_FLOAT,
+    RAND_FLOAT,
     // conversions
     I2F,
     F2I,
