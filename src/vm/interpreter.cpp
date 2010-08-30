@@ -460,6 +460,12 @@ void StackInterpreter::Execute()
     case SQRT_FLOAT:
       PushFloat(sqrt(PopFloat()));
       break;
+      
+    case RAND_FLOAT: {
+      FLOAT_VALUE value = (FLOAT_VALUE)rand();
+      PushFloat(value / (FLOAT_VALUE)RAND_MAX);
+      break;
+    }
       // Note: not supported via JIT -- *end*
       
     case I2F:
