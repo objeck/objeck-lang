@@ -703,6 +703,11 @@ Statement* Parser::ParseStatement(int depth)
       statement = ParseWhile(depth + 1);
       break;
 
+    case TOKEN_BREAK_ID:
+      statement = TreeFactory::Instance()->MakeBreak(file_name, line_num);
+      NextToken();
+      break;
+
     case TOKEN_SELECT_ID:
       statement = ParseSelect(depth + 1);
       break;
