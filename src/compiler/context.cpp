@@ -500,6 +500,12 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case FOR_STMT:
     AnalyzeFor(static_cast<For*>(statement), depth);
     break;
+    
+  case BREAK_STMT:
+    if(!in_loop) {
+      ProcessError(statement, "Breaks are only allowed in loops.");
+    }
+    break;
 
   case SELECT_STMT:
     AnalyzeSelect(static_cast<Select*>(statement), depth);
@@ -1699,7 +1705,9 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, int depth)
   // update
   AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
   // statements
+  in_loop = true;
   AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
+  in_loop = false;
   current_table->PreviousScope();
 }
 
@@ -1713,7 +1721,9 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, int depth)
 #endif
   
   // 'do/while' statements
+  in_loop = true;
   AnalyzeStatements(do_while_stmt->GetStatements(), depth + 1);
+  in_loop = false;
   // expression
   Expression* expression = do_while_stmt->GetExpression();
   AnalyzeExpression(expression, depth + 1);
@@ -1738,7 +1748,9 @@ void ContextAnalyzer::AnalyzeWhile(While* while_stmt, int depth)
     ProcessError(expression, "Expected Bool expression");
   }
   // 'while' statements
+  in_loop = true;
   AnalyzeStatements(while_stmt->GetStatements(), depth + 1);
+  in_loop = false;
 }
 
 /****************************

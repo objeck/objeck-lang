@@ -83,6 +83,7 @@ namespace frontend {
     METHOD_CALL_STMT,
     SIMPLE_STMT,
     IF_STMT,
+    BREAK_STMT,
     DO_WHILE_STMT,
     WHILE_STMT,
     FOR_STMT,
@@ -979,6 +980,24 @@ namespace frontend {
     }
   };
 
+  /****************************
+   * Break class
+   ****************************/
+  class Break : public Statement {
+    friend class TreeFactory;
+    
+    Break(const string &f, const int l) : Statement(f, l) {
+    }
+
+    ~Break() {
+    }
+
+  public:
+    const StatementType GetStatementType() {
+      return BREAK_STMT;
+    }
+  };
+  
   /****************************
    * If class
    ****************************/
@@ -2369,7 +2388,13 @@ namespace frontend {
       statements.push_back(tmp);
       return tmp;
     }
-  
+
+    Break* MakeBreak(const string &file_name, const int line_num) {
+      Break* tmp = new Break(file_name, line_num);
+      statements.push_back(tmp);
+      return tmp;
+    }
+    
     DoWhile* MakeDoWhile(const string &file_name, const int line_num,
 			 Expression* expression, StatementList* stmts) {
       DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
