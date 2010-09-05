@@ -908,6 +908,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     EmitFor(static_cast<For*>(statement));
     break;
 
+  case BREAK_STMT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, -1));
+    break;
+
   case CRITICAL_STMT:
     EmitCriticalSection(static_cast<CriticalSection*>(statement));
     break;
@@ -1463,6 +1467,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   
   // conditional expression
   int conditional = ++conditional_label;
+  break_label = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
 
   // statements
@@ -1470,9 +1475,10 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   for(unsigned int i = 0; i < do_while_statements.size(); i++) {
     EmitStatement(do_while_statements[i]);
   }
-
+  
   EmitExpression(do_while_stmt->GetExpression());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
   NewBlock();
 }
 
@@ -1487,8 +1493,8 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   int unconditional = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(while_stmt->GetExpression());
-  int conditional = ++conditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, false));
+  break_label = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   NewBlock();
 
   // statements
@@ -1498,7 +1504,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
   NewBlock();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
 }
 
 /****************************
@@ -1533,8 +1539,8 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   int unconditional = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(for_stmt->GetExpression());
-  int conditional = ++conditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, false));
+  break_label = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   NewBlock();
 
   // statements
@@ -1549,7 +1555,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   // conditional jump
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
   NewBlock();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
 }
 
 /****************************
