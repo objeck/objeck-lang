@@ -175,6 +175,7 @@ class IntermediateEmitter {
   // method parameters
   int new_char_str_count; 
   int cur_line_num;
+  int break_label;
   
   // emit operations
   void EmitStrings();
