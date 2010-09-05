@@ -57,7 +57,8 @@ class ContextAnalyzer {
   int char_str_index;
   int int_str_index;
   int float_str_index;
-
+  bool in_loop;
+  
   void Show(const string &msg, const int line_num, int depth) {
     cout << setw(4) << line_num << ": ";
     for(int i = 0; i < depth; i++) {
@@ -589,7 +590,8 @@ public:
     linker = new Linker(lib_path);
     program->SetLinker(linker);
     char_str_index = int_str_index = float_str_index= 0;
-
+    in_loop = false;
+    
     // setup type map
     type_map["$Byte"] = BYTE_TYPE;
     type_map["$Char"] = CHAR_TYPE;
