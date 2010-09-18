@@ -266,11 +266,15 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
         // validate that methods have been implemented
         Method* virtual_method = parent_methods[i];
         string virtual_method_name = virtual_method->GetEncodedName();
-        int offset = (int)virtual_method_name.find_first_of(':');
-        const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
-
+	
+	Method* impl_method = NULL;
         // check method
-        Method* impl_method = current_class->GetMethod(encoded_name);
+        int offset = (int)virtual_method_name.find_first_of(':');
+	if(offset > -1) {
+	  const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
+	  impl_method = current_class->GetMethod(encoded_name);
+	}
+	
         if(impl_method) {
           // check method types
           if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
@@ -297,7 +301,8 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
           if(impl_method->IsVirtual()) {
             ProcessError(current_class, "Implementation method cannot be virtual");
           }
-        } else {
+        } 
+       else {
           virtual_methods_defined = false;
         }
       }
@@ -1623,7 +1628,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
 
   map<ExpressionList*, StatementList*>::iterator iter;
   // duplicate value vector
-  int value;
+  int value = 0;
   map<int, StatementList*> label_statements;
   for(iter = statements.begin(); iter != statements.end(); iter++) {
     // expressions
@@ -1660,12 +1665,14 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, "Duplicate select value");
           }
-        } else if(mthd_call->GetLibraryEnumItem()) {
+        } 
+	else if(mthd_call->GetLibraryEnumItem()) {
           value = mthd_call->GetLibraryEnumItem()->GetId();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, "Duplicate select value");
           }
-        } else {
+        } 
+	else {
           ProcessError(expression, "Expected integer literal or enum item");
         }
       }

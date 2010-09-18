@@ -2333,7 +2333,8 @@ Select* Parser::ParseSelect(int depth)
           ProcessError(TOKEN_COLON);
         }
         NextToken();
-      } else {
+      } 
+      else {
         is_other_label = true;
         NextToken();
         if(!Match(TOKEN_COLON)) {
@@ -2342,19 +2343,17 @@ Select* Parser::ParseSelect(int depth)
         NextToken();
       }
     }
+    
     // parse statements
     symbol_table->CurrentParseScope()->NewParseScope();
     StatementList* statements =  ParseStatementList(depth + 1);
     symbol_table->CurrentParseScope()->PreviousParseScope();
-
-    if(is_other_label) {
-      if(other) {
-        ProcessError("'other' label already defined", TOKEN_CLOSED_BRACE);
-      } else {
-        other = statements;
-      }
+    
+    if(is_other_label) {      
+      other = statements;      
       is_other_label = false;
-    } else {
+    } 
+    else {
       statement_map.insert(pair<ExpressionList*, StatementList*>(labels, statements));
     }
   }
