@@ -3,11 +3,8 @@ use IO;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-#~
 			len := File->Size("input.txt");
 			buffer : Byte[] := Byte->New[len];
-~#
-			buffer : Byte[] := Byte->New[File->Size("input.txt")];
 
 			in := FileReader->New("in.txt");
 			if(in <> Nil) {
