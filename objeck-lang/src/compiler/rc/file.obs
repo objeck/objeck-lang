@@ -1,16 +1,26 @@
 use IO;
 
 bundle Default {
-  class FileExample {
-    function : Main(args : String[]) ~ Nil {
-      file := FileWriter->New("output.txt");
-      file->Close();
-      
-      file := FileWriter->New("/output.txt");
-      file->Close();
-      
-      Directory->Create("docs");
-      Directory->Create("/docs");
-    }
-  }
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+#~
+			len := File->Size("input.txt");
+			buffer : Byte[] := Byte->New[len];
+~#
+			buffer : Byte[] := Byte->New[File->Size("input.txt")];
+
+			in := FileReader->New("in.txt");
+			if(in <> Nil) {
+				in->ReadBuffer(0, len, buffer);
+				out := FileWriter->New("output.txt");
+				if(out <> Nil) {
+					out->WriteBuffer(0, len, buffer);
+					out->Close();
+					"done!"->PrintLine();
+				};
+				in->Close();
+			};
+		}
+	}
 }
+
