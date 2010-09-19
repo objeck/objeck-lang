@@ -88,7 +88,7 @@ namespace Runtime {
       int end = start + window * 2;
       start--;
       
-      if(start >= end || start >= lines.size()) {
+      if(start >= end || start >= (int)lines.size()) {
 	return false;
       }
       
@@ -101,7 +101,7 @@ namespace Runtime {
 	end = window * 2;
       }
       
-      for(unsigned int i = start; i < lines.size() && i < end; i++) {
+      for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
 	if(i + 1 == cur_line_num) {
 	  cout << right << "=>" << setw(window) << (i + 1) << ": " << lines[i] << endl;
 	}
