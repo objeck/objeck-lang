@@ -65,9 +65,9 @@ int main(int argc, char* argv[])
 
   int status;
   if(argc >= 3) {
-    // reconstruct path
+    // reconstruct path max of 32 arguments allowed
     string path;
-    for(int i = 1; i < argc; i++) {
+    for(int i = 1; i < 32 && i < argc; i++) {
       path += " ";
       path += argv[i];
     }

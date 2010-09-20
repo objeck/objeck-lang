@@ -1812,7 +1812,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
   // if variable, bind it and update the instance and entry
   if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
     SymbolEntry* entry = variable->GetEntry();
-    if(entry && expression) {
+    if(entry) {
       variable->SetTypes(expression->GetEvalType());
       entry->SetType(expression->GetEvalType());
       // set variable to scalar type if we're de-referencing an array variable
@@ -2352,7 +2352,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool 
 void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, int depth)
 {
   // assert(left && right);
-  if(!left || !right) {
+  if(!expression || !left || !right) {
     return;
   }
 
