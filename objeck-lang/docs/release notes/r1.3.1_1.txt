@@ -1,0 +1,6 @@
+Objeck v1.1.3.1
+
+This bug release addresses issues related to the socket and HTTP libraries randomly copying bad characters to string buffers.  There are also minor bug fixes included is release; such as code clean up for 'break' statement support.  
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
+
