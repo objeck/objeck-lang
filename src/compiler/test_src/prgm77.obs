@@ -6,7 +6,11 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
-				parser->Parse();
+				if(parser->Parse()) {
+					root := parser->GetRoot();
+					root->GetName()->PrintLine();
+					root->GetChildCount()->PrintLine();
+				};
 			};
 		}
 	}
@@ -16,6 +20,7 @@ bundle Default {
 		@buffer : Byte[];
 		@buffer_pos : Int;
 		@error_msg : String;
+		@root : Tag;
 		
 		New(file : String) {
 			# read in file
@@ -38,14 +43,16 @@ bundle Default {
 			@buffer_pos := 0;
 		}
 		
+		# parse tags
 		method : public : Parse() ~ Bool {
 			if(@error_msg <> Nil) {
-				Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
 				return false;
 			};
 		
 			stack := Stack->New();
-			tag := ParseTag();
+			@root := ParseTag();
+			tag := @root;
+				
 			while(tag <> Nil) {
 				# update element stack
 				if(tag->GetType() = TagType->OPENING) {
@@ -68,12 +75,9 @@ bundle Default {
 					if(top->GetName()->Equals(tag->GetName()) <> true) {
 						@error_msg := "Mismatch tag names";
 					};
-					
-					top->GetChildCount()->PrintLine();
 				};
 				
 				if(@error_msg <> Nil) {
-					Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
 					return false;
 				};
 				
@@ -193,6 +197,14 @@ bundle Default {
 			
 			return Tag->New(tag_name, type, tag_contents);
 		}
+		
+		method : public : GetRoot() ~ Tag {
+			return @root;
+		}
+		
+		method : public : GetTag(path : String) ~ Tag {
+			return Nil;
+		}
 	}
 	
 	# tag class
@@ -201,6 +213,7 @@ bundle Default {
 		@type : TagType;
 		@contents : String;
 		@children : Vector;
+		@attribs : StringHash;
 		
 		New(name : String, type : TagType, contents : String) {
 			@name := name;
@@ -227,6 +240,17 @@ bundle Default {
 		
 		method : public : GetChildCount() ~ Int {
 			return @children->Size();
+		}
+		
+		method : public : AddAttribute(key : String, value : String) ~ Nil {
+			if(@attribs = Nil) {
+				@attribs := StringHash->New();
+			};
+			@attribs->Insert(key, value->As(Base));
+		}
+		
+		method : public : GetAttribute(key : String) ~ String {
+			return @attribs->Find(key)->As(String);
 		}
 		
 		method : public : GetChild(i : Int) ~ Tag {
