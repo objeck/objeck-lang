@@ -10,6 +10,7 @@ bundle Default {
 			if(in <> Nil) {
 				in->ReadBuffer(0, len, buffer);
 				in->Close();
+				String->New(buffer)->PrintLine();
 				
 				parser := XmlParser->New(buffer);
 				parser->Parse();
@@ -31,8 +32,18 @@ bundle Default {
 			tag := ParseTag();
 			while(tag <> Nil) {
 				tag->GetName()->PrintLine();
+				if(@error_msg <> Nil) {
+					Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
+				};
 				# update
 				tag := ParseTag();
+			};
+			
+			if(@error_msg = Nil) {
+				"\nsuccess!"->PrintLine();
+			}
+			else {
+				Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
 			};
 		}
 		
@@ -47,6 +58,10 @@ bundle Default {
 		
 		method : public : ParseTag() ~ Tag {
 			IgnoreWhiteSpace();
+			while(@buffer_pos >= @buffer->Size()) {
+				return Nil;
+			};
+			
 			if(@buffer_pos < @buffer->Size() & @buffer_pos < @buffer->Size() & 
 				@buffer[@buffer_pos] <> '<') {
 				@error_msg := "Expected opening tag...";
@@ -91,6 +106,7 @@ bundle Default {
 				@buffer_pos += 1;
 			}
 			else {
+			@buffer[@buffer_pos]->PrintLine();
 				@error_msg := "Expected closing tag..";
 				return Nil;
 			};
