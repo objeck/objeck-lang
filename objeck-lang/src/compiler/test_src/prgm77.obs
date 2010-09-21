@@ -4,37 +4,78 @@ use Structure;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			len := File->Size("in.xml");
+			if(args->Size() = 1) {
+				parser := XmlParser->New(args[0]);
+				parser->Parse();
+			};
+		}
+	}
+	
+	# xml parser
+	class XmlParser {
+		@buffer : Byte[];
+		@buffer_pos : Int;
+		@error_msg : String;
+		
+		New(file : String) {
+			# read in file
+			len := File->Size(file);
 			buffer := Byte->New[len];
-			in := FileReader->New("in.xml");
-			if(in <> Nil) {
+			in := FileReader->New(file);
+			if(in->IsOpen()) {
 				in->ReadBuffer(0, len, buffer);
 				in->Close();
 				String->New(buffer)->PrintLine();
 				
 				parser := XmlParser->New(buffer);
 				parser->Parse();
+			} 
+			else {
+				@error_msg := "Unable to open file: ";
+				@error_msg->Append(file);
 			};
+			
+			@buffer := buffer;
+			@buffer_pos := 0;
 		}
-	}
-	
-	class XmlParser {
-		@buffer : Byte[];
-		@buffer_pos : Int;
-		@error_msg : String;
 		
 		New(buffer : Byte[]) {
 			@buffer := buffer;
 			@buffer_pos := 0;
 		}
 		
-		method : public : Parse() ~ Nil {
+		method : public : Parse() ~ Bool {
+			if(@error_msg <> Nil) {
+				Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
+				return false;
+			};
+		
+			stack := Stack->New();
 			tag := ParseTag();
 			while(tag <> Nil) {
+				if(tag->GetType() = TagType->OPENING) {
+					stack->Push(tag->As(Base));
+				}
+				else if(tag->GetType() = TagType->CLOSING) {
+					top : Tag := stack->Top()->As(Tag);
+					if(top->GetType() = TagType->OPENING) {
+						stack->Pop();
+					}
+					else {
+						@error_msg := "Mismatch tag types";
+					};
+					
+					if(top->GetName()->Equals(tag->GetName()) <> true) {
+						@error_msg := "Mismatch tag names";
+					};
+				};
+				
 				tag->GetName()->PrintLine();
 				if(@error_msg <> Nil) {
 					Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
+					return false;
 				};
+				
 				# update
 				tag := ParseTag();
 			};
@@ -43,17 +84,25 @@ bundle Default {
 				"\nsuccess!"->PrintLine();
 			}
 			else {
-				Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
+				Console->GetInstance()->Print("\nerror: ")->Print(@error_msg)->PrintLine();
 			};
+			
+			return true;
 		}
 		
 		method : IgnoreWhiteSpace() ~ Nil {
 			# ignore whitespace
-			while(@buffer_pos < @buffer->Size() & (@buffer[@buffer_pos] = ' ' | 
-				@buffer[@buffer_pos] = '\t' | @buffer[@buffer_pos] = '\r' |
-				@buffer[@buffer_pos] = '\n')) {
+			while(@buffer_pos < @buffer->Size() & WhiteSpace(@buffer[@buffer_pos])) {
 				@buffer_pos += 1;
 			};
+		}
+		
+		method : WhiteSpace(c : Byte) ~ Bool {
+			if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
+				return true;
+			};
+			
+			return false;
 		}
 		
 		method : public : ParseTag() ~ Tag {
@@ -79,9 +128,7 @@ bundle Default {
 			IgnoreWhiteSpace();
 			start_pos := @buffer_pos;
 			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '\\' & 
-				@buffer[@buffer_pos] <> '>' & @buffer[@buffer_pos] <> ' ' & 
-				@buffer[@buffer_pos] <> '\t' & @buffer[@buffer_pos] <> '\r' & 
-				@buffer[@buffer_pos] <> '\n') {
+				@buffer[@buffer_pos] <> '>' & WhiteSpace(@buffer[@buffer_pos]) = false) {
 				@buffer_pos += 1;
 			};
 			
@@ -128,12 +175,7 @@ bundle Default {
 		}
 	}
 	
-	enum TagType {
-		OPENING,
-		CLOSING,
-		UNARY
-	}
-	
+	# tag class
 	class Tag {
 		@name : String;
 		@type : TagType;
@@ -146,6 +188,17 @@ bundle Default {
 		method : public : GetName() ~ String {
 			return @name;
 		}
+		
+		method : public : GetType() ~ TagType {
+			return @type;
+		}
+	}
+	
+	# tag type
+	enum TagType {
+		OPENING,
+		CLOSING,
+		UNARY
 	}
 }
 
