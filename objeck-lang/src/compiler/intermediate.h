@@ -350,7 +350,23 @@ class IntermediateEmitter {
     
     return true;
   }
-
+  
+  void EmitOperatorVariable(Variable* variable, MemoryContext mem_context) {
+    switch(variable->GetBaseType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::CLASS_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+      break;
+      
+    case frontend::FLOAT_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, variable->GetId(), mem_context));
+      break;
+    }
+  }
+  
  public:
   IntermediateEmitter(ParsedProgram* p, bool l, bool d) {      
     parsed_program = p;
