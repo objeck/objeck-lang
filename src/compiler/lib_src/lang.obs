@@ -1228,6 +1228,11 @@ bundle IO {
 			s->PrintLine();
 			return @console;
 		}
+
+		method : public : PrintLine() ~ Console {
+			'\n'->PrintLine();
+			return @console;
+		}
 	}
 	
 	class File {
