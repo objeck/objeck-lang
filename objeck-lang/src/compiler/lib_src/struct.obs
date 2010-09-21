@@ -713,7 +713,11 @@ bundle Structure {
 		
 		method : public: IsEmpty() ~ Bool {
 		  return @values->Size() = 0;
-	  }
+		}
+
+		method : public: Size() ~ Int {
+		  return @values->Size();
+		}
 	}
 
 	# Integer Stack
@@ -748,9 +752,9 @@ bundle Structure {
 			return 0;
 		}
 		
-		method : public: IsEmpty() ~ Bool {
-		  return @values->Size() = 0;
-	  }
+		method : public: Size() ~ Int {
+		  return @values->Size();
+		}
 	}
 	
 	# Float Stack
@@ -783,6 +787,10 @@ bundle Structure {
 			};
 			
 			return 0.0;
+		}
+		
+		method : public: Size() ~ Int {
+		  return @values->Size();
 		}
 		
 		method : public: IsEmpty() ~ Bool {
