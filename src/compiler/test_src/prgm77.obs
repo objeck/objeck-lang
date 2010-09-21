@@ -20,22 +20,16 @@ bundle Default {
 		New(file : String) {
 			# read in file
 			len := File->Size(file);
-			buffer := Byte->New[len];
+			@buffer := Byte->New[len];
 			in := FileReader->New(file);
 			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
+				in->ReadBuffer(0, len, @buffer);
 				in->Close();
-				String->New(buffer)->PrintLine();
-				
-				parser := XmlParser->New(buffer);
-				parser->Parse();
 			} 
 			else {
 				@error_msg := "Unable to open file: ";
 				@error_msg->Append(file);
 			};
-			
-			@buffer := buffer;
 			@buffer_pos := 0;
 		}
 		
@@ -70,7 +64,11 @@ bundle Default {
 					};
 				};
 				
-				tag->GetName()->PrintLine();
+tag->GetName()->PrintLine();
+if(tag->GetContents() <> Nil) {
+	'\t'->Print(); tag->GetContents()->PrintLine();
+};
+				
 				if(@error_msg <> Nil) {
 					Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
 					return false;
@@ -127,16 +125,17 @@ bundle Default {
 			
 			IgnoreWhiteSpace();
 			start_pos := @buffer_pos;
-			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '\\' & 
+			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '/' & 
 				@buffer[@buffer_pos] <> '>' & WhiteSpace(@buffer[@buffer_pos]) = false) {
 				@buffer_pos += 1;
 			};
-			
+			# copy tag name
 			tag_name := String->New();
 			for(i := start_pos; i < @buffer_pos; i += 1;) {
 				tag_name->Append(@buffer[i]);
 			};
 			
+			# unary
 			IgnoreWhiteSpace();
 			is_unary_tag := false;
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
@@ -158,7 +157,25 @@ bundle Default {
 				return Nil;
 			};
 			
-#			Console->GetInstance()->Print("tag: ")->Print(tag_name)->Print(", is_end: ")->PrintLine(is_end_tag);
+			# copy tag conents
+			IgnoreWhiteSpace();
+			start_pos := @buffer_pos;
+			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '<') {
+				@buffer_pos += 1;
+			};
+			tag_contents : String := Nil;
+			if(@buffer_pos > start_pos) {
+				tag_contents := String->New();
+				for(i := start_pos; i < @buffer_pos; i += 1;) {
+					tag_contents->Append(@buffer[i]);
+				};
+			};				
+			
+#~			
+			if(tag_contents <> Nil) {
+				Console->GetInstance()->Print("contents: ")->Print(tag_contents)->PrintLine();
+			};
+~#
 
 			type : TagType;
 			if(is_unary_tag) {
@@ -171,7 +188,7 @@ bundle Default {
 				type := TagType->OPENING;
 			};
 			
-			return Tag->New(tag_name, type);
+			return Tag->New(tag_name, type, tag_contents);
 		}
 	}
 	
@@ -179,10 +196,12 @@ bundle Default {
 	class Tag {
 		@name : String;
 		@type : TagType;
+		@contents : String;
 		
-		New(name : String, type : TagType) {
+		New(name : String, type : TagType, contents : String) {
 			@name := name;
 			@type := type;
+			@contents := contents;
 		}
 		
 		method : public : GetName() ~ String {
@@ -191,6 +210,10 @@ bundle Default {
 		
 		method : public : GetType() ~ TagType {
 			return @type;
+		}
+		
+		method : public : GetContents() ~ String {
+			return @contents;
 		}
 	}
 	
