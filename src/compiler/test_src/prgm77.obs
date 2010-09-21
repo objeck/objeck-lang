@@ -47,7 +47,13 @@ bundle Default {
 			stack := Stack->New();
 			tag := ParseTag();
 			while(tag <> Nil) {
+				# update element stack
 				if(tag->GetType() = TagType->OPENING) {
+					parent : Tag;
+					if(stack->IsEmpty() = false) {
+						parent := stack->Top()->As(Tag);
+						parent->AddChild(tag);
+					};
 					stack->Push(tag->As(Base));
 				}
 				else if(tag->GetType() = TagType->CLOSING) {
@@ -62,12 +68,9 @@ bundle Default {
 					if(top->GetName()->Equals(tag->GetName()) <> true) {
 						@error_msg := "Mismatch tag names";
 					};
+					
+					top->GetChildCount()->PrintLine();
 				};
-				
-tag->GetName()->PrintLine();
-if(tag->GetContents() <> Nil) {
-	'\t'->Print(); tag->GetContents()->PrintLine();
-};
 				
 				if(@error_msg <> Nil) {
 					Console->GetInstance()->Print("error: ")->Print(@error_msg)->PrintLine();
@@ -88,14 +91,14 @@ if(tag->GetContents() <> Nil) {
 			return true;
 		}
 		
-		method : IgnoreWhiteSpace() ~ Nil {
+		method : native : IgnoreWhiteSpace() ~ Nil {
 			# ignore whitespace
 			while(@buffer_pos < @buffer->Size() & WhiteSpace(@buffer[@buffer_pos])) {
 				@buffer_pos += 1;
 			};
 		}
 		
-		method : WhiteSpace(c : Byte) ~ Bool {
+		method : native : WhiteSpace(c : Byte) ~ Bool {
 			if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
 				return true;
 			};
@@ -103,7 +106,7 @@ if(tag->GetContents() <> Nil) {
 			return false;
 		}
 		
-		method : public : ParseTag() ~ Tag {
+		method : public : native : ParseTag() ~ Tag {
 			IgnoreWhiteSpace();
 			while(@buffer_pos >= @buffer->Size()) {
 				return Nil;
@@ -197,11 +200,13 @@ if(tag->GetContents() <> Nil) {
 		@name : String;
 		@type : TagType;
 		@contents : String;
+		@children : Vector;
 		
 		New(name : String, type : TagType, contents : String) {
 			@name := name;
 			@type := type;
 			@contents := contents;
+			@children := Vector->New();
 		}
 		
 		method : public : GetName() ~ String {
@@ -214,6 +219,22 @@ if(tag->GetContents() <> Nil) {
 		
 		method : public : GetContents() ~ String {
 			return @contents;
+		}
+		
+		method : public : AddChild(tag : Tag) ~ Nil {
+			@children->AddBack(tag->As(Base));
+		}
+		
+		method : public : GetChildCount() ~ Int {
+			return @children->Size();
+		}
+		
+		method : public : GetChild(i : Int) ~ Tag {
+			if(i < @children->Size()) {
+				return @children->Get(i)->As(Tag);
+			};
+			
+			return Nil;
 		}
 	}
 	
