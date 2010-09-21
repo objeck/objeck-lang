@@ -2437,7 +2437,8 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-    } else if(mem_context == CLS) {
+    } 
+    else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
     }
     
@@ -2445,46 +2446,74 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     EntryType eval_type = variable->GetEvalType()->GetType();      
     switch(assignment->GetStatementType()) {
     case ADD_ASSIGN_STMT:
-      EmitVariable(variable);
+      EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
       } 
       else {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
       }
+      // load instance or class memory
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }
       break;
       
     case SUB_ASSIGN_STMT:
-      EmitVariable(variable);
+      EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
       } 
       else {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
       }
+      // load instance or class memory
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }
       break;
       
     case MUL_ASSIGN_STMT:
-      EmitVariable(variable);
+      EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
       } 
       else {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
+      }      
+      // load instance or class memory
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
       
     case DIV_ASSIGN_STMT:
-      EmitVariable(variable);
+      EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
       } 
       else {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
       }
+      // load instance or class memory
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } 
+      else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }
       break;
     }
-    
+
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
