@@ -1,0 +1,2 @@
+9/21/10
+* fixed bug with += type operators working inconstantly with member variables

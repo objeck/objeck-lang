@@ -1,0 +1,68 @@
+use IO;
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			len := File->Size("in.xml");
+			buffer := Byte->New[len];
+			in := FileReader->New("in.xml");
+			if(in <> Nil) {
+				in->ReadBuffer(0, len, buffer);
+				in->Close();
+				
+				parser := XmlParser->New(buffer);
+				parser->Parse();
+			};
+		}
+	}
+	
+	class XmlParser {
+		@buffer : Byte[];
+		@buffer_pos : Int;
+		
+		New(buffer : Byte[]) {
+			@buffer := buffer;
+			@buffer_pos := 0;
+		}
+		
+		method : public : Parse() ~ Nil {
+			ParseTag();
+		}
+		
+		method : IgnoreWhiteSpace() ~ Nil {
+			# ignore whitespace
+			while(@buffer_pos < @buffer->Size() & (@buffer[@buffer_pos] = ' ' | 
+				@buffer[@buffer_pos] = '\t' | @buffer[@buffer_pos] = '\r' |
+				@buffer[@buffer_pos] = '\n')) {
+				@buffer_pos += 1;
+			};
+		}
+		
+		method : public : ParseTag() ~ Tag {
+			IgnoreWhiteSpace();
+			if(@buffer_pos < @buffer->Size() & 
+				@buffer[@buffer_pos] <> '<') {
+				return Nil;
+			};
+			@buffer_pos += 1;
+			
+			IgnoreWhiteSpace();
+			start_pos := @buffer_pos;
+			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> ' ' & 
+				@buffer[@buffer_pos] <> '\t' & @buffer[@buffer_pos] <> '\r' &
+				@buffer[@buffer_pos] <> '\n' & @buffer[@buffer_pos] <> '>') {
+#				@buffer_pos := @buffer_pos + 1;
+				@buffer_pos += 1;
+			};
+			@buffer_pos->PrintLine();
+				
+			Console->GetInstance()->Print("start: ")->Print(start_pos)->Print(", end: ")->PrintLine(@buffer_pos);
+			return Nil;
+		}
+	}
+	
+	class Tag {
+	}
+}
+
