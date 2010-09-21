@@ -20,6 +20,7 @@ bundle Default {
 	class XmlParser {
 		@buffer : Byte[];
 		@buffer_pos : Int;
+		@error_msg : String;
 		
 		New(buffer : Byte[]) {
 			@buffer := buffer;
@@ -27,7 +28,12 @@ bundle Default {
 		}
 		
 		method : public : Parse() ~ Nil {
-			ParseTag();
+			tag := ParseTag();
+			while(tag <> Nil) {
+				tag->GetName()->PrintLine();
+				# update
+				tag := ParseTag();
+			};
 		}
 		
 		method : IgnoreWhiteSpace() ~ Nil {
@@ -43,9 +49,17 @@ bundle Default {
 			IgnoreWhiteSpace();
 			if(@buffer_pos < @buffer->Size() & @buffer_pos < @buffer->Size() & 
 				@buffer[@buffer_pos] <> '<') {
+				@error_msg := "Expected opening tag...";
 				return Nil;
 			};
 			@buffer_pos += 1;
+			
+			IgnoreWhiteSpace();
+			is_end_tag := false;
+			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
+				is_end_tag := true;
+				@buffer_pos += 1;
+			};
 			
 			IgnoreWhiteSpace();
 			start_pos := @buffer_pos;
@@ -61,28 +75,61 @@ bundle Default {
 				tag_name->Append(@buffer[i]);
 			};
 			
-			is_end_tag := false;
+			IgnoreWhiteSpace();
+			is_unary_tag := false;
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
-				is_end_tag := true;
+				is_unary_tag := true;
 				@buffer_pos += 1;
+			};
+			
+			if(is_unary_tag & is_end_tag) {
+				@error_msg := "Invalid tag: end and unary tag...";
+				return Nil;
 			};
 			
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '>') {
 				@buffer_pos += 1;
 			}
 			else {
+				@error_msg := "Expected closing tag..";
 				return Nil;
 			};
 			
-			"parsed tag!"->PrintLine();
-			tag_name->PrintLine();
-				
-			Console->GetInstance()->Print("start: ")->Print(start_pos)->Print(", end: ")->PrintLine(@buffer_pos);
-			return Nil;
+#			Console->GetInstance()->Print("tag: ")->Print(tag_name)->Print(", is_end: ")->PrintLine(is_end_tag);
+
+			type : TagType;
+			if(is_unary_tag) {
+				type := TagType->UNARY;
+			}
+			else if(is_end_tag) {
+				type := TagType->CLOSING;
+			}
+			else {
+				type := TagType->OPENING;
+			};
+			
+			return Tag->New(tag_name, type);
 		}
 	}
 	
+	enum TagType {
+		OPENING,
+		CLOSING,
+		UNARY
+	}
+	
 	class Tag {
+		@name : String;
+		@type : TagType;
+		
+		New(name : String, type : TagType) {
+			@name := name;
+			@type := type;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
 	}
 }
 
