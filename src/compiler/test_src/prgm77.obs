@@ -41,7 +41,7 @@ bundle Default {
 		
 		method : public : ParseTag() ~ Tag {
 			IgnoreWhiteSpace();
-			if(@buffer_pos < @buffer->Size() & 
+			if(@buffer_pos < @buffer->Size() & @buffer_pos < @buffer->Size() & 
 				@buffer[@buffer_pos] <> '<') {
 				return Nil;
 			};
@@ -49,13 +49,33 @@ bundle Default {
 			
 			IgnoreWhiteSpace();
 			start_pos := @buffer_pos;
-			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> ' ' & 
-				@buffer[@buffer_pos] <> '\t' & @buffer[@buffer_pos] <> '\r' &
-				@buffer[@buffer_pos] <> '\n' & @buffer[@buffer_pos] <> '>') {
-#				@buffer_pos := @buffer_pos + 1;
+			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '\\' & 
+				@buffer[@buffer_pos] <> '>' & @buffer[@buffer_pos] <> ' ' & 
+				@buffer[@buffer_pos] <> '\t' & @buffer[@buffer_pos] <> '\r' & 
+				@buffer[@buffer_pos] <> '\n') {
 				@buffer_pos += 1;
 			};
-			@buffer_pos->PrintLine();
+			
+			tag_name := String->New();
+			for(i := start_pos; i < @buffer_pos; i += 1;) {
+				tag_name->Append(@buffer[i]);
+			};
+			
+			is_end_tag := false;
+			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
+				is_end_tag := true;
+				@buffer_pos += 1;
+			};
+			
+			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '>') {
+				@buffer_pos += 1;
+			}
+			else {
+				return Nil;
+			};
+			
+			"parsed tag!"->PrintLine();
+			tag_name->PrintLine();
 				
 			Console->GetInstance()->Print("start: ")->Print(start_pos)->Print(", end: ")->PrintLine(@buffer_pos);
 			return Nil;
