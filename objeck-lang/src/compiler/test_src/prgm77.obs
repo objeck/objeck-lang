@@ -9,7 +9,14 @@ bundle Default {
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 					root->GetName()->PrintLine();
-					root->GetChildren("person")->Size()->PrintLine();
+					
+					aa := root->GetChildren("person");
+					each(i : aa) {
+						aa->Get(i)->As(Element)->GetChildren("name")->Size()->PrintLine();
+					};
+					
+					
+					parser->FindElements("/root/person/name");
 				};
 			};
 		}
@@ -202,7 +209,50 @@ bundle Default {
 			return @root;
 		}
 		
-		method : public : FindElement(path : String) ~ Element {
+		method : public : FindElements(path : String) ~ Vector {
+			filters := Vector->New();
+			start := 0;
+			each(i : path) {
+					if(path->Get(i) = '/') {
+						if(i - start > 0) {
+							filter := path->SubString(start, i - start);
+							filters->AddBack(filter->As(Base));
+						};
+						start := i + 1;
+					};
+			};
+			
+			if(start < path->Size() & path->Size() - start > 0) {
+				filter := path->SubString(start, path->Size() - start);
+				filters->AddBack(filter->As(Base));
+			};
+			
+			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@root->GetName())) {
+				# get root filter and associated children
+				filter := filters->Get(1)->As(String);
+				children := @root->GetChildren(filter);
+
+Console->GetInstance()->Print("## 0 ")->PrintLine(children->Size());
+				for(i := 2; i < filters->Size(); i += 1;) {
+					filter := filters->Get(i)->As(String);
+					
+					found := Vector->New();
+					each(j : children) {
+						elem : Element := children->Get(j)->As(Element);
+						
+Console->GetInstance()->Print("@@ ")->Print(elem->GetName())->Print(", ")->PrintLine(filter);
+					
+						filtered := elem->GetChildren(filter);	
+Console->GetInstance()->Print("## 1 ")->PrintLine(filtered->Size());						
+						found->AddBack(filtered);
+					};
+					children := found;
+Console->GetInstance()->Print("## 2 ")->PrintLine(children->Size());					
+				};
+				
+				Console->GetInstance()->Print("### ")->PrintLine(children->Size());
+			};
+			
 			return Nil;
 		}
 	}
@@ -259,7 +309,7 @@ bundle Default {
 		
 		method : public : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
-			for(i := 0; i < @children->Size(); i += 1;) {
+			each(i : @children) {
 				element : Element := @children->Get(i);
 				if(element->GetName()->Equals(name)) {
 					filtered->AddBack(element->As(Base));
