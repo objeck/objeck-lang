@@ -830,6 +830,18 @@ The Stack class support the concept of a growing stack.  There are two specializ
 \subsubsection{Vector/CompareVector/IntVector/FloatVector}
 The Vector class support the concept of a growing array.  There are three specialized version of this class: \texttt{CompareVector}, \texttt{IntVector} and \texttt{FloatVector}.  The \texttt{IntVector}, \texttt{FloatVector} and \texttt{CompareVector} classes use \texttt{Int}, \texttt{Float} and \texttt{Compare} types respectively instead of \texttt{Base} type.  The general class supports the following operations:
 \begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New()
+	\end{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(values : Base[])
+	\end{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(values : Vector)
+	\end{itemize}
     \item \texttt{AddBack} - adds a new value to the back of the vector
     	\begin{itemize}
 	\item method : public : AddBack(value : Base), Nil
