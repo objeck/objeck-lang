@@ -16,7 +16,7 @@ bundle Default {
 					};
 					
 					
-					parser->FindElements("/root/person/name");
+					parser->FindElements("/root/");
 				};
 			};
 		}
@@ -227,33 +227,35 @@ bundle Default {
 				filters->AddBack(filter->As(Base));
 			};
 			
+			children := Vector->New();
 			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@root->GetName())) {
-				# get root filter and associated children
-				filter := filters->Get(1)->As(String);
-				children := @root->GetChildren(filter);
-
-Console->GetInstance()->Print("## 0 ")->PrintLine(children->Size());
-				for(i := 2; i < filters->Size(); i += 1;) {
-					filter := filters->Get(i)->As(String);
+				if(filters->Size() = 1) {
+					children->AddBack(@root->As(Base));
+				}
+				else {
+					# process root
+					filter := filters->Get(1)->As(String);
+					children := @root->GetChildren(filter);
 					
-					found := Vector->New();
-					each(j : children) {
-						elem : Element := children->Get(j)->As(Element);
-						
-Console->GetInstance()->Print("@@ ")->Print(elem->GetName())->Print(", ")->PrintLine(filter);
-					
-						filtered := elem->GetChildren(filter);	
-Console->GetInstance()->Print("## 1 ")->PrintLine(filtered->Size());						
-						found->AddBack(filtered);
+					# process children
+					for(i := 2; i < filters->Size(); i += 1;) {
+						# get filter
+						filter := filters->Get(i)->As(String);
+						# filter children
+						all_filtered := Vector->New();
+						each(j : children) {
+							element : Element := children->Get(j)->As(Element);
+							filtered := element->GetChildren(filter);	
+							all_filtered->AddBack(filtered);
+						};
+						children := all_filtered;
 					};
-					children := found;
-Console->GetInstance()->Print("## 2 ")->PrintLine(children->Size());					
-				};
+				};				
 				
-				Console->GetInstance()->Print("### ")->PrintLine(children->Size());
 			};
-			
-			return Nil;
+
+Console->GetInstance()->Print("### ")->PrintLine(children->Size());			
+			return children;
 		}
 	}
 	
