@@ -21,6 +21,15 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : IntVector) {
+			@values := Int->New[16];
+			@size := 0;
+
+			each(i : values) {
+				AddBack(values->Get(i));
+			};
+		}
+
 		New(values : Int[]) {
 			@values := Int->New[16];
 			@size := 0;
@@ -37,6 +46,12 @@ bundle Structure {
 					temp[i] := @values[i];
 				};
 				@values := temp;
+			};
+		}
+
+		method : public : AddBack(values : IntVector) ~ Nil {
+			each(i : values) {
+				AddBack(values->Get(i));
 			};
 		}
 
@@ -247,6 +262,16 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : FloatVector) {
+                        @values := Float->New[16];
+                        @size := 0;
+
+                        each(i : values) {
+                                AddBack(values->Get(i));
+                        };
+                }
+
+
 		New(values : Float[]) {
 			@values := Float->New[16];
 			@size := 0;
@@ -263,6 +288,12 @@ bundle Structure {
 					temp[i] := @values[i];
 				};
 				@values := temp;
+			};
+		}
+
+		method : public : AddBack(values : FloatVector) ~ Nil {
+			each(i : values) {
+				AddBack(values->Get(i));
 			};
 		}
 
@@ -473,6 +504,24 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : Compare[]) {
+                        @values := Compare->New[16];
+                        @size := 0;
+
+                        each(i : values) {
+                                AddBack(values[i]);
+                        };
+                }
+
+		New(values : CompareVector) {
+                        @values := Compare->New[16];
+                        @size := 0;
+
+                        each(i : values) {
+                                AddBack(values->Get(i));
+                        };
+                }
+
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Compare[] := Compare->New[@size * 2];
@@ -480,6 +529,12 @@ bundle Structure {
 					temp[i] := @values[i];
 				};
 				@values := temp;
+			};
+		}
+
+		method : public : AddBack(values : CompareVector) ~ Nil {
+			each(i : values) {
+				AddBack(values->Get(i));
 			};
 		}
 
@@ -626,6 +681,24 @@ bundle Structure {
 			@size := 0;
 		}
 
+		New(values : Base[]) {
+                        @values := Base->New[16];
+                        @size := 0;
+
+                        each(i : values) {
+                                AddBack(values[i]);
+                        };
+                }
+
+		New(values : Vector) {
+                        @values := Base->New[16];
+                        @size := 0;
+
+                        each(i : values) {
+                                AddBack(values->Get(i));
+                        };
+                }
+
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Base[] := Base->New[@size * 2];
@@ -633,6 +706,12 @@ bundle Structure {
 					temp[i] := @values[i];
 				};
 				@values := temp;
+			};
+		}
+
+		method : public : AddBack(values : Vector) ~ Nil {
+			each(i : values) {
+				AddBack(values->Get(i));
 			};
 		}
 
