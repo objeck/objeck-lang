@@ -9,7 +9,7 @@ bundle Default {
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 					root->GetName()->PrintLine();
-					root->GetChildCount()->PrintLine();
+					root->GetChildren("person")->Size()->PrintLine();
 				};
 			};
 		}
@@ -20,7 +20,7 @@ bundle Default {
 		@buffer : Byte[];
 		@buffer_pos : Int;
 		@error_msg : String;
-		@root : Tag;
+		@root : Element;
 		
 		New(file : String) {
 			# read in file
@@ -50,22 +50,22 @@ bundle Default {
 			};
 		
 			stack := Stack->New();
-			@root := ParseTag();
+			@root := ParseElement();
 			tag := @root;
 				
 			while(tag <> Nil) {
 				# update element stack
-				if(tag->GetType() = TagType->OPENING) {
-					parent : Tag;
+				if(tag->GetType() = ElementType->OPENING) {
+					parent : Element;
 					if(stack->IsEmpty() = false) {
-						parent := stack->Top()->As(Tag);
+						parent := stack->Top()->As(Element);
 						parent->AddChild(tag);
 					};
 					stack->Push(tag->As(Base));
 				}
-				else if(tag->GetType() = TagType->CLOSING) {
-					top : Tag := stack->Top()->As(Tag);
-					if(top->GetType() = TagType->OPENING) {
+				else if(tag->GetType() = ElementType->CLOSING) {
+					top : Element := stack->Top()->As(Element);
+					if(top->GetType() = ElementType->OPENING) {
 						stack->Pop();
 					}
 					else {
@@ -82,7 +82,7 @@ bundle Default {
 				};
 				
 				# update
-				tag := ParseTag();
+				tag := ParseElement();
 			};
 			
 			if(@error_msg = Nil) {
@@ -110,7 +110,7 @@ bundle Default {
 			return false;
 		}
 		
-		method : public : native : ParseTag() ~ Tag {
+		method : public : native : ParseElement() ~ Element {
 			IgnoreWhiteSpace();
 			while(@buffer_pos >= @buffer->Size()) {
 				return Nil;
@@ -184,38 +184,45 @@ bundle Default {
 			};
 ~#
 
-			type : TagType;
+			type : ElementType;
 			if(is_unary_tag) {
-				type := TagType->UNARY;
+				type := ElementType->UNARY;
 			}
 			else if(is_end_tag) {
-				type := TagType->CLOSING;
+				type := ElementType->CLOSING;
 			}
 			else {
-				type := TagType->OPENING;
+				type := ElementType->OPENING;
 			};
 			
-			return Tag->New(tag_name, type, tag_contents);
+			return Element->New(tag_name, type, tag_contents);
 		}
 		
-		method : public : GetRoot() ~ Tag {
+		method : public : GetRoot() ~ Element {
 			return @root;
 		}
 		
-		method : public : GetTag(path : String) ~ Tag {
+		method : public : FindElement(path : String) ~ Element {
 			return Nil;
 		}
 	}
 	
-	# tag class
-	class Tag {
+	# element tag
+	enum ElementType {
+		OPENING,
+		CLOSING,
+		UNARY,
+		COMMENT
+	}
+	
+	class Element {
 		@name : String;
-		@type : TagType;
+		@type : ElementType;
 		@contents : String;
 		@children : Vector;
 		@attribs : StringHash;
 		
-		New(name : String, type : TagType, contents : String) {
+		New(name : String, type : ElementType, contents : String) {
 			@name := name;
 			@type := type;
 			@contents := contents;
@@ -226,7 +233,7 @@ bundle Default {
 			return @name;
 		}
 		
-		method : public : GetType() ~ TagType {
+		method : public : GetType() ~ ElementType {
 			return @type;
 		}
 		
@@ -234,12 +241,36 @@ bundle Default {
 			return @contents;
 		}
 		
-		method : public : AddChild(tag : Tag) ~ Nil {
+		method : public : AddChild(tag : Element) ~ Nil {
 			@children->AddBack(tag->As(Base));
 		}
 		
 		method : public : GetChildCount() ~ Int {
 			return @children->Size();
+		}
+		
+		method : public : GetChild(i : Int) ~ Element {
+			if(i < @children->Size()) {
+				return @children->Get(i)->As(Element);
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetChildren(name : String) ~ Vector {
+			filtered := Vector->New();
+			for(i := 0; i < @children->Size(); i += 1;) {
+				element : Element := @children->Get(i);
+				if(element->GetName()->Equals(name)) {
+					filtered->AddBack(element->As(Base));
+				};
+			};
+			
+			return filtered;
+		}
+		
+		method : public : GetChildren() ~ Vector {
+			return @children;
 		}
 		
 		method : public : AddAttribute(key : String, value : String) ~ Nil {
@@ -252,21 +283,6 @@ bundle Default {
 		method : public : GetAttribute(key : String) ~ String {
 			return @attribs->Find(key)->As(String);
 		}
-		
-		method : public : GetChild(i : Int) ~ Tag {
-			if(i < @children->Size()) {
-				return @children->Get(i)->As(Tag);
-			};
-			
-			return Nil;
-		}
-	}
-	
-	# tag type
-	enum TagType {
-		OPENING,
-		CLOSING,
-		UNARY
 	}
 }
 
