@@ -16,6 +16,7 @@ bundle Default {
 						
 						"0x00C9"->ToInt()->As(Char)->PrintLine();
 						126->As(Char)->PrintLine();
+						XmlParser->EncodeString("hello world&amp;&gt; &amp;&apos;&quot;&quot; &#xA;")->PrintLine();
 					};
 				}
 				else {

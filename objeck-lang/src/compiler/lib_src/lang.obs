@@ -1141,7 +1141,7 @@ bundle IO {
 		New: private () {
 		}
 
-		function : GetInstance() ~ Console {
+		function : Instance() ~ Console {
 			if(@console <> Nil) {
 				@console := Console->New();
 			};
