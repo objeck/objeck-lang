@@ -450,7 +450,8 @@ bundle XML {
 						data->Append(@buffer[i]);
 					};
 					
-					return XMLElement->New(Nil->As(String), XMLElementType->CDATA, "");
+					return XMLElement->New(Nil->As(String), XMLElementType->CDATA, 
+						Nil->As(StringHash), data);
 				}
 				else {
 					@error_msg := "Unsupported tag...";
@@ -476,28 +477,34 @@ bundle XML {
 				return Nil;
       };
       
-      while(attrib_key <> Nil) {
-# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
-      
-      	IgnoreWhiteSpace();
-      	if(Unmatch('=')) {
-					@error_msg := "Expected '='...";
-					return Nil;
-				};
-				@buffer_pos += 1;
+      attribs : StringHash := Nil; 
+      if(attrib_key <> Nil) {
+      	attribs := StringHash->New();
+      	while(attrib_key <> Nil) {	
+	# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
 				
-				# looks for tag value
-				IgnoreWhiteSpace();
-				attrib_value := ParseValue();
-				if(attrib_value = Nil) {
-					@error_msg := "Invalid tag name...";
-					return Nil;
+					IgnoreWhiteSpace();
+					if(Unmatch('=')) {
+						@error_msg := "Expected '='...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+					
+					# looks for tag value
+					IgnoreWhiteSpace();
+					attrib_value := ParseValue();
+					if(attrib_value = Nil) {
+						@error_msg := "Invalid tag name...";
+						return Nil;
+					};
+	# Console->GetInstance()->Print("value: ")->PrintLine(attrib_key);    
+					
+					attribs->Insert(attrib_key, attrib_key->As(Base));
+					
+					# update
+					IgnoreWhiteSpace();
+					attrib_key := ParseName();
 				};
-# Console->GetInstance()->Print("value: ")->PrintLine(attrib_value);    
-				
-				# update
-				IgnoreWhiteSpace();
-      	attrib_key := ParseName();
       };
       
 			# unary
@@ -557,7 +564,7 @@ bundle XML {
 				type := XMLElementType->OPENING_ELEMENT;
 			};
 			
-			return XMLElement->New(tag_name, type, tag_contents);
+			return XMLElement->New(tag_name, type, attribs, tag_contents);
 		}
 		
 		method : public : GetRoot() ~ XMLElement {
@@ -635,13 +642,14 @@ bundle XML {
 	class XMLElement {
 		@name : String;
 		@type : XMLElementType;
+		@attribs : StringHash;
 		@content : String;
 		@children : Vector;
-		@attribs : StringHash;
 		
-		New(name : String, type : XMLElementType, content : String) {
+		New(name : String, type : XMLElementType, attribs : StringHash, content : String) {
 			@name := name;
 			@type := type;
+			@attribs := attribs;
 			@content := content;
 			@children := Vector->New();
 		}
@@ -656,6 +664,10 @@ bundle XML {
 		
 		method : public : GetContent() ~ String {
 			return @content;
+		}
+		
+		method : public : GetDecodedContent() ~ String {
+			return Nil;
 		}
 		
 		method : public : AddChild(tag : XMLElement) ~ Nil {
