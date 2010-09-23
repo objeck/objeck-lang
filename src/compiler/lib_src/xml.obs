@@ -481,7 +481,8 @@ bundle XML {
       if(attrib_key <> Nil) {
       	attribs := StringHash->New();
       	while(attrib_key <> Nil) {	
-	# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
+      	
+# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
 				
 					IgnoreWhiteSpace();
 					if(Unmatch('=')) {
@@ -497,7 +498,8 @@ bundle XML {
 						@error_msg := "Invalid tag name...";
 						return Nil;
 					};
-	# Console->GetInstance()->Print("value: ")->PrintLine(attrib_key);    
+					
+# Console->GetInstance()->Print("value: ")->PrintLine(attrib_key);    
 					
 					attribs->Insert(attrib_key, attrib_key->As(Base));
 					
@@ -620,7 +622,8 @@ bundle XML {
 				
 			};
 
-# Console->GetInstance()->Print("found: ")->PrintLine(children->Size());			
+# Console->GetInstance()->Print("found: ")->PrintLine(children->Size());
+			
 			return children;
 		}
 	}
