@@ -22,7 +22,7 @@ bundle Default {
 			s := "Hello World!";
 			s->StartsWith("Hello")->PrintLine();
 
-			IO.Console->GetInstance()->Print("Hello")->Print(" 7 ")->PrintLine(" World!");
+			IO.Console->Instance()->Print("Hello")->Print(" 7 ")->PrintLine(" World!");
 			"Hello World!"->StartsWith("Hello ")->PrintLine();
 			Foo->New(10,13)->Value()->PrintLine();
 			

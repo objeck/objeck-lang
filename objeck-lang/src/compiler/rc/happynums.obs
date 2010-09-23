@@ -37,11 +37,11 @@ bundle Default {
 				num += 1;
 			};
 					
-			Console->GetInstance()->Print("First 8 happy numbers: ");
+			Console->Instance()->Print("First 8 happy numbers: ");
 			each(i : happynums) {
-				Console->GetInstance()->Print(happynums->Get(i))->Print(",");
+				Console->Instance()->Print(happynums->Get(i))->Print(",");
 			};
-			Console->GetInstance()->PrintLine("");
+			Console->Instance()->PrintLine("");
 		}
 	}
 }

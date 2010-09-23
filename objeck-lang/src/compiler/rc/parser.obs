@@ -48,10 +48,10 @@ bundle Default {
   
             result : String := reserved->Find(string);
             if(result <> Nil) {
-              Console->GetInstance()->PrintLine(result);
+              Console->Instance()->PrintLine(result);
             }
             else {
-              Console->GetInstance()->Print("string '")->Print(string)->PrintLine("'");
+              Console->Instance()->Print("string '")->Print(string)->PrintLine("'");
             };
           }
           # number
@@ -68,10 +68,10 @@ bundle Default {
             };
   
             if(is_dec) {
-              Console->GetInstance()->Print("decimal '")->Print(number)->PrintLine("'");
+              Console->Instance()->Print("decimal '")->Print(number)->PrintLine("'");
             }
             else {
-              Console->GetInstance()->Print("integer '")->Print(number)->PrintLine("'");
+              Console->Instance()->Print("integer '")->Print(number)->PrintLine("'");
             };
           }
           # other
@@ -127,7 +127,7 @@ bundle Default {
               }
 #~              
               other: {
-              Console->GetInstance()->Print("char='")->Print(line->Get(i))->PrintLine("'");
+              Console->Instance()->Print("char='")->Print(line->Get(i))->PrintLine("'");
               }
 ~#
             };
