@@ -2,7 +2,7 @@ bundle Default {
 	class GDC {
 		function : Main(args : String[]) ~ Nil {
 			for(x := 1; x < 36; x += 1;) {
-				IO.Console->GetInstance()->Print("GCD of ")->Print(36)->Print(" and ")->Print(x)->Print(" is ")->PrintLine(GDC(36, x));
+				IO.Console->Instance()->Print("GCD of ")->Print(36)->Print(" and ")->Print(x)->Print(" is ")->PrintLine(GDC(36, x));
 			};
 		}
 		
