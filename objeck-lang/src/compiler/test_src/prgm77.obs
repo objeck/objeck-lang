@@ -13,6 +13,9 @@ bundle Default {
 						"'"->Print();
 						element->GetContent()->Trim()->PrintLine();
 						"'"->PrintLine();
+						
+						"0x00C9"->ToInt()->As(Char)->PrintLine();
+						126->As(Char)->PrintLine();
 					};
 				}
 				else {
