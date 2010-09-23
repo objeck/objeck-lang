@@ -27,9 +27,9 @@ bundle Default {
 			for(i := 0; i < numbers->Size(); i += 1;) {
 				factors := GenerateFactors(numbers[i]);
 				
-				Console->GetInstance()->Print("Factors of ")->Print(numbers[i])->PrintLine(" are:");
+				Console->Instance()->Print("Factors of ")->Print(numbers[i])->PrintLine(" are:");
 				each(i : factors) {
-					Console->GetInstance()->Print(factors->Get(i))->Print(", ");
+					Console->Instance()->Print(factors->Get(i))->Print(", ");
 				};
 				"\n\n"->Print();
 			};
