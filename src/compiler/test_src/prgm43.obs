@@ -4,7 +4,7 @@ use IO;
 bundle Default {
 	class Test {
 		function : Main(args : System.String[]) ~ Nil {
-			str : String := Console->GetInstance()->ReadString();
+			str : String := Console->Instance()->ReadString();
 			if(str->ToInt() * 2 < 34) {
 				"less than 34."->PrintLine();
 			}
