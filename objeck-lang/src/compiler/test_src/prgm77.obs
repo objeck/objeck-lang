@@ -177,6 +177,8 @@ attrib_key->PrintLine();
 						@buffer_pos += 1;
 					};
 					
+# no value error					
+					
 					attrib_value := String->New();
 					for(i := start_pos; i < @buffer_pos; i += 1;) {
 						attrib_value->Append(@buffer[i]);
@@ -188,6 +190,7 @@ attrib_value->PrintLine();
 					IgnoreWhiteSpace();
 				}
 				else {
+# no "=" error				
 @buffer[@buffer_pos]->As(Char)->PrintLine();
 					"ERROR"->PrintLine();
 				};
