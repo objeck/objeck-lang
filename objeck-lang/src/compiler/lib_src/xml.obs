@@ -37,6 +37,184 @@ bundle XML {
 			return @error_msg;
 		}
 		
+		function : DecodeString(in : String) ~ String {
+			out := String->New();
+			
+			each(i : in) {
+				c := in->Get(i);
+				select(c) {
+					label ' ': {
+						out->Append("&#x20;");
+					}
+					
+					label '\t': {
+						out->Append("&#x9;");
+					}
+					
+					label '\n': {
+						out->Append("&#xA;");
+					}
+					
+					label '\r': {
+						out->Append("&#xD;");
+					}
+					
+					other: {
+						out->Append(c);
+					}
+				};
+			};
+			
+			return out;
+		}
+		
+		function : EncodeString(in : String) ~ String {
+			max := in->Size();
+			i := 0;
+			
+			out := String->New();
+			while(i < max) {
+				c := in->Get(i);
+				# &lt;
+				if(c = '&') {
+					i += 1;
+					if(i < max & in->Get(i) = 'l') {
+						i += 1;
+						if(i < max & in->Get(i) = 't') {
+							i += 1;
+							if(i < max & in->Get(i) = ';') {
+								out->Append('<');
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &gt;
+					else if(i < max & in->Get(i) = 'g') {
+						i += 1;
+						if(i < max & in->Get(i) = 't') {
+							i += 1;
+							if(i < max & in->Get(i) = ';') {
+								out->Append('>');
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &amp;
+					else if(i < max & in->Get(i) = 'a') {
+						i += 1;
+						if(i < max & in->Get(i) = 'm') {
+							i += 1;
+							if(i < max & in->Get(i) = 'p') {
+								i += 1;
+								if(i < max & in->Get(i) = ';') {
+									out->Append('&');
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else if(i < max & in->Get(i) = 'p') {
+							i += 1;
+							if(i < max & in->Get(i) = 'o') {
+								i += 1;
+								if(i < max & in->Get(i) = 's') {
+									i += 1;
+									if(i < max & in->Get(i) = ';') {
+										out->Append('\'');
+									}
+									else {
+										out->Append(c);
+									};
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						};
+					}
+					# &quot;
+					else if(i < max & in->Get(i) = 'q') {
+						i += 1;
+						if(i < max & in->Get(i) = 'u') {
+							i += 1;
+							if(i < max & in->Get(i) = 'o') {
+								i += 1;
+								if(i < max & in->Get(i) = 't') {
+									i += 1;
+									if(i < max & in->Get(i) = ';') {
+										out->Append('"');
+									}
+									else {
+										out->Append(c);
+									};
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &quot;
+					else if(i < max & in->Get(i) = '#') {
+					"####"->PrintLine();
+						i += 1;
+						if(i < max & in->Get(i) = 'x') {
+							i += 1;
+							str_num := "0x";
+							while(i < max & (in->Get(i)->IsDigit() | 
+								(in->Get(i) >= 'a' & in->Get(i) <= 'f') |
+								(in->Get(i) >= 'A' & in->Get(i) <= 'F'))) {
+								str_num->Append(in->Get(i));
+								i += 1;
+							};
+							
+							if(i < max & in->Get(i) = ';') {
+								str_num->ToInt()->PrintLine();
+								out->Append(str_num->ToInt()->As(Char));
+							}
+							else {
+								out->Append(str_num);
+							};
+						};
+					}
+					else {
+						out->Append(c);
+					};
+				}
+				else {
+					out->Append(c);
+				};
+				
+				# update
+				i += 1;
+			};
+			
+			return out;
+		}
+		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
@@ -667,10 +845,6 @@ bundle XML {
 		
 		method : public : GetContent() ~ String {
 			return @content;
-		}
-		
-		method : public : GetDecodedContent() ~ String {
-			return Nil;
 		}
 		
 		method : public : AddChild(tag : XMLElement) ~ Nil {
