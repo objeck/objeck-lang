@@ -6,11 +6,13 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
-					results := parser->FindElements("catalog/book/author");
+					results := parser->FindElements("/root/person/");
 					results->Size()->PrintLine();
 					each(i : results) {
 						element : XMLElement := results->Get(i)->As(XMLElement);
-						element->GetContent()->PrintLine();
+						"'"->Print();
+						element->GetContent()->Trim()->PrintLine();
+						"'"->PrintLine();
 					};
 				}
 				else {
