@@ -9,7 +9,7 @@ bundle Default {
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 					root->GetName()->PrintLine();
-					results := parser->FindElements("/root/car");
+					results := parser->FindElements("/root/person/name");
 					results->Size()->PrintLine();
 				};
 			};
@@ -87,10 +87,7 @@ bundle Default {
 			};
 			
 			
-if(@error_msg = Nil) {
-	"\nsuccess!"->PrintLine();
-}
-else {
+if(@error_msg <> Nil) {
 	Console->GetInstance()->Print("\nerror: ")->Print(@error_msg)->PrintLine();
 };
 			
@@ -104,6 +101,76 @@ else {
 			};
 		}
 		
+		method : native : ParseName() ~ String {
+			# check name start
+			if(@buffer_pos < @buffer->Size() & (@buffer[@buffer_pos]->As(Char)->IsChar() |
+				@buffer[@buffer_pos] = ':' | @buffer[@buffer_pos] = '_')) {
+				# look for name end
+				start_pos := @buffer_pos;
+				while(@buffer_pos < @buffer->Size() &	(@buffer[@buffer_pos]->As(Char)->IsChar() |
+					@buffer[@buffer_pos] = '-' | @buffer[@buffer_pos] = '.')) {
+					@buffer_pos += 1;
+				};
+				# copy buffer
+				name := String->New();
+				for(i := start_pos; i < @buffer_pos; i += 1;) {
+					name->Append(@buffer[i]);
+				};
+				
+				return name;
+			};
+			
+			return Nil;
+		}
+		
+		method : native : ParseValue() ~ String {
+			# check name start
+			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '"') {
+				# look for name end
+				@buffer_pos += 1;
+				start_pos := @buffer_pos;
+				while(@buffer_pos < @buffer->Size() &	@buffer[@buffer_pos] <> '"') {
+					@buffer_pos += 1;
+				};
+				
+				if(@buffer_pos < @buffer->Size() &	@buffer[@buffer_pos] = '"') {
+					# copy buffer
+					name := String->New();
+					for(i := start_pos; i < @buffer_pos; i += 1;) {
+						name->Append(@buffer[i]);
+					};
+					@buffer_pos += 1;
+					
+					return name;
+				};
+				
+				return Nil;
+			}
+			else if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '\'') {
+				# look for name end
+				@buffer_pos += 1;
+				start_pos := @buffer_pos;
+				while(@buffer_pos < @buffer->Size() &	@buffer[@buffer_pos] <> '\'') {
+					@buffer_pos += 1;
+				};
+				
+				if(@buffer_pos < @buffer->Size() &	@buffer[@buffer_pos] = '\'') {
+					# copy buffer
+					name := String->New();
+					for(i := start_pos; i < @buffer_pos; i += 1;) {
+						name->Append(@buffer[i]);
+					};
+					@buffer_pos += 1;
+					
+					return name;
+				};
+				
+				return Nil;
+			};
+			
+			return Nil;
+		}
+				
 		method : native : WhiteSpace(c : Byte) ~ Bool {
 			if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
 				return true;
@@ -113,19 +180,20 @@ else {
 		}
 		
 		method : public : native : ParseElement() ~ Element {
+			# are we done?
 			IgnoreWhiteSpace();
-			while(@buffer_pos >= @buffer->Size()) {
+			if(@buffer_pos = @buffer->Size()) {
 				return Nil;
 			};
 			
-			if(@buffer_pos < @buffer->Size() & @buffer_pos < @buffer->Size() & 
-				@buffer[@buffer_pos] <> '<') {
-				@error_msg := "Expected opening tag...";
+			# looks for '<'
+			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '<') {
+				@error_msg := "Expected '<'...";
 				return Nil;
 			};
 			@buffer_pos += 1;
 			
-			# end tag
+			# looks for '</'
 			IgnoreWhiteSpace();
 			is_end_tag := false;
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
@@ -133,99 +201,74 @@ else {
 				@buffer_pos += 1;
 			};
 			
+			# looks for tag name
 			IgnoreWhiteSpace();
-			start_pos := @buffer_pos;
-			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '/' & 
-				@buffer[@buffer_pos] <> '>' & WhiteSpace(@buffer[@buffer_pos]) = false) {
-				@buffer_pos += 1;
-			};
-			
-			# copy tag name
-			tag_name := String->New();
-			for(i := start_pos; i < @buffer_pos; i += 1;) {
-				tag_name->Append(@buffer[i]);
-			};
+			tag_name := ParseName();
+			if(tag_name = Nil) {
+				@error_msg := "Invalid tag name...";
+				return Nil;
+      };
       
-      # attrib name	
+      # look for attributes
       IgnoreWhiteSpace();
-			while(@buffer_pos < @buffer->Size() & (@buffer[@buffer_pos]->As(Char)->IsChar() |
-				@buffer[@buffer_pos] = ':' | @buffer[@buffer_pos] = '_')) {
-				start_pos := @buffer_pos;
-				while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '=' &
-					WhiteSpace(@buffer[@buffer_pos]) = false) {
-					@buffer_pos += 1;
+      attrib_key := ParseName();
+      if(attrib_key <> Nil & is_end_tag) {
+      	@error_msg := "End tags may not have attributes...";
+				return Nil;
+      };
+      
+      while(attrib_key <> Nil) {
+# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
+      
+      	IgnoreWhiteSpace();
+      	if(@buffer_pos < @buffer->Size() & @buffer_pos < @buffer->Size() & 
+					@buffer[@buffer_pos] <> '=') {
+					@error_msg := "Expected '='...";
+					return Nil;
 				};
+				@buffer_pos += 1;
 				
-				attrib_key := String->New();
-				for(i := start_pos; i < @buffer_pos; i += 1;) {
-					attrib_key->Append(@buffer[i]);
-				};
-
-# detect errors, ' vs " presdence etc.
-			
-"### 1"->PrintLine();
-attrib_key->PrintLine();
-
+				# looks for tag value
 				IgnoreWhiteSpace();
-				
-				if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '=') {
-					# attrib value
-					@buffer_pos += 1;
-					start_pos := @buffer_pos;
-					while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '/' &
-						@buffer[@buffer_pos] <> '>' &	WhiteSpace(@buffer[@buffer_pos]) = false) {
-						@buffer_pos += 1;
-					};
-					
-# no value error					
-					
-					attrib_value := String->New();
-					for(i := start_pos; i < @buffer_pos; i += 1;) {
-						attrib_value->Append(@buffer[i]);
-					};
-					
-"### 2"->PrintLine();
-attrib_value->PrintLine();
-	
-					IgnoreWhiteSpace();
-				}
-				else {
-# no "=" error				
-@buffer[@buffer_pos]->As(Char)->PrintLine();
-					"ERROR"->PrintLine();
+				attrib_value := ParseValue();
+				if(attrib_value = Nil) {
+					@error_msg := "Invalid tag name...";
+					return Nil;
 				};
+# Console->GetInstance()->Print("value: ")->PrintLine(attrib_value);    
+
 				
-								
-			};
-			
+				# update
+				IgnoreWhiteSpace();
+      	attrib_key := ParseName();
+      };
+      
 			# unary
-			IgnoreWhiteSpace();
 			is_unary_tag := false;
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
 				is_unary_tag := true;
 				@buffer_pos += 1;
 			};
-			
 			if(is_unary_tag & is_end_tag) {
-				@error_msg := "Invalid tag: end and unary tag...";
+				@error_msg := "Tag cannot be an end and unary tag...";
 				return Nil;
 			};
 			
+			IgnoreWhiteSpace();
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '>') {
 				@buffer_pos += 1;
 			}
 			else {
-			@buffer[@buffer_pos]->PrintLine();
-				@error_msg := "Expected closing tag..";
+				@error_msg := "Expected closing tag...";
 				return Nil;
 			};
 			
-			# copy tag conents
-			IgnoreWhiteSpace();
+			# copy tag contents
 			start_pos := @buffer_pos;
 			while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '<') {
 				@buffer_pos += 1;
 			};
+			
 			tag_contents : String := Nil;
 			if(@buffer_pos > start_pos) {
 				tag_contents := String->New();
@@ -358,7 +401,7 @@ attrib_value->PrintLine();
 			return Nil;
 		}
 		
-		method : public : GetChildren(name : String) ~ Vector {
+		method : public : native : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
 			each(i : @children) {
 				element : Element := @children->Get(i);
