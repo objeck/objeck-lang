@@ -9,14 +9,8 @@ bundle Default {
 				if(parser->Parse()) {
 					root := parser->GetRoot();
 					root->GetName()->PrintLine();
-					
-					aa := root->GetChildren("person");
-					each(i : aa) {
-						aa->Get(i)->As(Element)->GetChildren("name")->Size()->PrintLine();
-					};
-					
-					
-					parser->FindElements("/root/");
+					results := parser->FindElements("/root/car");
+					results->Size()->PrintLine();
 				};
 			};
 		}
@@ -92,12 +86,13 @@ bundle Default {
 				tag := ParseElement();
 			};
 			
-			if(@error_msg = Nil) {
-				"\nsuccess!"->PrintLine();
-			}
-			else {
-				Console->GetInstance()->Print("\nerror: ")->Print(@error_msg)->PrintLine();
-			};
+			
+if(@error_msg = Nil) {
+	"\nsuccess!"->PrintLine();
+}
+else {
+	Console->GetInstance()->Print("\nerror: ")->Print(@error_msg)->PrintLine();
+};
 			
 			return true;
 		}
@@ -130,6 +125,7 @@ bundle Default {
 			};
 			@buffer_pos += 1;
 			
+			# end tag
 			IgnoreWhiteSpace();
 			is_end_tag := false;
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '/') {
@@ -143,10 +139,60 @@ bundle Default {
 				@buffer[@buffer_pos] <> '>' & WhiteSpace(@buffer[@buffer_pos]) = false) {
 				@buffer_pos += 1;
 			};
+			
 			# copy tag name
 			tag_name := String->New();
 			for(i := start_pos; i < @buffer_pos; i += 1;) {
 				tag_name->Append(@buffer[i]);
+			};
+      
+      # attrib name	
+      IgnoreWhiteSpace();
+			while(@buffer_pos < @buffer->Size() & (@buffer[@buffer_pos]->As(Char)->IsChar() |
+				@buffer[@buffer_pos] = ':' | @buffer[@buffer_pos] = '_')) {
+				start_pos := @buffer_pos;
+				while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '=' &
+					WhiteSpace(@buffer[@buffer_pos]) = false) {
+					@buffer_pos += 1;
+				};
+				
+				attrib_key := String->New();
+				for(i := start_pos; i < @buffer_pos; i += 1;) {
+					attrib_key->Append(@buffer[i]);
+				};
+
+# detect errors, ' vs " presdence etc.
+			
+"### 1"->PrintLine();
+attrib_key->PrintLine();
+
+				IgnoreWhiteSpace();
+				
+				if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = '=') {
+					# attrib value
+					@buffer_pos += 1;
+					start_pos := @buffer_pos;
+					while(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> '/' &
+						@buffer[@buffer_pos] <> '>' &	WhiteSpace(@buffer[@buffer_pos]) = false) {
+						@buffer_pos += 1;
+					};
+					
+					attrib_value := String->New();
+					for(i := start_pos; i < @buffer_pos; i += 1;) {
+						attrib_value->Append(@buffer[i]);
+					};
+					
+"### 2"->PrintLine();
+attrib_value->PrintLine();
+	
+					IgnoreWhiteSpace();
+				}
+				else {
+@buffer[@buffer_pos]->As(Char)->PrintLine();
+					"ERROR"->PrintLine();
+				};
+				
+								
 			};
 			
 			# unary
@@ -254,7 +300,7 @@ bundle Default {
 				
 			};
 
-Console->GetInstance()->Print("### ")->PrintLine(children->Size());			
+# Console->GetInstance()->Print("found: ")->PrintLine(children->Size());			
 			return children;
 		}
 	}
