@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>BBEditDocumentType</key>
@@ -10,41 +10,41 @@
 	<true/>
 	<key>BBLMKeywordList</key>
 	<array>
- 		<string>and</string>
-    <string>or</string>
-    <string>xor</string>
-    <string>virtual</string>
-    <string>if</string>
-    <string>else</string>
-    <string>do</string>
-    <string>while</string>
-    <string>use</string>
-    <string>bundle</string>
-    <string>native</string>
-    <string>static</string>
-    <string>public</string>
-    <string>private</string>
-    <string>class</string>
-    <string>select</string>
-    <string>other</string>
-    <string>enum</string>
-    <string>for</string>
-    <string>each</string>
-    <string>label</string>
-    <string>return</string>
-    <string>Byte</string>
-    <string>Int</string>
-    <string>Parent</string>
-    <string>from</string>
-    <string>Float</string>
-    <string>Char</string>
-    <string>Bool</string>
-    <string>String</string>
-    <string>Nil</string>
-    <string>true</string>
-    <string>false</string>
-    <string>function</string>
-    <string>method</string>
+		<string>and</string>
+		<string>or</string>
+		<string>xor</string>
+		<string>virtual</string>
+		<string>if</string>
+		<string>else</string>
+		<string>do</string>
+		<string>while</string>
+		<string>use</string>
+		<string>bundle</string>
+		<string>native</string>
+		<string>static</string>
+		<string>public</string>
+		<string>private</string>
+		<string>class</string>
+		<string>select</string>
+		<string>other</string>
+		<string>enum</string>
+		<string>for</string>
+		<string>each</string>
+		<string>label</string>
+		<string>return</string>
+		<string>Byte</string>
+		<string>Int</string>
+		<string>Parent</string>
+		<string>from</string>
+		<string>Float</string>
+		<string>Char</string>
+		<string>Bool</string>
+		<string>String</string>
+		<string>Nil</string>
+		<string>true</string>
+		<string>false</string>
+		<string>function</string>
+		<string>method</string>
 	</array>
 	<key>BBLMLanguageCode</key>
 	<string>LSL</string>
@@ -68,9 +68,9 @@
 		<key>Close Statement Blocks</key>
 		<string>}</string>
 		<key>Close Strings 1</key>
-		<string>"</string>
+		<string>&quot;</string>
 		<key>Close Strings 2</key>
-		<string>'</string>
+		<string>&apos;</string>
 		<key>End-of-line Ends Strings 1</key>
 		<false/>
 		<key>End-of-line Ends Strings 2</key>
@@ -78,9 +78,9 @@
 		<key>Escape Char in Strings 1</key>
 		<string>\</string>
 		<key>Escape Char in Strings 2</key>
-		<string></string>
+		<string>\</string>
 		<key>Identifier and Keyword Characters</key>
-		<string>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz</string>
+		<string>@0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz</string>
 		<key>Open Block Comments</key>
 		<string>#~</string>
 		<key>Open Line Comments</key>
@@ -90,9 +90,9 @@
 		<key>Open Statement Blocks</key>
 		<string>{</string>
 		<key>Open Strings 1</key>
-		<string>"</string>
+		<string>&quot;</string>
 		<key>Open Strings 2</key>
-		<string>'</string>
+		<string>&apos;</string>
 		<key>Prefix for Functions</key>
 		<string></string>
 		<key>Prefix for Procedures</key>
