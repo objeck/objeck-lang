@@ -21,7 +21,7 @@ bundle Default {
 			ints[2] := 1;
 
 			each(i : ints) {
-				IO.Console->GetInstance()->Print(i)->Print(": ")->PrintLine(ints[i]);
+				IO.Console->Instance()->Print(i)->Print(": ")->PrintLine(ints[i]);
 			};
 
 			things := ["Apple", "Banana", "Coconut"];

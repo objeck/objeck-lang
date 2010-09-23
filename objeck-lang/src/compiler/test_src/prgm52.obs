@@ -15,7 +15,7 @@ bundle Default {
 		function : native : Time() ~ Nil {
 #		function : Time() ~ Nil {
 			t := Time->New();
-			IO.Console->GetInstance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+			IO.Console->Instance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
 }

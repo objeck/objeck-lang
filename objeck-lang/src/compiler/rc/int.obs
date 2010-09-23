@@ -5,13 +5,13 @@ bundle Default {
     }
 	
     function : native : DoArithmetic() ~ Nil {
-      a := IO.Console->GetInstance()->ReadString()->ToInt();
-      b := IO.Console->GetInstance()->ReadString()->ToInt();
+      a := IO.Console->Instance()->ReadString()->ToInt();
+      b := IO.Console->Instance()->ReadString()->ToInt();
   
-      IO.Console->GetInstance()->Print("a+b = ")->PrintLine(a+b);
-      IO.Console->GetInstance()->Print("a-b = ")->PrintLine(a-b);
-      IO.Console->GetInstance()->Print("a*b = ")->PrintLine(a*b);
-      IO.Console->GetInstance()->Print("a/b = ")->PrintLine(a/b);
+      IO.Console->Instance()->Print("a+b = ")->PrintLine(a+b);
+      IO.Console->Instance()->Print("a-b = ")->PrintLine(a-b);
+      IO.Console->Instance()->Print("a*b = ")->PrintLine(a*b);
+      IO.Console->Instance()->Print("a/b = ")->PrintLine(a/b);
     }
   }
 }
