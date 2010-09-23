@@ -153,7 +153,8 @@ class ContextAnalyzer {
 
     if(eval_type) {
       // integer types
-      if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE) {
+      if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE || 
+	 eval_type->GetType() == BYTE_TYPE) {
         return true;
       }
       // enum types
