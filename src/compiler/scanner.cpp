@@ -522,6 +522,14 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	case '\'':
+          tokens[index]->SetType(TOKEN_CHAR_LIT);
+          tokens[index]->SetCharLit('\'');
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+          NextChar();
+          return;
         case '0':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\0');
