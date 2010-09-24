@@ -1066,9 +1066,15 @@ The FileReader is inherited from the File class and allows programmers read file
     	\begin{itemize}
 	\item method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int
 	\end{itemize}
-    \item \texttt{ReadString} - reads a line from a file.
+
+    	\item \texttt{ReadString} - reads a line from a file.
     	\begin{itemize}
 	\item method : public : ReadString(), String
+	\end{itemize}
+
+    	\item \texttt{ReadFile} - reads an entire file.
+    	\begin{itemize}
+	\item method : public : ReadFile(), String
 	\end{itemize}
 \end{itemize}
 
@@ -1186,7 +1192,7 @@ The XMLParser class allows programmers to parse and search XML documents using a
 \begin{itemize}
   \item \texttt{New}
   \begin{itemize}
-		\item New(buffer : Byte[])
+		\item New(buffer : Char[])
 		\item New(file : String)
 	\end{itemize}
 	
