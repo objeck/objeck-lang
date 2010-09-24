@@ -184,7 +184,6 @@ bundle XML {
 					}
 					# &quot;
 					else if(i < max & in->Get(i) = '#') {
-					"####"->PrintLine();
 						i += 1;
 						if(i < max & in->Get(i) = 'x') {
 							i += 1;

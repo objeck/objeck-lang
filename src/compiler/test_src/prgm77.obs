@@ -6,17 +6,11 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
-					results := parser->FindElements("/root/person/");
+					results := parser->FindElements("/CATALOG/PLANT/PRICE");
 					results->Size()->PrintLine();
 					each(i : results) {
 						element : XMLElement := results->Get(i)->As(XMLElement);
-						"'"->Print();
 						element->GetContent()->Trim()->PrintLine();
-						"'"->PrintLine();
-						
-						"0x00C9"->ToInt()->As(Char)->PrintLine();
-						126->As(Char)->PrintLine();
-						XmlParser->EncodeString("hello world&amp;&gt; &amp;&apos;&quot;&quot; &#xA;")->PrintLine();
 					};
 				}
 				else {
