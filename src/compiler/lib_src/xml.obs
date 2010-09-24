@@ -15,7 +15,7 @@ bundle XML {
 		@buffer_pos : Int;
 		@error_msg : String;
 		@root : XMLElement;
-		@declarations : Vector;
+		@declarations : StringHash;
 		
 		New(file : String) {
 			# read in file
@@ -32,13 +32,13 @@ bundle XML {
 			};
 			
 			@buffer_pos := 0;
-			@declarations := Vector->New();
+			@declarations := StringHash->New();
 		}
 		
 		New(buffer : Byte[]) {
 			@buffer := buffer;
 			@buffer_pos := 0;
-			@declarations := Vector->New();
+			@declarations := StringHash->New();
 		}
 		
 		method : public : GetError() ~ String {
@@ -222,6 +222,24 @@ bundle XML {
 			return out;
 		}
 		
+		method : public : GetVersion() ~ String {
+			element : XMLElement := @declarations->Find("xml")->As(XMLElement);
+			if(element <> Nil) {
+				return element->GetAttribute("version");
+			};
+			
+			return "unknown";
+		}
+		
+		method : public : GetEncoding() ~ String {
+			element : XMLElement := @declarations->Find("xml")->As(XMLElement);
+			if(element <> Nil) {
+				return element->GetAttribute("encoding");
+			};
+			
+			return "unknown";
+		}
+		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
@@ -238,7 +256,7 @@ bundle XML {
 
 			# parse declarations
 			while(tag->GetType() = XMLElementType->DECLARATION) {
-				@declarations->AddBack(tag->As(Base));
+				@declarations->Insert(tag->GetName(), tag->As(Base));
 				# update
 				tag := ParseElement();
 				if(@error_msg <> Nil) {
