@@ -6,6 +6,7 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
+					parser->GetVersion()->PrintLine();
 					results := parser->FindElements("/nutrition/food/serving");
 					results->Size()->PrintLine();
 					each(i : results) {
