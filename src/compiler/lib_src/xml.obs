@@ -58,7 +58,7 @@ bundle XML {
 				out->Append(@version);
 				if(@encoding <> Nil) {
 					out->Append("\" encoding=\"");
-					out->Append(@version);
+					out->Append(@encoding);
 				};
 				out->Append("\"?>");
 			};
@@ -113,7 +113,7 @@ bundle XML {
 				return element->GetAttribute("version");
 			};
 			
-			return "unknown";
+			return "1.0";
 		}
 		
 		method : public : GetEncoding() ~ String {
@@ -122,7 +122,24 @@ bundle XML {
 				return element->GetAttribute("encoding");
 			};
 			
-			return "unknown";
+			return "iso-8859-1";
+		}
+		
+		method : public : ToString() ~ String {
+			# add declaration
+			out := String->New();
+			out->Append("<?xml version=\"");
+#			out->Append(GetVersion());
+			out->Append("1.0");
+#			out->Append(GetVersion());
+			out->Append("\" encoding=\"");
+			out->Append("iso-8859-1");
+			out->Append("\"?>");
+			
+			# serialize DOM
+			out->Append(@root->ToString());
+			
+			return out;
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
