@@ -7,11 +7,12 @@ bundle Default {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
 					parser->GetVersion()->PrintLine();
-					results := parser->FindElements("/nutrition/food/serving");
+					results := parser->FindElements("/nutrition/food/vitamins/c");
 					results->Size()->PrintLine();
 					each(i : results) {
 						element : XMLElement := results->Get(i)->As(XMLElement);
-						XmlParser->DecodeString(element->GetAttribute("units"))->PrintLine();
+#						XmlParser->DecodeString(element->GetAttribute("units"))->PrintLine();
+						XmlParser->DecodeString(element->GetContent())->PrintLine();
 					};
 				}
 				else {
