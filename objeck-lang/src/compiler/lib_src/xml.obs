@@ -1,3 +1,8 @@
+#~~
+# R. Hollines
+# XML parsing library
+~~#
+
 use IO;
 use Structure;
 
@@ -865,7 +870,7 @@ bundle XML {
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# get all children that 
-		# match the given name
+		# match the given filter
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : public : native : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
