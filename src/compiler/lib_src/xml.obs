@@ -73,31 +73,19 @@ bundle XML {
 	# XML Parser class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 	class XmlParser {
-		@buffer : Byte[];
+		@buffer : Char[];
 		@buffer_pos : Int;
 		@error_msg : String;
 		@root : XMLElement;
 		@declarations : StringHash;
 		
-		New(file : String) {
-			# read in file
-			len := File->Size(file);
-			@buffer := Byte->New[len];
-			in := FileReader->New(file);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, @buffer);
-				in->Close();
-			} 
-			else {
-				@error_msg := "Unable to open file: ";
-				@error_msg->Append(file);
-			};
-			
+		New(string : String) {
+			@buffer := string->ToCharArray();
 			@buffer_pos := 0;
 			@declarations := StringHash->New();
 		}
 		
-		New(buffer : Byte[]) {
+		New(buffer : Char[]) {
 			@buffer := buffer;
 			@buffer_pos := 0;
 			@declarations := StringHash->New();
@@ -131,8 +119,8 @@ bundle XML {
 			out->Append("<?xml version=\"");
 #			out->Append(GetVersion());
 			out->Append("1.0");
-#			out->Append(GetVersion());
 			out->Append("\" encoding=\"");
+#			out->Append(GetVersion());
 			out->Append("iso-8859-1");
 			out->Append("\"?>");
 			
@@ -283,7 +271,7 @@ bundle XML {
 					# copy buffer
 					name := String->New();
 					for(i := start_pos; i < @buffer_pos; i += 1;) {
-						c : Byte := @buffer[i];
+						c : Char := @buffer[i];
 						select(c) {
 							label ' ': {
 								name->Append("&#x20;");
@@ -325,7 +313,7 @@ bundle XML {
 					# copy buffer
 					name := String->New();
 					for(i := start_pos; i < @buffer_pos; i += 1;) {
-						c : Byte := @buffer[i];
+						c : Char := @buffer[i];
 						select(c) {
 							label ' ': {
 								name->Append("&#x20;");
@@ -362,7 +350,7 @@ bundle XML {
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# define whitespce
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : native : WhiteSpace(c : Byte) ~ Bool {
+		method : native : WhiteSpace(c : Char) ~ Bool {
 			if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
 				return true;
 			};
