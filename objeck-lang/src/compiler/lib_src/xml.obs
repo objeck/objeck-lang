@@ -42,7 +42,7 @@ bundle XML {
 			return @error_msg;
 		}
 		
-		function : DecodeString(in : String) ~ String {
+		function : EncodeString(in : String) ~ String {
 			out := String->New();
 			
 			each(i : in) {
@@ -73,7 +73,7 @@ bundle XML {
 			return out;
 		}
 		
-		function : EncodeString(in : String) ~ String {
+		function : DecodeString(in : String) ~ String {
 			max := in->Size();
 			i := 0;
 			
@@ -258,7 +258,8 @@ bundle XML {
 					};
 					stack->Push(tag->As(Base));
 				}
-				else if(tag->GetType() = XMLElementType->CDATA) {
+				else if(tag->GetType() = XMLElementType->UNARY_ELEMENT | 
+					tag->GetType() = XMLElementType->CDATA) {
 					# invalid root
 					if(@root = Nil) {
 						@error_msg := "Invalid start tag...";
@@ -531,6 +532,9 @@ bundle XML {
 						else if(Match('>') & state = 2) {
 							state := 3;
 							@buffer_pos += 1;
+						}
+						else {
+							state := 0;
 						};
 					};
 					
@@ -548,18 +552,11 @@ bundle XML {
 					@buffer_pos += 1;
 					IgnoreWhiteSpace();
 					
-					is_end_tag := false;
-					is_dclr_tag := false;
-					
 					# looks for '</'
+					is_end_tag := false;
 					if(Match('/')) {
 						is_end_tag := true;
 						@buffer_pos += 1;
-					}
-					# looks for '<?xml'
-					else if(Match('?')) {
-						@buffer_pos += 1;
-						is_dclr_tag := true;
 					};
 				}
 				# cdata section
@@ -681,9 +678,9 @@ bundle XML {
 						return Nil;
 					};
 					
-# Console->GetInstance()->Print("value: ")->PrintLine(attrib_key);    
+# Console->GetInstance()->Print("value: ")->PrintLine(attrib_value);    
 					
-					attribs->Insert(attrib_key, attrib_key->As(Base));
+					attribs->Insert(attrib_key, attrib_value->As(Base));
 					
 					# update
 					IgnoreWhiteSpace();
