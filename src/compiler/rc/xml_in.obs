@@ -3,21 +3,19 @@ use XML;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				parser := XmlParser->New(args[0]);
-				if(parser->Parse()) {
-					parser->GetVersion()->PrintLine();
-					results := parser->FindElements("/nutrition/food/vitamins/c");
-					results->Size()->PrintLine();
-					each(i : results) {
-						element : XMLElement := results->Get(i)->As(XMLElement);
-#						XmlParser->DecodeString(element->GetAttribute("units"))->PrintLine();
-						XmlParser->DecodeString(element->GetContent())->PrintLine();
-					};
-				}
-				else {
-					parser->GetError()->PrintLine();
-				};
+			in := String->New();
+			in->Append("<Students>");
+			in->Append("<Student Name=\"April\" Gender=\"F\" DateOfBirth=\"1989-01-02\" />");
+			in->Append("<Student Name=\"Bob\" Gender=\"M\"  DateOfBirth=\"1990-03-04\" />");
+			in->Append("<Student Name=\"Chad\" Gender=\"M\"  DateOfBirth=\"1991-05-06\" />");
+			in->Append("<Student Name=\"Dave\" Gender=\"M\"  DateOfBirth=\"1992-07-08\">");
+			in->Append("<Pet Type=\"dog\" Name=\"Rover\" />");
+			in->Append("</Student>");
+			in->Append("<Student DateOfBirth=\"1993-09-10\" Gender=\"F\" Name=\"&#x00C9;mily\" /></Students>");
+		
+			parser := XmlParser->New(in);
+			if(parser->Parse()) {
+				
 			};
 		}
 	}
