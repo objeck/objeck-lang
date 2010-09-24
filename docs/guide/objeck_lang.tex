@@ -1184,22 +1184,17 @@ The HttpClient class allows programmers access HTTP 1.1 websites.  This class in
 \subsubsection{XMLParser}
 The XMLParser class allows programmers to parse and search XML documents using a simplified DOM.  This class in the `XML' bundle:
 \begin{itemize}
-    \item \texttt{New}
-    	\begin{itemize}
-	\item New(buffer : Byte[])
+  \item \texttt{New}
+  \begin{itemize}
+		\item New(buffer : Byte[])
+		\item New(file : String)
 	\end{itemize}
-    \item \texttt{New}
+	
+  \item \texttt{ToString} - serializes the DOM into a string
     	\begin{itemize}
-	\item New(file : String)
+	\item method : public : ToString(), String
 	\end{itemize}
-  \item \texttt{DecodeString} - Decodes an XML encoded string
-    	\begin{itemize}
-	\item function : DecodeString(in : String), String
-	\end{itemize}
-  \item \texttt{EncodeString} - Encodes an XML encoded string
-    	\begin{itemize}
-	\item function : EncodeString(in : String), String
-	\end{itemize}
+	
   \item \texttt{Parse} - Parses an XML stream into a DOM structure.  Returns true if successful; false otherwise.
     	\begin{itemize}
 	\item method : public : Parse(), Bool
@@ -1231,12 +1226,56 @@ The XMLParser class allows programmers to parse and search XML documents using a
 	\end{itemize}	
 \end{itemize}
 
+\subsubsection{XMLBuilder}
+The XMLBuilder class allows a programmer to dynamically build an XML DOM.  Once the DOM is build it may be traversed and/or serialized into a string. This class in the `XML' bundle:
+\begin{itemize}
+	\item \texttt{New}
+    	\begin{itemize}
+	\item New(root\_name : String)
+	\item New(name : String, version : String, encoding : String)
+	\end{itemize}
+	
+	\item \texttt{GetRoot} - Returns the root element.
+    	\begin{itemize}
+	\item method : public : GetRoot(), XMLElement
+	\end{itemize}
+	
+	\item \texttt{ToString} - Serializes an element into a string
+    	\begin{itemize}
+	\item method : public : ToString(), String
+	\end{itemize}
+	
+	\item \texttt{GetVersion} - Returns the version name.
+    	\begin{itemize}
+	\item method : public : GetVersion(), String
+	\end{itemize}
+	
+	\item \texttt{SetVersion} - Sets the version name.
+    	\begin{itemize}
+	\item method : public : SetVersion(name : String), Nil
+	\end{itemize}
+	
+	\item \texttt{GetEncoding} - Returns the encoding name.
+    	\begin{itemize}
+	\item method : public : GetEncoding(), String
+	\end{itemize}
+	
+	\item \texttt{SetEncoding} - Sets the encoding name.
+    	\begin{itemize}
+	\item method : public : SetEncoding(name : String), Nil
+	\end{itemize}
+	
+\end{itemize}
+
+
 \subsubsection{XMLElement}
 The XMLElement class represents a canonical XML node within a DOM. This class in the `XML' bundle:
 \begin{itemize}
 	\item \texttt{New}
     	\begin{itemize}
-	\item New(name : String, type : XMLElementType, attribs : StringHash, content : String)
+  \item New(type : XMLElementType, name : String)
+  \item New(type : XMLElementType, name : String, content : String)
+	\item New(type : XMLElementType, name : String, attribs : StringHash, content : String)
 	\end{itemize}
 	
 	\item \texttt{GetName} - Returns the element name.
@@ -1244,14 +1283,34 @@ The XMLElement class represents a canonical XML node within a DOM. This class in
 	\item method : public : GetName(), String
 	\end{itemize}
 	
+	\item \texttt{SetName} - Sets the element name.
+    	\begin{itemize}
+	\item method : public : SetName(name : String), Nil
+	\end{itemize}
+	
+	\item \texttt{GetRoot} - Returns the root element.
+    	\begin{itemize}
+	\item method : public : GetRoot(), XMLElement
+	\end{itemize}
+	
 	\item \texttt{GetType} - Returns the element type.
     	\begin{itemize}
-	\item method : public : GetType(), String
+	\item method : public : GetType(), XMLElementType
+	\end{itemize}
+	
+	\item \texttt{SetType} - Sets the element type.
+    	\begin{itemize}
+	\item method : public : SetType(type : XMLElementType), Nil
 	\end{itemize}
 	
 	\item \texttt{GetContent} - Returns the XML content between two tags.
     	\begin{itemize}
 	\item method : public : GetContent(), String
+	\end{itemize}
+	
+	\item \texttt{SetContent} - Sets the XML content between two tags.
+    	\begin{itemize}
+	\item method : public : SetContent(content : String), Nil
 	\end{itemize}
 	
 	\item \texttt{GetChildCount} - Returns number of logical child elements.
@@ -1264,13 +1323,36 @@ The XMLElement class represents a canonical XML node within a DOM. This class in
 	\item method : public : GetChild(i : Int) ~ XMLElement
 	\end{itemize}
 	
+	\item \texttt{AddChild} - adds a child element.
+    	\begin{itemize}
+	\item method : public : AddChild(child : XMLElement) ~ Nil
+	\end{itemize}
+	
 	\item \texttt{GetAttribute} - Returns the value of a given attribute.
     	\begin{itemize}
 	\item method : public : GetAttribute(name : String), String
 	\end{itemize}
+	
+	\item \texttt{SetAttribute} - Sets the name/value of a given attribute.
+    	\begin{itemize}
+	\item method : public : SetAttribute(name : String, value : String), Nil
+	\end{itemize}
+	
+	\item \texttt{ToString} - Serializes an element into a string
+    	\begin{itemize}
+	\item method : public : ToString(), String
+	\end{itemize}
+	
+	\item \texttt{DecodeString} - Decodes an XML encoded string
+    	\begin{itemize}
+	\item function : DecodeString(in : String), String
+	\end{itemize}
+	
+  \item \texttt{EncodeString} - Encodes an XML encoded string
+    	\begin{itemize}
+	\item function : EncodeString(in : String), String
+	\end{itemize}
 \end{itemize}
-
-
 
 \section{Examples}
 \subsection{Prime Numbers}
