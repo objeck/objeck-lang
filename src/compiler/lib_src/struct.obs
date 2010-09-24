@@ -1747,8 +1747,8 @@ bundle Structure {
 			@hash->Remove(key->As(Compare));
 		}
     
-		method : public : Find(key : String) ~ String {
-			return @hash->Find(key->As(Compare))->As(String);
+		method : public : Find(key : String) ~ Base {
+			return @hash->Find(key->As(Compare));
 		}
 		
 		method : public : Has(key : String) ~ Bool {
