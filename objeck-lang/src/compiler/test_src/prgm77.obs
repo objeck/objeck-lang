@@ -6,11 +6,11 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
-					results := parser->FindElements("/CATALOG/PLANT/PRICE");
+					results := parser->FindElements("/nutrition/food/serving");
 					results->Size()->PrintLine();
 					each(i : results) {
 						element : XMLElement := results->Get(i)->As(XMLElement);
-						element->GetContent()->Trim()->PrintLine();
+						XmlParser->DecodeString(element->GetAttribute("units"))->PrintLine();
 					};
 				}
 				else {
