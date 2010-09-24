@@ -15,7 +15,7 @@ bundle XML {
 		@buffer_pos : Int;
 		@error_msg : String;
 		@root : XMLElement;
-		@declaration : XMLElement;
+		@declarations : Vector;
 		
 		New(file : String) {
 			# read in file
@@ -30,12 +30,15 @@ bundle XML {
 				@error_msg := "Unable to open file: ";
 				@error_msg->Append(file);
 			};
+			
 			@buffer_pos := 0;
+			@declarations := Vector->New();
 		}
 		
 		New(buffer : Byte[]) {
 			@buffer := buffer;
 			@buffer_pos := 0;
+			@declarations := Vector->New();
 		}
 		
 		method : public : GetError() ~ String {
@@ -233,24 +236,29 @@ bundle XML {
 				return false;
 			};
 
-			# detect declaration
-			if(tag->GetType() = XMLElementType->DECLARATION) {
-				@declaration := tag;
+			# parse declarations
+			while(tag->GetType() = XMLElementType->DECLARATION) {
+				@declarations->AddBack(tag->As(Base));
+				# update
 				tag := ParseElement();
 				if(@error_msg <> Nil) {
 					return false;
 				};
 			};
-				
+			
+			# find root
+			if(tag->GetType() = XMLElementType->OPENING_ELEMENT) {
+				@root := tag;
+			}
+			else {
+				@error_msg := "Invalid root element...";
+				return false;
+			};
+			
 			stack := Stack->New();
 			while(tag <> Nil) {
 				# update element stack
 				if(tag->GetType() = XMLElementType->OPENING_ELEMENT) {
-					# attach the root
-					if(@root = Nil) {
-			 			@root := tag;
-					};
-				
 					parent : XMLElement;
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XMLElement);
@@ -260,11 +268,6 @@ bundle XML {
 				}
 				else if(tag->GetType() = XMLElementType->UNARY_ELEMENT | 
 					tag->GetType() = XMLElementType->CDATA) {
-					# invalid root
-					if(@root = Nil) {
-						@error_msg := "Invalid start tag...";
-					};
-					
 					parent : XMLElement;
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XMLElement);

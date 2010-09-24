@@ -1259,11 +1259,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   mthd_name + "(..)'\n\tEnsure calling parameters are properly casted");
     } 
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   var_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   var_name + "(..)'\n\tEnsure calling parameters are properly casted");
     }
   }
 }
@@ -1376,7 +1376,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       if(dyn_func_params != call_params) {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined function/method call: '" + method_call->GetMethodName() +
-		     "(..)'\n\tEnsure calling parameters properly casted");
+		     "(..)'\n\tEnsure calling parameters are properly casted");
 
       }
       
@@ -1397,12 +1397,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       if(mthd_name.size() > 0) {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined function/method call: '" + mthd_name + 
-		     "(..)'\n\tEnsure calling parameters properly casted");
+		     "(..)'\n\tEnsure calling parameters are properly casted");
       } 
       else {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined function/method call: '" + var_name +
-		     "(..)'\n\tEnsure calling parameters properly casted");
+		     "(..)'\n\tEnsure calling parameters are properly casted");
       }
     }
   }
@@ -1462,11 +1462,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   mthd_name + "(..)'\n\tEnsure calling parameters are properly casted");
     } 
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   var_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   var_name + "(..)'\n\tEnsure calling parameters are properly casted");
     }
   }
 }
@@ -1521,11 +1521,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   mthd_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   mthd_name + "(..)'\n\tEnsure calling parameters are properly casted");
     } 
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
-                   var_name + "(..)'\n\tEnsure calling parameters properly casted");
+                   var_name + "(..)'\n\tEnsure calling parameters are properly casted");
     }
   }
 }
