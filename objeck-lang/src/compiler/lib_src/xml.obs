@@ -10,6 +10,68 @@ bundle XML {
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# XML Parser class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	class XMLBuilder {
+		@root : XMLElement;
+		@version : String;
+		@encoding : String;
+		
+		New(name : String) {
+			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+		}
+		
+		New(name : String, version : String) {
+			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+			@version := version;
+		}
+		
+		New(name : String, version : String, encoding : String) {
+			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+			@version := version;
+			@encoding := encoding;
+		}
+		
+		method : public : GetRoot() ~ XMLElement {
+			return @root;
+		}
+		
+		method : public : GetVersion() ~ String {
+			return @version;
+		}
+		
+		method : public : SetVersion(version : String) ~ Nil {
+			@version := version;
+		}
+		
+		method : public : GetEncoding() ~ String {
+			return @encoding;
+		}
+		
+		method : public : SetEncoding(encoding : String) ~ Nil {
+			@encoding := encoding;
+		}
+		
+		method : public : ToString() ~ String {
+			# add declaration
+			out := String->New();
+			if(@version <> Nil) {
+				out->Append("<?xml version=\"");
+				out->Append(@version);
+				if(@encoding <> Nil) {
+					out->Append("\" encoding=\"");
+					out->Append(@version);
+				};
+				out->Append("\"?>");
+			};
+			# serialize DOM
+			out->Append(@root->ToString());
+			
+			return out;
+		}
+	}
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# XML Parser class
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 	class XmlParser {
 		@buffer : Byte[];
 		@buffer_pos : Int;
@@ -43,183 +105,6 @@ bundle XML {
 		
 		method : public : GetError() ~ String {
 			return @error_msg;
-		}
-		
-		function : EncodeString(in : String) ~ String {
-			out := String->New();
-			
-			each(i : in) {
-				c := in->Get(i);
-				select(c) {
-					label ' ': {
-						out->Append("&#x20;");
-					}
-					
-					label '\t': {
-						out->Append("&#x9;");
-					}
-					
-					label '\n': {
-						out->Append("&#xA;");
-					}
-					
-					label '\r': {
-						out->Append("&#xD;");
-					}
-					
-					other: {
-						out->Append(c);
-					}
-				};
-			};
-			
-			return out;
-		}
-		
-		function : DecodeString(in : String) ~ String {
-			max := in->Size();
-			i := 0;
-			
-			out := String->New();
-			while(i < max) {
-				c := in->Get(i);
-				# &lt;
-				if(c = '&') {
-					i += 1;
-					if(i < max & in->Get(i) = 'l') {
-						i += 1;
-						if(i < max & in->Get(i) = 't') {
-							i += 1;
-							if(i < max & in->Get(i) = ';') {
-								out->Append('<');
-							}
-							else {
-								out->Append(c);
-							};
-						}
-						else {
-							out->Append(c);
-						};
-					}
-					# &gt;
-					else if(i < max & in->Get(i) = 'g') {
-						i += 1;
-						if(i < max & in->Get(i) = 't') {
-							i += 1;
-							if(i < max & in->Get(i) = ';') {
-								out->Append('>');
-							}
-							else {
-								out->Append(c);
-							};
-						}
-						else {
-							out->Append(c);
-						};
-					}
-					# &amp;
-					else if(i < max & in->Get(i) = 'a') {
-						i += 1;
-						if(i < max & in->Get(i) = 'm') {
-							i += 1;
-							if(i < max & in->Get(i) = 'p') {
-								i += 1;
-								if(i < max & in->Get(i) = ';') {
-									out->Append('&');
-								}
-								else {
-									out->Append(c);
-								};
-							}
-							else {
-								out->Append(c);
-							};
-						}
-						else if(i < max & in->Get(i) = 'p') {
-							i += 1;
-							if(i < max & in->Get(i) = 'o') {
-								i += 1;
-								if(i < max & in->Get(i) = 's') {
-									i += 1;
-									if(i < max & in->Get(i) = ';') {
-										out->Append('\'');
-									}
-									else {
-										out->Append(c);
-									};
-								}
-								else {
-									out->Append(c);
-								};
-							}
-							else {
-								out->Append(c);
-							};
-						};
-					}
-					# &quot;
-					else if(i < max & in->Get(i) = 'q') {
-						i += 1;
-						if(i < max & in->Get(i) = 'u') {
-							i += 1;
-							if(i < max & in->Get(i) = 'o') {
-								i += 1;
-								if(i < max & in->Get(i) = 't') {
-									i += 1;
-									if(i < max & in->Get(i) = ';') {
-										out->Append('"');
-									}
-									else {
-										out->Append(c);
-									};
-								}
-								else {
-									out->Append(c);
-								};
-							}
-							else {
-								out->Append(c);
-							};
-						}
-						else {
-							out->Append(c);
-						};
-					}
-					# &quot;
-					else if(i < max & in->Get(i) = '#') {
-						i += 1;
-						if(i < max & in->Get(i) = 'x') {
-							i += 1;
-							str_num := "0x";
-							while(i < max & (in->Get(i)->IsDigit() | 
-								(in->Get(i) >= 'a' & in->Get(i) <= 'f') |
-								(in->Get(i) >= 'A' & in->Get(i) <= 'F'))) {
-								str_num->Append(in->Get(i));
-								i += 1;
-							};
-							
-							if(i < max & in->Get(i) = ';') {
-								str_num->ToInt()->PrintLine();
-								out->Append(str_num->ToInt()->As(Char));
-							}
-							else {
-								out->Append(str_num);
-							};
-						};
-					}
-					else {
-						out->Append(c);
-					};
-				}
-				else {
-					out->Append(c);
-				};
-				
-				# update
-				i += 1;
-			};
-			
-			return out;
 		}
 		
 		method : public : GetVersion() ~ String {
@@ -265,7 +150,7 @@ bundle XML {
 			};
 			
 			# find root
-			if(tag->GetType() = XMLElementType->OPENING_ELEMENT) {
+			if(tag->GetType() = XMLElementType->ELEMENT) {
 				@root := tag;
 			}
 			else {
@@ -276,7 +161,7 @@ bundle XML {
 			stack := Stack->New();
 			while(tag <> Nil) {
 				# update element stack
-				if(tag->GetType() = XMLElementType->OPENING_ELEMENT) {
+				if(tag->GetType() = XMLElementType->ELEMENT) {
 					parent : XMLElement;
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XMLElement);
@@ -294,7 +179,7 @@ bundle XML {
 				}
 				else if(tag->GetType() = XMLElementType->CLOSING_ELEMENT) {
 					top : XMLElement := stack->Top()->As(XMLElement);
-					if(top->GetType() = XMLElementType->OPENING_ELEMENT) {
+					if(top->GetType() = XMLElementType->ELEMENT) {
 						stack->Pop();
 					}
 					else {
@@ -622,7 +507,7 @@ bundle XML {
 				
 					# ignore commented chars
       		state := 0;
-      		start_pos := 0;
+      		start_pos := @buffer_pos;
 					while(@buffer_pos < @buffer->Size() & state < 3) {
 						@buffer_pos += 1;
 										
@@ -649,8 +534,9 @@ bundle XML {
 					for(i := start_pos; i < @buffer_pos - 3; i += 1;) {
 						data->Append(@buffer[i]);
 					};
+# Console->Instance()->Print("cdata: ")->PrintLine(data);					
 					
-					return XMLElement->New(Nil->As(String), XMLElementType->CDATA, 
+					return XMLElement->New(XMLElementType->CDATA, Nil->As(String), 
 						Nil->As(StringHash), data);
 				}
 				else {
@@ -763,10 +649,10 @@ bundle XML {
 				type := XMLElementType->CLOSING_ELEMENT;
 			}
 			else {
-				type := XMLElementType->OPENING_ELEMENT;
+				type := XMLElementType->ELEMENT;
 			};
 			
-			return XMLElement->New(tag_name, type, attribs, tag_contents);
+			return XMLElement->New(type, tag_name, attribs, tag_contents);
 		}
 		
 		method : public : GetRoot() ~ XMLElement {
@@ -821,7 +707,6 @@ bundle XML {
 				};				
 				
 			};
-
 # Console->GetInstance()->Print("found: ")->PrintLine(children->Size());
 			
 			return children;
@@ -834,8 +719,8 @@ bundle XML {
 	enum XMLElementType {
 		DECLARATION,
 		CDATA,
-		OPENING_ELEMENT,
-		CLOSING_ELEMENT,
+		ELEMENT,
+		CLOSING_ELEMENT, # control type not used for DOM creation
 		UNARY_ELEMENT
 	}
 	
@@ -849,40 +734,143 @@ bundle XML {
 		@content : String;
 		@children : Vector;
 		
-		New(name : String, type : XMLElementType, attribs : StringHash, content : String) {
-			@name := name;
+		New(type : XMLElementType, name : String) {
 			@type := type;
+			@name := name;
+		}
+		
+		New(type : XMLElementType, name : String, content : String) {
+			@type := type;
+			@name := name;
+			@content := content;
+		}
+		
+		New(type : XMLElementType, name : String, attribs : StringHash, content : String) {
+			@type := type;
+			@name := name;
 			@attribs := attribs;
 			@content := content;
-			@children := Vector->New();
 		}
 		
 		method : public : GetName() ~ String {
 			return @name;
 		}
 		
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+		
 		method : public : GetType() ~ XMLElementType {
 			return @type;
+		}
+		
+		method : public : SetType(type : XMLElementType) ~ Nil {
+			@type := type;
 		}
 		
 		method : public : GetContent() ~ String {
 			return @content;
 		}
 		
+		method : public : SetContent(content : String) ~ Nil {
+			@content := content;
+		}
+		
+		method : public : AddAttribute(key : String, value : String) ~ Nil {
+			if(@attribs = Nil) {
+				@attribs := StringHash->New();
+			};
+			@attribs->Insert(key, value->As(Base));
+		}
+		
+		method : public : GetAttribute(key : String) ~ String {
+			if(@attribs <> Nil) {
+				return @attribs->Find(key)->As(String);
+			};
+			
+			return Nil;
+		}
+		
 		method : public : AddChild(tag : XMLElement) ~ Nil {
+			if(@children = Nil) {
+				@children := Vector->New();
+			};
 			@children->AddBack(tag->As(Base));
 		}
 		
 		method : public : GetChildCount() ~ Int {
-			return @children->Size();
+			if(@children <> Nil) {
+				return @children->Size();
+			};
+		
+			return 0;
 		}
 		
 		method : public : GetChild(i : Int) ~ XMLElement {
-			if(i < @children->Size()) {
+			if(@children <> Nil & i < @children->Size()) {
 				return @children->Get(i)->As(XMLElement);
 			};
 			
 			return Nil;
+		}
+		
+		method : public : ToString() ~ String {
+			in := String->New();
+			ToString(in);
+			
+			return in;
+		}
+		
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# serializes an element 
+		# into a string
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		method : ToString(in : String) ~ Nil {
+			# element
+			if(@name <> Nil & @type = XMLElementType->ELEMENT) {
+				in->Append('<');
+				in->Append(@name);
+				# attribs
+				if(@attribs <> Nil) {
+					keys := @attribs->GetKeys();
+					each(i : keys) {
+						key : String := keys->Get(i)->As(String);
+						value : String := @attribs->Find(key)->As(String);
+						in->Append(' ');
+						in->Append(key);
+						in->Append('=');
+						in->Append('"');
+						in->Append(value);
+						in->Append('"');
+					};
+				};
+				in->Append('>');
+				
+				# process content
+				if(@content <> Nil) {
+					in->Append(@content);
+				};
+					
+				# process children
+				if(@children <> Nil) {
+					each(i : @children) {
+						child : XMLElement := @children->Get(i)->As(XMLElement);
+						child->ToString(in);
+					};
+				};
+				in->Append('<');
+				in->Append('/');
+				in->Append(@name);
+				in->Append('>');
+			}
+			# cdata
+			else if(@type = XMLElementType->CDATA) {
+				in->Append("<![CDATA[");
+				if(@content <> Nil) {
+					in->Append(@content);
+				};
+				in->Append("]]>");
+			};
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -908,15 +896,187 @@ bundle XML {
 			return @children;
 		}
 		
-		method : public : AddAttribute(key : String, value : String) ~ Nil {
-			if(@attribs = Nil) {
-				@attribs := StringHash->New();
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# encodes an XML string
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		function : EncodeString(in : String) ~ String {
+			out := String->New();
+			
+			each(i : in) {
+				c := in->Get(i);
+				select(c) {
+					label ' ': {
+						out->Append("&#x20;");
+					}
+					
+					label '\t': {
+						out->Append("&#x9;");
+					}
+					
+					label '\n': {
+						out->Append("&#xA;");
+					}
+					
+					label '\r': {
+						out->Append("&#xD;");
+					}
+					
+					other: {
+						out->Append(c);
+					}
+				};
 			};
-			@attribs->Insert(key, value->As(Base));
+			
+			return out;
 		}
 		
-		method : public : GetAttribute(key : String) ~ String {
-			return @attribs->Find(key)->As(String);
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# decodes an XML string
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		function : DecodeString(in : String) ~ String {
+			max := in->Size();
+			i := 0;
+			
+			out := String->New();
+			while(i < max) {
+				c := in->Get(i);
+				# &lt;
+				if(c = '&') {
+					i += 1;
+					if(i < max & in->Get(i) = 'l') {
+						i += 1;
+						if(i < max & in->Get(i) = 't') {
+							i += 1;
+							if(i < max & in->Get(i) = ';') {
+								out->Append('<');
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &gt;
+					else if(i < max & in->Get(i) = 'g') {
+						i += 1;
+						if(i < max & in->Get(i) = 't') {
+							i += 1;
+							if(i < max & in->Get(i) = ';') {
+								out->Append('>');
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &amp;
+					else if(i < max & in->Get(i) = 'a') {
+						i += 1;
+						if(i < max & in->Get(i) = 'm') {
+							i += 1;
+							if(i < max & in->Get(i) = 'p') {
+								i += 1;
+								if(i < max & in->Get(i) = ';') {
+									out->Append('&');
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else if(i < max & in->Get(i) = 'p') {
+							i += 1;
+							if(i < max & in->Get(i) = 'o') {
+								i += 1;
+								if(i < max & in->Get(i) = 's') {
+									i += 1;
+									if(i < max & in->Get(i) = ';') {
+										out->Append('\'');
+									}
+									else {
+										out->Append(c);
+									};
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						};
+					}
+					# &quot;
+					else if(i < max & in->Get(i) = 'q') {
+						i += 1;
+						if(i < max & in->Get(i) = 'u') {
+							i += 1;
+							if(i < max & in->Get(i) = 'o') {
+								i += 1;
+								if(i < max & in->Get(i) = 't') {
+									i += 1;
+									if(i < max & in->Get(i) = ';') {
+										out->Append('"');
+									}
+									else {
+										out->Append(c);
+									};
+								}
+								else {
+									out->Append(c);
+								};
+							}
+							else {
+								out->Append(c);
+							};
+						}
+						else {
+							out->Append(c);
+						};
+					}
+					# &quot;
+					else if(i < max & in->Get(i) = '#') {
+						i += 1;
+						if(i < max & in->Get(i) = 'x') {
+							i += 1;
+							str_num := "0x";
+							while(i < max & (in->Get(i)->IsDigit() | 
+								(in->Get(i) >= 'a' & in->Get(i) <= 'f') |
+								(in->Get(i) >= 'A' & in->Get(i) <= 'F'))) {
+								str_num->Append(in->Get(i));
+								i += 1;
+							};
+							
+							if(i < max & in->Get(i) = ';') {
+								str_num->ToInt()->PrintLine();
+								out->Append(str_num->ToInt()->As(Char));
+							}
+							else {
+								out->Append(str_num);
+							};
+						};
+					}
+					else {
+						out->Append(c);
+					};
+				}
+				else {
+					out->Append(c);
+				};
+				
+				# update
+				i += 1;
+			};
+			
+			return out;
 		}
 	}
 }
