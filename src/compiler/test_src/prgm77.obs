@@ -1,4 +1,5 @@
 use XML;
+use Structure;
 
 bundle Default {
 	class Test {
@@ -6,14 +7,34 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(args[0]);
 				if(parser->Parse()) {
+					element := parser->GetRoot();
+					element->ToString()->PrintLine();
+					
+#~				
 					parser->GetVersion()->PrintLine();
 					results := parser->FindElements("/nutrition/food/vitamins/c");
 					results->Size()->PrintLine();
-					each(i : results) {
+					each(i : results) {					
 						element : XMLElement := results->Get(i)->As(XMLElement);
 #						XmlParser->DecodeString(element->GetAttribute("units"))->PrintLine();
-						XmlParser->DecodeString(element->GetContent())->PrintLine();
+						XMLElement->DecodeString(element->GetContent())->PrintLine();
 					};
+					"\n\n"->Print();
+~#
+					
+					b := XMLElement->New(XMLElementType->ELEMENT, "bar", 
+						Nil->As(StringHash), "crunk");
+					
+					builder := XMLBuilder->New("foo", "1.0");
+					e := builder->GetRoot();
+					
+					e->AddAttribute("unit", "feet");
+					e->AddChild(b);
+					e->AddChild(b);
+					builder->ToString()->PrintLine();
+
+
+					
 				}
 				else {
 					parser->GetError()->PrintLine();
