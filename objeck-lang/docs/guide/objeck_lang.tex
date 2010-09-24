@@ -719,6 +719,7 @@ Base class for all objects.
 \end{itemize}
 
 \subsection{Data Structures}
+Please note that these classes are in the `Structure' bundle.
 \subsubsection{Compare}
 Base class for all objects that use comparative algorithms.
 \begin{itemize}
@@ -1006,7 +1007,7 @@ The Time class allows programmers gain access to the current system time.    The
 \end{itemize}
 
 \subsubsection{File}
-The File class allows programmers manipulate system files.    The class supports the following operations:
+The File class allows programmers manipulate system files.  This class is in the `IO' bundle.  The class supports the following operations:
 \begin{itemize}
     \item \texttt{New}
     	\begin{itemize}
@@ -1047,7 +1048,7 @@ The File class allows programmers manipulate system files.    The class supports
 \end{itemize}
 
 \subsubsection{FileReader}
-The FileReader is inherited from the File class and allows programmers read files.    The class supports the following operations:
+The FileReader is inherited from the File class and allows programmers read files.  This class is in the `IO' bundle.  The class supports the following operations:
 \begin{itemize}
     \item \texttt{New}
     	\begin{itemize}
@@ -1072,7 +1073,7 @@ The FileReader is inherited from the File class and allows programmers read file
 \end{itemize}
 
 \subsubsection{FileWriter}
-The FileReader is inherited from the File class and allows programmers read files.    The class supports the following operations:
+The FileReader is inherited from the File class and allows programmers read files.  This class is in the `IO' bundle.  The class supports the following operations:
 \begin{itemize}
     \item \texttt{Close} - closes a file.
     	\begin{itemize}
@@ -1093,7 +1094,7 @@ The FileReader is inherited from the File class and allows programmers read file
 \end{itemize}
 
 \subsubsection{Directory}
-The Directory class allows programmers manipulate file system directories.    The class supports the following operations:
+The Directory class allows programmers manipulate file system directories.  This class is in the `IO' bundle.  The class supports the following operations:
 \begin{itemize}
     \item \texttt{Create} - creates a new directory.
     	\begin{itemize}
@@ -1110,7 +1111,7 @@ The Directory class allows programmers manipulate file system directories.    Th
 \end{itemize}
 
 \subsubsection{TCPSocket}
-The TCPSocket class allows programmers connect to TCP/IP socket servers.    The class supports the following operations:
+The TCPSocket class allows programmers connect to TCP/IP socket servers.  This class in the `Net' bundle.  The class supports the following operations:
 \begin{itemize}
     \item \texttt{New}
     	\begin{itemize}
@@ -1155,7 +1156,7 @@ The TCPSocket class allows programmers connect to TCP/IP socket servers.    The 
 \end{itemize}
 
 \subsubsection{HttpClient}
-The HttpClient class allows programmers access HTTP 1.1 websites:
+The HttpClient class allows programmers access HTTP 1.1 websites.  This class in the `Net' bundle:
 \begin{itemize}
     \item \texttt{New}
     	\begin{itemize}
@@ -1178,6 +1179,88 @@ The HttpClient class allows programmers access HTTP 1.1 websites:
 	\item method : GetHeaders(), Map
 	\end{itemize}
 \end{itemize}
+
+
+\subsubsection{XMLParser}
+The XMLParser class allows programmers to parse and search XML documents using a simplified DOM.  This class in the `XML' bundle:
+\begin{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(buffer : Byte[])
+	\end{itemize}
+    \item \texttt{New}
+    	\begin{itemize}
+	\item New(file : String)
+	\end{itemize}
+  \item \texttt{DecodeString} - Decodes an XML encoded string
+    	\begin{itemize}
+	\item function : DecodeString(in : String), String
+	\end{itemize}
+  \item \texttt{EncodeString} - Encodes an XML encoded string
+    	\begin{itemize}
+	\item function : EncodeString(in : String), String
+	\end{itemize}
+  \item \texttt{Parse} - Parses an XML stream into a DOM structure.  Returns true if successful; false otherwise.
+    	\begin{itemize}
+	\item method : public : Parse(), Bool
+	\end{itemize}
+	
+	\item \texttt{FindElements} - returns all elements that match the given query string.
+    	\begin{itemize}
+	\item method : public : Parse(), Bool
+	\end{itemize}
+	
+	\item \texttt{GetRoot} - Returns the root node of the DOM.
+    	\begin{itemize}
+	\item method : public : GetRoot(), XMLElement
+	\end{itemize}
+	
+	\item \texttt{GetError} - Returns the last parsing error; if one occured.
+    	\begin{itemize}
+	\item method : public : Parse(), Bool
+	\end{itemize}	
+\end{itemize}
+
+\subsubsection{XMLElement}
+The XMLElement class represents a canonical XML node within a DOM. This class in the `XML' bundle:
+\begin{itemize}
+	\item \texttt{New}
+    	\begin{itemize}
+	\item New(name : String, type : XMLElementType, attribs : StringHash, content : String)
+	\end{itemize}
+	
+	\item \texttt{GetName} - Returns the element name.
+    	\begin{itemize}
+	\item method : public : GetName(), String
+	\end{itemize}
+	
+	\item \texttt{GetType} - Returns the element type.
+    	\begin{itemize}
+	\item method : public : GetType(), String
+	\end{itemize}
+	
+	\item \texttt{GetContent} - Returns the XML content between two tags.
+    	\begin{itemize}
+	\item method : public : GetContent(), String
+	\end{itemize}
+	
+	\item \texttt{GetChildCount} - Returns number of logical child elements.
+    	\begin{itemize}
+	\item method : public : GetChildCount(), Int
+	\end{itemize}
+	
+	\item \texttt{GetChild} - Returns a child element.
+    	\begin{itemize}
+	\item method : public : GetChild(i : Int) ~ XMLElement
+	\end{itemize}
+	
+	\item \texttt{GetAttribute} - Returns the value of a given attribute.
+    	\begin{itemize}
+	\item method : public : GetAttribute(name : String), String
+	\end{itemize}
+\end{itemize}
+
+
 
 \section{Examples}
 \subsection{Prime Numbers}
