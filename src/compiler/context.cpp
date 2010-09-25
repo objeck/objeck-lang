@@ -1813,8 +1813,14 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
   if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
     SymbolEntry* entry = variable->GetEntry();
     if(entry) {
-      variable->SetTypes(expression->GetEvalType());
-      entry->SetType(expression->GetEvalType());
+      if(expression->GetCastType()) {
+	variable->SetTypes(expression->GetCastType());
+	entry->SetType(expression->GetCastType());
+      }
+      else {
+	variable->SetTypes(expression->GetEvalType());
+	entry->SetType(expression->GetEvalType());
+      }
       // set variable to scalar type if we're de-referencing an array variable
       if(expression->GetExpressionType() == VAR_EXPR) {
 	Variable* expr_variable = static_cast<Variable*>(expression);
