@@ -1,7 +1,7 @@
 use Structure;
 
 bundle Default {
-	class Hello {
+	class Test {
 		function : Main(args : String[]) ~ Nil {
 			filters := Vector->New();
 			filters->AddBack("element[13]"->As(Base));
@@ -31,12 +31,11 @@ bundle Default {
 							if(expr->Size() > 0) {
 								if(expr->Get(0)->IsDigit()) {
 									"number"->PrintLine();
+									value := expr->Trim()->ToInt();
+									IO.Console->Instance()->Print("number: ")->PrintLine(value);
 								} 
-								else if(expr->Get(0) = '@') {
-									"element"->PrintLine();
-								}
 								else if(expr->Get(0)->IsChar()) {
-									"string"->PrintLine();
+									IO.Console->Instance()->Print("element: ")->PrintLine(expr);
 								};
 							};
 						};
