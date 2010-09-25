@@ -713,7 +713,7 @@ bundle XML {
 					};
 				};
 				
-				return Nil;
+				return Vector->New();
 			};
 				
 			return element->GetChildren(filter);
@@ -724,7 +724,8 @@ bundle XML {
 		# given path
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : public : FindElements(path : String) ~ Vector {
-			children := Vector->New();
+			children := Vector->New(); # refactor no need to allocate?
+			
 			if(path->StartsWith("//")) {
 				path := path->SubString(2, path->Size() - 2);
 				
@@ -732,13 +733,13 @@ bundle XML {
 				filters := Vector->New();
 				start := 0;
 				each(i : path) {
-						if(path->Get(i) = '/') {
-							if(i - start > 0) {
-								filter := path->SubString(start, i - start);
-								filters->AddBack(filter->As(Base));
-							};
-							start := i + 1;
+					if(path->Get(i) = '/') {
+						if(i - start > 0) {
+							filter := path->SubString(start, i - start);
+							filters->AddBack(filter->As(Base));
 						};
+						start := i + 1;
+					};
 				};
 				if(start < path->Size() & path->Size() - start > 0) {
 					filter := path->SubString(start, path->Size() - start);
@@ -753,30 +754,8 @@ bundle XML {
 					else {
 						# process root query
 						filter := filters->Get(1)->As(String);
-						expr := GetElementExpression(filter);
-						if(expr <> Nil) {
-							if(expr->Equals("first()")) {
-								children := @root->GetFirstChild(filter);
-							}
-							else if(expr->Equals("last()")) {
-								children := @root->GetLastChild(filter);
-							}
-							else {
-								if(expr->Size() > 0) {
-									if(expr->Get(0)->IsDigit()) {
-										max := expr->Trim()->ToInt();
-										children := @root->GetChildren(filter, max);
-									} 
-									else if(expr->Get(0)->IsChar()) {
-										children := @root->GetChildren(filter, expr);
-									};
-								};
-							};
-						}
-						else {
-							children := @root->GetChildren(filter);
-						};
-						
+						children := ProcessExpression(filter, @root);
+												
 						# process children
 						for(i := 2; i < filters->Size(); i += 1;) {
 							# get filter
@@ -786,40 +765,13 @@ bundle XML {
 							each(j : children) {
 								# process child queries
 								element := children->Get(j)->As(XMLElement);
-								
-								expr := GetElementExpression(filter);
-								if(expr <> Nil) {
-									if(expr->Equals("first()")) {
-										filtered :=element->GetFirstChild(filter);
-									}
-									else if(expr->Equals("last()")) {
-										filtered := element->GetLastChild(filter);
-									}
-									else {
-										if(expr->Size() > 0) {
-											if(expr->Get(0)->IsDigit()) {
-												max := expr->Trim()->ToInt();
-												filtered := element->GetChildren(filter, max);
-											} 
-											else if(expr->Get(0)->IsChar()) {
-												filtered := element->GetChildren(filter, expr);
-											};
-										};
-									};
-								}
-								else {
-									filtered := element->GetChildren(filter);
-								};
-								
+								filtered := ProcessExpression(filter, element);
 								all_filtered->AddBack(filtered);
 							};
 							children := all_filtered;
 						};
-					};				
-					
+					};
 				};
-				
-# Console->GetInstance()->Print("found: ")->PrintLine(children->Size());
 			};
 			
 			return children;
@@ -1012,11 +964,25 @@ bundle XML {
 		}
 		
 		method : public : native : GetFirstChild(name : String) ~ Vector {
-			return Nil;
+			first := Vector->New();
+			
+			filtered := GetChildren(name);
+			if(filtered->Size() > 0) {
+				first->AddBack(filtered->Get(0));
+			};
+			
+			return first;
 		}
 		
 		method : public : native : GetLastChild(name : String) ~ Vector {
-			return Nil;
+			first := Vector->New();
+			
+			filtered := GetChildren(name);
+			if(filtered->Size() > 0) {
+				first->AddBack(filtered->Get(filtered->Size() - 1));
+			};
+			
+			return first;
 		}
 		
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector {
@@ -1035,7 +1001,6 @@ bundle XML {
 			filtered := Vector->New();
 			if(max > 0) {
 				found := 0;
-Console->Instance()->Print("### max: ")->PrintLine(max);
 				for(i := 0; i < @children->Size() & found < max; i += 1;) {
 					element : XMLElement := @children->Get(i);
 					if(element->GetName()->Equals(name)) {
