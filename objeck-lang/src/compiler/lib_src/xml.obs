@@ -947,6 +947,7 @@ bundle XML {
 				c := in->Get(i);
 				# &lt;
 				if(c = '&') {
+					start := i;
 					i += 1;
 					if(i < max & in->Get(i) = 'l') {
 						i += 1;
@@ -956,10 +957,16 @@ bundle XML {
 								out->Append('<');
 							}
 							else {
+								for(j := start; j < i; j += 1;) {
+									out->Append(in->Get(j));
+								};
 								out->Append(c);
 							};
 						}
 						else {
+							for(j := start; j < i; j += 1;) {
+								out->Append(in->Get(j));
+							};
 							out->Append(c);
 						};
 					}
@@ -972,10 +979,16 @@ bundle XML {
 								out->Append('>');
 							}
 							else {
+								for(j := start; j < i; j += 1;) {
+									out->Append(in->Get(j));
+								};
 								out->Append(c);
 							};
 						}
 						else {
+							for(j := start; j < i; j += 1;) {
+								out->Append(in->Get(j));
+							};
 							out->Append(c);
 						};
 					}
@@ -990,10 +1003,16 @@ bundle XML {
 									out->Append('&');
 								}
 								else {
+									for(j := start; j < i; j += 1;) {
+										out->Append(in->Get(j));
+									};
 									out->Append(c);
 								};
 							}
 							else {
+								for(j := start; j < i; j += 1;) {
+									out->Append(in->Get(j));
+								};
 								out->Append(c);
 							};
 						}
@@ -1007,14 +1026,23 @@ bundle XML {
 										out->Append('\'');
 									}
 									else {
+										for(j := start; j < i; j += 1;) {
+											out->Append(in->Get(j));
+										};
 										out->Append(c);
 									};
 								}
 								else {
+									for(j := start; j < i; j += 1;) {
+										out->Append(in->Get(j));
+									};
 									out->Append(c);
 								};
 							}
 							else {
+								for(j := start; j < i; j += 1;) {
+									out->Append(in->Get(j));
+								};
 								out->Append(c);
 							};
 						};
@@ -1032,18 +1060,30 @@ bundle XML {
 										out->Append('"');
 									}
 									else {
+										for(j := start; j < i; j += 1;) {
+											out->Append(in->Get(j));
+										};
 										out->Append(c);
 									};
 								}
 								else {
+									for(j := start; j < i; j += 1;) {
+										out->Append(in->Get(j));
+									};
 									out->Append(c);
 								};
 							}
 							else {
+								for(j := start; j < i; j += 1;) {
+									out->Append(in->Get(j));
+								};
 								out->Append(c);
 							};
 						}
 						else {
+							for(j := start; j < i; j += 1;) {
+								out->Append(in->Get(j));
+							};
 							out->Append(c);
 						};
 					}
@@ -1067,18 +1107,25 @@ bundle XML {
 							else {
 								out->Append(str_num);
 							};
+						}
+						else {
+							for(j := start; j < i; j += 1;) {
+								out->Append(in->Get(j));
+							};
+							out->Append(c);
 						};
 					}
 					else {
+						for(j := start; j < i; j += 1;) {
+							out->Append(in->Get(j));
+						};
 						out->Append(c);
 					};
 				}
 				else {
 					out->Append(c);
+					i += 1;
 				};
-				
-				# update
-				i += 1;
 			};
 			
 			return out;
