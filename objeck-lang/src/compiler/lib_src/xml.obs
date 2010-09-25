@@ -666,54 +666,161 @@ bundle XML {
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# parses element expression
+		# tags
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		method : public : GetElementExpression(filter : String) ~ String {
+			if(filter->EndsWith("]")) {
+				end_pos := filter->Size() - 1;
+				start_pos := end_pos;
+				while(start_pos > -1 & filter->Get(start_pos) <> '[') {
+					start_pos -= 1;
+				};
+				if(start_pos < end_pos) {
+					start_pos += 1;
+					expr := filter->SubString(start_pos, end_pos - start_pos);	
+				};
+#				IO.Console->Instance()->Print(start_pos)->Print(", ")->PrintLine(end_pos);
+				
+				return expr;
+			};
+			
+			return Nil;
+		}
+		
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# parses element expression
+		# tags
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		method : public : ProcessExpression(filter : String, element : XMLElement) ~ Vector {
+			expr := GetElementExpression(filter);
+			if(expr <> Nil) {
+				if(expr->Equals("first()")) {
+					return element->GetFirstChild(filter);
+				}
+				else if(expr->Equals("last()")) {
+					return element->GetLastChild(filter);
+				}
+				else {
+					if(expr->Size() > 0) {
+						if(expr->Get(0)->IsDigit()) {
+							max := expr->Trim()->ToInt();
+							return element->GetChildren(filter, max);
+						} 
+						else if(expr->Get(0)->IsChar()) {
+							return element->GetChildren(filter, expr);
+						};
+					};
+				};
+				
+				return Nil;
+			};
+				
+			return element->GetChildren(filter);
+		}
+		
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# finds all elements in a
 		# given path
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : public : FindElements(path : String) ~ Vector {
-			filters := Vector->New();
-			start := 0;
-			each(i : path) {
-					if(path->Get(i) = '/') {
-						if(i - start > 0) {
-							filter := path->SubString(start, i - start);
-							filters->AddBack(filter->As(Base));
-						};
-						start := i + 1;
-					};
-			};
-			
-			if(start < path->Size() & path->Size() - start > 0) {
-				filter := path->SubString(start, path->Size() - start);
-				filters->AddBack(filter->As(Base));
-			};
-			
 			children := Vector->New();
-			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@root->GetName())) {
-				if(filters->Size() = 1) {
-					children->AddBack(@root->As(Base));
-				}
-				else {
-					# process root
-					filter := filters->Get(1)->As(String);
-					children := @root->GetChildren(filter);
-					
-					# process children
-					for(i := 2; i < filters->Size(); i += 1;) {
-						# get filter
-						filter := filters->Get(i)->As(String);
-						# filter children
-						all_filtered := Vector->New();
-						each(j : children) {
-							element : XMLElement := children->Get(j)->As(XMLElement);
-							filtered := element->GetChildren(filter);	
-							all_filtered->AddBack(filtered);
-						};
-						children := all_filtered;
-					};
-				};				
+			if(path->StartsWith("//")) {
+				path := path->SubString(2, path->Size() - 2);
 				
-			};
+				# tokenize path into filters
+				filters := Vector->New();
+				start := 0;
+				each(i : path) {
+						if(path->Get(i) = '/') {
+							if(i - start > 0) {
+								filter := path->SubString(start, i - start);
+								filters->AddBack(filter->As(Base));
+							};
+							start := i + 1;
+						};
+				};
+				if(start < path->Size() & path->Size() - start > 0) {
+					filter := path->SubString(start, path->Size() - start);
+					filters->AddBack(filter->As(Base));
+				};
+				
+				# process query
+				if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@root->GetName())) {
+					if(filters->Size() = 1) {
+						children->AddBack(@root->As(Base));
+					}
+					else {
+						# process root query
+						filter := filters->Get(1)->As(String);
+						expr := GetElementExpression(filter);
+						if(expr <> Nil) {
+							if(expr->Equals("first()")) {
+								children := @root->GetFirstChild(filter);
+							}
+							else if(expr->Equals("last()")) {
+								children := @root->GetLastChild(filter);
+							}
+							else {
+								if(expr->Size() > 0) {
+									if(expr->Get(0)->IsDigit()) {
+										max := expr->Trim()->ToInt();
+										children := @root->GetChildren(filter, max);
+									} 
+									else if(expr->Get(0)->IsChar()) {
+										children := @root->GetChildren(filter, expr);
+									};
+								};
+							};
+						}
+						else {
+							children := @root->GetChildren(filter);
+						};
+						
+						# process children
+						for(i := 2; i < filters->Size(); i += 1;) {
+							# get filter
+							filter := filters->Get(i)->As(String);
+							# filter children
+							all_filtered := Vector->New();
+							each(j : children) {
+								# process child queries
+								element := children->Get(j)->As(XMLElement);
+								
+								expr := GetElementExpression(filter);
+								if(expr <> Nil) {
+									if(expr->Equals("first()")) {
+										filtered :=element->GetFirstChild(filter);
+									}
+									else if(expr->Equals("last()")) {
+										filtered := element->GetLastChild(filter);
+									}
+									else {
+										if(expr->Size() > 0) {
+											if(expr->Get(0)->IsDigit()) {
+												max := expr->Trim()->ToInt();
+												filtered := element->GetChildren(filter, max);
+											} 
+											else if(expr->Get(0)->IsChar()) {
+												filtered := element->GetChildren(filter, expr);
+											};
+										};
+									};
+								}
+								else {
+									filtered := element->GetChildren(filter);
+								};
+								
+								all_filtered->AddBack(filtered);
+							};
+							children := all_filtered;
+						};
+					};				
+					
+				};
+				
 # Console->GetInstance()->Print("found: ")->PrintLine(children->Size());
+			};
 			
 			return children;
 		}
@@ -898,6 +1005,43 @@ bundle XML {
 				element : XMLElement := @children->Get(i);
 				if(element->GetName()->Equals(name)) {
 					filtered->AddBack(element->As(Base));
+				};
+			};
+			
+			return filtered;
+		}
+		
+		method : public : native : GetFirstChild(name : String) ~ Vector {
+			return Nil;
+		}
+		
+		method : public : native : GetLastChild(name : String) ~ Vector {
+			return Nil;
+		}
+		
+		method : public : native : GetChildren(name : String, attrib : String) ~ Vector {
+			filtered := Vector->New();
+			each(i : @children) {
+				element : XMLElement := @children->Get(i);
+				if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
+					filtered->AddBack(element->As(Base));
+				};
+			};
+			
+			return filtered;
+		}
+		
+		method : public : native : GetChildren(name : String, max : Int) ~ Vector {
+			filtered := Vector->New();
+			if(max > 0) {
+				found := 0;
+Console->Instance()->Print("### max: ")->PrintLine(max);
+				for(i := 0; i < @children->Size() & found < max; i += 1;) {
+					element : XMLElement := @children->Get(i);
+					if(element->GetName()->Equals(name)) {
+						filtered->AddBack(element->As(Base));
+						found += 1;
+					};
 				};
 			};
 			
