@@ -171,6 +171,7 @@ bundle XML {
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XMLElement);
 						parent->AddChild(tag);
+						tag->SetParent(parent);
 					};
 					stack->Push(tag->As(Base));
 				}
@@ -737,6 +738,7 @@ bundle XML {
 		@type : XMLElementType;
 		@attribs : StringHash;
 		@content : String;
+		@parent : XMLElement;
 		@children : Vector;
 		
 		New(type : XMLElementType, name : String) {
@@ -817,6 +819,14 @@ bundle XML {
 			};
 			
 			return Nil;
+		}
+		
+		method : public : GetParent() ~ XMLElement {
+			return @parent;
+		}
+		
+		method : public : SetParent(parent : XMLElement) ~ Nil {
+			@parent := parent;
 		}
 		
 		method : public : ToString() ~ String {
