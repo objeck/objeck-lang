@@ -7,3 +7,7 @@
 * Basic XML support
 * No support for multibyte chars
 * No support for DOCTYPE
+---
+9/23/10
+* Bug fixes and enhancements to the XML libraries
+* minor enhancement to the context analyser to now allow RHS casted statement to be assigned to undeclaried variables
