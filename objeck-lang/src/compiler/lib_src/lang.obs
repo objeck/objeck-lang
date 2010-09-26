@@ -536,7 +536,7 @@ bundle System {
 		method : public : native : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-                		@max := @max * 3;
+                		@max := @max * 2;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
                 		for(i : Int := 0; i < @string->Size(); i += 1;) {
@@ -552,7 +552,7 @@ bundle System {
 		method : public : native : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-                		@max := @max * 3;
+                		@max := @max * 2;
                 		tmp : Char[] := Char->New[@max];
                 		# copy elements
                 		for(i : Int := 0; i < @string->Size(); i += 1;) {
