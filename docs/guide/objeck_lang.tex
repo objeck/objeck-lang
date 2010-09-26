@@ -830,23 +830,20 @@ The Stack class support the concept of a growing stack.  There are two specializ
 
 \subsubsection{Vector/CompareVector/IntVector/FloatVector}
 The Vector class support the concept of a growing array.  There are three specialized version of this class: \texttt{CompareVector}, \texttt{IntVector} and \texttt{FloatVector}.  The \texttt{IntVector}, \texttt{FloatVector} and \texttt{CompareVector} classes use \texttt{Int}, \texttt{Float} and \texttt{Compare} types respectively instead of \texttt{Base} type.  The general class supports the following operations:
-\begin{itemize}
+
+	\begin{itemize}
     \item \texttt{New}
-    	\begin{itemize}
-	\item New()
+  \begin{itemize}
+		\item New()
+		\item New(values : Base[])
+		\item New(values : Vector)
 	\end{itemize}
-    \item \texttt{New}
-    	\begin{itemize}
-	\item New(values : Base[])
-	\end{itemize}
-    \item \texttt{New}
-    	\begin{itemize}
-	\item New(values : Vector)
-	\end{itemize}
-    \item \texttt{AddBack} - adds a new value to the back of the vector
+	
+  \item \texttt{AddBack} - adds a new value to the back of the vector
     	\begin{itemize}
 	\item method : public : AddBack(value : Base), Nil
 	\end{itemize}
+	
     \item \texttt{RemoveBack} - removes the last element in the vector
     	\begin{itemize}
 	\item method : public : RemoveBack(), Nil
@@ -902,7 +899,13 @@ Additional methods for IntVector/FloatVector
 \subsubsection{Map/IntMap/FloatMap/StringMap}
 The Map class supports the concept of an associative array with key/value pairs.  The class implements a balance binary tree algorithm such that inserts, deletes and searches are $O(\log_2 n)$.
 \begin{itemize}
-    \item \texttt{Insert} - adds a new value to the tree
+
+  \item \texttt{New}
+  \begin{itemize}
+		\item New()
+	\end{itemize}
+	
+   \item \texttt{Insert} - adds a new value to the tree
     	\begin{itemize}
 	\item method : public : Insert(key : Compare, value : Base), Nil
 	\end{itemize}
@@ -925,7 +928,7 @@ The Map class supports the concept of an associative array with key/value pairs.
 \end{itemize}
 
 \subsubsection{Hash/StringHash}
-The Hash class supports the concept of an associative array with key/value pairs.  The class implements a hashing algorithm that is optimized for pairs of 256 or less  (consider using the \texttt{Map} class for larger sets):
+The Hash class supports the concept of a hash table with key/value pairs.  The class implements a hashing algorithm that is optimized for pairs of 256 elements or less  (consider using the \texttt{Map} class for larger sets):
 \begin{itemize}
     \item \texttt{Insert} - adds a new value to the hash table
     	\begin{itemize}
@@ -1062,6 +1065,12 @@ The FileReader is inherited from the File class and allows programmers read file
     	\begin{itemize}
 	\item method : public : ReadByte(), Byte
 	\end{itemize}
+	
+	\item \texttt{ReadFile} - reads an entire file into a String.
+    	\begin{itemize}
+	\item function : public : ReadFile(file : String), String
+	\end{itemize}
+	
     \item \texttt{ReadBuffer} - reads n number of bytes from a file.
     	\begin{itemize}
 	\item method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]), Int
@@ -1188,12 +1197,12 @@ The HttpClient class allows programmers access HTTP 1.1 websites.  This class in
 
 
 \subsubsection{XMLParser}
-The XMLParser class allows programmers to parse and search XML documents using a simplified DOM.  This class in the `XML' bundle:
+The XMLParser class allows programmers to parse and search XML documents using a simplified DOM structure.  This class in the `XML' bundle:
 \begin{itemize}
   \item \texttt{New}
   \begin{itemize}
 		\item New(buffer : Char[])
-		\item New(file : String)
+		\item New(buffer : String)
 	\end{itemize}
 	
   \item \texttt{ToString} - serializes the DOM into a string
@@ -1214,11 +1223,6 @@ The XMLParser class allows programmers to parse and search XML documents using a
 	\item \texttt{GetEncoding} - returns the XML character encoding
     	\begin{itemize}
 	\item method : public : GetEncoding(), String
-	\end{itemize}
-	
-	\item \texttt{FindElements} - returns all elements that match the given query string.
-    	\begin{itemize}
-	\item method : public : Parse(), Bool
 	\end{itemize}
 	
 	\item \texttt{GetRoot} - Returns the root node of the DOM.
@@ -1332,6 +1336,21 @@ The XMLElement class represents a canonical XML node within a DOM. This class in
 	\item \texttt{GetChildCount} - Returns number of logical child elements.
     	\begin{itemize}
 	\item method : public : GetChildCount(), Int
+	\end{itemize}
+	
+	\item \texttt{FindElements} - returns all elements that match the given query string.  The following XPath expressions are supported <num>, <attrib\_name>, first() and last().
+    	\begin{itemize}
+	\item method : public : FindElements(path : String), Vector
+	\end{itemize}
+	
+	\item \texttt{GetChildren} - Returns all child elements.
+    	\begin{itemize}
+	\item method : public : GetChildren() ~ Vector
+	\end{itemize}
+	
+	\item \texttt{GetChildren} - Returns all child elements that match the given name.
+    	\begin{itemize}
+	\item method : public : GetChildren(name : String) ~ Vector
 	\end{itemize}
 	
 	\item \texttt{GetChild} - Returns a child element.
