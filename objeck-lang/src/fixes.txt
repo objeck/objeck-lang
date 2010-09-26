@@ -11,3 +11,6 @@
 9/23/10
 * Bug fixes and enhancements to the XML libraries
 * minor enhancement to the context analyser to now allow RHS casted statement to be assigned to undeclaried variables
+9/25/10
+* Fixed a bug related to passing '@self' parameters to functions and methods
+* Added XPath support to the XMLElement class (not all of XPath is supported)
