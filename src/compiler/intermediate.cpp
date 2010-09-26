@@ -2287,7 +2287,13 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
 {
   cur_line_num = variable->GetLineNumber();
   
-  // variable
+  // self
+  if(variable->GetEntry()->IsSelf()) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    return;
+  }
+  
+  // indices
   ExpressionList* indices = variable->GetIndices();
 
   // memory context
