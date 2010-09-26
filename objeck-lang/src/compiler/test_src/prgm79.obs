@@ -1,0 +1,53 @@
+bundle Default {
+	class Node {
+		@value : Int;
+		@next : Node;
+
+		New(value : Int) {
+			@value := value;
+		}
+		
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+		
+		method : public : GetNext() ~ Node {
+			return @next;
+		}
+
+		method : public : SetNext(next : Node) ~ Nil {
+			@next := next;
+		}
+
+		method : public : DoStuff() ~ Nil {
+			"$$$"->PrintLine();	
+			@self->GetValue()->PrintLine();
+			"-0-"->PrintLine();	
+#			h := "hello";
+#			n := @self->GetNext();
+			
+			DoStuff("hello", @self);
+#			DoStuff(@self);
+		}
+
+		method : public : DoStuff(name : String, node : Node) ~ Nil {
+#		method : public : DoStuff(node : Node) ~ Nil {
+			"$$$"->PrintLine();	
+			node->GetValue()->PrintLine();
+			"-1-"->PrintLine();	
+			
+			while(node <> Nil) {
+				IO.Console->Instance()->Print(name)->Print(": ")->PrintLine(node->GetValue());
+				node := node->GetNext();
+			};		
+		}
+	}
+
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			node := Node->New(13);
+			node->SetNext(Node->New(7));
+			node->DoStuff();
+		}
+	}
+}
