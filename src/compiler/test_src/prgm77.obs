@@ -9,10 +9,12 @@ bundle Default {
 				parser := XmlParser->New(FileReader->ReadFile(args[0]));
 				if(parser->Parse()) {
 #					parser->ToString()->PrintLine();					
-					results := parser->FindElements("//nutrition/food/serving[units]");
-					each(i : results) {					
-						element := results->Get(i)->As(XMLElement);
-						element->GetContent()->PrintLine();
+					results := parser->FindElements("//nutrition/food[last()]/calories[fat]");
+					if(results <> Nil) {
+						each(i : results) {					
+							element := results->Get(i)->As(XMLElement);
+							element->GetAttribute("total")->PrintLine();
+						};
 					};
 				}
 				else {
