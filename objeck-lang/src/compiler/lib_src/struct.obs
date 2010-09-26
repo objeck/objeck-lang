@@ -17,7 +17,7 @@ bundle Structure {
 		@size : Int;
 		
 		New() {
-			@values := Int->New[16];
+			@values := Int->New[8];
 			@size := 0;
 		}
 
@@ -258,19 +258,18 @@ bundle Structure {
 		@size : Int;
 		
 		New() {
-			@values := Float->New[16];
+			@values := Float->New[8];
 			@size := 0;
 		}
 
 		New(values : FloatVector) {
-                        @values := Float->New[16];
-                        @size := 0;
+			@values := Float->New[16];
+			@size := 0;
 
-                        each(i : values) {
-                                AddBack(values->Get(i));
-                        };
-                }
-
+			each(i : values) {
+				AddBack(values->Get(i));
+			};
+		}
 
 		New(values : Float[]) {
 			@values := Float->New[16];
@@ -500,27 +499,27 @@ bundle Structure {
 		@size : Int;
 		
 		New() {
-			@values := Compare->New[16];
+			@values := Compare->New[8];
 			@size := 0;
 		}
 
 		New(values : Compare[]) {
-                        @values := Compare->New[16];
-                        @size := 0;
+			@values := Compare->New[16];
+			@size := 0;
 
-                        each(i : values) {
-                                AddBack(values[i]);
-                        };
-                }
+			each(i : values) {
+				AddBack(values[i]);
+			};
+ 		}
 
 		New(values : CompareVector) {
-                        @values := Compare->New[16];
-                        @size := 0;
+			@values := Compare->New[16];
+			@size := 0;
 
-                        each(i : values) {
-                                AddBack(values->Get(i));
-                        };
-                }
+			each(i : values) {
+				AddBack(values->Get(i));
+			};
+		}
 
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
@@ -677,27 +676,27 @@ bundle Structure {
 		@size : Int;
 		
 		New() {
-			@values := Base->New[16];
+			@values := Base->New[8];
 			@size := 0;
 		}
 
 		New(values : Base[]) {
-                        @values := Base->New[16];
-                        @size := 0;
+			@values := Base->New[16];
+			@size := 0;
 
-                        each(i : values) {
-                                AddBack(values[i]);
-                        };
-                }
+			each(i : values) {
+				AddBack(values[i]);
+			};
+		}
 
 		New(values : Vector) {
-                        @values := Base->New[16];
-                        @size := 0;
+			@values := Base->New[16];
+			@size := 0;
 
-                        each(i : values) {
-                                AddBack(values->Get(i));
-                        };
-                }
+			each(i : values) {
+				AddBack(values->Get(i));
+			};
+		}
 
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
