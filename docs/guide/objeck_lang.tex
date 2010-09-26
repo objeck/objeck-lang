@@ -1446,6 +1446,36 @@ bundle Default {
   }
 }
 \end{verbatim}
+
+\subsection{XML Parsing and XPath Querying}
+\begin{verbatim}
+use IO;
+use XML;
+
+bundle Default {
+  class Test {
+    function : Main(args : String[]) ~ Nil {
+      if(args->Size() = 1) {
+        parser := XmlParser->New(FileReader->ReadFile(args[0]));
+        if(parser->Parse()) {
+          results := 
+            parser->FindElements("//nutrition/food[last()]/calories[fat]");
+          if(results <> Nil) {
+            each(i : results) {          
+              element := results->Get(i)->As(XMLElement);
+              element->GetAttribute("total")->PrintLine();
+            };
+          };
+        }
+        else {
+          parser->GetError()->PrintLine();
+        };
+      };
+    }
+  }
+}
+\end{verbatim}
+
 \newpage
 
 \section{Appendix A: Example Debugging Session}
