@@ -1,0 +1,6 @@
+Objeck v1.1.5_0
+
+This release provides bug fixes and enhanced XML support including basic support for XPath queries.  There's also one major bug fix related to passing '@self' variables to methods and functions.  Additionally, there's a minor enhancement to the compiler that provides better support for untyped variable assignments.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
+
