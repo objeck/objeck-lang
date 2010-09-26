@@ -1,6 +1,5 @@
 use IO;
 use XML;
-use Structure;
 
 bundle Default {
 	class Test {
@@ -8,7 +7,6 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(FileReader->ReadFile(args[0]));
 				if(parser->Parse()) {
-#					parser->ToString()->PrintLine();					
 					results := parser->FindElements("//nutrition/food[last()]/calories[fat]");
 					if(results <> Nil) {
 						each(i : results) {					
