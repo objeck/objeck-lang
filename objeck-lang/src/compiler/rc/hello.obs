@@ -8,8 +8,9 @@ bundle Default {
 #		function : native : Run(a : Int) ~ Float {
 		function : native : Run(a : Int, b : Float) ~ Nil {
 			a += 3;
+			c := 3 - 5.6;
 			a->PrintLine();
-			b->PrintLine();
+			c->PrintLine();
 		}
 	}
 }

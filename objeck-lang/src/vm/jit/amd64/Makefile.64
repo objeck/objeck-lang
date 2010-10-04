@@ -4,8 +4,8 @@ ARGS=-g -D_DEBUG -D_X64 -Wunused
 
 CC=g++
 AR=ar
-SRC= jit_intel_lp64.o
-LIB= ../../jit_intel_lp64.a
+SRC= jit_amd_lp64.o
+LIB= ../../jit_amd_lp64.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
