@@ -1887,9 +1887,9 @@ namespace Runtime {
     //
     inline bool Compile(StackMethod* cm) {
       compile_success = true;
-      skip_jump = false;
       
       if(!cm->GetNativeCode()) {
+	skip_jump = false;
 	method = cm;
 	int32_t cls_id = method->GetClass()->GetId();
 	int32_t mthd_id = method->GetId();
@@ -1982,15 +1982,15 @@ namespace Runtime {
 #endif
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
-      }
 
-      // release our lock, native code has been compiled and set
+	// release our lock, native code has been compiled and set
 #ifdef _WIN32
-      LeaveCriticalSection(&cm->jit_cs);
+	LeaveCriticalSection(&cm->jit_cs);
 #else
-      pthread_mutex_unlock(&cm->jit_mutex);
+	pthread_mutex_unlock(&cm->jit_mutex);
 #endif
-
+      }
+      
       return compile_success;
     }
   };    
