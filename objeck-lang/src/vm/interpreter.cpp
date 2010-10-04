@@ -81,6 +81,7 @@ void* StackInterpreter::CompileMethod(void* arg)
   jit_compiler.Compile(method);
   // clean up
   program->RemoveThread(pthread_self());
+  pthread_mutex_unlock(&method->jit_mutex);
   pthread_exit(NULL);
 }
 
