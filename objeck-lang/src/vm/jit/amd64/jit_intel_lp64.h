@@ -1145,7 +1145,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_FLOAT" << endl;
 #endif
-	  FLOAT_VALUE value;
+	  FLOAT_VALUE value = 0.0;
 	  --(*stack_pos);	  
 	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
 	  cout << value;

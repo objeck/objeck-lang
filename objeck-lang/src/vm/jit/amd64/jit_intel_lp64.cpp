@@ -51,6 +51,7 @@ void JitCompilerIA64::Prolog() {
   while(local_space % 16 != 0) {
     local_space++;
   }
+  local_space+=8;
 
   // local_space = 4096;
 
@@ -130,7 +131,7 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
   // get to the first local variale
-  const long offset = local_space + TMP_REG_5 - 8;
+  const long offset = local_space + TMP_REG_5 - 16;
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   // push call values
@@ -163,7 +164,7 @@ void JitCompilerIA64::UnregisterRoot() {
   move_reg_reg(RBP, holder->GetRegister());
   // note: -8 is the offset requried to 
   // get to the first local variable
-  sub_imm_reg(local_space + TMP_REG_5 - 8, 
+  sub_imm_reg(local_space + TMP_REG_5 - 16, 
 	      holder->GetRegister());
   // push call value
   move_reg_reg(holder->GetRegister(), RDI);
