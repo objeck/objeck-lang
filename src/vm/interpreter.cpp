@@ -33,7 +33,7 @@
 #include "math.h"
 
 #ifdef _X64
-#include "jit/amd64/jit_intel_lp64.h"
+#include "jit/amd64/jit_amd_lp64.h"
 #else
 #include "jit/ia32/jit_intel_lp32.h"
 #endif
