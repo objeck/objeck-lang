@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "jit_intel_lp64.h"
+#include "jit_amd_lp64.h"
 #include <string>
 
 using namespace Runtime;
@@ -3309,6 +3309,7 @@ void JitCompilerIA64::xor_imm_reg(long imm, Register reg) {
        << GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
+  AddMachineCode(B(reg));
   AddMachineCode(0x81);
   BYTE_VALUE code = 0xf0;
   RegisterEncode3(code, 5, reg);
@@ -3339,6 +3340,7 @@ void JitCompilerIA64::xor_mem_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
+  AddMachineCode(RXB(src, dest));
   AddMachineCode(0x33);
   AddMachineCode(ModRM(src, dest));
   // write value
