@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the x86 architecture.
+ * JIT compiler for the amd64 architecture.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
@@ -32,14 +32,10 @@
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
-#ifndef _WIN32
 #include "../../os/posix/memory.h"
 #include "../../os/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
-#else
-#include "../../os/windows/windows.h"
-#endif
 
 #include "../../common.h"
 #include "../../interpreter.h"
@@ -1933,11 +1929,7 @@ namespace Runtime {
       }
 
       // release our lock, native code has been compiled and set
-#ifdef _WIN32
-      LeaveCriticalSection(&cm->jit_cs);
-#else
       pthread_mutex_unlock(&cm->jit_mutex);
-#endif
 
       return compile_success;
     }
