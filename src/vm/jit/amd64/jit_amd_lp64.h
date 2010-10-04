@@ -1824,9 +1824,9 @@ namespace Runtime {
     //
     bool Compile(StackMethod* cm) {
       compile_success = true;
-      skip_jump = false;
       
       if(!cm->GetNativeCode()) {
+	skip_jump = false;
 	method = cm;
 	long cls_id = method->GetClass()->GetId();
 	long mthd_id = method->GetId();
@@ -1926,11 +1926,11 @@ namespace Runtime {
 	// store compiled code
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
+	
+	// release our lock, native code has been compiled and set
+	pthread_mutex_unlock(&cm->jit_mutex);
       }
-
-      // release our lock, native code has been compiled and set
-      pthread_mutex_unlock(&cm->jit_mutex);
-
+      
       return compile_success;
     }
   };    
