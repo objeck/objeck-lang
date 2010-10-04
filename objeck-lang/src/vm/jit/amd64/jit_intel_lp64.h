@@ -47,7 +47,7 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for Intel (IA-32) addresses
+  // offsets for Intel (AMD-64) addresses
 #define CLS_ID -8
 #define MTHD_ID -16
 #define CLASS_MEM -24
@@ -244,7 +244,7 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    map<int, StackInstr*> jump_table; // jump addresses are 32-bits
+    map<int, StackInstr*> jump_table; // jump addresses are 64-bits
     long local_space;
     StackMethod* method;
     long instr_count;
