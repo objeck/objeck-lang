@@ -52,7 +52,7 @@ namespace Runtime {
   class Debugger;
 #endif
 
-#define STACK_SIZE 128
+#define STACK_SIZE 256
 
   /********************************
    * PDA stack interpreter
