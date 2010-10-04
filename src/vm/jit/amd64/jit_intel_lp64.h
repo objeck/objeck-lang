@@ -277,9 +277,10 @@ namespace Runtime {
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, 
 			      long &instr_index, long params);
+    void ProcessFunctionCallParameter();
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
-    void ProcessReturnParameters(bool is_int);
+    void ProcessReturnParameters(MemoryType type);
     void ProcessLoadByteElement(StackInstr* instr);
     void ProcessStoreByteElement(StackInstr* instr);
     void ProcessLoadIntElement(StackInstr* instr);
@@ -883,8 +884,10 @@ namespace Runtime {
     void or_imm_reg(long imm, Register reg);
     void or_reg_reg(Register src, Register dest);
     void or_mem_reg(long offset, Register src, Register dest);
+    void xor_imm_reg(long imm, Register reg);    
     void xor_reg_reg(Register src, Register dest);
-
+    void xor_mem_reg(long offset, Register src, Register dest);
+    
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);    
     void add_imm_reg(long imm, Register reg);    

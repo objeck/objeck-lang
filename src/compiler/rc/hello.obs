@@ -1,7 +1,15 @@
 bundle Default {
-  class Hello {
-    function : Main(args : String[]) ~ Nil {
-      "Hello World!"->PrintLine();
-    }
-  }
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			2.3->PrintLine();
+			Run(10, 3.55);
+		}
+
+#		function : native : Run(a : Int) ~ Float {
+		function : native : Run(a : Int, b : Float) ~ Nil {
+			a += 3;
+			a->PrintLine();
+			b->PrintLine();
+		}
+	}
 }
