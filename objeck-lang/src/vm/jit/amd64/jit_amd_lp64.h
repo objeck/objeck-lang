@@ -1916,7 +1916,7 @@ namespace Runtime {
 	  long src_offset = iter->first;
 	  long dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
 	  long dest_offset = method->GetInstruction(dest_index)->GetOffset();
-	  long offset = dest_offset - src_offset - 8;
+	  long offset = dest_offset - src_offset - 4; // 64-bit jump offset
 	  memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
 	  cout << "jump update: src=" << src_offset 
