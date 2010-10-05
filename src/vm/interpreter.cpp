@@ -65,11 +65,8 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
   return 0;
 }
 
-DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
-{
-  return 0;
-}
 #else
+
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
@@ -83,31 +80,6 @@ void* StackInterpreter::CompileMethod(void* arg)
   program->RemoveThread(pthread_self());
   pthread_mutex_unlock(&method->jit_mutex);
   pthread_exit(NULL);
-}
-
-void* StackInterpreter::AsyncMethodCall(void* arg)
-{
-  /*
-  AsyncMethodCallParams* params = (AsyncMethodCallParams*)arg;
-  
-  long* op_stack = new long[STACK_SIZE];
-  long* stack_pos = new long;
-  (*stack_pos) = 0;
-  op_stack[(*stack_pos)++] = params->value;
-  
-  StackInterpreter intpr;
-  intpr.Execute(op_stack, stack_pos, 0, params->called, params->instance, false);
-
-  // clean up
-  delete[] op_stack;
-  op_stack = NULL;
-  
-  delete stack_pos;
-  stack_pos = NULL;
-
-  delete params;
-  params = NULL;
-  */
 }
 #endif
 
@@ -546,14 +518,10 @@ void StackInterpreter::Execute()
       }
       break;
 
+      /*
     case ASYNC_MTHD_CALL:
-      ProcessAsyncMethodCall(instr);
-      // return directly back to JIT code
-      if(frame->IsJitCalled()) {
-        frame->SetJitCalled(false);
-        return;
-      }
       break;
+      */
       
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr);
@@ -980,74 +948,6 @@ void StackInterpreter::ProcessReturn()
     halt = true;
   }
 }
-
-/********************************
- * Processes an asynchronous method
- * call.
- ********************************/
-void StackInterpreter::ProcessAsyncMethodCall(StackInstr* instr)
-{
-  long* instance = (long*)frame->GetMemory()[0];
-
-  // make call
-  StackMethod* called = program->GetClass(frame->GetMethod()->GetClass()->GetId())->GetMethod(instr->GetOperand2());
-  // dynamically bind class for virutal method
-  if(called->IsVirtual()) {
-    StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
-    if(!impl_class) {
-      cerr << "Attempting to envoke a virtual method!" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-    const string& qualified_method_name = called->GetName();
-    const string& method_name = impl_class->GetName() +
-      qualified_method_name.substr(qualified_method_name.find(':'));
-
-#ifdef _DEBUG
-    cout << "=== Binding virtual method call: from: '" << called->GetName()
-         << "'; to: '" << method_name << "' ===" << endl;
-#endif
-    called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
-  }
-  
-  ProcessInterpretedAsyncMethodCall(called, instance);
-}
-
-/********************************
- * Processes an interpreted
- * asynchronous method call.
- ********************************/
-void StackInterpreter::ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance)
-{
-  cerr << "Unsupported operation: asynchronous method call!" << endl;
-  exit(1);
-  
-  AsyncMethodCallParams* params = new AsyncMethodCallParams;
-  params->called = called;
-  params->instance = (long*)instance;
-  params->value = frame->GetMemory()[1];
-
-#ifdef _WIN32
-
-#else
-  pthread_attr_t attrs;
-  pthread_attr_init(&attrs);
-  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-  
-  pthread_t jit_thread;
-  if(pthread_create(&jit_thread, &attrs, AsyncMethodCall, (void*)params)) {
-    cerr << "Unable to create thread to compile method!" << endl;
-    exit(-1);
-  }
-  pthread_attr_destroy(&attrs); 
-  
-  /*
-  void* status;
-  if(pthread_join(jit_thread, &status));
-  */
-#endif
-}
-
 
 /********************************
  * Processes a synchronous
