@@ -2,18 +2,22 @@ bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
 			2.3->PrintLine();
-			Run(10, 3.55);
+#			Run(10, 3.55);
+			Run();
 		}
 
 #		function : native : Run(a : Int) ~ Float {
-		function : native : Run(a : Int, b : Float) ~ Nil {
+#		function : native : Run(a : Int, b : Float) ~ Nil {
+		function : native : Run() ~ Nil {
 #~
 			a += 3;
 			c := 3 - 5.6;
 			a->PrintLine();
 			c->PrintLine();
-~#
 			"hello world"->PrintLine();
+~#
+			g := [36,44,15];
+			g[1]->PrintLine();
 		}
 	}
 }

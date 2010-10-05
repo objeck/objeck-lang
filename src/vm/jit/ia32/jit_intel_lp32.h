@@ -237,7 +237,7 @@ namespace Runtime {
     int32_t instr_count;
     BYTE_VALUE* code;
     int32_t code_index;   
-    FLOAT_VALUE* floats;     
+    double* floats;     
     int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
@@ -973,9 +973,9 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_FLOAT" << endl;
 #endif
-	  FLOAT_VALUE value;      
+	  double value;      
 	  (*stack_pos) -= 2;
-	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
+	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
 	  cout << value;
 	  break;
 	}
@@ -1222,7 +1222,7 @@ namespace Runtime {
 	  const long size = array[0];
 	  const long dim = array[1];
 	  // copy elements
-	  INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+	  int32_t* str = (int32_t*)(array + dim + 2);
 	  for(long i = 0; i < size; i++) {
 	    str[i] = PopInt(op_stack, stack_pos);
 	  }
@@ -1235,12 +1235,12 @@ namespace Runtime {
     
 	case CPY_INT_STR_ARY: {
 	  long index = PopInt(op_stack, stack_pos);
-	  INT_VALUE* value_str = program->GetIntStrings()[index];
+	  int32_t* value_str = program->GetIntStrings()[index];
 	  // copy array
 	  long* array = (long*)PopInt(op_stack, stack_pos);    
 	  const long size = array[0];
 	  const long dim = array[1];    
-	  INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+	  int32_t* str = (int32_t*)(array + dim + 2);
 	  for(long i = 0; i < size; i++) {
 	    str[i] = value_str[i];
 	  }
@@ -1253,12 +1253,12 @@ namespace Runtime {
     
 	case CPY_FLOAT_STR_ARY: {
 	  long index = PopInt(op_stack, stack_pos);
-	  FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
+	  double* value_str = program->GetFloatStrings()[index];
 	  // copy array
 	  long* array = (long*)PopInt(op_stack, stack_pos);    
 	  const long size = array[0];
 	  const long dim = array[1];    
-	  FLOAT_VALUE* str = (FLOAT_VALUE*)(array + dim + 2);
+	  double* str = (double*)(array + dim + 2);
 	  for(long i = 0; i < size; i++) {
 	    str[i] = value_str[i];
 	  }
@@ -1792,7 +1792,7 @@ namespace Runtime {
 	      index -= sizeof(int32_t) * 2;
 	    }
 	    else {
-	      index -= sizeof(FLOAT_VALUE);
+	      index -= sizeof(double);
 	    }
 	  }
 	  instr->SetOperand3(index);
@@ -1903,14 +1903,14 @@ namespace Runtime {
 	code_buf_max = PAGE_SIZE;
 #ifdef _WIN32
 	code = (BYTE_VALUE*)malloc(code_buf_max);
-	floats = new FLOAT_VALUE[MAX_DBLS];
+	floats = new double[MAX_DBLS];
 #else
 	if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}
 	
-	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}
@@ -2003,7 +2003,7 @@ namespace Runtime {
     StackMethod* method;
     BYTE_VALUE* code;
     int32_t code_index; 
-    FLOAT_VALUE* floats;
+    double* floats;
     
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
 			       BYTE_VALUE* code, const int32_t code_size, 

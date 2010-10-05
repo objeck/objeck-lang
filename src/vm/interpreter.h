@@ -54,15 +54,6 @@ namespace Runtime {
 
 #define STACK_SIZE 256
 
-  /********************************
-   * PDA stack interpreter
-   ********************************/
-  struct AsyncMethodCallParams {
-    StackMethod* called;
-    long* instance;
-    long value;
-  };
-
   class StackInterpreter {
     // program
     static StackProgram* program;
@@ -84,10 +75,8 @@ namespace Runtime {
     // JIT compiler thread handles
 #ifdef _WIN32
     static DWORD WINAPI CompileMethod(LPVOID arg);
-    static DWORD WINAPI AsyncMethodCall(LPVOID arg);
 #else
     static void* CompileMethod(void* arg);
-    static void* AsyncMethodCall(void* arg);
 #endif
   
     inline void PushFrame(StackFrame* f) {
@@ -254,16 +243,10 @@ namespace Runtime {
       return index;
     }
 
-    static void* AsyncCall(void* arg);
-    static void* AsyncJitCall(void* arg);
-  
     inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr);
     inline void ProcessNewObjectInstance(StackInstr* instr);
     inline void ProcessReturn();
-
-    inline void ProcessAsyncMethodCall(StackInstr* instr);
-    inline void ProcessInterpretedAsyncMethodCall(StackMethod* called, long* instance);
 
     inline void ProcessMethodCall(StackInstr* instr);
     inline void ProcessDynamicMethodCall(StackInstr* instr);
