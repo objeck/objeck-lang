@@ -756,7 +756,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
 
     // long value
     if(instr->GetType() == LOAD_INT_VAR) {
@@ -874,7 +874,6 @@ void JitCompilerIA64::ProcessReturnParameters(MemoryType type) {
 void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
   move_mem8_reg(0, elem_holder->GetRegister(), holder->GetRegister());
   ReleaseRegister(elem_holder);
@@ -883,14 +882,12 @@ void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
 
 void JitCompilerIA64::ProcessLoadIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   move_mem_reg(0, elem_holder->GetRegister(), elem_holder->GetRegister());
   working_stack.push_front(new RegInstr(elem_holder));
 }
 
 void JitCompilerIA64::ProcessLoadFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(0, elem_holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
@@ -899,7 +896,6 @@ void JitCompilerIA64::ProcessLoadFloatElement(StackInstr* instr) {
 
 void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -943,7 +939,6 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
 
 void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -975,7 +970,6 @@ void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
 
 void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
-  // CheckNilDereference(elem_holder->GetRegister());
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1137,7 +1131,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
 
     addr_holder = GetRegister();
     move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
-    // CheckNilDereference(addr_holder->GetRegister());
+    CheckNilDereference(addr_holder->GetRegister());
     
     dest = addr_holder->GetRegister();
     
@@ -1240,7 +1234,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
     
