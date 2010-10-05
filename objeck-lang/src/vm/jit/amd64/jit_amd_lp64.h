@@ -1756,7 +1756,7 @@ namespace Runtime {
 	break;
       }
       
-      // CheckNilDereference(array_holder->GetRegister());
+      CheckNilDereference(array_holder->GetRegister());
       
       /* Algorithm:
 	 long index = PopInt();
@@ -1840,7 +1840,7 @@ namespace Runtime {
 	shl_reg(bounds_holder->GetRegister(), 4);
 	break;
       }
-      // CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
       ReleaseRegister(bounds_holder);
 
       // skip first 2 integers (size and dimension) and all dimension indices
