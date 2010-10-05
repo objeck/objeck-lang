@@ -17,7 +17,13 @@ bundle Default {
 			"hello world"->PrintLine();
 ~#
 			g := [36,44,15];
-			g[1]->PrintLine();
+			g[2]->PrintLine();
+#~
+			h := [3.6,4.4,1.56];
+			h[1]->PrintLine();
+
+			(0x25 or 0xc)->PrintLine();
+~#
 		}
 	}
 }
