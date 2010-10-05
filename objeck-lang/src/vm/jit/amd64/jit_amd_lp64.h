@@ -172,6 +172,8 @@ namespace Runtime {
 
       case LOAD_INT_VAR:
       case STOR_INT_VAR:
+      case LOAD_FUNC_VAR:
+      case STOR_FUNC_VAR:
       case COPY_INT_VAR:
 	type = MEM_32;
 	operand = si->GetOperand3();
@@ -246,7 +248,7 @@ namespace Runtime {
     long instr_count;
     BYTE_VALUE* code;
     long code_index;   
-    FLOAT_VALUE* floats;     
+    double* floats;     
     long floats_index;
     long instr_index;
     long code_buf_max;
@@ -729,21 +731,51 @@ namespace Runtime {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // TODO: implement
+    /***********************************
+     * Check for 'Nil' dereferencing
+     **********************************/
+    inline void CheckNilDereference(Register reg) {
+      const long offset = 43;
+      cmp_imm_reg(0, reg);
+#ifdef _DEBUG
+      cout << "  " << (++instr_count) << ": [jne $" << offset << "]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x85);
+      AddImm(offset);
+      Epilog(-1);
+    }
+    
+    /***********************************
+     * Checks array bounds
+     **********************************/
+    inline void CheckArrayBounds(Register reg, Register max_reg) {
+      const long offset = 43;
+      
+      // less than zero
+      cmp_imm_reg(-1, reg);
+#ifdef _DEBUG
+      cout << "  " << (++instr_count) << ": [jg $" << offset << "]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8f);
+      AddImm(offset);
+      Epilog(-2);
+      
+      // greater than max
+      cmp_reg_reg(max_reg, reg);
+#ifdef _DEBUG
+      cout << "  " << (++instr_count) << ": [jl $" << offset << "]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8c);
+      AddImm(offset);
+      Epilog(-3);
+    }
     
     // Gets an avaiable register from
     // the pool of registers
@@ -1144,9 +1176,9 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_FLOAT" << endl;
 #endif
-	  FLOAT_VALUE value = 0.0;
+	  double value = 0.0;
 	  --(*stack_pos);	  
-	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
+	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
 	  cout << value;
 	  break;
 	}
@@ -1179,6 +1211,79 @@ namespace Runtime {
 	}
 	  break;
 	  
+	  // ---------------- ip socket i/o ----------------
+	case SOCK_TCP_CONNECT: {
+	  long port = PopInt(op_stack, stack_pos);
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  array = (long*)array[0];
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  const char* addr = (char*)(array + 3);
+	  SOCKET sock = IPSocket::Open(addr, port);
+#ifdef _DEBUG
+	  cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
+	    "; addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+	  instance[0] = (long)sock;
+	}
+	  break;  
+    
+	case SOCK_TCP_CLOSE: {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+
+#ifdef _DEBUG
+	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
+#endif
+	  if(sock >= 0) {
+	    instance[0] = NULL;
+	    IPSocket::Close(sock);
+	  }
+	}
+	  break;
+
+	case SOCK_TCP_OUT_STRING: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  SOCKET sock = (SOCKET)instance[0];
+	  char* data = (char*)(array + 3);
+    
+	  if(sock >= 0) {
+	    IPSocket::WriteBytes(data, strlen(data), sock);
+	  }
+	}
+	  break;
+	  
+	case SOCK_TCP_IN_STRING: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  char* buffer = (char*)(array + 3);
+	  const long num = array[0] - 1;
+	  SOCKET sock = (SOCKET)instance[0];
+
+	  int status;
+	  if(sock >= 0) {
+	    int index = 0;
+	    BYTE_VALUE value;
+	    bool end_line = false;
+	    do {
+	      value = IPSocket::ReadByte(sock, status);
+	      if(value != '\r' && value != '\n' && index < num && status > 0) {
+		buffer[index++] = value;
+	      }
+	      else {
+		end_line = true;
+	      }
+	    }
+	    while(!end_line);
+      
+	    // assume LF
+	    if(value == '\r') {
+	      IPSocket::ReadByte(sock, status);
+	    }
+	  }
+	}
+	  break;
+
 	  // ---------------- file i/o ----------------
 	case FILE_OPEN_READ: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1225,18 +1330,20 @@ namespace Runtime {
 	  const long num = array[0] - 1;
 	  FILE* file = (FILE*)instance[0];
 	  
-	  if(file) {
-	    fgets(buffer, num, file);	  
-	    int end_index = strlen(buffer) - 1;
+	  if(file && fgets(buffer, num, file)) {
+	    long end_index = strlen(buffer) - 1;
 	    if(end_index >= 0) {
 	      if(buffer[end_index] == '\n') {
 		buffer[end_index] = '\0';
 	      }
 	    }
+	    else {
+	      buffer[0] = '\0';
+	    }
 	  }
 	}
 	  break;
-
+	  
 	case FILE_OUT_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -1284,10 +1391,14 @@ namespace Runtime {
 	  cout << "  LOAD_ARY_SIZE" << endl;
 #endif
 	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  if(!array) {
+	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	    exit(1);
+	  }
 	  PushInt(op_stack, stack_pos, (long)array[2]);
 	}  
 	  break;
-
+	  
 	case CPY_CHAR_STR_ARY: {
  	  long index = PopInt(op_stack, stack_pos);
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
@@ -1305,6 +1416,60 @@ namespace Runtime {
 	  PushInt(op_stack, stack_pos, (long)array);
 	}
 	  break;
+
+	case CPY_CHAR_STR_ARYS: {
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long size = array[0];
+	  const long dim = array[1];
+	  // copy elements
+	  long* str = (long*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = PopInt(op_stack, stack_pos);
+	  }
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_CHAR_STR_ARYS" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
+    
+	case CPY_INT_STR_ARY: {
+	  long index = PopInt(op_stack, stack_pos);
+	  int32_t* value_str = program->GetIntStrings()[index];
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);    
+	  const long size = array[0];
+	  const long dim = array[1];    
+	  long* str = (long*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = value_str[i];
+	  }
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_INT_STR_ARY" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
+    
+	case CPY_FLOAT_STR_ARY: {
+	  long index = PopInt(op_stack, stack_pos);
+	  double* value_str = program->GetFloatStrings()[index];
+	  // copy array
+	  long* array = (long*)PopInt(op_stack, stack_pos);    
+	  const long size = array[0];
+	  const long dim = array[1];    
+	  double* str = (double*)(array + dim + 2);
+	  for(long i = 0; i < size; i++) {
+	    str[i] = value_str[i];
+	  }
+    
+#ifdef _DEBUG
+	  cout << "stack oper: CPY_FLOAT_STR_ARY" << endl;
+#endif
+	  PushInt(op_stack, stack_pos, (long)array);
+	}
+	  break;
 	  
 	case STD_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1314,6 +1479,8 @@ namespace Runtime {
 	}
 	  break;
 	  
+	  
+
 	  // ---------------- file i/o ----------------
 	case FILE_IN_BYTE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -1339,18 +1506,13 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
-	    if(fread(buffer + offset, 1, num, (FILE*)instance[0]) != num) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
+	  } 
 	  else {
-	    PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, -1);
 	  }
 	}
 	  break;
@@ -1359,15 +1521,16 @@ namespace Runtime {
 	  long value = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file) {
 	    if(fputc(value, file) != value) {
 	      PushInt(op_stack, stack_pos, 0);
-	    }
+	    } 
 	    else {
 	      PushInt(op_stack, stack_pos, 1);
 	    }
-	  }
+
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1380,18 +1543,13 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
-	
+
 	  if(file && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
-	    if(fwrite(buffer + offset, 1, num, (FILE*)instance[0]) < 0) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
+	  } 
 	  else {
-	    PushInt(op_stack, stack_pos, 0);
+	    PushInt(op_stack, stack_pos, -1);
 	  }
 	}
 	  break;
@@ -1399,16 +1557,16 @@ namespace Runtime {
 	case FILE_SEEK: {
 	  long pos = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
-	    if(fseek(file, pos, SEEK_CUR) < 0) {
+	    if(fseek(file, pos, SEEK_CUR) != 0) {
 	      PushInt(op_stack, stack_pos, 0);
-	    }
+	    } 
 	    else {
 	      PushInt(op_stack, stack_pos, 1);
 	    }
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1417,11 +1575,11 @@ namespace Runtime {
 
 	case FILE_EOF: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
 	    PushInt(op_stack, stack_pos, feof(file) != 0);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
@@ -1430,11 +1588,11 @@ namespace Runtime {
 
 	case FILE_IS_OPEN: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
+	  FILE* file = (FILE*)instance[0];
+
 	  if(file) {
 	    PushInt(op_stack, stack_pos, 1);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
@@ -1449,14 +1607,14 @@ namespace Runtime {
 	  PushInt(op_stack, stack_pos, File::FileExists(name));
 	}
 	  break;
-	
+
 	case FILE_SIZE: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  array = (long*)array[0];
 	  const char* name = (char*)(array + 3);
 
 	  PushInt(op_stack, stack_pos, File::FileSize(name));
-	
+
 	}
 	  break;
 
@@ -1467,7 +1625,7 @@ namespace Runtime {
 
 	  if(remove(name) != 0) {
 	    PushInt(op_stack, stack_pos, 0);
-	  }
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
@@ -1482,16 +1640,15 @@ namespace Runtime {
 	  long* from = (long*)PopInt(op_stack, stack_pos);
 	  from = (long*)from[0];
 	  const char* from_name = (char*)(from + 3);
-	
+
 	  if(rename(from_name, to_name) != 0) {
 	    PushInt(op_stack, stack_pos, 0);
-	  }
-	  else {
+	  } else {
 	    PushInt(op_stack, stack_pos, 1);
 	  }
 	}
 	  break;
-
+	  
 	  //----------- directory functions -----------
 	case DIR_CREATE: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1578,7 +1735,7 @@ namespace Runtime {
     // with the interpreter's 'ArrayIndex'
     // method. Bounds checks are not done on
     // JIT code.
-    RegisterHolder* ArrayIndex(StackInstr* instr, long type) {
+    RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type) {
       RegInstr* holder = working_stack.front();
       working_stack.pop_front();
 
@@ -1598,7 +1755,9 @@ namespace Runtime {
 	move_mem_reg(holder->GetOperand(), RBP, array_holder->GetRegister());
 	break;
       }
-
+      
+      // CheckNilDereference(array_holder->GetRegister());
+      
       /* Algorithm:
 	 long index = PopInt();
 	 const long dim = instr->GetOperand();
@@ -1662,20 +1821,30 @@ namespace Runtime {
         }
       }
       
+      // bounds check
+      RegisterHolder* bounds_holder = GetRegister();
+      move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister()); 
+      
+      // ajust indices
       switch(type) {
       case BYTE_ARY_TYPE:
 	break;
 
       case INT_TYPE:
 	shl_reg(index_holder->GetRegister(), 3);
+	shl_reg(bounds_holder->GetRegister(), 3);
 	break;
-	
+
       case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 4);
+	shl_reg(bounds_holder->GetRegister(), 4);
 	break;
       }
+      // CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+      ReleaseRegister(bounds_holder);
+
       // skip first 2 integers (size and dimension) and all dimension indices
-      add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());      
+      add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());
       add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
       ReleaseRegister(index_holder);
 
@@ -1697,6 +1866,8 @@ namespace Runtime {
 	switch(instr->GetType()) {
 	case LOAD_INT_VAR:
 	case STOR_INT_VAR:
+	case LOAD_FUNC_VAR:
+	case STOR_FUNC_VAR:
 	case COPY_INT_VAR:
 	case LOAD_FLOAT_VAR:
 	case STOR_FLOAT_VAR:
@@ -1727,6 +1898,10 @@ namespace Runtime {
 	       instr->GetType() == STOR_INT_VAR ||
 	       instr->GetType() == COPY_INT_VAR) {
 	      index -= sizeof(long);
+	    }
+	    else if(instr->GetType() == LOAD_FUNC_VAR || 
+		    instr->GetType() == STOR_FUNC_VAR) {
+	      index -= sizeof(long) * 2;
 	    }
 	    else {
 	      index -= sizeof(double);
@@ -1847,7 +2022,7 @@ namespace Runtime {
 	  exit(1);
 	}
 	// floats memory
-	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(FLOAT_VALUE) * MAX_DBLS)) {
+	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
 	  cerr << "Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
@@ -1943,7 +2118,7 @@ namespace Runtime {
     StackMethod* method;
     BYTE_VALUE* code;
     long code_index; 
-    FLOAT_VALUE* floats;
+    double* floats;
     
     long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, 
 			    BYTE_VALUE* code, const long code_size, 
