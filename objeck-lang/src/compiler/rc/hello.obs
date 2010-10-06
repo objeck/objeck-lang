@@ -1,29 +1,14 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			2.3->PrintLine();
-#			Run(10, 3.55);
-			Run();
+			Run([12,23,34]);
 		}
 
-#		function : native : Run(a : Int) ~ Float {
-#		function : native : Run(a : Int, b : Float) ~ Nil {
-		function : native : Run() ~ Nil {
-#~
-			a += 3;
-			c := 3 - 5.6;
-			a->PrintLine();
-			c->PrintLine();
-			"hello world"->PrintLine();
-~#
-			g := [36,44,15];
-			g[2]->PrintLine();
-#~
-			h := [3.6,4.4,1.56];
-			h[1]->PrintLine();
-
-			(0x25 or 0xc)->PrintLine();
-~#
+#		function : native : Run(x : Int[]) ~ String {
+		function : native : Run(x : Int[]) ~ Nil {
+			for(i := 0; i < x->Size(); i += 1;) {
+				(x[i] * x[i])->PrintLine();
+			};
 		}
 	}
 }

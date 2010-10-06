@@ -1311,7 +1311,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long size = array[0];
     const long dim = array[1];
     // copy elements
-    INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+    long* str = (long*)(array + dim + 2);
     for(long i = 0; i < size; i++) {
       str[i] = PopInt();
     }
@@ -1324,12 +1324,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
   case CPY_INT_STR_ARY: {
     long index = PopInt();
-    INT_VALUE* value_str = program->GetIntStrings()[index];
+    int* value_str = program->GetIntStrings()[index];
     // copy array
     long* array = (long*)PopInt();    
     const long size = array[0];
     const long dim = array[1];    
-    INT_VALUE* str = (INT_VALUE*)(array + dim + 2);
+    long* str = (long*)(array + dim + 2);
     for(long i = 0; i < size; i++) {
       str[i] = value_str[i];
     }
