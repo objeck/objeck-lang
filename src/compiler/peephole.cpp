@@ -35,24 +35,22 @@ using namespace backend;
 
 void ItermediateOptimizer::Optimize()
 {
-  if(optimization_level > 0) {
 #ifdef _DEBUG
-    cout << "\n--------- Optimizing Code ---------" << endl;
+  cout << "\n--------- Optimizing Code ---------" << endl;
 #endif
 
-    // classes...
-    vector<IntermediateClass*> klasses = program->GetClasses();
-    for(unsigned int i = 0; i < klasses.size(); i++) {
-      // methods...
-      vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
-      for(unsigned int j = 0; j < methods.size(); j++) {
-        current_method = methods[j];
-	// constant folding
+  // classes...
+  vector<IntermediateClass*> klasses = program->GetClasses();
+  for(unsigned int i = 0; i < klasses.size(); i++) {
+    // methods...
+    vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
+    for(unsigned int j = 0; j < methods.size(); j++) {
+      current_method = methods[j];
+      // constant folding
 #ifdef _DEBUG
-	cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
+      cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
 #endif
-	current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
-      }
+      current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
   }
 }
@@ -67,7 +65,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   vector<IntermediateBlock*> jump_blocks;
   while(!inputs.empty()) {
     IntermediateBlock* tmp = inputs.front();
-    jump_blocks.push_back(StrengthReduction(tmp));
+    jump_blocks.push_back(CleanJumps(tmp));
     // delete old block
     inputs.erase(inputs.begin());
     delete tmp;
