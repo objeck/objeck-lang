@@ -2685,7 +2685,7 @@ void JitCompilerIA64::mul_imm_reg(long imm, Register reg) {
        << ", %"<< GetRegisterName(reg) << "]" << endl;
 #endif
   // encode
-  AddMachineCode(B(reg));
+  AddMachineCode(ROB(reg, reg));
   AddMachineCode(0x69);
   BYTE_VALUE code = 0xc0;
   // write value
@@ -3149,8 +3149,6 @@ void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
   cvt_mem_reg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
-
-///////////////////////// TODO /////////////////////////
 
 void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
