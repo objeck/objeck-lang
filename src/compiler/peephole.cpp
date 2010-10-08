@@ -185,7 +185,8 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 
     case LBL:
       // ignore jump to next instruction
-      if(!calc_stack.empty() && calc_stack.front()->GetType() == JMP && calc_stack.front()->GetOperand() == instr->GetOperand()) {
+      if(!calc_stack.empty() && calc_stack.front()->GetType() == JMP && 
+	 calc_stack.front()->GetOperand() == instr->GetOperand()) {
         calc_stack.pop_front();
       }
       // add back in reverse order
