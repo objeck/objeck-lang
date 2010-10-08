@@ -32,7 +32,7 @@
 #define SYSTEM_ERROR -2
 
 #ifdef _DEBUG
-#include "vld.h"
+// #include "vld.h"
 #endif
 
 #include "vm.h"
