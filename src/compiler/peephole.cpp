@@ -59,6 +59,21 @@ void ItermediateOptimizer::Optimize()
 
 vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<IntermediateBlock*> inputs)
 {
+  // clean up jump addresses
+#ifdef _DEBUG
+  cout << "  Clean up jumps..." << endl;
+#endif
+
+  vector<IntermediateBlock*> jump_blocks;
+  while(!inputs.empty()) {
+    IntermediateBlock* tmp = inputs.front();
+    jump_blocks.push_back(StrengthReduction(tmp));
+    // delete old block
+    inputs.erase(inputs.begin());
+    delete tmp;
+    tmp = NULL;
+  }
+  
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
     // fold integers
@@ -66,11 +81,11 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     cout << "  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!inputs.empty()) {
-      IntermediateBlock* tmp = inputs.front();
+    while(!jump_blocks.empty()) {
+      IntermediateBlock* tmp = jump_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      inputs.erase(inputs.begin());
+      jump_blocks.erase(jump_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
@@ -88,7 +103,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       tmp = NULL;
     }
   } else {
-    return inputs;
+    return jump_blocks;
   }
 
   vector<IntermediateBlock*> strength_reduced_blocks;
@@ -152,6 +167,52 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   
   return method_lnlined_blocks;
   */
+}
+
+IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  list<IntermediateInstruction*> calc_stack;
+
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case JMP:
+      calc_stack.push_front(instr);
+      break;
+
+    case LBL:
+      // ignore jump to next instruction
+      if(!calc_stack.empty() && calc_stack.front()->GetType() == JMP && calc_stack.front()->GetOperand() == instr->GetOperand()) {
+        calc_stack.pop_front();
+      }
+      // add back in reverse order
+      while(!calc_stack.empty()) {
+        outputs->AddInstruction(calc_stack.back());
+        calc_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      break;
+
+    default:
+      // add back in reverse order
+      while(!calc_stack.empty()) {
+        outputs->AddInstruction(calc_stack.back());
+        calc_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      break;
+    }
+  }
+  // order matters...
+  while(!calc_stack.empty()) {
+    outputs->AddInstruction(calc_stack.back());
+    calc_stack.pop_back();
+  }
+
+  return outputs;
 }
 
 // Note: this code collapses basic block... refractor so optimizations can be re-ordered 
