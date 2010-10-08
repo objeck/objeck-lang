@@ -216,7 +216,7 @@ namespace frontend {
     }
 
     ScopeTable* GetNextChild() {
-      if(child_pos < children.size()) {
+      if(child_pos < (int)children.size()) {
 	return children[child_pos++];
       }
 
