@@ -61,6 +61,8 @@ class ItermediateOptimizer {
   // inline method calls
   IntermediateBlock* InlineMethodCall(IntermediateBlock* inputs);
   void InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs);
+  // cleans up jumps
+  IntermediateBlock* CleanJumps(IntermediateBlock* inputs);
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, list<IntermediateInstruction*> &calc_stack,
