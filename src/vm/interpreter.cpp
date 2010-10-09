@@ -426,7 +426,7 @@ void StackInterpreter::Execute()
     case POW_FLOAT: {
       FLOAT_VALUE left = PopFloat();
       FLOAT_VALUE right = PopFloat();
-      PushFloat(pow(left, right));
+      PushFloat(pow(right, left));
     }
       break;
       
