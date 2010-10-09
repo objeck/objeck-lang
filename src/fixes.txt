@@ -14,3 +14,5 @@
 9/25/10
 * Fixed a bug related to passing '@self' parameters to functions and methods
 * Added XPath support to the XMLElement class (not all of XPath is supported)
+10/9/10
+* Fixed two bugs related to pow & sqrt
