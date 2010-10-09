@@ -343,64 +343,57 @@ namespace Runtime {
      * Encoding for AMD64 "B" bits
      ********************************/
     inline BYTE_VALUE B(Register b) {
-      if(b <= RSP) {
-	return 0x48;
-      }
-      else {
+      if((b > RSP && b < XMM0) || b > XMM7) {
 	return 0x49;
       }
+      
+      return 0x48;
     }
 
     /********************************
      * Encoding for AMD64 "XB" bits
      ********************************/
     inline BYTE_VALUE XB(Register b) {
-      if(b <= RSP) {
-	return 0x4a;
-      }
-      else {
+      if((b > RSP && b < XMM0) || b > XMM7) {
 	return 0x4b;
       }
+      
+      return 0x4a;
     }
     
     /********************************
      * Encoding for AMD64 "RXB" bits
      ********************************/
     inline BYTE_VALUE RXB(Register r, Register b) {
-      if((r <= RSP || (r > R15 && r <= XMM7))  && 
-	 (b <= RSP || (b > R15 && b <= XMM7))) {
-	return 0x4a;
-      }
-      else if(((r > RSP && r <= R15) || r > XMM7) && 
-	      ((b > RSP && b <= R15) || b > XMM7)) {
-	return 0x4f;
-      }
-      else if((r > RSP && r <= R15) || r > XMM7) {
-	return 0x4e;
+      BYTE_VALUE value = 0x48;
+      if((r > RSP && r < XMM0) || r > XMM7) {
+	value += 0x6;
       }
       else {
-	return 0x4b;
+	value += 0x2;
       }
+
+      if((b > RSP && b < XMM0) || b > XMM7) {
+	value += 0x1;
+      }
+      
+      return value;
     }
     
     /********************************
      * Encoding for AMD64 "ROB" bits
      ********************************/
     inline BYTE_VALUE ROB(Register r, Register b) {
-      if((r <= RSP || (r > R15 && r <= XMM7))  && 
-	 (b <= RSP || (b > R15 && b <= XMM7))) {
-	return 0x48;
+      BYTE_VALUE value = 0x48;
+      if((r > RSP && r < XMM0) || r > XMM7) {
+	value += 0x4;
       }
-      else if(((r > RSP && r <= R15) || r > XMM7) && 
-	      ((b > RSP && b <= R15) || b > XMM7)) {
-	return 0x4d;
+
+      if((b > RSP && b < XMM0) || b > XMM7) {
+	value += 0x1;
       }
-      else if((r > RSP && r <= R15) || r > XMM7) {
-	return 0x4c;
-      }
-      else {
-	return 0x49;
-      }
+      
+      return value;
     }
     
     /********************************
