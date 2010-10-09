@@ -490,6 +490,34 @@ public:
     case instructions::CEIL_FLOAT:
       cout << "CEIL_FLOAT" << endl;
       break;
+      
+    case instructions::RAND_FLOAT:
+      cout << "RAND_FLOAT" << endl;
+      break;
+      
+    case instructions::SIN_FLOAT:
+      cout << "SIN_FLOAT" << endl;
+      break;
+      
+    case instructions::COS_FLOAT:
+      cout << "COS_FLOAT" << endl;
+      break;
+      
+    case instructions::TAN_FLOAT:
+      cout << "TAN_FLOAT" << endl;
+      break;
+
+    case instructions::LOG_FLOAT:
+      cout << "LOG_FLOAT" << endl;
+      break;
+
+    case instructions::POW_FLOAT:
+      cout << "POW_FLOAT" << endl;
+      break;
+
+    case instructions::SQRT_FLOAT:
+      cout << "SQRT_FLOAT" << endl;
+      break;
 
     case I2F:
       cout << "I2F" << endl;
