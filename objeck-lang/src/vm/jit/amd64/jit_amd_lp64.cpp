@@ -1810,7 +1810,7 @@ void JitCompilerIA64::move_mem8_reg(long offset, Register src, Register dest) {
        << "]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xb6);
   AddMachineCode(ModRM(src, dest));
@@ -1901,7 +1901,7 @@ void JitCompilerIA64::move_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x10);
   AddMachineCode(ModRM(src, dest));
