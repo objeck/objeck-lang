@@ -648,7 +648,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     }
   }
-
+  
   current_method = NULL;
   current_table = NULL;
 
@@ -922,17 +922,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   cur_line_num = statement->GetLineNumber();
   
   switch(statement->GetId()) {
-  case instructions::LOAD_ARY_SIZE:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_ARY_SIZE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
-    break;
-
-  case instructions::LOAD_CLS_INST_ID:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_CLS_INST_ID));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
-    break;
+  
     
   case instructions::LOAD_INST_UID:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -946,6 +936,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::CEIL_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CEIL_FLOAT));
+    break;
+    
+  case instructions::SQRT_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SQRT_FLOAT));
     break;
     
   case instructions::SIN_FLOAT:
@@ -968,15 +963,17 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOG_FLOAT));
     break;
 
+  case instructions::RAND_FLOAT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RAND_FLOAT));
+    break;
+    
   case instructions::POW_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POW_FLOAT));
     break;
     
-  case instructions::RAND_FLOAT:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RAND_FLOAT));
-    break;
+  
     
   case ASYNC_MTHD_CALL:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ASYNC_MTHD_CALL, -1, 3L, 1L));
@@ -998,7 +995,22 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_END));
     break;
     
-    // -------------- system time --------------
+    /////////////////////////////////////////
+    // -------------- traps -------------- //
+    /////////////////////////////////////////
+    
+  case instructions::LOAD_ARY_SIZE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_ARY_SIZE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+    break;
+    
+  case instructions::LOAD_CLS_INST_ID:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_CLS_INST_ID));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+    break;
+
   case SYS_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SYS_TIME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
