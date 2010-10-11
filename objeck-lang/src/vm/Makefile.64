@@ -1,8 +1,8 @@
 # ARGS=-g -Wunused -D_X64 -pthread
 # ARGS=-g -D_DEBUG -D_SERIAL -Wunused -D_X64 -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread -D_X64
-ARGS=-g -D_DEBUG -Wunused -D_JIT_SERIAL -pthread -D_X64
-# ARGS=-O3 -pthread -D_X64
+# ARGS=-g -D_DEBUG -Wunused -D_JIT_SERIAL -pthread -D_X64
+ARGS=-O3 -D_JIT_SERIAL -pthread -D_X64
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
