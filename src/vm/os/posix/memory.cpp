@@ -218,9 +218,9 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
   if(cls) {
     long size = cls->GetInstanceMemorySize();
 #ifdef _X64
-    // TODO: note: memory size is doubled because integers are assumed to be
-    // 4-bytes.  This approach allocates more memory because doubles are also
-    // doubled.  This will be refactored soon...
+    // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
+    // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
+    // memory for floats (a.k.a doubles) than needed.
     size *= 2;
 #endif
 
