@@ -67,12 +67,12 @@ namespace Runtime {
 
   // register type
   typedef enum _RegType { 
-    IMM_32 = -4000,
-    REG_32,
-    MEM_32,
-    IMM_64,
-    REG_64,
-    MEM_64,
+    IMM_INT = -4000,
+    REG_INT,
+    MEM_INT,
+    IMM_FLOAT,
+    REG_FLOAT,
+    MEM_FLOAT,
   } RegType;
   
   // general and SSE registers
@@ -142,17 +142,17 @@ namespace Runtime {
   public:    
     RegInstr(RegisterHolder* h) {
       if(h->GetRegister() < XMM0) {
-	type = REG_32;
+	type = REG_INT;
       }
       else {
-	type = REG_64;
+	type = REG_FLOAT;
       }
       holder = h;
       instr = NULL;
     }
   
     RegInstr(StackInstr* si, double* da) {
-      type = IMM_64;
+      type = IMM_FLOAT;
       operand = (long)da;
       holder = NULL;
       instr = NULL;
@@ -161,12 +161,12 @@ namespace Runtime {
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
       case LOAD_INT_LIT:
-	type = IMM_32;
+	type = IMM_INT;
 	operand = si->GetOperand();
 	break;
 
       case LOAD_INST_MEM:
-	type = MEM_32;
+	type = MEM_INT;
 	operand = INSTANCE_MEM;
 	break;
 
@@ -175,14 +175,14 @@ namespace Runtime {
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
       case COPY_INT_VAR:
-	type = MEM_32;
+	type = MEM_INT;
 	operand = si->GetOperand3();
 	break;
 
       case LOAD_FLOAT_VAR:
       case STOR_FLOAT_VAR:
       case COPY_FLOAT_VAR:
-	type = MEM_64;
+	type = MEM_FLOAT;
 	operand = si->GetOperand3();
 	break;
 
@@ -1734,16 +1734,16 @@ namespace Runtime {
 
       RegisterHolder* array_holder;
       switch(holder->GetType()) {
-      case IMM_32:
+      case IMM_INT:
 	cerr << ">>> trying to index a constant! <<<" << endl;
 	exit(1);
 	break;
 
-      case REG_32:
+      case REG_INT:
 	array_holder = holder->GetRegister();
 	break;
 
-      case MEM_32:
+      case MEM_INT:
 	array_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), RBP, array_holder->GetRegister());
 	break;
@@ -1771,16 +1771,16 @@ namespace Runtime {
       holder = working_stack.front();
       working_stack.pop_front();
       switch(holder->GetType()) {
-      case IMM_32:
+      case IMM_INT:
 	index_holder = GetRegister();
 	move_imm_reg(holder->GetOperand(), index_holder->GetRegister());
 	break;
 
-      case REG_32:
+      case REG_INT:
 	index_holder = holder->GetRegister();
 	break;
 
-      case MEM_32:
+      case MEM_INT:
 	index_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	break;
@@ -1799,16 +1799,16 @@ namespace Runtime {
         holder = working_stack.front();
         working_stack.pop_front();
         switch(holder->GetType()) {
-	case IMM_32:
+	case IMM_INT:
 	  add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
 	  break;
 
-	case REG_32:
+	case REG_INT:
 	  add_reg_reg(holder->GetRegister()->GetRegister(), 
 		      index_holder->GetRegister());
 	  break;
 
-	case MEM_32:
+	case MEM_INT:
 	  add_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	  break;
         }
