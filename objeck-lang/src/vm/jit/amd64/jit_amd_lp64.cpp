@@ -2358,7 +2358,7 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
        << GetRegisterName(true_holder->GetRegister()) << " ]" << endl;
 #endif
   // encode
-  AddMachineCode(ROB(true_holder->GetRegister(), reg));
+  AddMachineCode(ROB(reg, true_holder->GetRegister()));
   AddMachineCode(0x0f);
   switch(oper) {    
   case GTR_INT:
