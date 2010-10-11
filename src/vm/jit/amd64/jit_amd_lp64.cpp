@@ -2516,7 +2516,7 @@ void JitCompilerIA64::mul_xreg_xreg(Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(ROB(src, dest));
+  AddMachineCode(ROB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x59);
   BYTE_VALUE code = 0xc0;
