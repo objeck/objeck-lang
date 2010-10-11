@@ -1,14 +1,13 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			Run();
+			x := [3.5, 2.3, 6.7, 9.8];
+			x[2]->PrintLine();
+			Run(x);
 		}
 	
-		function : native : Run() ~ Nil {
-			i := 4;
-			s := String->New[i];
-			s[0] := String->New();
-			s[1] := String->New();
+		function : native : Run(x : Float[]) ~ Nil {
+			x[2]->PrintLine();
 		}
 	}
 }
