@@ -1824,14 +1824,16 @@ namespace Runtime {
 	break;
 
       case INT_TYPE:
+      case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 3);
 	shl_reg(bounds_holder->GetRegister(), 3);
 	break;
-
+	/*
       case FLOAT_TYPE:
 	shl_reg(index_holder->GetRegister(), 4);
 	shl_reg(bounds_holder->GetRegister(), 4);
 	break;
+	*/
       }
       //      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
       ReleaseRegister(bounds_holder);

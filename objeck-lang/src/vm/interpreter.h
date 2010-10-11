@@ -223,8 +223,17 @@ namespace Runtime {
       cout << "  [raw index=" << index << ", raw size=" << size << "]" << endl;
 #endif
 
-      // bounds check
+      // 64-bit bounds check
+#ifdef _X64
+      if(index < 0 || index >= size) {
+	cerr << ">>> Index out of bounds: " << index << "," << size << " <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+#else
+      // 32-bit bounds check
       if(instr->GetType() == LOAD_FLOAT_ARY_ELM || instr->GetType() == STOR_FLOAT_ARY_ELM) {
+	// float array
 	index *= 2;
 	if(index < 0 || index >= size * 2) {
 	  cerr << ">>> Index out of bounds: " << index << "," << (size * 2) << " <<<" << endl;
@@ -233,13 +242,15 @@ namespace Runtime {
 	}
       } 
       else {
+	// interger array
 	if(index < 0 || index >= size) {
 	  cerr << ">>> Index out of bounds: " << index << "," << size << " <<<" << endl;
 	  StackErrorUnwind();
 	  exit(1);
 	}
       }
-    
+#endif
+      
       return index;
     }
 
