@@ -1,4 +1,4 @@
-ARGS=-g -D_DEBUG -D_X64 -Wunused
+ARGS=-g -Wno-deprecated -D_DEBUG -D_X64 -Wunused
 # ARGS=-g -D_X64 -Wunused
 # ARGS=-O3 -D_X64
 
