@@ -28,7 +28,6 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
-
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
@@ -365,14 +364,11 @@ namespace Runtime {
      * Encoding for AMD64 "RXB" bits
      ********************************/
     inline BYTE_VALUE RXB(Register r, Register b) {
-      BYTE_VALUE value = 0x48;
+      BYTE_VALUE value = 0x4a;
       if((r > RSP && r < XMM0) || r > XMM7) {
-	value += 0x6;
+	value += 0x4;
       }
-      else {
-	value += 0x2;
-      }
-
+      
       if((b > RSP && b < XMM0) || b > XMM7) {
 	value += 0x1;
       }
@@ -719,12 +715,6 @@ namespace Runtime {
       code = code | reg_id;
     }
     
-
-
-
-
-
-    // TODO: implement
     /***********************************
      * Check for 'Nil' dereferencing
      **********************************/
@@ -1749,7 +1739,7 @@ namespace Runtime {
 	break;
       }
       
-      //      CheckNilDereference(array_holder->GetRegister());
+      CheckNilDereference(array_holder->GetRegister());
       
       /* Algorithm:
 	 long index = PopInt();
@@ -1835,7 +1825,7 @@ namespace Runtime {
 	break;
 	*/
       }
-      //      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
       ReleaseRegister(bounds_holder);
 
       // skip first 2 integers (size and dimension) and all dimension indices
