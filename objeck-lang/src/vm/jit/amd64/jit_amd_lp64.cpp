@@ -132,25 +132,33 @@ void JitCompilerIA64::RegisterRoot() {
   const long offset = local_space + TMP_REG_5 - 16;
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
-  // push call values
+  
+  // save registers
+  push_reg(R15);
+  push_reg(R14);
+  push_reg(R13); 
+  push_reg(R8);
 
+  // copy values 
   move_imm_reg(offset + TMP_REG_5, R8);
   move_reg_reg(holder->GetRegister(), RCX);
   move_mem_reg(INSTANCE_MEM, RBP, RDX);
   move_mem_reg(MTHD_ID, RBP, RSI);
   move_mem_reg(CLS_ID, RBP, RDI);
   
-  /*
-  push_imm(offset + TMP_REG_5);
-  push_reg(holder->GetRegister());
-  push_mem(INSTANCE_MEM, RBP);
-  push_mem(MTHD_ID, RBP);
-  push_mem(CLS_ID, RBP);
-  */
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
+  
   call_reg(call_holder->GetRegister());
+
+  // restore registers
+  pop_reg(R8);
+  pop_reg(R13);
+  pop_reg(R14);
+  pop_reg(R15);
+  
+
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
@@ -169,7 +177,17 @@ void JitCompilerIA64::UnregisterRoot() {
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
+
+  push_reg(R15);
+  push_reg(R14);
+  push_reg(R13);
+  
   call_reg(call_holder->GetRegister());
+
+  pop_reg(R13);
+  pop_reg(R14);
+  pop_reg(R15);
+  
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
@@ -1355,21 +1373,36 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   }
 
   ProcessReturn(params);
-  // push values
+  
+  // save registers
+  push_reg(R15);
+  push_reg(R14);
+  push_reg(R13);
+  push_reg(R8);
+  
+  // function values
   move_mem_reg(OP_STACK, RBP, R9);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
   move_imm_reg((long)instr, RSI);
-  move_imm_reg(instr_id, RDI);
+  move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
   push_mem(STACK_POS, RBP);
   
   // call function
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
+  
   call_reg(call_holder->GetRegister());
   add_imm_reg(16, RSP);
+  
+  // restore registers
+  pop_reg(R8);
+  pop_reg(R13);
+  pop_reg(R14);
+  pop_reg(R15);
+
   ReleaseRegister(call_holder);
   
   // restore register values
