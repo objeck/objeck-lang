@@ -2033,11 +2033,11 @@ namespace Runtime {
 	aux_regs.push(new RegisterHolder(R15));
 	aux_regs.push(new RegisterHolder(R14));
 	aux_regs.push(new RegisterHolder(R13));
-	aux_regs.push(new RegisterHolder(R12));
+	// aux_regs.push(new RegisterHolder(R12));
 	aux_regs.push(new RegisterHolder(R11));
 	aux_regs.push(new RegisterHolder(R10));
-	//	aux_regs.push(new RegisterHolder(R9));
-	//	aux_regs.push(new RegisterHolder(R8));
+	// aux_regs.push(new RegisterHolder(R9));
+	aux_regs.push(new RegisterHolder(R8));
 	// floating point registers
 	aval_xregs.push_back(new RegisterHolder(XMM7));
 	aval_xregs.push_back(new RegisterHolder(XMM6));
