@@ -1008,7 +1008,8 @@ namespace Runtime {
 	   << ", stack_pos=" << (*stack_pos) << endl;
 #endif
       switch(instr_id) {
-      case MTHD_CALL: {
+      case MTHD_CALL: 
+      case DYN_MTHD_CALL: {
 #ifdef _DEBUG
         cout << "jit oper: MTHD_CALL: cls=" << instr->GetOperand() << ", mthd=" << instr->GetOperand2() << endl;
 #endif
