@@ -178,7 +178,8 @@ void StackInterpreter::Execute()
       cout << "stack oper: SHL_INT; call_pos=" << call_stack_pos << endl;
 #endif
       long value = PopInt();
-      PushInt(value << instr->GetOperand());
+      long shift = PopInt();
+      PushInt(value << shift);
     }
       break;
 
@@ -187,7 +188,8 @@ void StackInterpreter::Execute()
       cout << "stack oper: SHR_INT; call_pos=" << call_stack_pos << endl;
 #endif
       long value = PopInt();
-      PushInt(value >> instr->GetOperand());
+      long shift = PopInt();
+      PushInt(value >> shift);
     }
       break;
 

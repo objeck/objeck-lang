@@ -433,11 +433,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case SHL_INT:
-      instrs.push_back(new LibraryInstr(line_num, SHL_INT, (INT_VALUE)ReadInt()));
+      instrs.push_back(new LibraryInstr(line_num, SHL_INT));
       break;
 
     case SHR_INT:
-      instrs.push_back(new LibraryInstr(line_num, SHR_INT, (INT_VALUE)ReadInt()));
+      instrs.push_back(new LibraryInstr(line_num, SHR_INT));
       break;
 
     case LOAD_INT_VAR: {
