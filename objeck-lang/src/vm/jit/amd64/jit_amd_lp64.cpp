@@ -1794,18 +1794,20 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
 /////////////////// OPERATIONS ///////////////////
 
 void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
+    cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
        << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
-  // encode
-  AddMachineCode(ROB(src, dest));
-  AddMachineCode(0x89);
-  BYTE_VALUE code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+    // encode
+    AddMachineCode(ROB(src, dest));
+    AddMachineCode(0x89);
+    BYTE_VALUE code = 0xc0;
+    // write value
+    RegisterEncode3(code, 2, src);
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
 }
 
 void JitCompilerIA64::move_reg_mem8(Register src, long offset, Register dest) { 
@@ -1959,20 +1961,22 @@ void JitCompilerIA64::move_xreg_mem(Register src, long offset, Register dest) {
 }
     
 void JitCompilerIA64::move_xreg_xreg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [movsd %" << GetRegisterName(src) 
-       << ", %" << GetRegisterName(dest) << "]" << endl;
+    cout << "  " << (++instr_count) << ": [movsd %" << GetRegisterName(src) 
+	 << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(ROB(src, dest));
-  AddMachineCode(0x0f);
-  AddMachineCode(0x11);
-  BYTE_VALUE code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+    // encode
+    AddMachineCode(0xf2);
+    AddMachineCode(ROB(src, dest));
+    AddMachineCode(0x0f);
+    AddMachineCode(0x11);
+    BYTE_VALUE code = 0xc0;
+    // write value
+    RegisterEncode3(code, 2, src);
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
 }
 
 bool JitCompilerIA64::cond_jmp(InstructionType type) {
