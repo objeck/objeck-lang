@@ -2030,14 +2030,14 @@ namespace Runtime {
 	// aux_regs.push(new RegisterHolder(R9));
 	aux_regs.push(new RegisterHolder(R8));
 	// floating point registers
-	aval_xregs.push_back(new RegisterHolder(XMM7));
-	aval_xregs.push_back(new RegisterHolder(XMM6));
-	aval_xregs.push_back(new RegisterHolder(XMM5));
-	aval_xregs.push_back(new RegisterHolder(XMM4)); 
-	aval_xregs.push_back(new RegisterHolder(XMM3));
-	aval_xregs.push_back(new RegisterHolder(XMM2)); 
-	aval_xregs.push_back(new RegisterHolder(XMM1));
-	aval_xregs.push_back(new RegisterHolder(XMM0));   
+	// aval_xregs.push_back(new RegisterHolder(XMM7));
+	// aval_xregs.push_back(new RegisterHolder(XMM6));
+	// aval_xregs.push_back(new RegisterHolder(XMM5));
+	aval_xregs.push_back(new RegisterHolder(XMM12)); 
+	aval_xregs.push_back(new RegisterHolder(XMM11));
+	aval_xregs.push_back(new RegisterHolder(XMM10)); 
+	aval_xregs.push_back(new RegisterHolder(XMM9));
+	aval_xregs.push_back(new RegisterHolder(XMM8));   
 #ifdef _DEBUG
 	cout << "Compiling code for IA-32 architecture..." << endl;
 #endif
