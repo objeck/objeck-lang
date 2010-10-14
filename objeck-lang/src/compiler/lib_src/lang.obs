@@ -187,20 +187,20 @@ bundle System {
 		function : native : IntToString(value : Int, string : String) ~ Nil {
 			values := Int->New[16];
 			i := 0;
-            while(value >= 10 & i < 16) {
-            	mod := value % 10;
-                values[i] := mod;
-                i += 1;
-                value := value / 10;
-         	};
-         	values[i] := value;
+			while(value >= 10 & i < 16) {
+				mod := value % 10;
+				values[i] := mod;
+				i += 1;
+				value := value / 10;
+			};
+			values[i] := value;
             
 			while(i >= 0) {
-            	string->Append((values[i] + 48)->As(Char));
-                i := i - 1;
-          	};     
-    	}
-   	}
+				string->Append((values[i] + 48)->As(Char));
+				i := i - 1;
+			};     
+		}
+	}
 
 	#~~
 	# Int class support
