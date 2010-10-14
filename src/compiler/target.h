@@ -186,8 +186,6 @@ public:
       WriteInt(line_num, file_out);
     }
     switch(type) {
-    case SHL_INT:
-    case SHR_INT:
     case LOAD_INT_LIT:
     case NEW_FLOAT_ARY:
     case NEW_INT_ARY:
@@ -272,11 +270,11 @@ public:
       break;
       
     case SHL_INT:
-      cout << "SHL_INT: value=" << operand << endl;
+      cout << "SHL_INT" << endl;
       break;
 
     case SHR_INT:
-      cout << "SHR_INT: value=" << operand << endl;
+      cout << "SHR_INT" << endl;
       break;
 
     case LOAD_FLOAT_LIT:

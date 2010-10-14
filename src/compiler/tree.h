@@ -425,6 +425,8 @@ namespace frontend {
     MUL_EXPR,
     DIV_EXPR,
     MOD_EXPR,
+    SHL_EXPR,
+    SHR_EXPR,
     BIT_AND_EXPR,
     BIT_OR_EXPR,
     BIT_XOR_EXPR,

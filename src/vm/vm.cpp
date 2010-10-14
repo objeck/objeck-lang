@@ -48,14 +48,15 @@ int Execute(const int argc, const char* argv[])
     (*stack_pos) = 0;
 
 #ifdef _TIMING
-    long start = clock();
+    clock_t start = clock();
 #endif
     Runtime::StackInterpreter intpr(loader.GetProgram());
     intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
+    clock_t end = clock();
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
     cout << "---------------------------" << endl;
-    cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
+    cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
          << " second(s)." << endl;
 #endif
 

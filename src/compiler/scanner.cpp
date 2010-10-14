@@ -798,6 +798,13 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetFileName(filename);
         NextChar();
       } 
+      else if(nxt_char == '<') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SHL);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      } 
       else {
         tokens[index]->SetType(TOKEN_LES);
         tokens[index]->SetLineNbr(line_nbr);
@@ -813,7 +820,15 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
-      } else {
+      }
+      else if(nxt_char == '>') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_SHR);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+      }
+      else {
         tokens[index]->SetType(TOKEN_GTR);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);

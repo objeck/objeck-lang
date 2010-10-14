@@ -394,11 +394,11 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case SHL_INT:
-      method->AddInstruction(new StackInstr(line_num, SHL_INT, (long)ReadInt()));
+      method->AddInstruction(new StackInstr(line_num, SHL_INT));
       break;
 
     case SHR_INT:
-      method->AddInstruction(new StackInstr(line_num, SHR_INT, (long)ReadInt()));
+      method->AddInstruction(new StackInstr(line_num, SHR_INT));
       break;
 
     case LOAD_INT_VAR: {
