@@ -3206,7 +3206,7 @@ void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(ROB(src, dest));
+  AddMachineCode(ROB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2a);
   BYTE_VALUE code = 0xc0;
@@ -3232,7 +3232,7 @@ void JitCompilerIA64::cvt_mem_xreg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2a);
   AddMachineCode(ModRM(src, dest));
