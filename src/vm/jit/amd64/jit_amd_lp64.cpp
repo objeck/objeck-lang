@@ -3108,7 +3108,7 @@ void JitCompilerIA64::cvt_xreg_reg(Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(ROB(src, dest));
+  AddMachineCode(ROB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2c);
   BYTE_VALUE code = 0xc0;
@@ -3185,13 +3185,13 @@ void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
 
 void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [cvtsd2di " << offset << "(%" 
+  cout << "  " << (++instr_count) << ": [cvtsd2si " << offset << "(%" 
        << GetRegisterName(src) << "), %" << GetRegisterName(dest) 
        << "]" << endl;
 #endif
   // encode
   AddMachineCode(0xf2);
-  AddMachineCode(RXB(src, dest));
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2d);
   AddMachineCode(ModRM(src, dest));
