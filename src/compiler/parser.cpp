@@ -1609,16 +1609,18 @@ Expression* Parser::ParseFactor(int depth)
 #ifdef _DEBUG
   Show("Factor", depth);
 #endif
-
+  
   Expression* left = ParseSimpleExpression(depth + 1);
   if(!Match(TOKEN_MUL) && !Match(TOKEN_DIV) && !Match(TOKEN_MOD) && 
-     !Match(TOKEN_AND_ID) && !Match(TOKEN_OR_ID) && !Match(TOKEN_XOR_ID)) {
+     !Match(TOKEN_SHL) && !Match(TOKEN_SHR) && !Match(TOKEN_AND_ID) && 
+     !Match(TOKEN_OR_ID) && !Match(TOKEN_XOR_ID)) {
     return left;
   }
-
+  
   CalculatedExpression* expression = NULL;
-  while((Match(TOKEN_MUL) || Match(TOKEN_DIV) || Match(TOKEN_MOD) ||
-	 Match(TOKEN_AND_ID) || Match(TOKEN_OR_ID) || Match(TOKEN_XOR_ID)) &&
+  while((Match(TOKEN_MUL) || Match(TOKEN_DIV) || Match(TOKEN_MOD) || 
+	 Match(TOKEN_SHL) || Match(TOKEN_SHR) || Match(TOKEN_AND_ID) || 
+	 Match(TOKEN_OR_ID) || Match(TOKEN_XOR_ID)) &&
         !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       CalculatedExpression* right;
@@ -1627,6 +1629,12 @@ Expression* Parser::ParseFactor(int depth)
       } 
       else if(Match(TOKEN_MOD)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MOD_EXPR);
+      } 
+      else if(Match(TOKEN_SHL)) {
+        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHL_EXPR);
+      } 
+      else if(Match(TOKEN_SHR)) {
+        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHR_EXPR);
       } 
       else if(Match(TOKEN_AND_ID)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_AND_EXPR);
@@ -1654,6 +1662,12 @@ Expression* Parser::ParseFactor(int depth)
       } 
       else if(Match(TOKEN_MOD)) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MOD_EXPR);
+      }
+      else if(Match(TOKEN_SHL)) {
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHL_EXPR);
+      }
+      else if(Match(TOKEN_SHR)) {
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHR_EXPR);
       }
       else if(Match(TOKEN_AND_ID)) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_AND_EXPR);
