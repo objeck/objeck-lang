@@ -1716,17 +1716,19 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
 }
 
 void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
-       << ", %" << GetRegisterName(dest) << "]" << endl;
+    cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
+	 << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
-  // encode
-  AddMachineCode(0x89);
-  BYTE_VALUE code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+    // encode
+    AddMachineCode(0x89);
+    BYTE_VALUE code = 0xc0;
+    // write value
+    RegisterEncode3(code, 2, src);
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
 }
 
 void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
@@ -1871,19 +1873,21 @@ void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest)
 }
     
 void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
+  if(src != dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [movsd %" << GetRegisterName(src) 
-       << ", %" << GetRegisterName(dest) << "]" << endl;
+    cout << "  " << (++instr_count) << ": [movsd %" << GetRegisterName(src) 
+	 << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x11);
-  BYTE_VALUE code = 0xc0;
-  // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+    // encode
+    AddMachineCode(0xf2);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x11);
+    BYTE_VALUE code = 0xc0;
+    // write value
+    RegisterEncode3(code, 2, src);
+    RegisterEncode3(code, 5, dest);
+    AddMachineCode(code);
+  }
 }
 
 bool JitCompilerIA32::cond_jmp(InstructionType type) {
