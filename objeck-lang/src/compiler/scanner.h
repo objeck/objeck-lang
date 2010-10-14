@@ -84,6 +84,8 @@ enum TokenType {
   TOKEN_MUL,
   TOKEN_DIV,
   TOKEN_MOD,
+  TOKEN_SHL,
+  TOKEN_SHR,
   // literals
   TOKEN_IDENT,
   TOKEN_INT_LIT,

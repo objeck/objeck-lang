@@ -595,6 +595,8 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
   case BIT_AND_EXPR:
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
@@ -1866,6 +1868,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
   case BIT_AND_EXPR:
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
@@ -1888,6 +1892,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
   case BIT_AND_EXPR:
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
@@ -1934,6 +1940,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case MUL_EXPR:
   case DIV_EXPR:
   case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
   case BIT_AND_EXPR:
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:

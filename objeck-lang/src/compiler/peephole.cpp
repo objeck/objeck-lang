@@ -507,6 +507,7 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
   }
 
   if(shift) {
+    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, shift));
     // exclude literal
     if(calc_stack.front()->GetType() != LOAD_INT_LIT) {
       outputs->AddInstruction(calc_stack.front());
