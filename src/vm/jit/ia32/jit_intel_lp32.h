@@ -259,7 +259,6 @@ namespace Runtime {
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
     void ProcessIntCalculation(StackInstr* instruction);
-    // void ProcessIntShift(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
