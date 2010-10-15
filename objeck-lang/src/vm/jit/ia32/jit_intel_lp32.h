@@ -259,7 +259,7 @@ namespace Runtime {
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
     void ProcessIntCalculation(StackInstr* instruction);
-    void ProcessIntShift(StackInstr* instruction);
+    // void ProcessIntShift(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
@@ -762,10 +762,13 @@ namespace Runtime {
     void inc_mem(int32_t offset, Register dest);
     
     // shift instructions
-    void shl_reg(Register dest, int32_t value);
-    void shl_mem(int32_t offset, Register src, int32_t value);
-    void shr_reg(Register dest, int32_t value);
-    void shr_mem(int32_t offset, Register src, int32_t value);
+    void shl_reg_reg(Register src, Register dest);
+    void shl_mem_reg(int32_t offset, Register src, Register dest);
+    void shl_imm_reg(int32_t value, Register dest);
+
+    void shr_reg_reg(Register src, Register dest);
+    void shr_mem_reg(int32_t offset, Register src, Register dest);
+    void shr_imm_reg(int32_t value, Register dest);
     
     // push/pop instructions
     void push_imm(int32_t value);
@@ -1719,13 +1722,13 @@ namespace Runtime {
 	break;
 
       case INT_TYPE:
-	shl_reg(index_holder->GetRegister(), 2);
-	shl_reg(bounds_holder->GetRegister(), 2);
+	shl_imm_reg(2, index_holder->GetRegister());
+	shl_imm_reg(2, bounds_holder->GetRegister());
 	break;
 
       case FLOAT_TYPE:
-	shl_reg(index_holder->GetRegister(), 3);
-	shl_reg(bounds_holder->GetRegister(), 3);
+	shl_imm_reg(3, index_holder->GetRegister());
+	shl_imm_reg(3, bounds_holder->GetRegister());
 	break;
       }
       CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
