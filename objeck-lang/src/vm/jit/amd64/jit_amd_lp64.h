@@ -269,7 +269,6 @@ namespace Runtime {
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
     void ProcessIntCalculation(StackInstr* instruction);
-    void ProcessIntShift(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, 
@@ -948,10 +947,13 @@ namespace Runtime {
     void inc_mem(long offset, Register dest);
     
     // shift instructions
-    void shl_reg(Register dest, long value);
-    void shl_mem(long offset, Register src, long value);
-    void shr_reg(Register dest, long value);
-    void shr_mem(long offset, Register src, long value);
+    void shl_reg_reg(Register src, Register dest);
+    void shl_mem_reg(int32_t offset, Register src, Register dest);
+    void shl_imm_reg(int32_t value, Register dest);
+
+    void shr_reg_reg(Register src, Register dest);
+    void shr_mem_reg(int32_t offset, Register src, Register dest);
+    void shr_imm_reg(int32_t value, Register dest);
     
     // push/pop instructions
     void push_imm(long value);
@@ -1816,8 +1818,8 @@ namespace Runtime {
 
       case INT_TYPE:
       case FLOAT_TYPE:
-	shl_reg(index_holder->GetRegister(), 3);
-	shl_reg(bounds_holder->GetRegister(), 3);
+	shl_imm_reg(3, index_holder->GetRegister());
+	shl_imm_reg(3, bounds_holder->GetRegister());
 	break;
 	/*
       case FLOAT_TYPE:
