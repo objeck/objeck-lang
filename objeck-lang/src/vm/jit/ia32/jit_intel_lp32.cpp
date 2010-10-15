@@ -358,7 +358,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case SHL_INT:
     case SHR_INT:
 #ifdef _DEBUG
-      cout << "INT ADD/SUB/MUL/DIV/MOD/BIT_AND/BIT_OR/BIT_XOR/LES/GTR/EQL/NEQL: regs=" 
+      cout << "INT ADD/SUB/MUL/DIV/MOD/BIT_AND/BIT_OR/BIT_XOR/LES/GTR/EQL/NEQL/SHL_INT/SHR_INT:: regs=" 
 	   << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
       ProcessIntCalculation(instr);
@@ -633,59 +633,6 @@ void JitCompilerIA32::ProcessInstructions() {
     }
   }
 }
-
-/*
-void JitCompilerIA32::ProcessIntShift(StackInstr* instruction) {
-  RegInstr* left = working_stack.front();
-  working_stack.pop_front();
-
-  switch(left->GetType()) {
-    // immediate
-  case IMM_32: {
-    RegisterHolder* holder = GetRegister();
-    move_imm_reg(left->GetOperand(), holder->GetRegister());
-    if(instruction->GetType() == SHL_INT) {
-      shl_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    else {
-      shr_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    working_stack.push_front(new RegInstr(holder));
-  }
-    break;
-    
-    // register
-  case REG_32: {
-    RegisterHolder* holder = left->GetRegister();
-    if(instruction->GetType() == SHL_INT) {
-      shl_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    else {
-      shr_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    working_stack.push_front(new RegInstr(left->GetRegister()));
-  }
-    break;
-    
-    // memory
-  case MEM_32: {
-    RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    if(instruction->GetType() == SHL_INT) {
-      shl_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    else {
-      shr_reg(holder->GetRegister(), instruction->GetOperand());
-    }
-    working_stack.push_front(new RegInstr(holder));
-  }
-    break;
-  }
-    
-  delete left;
-  left = NULL;
-}
-*/
 
 void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
   // method/function memory
