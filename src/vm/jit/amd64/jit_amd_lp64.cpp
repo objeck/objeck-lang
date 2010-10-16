@@ -2383,7 +2383,7 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
     break;
     
   case LES_FLOAT:
-    AddMachineCode(0x42);
+    AddMachineCode(0x47);
     break;
     
   case GTR_FLOAT:
@@ -2399,7 +2399,7 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
     break;
     
   case LES_EQL_FLOAT:
-    AddMachineCode(0x46);
+    AddMachineCode(0x43);
     break;
 
   case GTR_EQL_FLOAT:
