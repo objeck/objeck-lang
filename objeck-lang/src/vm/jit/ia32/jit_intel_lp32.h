@@ -945,6 +945,9 @@ namespace Runtime {
 	switch(PopInt(op_stack, stack_pos)) {
 	  // ---------------- standard i/o ----------------
 	case STD_OUT_BOOL: {
+#ifdef _DEBUG
+	  cout << "  STD_OUT_BOOL" << endl;
+#endif
 	  int32_t value = PopInt(op_stack, stack_pos);
 	  cout << ((value == 0) ? "false" : "true");
 	}
