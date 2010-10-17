@@ -1,0 +1,49 @@
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			filters := Vector->New();
+			filters->AddBack("element[13]"->As(Base));
+			filters->AddBack("element[@foo]"->As(Base));
+			filters->AddBack("element[first()]"->As(Base));
+			filters->AddBack("element[last()]"->As(Base));
+			
+			each(i : filters) {
+				filter := filters->Get(i)->As(String);
+				if(filter->EndsWith("]")) {
+					end_pos := filter->Size() - 1;
+					start_pos := end_pos;
+					while(start_pos > -1 & filter->Get(start_pos) <> '[') {
+						start_pos -= 1;
+					};
+					if(start_pos < end_pos) {
+						start_pos += 1;
+						expr := filter->SubString(start_pos, end_pos - start_pos);	
+						expr->PrintLine();
+						if(expr->Equals("first()")) {
+							"start"->PrintLine();
+						}
+						else if(expr->Equals("first()")) {
+							"end"->PrintLine();
+						}
+						else {
+							if(expr->Size() > 0) {
+								if(expr->Get(0)->IsDigit()) {
+									"number"->PrintLine();
+									value := expr->Trim()->ToInt();
+									IO.Console->Instance()->Print("number: ")->PrintLine(value);
+								} 
+								else if(expr->Get(0)->IsChar()) {
+									IO.Console->Instance()->Print("element: ")->PrintLine(expr);
+								};
+							};
+						};
+					};
+					IO.Console->Instance()->Print(start_pos)->Print(", ")->PrintLine(end_pos);
+				};
+				"----"->PrintLine();
+			};
+		}
+	}
+}

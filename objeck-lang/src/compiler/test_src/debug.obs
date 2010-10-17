@@ -1,0 +1,13 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			x := [3.5, 2.3, 6.7, 9.8];
+			x[2]->PrintLine();
+			Run(x);
+		}
+	
+		function : native : Run(x : Float[]) ~ Nil {
+			x[2]->PrintLine();
+		}
+	}
+}

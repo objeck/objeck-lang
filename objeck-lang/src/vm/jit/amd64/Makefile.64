@@ -1,0 +1,17 @@
+# ARGS=-g -Wno-deprecated -D_DEBUG -D_X64 -Wunused
+# ARGS=-g -D_X64 -Wunused
+ARGS=-O3 -Wno-deprecated -D_X64
+
+CC=g++
+AR=ar
+SRC= jit_amd_lp64.o
+LIB= ../../jit_amd_lp64.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)

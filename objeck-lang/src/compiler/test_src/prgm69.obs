@@ -1,0 +1,14 @@
+bundle Default {
+	class BasicBlocks {
+		function : Main(args : System.String[]) ~ Nil {
+			Run(45.0);
+		}
+
+		function : public : Run(v : Float) ~ Nil {
+			v->Sin()->PrintLine();
+			v->Cos()->PrintLine();
+			v->Tan()->PrintLine();
+			v->Log()->PrintLine();
+		}
+	}
+}

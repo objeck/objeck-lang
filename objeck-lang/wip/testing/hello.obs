@@ -1,0 +1,39 @@
+bundle Default {
+  class Bar {
+    function : AddTwo(x : Int) ~ ()~Int {
+      return Value() ~ Int;
+    }
+
+    function : Value() ~ Int {
+      return 13;
+    }
+  }   
+  
+  class Hello {
+    function : Main(args : String[]) ~ Nil {
+      # push and pop functions refs (2 new instruction)
+      f : (Int) ~ ()~Int := Bar->AddTwo(Int) ~ ()~Int ;
+      Foo(f);
+      # f : Int := AddTwo(Int) ~ Bar;
+      # j := 13;
+    }
+    
+    function : Foo(f : (Int) ~ ()~Int) ~ Nil {
+      x := f(9);
+#      x : ()~Int := f(9);
+      x()->PrintLine();
+    }
+
+#~   
+    function : Merge(list : Int[], func : (Int) ~ Int) ~ Float {
+      dynamic method call (1 new instruction)
+      v := func(list[0]);
+    }
+~#    
+
+  }
+}
+
+# limits:
+# functions refs cannot contain function definitions
+# no support for function reference arrays

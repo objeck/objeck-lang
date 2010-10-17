@@ -1,0 +1,27 @@
+use System;
+
+bundle Default {
+	class X {
+		x : Int;
+
+		New() {
+		}
+
+		method : public : DoStuff() ~ Nil {
+			x := 10;			
+		}
+	}
+
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+		
+		function : native : Run() ~ Nil {
+			"Number: "->Print(); (13-11)->Print(); '+'->Print(); (7)->PrintLine();
+			10->PrintLine();
+#			x : X := X->New();
+#			x->DoStuff();
+		}
+	}
+}	

@@ -1,0 +1,18 @@
+9/21/10
+* fixed bug with += type operators working inconstantly with member variables
+9/23/10
+* Updated BBEdit language syntax file
+* fixed bug with '\''
+9/23/10
+* Basic XML support
+* No support for multibyte chars
+* No support for DOCTYPE
+---
+9/23/10
+* Bug fixes and enhancements to the XML libraries
+* minor enhancement to the context analyzer to now allow a RHS casted statement to be assigned to an undeclared variable
+9/25/10
+* Fixed a bug related to passing '@self' parameters to functions and methods
+* Added XPath support to the XMLElement class (not all of XPath is supported)
+10/9/10
+* Fixed two bugs related to pow & sqrt

@@ -1,0 +1,21 @@
+bundle Default {
+	class Hello {
+		New() {
+		}
+
+		function : Main(args : System.String[]) ~ Nil {
+#~
+			h := "Hello World!";
+			h->SubString(3, 3)->PrintLine();
+			h->SubString(0, 3)->PrintLine();
+~#
+			Time();
+		}
+
+		function : native : Time() ~ Nil {
+#		function : Time() ~ Nil {
+			t := Time->New();
+			IO.Console->Instance()->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+		}
+	}
+}
