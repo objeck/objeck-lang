@@ -1516,13 +1516,6 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
   working_stack.pop_front();
 
   InstructionType type = instruction->GetType();
-
-  /*
-  if(type == SUB_FLOAT) {
-    cout << "###" << endl;
-  }
-  */
-
   switch(left->GetType()) {
     // intermidate
   case IMM_64:
@@ -2309,8 +2302,8 @@ void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
   RegisterHolder* true_holder = GetRegister();
   move_imm_reg(1, true_holder->GetRegister());
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [cmovl %"
-       << GetRegisterName(reg) << "]" << endl;
+  cout << "  " << (++instr_count) << ": [cmovl %" << GetRegisterName(reg) << ", %" 
+       << GetRegisterName(true_holder->GetRegister()) << " ]" << endl;
 #endif
   // encode
   AddMachineCode(0x0f);
