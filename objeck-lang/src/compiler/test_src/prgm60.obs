@@ -1,0 +1,22 @@
+bundle Default {
+	class MyString from String {
+		New(s : String) {
+			Parent(s);
+		}
+
+		method : public : Size() ~ Int {
+			return 10;
+		}
+	}
+		
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+	
+		function : native : Run() ~ Nil {
+			ms := MyString->New("Hello");
+			ms->Size()->PrintLine();	
+		}
+	}
+}

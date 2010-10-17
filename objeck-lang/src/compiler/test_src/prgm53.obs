@@ -1,0 +1,55 @@
+bundle Default {
+	class Hello {
+		function : Main(args : System.String[]) ~ Nil {
+			for(i := 1; i <= 13; i := i + 1;) { 
+				select(i) {
+					label 1: {
+						1->PrintLine();
+					}
+					
+					label 2: {
+						2->PrintLine();
+					}
+			
+					label 3: {
+						3->PrintLine();
+					}
+					
+					label 4: {
+						4->PrintLine();
+					}
+					
+					label 5: {
+						5->PrintLine();
+					}
+					
+					label 6: {
+						6->PrintLine();
+					}
+					
+					label 7: {
+						7->PrintLine();
+					}
+					
+					label 8: {
+						8->PrintLine();
+					}
+					
+					label 9: {
+						9->PrintLine();
+					}
+					
+					label 10: {
+						10->PrintLine();
+					}
+					
+					other: {
+						"other"->PrintLine();
+					}
+				};
+				i->PrintLine();
+				"---------------"->PrintLine();
+			};	
+		}
+	}
+}

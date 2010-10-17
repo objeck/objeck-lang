@@ -1,0 +1,11 @@
+bundle Default {
+  class Logic {
+    function : Main(args : String[]) ~ Nil {
+      a := true;
+      b := false;
+      IO.Console->Instance()->Print("a and b is: ")->PrintLine(a & b);
+      IO.Console->Instance()->Print("a or b is: ")->PrintLine(a | b);
+      IO.Console->Instance()->Print("not a is: ")->PrintLine(a <> true);
+    }
+  }
+}

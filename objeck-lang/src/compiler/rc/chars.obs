@@ -1,0 +1,12 @@
+bundle Default {
+  class CharCode {
+    function : Main(args : String[]) ~ Nil {
+      Run();
+    }
+
+    function : native : Run() ~ Nil {
+      'a'->As(Int)->PrintLine();
+			97->As(Char)->PrintLine();
+    }
+  }
+}

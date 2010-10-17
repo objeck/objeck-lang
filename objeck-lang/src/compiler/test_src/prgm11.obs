@@ -1,0 +1,13 @@
+bundle Default {
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {		
+			(3-7+12)->PrintLine();		
+			(3.4-3.5+.7*100.0)->PrintLine();		
+		}
+	}
+}

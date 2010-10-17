@@ -1,0 +1,17 @@
+bundle Default {
+  class Arithmetic {
+    function : Main(args : System.String[]) ~ Nil {
+      DoArithmetic();
+    }
+	
+    function : native : DoArithmetic() ~ Nil {
+      a := IO.Console->Instance()->ReadString()->ToInt();
+      b := IO.Console->Instance()->ReadString()->ToInt();
+  
+      IO.Console->Instance()->Print("a+b = ")->PrintLine(a+b);
+      IO.Console->Instance()->Print("a-b = ")->PrintLine(a-b);
+      IO.Console->Instance()->Print("a*b = ")->PrintLine(a*b);
+      IO.Console->Instance()->Print("a/b = ")->PrintLine(a/b);
+    }
+  }
+}

@@ -1,0 +1,6 @@
+Objeck v1.1.4_0
+
+This release adds initial support for XML parsing and DOM querying.  Please see the Programmer's Guide for more information.  There's also one major and one minor bug fix included in this release.  
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
+
