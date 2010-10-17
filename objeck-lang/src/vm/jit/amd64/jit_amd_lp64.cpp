@@ -1590,7 +1590,8 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
-  
+
+  InstructionType type = instruction->GetType();
   switch(left->GetType()) {
     // intermidate
   case IMM_FLOAT:
@@ -1600,17 +1601,26 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       move_imm_xreg(left, left_holder->GetRegister());      
       RegisterHolder* right_holder = GetXmmRegister();
       move_imm_xreg(right, right_holder->GetRegister());      
-      math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), 
-		     instruction->GetType());
-      ReleaseXmmRegister(right_holder);
-      working_stack.push_front(new RegInstr(left_holder));
+      
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), 
+		       instruction->GetType());
+	ReleaseXmmRegister(left_holder);
+	working_stack.push_front(new RegInstr(right_holder));
+      }
+      else {
+	math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), 
+		       instruction->GetType());
+	ReleaseXmmRegister(right_holder);
+	working_stack.push_front(new RegInstr(left_holder));
+      }
     }
       break;
       
     case REG_FLOAT: {      
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
-      InstructionType type = instruction->GetType();
+      
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(imm_holder->GetRegister(), right->GetRegister()->GetRegister(), type);
         ReleaseXmmRegister(imm_holder);
@@ -1631,7 +1641,6 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(left, imm_holder->GetRegister());
 
-      InstructionType type = instruction->GetType();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(imm_holder->GetRegister(), holder->GetRegister(), type);
         ReleaseXmmRegister(imm_holder);
@@ -1654,25 +1663,48 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       RegisterHolder* left_holder = left->GetRegister();
       RegisterHolder* right_holder = GetXmmRegister();
       move_imm_xreg(right, right_holder->GetRegister());
-      math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), 
-		     instruction->GetType());
-      ReleaseXmmRegister(right_holder);      
-      working_stack.push_front(new RegInstr(left_holder));
+      
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
+	ReleaseXmmRegister(left_holder);      
+	working_stack.push_front(new RegInstr(right_holder));
+      }
+      else {
+	math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), instruction->GetType());
+	ReleaseXmmRegister(right_holder);      
+	working_stack.push_front(new RegInstr(left_holder));
+      }
     }
       break;
 
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
-      math_xreg_xreg(holder->GetRegister(), left->GetRegister()->GetRegister(), instruction->GetType());
-      working_stack.push_front(new RegInstr(left->GetRegister()));
-      ReleaseXmmRegister(holder);
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_xreg_xreg(left->GetRegister()->GetRegister(), holder->GetRegister(), instruction->GetType());
+	working_stack.push_front(new RegInstr(holder));
+	ReleaseXmmRegister(left->GetRegister());
+      }
+      else {
+	math_xreg_xreg(holder->GetRegister(), left->GetRegister()->GetRegister(), instruction->GetType());
+	working_stack.push_front(new RegInstr(left->GetRegister()));
+	ReleaseXmmRegister(holder);
+      }
     }
       break;
       
     case MEM_FLOAT: {
       RegisterHolder* holder = left->GetRegister();
-      math_mem_xreg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
-      working_stack.push_front(new RegInstr(holder));
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	RegisterHolder* right_holder = GetXmmRegister();
+	move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
+	math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
+	ReleaseXmmRegister(holder);
+	working_stack.push_front(new RegInstr(right_holder));
+      }
+      else {
+	math_mem_xreg(right->GetOperand(), holder->GetRegister(), instruction->GetType());
+	working_stack.push_front(new RegInstr(holder));
+      }
     }
       break;
     }
@@ -1684,11 +1716,9 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     case IMM_FLOAT: {
       RegisterHolder* holder = GetXmmRegister();
       move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
-
+      
       RegisterHolder* imm_holder = GetXmmRegister();
       move_imm_xreg(right, imm_holder->GetRegister());
-
-      InstructionType type = instruction->GetType();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(holder->GetRegister(), imm_holder->GetRegister(), type);
         ReleaseXmmRegister(holder);
@@ -1701,26 +1731,41 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       }
     }
       break;
-
+      
     case REG_FLOAT: {
       RegisterHolder* holder = right->GetRegister();
-      math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
-      working_stack.push_front(new RegInstr(holder));
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
+	working_stack.push_front(new RegInstr(holder));
+      }
+      else {
+	RegisterHolder* right_holder = GetXmmRegister();
+	move_mem_xreg(left->GetOperand(), RBP, right_holder->GetRegister());
+	math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
+	ReleaseXmmRegister(holder);
+	working_stack.push_front(new RegInstr(right_holder));
+      }
     }
       break;
-
+      
     case MEM_FLOAT: {
       RegisterHolder* left_holder = GetXmmRegister();
       move_mem_xreg(left->GetOperand(), RBP, left_holder->GetRegister());
 
       RegisterHolder* right_holder = GetXmmRegister();
       move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
-
-      math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(),  
-		     instruction->GetType());
-
-      ReleaseXmmRegister(right_holder);
-      working_stack.push_front(new RegInstr(left_holder));
+      if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(),  
+		       instruction->GetType());
+	ReleaseXmmRegister(left_holder);
+	working_stack.push_front(new RegInstr(right_holder));
+      }
+      else {
+	math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(),  
+		       instruction->GetType());	
+	ReleaseXmmRegister(right_holder);
+	working_stack.push_front(new RegInstr(left_holder));
+      }
     }
       break;
     }
@@ -2254,9 +2299,6 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
     
   case LES_FLOAT:
   case LES_EQL_FLOAT:
-    cmp_imm_xreg(instr, reg);
-    break;
-    
   case GTR_FLOAT:
   case EQL_FLOAT:
   case NEQL_FLOAT:
@@ -2268,9 +2310,7 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
 
 void JitCompilerIA64::math_mem_xreg(long offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg(offset, RBP, holder->GetRegister());
-  math_xreg_xreg(dest, holder->GetRegister(), type);
-  move_xreg_xreg(holder->GetRegister(), dest);
+  math_xreg_xreg(holder->GetRegister(), dest, type);
   ReleaseXmmRegister(holder);
 }
 
@@ -2294,9 +2334,6 @@ void JitCompilerIA64::math_xreg_xreg(Register src, Register dest, InstructionTyp
     
   case LES_FLOAT:
   case LES_EQL_FLOAT:
-    cmp_xreg_xreg(dest, src);
-    break;
-
   case GTR_FLOAT:
   case EQL_FLOAT:
   case NEQL_FLOAT:
