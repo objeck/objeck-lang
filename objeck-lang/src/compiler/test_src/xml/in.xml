@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<root>
+	<person name="value 3">
+		<age>99</age>
+		<name>Morph</name>
+	</person>
+	<person>
+		<age>12</age>
+	</person>
+	<person>
+		<age>3</age>
+	</person>
+<!--
+	<person>
+		<age>51</age>
+		<name>Randy</name>
+	</person>
+	<person>
+		<age>35</age>
+	</person>
+	<person>
+		<age>34</age>
+		<name>Kaylin</name>
+	</person>
+-->
+	<car>VW</car>
+	<car>VW</car>
+
+
+<![CDATA[
+function matchwo(a,b)
+{
+if (a < b && a < 0) then
+  {
+  return 1;
+  }
+else
+  {
+  return 0;
+  }
+}
+]]>
+	<person>
+		<age>65</age>
+	</person>
+<person>
+	<age>5</age>
+		</person>
+</root>
+

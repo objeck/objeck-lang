@@ -1,0 +1,27 @@
+###############
+# For OSX only
+###############
+# ARGS=-mstackrealign -O3
+# ARGS=-D_TIMING -mstackrealign -O3
+# ARGS=-mstackrealign -g -D_DEBUG -Wunused
+
+###############
+# For Linux
+###############
+# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
+# ARGS=-g -Wunused
+ARGS=-O3 -Wno-deprecated
+
+CC=g++
+AR=ar
+SRC= memory.o
+LIB= ../../memory.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m32 $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
