@@ -1515,7 +1515,14 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
 
-  InstructionType type = instruction->GetType();  
+  InstructionType type = instruction->GetType();
+
+  /*
+  if(type == SUB_FLOAT) {
+    cout << "###" << endl;
+  }
+  */
+
   switch(left->GetType()) {
     // intermidate
   case IMM_64:
@@ -1655,23 +1662,23 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
       }
     }
       break;
-
+      
     case REG_64: {
       RegisterHolder* holder = right->GetRegister();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
+	math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
+	working_stack.push_front(new RegInstr(holder));
+      }
+      else {
 	RegisterHolder* right_holder = GetXmmRegister();
 	move_mem_xreg(left->GetOperand(), EBP, right_holder->GetRegister());
 	math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
 	ReleaseXmmRegister(holder);
 	working_stack.push_front(new RegInstr(right_holder));
       }
-      else {
-	math_mem_xreg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
-	working_stack.push_front(new RegInstr(holder));
-      }
     }
       break;
-
+      
     case MEM_64: {
       RegisterHolder* left_holder = GetXmmRegister();
       move_mem_xreg(left->GetOperand(), EBP, left_holder->GetRegister());
