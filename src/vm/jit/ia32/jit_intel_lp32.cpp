@@ -124,7 +124,7 @@ void JitCompilerIA32::UnregisterRoot() {
   RegisterHolder* holder = GetRegister();
   move_reg_reg(EBP, holder->GetRegister());
   // note: -8 is the offset requried to 
-  // get to the first local variale
+  // get to the memory root
   sub_imm_reg(local_space + TMP_REG_5 - 8, 
 	      holder->GetRegister());
   // push call value

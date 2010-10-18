@@ -127,9 +127,9 @@ void JitCompilerIA64::Epilog(long imm) {
 void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
-  // note: -8 is the offset requried to 
+  // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5 /*- 16*/;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
   
@@ -168,10 +168,10 @@ void JitCompilerIA64::UnregisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  // note: -8 is the offset requried to 
-  // get to the first local variable
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5 /*- 16*/;
-  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
+  // note: the offset requried to 
+  // get to the memory base
+  const long offset = org_local_space + RED_ZONE;
+  sub_imm_reg(offset, holder->GetRegister());
   // push call value
   move_reg_reg(holder->GetRegister(), RDI);
   // call method

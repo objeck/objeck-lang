@@ -462,7 +462,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
     if(!found) {
       long mem_size;
-      // TODO: object ids can be 0 as well as array lengths
+      // object or array
       if(iter->second <= 0) {
         StackClass* cls = prgm->GetClass(-iter->second);
 #ifdef _DEBUG
@@ -471,16 +471,20 @@ void* MemoryManager::CollectMemory(void* arg)
         if(cls) {
           mem_size = cls->GetInstanceMemorySize();
         }
+	else {
+	  mem_size = iter->second;
+	}
       } 
+      // array
       else {
         mem_size = iter->second;
       }
-
+      
 #ifdef _DEBUG
       cout << "# releasing memory: addr=" << iter->first << "(" << (long)iter->first
            << "), size=" << mem_size << " byte(s) #" << endl;
 #endif
-
+      
       // account for deallocated memory
       allocation_size -= mem_size;
       // erase memory
@@ -876,9 +880,11 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         cout << "\t";
       }
       cout <<"$: addr/value=" << mem << endl;
+      /*
       if(is_obj) {
         assert(cls);
       }
+      */
 #endif
       MarkMemory(mem);
     }
