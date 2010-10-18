@@ -60,7 +60,8 @@ namespace Runtime {
 #define TMP_REG_3 -112
 #define TMP_REG_4 -120
 #define TMP_REG_5 -128
-  
+
+#define RED_ZONE -128  
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
 
@@ -242,7 +243,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     map<int, StackInstr*> jump_table; // jump addresses are 64-bits
-    long local_space;
+    long org_local_space, local_space;
     StackMethod* method;
     long instr_count;
     BYTE_VALUE* code;
@@ -1865,7 +1866,7 @@ namespace Runtime {
 	}
       }
       
-      long index = TMP_REG_5;
+      long index = RED_ZONE;
       long last_id = -1;
       multimap<long, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); value++) {
@@ -1909,7 +1910,7 @@ namespace Runtime {
 	}
 #endif
       }
-      local_space = -(index + TMP_REG_5);
+      org_local_space = local_space = -(index + TMP_REG_5);
       
 #ifdef _DEBUG
       cout << "Local space required: " << (local_space + 16) << " byte(s)" << endl;

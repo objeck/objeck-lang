@@ -442,7 +442,8 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _DEBUG
   cout << "-----------------------------------------" << endl;
-  cout << "Marked " << marked_memory.size() << " items." << endl;
+  cout << "Marked " << marked_memory.size() << " of " 
+       << allocated_memory.size() << " items." << endl;
   cout << "-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
@@ -461,7 +462,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
     if(!found) {
       long mem_size;
-      if(iter->second < 0) {
+      if(iter->second <= 0) {
         StackClass* cls = prgm->GetClass(-iter->second);
 #ifdef _DEBUG
         assert(cls);
