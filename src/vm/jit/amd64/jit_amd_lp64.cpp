@@ -129,9 +129,9 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
   // get to the first local variale
-  const long offset = local_space + TMP_REG_5 - 16;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5 /*- 16*/;
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(offset, holder->GetRegister());
+  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
   
   // save registers
   push_reg(R15);
@@ -140,7 +140,7 @@ void JitCompilerIA64::RegisterRoot() {
   push_reg(R8);
 
   // copy values 
-  move_imm_reg(offset + TMP_REG_5, R8);
+  move_imm_reg(offset, R8);
   move_reg_reg(holder->GetRegister(), RCX);
   move_mem_reg(INSTANCE_MEM, RBP, RDX);
   move_mem_reg(MTHD_ID, RBP, RSI);
@@ -170,8 +170,8 @@ void JitCompilerIA64::UnregisterRoot() {
   move_reg_reg(RBP, holder->GetRegister());
   // note: -8 is the offset requried to 
   // get to the first local variable
-  sub_imm_reg(local_space + TMP_REG_5 - 16, 
-	      holder->GetRegister());
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5 /*- 16*/;
+  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
   // push call value
   move_reg_reg(holder->GetRegister(), RDI);
   // call method
