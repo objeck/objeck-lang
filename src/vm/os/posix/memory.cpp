@@ -462,6 +462,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
     if(!found) {
       long mem_size;
+      // TODO: object ids can be 0 as well as array lengths
       if(iter->second <= 0) {
         StackClass* cls = prgm->GetClass(-iter->second);
 #ifdef _DEBUG
