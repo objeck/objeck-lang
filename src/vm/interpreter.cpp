@@ -520,10 +520,20 @@ void StackInterpreter::Execute()
       }
       break;
 
-      /*
-    case ASYNC_MTHD_CALL:
+    case ASYNC_MTHD_CALL: {
+      long* instance = (long*)frame->GetMemory()[0];
+      StackClass* impl_class = MemoryManager::Instance()->GetClass(instance);
+#ifdef _DEBUG
+      assert(impl_class);
+#endif
+      
+      StackMethod* called = impl_class->GetMethod(instr->GetOperand2());
+#ifdef _DEBUG
+      cout << "=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
+	   << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
+#endif 
+    }
       break;
-      */
       
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr);
