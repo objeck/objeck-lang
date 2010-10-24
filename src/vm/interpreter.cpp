@@ -522,6 +522,8 @@ void StackInterpreter::Execute()
 
     case ASYNC_MTHD_CALL: {
       long* instance = (long*)frame->GetMemory()[0];
+      long* param = (long*)frame->GetMemory()[1];
+      
       StackClass* impl_class = MemoryManager::Instance()->GetClass(instance);
 #ifdef _DEBUG
       assert(impl_class);
@@ -530,8 +532,13 @@ void StackInterpreter::Execute()
       StackMethod* called = impl_class->GetMethod(instr->GetOperand2());
 #ifdef _DEBUG
       cout << "=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-	   << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
-#endif 
+	   << called->GetId() << "; name='" << called->GetName() 
+	   << "'; param=" << param << " ===" << endl;
+#endif
+
+      // create and execute the new thread
+      // make sure that calls to the model are synced.  Are find method synced?
+      ProcessAsyncMethodCall(called, param);
     }
       break;
       
@@ -959,6 +966,43 @@ void StackInterpreter::ProcessReturn()
   } else {
     halt = true;
   }
+}
+
+/********************************
+ * Processes a asynchronous
+ * method call.
+ ********************************/
+void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, void* param)
+{
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t collect_thread;
+  if(pthread_create(&collect_thread, &attrs, AsyncMethodCall, (void*)param)) {
+    cerr << "Unable to create runtime thread!" << endl;
+    exit(-1);
+  }
+}
+
+void* StackInterpreter::AsyncMethodCall(void* arg)
+{
+  long* param = (long*)arg;
+
+  // execute
+  long* op_stack = new long[STACK_SIZE];
+  long* stack_pos = new long;
+  (*stack_pos) = 0;
+  
+  Runtime::StackInterpreter intpr;
+  //intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+  
+  // clean up
+  delete[] op_stack;
+  op_stack = NULL;
+  
+  delete stack_pos;
+  stack_pos = NULL;
 }
 
 /********************************

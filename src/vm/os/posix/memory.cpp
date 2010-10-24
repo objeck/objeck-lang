@@ -341,7 +341,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 #endif
   
   CollectionInfo* info = new CollectionInfo;
-  info->op_stack = op_stack; 
+  info->op_stack = op_stack;
   info->stack_pos = stack_pos;
   
 #ifndef _GC_SERIAL
@@ -880,11 +880,9 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         cout << "\t";
       }
       cout <<"$: addr/value=" << mem << endl;
-      /*
       if(is_obj) {
         assert(cls);
       }
-      */
 #endif
       MarkMemory(mem);
     }
