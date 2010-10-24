@@ -54,6 +54,11 @@ namespace Runtime {
 
 #define STACK_SIZE 256
 
+  struct ThreadHolder {
+    StackMethod* called;
+    long* param;
+  };
+
   class StackInterpreter {
     // program
     static StackProgram* program;
@@ -262,7 +267,7 @@ namespace Runtime {
     inline void ProcessMethodCall(StackInstr* instr);
     inline void ProcessDynamicMethodCall(StackInstr* instr);
     inline void ProcessJitMethodCall(StackMethod* called, long* instance);
-    inline void ProcessAsyncMethodCall(StackMethod* called, void* param);
+    inline void ProcessAsyncMethodCall(StackMethod* called, long* param);
 
     inline void ProcessInterpretedMethodCall(StackMethod* called, long* instance);
     inline void ProcessLoadIntArrayElement(StackInstr* instr);

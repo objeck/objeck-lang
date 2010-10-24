@@ -972,37 +972,58 @@ void StackInterpreter::ProcessReturn()
  * Processes a asynchronous
  * method call.
  ********************************/
-void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, void* param)
+void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 {
+  ThreadHolder* holder = new ThreadHolder;
+  holder->called = called;
+  holder->param = param;
+
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
   
-  pthread_t collect_thread;
-  if(pthread_create(&collect_thread, &attrs, AsyncMethodCall, (void*)param)) {
+  pthread_t vm_thread;
+  if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
     cerr << "Unable to create runtime thread!" << endl;
     exit(-1);
   }
+  program->AddThread(vm_thread);
 }
 
 void* StackInterpreter::AsyncMethodCall(void* arg)
 {
-  long* param = (long*)arg;
+  ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  long* op_stack = new long[STACK_SIZE];
-  long* stack_pos = new long;
-  (*stack_pos) = 0;
+  long* thread_op_stack = new long[STACK_SIZE];
+  long* thread_stack_pos = new long;
+  (*thread_stack_pos) = 0;
+  
+  // set parameter
+  thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
+  
+#ifdef _DEBUG
+  cout << "# Starting thread=" << pthread_self() << " #" << endl;
+#endif  
   
   Runtime::StackInterpreter intpr;
-  //intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
+
+#ifdef _DEBUG
+  cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
+#endif
   
   // clean up
-  delete[] op_stack;
-  op_stack = NULL;
+  delete[] thread_op_stack;
+  thread_op_stack = NULL;
   
-  delete stack_pos;
-  stack_pos = NULL;
+  delete thread_stack_pos;
+  thread_stack_pos = NULL;
+
+  delete holder;
+  holder = NULL;
+  
+  program->RemoveThread(pthread_self());
 }
 
 /********************************
