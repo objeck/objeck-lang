@@ -134,7 +134,7 @@ class IPSocket {
  public:
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(socket < 0) {
+    if(sock == INVALID_SOCKET) {
       return -1;
     }
 

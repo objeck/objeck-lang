@@ -83,7 +83,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
       // check if memory has been marked
       if(mem[-1]) {
 #ifndef _SERIAL
-	LeaveCriticalSection(&allocated_cs);
+	      LeaveCriticalSection(&allocated_cs);
 #endif
         return false;
       }
@@ -191,6 +191,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #endif
 
 #ifdef _DEBUG
+  assert(found);
   cout << "removing JIT method: mem=" << found->mem << ", self=" 
        << found->self << "(" << (long)found->self << ")" << endl;
 #endif
@@ -425,6 +426,7 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   
   // sort and search
 #ifndef _SERIAL
+  EnterCriticalSection(&allocated_cs);
   EnterCriticalSection(&marked_cs);
 #endif
   
@@ -437,7 +439,7 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   map<long*, long>::iterator iter;
 
 #ifndef _SERIAL
-  EnterCriticalSection(&allocated_cs);
+  
 #endif
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
     bool found = false;

@@ -974,6 +974,9 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 {
+#ifdef _WIN32
+
+#else
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
   holder->param = param;
@@ -988,8 +991,13 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
     exit(-1);
   }
   program->AddThread(vm_thread);
+#endif
 }
 
+#ifdef _WIN32
+// windows thread callback
+#else
+// posix thread callback
 void* StackInterpreter::AsyncMethodCall(void* arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
@@ -1025,6 +1033,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   
   program->RemoveThread(pthread_self());
 }
+#endif
 
 /********************************
  * Processes a synchronous

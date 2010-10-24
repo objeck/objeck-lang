@@ -1661,11 +1661,9 @@ namespace Runtime {
 	 }
       */
 
-      if(holder) {
-        delete holder;
-        holder = NULL;
-      }
-
+      delete holder;
+      holder = NULL;
+      
       // get initial index
       RegisterHolder* index_holder;
       holder = working_stack.front();
