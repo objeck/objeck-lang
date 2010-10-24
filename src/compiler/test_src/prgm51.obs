@@ -29,6 +29,8 @@ bundle Default {
 			t := MyThread->New();	
 			s := "Pug";	
 			t->Execute(s->As(Base));
+
+			"Fin."->PrintLine();
 		}
 	}
 }
