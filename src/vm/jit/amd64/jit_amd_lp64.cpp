@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the x86 architecture.
+ * JIT compiler for the AMD64 architecture.
  *
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
