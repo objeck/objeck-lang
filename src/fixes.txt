@@ -16,3 +16,5 @@
 * Added XPath support to the XMLElement class (not all of XPath is supported)
 10/9/10
 * Fixed two bugs related to pow & sqrt
+10/27/10
+* count[i - min] -= 1;
