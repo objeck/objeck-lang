@@ -595,28 +595,28 @@ Statement* Parser::ParseStatement(int depth)
       case TOKEN_ADD_ASSIGN:
 	NextToken();
 	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
-								     ParseSimpleExpression(depth + 1), 
+								     ParseLogic(depth + 1), 
 								     ADD_ASSIGN_STMT);
 	break;
 	
       case TOKEN_SUB_ASSIGN:
 	NextToken();
 	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
-								     ParseSimpleExpression(depth + 1), 
+								     ParseLogic(depth + 1), 
 								     SUB_ASSIGN_STMT);
 	break;
 
       case TOKEN_MUL_ASSIGN:
 	NextToken();
 	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
-								     ParseSimpleExpression(depth + 1), 
+								     ParseLogic(depth + 1), 
 								     MUL_ASSIGN_STMT);
 	break;
 	
       case TOKEN_DIV_ASSIGN:
 	NextToken();
 	statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
-								     ParseSimpleExpression(depth + 1), 
+								     ParseLogic(depth + 1), 
 								     DIV_ASSIGN_STMT);
 	break;
 	
@@ -647,7 +647,7 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
 								   ParseVariable(ident, depth + 1),
-								   ParseSimpleExpression(depth + 1), 
+								   ParseLogic(depth + 1), 
 								   ADD_ASSIGN_STMT);
       break;
       
@@ -655,7 +655,7 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
 								   ParseVariable(ident, depth + 1),
-								   ParseSimpleExpression(depth + 1), 
+								   ParseLogic(depth + 1), 
 								   SUB_ASSIGN_STMT);
       break;
       
@@ -663,7 +663,7 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
 								   ParseVariable(ident, depth + 1),
-								   ParseSimpleExpression(depth + 1), 
+								   ParseLogic(depth + 1), 
 								   MUL_ASSIGN_STMT);
       break;
       
@@ -671,7 +671,7 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, 
 								   ParseVariable(ident, depth + 1),
-								   ParseSimpleExpression(depth + 1), 
+								   ParseLogic(depth + 1), 
 								   DIV_ASSIGN_STMT);
       break;
       
