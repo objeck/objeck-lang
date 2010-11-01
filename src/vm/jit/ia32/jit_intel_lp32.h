@@ -68,7 +68,7 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
-#define PAGE_SIZE 4096
+// #define PAGE_SIZE 4096
 
   // register type
   typedef enum _RegType { 
