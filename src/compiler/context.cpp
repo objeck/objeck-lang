@@ -526,9 +526,9 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case SELECT_STMT:
     AnalyzeSelect(static_cast<Select*>(statement), depth);
     break;
-
+    
   case CRITICAL_STMT:
-    AnalyzeStatements(static_cast<CriticalSection*>(statement)->GetStatements(), depth + 1);
+    AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
     break;
 
   default:
@@ -1706,6 +1706,24 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
   if(select_stmt->GetOther()) {
     AnalyzeStatements(select_stmt->GetOther(), depth + 1);
   }
+}
+
+/****************************
+ * Analyzes a 'for' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, int depth)
+{
+  Variable* variable = mutex->GetVariable();
+  AnalyzeVariable(variable, depth + 1);
+  if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
+    if(variable->GetEvalType()->GetClassName() != "System.ThreadMutex") {
+      ProcessError(mutex, "Expected ThreadMutex type");
+    }
+  }
+  else {
+    ProcessError(mutex, "Expected ThreadMutex type");
+  }
+  AnalyzeStatements(mutex->GetStatements(), depth + 1);
 }
 
 /****************************

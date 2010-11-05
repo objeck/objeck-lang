@@ -8,6 +8,12 @@ bundle Default {
 			s : String := param->As(System.String);
 			s->PrintLine();
 			913->PrintLine();
+
+			m := ThreadMutex->New("bob");
+			critical(m) {
+				a := 18;
+				g := 12;
+			};
 		}
 	}
 

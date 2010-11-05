@@ -547,6 +547,7 @@ class ContextAnalyzer {
   void AnalyzeDoWhile(DoWhile* do_while_stmt, int depth);
   void AnalyzeWhile(While* while_stmt, int depth);
   void AnalyzeSelect(Select* select_stmt, int depth);
+  void AnalyzeCritical(CriticalSection* mutex, int depth);
   void AnalyzeFor(For* for_stmt, int depth);
   void AnalyzeReturn(Return* rtrn, int depth);
   void AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, int depth);
