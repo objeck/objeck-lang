@@ -618,8 +618,8 @@ void StackInterpreter::Execute()
       cout << "stack oper: CRITICAL_START; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)PopInt();
-      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
-      pthread_mutex_lock(*mutex_ptr);
+      pthread_mutex_t* mutex_ptr = (pthread_mutex_t*)instance[0];
+      pthread_mutex_lock(mutex_ptr);
     }
       break;
 
@@ -629,16 +629,15 @@ void StackInterpreter::Execute()
       cout << "stack oper: CRITICAL_END; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)PopInt();
-      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
-      pthread_mutex_unlock(*mutex_ptr);
+      pthread_mutex_t* mutex_ptr = (pthread_mutex_t*)instance[0];
+      pthread_mutex_unlock(mutex_ptr);
     }
       break;
 
     case THREAD_MUTEX: {
       // TODO: figure out how free memory!!!
       long* instance = (long*)frame->GetMemory()[0];
-      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
-      *mutex_ptr = new pthread_mutex_t;
+      instance[0] = (long)new pthread_mutex_t;
     }
       break;
       
@@ -1012,6 +1011,14 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
     cerr << "Unable to create runtime thread!" << endl;
     exit(-1);
   }
+
+  long* instance = (long*)frame->GetMemory()[0];
+  instance[0] = (long)vm_thread;
+
+#ifdef _DEBUG
+  cout << "*** Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
+#endif
+  
   program->AddThread(vm_thread);
 #endif
 }
