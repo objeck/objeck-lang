@@ -1137,6 +1137,13 @@ bundle System {
 		}
 		
 		#~~
+		# Joins a thread
+		~~#
+		method : public : Join() ~ Nil {
+			THREAD_JOIN;
+		}
+		
+		#~~
 		# Returns the name
 		~~#
 		method : public : GetName() ~ String {
@@ -1144,9 +1151,9 @@ bundle System {
 		}
 		
 		#~~
-		# Returns ID
+		# Returns the run ID
 		~~#
-		method : public : GetID() ~ Int {
+		method : public : GetRunID() ~ Int {
 			return @id;
 		}
 		
