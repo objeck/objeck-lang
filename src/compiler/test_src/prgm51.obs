@@ -33,8 +33,10 @@ bundle Default {
 
 		function : Run() ~ Nil {
 			t := MyThread->New("t0");	
+
 			s := "Pug";	
 			t->Execute(s->As(Base));
+						t->GetID()->PrintLine();
 
 			"Fin."->PrintLine();
 		}
