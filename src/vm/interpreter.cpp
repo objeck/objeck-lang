@@ -604,31 +604,64 @@ void StackInterpreter::Execute()
       ProcessTrap(instr);
       break;
 
-    case THREAD_JOIN:
-      // TODO: implement
+      //
+      // Start: Thread support
+      // 
+
+    case THREAD_JOIN: {
+#ifdef _DEBUG
+      cout << "stack oper: THREAD_JOIN; call_pos=" << call_stack_pos << endl;
+#endif
+      long* instance = (long*)frame->GetMemory()[0];
+      if(!instance) {
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
+      void* status;
+      pthread_t vm_thread = (pthread_t)instance[0];      
+      if(pthread_join(vm_thread, &status)) {
+	cerr << "Unable to join thread!" << endl;
+	exit(-1);
+      }
+    }
       break;
       
     case THREAD_SLEEP:
-      // TODO: implement
+#ifdef _DEBUG
+      cout << "stack oper: THREAD_SLEEP; call_pos=" << call_stack_pos << endl;
+#endif
+      sleep(PopInt());
       break;
-
+      
     case CRITICAL_START: {
-      // TODO: implement
 #ifdef _DEBUG
       cout << "stack oper: CRITICAL_START; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)PopInt();
+      if(!instance) {
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
       pthread_mutex_t* mutex_ptr = (pthread_mutex_t*)instance[0];
       pthread_mutex_lock(mutex_ptr);
     }
       break;
 
     case CRITICAL_END: {
-      // TODO: implement
 #ifdef _DEBUG
       cout << "stack oper: CRITICAL_END; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)PopInt();
+      if(!instance) {
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
       pthread_mutex_t* mutex_ptr = (pthread_mutex_t*)instance[0];
       pthread_mutex_unlock(mutex_ptr);
     }
@@ -637,9 +670,18 @@ void StackInterpreter::Execute()
     case THREAD_MUTEX: {
       // TODO: figure out how free memory!!!
       long* instance = (long*)frame->GetMemory()[0];
+      if(!instance) {
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
       instance[0] = (long)new pthread_mutex_t;
     }
       break;
+
+      //
+      // End: Thread support
+      // 
       
     case JMP:
 #ifdef _DEBUG
@@ -1006,12 +1048,14 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
   
+  // execute thread
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
     cerr << "Unable to create runtime thread!" << endl;
     exit(-1);
   }
-
+  
+  // assign thread ID
   long* instance = (long*)frame->GetMemory()[0];
   instance[0] = (long)vm_thread;
 

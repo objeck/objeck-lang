@@ -1,19 +1,27 @@
 bundle Default {
 	class MyThread from Thread {
+		m : static : ThreadMutex;
+		x : static : Int;
+		y : static : Int;
+		
 		New(name : String) {
 			Parent(name);
 		}
 
 		method : public : Run(param : System.Base) ~ Nil {
-			s : String := param->As(System.String);
-			s->PrintLine();
-			913->PrintLine();
-
-			m := ThreadMutex->New("m0");
-			critical(m) {
-				a := 18;
-				g := 12;
+			if(m = Nil) {
+				m := ThreadMutex->New("m0");
 			};
+			DoStuff();
+		}
+		
+		function : DoStuff() ~ Nil {
+			critical(m) {
+				x += 1;
+				y += x * 2;
+				x->PrintLine();
+				y->PrintLine();
+			};	
 		}
 	}
 
@@ -32,12 +40,15 @@ bundle Default {
 		}
 
 		function : Run() ~ Nil {
-			t := MyThread->New("t0");	
+			s := "Hello";
+			t0 := MyThread->New("t0");	
+			t1 := MyThread->New("t1");	
+			t2 := MyThread->New("t2");	
 
-			s := "Pug";	
-			t->Execute(s->As(Base));
-						t->GetID()->PrintLine();
-
+			t0->Execute(s->As(Base));
+			t1->Execute(s->As(Base));
+			t2->Execute(s->As(Base));
+			
 			"Fin."->PrintLine();
 		}
 	}
