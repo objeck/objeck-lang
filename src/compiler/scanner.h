@@ -193,6 +193,7 @@ enum TokenType {
   SOCK_TCP_HOST_NAME,
   // thread management
   ASYNC_MTHD_CALL,
+  THREAD_MUTEX,
   THREAD_SLEEP,
   THREAD_JOIN,
   // time

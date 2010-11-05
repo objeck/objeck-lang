@@ -1,7 +1,7 @@
 bundle Default {
 	class MyThread from Thread {
-		New() {
-			Parent();
+		New(name : String) {
+			Parent(name);
 		}
 
 		method : public : Run(param : System.Base) ~ Nil {
@@ -9,7 +9,7 @@ bundle Default {
 			s->PrintLine();
 			913->PrintLine();
 
-			m := ThreadMutex->New("bob");
+			m := ThreadMutex->New("m0");
 			critical(m) {
 				a := 18;
 				g := 12;
@@ -32,7 +32,7 @@ bundle Default {
 		}
 
 		function : Run() ~ Nil {
-			t := MyThread->New();	
+			t := MyThread->New("t0");	
 			s := "Pug";	
 			t->Execute(s->As(Base));
 
