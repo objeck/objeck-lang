@@ -846,6 +846,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, THREAD_SLEEP));
       break;
 
+    case THREAD_MUTEX:
+      instrs.push_back(new LibraryInstr(line_num, THREAD_MUTEX));
+      break;
+      
     case CRITICAL_START:
       instrs.push_back(new LibraryInstr(line_num, CRITICAL_START));
       break;

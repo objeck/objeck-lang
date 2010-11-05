@@ -612,12 +612,34 @@ void StackInterpreter::Execute()
       // TODO: implement
       break;
 
-    case CRITICAL_START:
+    case CRITICAL_START: {
       // TODO: implement
+#ifdef _DEBUG
+      cout << "stack oper: CRITICAL_START; call_pos=" << call_stack_pos << endl;
+#endif
+      long* instance = (long*)PopInt();
+      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
+      pthread_mutex_lock(*mutex_ptr);
+    }
       break;
 
-    case CRITICAL_END:
+    case CRITICAL_END: {
       // TODO: implement
+#ifdef _DEBUG
+      cout << "stack oper: CRITICAL_END; call_pos=" << call_stack_pos << endl;
+#endif
+      long* instance = (long*)PopInt();
+      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
+      pthread_mutex_unlock(*mutex_ptr);
+    }
+      break;
+
+    case THREAD_MUTEX: {
+      // TODO: figure out how free memory!!!
+      long* instance = (long*)frame->GetMemory()[0];
+      pthread_mutex_t** mutex_ptr = (pthread_mutex_t**)&(instance[0]);
+      *mutex_ptr = new pthread_mutex_t;
+    }
       break;
       
     case JMP:

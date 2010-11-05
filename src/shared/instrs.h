@@ -124,6 +124,7 @@ namespace instructions {
     ASYNC_MTHD_CALL,
     THREAD_JOIN,
     THREAD_SLEEP,
+    THREAD_MUTEX,
     CRITICAL_START,
     CRITICAL_END,
     // library directives

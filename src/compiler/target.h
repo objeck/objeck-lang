@@ -377,6 +377,10 @@ public:
       cout << "THREAD_SLEEP" << endl;
       break;
 
+    case instructions::THREAD_MUTEX:
+      cout << "THREAD_MUTEX" << endl;
+      break;
+      
     case CRITICAL_START:
       cout << "CRITICAL_START" << endl;
       break;

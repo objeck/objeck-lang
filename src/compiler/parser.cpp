@@ -731,6 +731,12 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
       
+    case THREAD_MUTEX:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::THREAD_MUTEX);
+      NextToken();
+      break;
+      
     case THREAD_SLEEP:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::THREAD_SLEEP);
