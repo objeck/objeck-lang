@@ -158,6 +158,7 @@ void Scanner::LoadKeywords()
   ident_map["DIR_EXISTS"] = DIR_EXISTS;
   ident_map["DIR_LIST"] = DIR_LIST;
   ident_map["ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
+  ident_map["THREAD_MUTEX"] = THREAD_MUTEX;
   ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map["THREAD_JOIN"] = THREAD_JOIN;
   ident_map["SYS_TIME"] = SYS_TIME;
@@ -268,6 +269,7 @@ void Scanner::CheckIdentifier(int index)
   case DIR_EXISTS:
   case DIR_LIST:
   case ASYNC_MTHD_CALL:
+  case THREAD_MUTEX:
   case THREAD_SLEEP:
   case THREAD_JOIN:
   case SYS_TIME:

@@ -977,6 +977,10 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ASYNC_MTHD_CALL, -1, 1L, 1L));
     break;
     
+  case THREAD_MUTEX:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, THREAD_MUTEX));
+    break;
+    
   case THREAD_JOIN:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, THREAD_JOIN));
     break;
@@ -1441,12 +1445,15 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
   StatementList* statement_list = critical_stmt->GetStatements();
   vector<Statement*> statements = statement_list->GetStatements();
   
+  EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_START));
+  
   for(unsigned int i = 0; i < statements.size(); i++) {
     EmitStatement(statements[i]);
   }
+
+  EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_END));
-  
 }
 
 /****************************

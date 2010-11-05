@@ -764,6 +764,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, THREAD_SLEEP));
       break;
 
+    case THREAD_MUTEX:
+      method->AddInstruction(new StackInstr(line_num, THREAD_MUTEX));
+      break;
+      
     case CRITICAL_START:
       method->AddInstruction(new StackInstr(line_num, CRITICAL_START));
       break;

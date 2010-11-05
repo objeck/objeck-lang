@@ -1116,10 +1116,11 @@ bundle System {
 	# System thread class
 	~~#	
 	class Thread {
-		@id : Int;
+		@name : String;
 		@param : System.Base;
 		
-		New() {
+		New(name : String) {
+			@name := name;
 		}
 		
 		method : public : Execute(param : System.Base) ~ Nil {
@@ -1135,10 +1136,10 @@ bundle System {
 		}
 		
 		#~~
-		# Returns thread ID
+		# Returns the name
 		~~#
-		method : public : GetID() ~ Int {
-			return @id;
+		method : public : GetName() ~ String {
+			return @name;
 		}
 		
 		#~~
@@ -1156,6 +1157,7 @@ bundle System {
 		
 		New(name : String) {
 			@name := name;
+			THREAD_MUTEX;
 		}
 		
 		#~~
