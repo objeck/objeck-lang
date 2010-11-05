@@ -1034,10 +1034,6 @@ bundle System {
 	# Runtime system class
 	~~#	
 	class Runtime {
-		function : Join() ~ Nil {
-			THREAD_JOIN;
-		}
-		
 		function : GetTime() ~ System.Time {
 			return Time->New();
 		}
@@ -1045,6 +1041,8 @@ bundle System {
 		function : Sleep(t : Int) ~ Nil {
 			THREAD_SLEEP;
 		}
+		
+		
 	}
 	
 	#~~
@@ -1118,6 +1116,7 @@ bundle System {
 	# System thread class
 	~~#	
 	class Thread {
+		@id : Int;
 		@param : System.Base;
 		
 		New() {
@@ -1136,10 +1135,36 @@ bundle System {
 		}
 		
 		#~~
+		# Returns thread ID
+		~~#
+		method : public : GetID() ~ Int {
+			return @id;
+		}
+		
+		#~~
 		# Method to execute in new worker thread
 		~~#
 		method : virtual : public : Run(param : System.Base) ~ Nil;
 	}	
+	
+	#~~
+	# System thread class
+	~~#	
+	class ThreadMutex {
+		@id : Int;
+		@name : String;
+		
+		New(name : String) {
+			@name := name;
+		}
+		
+		#~~
+		# Returns the name
+		~~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+	}
 }
 
 #------------ I/O ------------

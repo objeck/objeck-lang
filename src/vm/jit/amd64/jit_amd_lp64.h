@@ -2023,7 +2023,7 @@ namespace Runtime {
 	aval_regs.push_back(new RegisterHolder(RAX));
 	// aux general use registers
 	//        aux_regs.push(new RegisterHolder(RDI));
-	//        aux_regs.push(new RegisterHolder(RSI))
+	//        aux_regs.push(new RegisterHolder(RSI));
 	aux_regs.push(new RegisterHolder(R15));
 	aux_regs.push(new RegisterHolder(R14));
 	aux_regs.push(new RegisterHolder(R13));
