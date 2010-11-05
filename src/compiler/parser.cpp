@@ -2158,17 +2158,35 @@ CriticalSection* Parser::ParseCritical(int depth)
 {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
-
+  
 #ifdef _DEBUG
   Show("Critical Section", depth);
 #endif
+
+  NextToken();
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    ProcessError(TOKEN_OPEN_PAREN);
+  }
+  NextToken();
+
+  // initialization statement
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  const string ident = scanner->GetToken()->GetIdentifier();
+  Variable* variable = ParseVariable(ident, depth + 1);
   
   NextToken();
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+
   symbol_table->CurrentParseScope()->NewParseScope(); 
   StatementList* statements =  ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
   
-  return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, statements);
+  return TreeFactory::Instance()->MakeCriticalSection(file_name, line_num, variable, statements);
 }
 
 /****************************

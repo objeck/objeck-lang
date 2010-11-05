@@ -1181,16 +1181,22 @@ namespace frontend {
    * CriticalSection class
    ****************************/
   class CriticalSection : public Statement {
+    Variable* variable;
     StatementList* statements;
   
   public:
-  CriticalSection(const string &f, const int l, StatementList* s) : Statement(f, l) {
+  CriticalSection(const string &f, const int l, Variable* v, StatementList* s) : Statement(f, l) {
+      variable = v;
       statements = s;
     }
   
     ~CriticalSection() {
     }
-  
+    
+    Variable* GetVariable() {
+      return variable;
+    }
+
     StatementList* GetStatements() {
       return statements;
     }
@@ -2418,8 +2424,8 @@ namespace frontend {
       return tmp;
     }
   
-    CriticalSection* MakeCriticalSection(const string &file_name, const int line_num, StatementList* stmts) {
-      CriticalSection* tmp = new CriticalSection(file_name, line_num, stmts);
+    CriticalSection* MakeCriticalSection(const string &file_name, const int line_num, Variable* var, StatementList* stmts) {
+      CriticalSection* tmp = new CriticalSection(file_name, line_num, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
