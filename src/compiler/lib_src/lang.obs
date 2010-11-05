@@ -1116,6 +1116,7 @@ bundle System {
 	# System thread class
 	~~#	
 	class Thread {
+		@id : Int;
 		@name : String;
 		@param : System.Base;
 		
@@ -1140,6 +1141,13 @@ bundle System {
 		~~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+		
+		#~~
+		# Returns ID
+		~~#
+		method : public : GetID() ~ Int {
+			return @id;
 		}
 		
 		#~~
