@@ -668,14 +668,19 @@ void StackInterpreter::Execute()
       break;
 
     case THREAD_MUTEX: {
-      // TODO: figure out how free memory!!!
+#ifdef _DEBUG
+      cout << "stack oper: THREAD_MUTEX; call_pos=" << call_stack_pos << endl;
+#endif
+      // TODO: figure out how free memory!!! - pthread_mutex_destroy()
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
 	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
-      instance[0] = (long)new pthread_mutex_t;
+      pthread_mutex_t* mutex = new pthread_mutex_t;
+      pthread_mutex_init(mutex, NULL);
+      instance[0] = (long)mutex;
     }
       break;
 
