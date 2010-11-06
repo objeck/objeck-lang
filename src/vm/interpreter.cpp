@@ -603,11 +603,11 @@ void StackInterpreter::Execute()
 #endif
       ProcessTrap(instr);
       break;
-
+      
       //
       // Start: Thread support
       // 
-
+      
     case THREAD_JOIN: {
 #ifdef _DEBUG
       cout << "stack oper: THREAD_JOIN; call_pos=" << call_stack_pos << endl;
@@ -1058,7 +1058,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   instance[0] = (long)vm_thread;
 
 #ifdef _DEBUG
-  cout << "*** Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
+  cout << "*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
 #endif
   
   program->AddThread(vm_thread);
