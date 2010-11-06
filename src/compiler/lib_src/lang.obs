@@ -1112,6 +1112,8 @@ bundle System {
 		}
 	}	
 	
+	#------------ Threads ------------
+	
 	#~~
 	# System thread class
 	~~#	
@@ -1167,8 +1169,17 @@ bundle System {
 	# System thread class
 	~~#	
 	class ThreadMutex {
-		@id : Int;
 		@name : String;
+		# hack to hold a mutext struct.  Largest struct 
+		# is 64-bytes for x64 POSIX
+		@m0 : Int;
+		@m1 : Int;
+		@m2 : Int;
+		@m3 : Int;
+		@m4 : Int;
+		@m5 : Int;
+		@m6 : Int;
+		@m7 : Int;
 		
 		New(name : String) {
 			@name := name;
