@@ -197,7 +197,7 @@ class ContextAnalyzer {
         method->GetMethodType() != NEW_PRIVATE_METHOD) {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-      if(entry && entry->IsLocal()) {
+      if(entry && (entry->IsLocal()  || entry->IsStatic())) {
         return false;
       }
 
@@ -224,7 +224,7 @@ class ContextAnalyzer {
         method->GetMethodType() != NEW_PRIVATE_METHOD) {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-      if(entry && entry->IsLocal()) {
+      if(entry && (entry->IsLocal() || entry->IsStatic())) {
         return false;
       }
 
