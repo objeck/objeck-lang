@@ -1159,7 +1159,7 @@ namespace Runtime {
 	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
       }
 	break;
-      
+	
       case CRITICAL_START: {
 	long* instance = (long*)PopInt(op_stack, stack_pos);
 	if(!instance) {
