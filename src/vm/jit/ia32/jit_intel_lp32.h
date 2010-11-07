@@ -943,15 +943,18 @@ namespace Runtime {
 	//----------- threads -----------
       
       case THREAD_JOIN: {
-#ifdef _WIN32
-
-#else
-	      int32_t* instance = inst;
+        int32_t* instance = inst;
 	      if(!instance) {
 	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	        exit(1);
 	      }
-      
+#ifdef _WIN32
+        HANDLE vm_thread = (HANDLE)instance[0];
+        if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
+          cerr << "Unable to join thread!" << endl;
+          exit(-1);
+        }
+#else
 	      void* status;
 	      pthread_t vm_thread = (pthread_t)instance[0];      
 	      if(pthread_join(vm_thread, &status)) {
@@ -971,42 +974,42 @@ namespace Runtime {
 	      break;
       
       case THREAD_MUTEX: {
-#ifdef _WIN32
-
-#else
-	      int32_t* instance = inst;
+        int32_t* instance = inst;
 	      if(!instance) {
 	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	        exit(1);
 	      }
+#ifdef _WIN32
+        InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else
 	      pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
 #endif
       }
 	break;
 	
       case CRITICAL_START: {
-#ifdef _WIN32
-
-#else
-	      int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+        int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
 	      if(!instance) {
 	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	        exit(1);
-	      }      
+	      }
+#ifdef _WIN32
+        EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else     
 	      pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
 #endif
       }
 	break;
 
       case CRITICAL_END: {
-#ifdef _WIN32
-
-#else
-	      int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+        int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
 	      if(!instance) {
 	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	        exit(1);
-	      }      
+	      }
+#ifdef _WIN32
+        LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else     
 	      pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
 #endif
       }
