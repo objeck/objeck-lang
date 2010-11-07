@@ -943,52 +943,72 @@ namespace Runtime {
 	//----------- threads -----------
       
       case THREAD_JOIN: {
-	int32_t* instance = inst;
-	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  exit(1);
-	}
+#ifdef _WIN32
+
+#else
+	      int32_t* instance = inst;
+	      if(!instance) {
+	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	        exit(1);
+	      }
       
-	void* status;
-	pthread_t vm_thread = (pthread_t)instance[0];      
-	if(pthread_join(vm_thread, &status)) {
-	  cerr << "Unable to join thread!" << endl;
-	  exit(-1);
-	}
+	      void* status;
+	      pthread_t vm_thread = (pthread_t)instance[0];      
+	      if(pthread_join(vm_thread, &status)) {
+	        cerr << "Unable to join thread!" << endl;
+	        exit(-1);
+	      }
+#endif
       }
 	break;
       
       case THREAD_SLEEP:
-	sleep(PopInt(op_stack, stack_pos));
-	break;
+#ifdef _WIN32
+        Sleep(PopInt(op_stack, stack_pos));
+#else
+	      sleep(PopInt(op_stack, stack_pos));
+#endif
+	      break;
       
       case THREAD_MUTEX: {
-	int32_t* instance = inst;
-	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  exit(1);
-	}
-	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+#ifdef _WIN32
+
+#else
+	      int32_t* instance = inst;
+	      if(!instance) {
+	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	        exit(1);
+	      }
+	      pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+#endif
       }
 	break;
 	
       case CRITICAL_START: {
-	int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
-	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  exit(1);
-	}      
-	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+#ifdef _WIN32
+
+#else
+	      int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+	      if(!instance) {
+	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	        exit(1);
+	      }      
+	      pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+#endif
       }
 	break;
 
       case CRITICAL_END: {
-	int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
-	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  exit(1);
-	}      
-	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+#ifdef _WIN32
+
+#else
+	      int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+	      if(!instance) {
+	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	        exit(1);
+	      }      
+	      pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+#endif
       }
 	break;
 	
