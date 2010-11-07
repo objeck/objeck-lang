@@ -614,17 +614,25 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	StackErrorUnwind();
-	exit(1);
+	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	      StackErrorUnwind();
+	      exit(1);
       }
       
+#ifdef _WIN32
+      HANDLE vm_thread = (HANDLE)instance[0];
+      if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
+        cerr << "Unable to join thread!" << endl;
+        exit(-1);
+      }
+#else
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
-	cerr << "Unable to join thread!" << endl;
-	exit(-1);
+	      cerr << "Unable to join thread!" << endl;
+	      exit(-1);
       }
+#endif
     }
       break;
       
@@ -632,7 +640,12 @@ void StackInterpreter::Execute()
 #ifdef _DEBUG
       cout << "stack oper: THREAD_SLEEP; call_pos=" << call_stack_pos << endl;
 #endif
+
+#ifdef _WIN32
+      Sleep(PopInt());
+#else
       sleep(PopInt());
+#endif
       break;
       
     case THREAD_MUTEX: {
@@ -641,11 +654,15 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	StackErrorUnwind();
-	exit(1);
+	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	      StackErrorUnwind();
+	      exit(1);
       }
+#ifdef _WIN32
+      InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else
       pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+#endif
     }
       break;
       
@@ -655,11 +672,15 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	StackErrorUnwind();
-	exit(1);
-      }      
+	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	      StackErrorUnwind();
+	      exit(1);
+      }
+#ifdef _WIN32
+      EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else
       pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+#endif
     }
       break;
 
@@ -669,11 +690,15 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	StackErrorUnwind();
-	exit(1);
-      }      
+	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	      StackErrorUnwind();
+	      exit(1);
+      }
+#ifdef _WIN32
+      LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
+#else
       pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+#endif
     }
       break;
 
@@ -1035,13 +1060,17 @@ void StackInterpreter::ProcessReturn()
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 {
-#ifdef _WIN32
-
-#else
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
   holder->param = param;
 
+#ifdef _WIN32
+  HANDLE vm_thread = CreateThread(NULL, 0, AsyncMethodCall, holder, 0, NULL);
+  if(!vm_thread) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+#else
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
@@ -1067,6 +1096,43 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 
 #ifdef _WIN32
 // windows thread callback
+DWORD WINAPI StackInterpreter::AsyncMethodCall(void* arg)
+{
+  ThreadHolder* holder = (ThreadHolder*)arg;
+
+  // execute
+  long* thread_op_stack = new long[STACK_SIZE];
+  long* thread_stack_pos = new long;
+  (*thread_stack_pos) = 0;
+  
+  // set parameter
+  thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
+  
+#ifdef _DEBUG
+  cout << "# Starting thread=" << pthread_self() << " #" << endl;
+#endif  
+  
+  Runtime::StackInterpreter intpr;
+  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
+
+#ifdef _DEBUG
+  cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
+#endif
+  
+  // clean up
+  delete[] thread_op_stack;
+  thread_op_stack = NULL;
+  
+  delete thread_stack_pos;
+  thread_stack_pos = NULL;
+
+  delete holder;
+  holder = NULL;
+  
+  program->RemoveThread((HANDLE)GetCurrentThreadId());
+
+  return 0;
+}
 #else
 // posix thread callback
 void* StackInterpreter::AsyncMethodCall(void* arg)
