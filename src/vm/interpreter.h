@@ -291,7 +291,7 @@ namespace Runtime {
     static void Initialize(StackProgram* p);
 
 #ifdef _WIN32
-    static DWORD WINAPI AsyncMethodCall(void* arg);
+    static DWORD WINAPI AsyncMethodCall(LPVOID arg);
 #else
     static void* AsyncMethodCall(void* arg);
 #endif

@@ -64,9 +64,7 @@ DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
   
   return 0;
 }
-
 #else
-
 void* StackInterpreter::CompileMethod(void* arg) 
 {
   StackMethod* method = (StackMethod*)arg;
@@ -1081,22 +1079,19 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
     cerr << "Unable to create runtime thread!" << endl;
     exit(-1);
   }
-  
+#endif  
   // assign thread ID
   long* instance = (long*)frame->GetMemory()[0];
   instance[0] = (long)vm_thread;
-
 #ifdef _DEBUG
   cout << "*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
 #endif
-  
   program->AddThread(vm_thread);
-#endif
 }
 
 #ifdef _WIN32
 // windows thread callback
-DWORD WINAPI StackInterpreter::AsyncMethodCall(void* arg)
+DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
 
@@ -1107,16 +1102,20 @@ DWORD WINAPI StackInterpreter::AsyncMethodCall(void* arg)
   
   // set parameter
   thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
+
+  HANDLE vm_thread;
+  DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
+    &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
   
 #ifdef _DEBUG
-  cout << "# Starting thread=" << pthread_self() << " #" << endl;
+  cout << "# Starting thread=" << vm_thread << " #" << endl;
 #endif  
   
   Runtime::StackInterpreter intpr;
   intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
 
 #ifdef _DEBUG
-  cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
+  cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << vm_thread << " #" << endl;
 #endif
   
   // clean up
@@ -1129,7 +1128,7 @@ DWORD WINAPI StackInterpreter::AsyncMethodCall(void* arg)
   delete holder;
   holder = NULL;
   
-  program->RemoveThread((HANDLE)GetCurrentThreadId());
+  program->RemoveThread(vm_thread);
 
   return 0;
 }
@@ -2113,9 +2112,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
       // copy string
       char* char_array_ptr = (char*)(char_array + 3);
-
       strcpy(char_array_ptr, value_str.c_str());
-      //			strcpy_s(char_array_ptr,  value_str.size(), value_str.c_str());
 
       // create 'System.String' object instance
       long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
