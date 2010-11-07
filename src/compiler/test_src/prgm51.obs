@@ -17,12 +17,14 @@ bundle Default {
 			@m->GetName()->PrintLine();	
 		}
 		
-		function : DoStuff() ~ Nil {
+		function : native : DoStuff() ~ Nil {
 			critical(@m) {
 				@x += 1;
+#~				
 				@y += @x * 2;
 				@x->PrintLine();
 				@y->PrintLine();
+~#				
 			};	
 		}
 	}
@@ -37,8 +39,11 @@ bundle Default {
 			array[0] := 13;
 			j := array[0];
 			j->PrintLine();
-~#
+
 			Run();
+~#			
+			MyThread->Init();
+			MyThread->DoStuff();
 		}
 
 		function : Run() ~ Nil {
