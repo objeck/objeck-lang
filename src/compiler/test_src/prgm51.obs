@@ -17,7 +17,7 @@ bundle Default {
 			@m->GetName()->PrintLine();	
 		}
 		
-		function : native : DoStuff() ~ Nil {
+		function : DoStuff() ~ Nil {
 			critical(@m) {
 				@x += 1;
 				@y += @x * 2;
