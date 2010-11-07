@@ -1015,22 +1015,79 @@ The Console class allows programmers to read and write information to the system
 	\end{itemize}
 \end{itemize}
 
+\subsubsection{Thread}
+The Thread class allows programmers to invoke a method in a separately
+running system thread.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+  
+\item \texttt{Execute} - Execute a \texttt{Thread()} by calling the thread's \texttt{Run()}
+  method in a separate thread.
+  \begin{itemize}
+  \item method : public : Execute(param : System.Base), Nil
+  \end{itemize}
+
+\item \texttt{Sleep} - Sleeps a given thread for a number of milliseconds.
+  \begin{itemize}
+  \item method : public : Sleep(t : Int), Nil
+  \end{itemize}
+
+\item \texttt{Join} - Joins a thread instance with the creating thread
+  \begin{itemize}
+  \item method : public : Join(), Nil
+  \end{itemize}
+
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName(), String
+  \end{itemize}
+
+\item \texttt{GetRunID} - Returns running thread ID
+  \begin{itemize}
+  \item method : public : GetName(), String
+  \end{itemize}
+
+\item \texttt{Run} - Method that is executed by the new thread
+  \begin{itemize}
+  \item method : virtual : public : Run(param : System.Base), Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{ThreadMutex}
+The ThreadMutex class is used for thread synchronization i.e. locking
+and unlocking running threads.   
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+  
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName(), String
+  \end{itemize}  
+\end{itemize}
+
 \subsubsection{Time}
 The Time class allows programmers gain access to the current system time.    The class supports the following operations:
 \begin{itemize}
-    \item \texttt{New}
-    	\begin{itemize}
-	\item New()
-	\end{itemize}
-    \item \texttt{GetDay} - return the current day as an \texttt{Int}.
-    	\begin{itemize}
-	\item method : public : GetDay(), Int
-	\end{itemize}
-    \item \texttt{GetMonth} - return the current month as an \texttt{Int}.
-    	\begin{itemize}
-	\item method : public : GetMonth(), Int
-	\end{itemize}
-    \item \texttt{GetYear} - return the current year as an \texttt{Int}.
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+  
+\item \texttt{GetDay} - return the current day as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetDay(), Int
+  \end{itemize}
+\item \texttt{GetMonth} - return the current month as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetMonth(), Int
+  \end{itemize}
+\item \texttt{GetYear} - return the current year as an \texttt{Int}.
     	\begin{itemize}
 	\item method : public : GetYear(), Int
 	\end{itemize}
@@ -1273,7 +1330,7 @@ The XMLParser class allows programmers to parse and search XML documents using a
 	\item method : public : GetRoot(), XMLElement
 	\end{itemize}
 	
-	\item \texttt{GetError} - Returns the last parsing error; if one occured.
+	\item \texttt{GetError} - Returns the last parsing error; if one occurred.
     	\begin{itemize}
 	\item method : public : Parse(), Bool
 	\end{itemize}	

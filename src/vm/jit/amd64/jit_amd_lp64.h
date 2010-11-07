@@ -1122,6 +1122,58 @@ namespace Runtime {
 	PushInt(op_stack, stack_pos, result);
       }
 	break;
+
+	//----------- threads -----------
+      
+      case THREAD_JOIN: {
+	long* instance = inst;
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
+      
+	void* status;
+	pthread_t vm_thread = (pthread_t)instance[0];      
+	if(pthread_join(vm_thread, &status)) {
+	  cerr << "Unable to join thread!" << endl;
+	  exit(-1);
+	}
+      }
+	break;
+      
+      case THREAD_SLEEP:
+	sleep(PopInt(op_stack, stack_pos));
+	break;
+      
+      case THREAD_MUTEX: {
+	long* instance = inst;
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
+	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+      }
+	break;
+      
+      case CRITICAL_START: {
+	long* instance = (long*)PopInt(op_stack, stack_pos);
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}      
+	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+      }
+	break;
+
+      case CRITICAL_END: {
+	long* instance = (long*)PopInt(op_stack, stack_pos);
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}      
+	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+      }
+	break;
 	
 	////////////////////////
 	// trap
@@ -1823,10 +1875,10 @@ namespace Runtime {
 	shl_imm_reg(3, bounds_holder->GetRegister());
 	break;
 	/*
-      case FLOAT_TYPE:
-	shl_reg(index_holder->GetRegister(), 4);
-	shl_reg(bounds_holder->GetRegister(), 4);
-	break;
+	  case FLOAT_TYPE:
+	  shl_reg(index_holder->GetRegister(), 4);
+	  shl_reg(bounds_holder->GetRegister(), 4);
+	  break;
 	*/
       }
       CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
