@@ -299,9 +299,7 @@ void JitCompilerIA32::ProcessInstructions() {
 #ifdef _DEBUG
       cout << "LOAD_CLS_MEM; regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
-      RegisterHolder* holder = GetRegister();
-      move_imm_reg((int32_t)method->GetClass()->GetClassMemory(), holder->GetRegister());
-      working_stack.push_front(new RegInstr(holder));
+      working_stack.push_front(new RegInstr(instr));
     }
       break;
       

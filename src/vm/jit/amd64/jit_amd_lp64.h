@@ -165,6 +165,11 @@ namespace Runtime {
 	operand = si->GetOperand();
 	break;
 
+      case LOAD_CLS_MEM:
+	type = MEM_INT;
+	operand = CLASS_MEM;
+	break;
+	
       case LOAD_INST_MEM:
 	type = MEM_INT;
 	operand = INSTANCE_MEM;
@@ -1923,9 +1928,9 @@ namespace Runtime {
       multimap<long, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); value++) {
 	long id = value->first;
-	StackInstr* instr = (*value).second;
+	StackInstr* instr = value->second;
 	// instance reference
-	if(instr->GetOperand2() == INST) {
+	if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
 	  // note: all instance variables are allocted in 4-byte blocks,
 	  // for floats the assembler allocates 2 4-byte blocks
 	  instr->SetOperand3(instr->GetOperand() * sizeof(long));
@@ -1952,7 +1957,7 @@ namespace Runtime {
 	  last_id = id;
 	}
 #ifdef _DEBUG
-	if(instr->GetOperand2() == INST) {
+	if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
 	  cout << "native memory: index=" << instr->GetOperand() << "; jit index="
 	       << instr->GetOperand3() << endl;
 	}

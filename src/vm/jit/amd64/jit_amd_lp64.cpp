@@ -357,9 +357,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #ifdef _DEBUG
       cout << "LOAD_CLS_MEM; regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
-      RegisterHolder* holder = GetRegister();
-      move_imm_reg((long)method->GetClass()->GetClassMemory(), holder->GetRegister());
-      working_stack.push_front(new RegInstr(holder));
+      working_stack.push_front(new RegInstr(instr));
     }
       break;
       
@@ -556,7 +554,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #ifdef _DEBUG
       cout << "CRITICAL_START: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
-      ProcessStackCallback(CRITICAL_START, instr, instr_index, 0);
+      ProcessStackCallback(CRITICAL_START, instr, instr_index, 1);
     }
       break;
       
@@ -564,7 +562,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #ifdef _DEBUG
       cout << "CRITICAL_END: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
-      ProcessStackCallback(CRITICAL_END, instr, instr_index, 0);
+      ProcessStackCallback(CRITICAL_END, instr, instr_index, 1);
     }
       break;
       
@@ -3502,6 +3500,6 @@ long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst,
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
-  return jit_fun(cls_id, mthd_id, (long*)method->GetClass()->GetClassMemory(), 
+  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
 		 inst, op_stack, stack_pos);
 }
