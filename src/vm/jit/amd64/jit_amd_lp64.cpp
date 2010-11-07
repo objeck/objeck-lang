@@ -536,6 +536,38 @@ void JitCompilerIA64::ProcessInstructions() {
     }
       break;
       
+    case THREAD_JOIN: {
+#ifdef _DEBUG
+      cout << "THREAD_JOIN: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(THREAD_JOIN, instr, instr_index, 0);
+    }
+      break;
+
+    case THREAD_SLEEP: {
+#ifdef _DEBUG
+      cout << "THREAD_SLEEP: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(THREAD_SLEEP, instr, instr_index, 1);
+    }
+      break;
+      
+    case CRITICAL_START: {
+#ifdef _DEBUG
+      cout << "CRITICAL_START: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CRITICAL_START, instr, instr_index, 0);
+    }
+      break;
+      
+    case CRITICAL_END: {
+#ifdef _DEBUG
+      cout << "CRITICAL_END: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CRITICAL_END, instr, instr_index, 0);
+    }
+      break;
+      
     case TRAP:
 #ifdef _DEBUG
       cout << "TRAP: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
