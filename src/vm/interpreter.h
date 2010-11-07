@@ -289,7 +289,12 @@ namespace Runtime {
 
   public:
     static void Initialize(StackProgram* p);
+
+#ifdef _WIN32
+    static DWORD WINAPI AsyncMethodCall(void* arg);
+#else
     static void* AsyncMethodCall(void* arg);
+#endif
 
     StackInterpreter() {
     }
