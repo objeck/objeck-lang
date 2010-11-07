@@ -68,7 +68,7 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
-// #define PAGE_SIZE 4096
+#define PAGE_SIZE 4096
 
   // register type
   typedef enum _RegType { 
@@ -937,6 +937,58 @@ namespace Runtime {
 	  exit(1);
 	}
 	PushInt(op_stack, stack_pos, result);
+      }
+	break;
+
+	//----------- threads -----------
+      
+      case THREAD_JOIN: {
+	int32_t* instance = inst;
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
+      
+	void* status;
+	pthread_t vm_thread = (pthread_t)instance[0];      
+	if(pthread_join(vm_thread, &status)) {
+	  cerr << "Unable to join thread!" << endl;
+	  exit(-1);
+	}
+      }
+	break;
+      
+      case THREAD_SLEEP:
+	sleep(PopInt(op_stack, stack_pos));
+	break;
+      
+      case THREAD_MUTEX: {
+	int32_t* instance = inst;
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
+	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+      }
+	break;
+	
+      case CRITICAL_START: {
+	int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}      
+	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+      }
+	break;
+
+      case CRITICAL_END: {
+	int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}      
+	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
       }
 	break;
 	

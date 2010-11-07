@@ -473,7 +473,39 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessReturnParameters(INT_TYPE);
     }
       break;
+     
+    case THREAD_JOIN: {
+#ifdef _DEBUG
+      cout << "THREAD_JOIN: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(THREAD_JOIN, instr, instr_index, 0);
+    }
+      break;
+
+    case THREAD_SLEEP: {
+#ifdef _DEBUG
+      cout << "THREAD_SLEEP: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(THREAD_SLEEP, instr, instr_index, 1);
+    }
+      break;
       
+    case CRITICAL_START: {
+#ifdef _DEBUG
+      cout << "CRITICAL_START: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CRITICAL_START, instr, instr_index, 1);
+    }
+      break;
+      
+    case CRITICAL_END: {
+#ifdef _DEBUG
+      cout << "CRITICAL_END: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CRITICAL_END, instr, instr_index, 1);
+    }
+      break;
+ 
     case TRAP:
 #ifdef _DEBUG
       cout << "TRAP: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
@@ -687,8 +719,8 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
 void JitCompilerIA32::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
 #ifdef _DEBUG
-      cout << "JMP: id=" << instr->GetOperand() << ", regs=" << aval_regs.size() 
-	   << "," << aux_regs.size() << endl;
+    cout << "JMP: id=" << instr->GetOperand() << ", regs=" << aval_regs.size() 
+	 << "," << aux_regs.size() << endl;
 #endif
     if(instr->GetOperand2() < 0) {
       AddMachineCode(0xe9);
@@ -1883,7 +1915,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
   
   StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
-  // if(false) {
+    // if(false) {
 #ifdef _DEBUG
     cout << "JMP: id=" << next_instr->GetOperand() << ", regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
