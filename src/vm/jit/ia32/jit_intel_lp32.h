@@ -153,6 +153,11 @@ namespace Runtime {
 	operand = si->GetOperand();
 	break;
 
+      case LOAD_CLS_MEM:
+	type = MEM_32;
+	operand = CLASS_MEM;
+	break;
+	
       case LOAD_INST_MEM:
 	type = MEM_32;
 	operand = INSTANCE_MEM;
@@ -1775,7 +1780,7 @@ namespace Runtime {
 	int32_t id = value->first;
 	StackInstr* instr = (*value).second;
 	// instance reference
-	if(instr->GetOperand2() == INST) {
+	if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
 	  // note: all instance variables are allocted in 4-byte blocks,
 	  // for floats the assembler allocates 2 4-byte blocks
 	  instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
@@ -1802,7 +1807,7 @@ namespace Runtime {
 	  last_id = id;
 	}
 #ifdef _DEBUG
-	if(instr->GetOperand2() == INST) {
+	if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
 	  cout << "native memory: index=" << instr->GetOperand() << "; jit index="
 	       << instr->GetOperand3() << endl;
 	}
