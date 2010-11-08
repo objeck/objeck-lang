@@ -55,8 +55,14 @@ bundle Default {
 			t0->Execute(s->As(Base));
 			t1->Execute(s->As(Base));
 			t2->Execute(s->As(Base));
+
+#~			
+			t0->Join();
+			t1->Join();
+			t2->Join();
 			
-#			"Fin."->PrintLine();
+			"Fin."->PrintLine();
+~#			
 		}
 	}
 }
