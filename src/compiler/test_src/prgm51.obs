@@ -48,13 +48,20 @@ bundle Default {
 		function : Run() ~ Nil {
 			s := "Hello";
 			MyThread->Init();
-			t0 := MyThread->New("t0");	
-			t1 := MyThread->New("t1");	
-			t2 := MyThread->New("t2");	
-
-			t0->Execute(s->As(Base));
-			t1->Execute(s->As(Base));
-			t2->Execute(s->As(Base));
+			
+			for(i := 0; i < 10; i += 1;) {
+				t0 := MyThread->New("t0");	
+				t1 := MyThread->New("t1");	
+				t2 := MyThread->New("t2");	
+	
+				t0->Execute(s->As(Base));
+				t1->Execute(s->As(Base));
+				t2->Execute(s->As(Base));
+				
+				t0->Join();
+				t1->Join();
+				t2->Join();
+			};
 
 #~			
 			t0->Join();
