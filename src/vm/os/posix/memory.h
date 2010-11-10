@@ -36,7 +36,8 @@
 
 // basic vm tuning parameters
 // #define MEM_MAX 512
-#define MEM_MAX 1024 * 3
+// #define MEM_MAX 1024 * 3
+#define MEM_MAX 1024
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
