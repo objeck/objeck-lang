@@ -1,0 +1,5 @@
+Objeck v1.2.1_0
+
+This release provides support for application threads.  There's also one major bug fix related to the referencing of static class variables from instance methods.  Additionally, there was some minor code clean up.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
