@@ -986,6 +986,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
   case THREAD_SLEEP:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, THREAD_SLEEP));
     break;
     
