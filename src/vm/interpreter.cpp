@@ -640,7 +640,7 @@ void StackInterpreter::Execute()
 #endif
 
 #ifdef _WIN32
-      Sleep(PopInt());
+      Sleep(PopInt() * 1000);
 #else
       sleep(PopInt());
 #endif
