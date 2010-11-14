@@ -1037,12 +1037,6 @@ bundle System {
 		function : GetTime() ~ System.Time {
 			return Time->New();
 		}
-		
-		function : Sleep(t : Int) ~ Nil {
-			THREAD_SLEEP;
-		}
-		
-		
 	}
 	
 	#~~
@@ -1134,7 +1128,7 @@ bundle System {
 		#~~
 		# Sleeps worker thread
 		~~#
-		method : public : Sleep(t : Int) ~ Nil {
+		function : Sleep(t : Int) ~ Nil {
 			THREAD_SLEEP;
 		}
 		
