@@ -863,9 +863,12 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr)
       StackErrorUnwind();
       exit(1);
     }
+    
     long mem = PopInt();
     // mark static reference
     if(instr->GetOperand2() == CLS) {
+      // ensures that static memory is 'marked' by the garbage
+      // collector and not collected
       MemoryManager::AddStaticMemory((long*)mem);
     }
     cls_inst_mem[instr->GetOperand()] = mem;
