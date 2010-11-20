@@ -59,7 +59,9 @@ class MemoryManager {
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> allocated_memory;
   static vector<long*> marked_memory;
+  static vector<long*> static_memory;
   
+  static CRITICAL_SECTION static_cs;
   static CRITICAL_SECTION jit_cs;
   static CRITICAL_SECTION pda_cs;
   static CRITICAL_SECTION allocated_cs;
@@ -110,6 +112,8 @@ public:
     delete instance;
     instance = NULL;
   }
+
+  static void AddStaticMemory(long* mem);
 
   // add and remove jit roots
   static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);

@@ -38,10 +38,12 @@ list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 vector<long*> MemoryManager::marked_memory;
+vector<long*> MemoryManager::static_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
+CRITICAL_SECTION MemoryManager::static_cs;
 CRITICAL_SECTION MemoryManager::jit_cs;
 CRITICAL_SECTION MemoryManager::pda_cs;
 CRITICAL_SECTION MemoryManager::allocated_cs;
@@ -55,6 +57,7 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
 
+  InitializeCriticalSection(&static_cs);
   InitializeCriticalSection(&jit_cs);
   InitializeCriticalSection(&pda_cs);
   InitializeCriticalSection(&allocated_cs);
@@ -69,6 +72,19 @@ MemoryManager* MemoryManager::Instance()
   }
 
   return instance;
+}
+
+void MemoryManager::AddStaticMemory(long* mem)
+{
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&static_cs);
+#endif
+
+  static_memory.push_back(mem);
+
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&static_cs);
+#endif
 }
 
 // if return true, trace memory otherwise do not
