@@ -38,11 +38,13 @@ list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 vector<long*> MemoryManager::marked_memory;
+vector<long*> MemoryManager::static_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 #ifndef _GC_SERIAL
+pthread_mutex_t MemoryManager::static_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -65,6 +67,19 @@ MemoryManager* MemoryManager::Instance()
   }
 
   return instance;
+}
+
+void MemoryManager::AddStaticMemory(long* mem)
+{
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&static_mutex);
+#endif
+
+  static_memory.push_back(mem);
+
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&static_mutex);
+#endif
 }
 
 // if return true, trace memory otherwise do not
@@ -429,6 +444,17 @@ void* MemoryManager::CollectMemory(void* arg)
   CheckJitRoots(NULL);
 #endif
   
+  // mark static memory
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&static_mutex);
+#endif
+  for(int i = 0; i < static_memory.size(); i++) {
+    MarkMemory(static_memory[i]);
+  }
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&static_mutex);
+#endif
+
   // sweep memory
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;

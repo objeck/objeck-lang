@@ -61,21 +61,15 @@ class MemoryManager {
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> allocated_memory;
   static vector<long*> marked_memory;
+  static vector<long*> static_memory;
   
 #ifndef _GC_SERIAL
-#ifdef _WIN32
-  static CRITICAL_SECTION jit_mutex;
-  static CRITICAL_SECTION pda_mutex;
-  static CRITICAL_SECTION allocated_mutex;
-  static CRITICAL_SECTION marked_mutex;
-  static CRITICAL_SECTION marked_sweep_mutex;
-#else
+  static pthread_mutex_t static_mutex;
   static pthread_mutex_t jit_mutex;
   static pthread_mutex_t pda_mutex;
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
-#endif
 #endif
     
   // note: protected by 'allocated_mutex'
@@ -117,6 +111,8 @@ public:
     instance = NULL;
   }
 
+  static void AddStaticMemory(long* mem);
+  
   // add and remove jit roots
   static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);
   static void RemoveJitMethodRoot(long* mem);
