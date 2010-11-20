@@ -82,7 +82,7 @@ void MemoryManager::AddStaticMemory(long* mem)
 
   // add memory reference if it doesn't exist
   vector<long*>::iterator result = find(static_memory.begin(), static_memory.end(), mem);
-  if(result != static_memory.end()) {
+  if(result == static_memory.end()) {
     static_memory.push_back(mem);
   }
 
