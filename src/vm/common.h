@@ -81,6 +81,7 @@ inline string IntToString(int v)
 struct StackDclr {
   string name;
   ParamType type;
+  MemoryContext context;
   long id;
 };
 
