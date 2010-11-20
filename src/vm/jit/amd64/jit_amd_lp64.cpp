@@ -1123,7 +1123,6 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
     addr_holder = GetRegister();
     move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
     CheckNilDereference(addr_holder->GetRegister());
-    
     dest = addr_holder->GetRegister();
     
     delete left;
@@ -1159,7 +1158,11 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
     }
     else {      
-      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());      
+      // mark static reference
+      if(instr->GetOperand2() == CLS) {
+	ProcessAddStaticMemory(holder->GetRegister());
+      }
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
@@ -1174,10 +1177,15 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       RegisterHolder* holder2  = left2->GetRegister();
+      
       move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
       ReleaseRegister(holder2);
     }
     else {
+      // mark static reference
+      if(instr->GetOperand2() == CLS) {
+	ProcessAddStaticMemory(holder->GetRegister());
+      }
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
