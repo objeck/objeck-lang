@@ -116,7 +116,7 @@ class File {
     else {
       files.push_back(file_data.cFileName);
 
-      bool b = FindNextFile(find, &file_data);
+      BOOL b = FindNextFile(find, &file_data);
       while(b) {
         files.push_back(file_data.cFileName);
         b = FindNextFile(find, &file_data);
