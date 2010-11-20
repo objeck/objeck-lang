@@ -1703,6 +1703,36 @@ namespace Runtime {
 #endif
     } 
 
+    // ensures that static memory is 'marked' by the garbage
+    // collector and not collected
+    inline void ProcessAddStaticMemory(Register reg) {
+      // save registers
+      for(list<RegisterHolder*>::iterator fwd_iter = used_regs.begin(); 
+	  fwd_iter != used_regs.end(); 
+	  fwd_iter++) {
+	push_reg((*fwd_iter)->GetRegister());
+      }
+      
+      // set parameter
+      push_reg(reg);
+
+      // call method	
+      RegisterHolder* call_holder = GetRegister();
+      move_imm_reg((long)MemoryManager::AddStaticMemory, call_holder->GetRegister());
+      call_reg(call_holder->GetRegister());
+      
+      // restore registers
+      for(list<RegisterHolder*>::reverse_iterator bck_iter = used_regs.rbegin(); 
+	  bck_iter != used_regs.rend(); 
+	  bck_iter++) {
+	pop_reg((*bck_iter)->GetRegister());
+      }
+      
+      // clean up
+      add_imm_reg(4, ESP);
+      ReleaseRegister(call_holder);
+    }
+    
     // Calculates array element offset. 
     // Note: this code must match up 
     // with the interpreter's 'ArrayIndex'
