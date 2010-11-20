@@ -139,7 +139,6 @@ void Loader::Load()
   dclrs[0] = new StackDclr;
   dclrs[0]->name = "args";
   dclrs[0]->type = OBJ_ARY_PARM;
-  dclrs[0]->context = LOCL;
   dclrs[0]->id = string_cls_id;
 
   init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
@@ -200,9 +199,8 @@ void Loader::LoadClasses()
     const int num_dclrs = ReadInt();
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
-      // set type & context
-      ParamType type = (ParamType)ReadInt();
-      const MemoryContext context = (MemoryContext)ReadInt();
+      // set type
+      int type = ReadInt();
       // set name
       string name;
       if(is_debug) {
@@ -210,8 +208,7 @@ void Loader::LoadClasses()
       }
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
-      dclrs[i]->context = context;
-      dclrs[i]->type = type;
+      dclrs[i]->type = (ParamType)type;
       // set id
       switch(type) {
       case instructions::OBJ_PARM:
@@ -284,7 +281,6 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     for(int i = 0; i < num_dclrs; i++) {
       // set type
       const int type = ReadInt();
-      const MemoryContext context = (MemoryContext)ReadInt();
       // set name
       string name;
       if(is_debug) {
@@ -292,7 +288,6 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       }
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
-      dclrs[i]->context = context;
       dclrs[i]->type = (ParamType)type;
       // set id
       switch(type) {

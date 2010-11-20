@@ -95,7 +95,7 @@ namespace frontend {
   } StatementType;
 
   /****************************
-   * SymbolEntrys class
+   * SymbolEntry class
    ****************************/
   class SymbolEntry : public ParseNode {
     friend class TreeFactory;
@@ -139,18 +139,6 @@ namespace frontend {
 
     const string& GetName() const {
       return name;
-    }
-
-    instructions::MemoryContext GetContext() {
-      if(is_static) {
-	return instructions::CLS;
-      }
-
-      if(is_local) {
-	return instructions::LOCL;
-      }
-
-      return instructions::INST;
     }
 
     void SetId(int i);
