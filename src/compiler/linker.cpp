@@ -325,6 +325,7 @@ void Library::LoadClasses()
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
+      instructions::MemoryContext context = (instructions::MemoryContext)ReadInt();
       string var_name;
       if(is_debug) {
 	var_name = ReadString();
@@ -332,11 +333,11 @@ void Library::LoadClasses()
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, context, ReadInt()));
         break;
 
       default:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, context));
         break;
       }
     }
@@ -382,6 +383,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
+      instructions::MemoryContext context = (instructions::MemoryContext)ReadInt();
       string var_name;
       if(is_debug) {
 	var_name = ReadString();
@@ -389,11 +391,11 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, context, ReadInt()));
         break;
 
       default:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, context));
         break;
       }
     }
