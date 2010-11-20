@@ -279,24 +279,33 @@ namespace backend {
    ****************************/
   class IntermediateDeclaration {
     instructions::ParamType type;
+    instructions::MemoryContext context;
     int id;
     string name;
 
   public:
-    IntermediateDeclaration(const string &n, instructions::ParamType t) {
+    IntermediateDeclaration(const string &n, instructions::ParamType t, 
+			    instructions::MemoryContext c) {
       type = t;
+      context = c;
       id = -1;
       name = n;
     }
 
-    IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
+    IntermediateDeclaration(const string &n, instructions::ParamType t, 
+			    instructions::MemoryContext c, int i) {
       type = t;
+      context = c;
       id = i;
       name = n;
     }
 
     instructions::ParamType GetType() {
       return type;
+    }
+
+    instructions::MemoryContext GetContext() {
+      return context;
     }
 
     const string GetName() {
@@ -352,6 +361,7 @@ namespace backend {
       for(unsigned int i = 0; i < declarations.size(); i++) {
 	IntermediateDeclaration* entry = declarations[i];
 	WriteInt(entry->GetType(), file_out);
+	WriteInt(entry->GetContext(), file_out);
 	if(is_debug) {
 	  WriteString(entry->GetName(), file_out);
 	}
