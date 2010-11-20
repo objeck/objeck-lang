@@ -75,8 +75,12 @@ void MemoryManager::AddStaticMemory(long* mem)
   pthread_mutex_lock(&static_mutex);
 #endif
 
-  static_memory.push_back(mem);
-
+  // add memory reference if it doesn't exist
+  vector<long*>::iterator result = find(static_memory.begin(), static_memory.end(), mem);
+  if(result == static_memory.end()) {
+    static_memory.push_back(mem);
+  }
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&static_mutex);
 #endif
