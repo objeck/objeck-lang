@@ -1706,30 +1706,32 @@ namespace Runtime {
     // ensures that static memory is 'marked' by the garbage
     // collector and not collected
     inline void ProcessAddStaticMemory(Register reg) {
+      RegisterHolder* call_holder = GetRegister();
+
       // save registers
       for(list<RegisterHolder*>::iterator fwd_iter = used_regs.begin(); 
-	  fwd_iter != used_regs.end(); 
-	  fwd_iter++) {
-	push_reg((*fwd_iter)->GetRegister());
+	      fwd_iter != used_regs.end(); 
+	      fwd_iter++) {
+	      push_reg((*fwd_iter)->GetRegister());
       }
       
       // set parameter
       push_reg(reg);
 
-      // call method	
-      RegisterHolder* call_holder = GetRegister();
+      // call method
       move_imm_reg((long)MemoryManager::AddStaticMemory, call_holder->GetRegister());
       call_reg(call_holder->GetRegister());
-      
+      // clean up stack
+      add_imm_reg(4, ESP);
+
       // restore registers
       for(list<RegisterHolder*>::reverse_iterator bck_iter = used_regs.rbegin(); 
-	  bck_iter != used_regs.rend(); 
-	  bck_iter++) {
-	pop_reg((*bck_iter)->GetRegister());
+	      bck_iter != used_regs.rend(); 
+	      bck_iter++) {
+	      pop_reg((*bck_iter)->GetRegister());
       }
       
       // clean up
-      add_imm_reg(4, ESP);
       ReleaseRegister(call_holder);
     }
     

@@ -2,8 +2,8 @@ bundle Default {
 	class Hello {
 		possibilities : static : Char[];
 		
-#		function : native : Init() ~ Nil {
-		function : Init() ~ Nil {
+		function : native : Init() ~ Nil {
+#		function : Init() ~ Nil {
 			possibilities := "ABCDEFGHIJKLMNOPQRSTUVWXYZ "->ToCharArray();
 		}
 		
@@ -13,6 +13,8 @@ bundle Default {
 			for(i := 0; i < 100; i += 1;) {
 				"poss: "->Print(); possibilities->Size()->PrintLine();
 			};
+			
+			"Fin."->PrintLine();
 		}
 	}
 }

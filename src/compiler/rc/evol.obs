@@ -41,19 +41,20 @@ bundle Default {
 					rand *= 1000.0;
 					xx := rand->As(Int);
 					index : Int := xx % possibilities->Size();
-index->PrintLine();					
 #					index : Int := rand % possibilities->Size();
-possibilities->Size()->PrintLine();	
-"111"->PrintLine();	
 					retVal->Append(possibilities[index]);
 				}
-				else {
-			
-"222"->PrintLine();				
+				else {		
 					retVal->Append(parent->Get(i));
 				};
+"***"->PrintLine();					
+parent->Size()->PrintLine();
+i->PrintLine();
+"***"->PrintLine();				
+				
 			};
 			
+"$$$"->PrintLine();
 			return retVal;
   		}
   		
