@@ -7,15 +7,18 @@ bundle Default {
 		}
 		
 		function : fitness() ~ Nil {
-target->Size()->PrintLine();
-target->PrintLine();
-			"Hello"->PrintLine();
+# target->Size()->PrintLine();
+# target->PrintLine();
+#			"Hello"->PrintLine();
+# target->Size()->PrintLine();			
     		for(i := 0; i < target->Size(); i += 1;) {
 i->PrintLine(); 
 "World"->PrintLine();
+
       			if(target->Get(i) = 'A') {
       				retVal += 1;
       			};
+      			
       		};
     	}
     	
@@ -23,7 +26,7 @@ i->PrintLine();
 			Init();
 			
 			for(i := 0; i < 150; i += 1;) {
-				"Foo"->PrintLine();
+#				"Foo"->PrintLine();
 				fitness();
 			};
 		}
