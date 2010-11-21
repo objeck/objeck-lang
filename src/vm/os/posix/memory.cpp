@@ -37,8 +37,8 @@ StackProgram* MemoryManager::prgm;
 list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
+map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
-vector<long*> MemoryManager::static_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
@@ -74,11 +74,15 @@ void MemoryManager::AddStaticMemory(long* mem)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&static_mutex);
 #endif
-
-  // add memory reference if it doesn't exist
-  vector<long*>::iterator result = find(static_memory.begin(), static_memory.end(), mem);
-  if(result == static_memory.end()) {
-    static_memory.push_back(mem);
+  
+  // only add static references that don't exist
+  map<long*, long>::iterator exists = static_memory.find(mem);
+  if(exists == static_memory.end()) {
+    // ensure that this is an object or array instance
+    map<long*, long>::iterator result = allocated_memory.find(mem);
+    if(result != allocated_memory.end()) {
+      static_memory.insert(pair<long*, long>(mem, result->second));
+    }
   }
   
 #ifndef _GC_SERIAL
@@ -448,17 +452,6 @@ void* MemoryManager::CollectMemory(void* arg)
   CheckJitRoots(NULL);
 #endif
   
-  // mark static memory
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&static_mutex);
-#endif
-  for(int i = 0; i < static_memory.size(); i++) {
-    MarkMemory(static_memory[i]);
-  }
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&static_mutex);
-#endif
-
   // sweep memory
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;
@@ -484,12 +477,30 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
     bool found = false;
+    
+    // check dynamic memory
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
       long* tmp = iter->first;
       tmp[-1] = 0L;
       found = true;
     }
-
+    // check static memory
+    else {
+#ifndef _GC_SERIAL
+      pthread_mutex_lock(&static_mutex);
+#endif
+      map<long*, long>::iterator exists = static_memory.find(iter->first);
+      if(exists == static_memory.end()) {
+	long* tmp = iter->first;
+	tmp[-1] = 0L;
+	found = true;
+      }
+#ifndef _GC_SERIAL
+      pthread_mutex_unlock(&static_mutex);
+#endif
+    }
+    
+    // not found, will be collected
     if(!found) {
       long mem_size;
       // object or array
