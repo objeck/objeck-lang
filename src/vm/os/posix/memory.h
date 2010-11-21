@@ -60,8 +60,8 @@ class MemoryManager {
   static list<ClassMethodId*> jit_roots;
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> allocated_memory;
+  static map<long*, long> static_memory;
   static vector<long*> marked_memory;
-  static vector<long*> static_memory;
   
 #ifndef _GC_SERIAL
   static pthread_mutex_t static_mutex;
