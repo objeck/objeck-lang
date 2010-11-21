@@ -18,7 +18,14 @@ bundle Default {
 		
 		function : fitness(trial : String) ~ Int {
     		retVal := 0;
-    		for(i := 0; i < trial->Size(); i += 1;) {
+trial->Size()->PrintLine();
+trial->PrintLine();
+
+target->Size()->PrintLine();
+target->PrintLine();
+
+    		for(i := 0; i < trial->Size() & i < target->Size(); i += 1;) {
+i->PrintLine();    		
       			if(trial->Get(i) = target->Get(i)) {
       				retVal += 1;
       			};
@@ -29,7 +36,7 @@ bundle Default {
     	
     	function : newMutateRate() ~ Float {
    			return ((perfectFitness->As(Float) - fitness(parent)) / 
-   				perfectFitness * (1.0 - minMutateRate));
+   				perfectFitness * (1.0 - minMutateRate))->Abs();
   		}
   		
   		function : mutate(parent : String, rate : Float) ~ String {
@@ -40,18 +47,13 @@ bundle Default {
 				if(rand <= rate) {				
 					rand *= 1000.0;
 					xx := rand->As(Int);
-					index : Int := xx % possibilities->Size();
+					index : Int := xx % (possibilities->Size() - 1);
 #					index : Int := rand % possibilities->Size();
 					retVal->Append(possibilities[index]);
 				}
 				else {		
 					retVal->Append(parent->Get(i));
 				};
-"***"->PrintLine();					
-parent->Size()->PrintLine();
-i->PrintLine();
-"***"->PrintLine();				
-				
 			};
 			
 "$$$"->PrintLine();
@@ -62,6 +64,8 @@ i->PrintLine();
 			Init();
 						
 			parent := mutate(target, 1.0);
+parent->PrintLine();
+
 			iter := 0;
 			while(target->Equals(parent) <> true) {
 				rate := newMutateRate();
@@ -69,6 +73,7 @@ i->PrintLine();
 				
 				if(iter % 100 = 0){
 #					System.out.println(iter +": "+parent+ ", fitness: "+fitness(parent)+", rate: "+rate);
+					"!!!! "->PrintLine(); # parent->PrintLine();
 				};
 				
 				bestSpawn : String;
@@ -76,21 +81,19 @@ i->PrintLine();
 
 				for(i := 0; i < C; i += 1;) {
         			spawn := mutate(parent, rate);
-#~        			
         			fitness := fitness(spawn);
         
         			if(fitness > bestFit) {
           				bestSpawn := spawn;
           				bestFit := fitness;
 					};
-~#					
 				};
 
 				if(bestFit > fitness(parent)) {
 					parent := bestSpawn;
 				};	
 			};
-#			System.out.println(parent+", "+iter);
+			parent->PrintLine();
 		}
 	}
 }
