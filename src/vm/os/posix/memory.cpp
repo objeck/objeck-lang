@@ -416,6 +416,12 @@ void* MemoryManager::CollectMemory(void* arg)
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
   
+  pthread_t static_thread;
+  if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
     cerr << "Unable to create garbage collection thread!" << endl;
@@ -437,6 +443,12 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // join all of the mark threads
   void *status;
+
+  if(pthread_join(static_thread, &status)) {
+    cerr << "Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  
   if(pthread_join(stack_thread, &status)) {
     cerr << "Unable to join garbage collection threads!" << endl;
     exit(-1);
@@ -452,6 +464,7 @@ void* MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
 #else
+  CheckStatic(NULL);
   CheckStack(info);
   CheckPdaRoots(NULL);
   CheckJitRoots(NULL);
@@ -488,21 +501,6 @@ void* MemoryManager::CollectMemory(void* arg)
       long* tmp = iter->first;
       tmp[-1] = 0L;
       found = true;
-    }
-    // check static memory
-    else {
-#ifndef _GC_SERIAL
-      pthread_mutex_lock(&static_mutex);
-#endif
-      map<long*, long>::iterator exists = static_memory.find(iter->first);
-      if(exists != static_memory.end()) {
-	long* tmp = iter->first;
-	tmp[-1] = 0L;
-	found = true;
-      }
-#ifndef _GC_SERIAL
-      pthread_mutex_unlock(&static_mutex);
-#endif
     }
     
     // not found, will be collected
@@ -585,6 +583,21 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifndef _GC_SERIAL
   pthread_exit(NULL);
+#endif
+}
+
+void* MemoryManager::CheckStatic(void* arg)
+{
+  // check static memory
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&static_mutex);
+#endif
+  map<long*, long>::iterator static_iter;
+  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); static_iter++) {
+    CheckObject(static_iter->first, false, 1);	
+  }
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&static_mutex);
 #endif
 }
 
