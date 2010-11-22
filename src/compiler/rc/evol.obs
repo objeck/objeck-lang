@@ -42,10 +42,8 @@ bundle Default {
 				each(i : parent) {
 					rand := Float->Random();
 					if(rand <= rate) {		
-						# TODO: fix this!
 						rand *= 1000.0;
-						intRand := rand->As(Int);
-						index : Int := intRand % possibilities->Size();
+						index : Int := rand->As(Int) % possibilities->Size();
 						retVal->Append(possibilities[index]);
 					}
 					else {		
