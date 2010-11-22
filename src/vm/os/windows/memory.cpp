@@ -37,8 +37,8 @@ StackProgram* MemoryManager::prgm;
 list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
+map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
-vector<long*> MemoryManager::static_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
@@ -77,17 +77,26 @@ MemoryManager* MemoryManager::Instance()
 void MemoryManager::AddStaticMemory(long* mem)
 {
 #ifndef _GC_SERIAL
+  EnterCriticalSection(&allocated_cs);
   EnterCriticalSection(&static_cs);
 #endif
-
-  // add memory reference if it doesn't exist
-  vector<long*>::iterator result = find(static_memory.begin(), static_memory.end(), mem);
-  if(result == static_memory.end()) {
-    static_memory.push_back(mem);
+  
+  // only add static references that don't exist
+  map<long*, long>::iterator exists = static_memory.find(mem);
+  if(exists == static_memory.end()) {
+    // ensure that this is an object or array instance
+    map<long*, long>::iterator result = allocated_memory.find(mem);
+    if(result != allocated_memory.end()) {
+#ifdef _DEBUG
+      cout << "### adding static reference: " << mem << " ###" << endl;
+#endif
+      static_memory.insert(pair<long*, long>(mem, result->second));
+    }
   }
-
+  
 #ifndef _GC_SERIAL
   LeaveCriticalSection(&static_cs);
+  LeaveCriticalSection(&allocated_cs);
 #endif
 }
 
@@ -402,22 +411,28 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
 #endif
 
 #ifndef _SERIAL
-  const int num_threads = 3;
+  const int num_threads = 4;
   HANDLE thread_ids[num_threads];
 
-  thread_ids[0] = CreateThread(NULL, 0, CheckStack, info, 0, NULL);
+  thread_ids[0] = CreateThread(NULL, 0, CheckStatic, info, 0, NULL);
+  if(!thread_ids[0]) {
+    cerr << "Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
+  thread_ids[1] = CreateThread(NULL, 0, CheckStack, info, 0, NULL);
   if(!thread_ids[0]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   
-  thread_ids[1] = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
+  thread_ids[2] = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
   if(!thread_ids[1]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
-  thread_ids[2] = CreateThread(NULL, 0, CheckJitRoots, NULL, 0, NULL);
+  thread_ids[3] = CreateThread(NULL, 0, CheckJitRoots, NULL, 0, NULL);
   if(!thread_ids[2]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -433,6 +448,7 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
     CloseHandle(thread_ids[i]);
   }
 #else
+  CheckStatic(NULL);
   CheckStack(info);
   CheckPdaRoots(NULL);
   CheckJitRoots(NULL);
@@ -541,6 +557,23 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   cout << "===============================================================" << endl;
 #endif
   
+  return 0;
+}
+
+DWORD WINAPI MemoryManager::CheckStatic(void* arg)
+{
+  // check static memory
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&static_cs);
+#endif
+  map<long*, long>::iterator static_iter;
+  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); static_iter++) {
+    CheckObject(static_iter->first, false, 1);	
+  }
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&static_cs);
+#endif
+
   return 0;
 }
 
