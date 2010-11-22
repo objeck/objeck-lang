@@ -295,12 +295,26 @@ class ContextAnalyzer {
     if(mthd_call) {
       while(mthd_call) {
         AnalyzeExpressionMethodCall(mthd_call, depth + 1);
-        type = mthd_call->GetEvalType();
+
+	// favor casts
+	if(mthd_call->GetCastType()) {
+	  type = mthd_call->GetCastType();
+	}
+	else {
+	  type = mthd_call->GetEvalType();
+	}
+	
         mthd_call = mthd_call->GetMethodCall();
       }
     } 
     else {
-      type = expression->GetEvalType();
+      // favor casts
+      if(expression->GetCastType()) {
+	type = expression->GetCastType();
+      }
+      else {
+	type = expression->GetEvalType();
+      }
     }
 
     return type;
