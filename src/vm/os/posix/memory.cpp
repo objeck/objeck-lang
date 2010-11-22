@@ -72,6 +72,7 @@ MemoryManager* MemoryManager::Instance()
 void MemoryManager::AddStaticMemory(long* mem)
 {
 #ifndef _GC_SERIAL
+  pthread_mutex_lock(&allocated_mutex);
   pthread_mutex_lock(&static_mutex);
 #endif
   
@@ -81,12 +82,16 @@ void MemoryManager::AddStaticMemory(long* mem)
     // ensure that this is an object or array instance
     map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
+#ifdef _DEBUG
+      cout << "### adding static reference: " << mem << " ###" << endl;
+#endif
       static_memory.insert(pair<long*, long>(mem, result->second));
     }
   }
   
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&static_mutex);
+  pthread_mutex_unlock(&allocated_mutex);
 #endif
 }
 
@@ -490,7 +495,7 @@ void* MemoryManager::CollectMemory(void* arg)
       pthread_mutex_lock(&static_mutex);
 #endif
       map<long*, long>::iterator exists = static_memory.find(iter->first);
-      if(exists == static_memory.end()) {
+      if(exists != static_memory.end()) {
 	long* tmp = iter->first;
 	tmp[-1] = 0L;
 	found = true;
