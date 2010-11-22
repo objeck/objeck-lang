@@ -4,9 +4,9 @@ bundle Default {
 		possibilities : static : Char[];
 		C : static : Int;
 		minMutateRate : static : Float;
-  	perfectFitness : static : Int;
-  	parent : static : String ;
-  	rand : static : Float;
+		perfectFitness : static : Int;
+		parent : static : String ;
+		rand : static : Float;
   		
 		function : Init() ~ Nil {
 			target := "METHINKS IT IS LIKE A WEASEL";
@@ -20,10 +20,10 @@ bundle Default {
     		retVal := 0;
 
     		each(i : trial) {
-					if(trial->Get(i) = target->Get(i)) {
-      			retVal += 1;
+				if(trial->Get(i) = target->Get(i)) {
+      				retVal += 1;
+      			};
       		};
-      	};
       		
     		return retVal;
     	}
