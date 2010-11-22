@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2007, 2008, Randy Hollines
  * All rights reserved.
- *CollectMemory(o
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -57,9 +57,9 @@ class MemoryManager {
   
   static list<ClassMethodId*> jit_roots;
   static list<StackFrame*> pda_roots; // deleted elsewhere
+  static map<long*, long> static_memory;
   static map<long*, long> allocated_memory;
   static vector<long*> marked_memory;
-  static vector<long*> static_memory;
   
   static CRITICAL_SECTION static_cs;
   static CRITICAL_SECTION jit_cs;
@@ -127,6 +127,7 @@ public:
   static void CollectMemory(long* op_stack, long stack_pos);
 
   static DWORD WINAPI CollectMemory(LPVOID arg);
+  static DWORD WINAPI CheckStatic(LPVOID arg);
   static DWORD WINAPI CheckStack(LPVOID arg);
   static DWORD WINAPI CheckJitRoots(LPVOID arg);
   static DWORD WINAPI CheckPdaRoots(LPVOID arg);
