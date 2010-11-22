@@ -1,5 +1,5 @@
 bundle Default {
-	class Hello {
+	class Evolutionary {
 		target : static : String;
 		possibilities : static : Char[];
 		C : static : Int;
@@ -18,14 +18,8 @@ bundle Default {
 		
 		function : fitness(trial : String) ~ Int {
     		retVal := 0;
-trial->Size()->PrintLine();
-trial->PrintLine();
-
-target->Size()->PrintLine();
-target->PrintLine();
 
     		for(i := 0; i < trial->Size() & i < target->Size(); i += 1;) {
-i->PrintLine();    		
 					if(trial->Get(i) = target->Get(i)) {
       			retVal += 1;
       		};
@@ -35,96 +29,65 @@ i->PrintLine();
     	}
     	
     	function : newMutateRate() ~ Float {
-<<<<<<< .mine
-    		x := perfectFitness->As(Float) - fitness(parent);
-    		y := perfectFitness * (1 - minMutateRate);
-
-x->PrintLine();
-y->PrintLine();
-
+    		# TODO: fix this!
+    		x : Float := perfectFitness - fitness(parent);
+    		y : Float := perfectFitness->As(Float) * (1.01 - minMutateRate);
+    		
    			return x / y;
-=======
-   			return ((perfectFitness->As(Float) - fitness(parent)) / 
-   				perfectFitness * (1.0 - minMutateRate))->Abs();
->>>>>>> .r893
   		}
   		
   		function : mutate(parent : String, rate : Float) ~ String {
 				retVal := "";
 			
-<<<<<<< .mine
 				for(i := 0; i < parent->Size(); i += 1;) {
 					rand := Float->Random();
-					if(rand <= rate) {				
+					if(rand <= rate) {		
+						# TODO: fix this!
 						rand *= 1000.0;
-						xx := rand->As(Int);
-						index : Int := xx % (possibilities->Size() - 1);
-=======
-			for(i := 0; i < parent->Size(); i += 1;) {
-				rand := Float->Random();
-				if(rand <= rate) {				
-					rand *= 1000.0;
-					xx := rand->As(Int);
-					index : Int := xx % (possibilities->Size() - 1);
->>>>>>> .r893
-#					index : Int := rand % possibilities->Size();
+						intRand := rand->As(Int);
+						index : Int := intRand % possibilities->Size();
 						retVal->Append(possibilities[index]);
 					}
 					else {		
 						retVal->Append(parent->Get(i));
 					};
-<<<<<<< .mine
-"***"->PrintLine();					
-parent->Size()->PrintLine();
-i->PrintLine();
-"***"->PrintLine();
-				};
-=======
 			};
->>>>>>> .r893
 			
-"$$$"->PrintLine();
 				return retVal;
   		}
   		
   		function : Main(args : String[]) ~ Nil {
-			Init();
-						
-			parent := mutate(target, 1.0);
-parent->PrintLine();
-
-			iter := 0;
-			while(target->Equals(parent) <> true) {
-				rate := newMutateRate();
-				iter += 1;
+				Init();
+				parent := mutate(target, 1.0);
 				
-				if(iter % 100 = 0){
-#					System.out.println(iter +": "+parent+ ", fitness: "+fitness(parent)+", rate: "+rate);
-					"!!!! "->PrintLine(); # parent->PrintLine();
-				};
-				
-				bestSpawn : String;
-				bestFit := 0;
-
-				for(i := 0; i < C; i += 1;) {
-<<<<<<< .mine
-        			spawn := mutate(parent, rate);   			
-=======
-        			spawn := mutate(parent, rate);
->>>>>>> .r893
-        			fitness := fitness(spawn);
-        
-        			if(fitness > bestFit) {
-          				bestSpawn := spawn;
-          				bestFit := fitness;
+				iter := 0;
+				while(target->Equals(parent) <> true) {
+					rate := newMutateRate();
+					iter += 1;
+					
+					if(iter % 100 = 0){
+						IO.Console->Instance()->Print(iter)->Print(": ")->PrintLine(parent);
 					};
+					
+					bestSpawn : String;
+					bestFit := 0;
+	
+					for(i := 0; i < C; i += 1;) {
+						spawn := mutate(parent, rate);
+						fitness := fitness(spawn);
+					
+						if(fitness > bestFit) {
+							bestSpawn := spawn;
+							bestFit := fitness;
+						};
+					};
+	
+					if(bestFit > fitness(parent)) {
+						parent := bestSpawn;
+					};	
 				};
-
-				if(bestFit > fitness(parent)) {
-					parent := bestSpawn;
-				};	
-			};
-			parent->PrintLine();
+				parent->PrintLine();
+			}	
 		}
 	}
 }
