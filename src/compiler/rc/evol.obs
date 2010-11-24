@@ -58,7 +58,8 @@ bundle Default {
   			Run();
   		}
   		
-  		function : native : Run() ~ Nil {
+#  		function : native : Run() ~ Nil {
+  		function : Run() ~ Nil {
 				Init();
 				parent := mutate(target, 1.0);
 				
