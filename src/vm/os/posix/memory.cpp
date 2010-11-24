@@ -680,7 +680,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
         cout << "\t" << j << ": FLOAT_PARM: value=" << value << endl;
 #endif
         // update
-        mem += 2;
+#ifdef _X64
+	// mapped such that all 64-bit values the same size
+        mem++;
+#else
+	mem += 2;
+#endif
       }
       break;
 
