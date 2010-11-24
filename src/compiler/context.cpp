@@ -2400,7 +2400,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
   }
 
   if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
-     expression->GetEvalType()->GetType() == NIL_TYPE) {
+     expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
     ProcessError(expression, "Invalid operation method does not return a value");
     return;
   }
