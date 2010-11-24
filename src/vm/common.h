@@ -559,7 +559,7 @@ public:
 
   long* NewMemory() {
     // +1 is for instance variable
-    const long size = mem_size + 1;
+    const long size = mem_size + 2;
     long* mem = new long[size];
     memset(mem, 0, size * sizeof(long));
 
