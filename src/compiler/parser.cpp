@@ -1963,6 +1963,12 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							      ParseExpressionList(depth + 1));
       }
     } 
+
+    else if(Match(TOKEN_AS_ID)) {
+      Variable* variable = ParseVariable(ident, depth + 1);
+      ParseCast(variable, depth + 1);
+      TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
+    }
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
     }
