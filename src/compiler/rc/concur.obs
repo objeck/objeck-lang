@@ -5,7 +5,8 @@ bundle Default {
 		}
 
 		method : public : Run(param : Base) ~ Nil {
-			param->As(System)->PrintLine();
+			string := param->As(String);
+			string->PrintLine();
 		}
 	}
 
