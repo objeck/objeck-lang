@@ -1,12 +1,12 @@
 #!/bin/bash 
-i=75
+i=82
 # i=52
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------
 
 #	./obc -src test_src/prgm$i.obs -lib lang.obl,struct.obl -dest a.obe &> /dev/null
 #	./obc -src test_src/prgm$i.obs -lib lang.obl,struct.obl -opt s3 -dest a.obe &> /dev/null
-	./obc -src test_src/prgm$i.obs -lib lang.obl,struct.obl -opt s3 -dest a.obe
+	./obc -src test_src/prgm$i.obs -lib xml.obl,struct.obl -opt s3 -dest a.obe
 
 	cd ../vm
 	if [ $i = 41 ]; then
