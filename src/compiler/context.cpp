@@ -762,7 +762,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
     ExpressionList* indices = variable->GetIndices();
     if(indices) {
       // check dimensions
-      if(entry->GetType()->GetDimension() == indices->GetExpressions().size()) {
+      if(entry->GetType() && entry->GetType()->GetDimension() == indices->GetExpressions().size()) {
         AnalyzeIndices(indices, depth + 1);
       } 
       else {
@@ -1855,7 +1855,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
       // set variable to scalar type if we're de-referencing an array variable
       if(expression->GetExpressionType() == VAR_EXPR) {
 	Variable* expr_variable = static_cast<Variable*>(expression);
-	if(expr_variable->GetIndices()) {
+	if(entry->GetType() && expr_variable->GetIndices()) {
 	  variable->GetBaseType()->SetDimension(0);
 	  variable->GetEvalType()->SetDimension(0);	 
 	  entry->GetType()->SetDimension(0);
@@ -2887,7 +2887,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // class libary
   //
-  else if(linker->SearchClassLibraries(left->GetClassName(), program->GetUses())) {
+  else if(right && linker->SearchClassLibraries(left->GetClassName(), program->GetUses())) {
     LibraryClass* left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
