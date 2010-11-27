@@ -1,4 +1,3 @@
-use IO;
 use Structure;
 
 bundle Default {
@@ -37,11 +36,11 @@ bundle Default {
 				num += 1;
 			};
 					
-			Console->Instance()->Print("First 8 happy numbers: ");
+			Console->Print("First 8 happy numbers: ");
 			each(i : happynums) {
-				Console->Instance()->Print(happynums->Get(i))->Print(",");
+				Console->Print(happynums->Get(i))->Print(",");
 			};
-			Console->Instance()->PrintLine("");
+			Console->PrintLine("");
 		}
 	}
 }

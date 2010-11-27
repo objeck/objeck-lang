@@ -21,10 +21,10 @@ bundle Default {
 				value := f(x);
 				
 				if((value > 0) <> sign) {
-					IO.Console->Instance()->Print("~")->PrintLine(x);
+					Console->Print("~")->PrintLine(x);
 				}
 				else if(0 = value) {
-					IO.Console->Instance()->Print("~")->PrintLine(x);
+					Console->Print("~")->PrintLine(x);
 				};
 				
 				sign := (value > 0);

@@ -1,4 +1,3 @@
-use IO;
 
 bundle Default {
 	class Test {

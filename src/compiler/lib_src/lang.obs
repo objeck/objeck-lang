@@ -1231,19 +1231,89 @@ bundle System {
 			return @name;
 		}
 	}
+	
+	#~~
+	# Returns the name
+	~~#
+	class Console {
+		function : ReadString() ~ System.String {
+			console := IO.ConsoleIO->Instance();
+			return console->ReadString();
+		}
+		
+		function : Print(b : Bool) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(b);
+		}
+		
+		function : PrintLine(b : Bool) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine(b);
+		}
+	
+		function : Print(b : Byte) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(b);
+		}
+	
+		function : PrintLine(b : Byte) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine(b);
+		}
+		
+		function : Print(c : Char) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(c);
+		}
+	
+		function : PrintLine(c : Char) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine(c);
+		}
+	
+		function : Print(i : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(i);
+		}
+	
+		function : PrintLine(i : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine(i);
+		}
+		
+		function : Print(f : Float) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(f);
+		}
+	
+		function : PrintLine(f : Float) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(f);
+		}
+	
+		function : Print(cc : Char[]) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(cc);
+		}
+	
+		function : PrintLine(cc : Char[]) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine(cc);
+		}
+		
+		function : Print(s : System.String) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(s);
+		}
+	
+		function : PrintLine(s : System.String) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Print(s);
+		}
+	
+		function : PrintLine() ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->PrintLine();
+		}
+	}
 }
 
 #------------ I/O ------------
 bundle IO {
- 	class Console {
-		@console : static : Console;
+ 	class ConsoleIO {
+		@console : static : ConsoleIO;
 
-		New: private () {
+		New : private () {
 		}
 
-		function : Instance() ~ Console {
+		function : Instance() ~ ConsoleIO {
 			if(@console <> Nil) {
-				@console := Console->New();
+				@console := ConsoleIO->New();
 			};
 
 			return @console;
@@ -1255,12 +1325,12 @@ bundle IO {
 			return System.String->New(buffer);
 		}
 		
-		method : public : Print(b : Bool) ~ Console {
+		method : public : Print(b : Bool) ~ ConsoleIO {
 			b->Print();
 			return @console;
 		}
 		
-		method : public : PrintLine(b : Bool) ~ Console {
+		method : public : PrintLine(b : Bool) ~ ConsoleIO {
 			b->PrintLine();
 			return @console;
 		}
@@ -1269,67 +1339,67 @@ bundle IO {
 			STD_IN_STRING;
 		}
 		
-		method : public : Print(b : Byte) ~ Console {
+		method : public : Print(b : Byte) ~ ConsoleIO {
 			b->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(b : Byte) ~ Console {
+		method : public : PrintLine(b : Byte) ~ ConsoleIO {
 			b->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(c : Char) ~ Console {
+		method : public : Print(c : Char) ~ ConsoleIO {
 			c->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(c : Char) ~ Console {
+		method : public : PrintLine(c : Char) ~ ConsoleIO {
 			c->PrintLine();
 			return @console;
 		}
 
-		method : public : Print(i : Int) ~ Console {
+		method : public : Print(i : Int) ~ ConsoleIO {
 			i->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(i : Int) ~ Console {
+		method : public : PrintLine(i : Int) ~ ConsoleIO {
 			i->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(f : Float) ~ Console {
+		method : public : Print(f : Float) ~ ConsoleIO {
 			f->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(f : Float) ~ Console {
+		method : public : PrintLine(f : Float) ~ ConsoleIO {
 			f->PrintLine();
 			return @console;
 		}
 
-		method : public : Print(cc : Char[]) ~ Console {
+		method : public : Print(cc : Char[]) ~ ConsoleIO {
 			cc->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(cc : Char[]) ~ Console {
+		method : public : PrintLine(cc : Char[]) ~ ConsoleIO {
 			cc->PrintLine();
 			return @console;
 		}
 		
-		method : public : Print(s : System.String) ~ Console {
+		method : public : Print(s : System.String) ~ ConsoleIO {
 			s->Print();
 			return @console;
 		}
 
-		method : public : PrintLine(s : System.String) ~ Console {
+		method : public : PrintLine(s : System.String) ~ ConsoleIO {
 			s->PrintLine();
 			return @console;
 		}
 
-		method : public : PrintLine() ~ Console {
+		method : public : PrintLine() ~ ConsoleIO {
 			'\n'->PrintLine();
 			return @console;
 		}

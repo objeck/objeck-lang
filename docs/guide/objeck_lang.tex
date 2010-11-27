@@ -271,7 +271,7 @@ loops.  Note, all statements end with the `\texttt{;}' character.
 An \texttt{if} statement is a control statement that executes the associated block of code if it evaluates to \texttt{true}.  If the evaluation statement does not evaluate to \texttt{true} than an \texttt{else if} statement may be evaluated (if it exists), otherwise an \texttt{else} statement will be executed (if it exists).  The example below demonstrates an \texttt{if} statement.
 
 \begin{verbatim}
-value : Int := Console.ReadLine()->ToInt();
+value : Int := Console->ReadLine()->ToInt();
 if(value <> 3) {
   "Not equal to 3"->PrintLine();
 }
@@ -1002,12 +1002,17 @@ The Hash class supports the concept of a hash table with key/value pairs.  The c
 \subsubsection{Console}
 The Console class allows programmers to read and write information to the system console.    The class supports the following operations:
 \begin{itemize}
-\item \texttt{Instance} - returns the console instance
+\item \texttt{Print} - prints all basic types including
+  \texttt{String} and \texttt{Char[]} to standard out.
   \begin{itemize}
-  \item function : Instance(), Console
+  \item function : Print(t : type), ConsoleIO
   \end{itemize}
-\item \texttt{Print} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out.
-\item \texttt{PrintLine} - prints all basic types including \texttt{String} and \texttt{Char[]} to standard out followed by a newline.
+\item \texttt{PrintLine} - prints all basic types including
+  \texttt{String} and \texttt{Char[]} to standard out followed by a
+  newline.
+  \begin{itemize}
+  \item function : PrintLine(t : type), ConsoleIO
+  \end{itemize}
 \item \texttt{ReadString} - reads in a line of text as a \texttt{Char[]} from standard in.
   \begin{itemize}
   \item method : public : ReadString(), String

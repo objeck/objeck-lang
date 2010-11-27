@@ -36,7 +36,7 @@ bundle Default {
 				# get first item
 				results := parser->FindElements("//inventory/section[1]/item[1]");
 				if(results <> Nil) {
-					IO.Console->Instance()->Print("items: ")->PrintLine(results->Size());
+					Console->Print("items: ")->PrintLine(results->Size());
 				};
 				# get all prices
 				results := parser->FindElements("//inventory/section/item/price");
@@ -49,7 +49,7 @@ bundle Default {
 				# get names
 				results := parser->FindElements("//inventory/section/item/name");
 				if(results <> Nil) {
-					IO.Console->Instance()->Print("names: ")->PrintLine(results->Size());
+					Console->Print("names: ")->PrintLine(results->Size());
 				};
 			};
 		}
