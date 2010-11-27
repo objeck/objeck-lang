@@ -1,4 +1,3 @@
-use IO;
 use Structure;
 
 bundle Default {
@@ -27,9 +26,9 @@ bundle Default {
 			for(i := 0; i < numbers->Size(); i += 1;) {
 				factors := GenerateFactors(numbers[i]);
 				
-				Console->Instance()->Print("Factors of ")->Print(numbers[i])->PrintLine(" are:");
+				Console->Print("Factors of ")->Print(numbers[i])->PrintLine(" are:");
 				each(i : factors) {
-					Console->Instance()->Print(factors->Get(i))->Print(", ");
+					Console->Print(factors->Get(i))->Print(", ");
 				};
 				"\n\n"->Print();
 			};

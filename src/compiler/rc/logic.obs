@@ -3,9 +3,9 @@ bundle Default {
     function : Main(args : String[]) ~ Nil {
       a := true;
       b := false;
-      IO.Console->Instance()->Print("a and b is: ")->PrintLine(a & b);
-      IO.Console->Instance()->Print("a or b is: ")->PrintLine(a | b);
-      IO.Console->Instance()->Print("not a is: ")->PrintLine(a <> true);
+      Console->Print("a and b is: ")->PrintLine(a & b);
+      Console->Print("a or b is: ")->PrintLine(a | b);
+      Console->Print("not a is: ")->PrintLine(a <> true);
     }
   }
 }

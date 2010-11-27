@@ -1,6 +1,5 @@
 # simple parser of Objeck written in Objeck
 
-use IO;
 use Structure;
 
 # to compile: -lib struct.obl
@@ -48,10 +47,10 @@ bundle Default {
   
             result : String := reserved->Find(string);
             if(result <> Nil) {
-              Console->Instance()->PrintLine(result);
+              Console->PrintLine(result);
             }
             else {
-              Console->Instance()->Print("string '")->Print(string)->PrintLine("'");
+              Console->Print("string '")->Print(string)->PrintLine("'");
             };
           }
           # number
@@ -68,10 +67,10 @@ bundle Default {
             };
   
             if(is_dec) {
-              Console->Instance()->Print("decimal '")->Print(number)->PrintLine("'");
+              Console->Print("decimal '")->Print(number)->PrintLine("'");
             }
             else {
-              Console->Instance()->Print("integer '")->Print(number)->PrintLine("'");
+              Console->Print("integer '")->Print(number)->PrintLine("'");
             };
           }
           # other
@@ -127,7 +126,7 @@ bundle Default {
               }
 #~              
               other: {
-              Console->Instance()->Print("char='")->Print(line->Get(i))->PrintLine("'");
+              Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
               }
 ~#
             };
