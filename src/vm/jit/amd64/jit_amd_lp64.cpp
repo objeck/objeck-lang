@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright 
  * notice, this list of conditions and the following disclaimer in 
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
+ * - Neither the name of the Objeck Team nor the names of its 
  * contributors may be used to endorse or promote products derived 
  * from this software without specific prior written permission.
  *
@@ -224,9 +224,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
     }
     else {
       RegisterHolder* dest_holder = GetXmmRegister();
-      // sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
-      dec_mem(0, stack_pos_holder->GetRegister());  
-
+      dec_mem(0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());

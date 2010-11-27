@@ -1,8 +1,9 @@
 #~~
-# R. Hollines
 # Core Objeck class libraries
+# Copyright (c) 2008-2010 Randy Hollines
 # 
-# H.W. Lang - merge sort implementations
+# credits:
+# H.W. Lang - merge sort implementation
 # Map classes uses a red-black tree variant called an Arne Andersson tree
 ~~#	
 

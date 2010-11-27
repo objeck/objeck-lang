@@ -1,6 +1,6 @@
 #~~
-# System classes.
-# Copyright (c) 2009, 2010 Randy Hollines 
+# Objeck system classes.
+# Copyright (c) 2008-2010 Randy Hollines
 #
 # note: this file is a system file and can only be compiled using -D_SYSTEM option
 ~~#	
