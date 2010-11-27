@@ -568,7 +568,8 @@ bundle System {
 			@string[@pos] := c;
 			@pos := @pos + 1;
 		}
-
+		
+#~		
 		method : public : native : Find(c : Char) ~ Int {
 			for(i : Int := 0; i < @pos; i += 1;) {
 				if(@string[i] = c) {
@@ -598,7 +599,50 @@ bundle System {
 			
 			return -1;
 		}
+~#
+		method : public : Find(char : Char) ~ Int {
+			return Find(0, char);
+		}
+		
+		method : public : Find(offset : Int, char : Char) ~ Int {
+			if(offset < @pos) {
+				found_index := -1;
+				for(i := offset; i < @pos; i += 1;) {
+					if(@string[i] = char) {
+						return i;
+					};
+				};
+			};
 
+			return -1;
+		}
+
+		method : public : Find(find : String) ~ Int {
+			if(find->Size() > 0) {
+				found_index := Find(find->Get(0));
+				while(found_index > -1) {
+					j := found_index;
+					match := true;
+					for(i := 0; match & i < find->Size() & j < @pos; i += 1;) {
+						if(find->Get(i) <> @string[j]) {
+							match := false;
+						};
+						j += 1;
+					};
+
+					if(match) {
+						return found_index;
+					};
+					
+					found_index := Find(found_index + 1, find->Get(0));
+				};
+
+				return -1;
+			};
+
+			return -1;
+		}
+		
 		method : public : native : Size() ~ Int {
 			return @pos;			
 		}
