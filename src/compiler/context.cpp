@@ -1,7 +1,7 @@
 /***************************************************************************
  * Performs contextual analysis.
  *
- * Copyright (c) 2008, 2009, 2010 Randy Hollines
+ * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1526,7 +1526,6 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     method->GetLibraryClass()->SetCalled(true);
     method_call->SetOriginalLibraryClass(klass);
     method_call->SetLibraryMethod(method, false);    
-    // cout << "### " << encoded_name << " ###" << endl;
   }
   else {
     const string &mthd_name = method_call->GetMethodName();
