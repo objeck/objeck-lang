@@ -14,7 +14,7 @@ bundle Default {
 				sum += f(x);
 			};
 
-			IO.Console->Instance()->Print("Sum of f(x) from ")->Print(start)->Print(" to ")->Print(end)->Print(" is ")->PrintLine(sum);
+			Console->Print("Sum of f(x) from ")->Print(start)->Print(" to ")->Print(end)->Print(" is ")->PrintLine(sum);
 		}
 
 		function : native : f(x : Float) ~ Float {

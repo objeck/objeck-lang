@@ -8,7 +8,7 @@ bundle Default {
 			};
 			
 			for(i := 0; i < 100; i += 1;) {		
-				IO.Console->Instance()->Print("Door #")->Print(i + 1)->Print(" is ");
+				Console->Print("Door #")->Print(i + 1)->Print(" is ");
 				if(doors[i]) {
 					"open."->PrintLine();
 				}

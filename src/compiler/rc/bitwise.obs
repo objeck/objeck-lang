@@ -1,4 +1,3 @@
-use IO;
 
 bundle Default {
 	class Test {
@@ -7,9 +6,9 @@ bundle Default {
 		}
 
 		function : BitWise(a : Int, b : Int) ~ Nil {
-  		Console->Instance()->Print("a and b: ")->PrintLine(a and b);
-			Console->Instance()->Print("a or b: ")->PrintLine(a or b);
-			Console->Instance()->Print("a xor b: ")->PrintLine(a xor b);
+  		Console->Print("a and b: ")->PrintLine(a and b);
+			Console->Print("a or b: ")->PrintLine(a or b);
+			Console->Print("a xor b: ")->PrintLine(a xor b);
 			# shift left & right are supported by the compiler and VM but not 
 			# exposed to end-users; those instructions are used for optimizations
 		}

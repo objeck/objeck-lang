@@ -1,5 +1,4 @@
 use Net;
-use IO;
 use Structure;
 
 bundle Default {
