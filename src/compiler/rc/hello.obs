@@ -1,14 +1,7 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			Run([12,23,34]);
-		}
-
-#		function : native : Run(x : Int[]) ~ String {
-		function : native : Run(x : Int[]) ~ Nil {
-			for(i := 0; i < x->Size(); i += 1;) {
-				(x[i] * x[i])->PrintLine();
-			};
+			"Hello World"->PrintLine();
 		}
 	}
 }
