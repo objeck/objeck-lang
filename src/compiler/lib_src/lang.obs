@@ -1231,8 +1231,11 @@ bundle System {
 			return @name;
 		}
 	}
-	
-	#~~
+}
+
+#------------ I/O ------------
+bundle IO {
+ 	#~~
 	# Returns the name
 	~~#
 	class Console {
@@ -1301,10 +1304,10 @@ bundle System {
 			return IO.ConsoleIO->Instance()->PrintLine();
 		}
 	}
-}
-
-#------------ I/O ------------
-bundle IO {
+ 	
+ 	#~~
+	# Support for Console class
+	~~#
  	class ConsoleIO {
 		@console : static : ConsoleIO;
 
