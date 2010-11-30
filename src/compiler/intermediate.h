@@ -176,7 +176,8 @@ class IntermediateEmitter {
   int new_char_str_count; 
   int cur_line_num;
   stack<int> break_labels;
-  
+  bool is_str_array;
+
   // emit operations
   void EmitStrings();
   void EmitLibraries(Linker* linker);
@@ -383,6 +384,7 @@ class IntermediateEmitter {
     is_new_inst = false;
     new_char_str_count = 0;
     cur_line_num = -1;
+    is_str_array = false;
   }
 
   ~IntermediateEmitter() {
