@@ -1871,9 +1871,11 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   }
   else {
     // create string literals
-    for(unsigned int i = 0; i < all_elements.size(); i++) {
+    is_str_array = true;
+    for(int i = all_elements.size() - 1; i > -1; i--) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
+    is_str_array = false;
     // write array dimensions
     for(int i = 0; i < array->GetDimension(); i++) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetSize(i)));
@@ -1929,7 +1931,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   
   // check for stack swap
   new_char_str_count++;
-  if(new_char_str_count >= 2) {
+  if(!is_str_array && new_char_str_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
   }
 }
