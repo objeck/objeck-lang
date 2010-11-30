@@ -921,6 +921,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
+    // TODO: optimize so this is not a double call.. see below
     StackClass* cls = GetClass(mem);
     if(cls) {
 #ifdef _DEBUG
@@ -935,7 +936,8 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       if(MarkMemory(mem)) {
         CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
       }
-    } else {
+    } 
+    else {
       // NOTE: this happens when we are trying to mark unidentified memory
       // segments. these segments may be parts of that stack or temp for
       // register variables
@@ -948,7 +950,16 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         assert(cls);
       }
 #endif
-      MarkMemory(mem);
+      // primitive or object array
+      if(MarkMemory(mem)) {
+	long* array = (mem);
+	const long size = array[0];
+	const long dim = array[1];
+	long* objects = (long*)(array + 2 + dim);
+	for(long k = 0; k < size; k++) {
+	  CheckObject((long*)objects[k], false, 2);
+	}
+      }
     }
   }
 }
