@@ -1,16 +1,16 @@
 bundle Default {
 	class Roman {
 		nums: static : Int[];
-#		rum : static : String[];
+		rum : static : String[];
 		
 		function : Init() ~ Nil {
 			nums := [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-	#		rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+			rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
 		}
 
 		function : ToRoman(number : Int) ~ String {
 			# TODO: fix bug in reverse order
-			rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+	#		rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
 			result := "";
 
 			for(i :=0; i < nums->Size(); i += 1;) {
@@ -18,10 +18,10 @@ bundle Default {
 
 					# TODO: fix bug
 #					rum[i]->PrintLine();
-i->PrintLine();
-number->PrintLine();
-rum[5]->PrintLine();
-rum[11]->PrintLine();
+# i->PrintLine();
+# number->PrintLine();
+# rum[5]->PrintLine();
+# rum[11]->PrintLine();
 
 					# TODO: string is collected
 					result->Append(rum[i]);
@@ -35,8 +35,13 @@ rum[11]->PrintLine();
 
 		function : Main(args : String[]) ~ Nil {
 			Init();
-			ToRoman(5);
+
+			each(i : rum) {
+				r := rum[i];
+				r->PrintLine();
+			};
 #~
+			ToRoman(5);
 			ToRoman(99);
 			ToRoman(13);
 			ToRoman(100);
