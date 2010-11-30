@@ -8,47 +8,25 @@ bundle Default {
 			rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
 		}
 
-		function : ToRoman(number : Int) ~ String {
-			# TODO: fix bug in reverse order
-	#		rum := ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+		function : native : ToRoman(number : Int) ~ String {
 			result := "";
 
 			for(i :=0; i < nums->Size(); i += 1;) {
 				while(number >= nums[i]) {
-
-					# TODO: fix bug
-#					rum[i]->PrintLine();
-# i->PrintLine();
-# number->PrintLine();
-# rum[5]->PrintLine();
-# rum[11]->PrintLine();
-
-					# TODO: string is collected
 					result->Append(rum[i]);
 					number -= nums[i];		
 				};
 			};
 
-#			result->PrintLine();
-			return "";
+			return result;
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			Init();
-
-			each(i : rum) {
-				r := rum[i];
-				r->PrintLine();
-			};
-#~
-			ToRoman(5);
-			ToRoman(99);
-			ToRoman(13);
-			ToRoman(100);
-			for(number := 1; number <= 100; number *= 2;) {
-				ToRoman(number)->PrintLine();
-			};
-~#
+			
+			ToRoman(1999)->PrintLine();
+			ToRoman(25)->PrintLine();
+			ToRoman(944)->PrintLine();
 		}
 	}
 }

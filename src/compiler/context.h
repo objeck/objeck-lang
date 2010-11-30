@@ -204,7 +204,7 @@ class ContextAnalyzer {
       Variable* variable = method_call->GetVariable();
       if(variable) {
         entry = variable->GetEntry();
-        if(entry && entry->IsLocal()) {
+        if(entry && (entry->IsLocal()  || entry->IsStatic())) {
           return false;
         }
       }
@@ -231,7 +231,7 @@ class ContextAnalyzer {
       Variable* variable = method_call->GetVariable();
       if(variable) {
         entry = variable->GetEntry();
-        if(entry && entry->IsLocal()) {
+        if(entry && (entry->IsLocal() || entry->IsStatic())) {
           return false;
         }
       }
