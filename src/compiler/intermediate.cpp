@@ -2140,7 +2140,15 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case MOD_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+    // special case to support floating point values
+    if(eval_type == frontend::FLOAT_TYPE) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, F2I));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, I2F));      
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MOD_INT));
+    }
     EmitCast(expression);
     break;
 
