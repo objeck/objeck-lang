@@ -2484,7 +2484,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
-        expression->SetEvalType(left, false);
+	if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+	  expression->SetEvalType(left, false);
+	}
         break;
 
       case FLOAT_TYPE:
@@ -2522,7 +2524,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case CHAR_TYPE:
       case BYTE_TYPE:
       case INT_TYPE:
-        expression->SetEvalType(left, false);
+	if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+	  expression->SetEvalType(left, false);
+	}
         break;
 
       case FLOAT_TYPE:
@@ -2560,8 +2564,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case INT_TYPE:
       case BYTE_TYPE:
       case CHAR_TYPE:
-        expression->SetEvalType(left, false);
-        break;
+	if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+	  expression->SetEvalType(left, false);
+	}
+	break;
 
       case FLOAT_TYPE:
         expression->SetCastType(left);
@@ -2596,7 +2602,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case FLOAT_TYPE:
-        expression->SetEvalType(left, false);
+	if(expression->GetEvalType() && expression->GetEvalType()->GetType() != INT_TYPE) {
+	  expression->SetEvalType(left, false);
+	}
         break;
 
       case BYTE_TYPE:

@@ -21,3 +21,6 @@
 11/7/10
 * fixed bug related to static variable method calls and JIT support
 * TODO: Free "mutexes" in Windows (and Linux???)
+12/1/10
+* Fixed bug related to the collection of static object arrays
+* Fixed bug related to the explicit casting of subexpressions
