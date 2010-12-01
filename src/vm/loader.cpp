@@ -670,6 +670,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case MOD_INT:
       method->AddInstruction(new StackInstr(line_num, MOD_INT));
       break;
+
+    case MOD_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, MOD_FLOAT));
+      break;
       
     case BIT_AND_INT:
       method->AddInstruction(new StackInstr(line_num, BIT_AND_INT));

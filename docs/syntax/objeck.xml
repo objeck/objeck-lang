@@ -1,5 +1,5 @@
 <NotepadPlus>
-    <UserLang name="Objeck" ext="obs">
+    <UserLang name="Objeck" ext="obs" commentLine="#" commentStart="#~" commentEnd="~#">
         <Settings>
             <Global caseIgnored="no" escapeChar="\" />
             <TreatAsSymbol comment="yes" commentLine="yes" />
@@ -10,7 +10,7 @@
             <Keywords name="Folder+"></Keywords>
             <Keywords name="Folder-"></Keywords>
             <Keywords name="Operators">- % &amp; ( ) * / : [ ] | } + &lt; = &gt;</Keywords>
-            <Keywords name="Comment"> 1#~ 2~# 0#</Keywords>
+            <Keywords name="Comment"></Keywords>
             <Keywords name="Words1">and or xor virtual if else do while use bundle native static public private class function method select other enum for each label return</Keywords>
             <Keywords name="Words2">Byte Int Parent from Float Char Bool Nil String true false</Keywords>
             <Keywords name="Words3"></Keywords>

@@ -750,6 +750,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, MOD_INT));
       break;
 
+    case MOD_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, MOD_FLOAT));
+      break;
+
     case BIT_AND_INT:
       instrs.push_back(new LibraryInstr(line_num, BIT_AND_INT));
       break;
