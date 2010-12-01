@@ -1209,7 +1209,7 @@ void Runtime::Debugger::Debug() {
 int main(int argc, char** argv) 
 {
   string usage;
-  usage += "Copyright (c) 2010, Randy Hollines. All rights reserved.\n";
+  usage += "Copyright (c) 2010-2011, Randy Hollines. All rights reserved.\n";
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
