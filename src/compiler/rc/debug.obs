@@ -1,0 +1,16 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+#~
+			x := (Float->Random() * 100000.0)->As(Int);
+			x->PrintLine();
+
+			x := (Float->Random() * 100000.0)->As(Int);
+			x->PrintLine();
+~#
+			y := 34;
+			z := 10 % (y * 10)->As(Float);
+			z->PrintLine();
+		}
+	}
+}
