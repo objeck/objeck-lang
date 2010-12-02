@@ -391,6 +391,10 @@ void JitCompilerIA64::ProcessInstructions() {
       ProcessCopy(instr);
       break;
       
+    case MOD_FLOAT:
+      ProcessModFloat(instr);
+      break;
+
       // mathematical
     case AND_INT:
     case OR_INT:
@@ -1815,6 +1819,73 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   right = NULL;
 }
 
+void JitCompilerIA64::ProcessModFloat(StackInstr* instr) {
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  
+  RegInstr* right = working_stack.front();
+  working_stack.pop_front();
+
+  switch(left->GetType()) {
+    // intermidate
+  case IMM_FLOAT:
+    switch(right->GetType()) {
+    case IMM_FLOAT: {
+    }
+      break;
+      
+    case REG_FLOAT: {
+    }
+      break;
+
+    case MEM_FLOAT: {
+    }
+      break;
+    }	    
+    break; 
+
+    // register
+  case REG_FLOAT:
+    switch(right->GetType()) {
+    case IMM_FLOAT: {
+    }
+      break;
+
+    case REG_FLOAT: {
+    }
+      break;
+      
+    case MEM_FLOAT: {
+    }
+      break;
+    }
+    break;
+
+    // memory
+  case MEM_FLOAT:
+    switch(right->GetType()) {
+    case IMM_FLOAT: {
+    }
+      break;
+      
+    case REG_FLOAT: {
+    }
+      break;
+      
+    case MEM_FLOAT: {
+    }
+      break;
+    }
+    break;
+  }
+  
+  delete left;
+  left = NULL;
+    
+  delete right;
+  right = NULL;
+}
+
 /////////////////// OPERATIONS ///////////////////
 
 void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
@@ -2149,7 +2220,7 @@ void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
   case DIV_INT:
     div_imm_reg(imm, reg);
     break;
-
+    
   case MOD_INT:
     div_imm_reg(imm, reg, true);
     break;
