@@ -162,6 +162,7 @@ void Scanner::LoadKeywords()
   ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map["THREAD_JOIN"] = THREAD_JOIN;
   ident_map["SYS_TIME"] = SYS_TIME;
+  ident_map["PLTFRM"] = PLTFRM;
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
   ident_map["SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
@@ -273,6 +274,7 @@ void Scanner::CheckIdentifier(int index)
   case THREAD_SLEEP:
   case THREAD_JOIN:
   case SYS_TIME:
+  case PLTFRM:
   case TIMER_START:
   case TIMER_END:
   case SOCK_TCP_CONNECT:

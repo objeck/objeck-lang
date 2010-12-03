@@ -200,6 +200,8 @@ enum TokenType {
   SYS_TIME,
   TIMER_START,
   TIMER_END,
+  // platform
+  PLTFRM,
 #endif
 };
 

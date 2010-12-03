@@ -738,6 +738,38 @@ void StackInterpreter::ProcessCurrentTime()
 }
 
 /********************************
+ * Get platform string
+ ********************************/
+void StackInterpreter::ProcessPlatform() 
+{
+  string value_str = System::GetPlatform();
+
+  // create character array
+  const long char_array_size = value_str.size();
+  const long char_array_dim = 1;
+  long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+								     ((char_array_dim + 2) *
+								      sizeof(long)),
+								     BYTE_ARY_TYPE,
+								     op_stack, *stack_pos);
+  char_array[0] = char_array_size;
+  char_array[1] = char_array_dim;
+  char_array[2] = char_array_size;
+
+  // copy string
+  char* char_array_ptr = (char*)(char_array + 3);
+  strcpy(char_array_ptr, value_str.c_str());
+
+  // create 'System.String' object instance
+  long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
+							    (long*)op_stack, *stack_pos);
+  str_obj[0] = (long)char_array;
+  str_obj[1] = char_array_size;
+
+  PushInt((long)str_obj);
+}
+
+/********************************
  * Processes a load function
  * variable instruction.
  ********************************/
@@ -1625,9 +1657,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
   
-    // ---------------- system time ----------------
+    // ---------------- runtime ----------------
   case SYS_TIME:
     ProcessCurrentTime();
+    break;
+
+  case PLTFRM:
+    ProcessPlatform();
     break;
     
     // ---------------- ip socket i/o ----------------
