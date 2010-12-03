@@ -42,12 +42,12 @@ int main(const int argc, const char* argv[])
     return Execute(argc, argv);
   } 
   else {
-    string usage = "Copyright (c) 2008-2010, Randy Hollines. All rights reserved.\n";
+    string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
     usage += VERSION_STRING;
-	usage += "\n\n";
+	 usage += "\n\n";
     usage += "usage: obr <program>\n\n";
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;
