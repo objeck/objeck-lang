@@ -6,6 +6,32 @@
 ~~#	
 
 bundle System {
+#~
+	class Runtime {
+		platform : static : String;
+		
+		function : GetPlatform() ~ String {
+			GET_PLTFRM;
+		}
+		
+		function : GetClass(c : String) ~ Class {
+			GET_CLS;
+		}
+	}
+	
+	class Class {
+		name : String;
+		
+		function : GetMethod(m : String) ~ Class {
+			GET_MTHD;
+		}
+	}
+	
+	class Method {
+		
+	}
+~#
+
 	#~~
 	# Boolean class support
 	~~#	
