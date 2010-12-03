@@ -1,0 +1,13 @@
+bundle Default {
+	class Hello {
+    	function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+    	function : Run() ~ Nil {
+			y := 324.2;
+			z := (y * 10.5)->As(Int) % 9;
+			z->PrintLine();
+		}
+	}
+}
