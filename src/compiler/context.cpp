@@ -1963,11 +1963,26 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
     break;
 
+  case MOD_EXPR: 
+    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      ProcessError(expression, "Invalid mathematical operation");
+    } 
+    else if(IsEnumExpression(left) || IsEnumExpression(right)) {
+      ProcessError(expression, "Invalid mathematical operation");
+    }
+    
+    if((left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE && left->GetCastType() && left->GetCastType()->GetType() != INT_TYPE) ||
+       (right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE && right->GetCastType() && right->GetCastType()->GetType() != INT_TYPE) || 
+       (left->GetCastType() && left->GetCastType()->GetType() == FLOAT_TYPE) ||
+       (right->GetCastType() && right->GetCastType()->GetType() == FLOAT_TYPE)) {
+      ProcessError(expression, "Expected Byte, Char or Int class");
+    } 
+    break;
+    
   case ADD_EXPR:
   case SUB_EXPR:
   case MUL_EXPR:
   case DIV_EXPR:
-  case MOD_EXPR:
   case SHL_EXPR:
   case SHR_EXPR:
   case BIT_AND_EXPR:
@@ -1975,9 +1990,11 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case BIT_XOR_EXPR:
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } else if(IsEnumExpression(left) || IsEnumExpression(right)) {
+    } 
+    else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
+    break;
   }
 }
 
