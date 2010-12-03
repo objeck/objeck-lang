@@ -193,7 +193,7 @@ class System {
       platform += uts.sysname;
       platform += " ";
       platform += uts.release;
-      platform += " ";
+      platform += ", ";
       platform += uts.machine;
     }
     
