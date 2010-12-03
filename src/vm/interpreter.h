@@ -285,6 +285,7 @@ namespace Runtime {
     inline void ProcessCopyInt(StackInstr* instr);
     inline void ProcessCopyFloat(StackInstr* instr);
     inline void ProcessCurrentTime();
+    inline void ProcessPlatform();
     inline void ProcessTrap(StackInstr* instr);
 
   public:

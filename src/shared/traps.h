@@ -90,6 +90,8 @@ namespace instructions {
     SOCK_TCP_IN_STRING,
     SOCK_TCP_OUT_STRING,
     SOCK_TCP_HOST_NAME,
+    // platform
+    PLTFRM,
   } 
   Traps;
 }

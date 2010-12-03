@@ -34,6 +34,7 @@
 #define __POSIX_H__
 
 #include "../../common.h"
+#include <sys/utsname.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -173,6 +174,30 @@ class IPSocket {
   
   static void Close(SOCKET sock) {
     close(sock);
+  }
+};
+
+/****************************
+ * System operations
+ ****************************/
+class System {
+ public:
+  static string GetPlatform() {
+    string platform;
+    struct utsname uts;
+    
+    if(uname(&uts) < 0) {
+      platform = "Unknown";
+    }
+    else {
+      platform += uts.sysname;
+      platform += " ";
+      platform += uts.release;
+      platform += " ";
+      platform += uts.machine;
+    }
+    
+    return platform;
   }
 };
 

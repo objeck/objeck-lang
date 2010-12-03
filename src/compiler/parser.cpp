@@ -755,6 +755,12 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
+    case PLTFRM:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::PLTFRM);
+      NextToken();
+      break;
+      
     case TIMER_START:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::TIMER_START);
