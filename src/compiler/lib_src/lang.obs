@@ -6,32 +6,6 @@
 ~~#	
 
 bundle System {
-#~
-	class Runtime {
-		platform : static : String;
-		
-		function : GetPlatform() ~ String {
-			GET_PLTFRM;
-		}
-		
-		function : GetClass(c : String) ~ Class {
-			GET_CLS;
-		}
-	}
-	
-	class Class {
-		name : String;
-		
-		function : GetMethod(m : String) ~ Class {
-			GET_MTHD;
-		}
-	}
-	
-	class Method {
-		
-	}
-~#
-
 	#~~
 	# Boolean class support
 	~~#	
@@ -1104,6 +1078,10 @@ bundle System {
 	# Runtime system class
 	~~#	
 	class Runtime {
+		function : GetPlatform() ~ String {
+			PLTFRM;
+		}
+		
 		function : GetTime() ~ System.Time {
 			return Time->New();
 		}
