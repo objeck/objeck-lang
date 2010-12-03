@@ -391,10 +391,6 @@ void JitCompilerIA64::ProcessInstructions() {
       ProcessCopy(instr);
       break;
       
-    case MOD_FLOAT:
-      ProcessModFloat(instr);
-      break;
-
       // mathematical
     case AND_INT:
     case OR_INT:

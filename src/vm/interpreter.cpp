@@ -293,13 +293,6 @@ void StackInterpreter::Execute()
       PushInt(PopInt() % PopInt());
       break;
       
-    case MOD_FLOAT:
-#ifdef _DEBUG
-      cout << "stack oper: MOD; call_pos=" << call_stack_pos << endl;
-#endif
-      PushFloat ((long)PopFloat() % (long)PopFloat());
-      break;
-
     case BIT_AND_INT:
 #ifdef _DEBUG
       cout << "stack oper: BIT_AND; call_pos=" << call_stack_pos << endl;

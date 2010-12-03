@@ -79,7 +79,6 @@ namespace instructions {
     MUL_INT,
     DIV_INT,
     MOD_INT,
-    MOD_FLOAT,
     BIT_AND_INT,
     BIT_OR_INT,
     BIT_XOR_INT,

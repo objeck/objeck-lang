@@ -417,10 +417,6 @@ public:
       cout << "MOD_INT" << endl;
       break;
       
-    case MOD_FLOAT:
-      cout << "MOD_FLOAT" << endl;
-      break;
-      
     case BIT_AND_INT:
       cout << "BIT_AND_INT" << endl;
       break;
