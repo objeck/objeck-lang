@@ -4,10 +4,12 @@ bundle Default {
 			Run();
 		}
 
+    	function : Foo(x : Int, y : Float) ~ Nil {
+			(x * y)->PrintLine();
+		}
+
     	function : Run() ~ Nil {
-			y := 324.2;
-			z := (y * 10.5)->As(Int) % 9;
-			z->PrintLine();
+			Foo(3, 4.5 * 9.5);
 		}
 	}
 }
