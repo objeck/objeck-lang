@@ -999,10 +999,21 @@ The Hash class supports the concept of a hash table with key/value pairs.  The c
 \end{itemize}.
 
 \subsection{System Libraries}
+\subsubsection{Runtime}
+The Runtime class provides information about the runtime VM environment.
+\begin{itemize}
+\item \texttt{GetPlatform} - returns a string containing information
+  about the runtime environment
+  \begin{itemize}
+  \item function : GetPlatform(), String
+  \end{itemize}
+\end{itemize}
+
 \subsubsection{Console}
 The Console class allows programmers to read and write information to the system console.    The class supports the following operations:
 \begin{itemize}
-\item \texttt{Print} - prints all basic types including
+\item 
+  \texttt{Print} - prints all basic types including
   \texttt{String} and \texttt{Char[]} to standard out.
   \begin{itemize}
   \item function : Print(t : type), ConsoleIO
