@@ -1,0 +1,5 @@
+Objeck v1.2.1_2
+
+This point release was primarily focused on bug fixes and code cleanup.  One new library class was added please refer to the readme.rtf file for details.  Two significant bugs where resolved.  The first fix was related to the collection of static object arrays.  The second fix was related to the explicit casting of nested sub-expressions.  In addition, compiler stability was improved.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
