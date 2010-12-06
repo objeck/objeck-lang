@@ -580,6 +580,7 @@ class ContextAnalyzer {
                                    Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   void AnalyzeMethodCall(MethodCall* method_call, int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, int depth);
+  void AnalyzeMixinCall(MethodCall* method_call, int depth);
   void AnalyzeParentCall(MethodCall* method_call, int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, int depth);
