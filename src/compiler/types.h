@@ -102,7 +102,6 @@ namespace frontend {
   enum MethodCallType {
     ENUM_CALL = -6000,
     NEW_INST_CALL,
-    MIXIN_INST_CALL,
     NEW_ARRAY_CALL,
     METHOD_CALL,
     PARENT_CALL
