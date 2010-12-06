@@ -541,11 +541,7 @@ public:
     case LIB_NEW_OBJ_INST:
       cout << "LIB_NEW_OBJ_INST: class='" << operand5 << "'" << endl;
       break;
-      
-    case MIXIN_OBJ_INST:
-      cout << "MIXIN_OBJ_INST: number=" << operand << endl;
-      break;
-      
+
     case LIB_OBJ_INST_CAST:
       cout << "LIB_OBJ_INST_CAST: to_class='" << operand5 << "'" << endl;
       break;

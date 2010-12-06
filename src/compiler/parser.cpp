@@ -213,13 +213,16 @@ void Parser::ParseBundle(int depth)
 #ifdef _DEBUG
       Show("bundle: '" + current_bundle->GetName() + "'", depth);
 #endif
-      // parse classes
+      // parse classes, interfaces and enums
       while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
         if(Match(TOKEN_ENUM_ID)) {
           bundle->AddEnum(ParseEnum(depth + 1));
         } 
 	else if(Match(TOKEN_CLASS_ID)) {
 	  bundle->AddClass(ParseClass(bundle_name, depth + 1));
+	}
+	else if(Match(TOKEN_INTERFACE_ID)) {
+	  bundle->AddClass(ParseInterface(bundle_name, depth + 1));
 	}
 	else {
 	  ProcessError("Expected 'class' or 'enum'", TOKEN_SEMI_COLON);
@@ -256,7 +259,7 @@ Enum* Parser::ParseEnum(int depth)
   // identifier
   string enum_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
-    ProcessError("Class or enum already defined in this bundle");
+    ProcessError("Class, interface or enum already defined in this bundle");
   }
   NextToken();
 
@@ -315,7 +318,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   // identifier
   string cls_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
-    ProcessError("Class or enum already defined in this bundle");
+    ProcessError("Class, interface or enum already defined in this bundle");
   }
   NextToken();
 
@@ -349,7 +352,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, false);
   current_class = klass;
 
   // add '@this' entry
@@ -360,14 +363,14 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
     if(Match(TOKEN_FUNCTION_ID)) {
-      Method* method = ParseMethod(true, depth + 1);
+      Method* method = ParseMethod(true, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
                      TOKEN_CLOSED_PAREN);
       }
     } else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
-      Method* method = ParseMethod(false, depth + 1);
+      Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
@@ -383,7 +386,82 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       }
       NextToken();
     } else {
-      ProcessError("Expected statement", TOKEN_SEMI_COLON);
+      ProcessError("Expected declaration", TOKEN_SEMI_COLON);
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  symbol_table->PreviousParseScope(current_class->GetName());
+  current_class = NULL;
+  return klass;
+}
+
+/****************************
+ * Parses an interface
+ ****************************/
+Class* Parser::ParseInterface(const string &bundle_name, int depth)
+{
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+
+  NextToken();
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  // identifier
+  string cls_name = scanner->GetToken()->GetIdentifier();
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
+    ProcessError("Class, interface or enum already defined in this bundle");
+  }
+  NextToken();
+
+#ifdef _DEBUG
+  Show("[Interface: name='" + cls_name + "']", depth);
+#endif
+  
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(TOKEN_OPEN_BRACE);
+  }
+  symbol_table->NewParseScope();
+  NextToken();
+
+  if(bundle_name.size() > 0) {
+    cls_name.insert(0, ".");
+    cls_name.insert(0, bundle_name);
+  }
+
+  if(current_bundle->GetClass(cls_name)) {
+    ProcessError("Class has already been defined");
+  }
+  
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, "", true);
+  current_class = klass;
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    // parse 'method | function | declaration'
+    if(Match(TOKEN_FUNCTION_ID)) {
+      Method* method = ParseMethod(true, true, depth + 1);
+      bool was_added = klass->AddMethod(method);
+      if(!was_added) {
+        ProcessError("Method or function already defined '" + method->GetName() + "'",
+                     TOKEN_CLOSED_PAREN);
+      }
+    } 
+    else if(Match(TOKEN_METHOD_ID)) {
+      Method* method = ParseMethod(false, true, depth + 1);
+      bool was_added = klass->AddMethod(method);
+      if(!was_added) {
+        ProcessError("Method or function already defined '" + method->GetName() + "'",
+                     TOKEN_CLOSED_PAREN);
+      }
+    } 
+    else {
+      ProcessError("Expected declaration", TOKEN_SEMI_COLON);
       NextToken();
     }
   }
@@ -401,7 +479,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 /****************************
  * Parses a method.
  ****************************/
-Method* Parser::ParseMethod(bool is_function, int depth)
+Method* Parser::ParseMethod(bool is_function, bool virtual_required, int depth)
 {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
@@ -434,6 +512,10 @@ Method* Parser::ParseMethod(bool is_function, int depth)
     }
     NextToken();
 
+    if(virtual_required && !Match(TOKEN_VIRTUAL_ID)) {      
+      ProcessError("Expected 'virtual", TOKEN_SEMI_COLON);
+    }
+    
     // virtual method
     if(Match(TOKEN_VIRTUAL_ID)) {
       is_virtual = true;
@@ -1969,42 +2051,11 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							      ParseExpressionList(depth + 1));
       }
     } 
-    // as cast
+
     else if(Match(TOKEN_AS_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       ParseCast(variable, depth + 1);
       TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
-    }
-    // mixin
-    else if(Match(TOKEN_MIXIN_ID)) {
-      NextToken();
-      if(!Match(TOKEN_OPEN_PAREN)) {
-	ProcessError(TOKEN_OPEN_PAREN);
-      }
-      NextToken();
-
-      ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-      while(Match(TOKEN_CHAR_STRING_LIT)) {
-	const string &ident = scanner->GetToken()->GetIdentifier();
-	expressions->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident));
-	NextToken();
-	
-	if(Match(TOKEN_COMMA)) {
-	  NextToken();
-	} 
-	else if(!Match(TOKEN_CLOSED_PAREN)) {
-	  ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
-	  NextToken();
-	}
-      }
-      
-      if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError(TOKEN_CLOSED_PAREN);
-      }
-      NextToken();
-      
-      method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, MIXIN_INST_CALL,
-							    ident, expressions);
     }
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
