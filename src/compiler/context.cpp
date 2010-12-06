@@ -813,7 +813,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
   }
   // mixin
   else if(method_call->GetCallType() == MIXIN_INST_CALL) {
-    // TODO...
+    AnalyzeMixinCall(method_call, depth);
   }
   // enum call
   else if(method_call->GetCallType() == ENUM_CALL) {
@@ -1034,11 +1034,37 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
 }
 
 /****************************
+ * Analyzes a mixin call
+ ****************************/
+void ContextAnalyzer::AnalyzeMixinCall(MethodCall* method_call, int depth)
+{
+  // explicitly defined variable
+  SymbolEntry* entry = GetEntry(method_call->GetVariableName());
+  if(entry && entry->GetType()) {
+    if(entry->GetType()->GetType() != CLASS_TYPE) {
+      ProcessError("Expected class instance variable");
+    }
+    if(entry->GetType()->GetDimension() > 0) {
+      ProcessError("Expected class instance variable");
+    }
+  }
+  else {
+    ProcessError("Expected class instance variable");
+  }
+}
+
+/****************************
  * Analyzes a new array method
  * call
  ****************************/
 void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, int depth)
 {
+  const string& cls_name = method_call->GetVariableName();  
+  if(!SearchProgramClasses(cls_name) &&
+     !linker->SearchClassLibraries(cls_name, program->GetUses())) {
+    ProcessError("Undefined class: '" + cls_name + "'");
+  }
+  
   // get parameters
   ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
