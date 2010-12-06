@@ -90,6 +90,8 @@ void Scanner::LoadKeywords()
   ident_map["public"] = TOKEN_PUBLIC_ID;
   ident_map["private"] = TOKEN_PRIVATE_ID;
   ident_map["class"] = TOKEN_CLASS_ID;
+  ident_map["interface"] = TOKEN_INTERFACE_ID;
+  ident_map["enforces"] = TOKEN_ENFORCES_ID;
   ident_map["function"] = TOKEN_FUNCTION_ID;
   ident_map["method"] = TOKEN_METHOD_ID;
   ident_map["select"] = TOKEN_SELECT_ID;
@@ -109,7 +111,6 @@ void Scanner::LoadKeywords()
   ident_map["true"] = TOKEN_TRUE_ID;
   ident_map["false"] = TOKEN_FALSE_ID;
   ident_map["New"] = TOKEN_NEW_ID;
-  ident_map["Mixin"] = TOKEN_MIXIN_ID;
   ident_map["Nil"] = TOKEN_NIL_ID;
   ident_map["As"] = TOKEN_AS_ID;
   ident_map["critical"] = TOKEN_CRITICAL_ID;
@@ -220,6 +221,8 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_AS_ID:
   case TOKEN_PARENT_ID:
   case TOKEN_CLASS_ID:
+  case TOKEN_INTERFACE_ID:
+  case TOKEN_ENFORCES_ID:
   case TOKEN_FUNCTION_ID:
   case TOKEN_METHOD_ID:
   case TOKEN_BYTE_ID:
@@ -228,7 +231,6 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_FLOAT_ID:
   case TOKEN_CHAR_ID:
   case TOKEN_NEW_ID:
-  case TOKEN_MIXIN_ID:
   case TOKEN_NIL_ID:
 #ifdef _SYSTEM
   case FLOR_FLOAT:

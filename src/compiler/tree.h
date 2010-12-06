@@ -1739,10 +1739,12 @@ namespace frontend {
     vector<Class*> children;
     bool is_virtual;
     bool was_called;
+    bool is_interface;
 
-  Class(const string &f, const int l, const string &n, const string &p) : ParseNode(f, l) {
+  Class(const string &f, const int l, const string &n, const string &p, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
+      is_interface = i;
       id = -1;
       parent = NULL;
       lib_parent = NULL;
@@ -1810,6 +1812,10 @@ namespace frontend {
       return is_virtual;
     }
 
+    bool IsInterface() {
+      return is_interface;
+    }
+    
     void AddStatement(Statement* s) {
       statements.push_back(s);
     }
@@ -2250,13 +2256,14 @@ namespace frontend {
       nodes.push_back(tmp);
       return tmp;
     }
-
-    Class* MakeClass(const string &file_name, const int line_num, const string &name, const string &parent_name) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name);
+    
+    Class* MakeClass(const string &file_name, const int line_num, const string &name, 
+		     const string &parent_name, bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
-
+    
     Method* MakeMethod(const string &file_name, const int line_num, const string &name, MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
       nodes.push_back(tmp);
