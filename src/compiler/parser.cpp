@@ -1969,11 +1969,42 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							      ParseExpressionList(depth + 1));
       }
     } 
-
+    // as cast
     else if(Match(TOKEN_AS_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       ParseCast(variable, depth + 1);
       TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
+    }
+    // mixin
+    else if(Match(TOKEN_MIXIN_ID)) {
+      NextToken();
+      if(!Match(TOKEN_OPEN_PAREN)) {
+	ProcessError(TOKEN_OPEN_PAREN);
+      }
+      NextToken();
+
+      ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+      while(Match(TOKEN_CHAR_STRING_LIT)) {
+	const string &ident = scanner->GetToken()->GetIdentifier();
+	expressions->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, ident));
+	NextToken();
+	
+	if(Match(TOKEN_COMMA)) {
+	  NextToken();
+	} 
+	else if(!Match(TOKEN_CLOSED_PAREN)) {
+	  ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+	  NextToken();
+	}
+      }
+      
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError(TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
+      
+      method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, MIXIN_INST_CALL,
+							    ident, expressions);
     }
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
