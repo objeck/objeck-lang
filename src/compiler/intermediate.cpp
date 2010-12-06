@@ -2528,7 +2528,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       EmitExpression(expressions[i]);
     }
     is_new_inst = false;
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_MIXIN_OBJ_INST));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MIXIN_OBJ_INST, (int)expressions.size()));
   }
   // instance
   else if(method_call->GetCallType() == NEW_INST_CALL) {
