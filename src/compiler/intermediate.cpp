@@ -2521,6 +2521,15 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     }
     is_new_inst = false;
   }
+  // mixin
+  else if(method_call->GetCallType() == MIXIN_INST_CALL) {
+    vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+    for(unsigned int i = 0; i < expressions.size(); i++) {
+      EmitExpression(expressions[i]);
+    }
+    is_new_inst = false;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_MIXIN_OBJ_INST));
+  }
   // instance
   else if(method_call->GetCallType() == NEW_INST_CALL) {
     // declarations

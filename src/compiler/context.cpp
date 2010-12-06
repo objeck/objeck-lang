@@ -811,6 +811,10 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     AnalyzeNewArrayCall(method_call, depth);
   }
+  // mixin
+  else if(method_call->GetCallType() == MIXIN_INST_CALL) {
+    // TODO...
+  }
   // enum call
   else if(method_call->GetCallType() == ENUM_CALL) {
     Enum* eenum = SearchProgramEnums(method_call->GetVariableName());

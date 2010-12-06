@@ -110,6 +110,7 @@ namespace instructions {
     NEW_BYTE_ARY,
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
+    NEW_MIXIN_OBJ_INST,
     NEW_OBJ_INST,
     // casting
     OBJ_INST_CAST,
