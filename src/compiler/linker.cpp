@@ -310,15 +310,22 @@ void Library::LoadClasses()
     // pid
     ReadInt();
     const string &parent_name = ReadString();
-
+    
+    // read interface names
+    vector<string> interface_names;
+    const int interface_names_size = ReadInt();
+    for(int i = 0; i < interface_names_size; i++) {
+      interface_names.push_back(ReadString());
+    }
+    
     bool is_virtual = (bool)ReadInt();
     bool is_debug = (bool)ReadInt();
     string file_name;
     if(is_debug) {
       file_name = ReadString();
     }
-    int cls_space = ReadInt();
-    int inst_space = ReadInt();
+    const int cls_space = ReadInt();
+    const int inst_space = ReadInt();
 
     // read type parameters
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
@@ -350,7 +357,7 @@ void Library::LoadClasses()
     Linker::Show(msg, 0, 0);
 #endif
     
-    LibraryClass* cls = new LibraryClass(name, parent_name, is_virtual, cls_space, 
+    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_virtual, cls_space, 
 					 inst_space, entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);

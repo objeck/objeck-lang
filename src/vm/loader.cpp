@@ -185,6 +185,13 @@ void Loader::LoadClasses()
     string name = ReadString();
     const int pid = ReadInt();
     string parent_name = ReadString();
+
+    // read interface names
+    const int interface_names_size = ReadInt();
+    for(int i = 0; i < interface_names_size; i++) {
+      ReadString();
+    }
+    
     // is virtual
     const bool is_virtual = ReadInt();
     const bool is_debug = ReadInt();
