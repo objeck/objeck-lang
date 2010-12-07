@@ -386,14 +386,14 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
     if(Match(TOKEN_FUNCTION_ID)) {
-      Method* method = ParseMethod(true, false, depth + 1);
+      Method* method = ParseMethod(true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
                      TOKEN_CLOSED_PAREN);
       }
     } else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
-      Method* method = ParseMethod(false, false, depth + 1);
+      Method* method = ParseMethod(false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
@@ -470,7 +470,7 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
     if(Match(TOKEN_FUNCTION_ID)) {
-      Method* method = ParseMethod(true, true, depth + 1);
+      Method* method = ParseMethod(true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
@@ -478,7 +478,7 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
       }
     } 
     else if(Match(TOKEN_METHOD_ID)) {
-      Method* method = ParseMethod(false, true, depth + 1);
+      Method* method = ParseMethod(false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
@@ -504,7 +504,7 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
 /****************************
  * Parses a method.
  ****************************/
-Method* Parser::ParseMethod(bool is_function, bool virtual_required, int depth)
+Method* Parser::ParseMethod(bool is_function, int depth)
 {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
@@ -537,10 +537,6 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_required, int depth)
     }
     NextToken();
 
-    if(virtual_required && !Match(TOKEN_VIRTUAL_ID)) {      
-      ProcessError("Expected 'virtual", TOKEN_SEMI_COLON);
-    }
-    
     // virtual method
     if(Match(TOKEN_VIRTUAL_ID)) {
       is_virtual = true;
