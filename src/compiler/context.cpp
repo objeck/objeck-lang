@@ -4,7 +4,7 @@
  * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
+ * Redistribution and use in source and binary forms, with or ywithout
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -254,119 +254,165 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
   for(unsigned int i = 0; i < methods.size(); i++) {
     AnalyzeMethod(methods[i], i, depth + 1);
   }
-
+  
   // look for parent virutal methods
   if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
-    Class* parent = current_class->GetParent();
-    bool virtual_methods_defined = true;
-    // virutal methods
-    vector<Method*> parent_methods = parent->GetMethods();
-    for(unsigned int i = 0; i < parent_methods.size(); i++) {
-      if(parent_methods[i]->IsVirtual()) {
-        // validate that methods have been implemented
-        Method* virtual_method = parent_methods[i];
-        string virtual_method_name = virtual_method->GetEncodedName();
-	
-	Method* impl_method = NULL;
-        // check method
-        int offset = (int)virtual_method_name.find_first_of(':');
-	if(offset > -1) {
-	  const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
-	  impl_method = current_class->GetMethod(encoded_name);
-	}
-	
-        if(impl_method) {
-          // check method types
-          if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         parent->GetName());
-          }
-          // check method returns
-          Type* impl_return = impl_method->GetReturn();
-          Type* virtual_return = virtual_method->GetReturn();
-          if(impl_return->GetType() != virtual_return->GetType()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         parent->GetName());
-          } else if(impl_return->GetType() == CLASS_TYPE &&
-                    impl_return->GetClassName() != virtual_return->GetClassName()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         parent->GetName());
-          }
-          // check function vs. method
-          if(impl_method->IsStatic() != virtual_method->IsStatic()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         parent->GetName());
-          }
-          // check virtual
-          if(impl_method->IsVirtual()) {
-            ProcessError(current_class, "Implementation method cannot be virtual");
-          }
-        } 
-       else {
-          virtual_methods_defined = false;
-        }
-      }
-    }
-    // all virtual method defined
-    if(!virtual_methods_defined) {
-      ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                   parent->GetName());
-    }
-  } else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
-    LibraryClass* lib_parent = current_class->GetLibraryParent();
-    bool virtual_methods_defined = true;
-
-    // virutal methods
-    map<const string, LibraryMethod*>::iterator iter;
-    map<const string, LibraryMethod*> lib_parent_methods = lib_parent->GetMethods();
-    for(iter = lib_parent_methods.begin(); iter != lib_parent_methods.end(); iter++) {
-      LibraryMethod* virtual_method = iter->second;
-      if(virtual_method->IsVirtual()) {
-
-        // validate that methods have been implemented
-        string virtual_method_name = virtual_method->GetName();
-        int offset = (int)virtual_method_name.find_first_of(':');
-        const string encoded_name = current_class->GetName() + virtual_method_name.substr(offset);
-
-        // check method
-        Method* impl_method = current_class->GetMethod(encoded_name);
-        if(impl_method) {
-          // check method types
-          if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         lib_parent->GetName());
-          }
-          // check method returns
-          Type* impl_return = impl_method->GetReturn();
-          Type* virtual_return = virtual_method->GetReturn();
-          if(impl_return->GetType() != virtual_return->GetType()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         lib_parent->GetName());
-          } else if(impl_return->GetType() == CLASS_TYPE &&
-                    impl_return->GetClassName() != virtual_return->GetClassName()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         lib_parent->GetName());
-          }
-          // check function vs. method
-          if(impl_method->IsStatic() != virtual_method->IsStatic()) {
-            ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                         lib_parent->GetName());
-          }
-          // check virtual
-          if(impl_method->IsVirtual()) {
-            ProcessError(current_class, "Implementation method cannot be virtual");
-          }
-        } else {
-          virtual_methods_defined = false;
-        }
-      }
-    }
-    // all virtual method defined
-    if(!virtual_methods_defined) {
-      ProcessError(current_class, "Not all virtual methods have been defined for class: " +
-                   lib_parent->GetName());
+    if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class: " + 
+		   current_class->GetParent()->GetName());
     }
   }
+  else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
+    if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class: " + 
+		   current_class->GetLibraryParent()->GetName());
+    }
+  }
+  
+  AnalyzeInterfaces(klass, depth);
+}
+
+/****************************
+ * Checks for interface 
+ * implementations
+ ****************************/
+void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth) 
+{
+  vector<string> interface_names = current_class->GetInterfaceStrings();
+  for(unsigned int i = 0; i < interface_names.size(); i++) {
+    const string& interface_name = interface_names[i];
+    Class* inf_klass = SearchProgramClasses(interface_name);
+    if(inf_klass) {
+      if(!AnalyzeVirtualMethods(current_class, inf_klass, depth)) {
+	ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
+		     inf_klass->GetName());
+      }
+    }
+    else {
+      LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
+      if(inf_lib_klass) {
+	if(!AnalyzeVirtualMethods(current_class, inf_lib_klass, depth)) {
+	  ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
+		       inf_lib_klass->GetName());
+	}
+      }
+      else {
+	ProcessError(klass, "Undefined interface: '" + interface_name + "'");
+      }
+    }
+  }
+}
+
+/****************************
+ * Checks for virutal method
+ * implementations
+ ****************************/
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, int depth) 
+{
+  bool virtual_methods_defined = true;
+  // virutal methods
+  vector<Method*> parent_methods = parent->GetMethods();
+  for(unsigned int i = 0; i < parent_methods.size(); i++) {
+    if(parent_methods[i]->IsVirtual()) {
+      // validate that methods have been implemented
+      Method* virtual_method = parent_methods[i];
+      string virtual_method_name = virtual_method->GetEncodedName();
+	
+      Method* impl_method = NULL;
+      // check method
+      int offset = (int)virtual_method_name.find_first_of(':');
+      if(offset > -1) {
+	const string encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+	impl_method = impl_class->GetMethod(encoded_name);
+      }
+	
+      if(impl_method) {
+	// check method types
+	if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       parent->GetName());
+	}
+	// check method returns
+	Type* impl_return = impl_method->GetReturn();
+	Type* virtual_return = virtual_method->GetReturn();
+	if(impl_return->GetType() != virtual_return->GetType()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       parent->GetName());
+	} else if(impl_return->GetType() == CLASS_TYPE &&
+		  impl_return->GetClassName() != virtual_return->GetClassName()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       parent->GetName());
+	}
+	// check function vs. method
+	if(impl_method->IsStatic() != virtual_method->IsStatic()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       parent->GetName());
+	}
+	// check virtual
+	if(impl_method->IsVirtual()) {
+	  ProcessError(impl_class, "Implementation method cannot be virtual");
+	}
+      } 
+      else {
+	virtual_methods_defined = false;
+      }
+    }
+  }
+  
+  return virtual_methods_defined;
+}
+
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth) 
+{
+  bool virtual_methods_defined = true;
+
+  // virutal methods
+  map<const string, LibraryMethod*>::iterator iter;
+  map<const string, LibraryMethod*> lib_parent_methods = lib_parent->GetMethods();
+  for(iter = lib_parent_methods.begin(); iter != lib_parent_methods.end(); iter++) {
+    LibraryMethod* virtual_method = iter->second;
+    if(virtual_method->IsVirtual()) {
+
+      // validate that methods have been implemented
+      string virtual_method_name = virtual_method->GetName();
+      int offset = (int)virtual_method_name.find_first_of(':');
+      const string encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+
+      // check method
+      Method* impl_method = impl_class->GetMethod(encoded_name);
+      if(impl_method) {
+	// check method types
+	if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       lib_parent->GetName());
+	}
+	// check method returns
+	Type* impl_return = impl_method->GetReturn();
+	Type* virtual_return = virtual_method->GetReturn();
+	if(impl_return->GetType() != virtual_return->GetType()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       lib_parent->GetName());
+	} else if(impl_return->GetType() == CLASS_TYPE &&
+		  impl_return->GetClassName() != virtual_return->GetClassName()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       lib_parent->GetName());
+	}
+	// check function vs. method
+	if(impl_method->IsStatic() != virtual_method->IsStatic()) {
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+		       lib_parent->GetName());
+	}
+	// check virtual
+	if(impl_method->IsVirtual()) {
+	  ProcessError(impl_class, "Implementation method cannot be virtual");
+	}
+      } else {
+	virtual_methods_defined = false;
+      }
+    }
+  }
+    
+  return virtual_methods_defined;
 }
 
 /****************************
@@ -891,12 +937,12 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
       } else if(lib_klass) {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       } else {
-        ProcessError(static_cast<Expression*>(method_call), "Undefined class: '" +
-                     variable_name + "'");
+        ProcessError(static_cast<Expression*>(method_call), 
+		     "Undefined class: '" + variable_name + "'");
       }
     } else {
-      ProcessError(static_cast<Expression*>(method_call), "Undefined class: '" +
-                   variable_name + "'");
+      ProcessError(static_cast<Expression*>(method_call), 
+		   "Undefined class: '" + variable_name + "'");
     }
   }
 }
