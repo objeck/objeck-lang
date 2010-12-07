@@ -1740,7 +1740,7 @@ namespace frontend {
     bool is_virtual;
     bool was_called;
     bool is_interface;
-    vector<string> enforce_strings;
+    vector<string> interface_strings;
     
   Class(const string &f, const int l, const string &n, 
 	const string &p, vector<string> e, bool i) : ParseNode(f, l) {
@@ -1752,7 +1752,7 @@ namespace frontend {
       lib_parent = NULL;
       is_virtual = false;
       was_called = false;
-      enforce_strings = e;
+      interface_strings = e;
     }
 
     ~Class() {
@@ -1775,6 +1775,10 @@ namespace frontend {
       return was_called;
     }
 
+    vector<string> GetInterfaceStrings() {
+      return interface_strings;
+    }
+    
     const string& GetName() const {
       return name;
     }
