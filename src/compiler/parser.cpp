@@ -337,6 +337,28 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     parent_cls_name = ParseBundleName();
   }
 
+  // from id
+  vector<string> enforce_strings;
+  if(Match(TOKEN_ENFORCES_ID)) {
+    NextToken();
+    while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+      if(!Match(TOKEN_IDENT)) {
+	ProcessError(TOKEN_IDENT);
+      }
+      // identifier
+      const string& ident = scanner->GetToken()->GetIdentifier();
+      enforce_strings.push_back(ident);
+      NextToken();
+      if(Match(TOKEN_COMMA)) {
+	NextToken();
+      } 
+      else if(!Match(TOKEN_OPEN_BRACE)) {
+	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
+	NextToken();
+      }
+    }
+  }
+      
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(TOKEN_OPEN_BRACE);
   }
@@ -352,7 +374,8 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, false);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
+						    parent_cls_name, enforce_strings, false);
   current_class = klass;
 
   // add '@this' entry
@@ -439,7 +462,9 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, "", true);
+  vector<string> enforces_strings;
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
+						    "", enforces_strings, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1404,7 +1429,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
       ProcessError(TOKEN_IDENT);
     }
     // identifier
-    string ident = scanner->GetToken()->GetIdentifier();
+    const string& ident = scanner->GetToken()->GetIdentifier();
     NextToken();
 
     declarations->AddDeclaration(ParseDeclaration(ident, true, depth + 1));

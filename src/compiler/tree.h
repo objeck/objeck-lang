@@ -1740,8 +1740,10 @@ namespace frontend {
     bool is_virtual;
     bool was_called;
     bool is_interface;
-
-  Class(const string &f, const int l, const string &n, const string &p, bool i) : ParseNode(f, l) {
+    vector<string> enforce_strings;
+    
+  Class(const string &f, const int l, const string &n, 
+	const string &p, vector<string> e, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -1750,6 +1752,7 @@ namespace frontend {
       lib_parent = NULL;
       is_virtual = false;
       was_called = false;
+      enforce_strings = e;
     }
 
     ~Class() {
@@ -2258,8 +2261,8 @@ namespace frontend {
     }
     
     Class* MakeClass(const string &file_name, const int line_num, const string &name, 
-		     const string &parent_name, bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, is_interface);
+		     const string &parent_name, vector<string> enforces, bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
