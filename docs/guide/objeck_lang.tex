@@ -355,7 +355,7 @@ each(i : values) {
 };
 \end{verbatim}
 
-\section{User Defined Types}
+\section{Custom Types}
 
 \subsection{Enums}
 Enums are user defined enumerated types.  The main use of an  \texttt{enum}  is to group a class of countable values, for example colors, into a distinct class.  Once \texttt{enum}  values have been defined they may not be assigned or associated to a other \texttt{enum}  groups or integer classes.  The valid operations for enums are as follows:
@@ -444,6 +444,9 @@ Below is an example of declaring a virtual method:
 \begin{verbatim}
 method : virtual : public : Compare(right : Base ~ Int;
 \end{verbatim}
+
+\subsection{Interfaces}
+TODO
 
 \subsection{Higher-Order Functions}
 The Objeck language supports the notion of higher-order functions such that a given function may be bound to a variable at runtime.  Variables are assigned based upon functional prototypes.  Prototypes enforce strong type checking by ensuring that a function parameters and return type are consistent between assignments.  Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked.  Please note, methods are not treated as higher-order constructs only functions.  

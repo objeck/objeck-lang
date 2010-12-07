@@ -532,14 +532,14 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   else {
     short_file_name = file_name.substr(offset + 1);
   }
-   
+  
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
-                                    pid, parent_name, current_class->IsVirtual(),
-                                    cls_space, inst_space, entries, short_file_name,
-				    is_debug);
+                                    pid, parent_name, current_class->GetInterfaceStrings(), 
+				    current_class->IsVirtual(), cls_space, inst_space, 
+				    entries, short_file_name, is_debug);
   // block
   NewBlock();
-
+  
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(unsigned int i = 0; i < statements.size(); i++) {

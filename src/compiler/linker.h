@@ -414,6 +414,7 @@ class LibraryClass {
   int id;
   string name;
   string parent_name;
+  vector<string>interface_names;
   int cls_space;
   int inst_space;
   map<const string, LibraryMethod*> methods;
@@ -427,10 +428,11 @@ class LibraryClass {
   string file_name;
   
 public:
-  LibraryClass(const string &n, const string &p, bool v, int cs, int is, 
+  LibraryClass(const string &n, const string &p, vector<string> in, bool v, int cs, int is, 
 	       backend::IntermediateDeclarations* e, Library* l, const string &fn, bool d) {
     name = n;
     parent_name = p;
+    interface_names = in;
     is_virtual = v;
     cls_space = cs;
     inst_space = is;
@@ -487,6 +489,10 @@ public:
 
   const string& GetName() const {
     return name;
+  }
+  
+  vector<string> GetInterfaceStrings() {
+    return interface_names;
   }
 
   const string& GetParentName() const {
