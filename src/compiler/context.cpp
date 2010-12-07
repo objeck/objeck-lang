@@ -283,6 +283,14 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
     const string& interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
     if(inf_klass) {
+      // ensure interface methods are virtual
+      vector<Method*> methods = inf_klass->GetMethods();
+      for(unsigned int i = 0; i < methods.size(); i++) {
+	if(!methods[i]->IsVirtual()) {
+	  ProcessError(methods[i], "Interface method must be defined as 'virtual'");
+	}
+      }
+      // ensure implementation
       if(!AnalyzeVirtualMethods(current_class, inf_klass, depth)) {
 	ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
 		     inf_klass->GetName());
@@ -291,6 +299,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
     else {
       LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
       if(inf_lib_klass) {
+	// ensure implementation
 	if(!AnalyzeVirtualMethods(current_class, inf_lib_klass, depth)) {
 	  ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
 		       inf_lib_klass->GetName());

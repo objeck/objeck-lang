@@ -886,6 +886,7 @@ class IntermediateClass : public Intermediate {
   string name;
   int pid;
   string parent_name;
+  vector<string> interface_names;
   int cls_space;
   int inst_space;
   vector<IntermediateBlock*> blocks;
@@ -898,12 +899,13 @@ class IntermediateClass : public Intermediate {
   string file_name;
   
 public:
-  IntermediateClass(int i, const string &n, int pi, const string &p, bool v, 
+  IntermediateClass(int i, const string &n, int pi, const string &p, vector<string> in, bool v, 
 		    int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
     id = i;
     name = n;
     pid = pi;
     parent_name = p;
+    interface_names = in;
     is_virtual = v;
     cls_space = cs;
     inst_space = is;
@@ -919,6 +921,7 @@ public:
     name = lib_klass->GetName();
     pid = -1;
     parent_name = lib_klass->GetParentName();
+    interface_names = lib_klass->GetInterfaceStrings();
     is_virtual = lib_klass->IsVirtual();
     is_debug = lib_klass->IsDebug();
     cls_space = lib_klass->GetClassSpace();
@@ -1015,6 +1018,13 @@ public:
     WriteString(name, file_out);
     WriteInt(pid, file_out);
     WriteString(parent_name, file_out);
+    
+    // interface names
+    WriteInt(interface_names.size(), file_out);
+    for(unsigned int i = 0; i < interface_names.size(); i++) {
+      WriteString(interface_names[i], file_out);
+    }
+    
     WriteInt(is_virtual, file_out);
     WriteInt(is_debug, file_out);
     if(is_debug) {
