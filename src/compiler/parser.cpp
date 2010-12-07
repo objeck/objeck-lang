@@ -339,7 +339,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 
   // from id
   vector<string> enforce_strings;
-  if(Match(TOKEN_ENFORCES_ID)) {
+  if(Match(TOKEN_COLON)) {
     NextToken();
     while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
       if(!Match(TOKEN_IDENT)) {

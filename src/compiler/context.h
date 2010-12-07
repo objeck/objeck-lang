@@ -539,11 +539,14 @@ class ContextAnalyzer {
   void ProcessError(ParseNode* n, const string &msg);
   void ProcessError(const string &msg);
   bool CheckErrors();
-
+  
   // context operations
   void AnalyzeEnum(Enum* eenum, int depth);
   void AnalyzeClass(Class* klass, int id, int depth);
   void AnalyzeMethods(Class* klass, int depth);
+  bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, int depth);
+  bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth);
+  void AnalyzeInterfaces(Class* klass, int depth);
   void AnalyzeMethod(Method* method, int id, int depth);
   void AnalyzeStatements(StatementList* statements, int depth);
   void AnalyzeStatement(Statement* statement, int depth);
