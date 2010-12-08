@@ -278,7 +278,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth) 
 {
-  vector<string> interface_names = current_class->GetInterfaceStrings();
+  vector<string> interface_names = current_class->GetInterfaceNames();
   for(unsigned int i = 0; i < interface_names.size(); i++) {
     const string& interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
