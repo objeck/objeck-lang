@@ -2902,7 +2902,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(ValidUpCast(left_class->GetName(), right_class)) {
+      else if(right_class->IsInterface() || ValidUpCast(left_class->GetName(), right_class)) {
         expression->SetToClass(left_class);
         return;
       }
@@ -2922,7 +2922,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(ValidUpCast(left_class->GetName(), right_lib_class)) {
+      else if(right_lib_class->IsInterface() || ValidUpCast(left_class->GetName(), right_lib_class)) {
         expression->SetToClass(left_class);
         return;
       }
@@ -2976,7 +2976,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(ValidUpCast(left_lib_class->GetName(), right_class)) {
+      else if(right_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_class)) {
         expression->SetToLibraryClass(left_lib_class);
         return;
       }
@@ -2995,7 +2995,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(ValidUpCast(left_lib_class->GetName(), right_lib_class)) {
+      else if(right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class)) {
         expression->SetToLibraryClass(left_lib_class);
         return;
       }
