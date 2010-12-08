@@ -1775,7 +1775,7 @@ namespace frontend {
       return was_called;
     }
 
-    vector<string> GetInterfaceStrings() {
+    vector<string> GetInterfaceNames() {
       return interface_strings;
     }
     

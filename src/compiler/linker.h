@@ -491,7 +491,7 @@ public:
     return name;
   }
   
-  vector<string> GetInterfaceStrings() {
+  vector<string> GetInterfaceNames() {
     return interface_names;
   }
 

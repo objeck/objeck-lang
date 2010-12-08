@@ -336,10 +336,35 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     // identifier
     parent_cls_name = ParseBundleName();
   }
-
-  // from id
-  vector<string> enforce_strings;
-  if(Match(TOKEN_COLON)) {
+  
+  // mixin ids
+  vector<string> mixin_names;
+  if(Match(TOKEN_MIXIN_ID)) {
+    NextToken();
+    while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID) && !Match(TOKEN_END_OF_STREAM)) {
+      if(!Match(TOKEN_IDENT)) {
+	ProcessError(TOKEN_IDENT);
+      }
+      // identifier
+      const string& ident = scanner->GetToken()->GetIdentifier();
+      mixin_names.push_back(ident);
+      NextToken();
+      if(Match(TOKEN_COMMA)) {
+	NextToken();
+      } 
+      else if(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID)) {
+	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
+	NextToken();
+      }
+    }
+  }
+  if(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID)) {
+    ProcessError(TOKEN_OPEN_BRACE);
+  }
+  
+  // implements ids
+  vector<string> interface_names;
+  if(Match(TOKEN_IMPLEMENTS_ID)) {
     NextToken();
     while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
       if(!Match(TOKEN_IDENT)) {
@@ -347,7 +372,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       }
       // identifier
       const string& ident = scanner->GetToken()->GetIdentifier();
-      enforce_strings.push_back(ident);
+      interface_names.push_back(ident);
       NextToken();
       if(Match(TOKEN_COMMA)) {
 	NextToken();
@@ -358,10 +383,10 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       }
     }
   }
-      
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(TOKEN_OPEN_BRACE);
   }
+  
   symbol_table->NewParseScope();
   NextToken();
 
@@ -375,7 +400,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   }
   
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
-						    parent_cls_name, enforce_strings, false);
+						    parent_cls_name, interface_names, false);
   current_class = klass;
 
   // add '@this' entry
