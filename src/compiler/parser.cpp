@@ -290,7 +290,11 @@ Enum* Parser::ParseEnum(int depth)
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
-    } else if(!Match(TOKEN_CLOSED_BRACE)) {
+      if(!Match(TOKEN_IDENT)) {
+	ProcessError(TOKEN_IDENT);
+      }
+    } 
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
       ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
       NextToken();
     }
@@ -351,6 +355,9 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       NextToken();
       if(Match(TOKEN_COMMA)) {
 	NextToken();
+	if(!Match(TOKEN_IDENT)) {
+	  ProcessError(TOKEN_IDENT);
+	}
       } 
       else if(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID)) {
 	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
@@ -376,6 +383,9 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       NextToken();
       if(Match(TOKEN_COMMA)) {
 	NextToken();
+	if(!Match(TOKEN_IDENT)) {
+	  ProcessError(TOKEN_IDENT);
+	}
       } 
       else if(!Match(TOKEN_OPEN_BRACE)) {
 	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
@@ -1457,6 +1467,9 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
+      if(!Match(TOKEN_IDENT)) {
+	ProcessError(TOKEN_IDENT);
+      }
     } 
     else if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
@@ -1489,10 +1502,11 @@ ExpressionList* Parser::ParseExpressionList(int depth, TokenType open, TokenType
   while(!Match(closed) && !Match(TOKEN_END_OF_STREAM)) {
     // expression
     expressions->AddExpression(ParseExpression(depth + 1));
-
+    
     if(Match(TOKEN_COMMA)) {
       NextToken();
-    } else if(!Match(closed)) {
+    } 
+    else if(!Match(closed)) {
       ProcessError("Expected comma or closed parenthesis", closed);
       NextToken();
     }
@@ -2676,7 +2690,8 @@ Type* Parser::ParseType(int depth)
         dimension++;
         if(Match(TOKEN_COMMA)) {
           NextToken();
-        } else if(!Match(TOKEN_CLOSED_BRACKET)) {
+        } 
+	else if(!Match(TOKEN_CLOSED_BRACKET)) {
           ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
           NextToken();
         }
