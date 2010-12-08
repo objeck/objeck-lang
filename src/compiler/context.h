@@ -328,11 +328,11 @@ class ContextAnalyzer {
       vector<string> interface_names;
       if(class_tmp) {
         cast_name = class_tmp->GetName();
-	interface_names = class_tmp->GetInterfaceStrings();
+	interface_names = class_tmp->GetInterfaceNames();
       } 
       else if(lib_class_tmp) {
         cast_name = lib_class_tmp->GetName();
-	interface_names = lib_class_tmp->GetInterfaceStrings();
+	interface_names = lib_class_tmp->GetInterfaceNames();
       }
       
       // check names
@@ -364,7 +364,7 @@ class ContextAnalyzer {
 
   // checks for a valid upcast
   bool ValidUpCast(const string &to, Class* from_klass) {
-    vector<string> interface_names = from_klass->GetInterfaceStrings();
+    vector<string> interface_names = from_klass->GetInterfaceNames();
     vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
     if(result != interface_names.end() || to == from_klass->GetName()) {
       return true;
@@ -383,7 +383,7 @@ class ContextAnalyzer {
 
   // checks for a valid upcast
   bool ValidUpCast(const string &to, LibraryClass* from_klass) {
-    vector<string> interface_names = from_klass->GetInterfaceStrings();
+    vector<string> interface_names = from_klass->GetInterfaceNames();
     vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
     if(result != interface_names.end() || to == from_klass->GetName()) {
       return true;

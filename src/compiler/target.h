@@ -921,7 +921,7 @@ public:
     name = lib_klass->GetName();
     pid = -1;
     parent_name = lib_klass->GetParentName();
-    interface_names = lib_klass->GetInterfaceStrings();
+    interface_names = lib_klass->GetInterfaceNames();
     is_virtual = lib_klass->IsVirtual();
     is_debug = lib_klass->IsDebug();
     cls_space = lib_klass->GetClassSpace();
