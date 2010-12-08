@@ -17,10 +17,10 @@ bundle Default {
 		New() {
 		}
 
-		method : virtual : Blsh(a : Int, b : Float,) ~ Nil;
+		method : virtual : Blsh(a : Int, b : Float) ~ Nil;
 	}
 
-	class Bar from Compare mixin Foo, implements Inf, Inf2 {
+	class Bar from Compare mixin Foo,Bar implements Inf, Inf2 {
 		New() {
 			Parent();
 		}
