@@ -409,8 +409,8 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
-						    parent_cls_name, interface_names, false);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
+						    mixin_names, interface_names, false);
   current_class = klass;
 
   // add '@this' entry
@@ -497,9 +497,10 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
+  vector<string> mixin_strings;
   vector<string> enforces_strings;
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
-						    "", enforces_strings, true);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, "", 
+						    mixin_strings, enforces_strings, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
