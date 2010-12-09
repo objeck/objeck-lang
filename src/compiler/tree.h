@@ -1742,9 +1742,11 @@ namespace frontend {
     bool is_interface;
     vector<string> interface_strings;
     vector<string> mixin_strings;
+    vector<LibraryClass*> mixin_lib_classes;
+    vector<Class*> mixin_classes;
     
-  Class(const string &f, const int l, const string &n, 
-	const string &p, vector<string> m, vector<string> e, bool i) : ParseNode(f, l) {
+    Class(const string &f, const int l, const string &n, 
+	  const string &p, vector<string> m, vector<string> e, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -1779,6 +1781,14 @@ namespace frontend {
     
     vector<string> GetMixinNames() {
       return mixin_strings;
+    }
+
+    void AddMixinClass(Class* c) {
+      mixin_classes.push_back(c);
+    }
+    
+    void AddMixinLibraryClass(LibraryClass* c) {
+      mixin_lib_classes.push_back(c);
     }
     
     vector<string> GetInterfaceNames() {
