@@ -269,7 +269,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
     }
   }
   
-  // AnalyzeMixins(klass, depth);
+  AnalyzeMixins(klass, depth);
   AnalyzeInterfaces(klass, depth);
 }
 
@@ -283,31 +283,49 @@ void ContextAnalyzer::AnalyzeMixins(Class* klass, int depth)
     const string& mixin_name = mixin_names[i];
     Class* mixin_klass = SearchProgramClasses(mixin_name);
     if(mixin_klass) {
+      const string& default_constructor = mixin_klass->GetName() + ":New:";
       // TODO: ensure defualt constrouctor
       bool found = false;
       vector<Method*> methods = mixin_klass->GetMethods();
       for(unsigned int i = 0; i < methods.size(); i++) {
-	const string& default_constructor = mixin_klass->GetName() + ":New:";
-	if(methods[i]->GetName() == default_constructor) {
+	// default constructor
+	if(methods[i]->GetEncodedName() == default_constructor) {
 	  found = true;
 	}
+	// no virtual methods
+	if(methods[i]->IsVirtual()) {
+	  ProcessError(current_class, "Mixin classes cannot have virtual methods");
+	}
       }
-
       if(found) {
-	// TODO: add mixin class
+	current_class->AddMixinClass(mixin_klass);
       }
       else {
-	ProcessError(current_class, "No default constructor has been defined for the mixin class: " + 
+	ProcessError(current_class, "No default constructor has been defined for the mixin class: " +  
 		     mixin_klass->GetName());
       }
     }
     else {
       LibraryClass* mixin_lib_klass = linker->SearchClassLibraries(mixin_name, program->GetUses());
       if(mixin_lib_klass) {
-	// ensure implementation
-	if(!AnalyzeVirtualMethods(current_class, mixin_lib_klass, depth)) {
-	  ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
-		       mixin_lib_klass->GetName());
+	const string& default_constructor = mixin_lib_klass->GetName() + ":New:";
+	bool found = false;
+	// ensure interface methods are virtual
+	map<const string, LibraryMethod*> lib_methods = mixin_lib_klass->GetMethods();
+	map<const string, LibraryMethod*>::iterator iter;
+	for(iter = lib_methods.begin(); iter != lib_methods.end(); iter++) {
+	  LibraryMethod* lib_method = iter->second;
+	  // default constructor
+	  if(lib_method->GetName() == default_constructor) {
+	    found = true;
+	  }
+	  // no virtual methods
+	  if(lib_method->IsVirtual()) {
+	    ProcessError(current_class, "Mixin classes cannot have virtual methods");
+	  }
+	}
+	if(found) {
+	  current_class->AddMixinLibraryClass(mixin_lib_klass);
 	}
       }
       else {
@@ -344,17 +362,15 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
     else {
       LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
       if(inf_lib_klass) {
-
 	// ensure interface methods are virtual
 	map<const string, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
-	/*
-	for(unsigned int i = 0; i < lib_methods.size(); i++) {
-	  if(!lib_methods[i]->IsVirtual()) {
-	    ProcessError(lib_methods[i], "Interface method must be defined as 'virtual'");
+	map<const string, LibraryMethod*>::iterator iter;
+	for(iter = lib_methods.begin(); iter != lib_methods.end(); iter++) {
+	  LibraryMethod* lib_method = iter->second;
+	  if(!lib_method->IsVirtual()) {
+	    ProcessError(current_class, "Interface method must be defined as 'virtual'");
 	  }
-	}
-	*/
-
+	}	
 	// ensure implementation
 	if(!AnalyzeVirtualMethods(current_class, inf_lib_klass, depth)) {
 	  ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
