@@ -555,6 +555,7 @@ class ContextAnalyzer {
   void AnalyzeMethods(Class* klass, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth);
+  void AnalyzeMixins(Class* klass, int depth);
   void AnalyzeInterfaces(Class* klass, int depth);
   void AnalyzeMethod(Method* method, int id, int depth);
   void AnalyzeStatements(StatementList* statements, int depth);
