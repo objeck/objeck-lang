@@ -20,7 +20,7 @@ bundle Default {
 		method : virtual : Blsh(a : Int, b : Float) ~ Nil;
 	}
 
-	class Bar from Compare mixin Foo,Bar implements Inf, Inf2 {
+	class Bar from Compare implements Inf, Inf2 {
 		New() {
 			Parent();
 		}
@@ -31,8 +31,11 @@ bundle Default {
 		}
 
 		function : Blah(x : Inf) ~ Nil {
-			b : Dog := x->As(Dog);
-			b->G();
+#~
+			y : Bar := x->As(Bar);
+			y->B1("yy", 3.4);
+~#
+x->As(Bar)->B1("yy", 3.4);
 		}
 
 		function : Blah2(x : Bar) ~ Nil {

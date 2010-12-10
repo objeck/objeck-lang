@@ -341,34 +341,6 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
     parent_cls_name = ParseBundleName();
   }
   
-  // mixin ids
-  vector<string> mixin_names;
-  if(Match(TOKEN_MIXIN_ID)) {
-    NextToken();
-    while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID) && !Match(TOKEN_END_OF_STREAM)) {
-      if(!Match(TOKEN_IDENT)) {
-	ProcessError(TOKEN_IDENT);
-      }
-      // identifier
-      const string& ident = scanner->GetToken()->GetIdentifier();
-      mixin_names.push_back(ident);
-      NextToken();
-      if(Match(TOKEN_COMMA)) {
-	NextToken();
-	if(!Match(TOKEN_IDENT)) {
-	  ProcessError(TOKEN_IDENT);
-	}
-      } 
-      else if(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID)) {
-	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
-	NextToken();
-      }
-    }
-  }
-  if(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_IMPLEMENTS_ID)) {
-    ProcessError(TOKEN_OPEN_BRACE);
-  }
-  
   // implements ids
   vector<string> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {
@@ -410,7 +382,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   }
   
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
-						    mixin_names, interface_names, false);
+						    interface_names, false);
   current_class = klass;
 
   // add '@this' entry
@@ -497,10 +469,9 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
     ProcessError("Class has already been defined");
   }
   
-  vector<string> mixin_strings;
-  vector<string> enforces_strings;
+  vector<string> interface_strings;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, "", 
-						    mixin_strings, enforces_strings, true);
+						    interface_strings, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1901,12 +1872,13 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_OPEN_PAREN:
       if(!Match(TOKEN_AS_ID, SECOND_INDEX)) {
         expression = ParseMethodCall(ident, depth + 1);
-      } else {
+      } 
+      else {
         expression = ParseVariable(ident, depth + 1);
         ParseCast(expression, depth + 1);
       }
       break;
-
+      
     default:
       // variable
       expression = ParseVariable(ident, depth + 1);
@@ -2112,12 +2084,32 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 							      ParseExpressionList(depth + 1));
       }
     } 
-
+    
     else if(Match(TOKEN_AS_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);
-      ParseCast(variable, depth + 1);
-      TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
+      
+      NextToken();
+      if(!Match(TOKEN_OPEN_PAREN)) {
+	ProcessError(TOKEN_OPEN_PAREN);
+      }
+      NextToken();
+      
+      if(variable) {
+	variable->SetCastType(ParseType(depth + 1));
+      }
+      
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError(TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
+      
+      // subsequent method calls
+      if(Match(TOKEN_ASSESSOR)) {
+	method_call = ParseMethodCall(variable, depth + 1);
+	method_call->SetCastType(variable->GetCastType());
+      }
     }
+    
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
     }

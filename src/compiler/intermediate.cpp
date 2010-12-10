@@ -3002,9 +3002,6 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
         }
       }
     }
-    // TODO: mixins
-    //...
-    
     // calculate current space
     size += CalculateEntrySpace(current_table, index, declarations, is_static);
   }
