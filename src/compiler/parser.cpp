@@ -2083,8 +2083,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
 							      ParseExpressionList(depth + 1));
       }
-    } 
-    
+    }
     else if(Match(TOKEN_AS_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       
@@ -2109,7 +2108,6 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 	method_call->SetCastType(variable->GetCastType());
       }
     }
-    
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
     }
