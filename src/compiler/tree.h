@@ -1741,18 +1741,14 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     vector<string> interface_strings;
-    vector<string> mixin_strings;
-    vector<LibraryClass*> mixin_lib_classes;
-    vector<Class*> mixin_classes;
     
     Class(const string &f, const int l, const string &n, 
-	  const string &p, vector<string> m, vector<string> e, bool i) : ParseNode(f, l) {
+	  const string &p, vector<string> e, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
       id = -1;
       parent = NULL;
-      mixin_strings = m;
       interface_strings = e;
       lib_parent = NULL;
       is_virtual = false;
@@ -1777,18 +1773,6 @@ namespace frontend {
 
     bool GetCalled() {
       return was_called;
-    }
-    
-    vector<string> GetMixinNames() {
-      return mixin_strings;
-    }
-
-    void AddMixinClass(Class* c) {
-      mixin_classes.push_back(c);
-    }
-    
-    void AddMixinLibraryClass(LibraryClass* c) {
-      mixin_lib_classes.push_back(c);
     }
     
     vector<string> GetInterfaceNames() {
@@ -2281,9 +2265,9 @@ namespace frontend {
     }
     
     Class* MakeClass(const string &file_name, const int line_num, const string &name, 
-		     const string &parent_name, vector<string> mixins, vector<string> enforces, 
+		     const string &parent_name, vector<string> enforces, 
 		     bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, mixins, enforces, is_interface);
+      Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
