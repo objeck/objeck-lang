@@ -809,7 +809,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       // emit method calls
       bool is_nested = false;
       do {
-	EmitMethodCall(method_call, is_nested, false);
+	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
 	  switch(OrphanReturn(method_call)) {
