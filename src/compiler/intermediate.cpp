@@ -749,7 +749,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
       while(method_call) {
-	EmitMethodCall(method_call, is_nested, false);
+	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
 	  switch(OrphanReturn(method_call)) {
@@ -1647,7 +1647,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
       while(method_call) {
-	EmitMethodCall(method_call, is_nested, false);
+	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
 	EmitCast(method_call);
 	// next call
 	if(method_call->GetMethod()) {
@@ -1695,7 +1695,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
       bool is_nested = false;
       do {
-	EmitMethodCall(method_call, is_nested, false);
+	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
 	EmitCast(method_call);
 	// next call
 	if(method_call->GetMethod()) {
