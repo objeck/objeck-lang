@@ -92,7 +92,6 @@ void Scanner::LoadKeywords()
   ident_map["class"] = TOKEN_CLASS_ID;
   ident_map["interface"] = TOKEN_INTERFACE_ID;
   ident_map["implements"] = TOKEN_IMPLEMENTS_ID;
-  ident_map["mixin"] = TOKEN_MIXIN_ID;
   ident_map["function"] = TOKEN_FUNCTION_ID;
   ident_map["method"] = TOKEN_METHOD_ID;
   ident_map["select"] = TOKEN_SELECT_ID;
@@ -224,7 +223,6 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_CLASS_ID:
   case TOKEN_INTERFACE_ID:
   case TOKEN_IMPLEMENTS_ID:
-  case TOKEN_MIXIN_ID:
   case TOKEN_FUNCTION_ID:
   case TOKEN_METHOD_ID:
   case TOKEN_BYTE_ID:

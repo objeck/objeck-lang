@@ -269,70 +269,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
     }
   }
   
-  AnalyzeMixins(klass, depth);
   AnalyzeInterfaces(klass, depth);
-}
-
-/****************************
- * Checks for mixin classes
- ****************************/
-void ContextAnalyzer::AnalyzeMixins(Class* klass, int depth) 
-{
-  vector<string> mixin_names = current_class->GetMixinNames();
-  for(unsigned int i = 0; i < mixin_names.size(); i++) {
-    const string& mixin_name = mixin_names[i];
-    Class* mixin_klass = SearchProgramClasses(mixin_name);
-    if(mixin_klass) {
-      const string& default_constructor = mixin_klass->GetName() + ":New:";
-      // TODO: ensure defualt constrouctor
-      bool found = false;
-      vector<Method*> methods = mixin_klass->GetMethods();
-      for(unsigned int i = 0; i < methods.size(); i++) {
-	// default constructor
-	if(methods[i]->GetEncodedName() == default_constructor) {
-	  found = true;
-	}
-	// no virtual methods
-	if(methods[i]->IsVirtual()) {
-	  ProcessError(current_class, "Mixin classes cannot have virtual methods");
-	}
-      }
-      if(found) {
-	current_class->AddMixinClass(mixin_klass);
-      }
-      else {
-	ProcessError(current_class, "No default constructor has been defined for the mixin class: " +  
-		     mixin_klass->GetName());
-      }
-    }
-    else {
-      LibraryClass* mixin_lib_klass = linker->SearchClassLibraries(mixin_name, program->GetUses());
-      if(mixin_lib_klass) {
-	const string& default_constructor = mixin_lib_klass->GetName() + ":New:";
-	bool found = false;
-	// ensure interface methods are virtual
-	map<const string, LibraryMethod*> lib_methods = mixin_lib_klass->GetMethods();
-	map<const string, LibraryMethod*>::iterator iter;
-	for(iter = lib_methods.begin(); iter != lib_methods.end(); iter++) {
-	  LibraryMethod* lib_method = iter->second;
-	  // default constructor
-	  if(lib_method->GetName() == default_constructor) {
-	    found = true;
-	  }
-	  // no virtual methods
-	  if(lib_method->IsVirtual()) {
-	    ProcessError(current_class, "Mixin classes cannot have virtual methods");
-	  }
-	}
-	if(found) {
-	  current_class->AddMixinLibraryClass(mixin_lib_klass);
-	}
-      }
-      else {
-	ProcessError(klass, "Undefined class: '" + mixin_name + "'");
-      }
-    }
-  }
 }
 
 /****************************
