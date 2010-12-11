@@ -2731,7 +2731,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  }
         }
         // TODO: this needs to be looked at... simpiler?
-        else if(!is_nested && (!variable || !variable->GetIndices() ||
+        else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() ||
                                variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
