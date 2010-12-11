@@ -1624,10 +1624,7 @@ namespace frontend {
 
     void EncodeSignature(ParsedProgram* program, Linker* linker) {
       encoded_return = EncodeType(return_type, program, linker);
-      if(return_type->GetType() == CLASS_TYPE) {
-        return_type->SetClassName(encoded_return.substr(2));
-      }
-
+      
       // name
       encoded_name = name + ':';
       // params

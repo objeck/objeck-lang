@@ -258,13 +258,13 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
   // look for parent virutal methods
   if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
     if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
-      ProcessError(current_class, "Not all virtual methods have been implemented for the class: " + 
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " + 
 		   current_class->GetParent()->GetName());
     }
   }
   else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
     if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
-      ProcessError(current_class, "Not all virtual methods have been implemented for the class: " + 
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " + 
 		   current_class->GetLibraryParent()->GetName());
     }
   }
@@ -347,23 +347,34 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
       if(impl_method) {
 	// check method types
 	if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       parent->GetName());
 	}
 	// check method returns
 	Type* impl_return = impl_method->GetReturn();
 	Type* virtual_return = virtual_method->GetReturn();
 	if(impl_return->GetType() != virtual_return->GetType()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       parent->GetName());
-	} else if(impl_return->GetType() == CLASS_TYPE &&
+	} 
+	else if(impl_return->GetType() == CLASS_TYPE &&
 		  impl_return->GetClassName() != virtual_return->GetClassName()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
-		       parent->GetName());
+	  Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
+	  Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+	  if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
+	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(), 
+								      program->GetUses());
+	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(), 
+									 program->GetUses());
+	    if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
+	      ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
+			   parent->GetName());
+	    }
+	  }
 	}
 	// check function vs. method
 	if(impl_method->IsStatic() != virtual_method->IsStatic()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       parent->GetName());
 	}
 	// check virtual
@@ -401,28 +412,38 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       if(impl_method) {
 	// check method types
 	if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       lib_parent->GetName());
 	}
 	// check method returns
 	Type* impl_return = impl_method->GetReturn();
 	Type* virtual_return = virtual_method->GetReturn();
 	if(impl_return->GetType() != virtual_return->GetType()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       lib_parent->GetName());
-	} else if(impl_return->GetType() == CLASS_TYPE &&
-		  impl_return->GetClassName() != virtual_return->GetClassName()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
-		       lib_parent->GetName());
+	} 
+	else if(impl_return->GetType() == CLASS_TYPE) {
+	  Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
+	  Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+	  if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
+	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(), 
+								      program->GetUses());
+	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(), 
+									 program->GetUses());
+	    if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
+	      ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
+			   lib_parent->GetName());
+	    }
+	  }
 	}
 	// check function vs. method
 	if(impl_method->IsStatic() != virtual_method->IsStatic()) {
-	  ProcessError(impl_class, "Not all virtual methods have been defined for class: " +
+	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       lib_parent->GetName());
 	}
 	// check virtual
 	if(impl_method->IsVirtual()) {
-	  ProcessError(impl_class, "Implementation method cannot be virtual");
+	  ProcessError(impl_class, "Implemented method cannot be virtual");
 	}
       } else {
 	virtual_methods_defined = false;

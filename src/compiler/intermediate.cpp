@@ -3001,7 +3001,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
           size += lib_parent->GetInstanceSpace();
         }
       }
-    }
+    }    
     // calculate current space
     size += CalculateEntrySpace(current_table, index, declarations, is_static);
   }
