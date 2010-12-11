@@ -1,0 +1,33 @@
+bundle Default {
+	interface Color {
+		method : virtual : public : GetColor() ~ String;
+	}
+	
+	interface Vehicle {
+		method : virtual : SetName(name : String) ~ Nil;
+		method : virtual : public : GetWheels() ~ Int;
+	}
+		
+	class Ufo implements Vehicle, Color {
+		New() {
+			SetName("UFO");
+		}
+		
+		method : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+		
+		method : public : GetWheels() ~ Int {
+			return 5;
+		}
+		
+		method : public : GetColor() ~ String {
+			return "green";
+		}
+	}
+	
+	class Test {
+		function : Main(args : System.String[]) ~ Nil {
+		}			
+	}
+}
