@@ -225,7 +225,7 @@ void Parser::ParseBundle(int depth)
 	  bundle->AddClass(ParseInterface(bundle_name, depth + 1));
 	}
 	else {
-	  ProcessError("Expected 'class' or 'enum'", TOKEN_SEMI_COLON);
+	  ProcessError("Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
 	  NextToken();
 	}
       }
