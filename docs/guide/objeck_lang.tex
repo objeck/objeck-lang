@@ -449,20 +449,26 @@ method : virtual : public : Compare(right : Base ~ Int;
 As a modern object-oriented language, Objeck supports interfaces.  Interfaces define virtual methods that must be implemented by a given class.  A class may implement one or more interfaces.  Interface references may be passed and dereferenced in a similar manner to class references.  Below is an example of an interface definition:
 
 \begin{verbatim}
-interface Node {
-  method : virtual : public : GetChild(name : String, b : Float) ~ Node;
-  method : virtual : public : GetParent() ~ Node;
+interface Color {
+  method : virtual : public : GetColor() ~ String;
 }
 
-class TreeNode implements Node {
-  method : public : GetChild(name : String, b : Float) ~ Node {
+interface Vehicle {
+  method : virtual : SetName(name : String) ~ Nil;
+  method : virtual : public : GetNumberOfWheels() ~ Int;
+}
+
+class Ufo implements Vehicle, Color {
+  method : public : GetColor() ~ String {
     ...
   }
-  
-  method : public : GetParent() ~ Node {
+  method : SetName(name : String) ~ Nil {
     ...
   }
-}  
+  method : public : GetNumberOfWheels() ~ Int {
+    ...
+  }
+}
 \end{verbatim}
 
 \subsection{Higher-Order Functions}
