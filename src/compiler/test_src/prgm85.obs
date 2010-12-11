@@ -1,5 +1,7 @@
 bundle Default {
+
 	interface Inf {
+
 		method : virtual : public  : B1(s : String, b : Float) ~ Nil;
 	}
 

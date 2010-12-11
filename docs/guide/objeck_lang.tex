@@ -111,12 +111,12 @@ variable, class or enum identifiers.
     \multicolumn{5}{|c|}{\emph{Keywords}} \\ \hline \hline
     and & As & Bool & break & bundle \\ \hline
     Byte & Char & class & critical & do \\ \hline
-    each & else & --- & enum & false \\ \hline
-    Float & for & from & function & if \\ \hline
-    Int & interface & label & method & mixin \\ \hline
-    native & New & or & other & Parent \\ \hline
-    private & public & return & select & static \\ \hline
-    true & use & virtual & while & xor \\ \hline
+    each & else & enum & false & Float \\ \hline
+    for & from & function & if & Int \\ \hline
+    interface & label & method & native & New \\ \hline
+    or & other & Parent & private & public \\ \hline
+    return & select & static & true & use \\ \hline
+   virtual & --- & while & --- & xor \\ \hline
   \end{tabular}
 \end{center}
 
@@ -446,7 +446,24 @@ method : virtual : public : Compare(right : Base ~ Int;
 \end{verbatim}
 
 \subsection{Interfaces}
-TODO
+As a modern object-oriented language, Objeck supports interfaces.  Interfaces define virtual methods that must be implemented by a given class.  A class may implement one or more interfaces.  Interface references may be passed and dereferenced in a similar manner to class references.  Below is an example of an interface definition:
+
+\begin{verbatim}
+interface Node {
+  method : virtual : public : GetChild(name : String, b : Float) ~ Node;
+  method : virtual : public : GetParent() ~ Node;
+}
+
+class TreeNode implements Node {
+  method : public : GetChild(name : String, b : Float) ~ Node {
+    ...
+  }
+  
+  method : public : GetParent() ~ Node {
+    ...
+  }
+}  
+\end{verbatim}
 
 \subsection{Higher-Order Functions}
 The Objeck language supports the notion of higher-order functions such that a given function may be bound to a variable at runtime.  Variables are assigned based upon functional prototypes.  Prototypes enforce strong type checking by ensuring that a function parameters and return type are consistent between assignments.  Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked.  Please note, methods are not treated as higher-order constructs only functions.  
