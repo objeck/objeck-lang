@@ -11,7 +11,7 @@
             <Keywords name="Folder-"></Keywords>
             <Keywords name="Operators">- % &amp; ( ) * / : [ ] | } + &lt; = &gt;</Keywords>
             <Keywords name="Comment"></Keywords>
-            <Keywords name="Words1">and or xor virtual if else do while use bundle native static public private class function method select other enum for each label return</Keywords>
+            <Keywords name="Words1">and or xor virtual if else do while use bundle native static public private class interface function method select other enum for each label return</Keywords>
             <Keywords name="Words2">Byte Int Parent from Float Char Bool Nil String true false</Keywords>
             <Keywords name="Words3"></Keywords>
             <Keywords name="Words4"></Keywords>
