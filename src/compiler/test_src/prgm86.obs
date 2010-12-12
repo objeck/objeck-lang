@@ -1,0 +1,67 @@
+bundle Default {
+	class Dog {
+		function : G() ~ Nil {
+		}
+	}
+
+	class Foo {
+		New() {
+		}
+
+		method : virtual : Blsh(a : Int, b : Float) ~ Nil;
+	}
+
+	class Bar from Compare implements Inf, Inf2 {
+		@gg : Inf;
+
+		New() {
+			Parent();
+		}
+
+		function : native : Main(args : System.String[]) ~ Nil {
+			x := Bar->New();
+			Run(x);
+		}
+
+		function : Run(x : Bar) ~ Nil {
+			Blah(x->As(Inf));
+		}
+
+		function : native : Blah(x : Inf) ~ Nil {
+			@gg := x;
+#~
+			y : Bar := x->As(Bar);
+			y->B1("yy", 3.4);
+~#
+@gg->As(Bar)->B1("yy", 3.4);
+		}
+
+		function : Blah2(x : Bar) ~ Nil {
+			x->B1("x", 1.31);
+			x->HashID()->PrintLine();
+		}
+
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			return -1;
+		}
+
+      method : public : HashID() ~ Int
+		{
+			return -1;
+		}
+
+		method : public :  B1(s : String, b : Float) ~ Nil {
+			"called"->PrintLine();
+		}
+
+		method : public : B2(a : Int, b : Float) ~ Nil {
+			"also again"->PrintLine();
+		}
+
+#~
+		method : Blsh(a : Int, b : Float) ~ Nil {
+			y := a * b;
+		}
+~#
+	}
+}
