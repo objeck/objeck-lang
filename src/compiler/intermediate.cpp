@@ -1812,7 +1812,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         EmitExpression(expressions[i]);
       }
       // emit call
-      EmitMethodCall(method_call, is_nested, expression->GetCastType() != NULL);
+      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
