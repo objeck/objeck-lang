@@ -12,8 +12,6 @@ bundle Default {
 	}
 
 	class Bar from Compare implements Inf, Inf2 {
-		@gg : Inf;
-
 		New() {
 			Parent();
 		}
@@ -28,12 +26,11 @@ bundle Default {
 		}
 
 		function : native : Blah(x : Inf) ~ Nil {
-			@gg := x;
 #~
 			y : Bar := x->As(Bar);
 			y->B1("yy", 3.4);
 ~#
-@gg->As(Bar)->B1("yy", 3.4);
+x->As(Bar)->B1("yy", 3.4);
 		}
 
 		function : Blah2(x : Bar) ~ Nil {
