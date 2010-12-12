@@ -25,6 +25,7 @@
 		<string>public</string>
 		<string>private</string>
 		<string>class</string>
+		<string>interface</string>
 		<string>select</string>
 		<string>other</string>
 		<string>enum</string>

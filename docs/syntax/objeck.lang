@@ -148,6 +148,7 @@
                     <keyword>public</keyword>
                     <keyword>private</keyword>
                     <keyword>class</keyword>
+                    <keyword>interface</keyword>
                     <keyword>function</keyword>
                      <keyword>method</keyword>
                     <keyword>select</keyword>
