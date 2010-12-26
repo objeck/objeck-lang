@@ -1634,6 +1634,12 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
 {
   Type* cast_type = expression->GetCastType();
   if(cast_type) {
+    // cannot cast across different dimensions
+    if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() &&
+      cast_type->GetDimension() != expression->GetBaseType()->GetDimension()) {
+      ProcessError(expression, "Dimension size mismatch");
+    }
+
     AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
     // expression->SetEvalType(cast_type, false);
   }
