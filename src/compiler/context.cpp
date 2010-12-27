@@ -1680,6 +1680,11 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, int depth)
   Expression* expression = simple->GetExpression();
   AnalyzeExpression(expression, depth + 1);
   AnalyzeExpressionMethodCall(expression, depth);
+  
+  // ensure it's a valid statement
+  if(!expression->GetMethodCall()) {
+    ProcessError(expression, "Invalid statement");
+  }
 }
 
 /****************************
