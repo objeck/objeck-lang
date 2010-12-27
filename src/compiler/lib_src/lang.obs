@@ -1078,7 +1078,7 @@ bundle System {
 	# Runtime system class
 	~~#	
 	class Runtime {
-		function : Exit(code : Int) ~ String {
+		function : Exit(code : Int) ~ Nil {
 			EXIT;
 		}
 		
