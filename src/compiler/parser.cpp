@@ -870,6 +870,12 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::PLTFRM);
       NextToken();
       break;
+
+    case EXIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::EXIT);
+      NextToken();
+      break;
       
     case TIMER_START:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,

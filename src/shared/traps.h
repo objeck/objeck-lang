@@ -92,6 +92,7 @@ namespace instructions {
     SOCK_TCP_HOST_NAME,
     // platform
     PLTFRM,
+    EXIT,
   } 
   Traps;
 }

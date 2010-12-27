@@ -1078,6 +1078,10 @@ bundle System {
 	# Runtime system class
 	~~#	
 	class Runtime {
+		function : Exit(code : Int) ~ String {
+			EXIT;
+		}
+		
 		function : GetPlatform() ~ String {
 			PLTFRM;
 		}

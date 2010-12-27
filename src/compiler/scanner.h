@@ -204,6 +204,7 @@ enum TokenType {
   TIMER_END,
   // platform
   PLTFRM,
+  EXIT,
 #endif
 };
 

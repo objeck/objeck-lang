@@ -3,6 +3,10 @@ use Structure;
 bundle Default {
 	class Test {
 		function : Main(args : System.String[]) ~ Nil {
+			Run();
+		}
+		
+		function : Run() ~ Nil {
 			keys := ["1", "2", "3"];
 			vals := ["a", "b", "c"];
 			hash := StringHash->New();
