@@ -27,8 +27,8 @@ Global
 		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.Structure Build|Win32.Build.0 = Structure Build|Win32
 		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.Structure Build|x64.ActiveCfg = Structure Build|x64
 		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.Structure Build|x64.Build.0 = Structure Build|x64
-		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|Win32.ActiveCfg = Debug|Win32
-		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|Win32.Build.0 = Debug|Win32
+		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|Win32.ActiveCfg = System Build|Win32
+		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|Win32.Build.0 = System Build|Win32
 		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|x64.ActiveCfg = System Build|x64
 		{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}.System Build|x64.Build.0 = System Build|x64
 	EndGlobalSection

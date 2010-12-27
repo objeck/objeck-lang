@@ -128,6 +128,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level2</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_SYSTEM</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)obc.exe</OutputFile>
