@@ -1658,6 +1658,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
   
     // ---------------- runtime ----------------
+  case EXIT:
+    exit(PopInt());
+    break;
+
   case SYS_TIME:
     ProcessCurrentTime();
     break;
