@@ -1,7 +1,7 @@
 /***************************************************************************
  * Program loader.
  *
- * Copyright (c) 2008-2009, Randy Hollines
+ * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,7 @@ void Loader::Load()
 #ifdef _DEBUG
     cout << "Loaded static float string[" << i << "]: '";
 #endif
-    for(unsigned int j = 0; j < float_string_length; j++) {
+    for(int j = 0; j < float_string_length; j++) {
       float_string[j] = ReadDouble();
 #ifdef _DEBUG
       cout << float_string[j] << ",";
@@ -79,7 +79,7 @@ void Loader::Load()
 #ifdef _DEBUG
     cout << "Loaded static int string[" << i << "]: '";
 #endif
-    for(unsigned int j = 0; j < int_string_length; j++) {
+    for(int j = 0; j < int_string_length; j++) {
       int_string[j] = ReadInt();
 #ifdef _DEBUG
       cout << int_string[j] << ",";
