@@ -274,7 +274,6 @@ namespace Runtime {
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
-    void ProcessModFloat(StackInstr* instr);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(long params = -1);
