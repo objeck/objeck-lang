@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines the VM execution model.
  *
- * Copyright (c) 2008, 2009 Randy Hollines
+ * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

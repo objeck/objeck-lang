@@ -3,7 +3,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2008-2010 Randy Hollines
+ * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -395,7 +395,7 @@ void IntermediateEmitter::EmitStrings()
 	for(unsigned int j = 0; !found && j < int_string_values.size(); j++) {
 	  if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
 	    vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
-	    for(int k = 0; k < instrs.size(); k++) {
+	    for(unsigned int k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;
@@ -412,7 +412,7 @@ void IntermediateEmitter::EmitStrings()
 	for(unsigned int j = 0; !found && j < float_string_values.size(); j++) {
 	  if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
 	    vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
-	    for(int k = 0; k < instrs.size(); k++) {
+	    for(unsigned int k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;
@@ -576,7 +576,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   int space = CalculateEntrySpace(entries, false);
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
-  for(int i = 0; i < declarations.size(); i++) {
+  for(unsigned int i = 0; i < declarations.size(); i++) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
       num_params += 2;
     }
