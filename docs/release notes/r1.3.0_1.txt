@@ -1,0 +1,5 @@
+Objeck v1.3.0_1
+
+This minor release contains basic fixes that better detect certain contextual compile errors.  In addition, a program "exit" API was added to the Runtime class.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
