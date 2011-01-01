@@ -1,9 +1,12 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			for(i := 0; i < 5; i += 1;) {
-				i->PrintLine();
-			};
+			oddSum := 0;
+#~
+			ADKFKADSF a ak s aks ks sk sk sk k sk sk  oddSum := 0;
+			oddSum += 1;
+			oddSum->PrintLine();
+~#
 		}
 	}
 }

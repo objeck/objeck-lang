@@ -122,11 +122,16 @@ class Parser {
           name += '.';
           NextToken();
         }
+	else if(Match(TOKEN_IDENT)) {
+	  ProcessError("Expected period", TOKEN_SEMI_COLON);
+	  NextToken();
+	}
       }
-    } else {
+    } 
+    else {
       ProcessError(TOKEN_IDENT);
     }
-
+    
     return name;
   }
 
