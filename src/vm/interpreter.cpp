@@ -601,6 +601,13 @@ void StackInterpreter::Execute()
 #endif
       ProcessTrap(instr);
       break;
+
+      //
+      // dynamic library call
+      // 
+    case NATIVE_DLL_CALL:
+      ProcessDllCall();
+      break;
       
       //
       // Start: Thread support
@@ -612,9 +619,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
       
 #ifdef _WIN32
@@ -627,8 +634,8 @@ void StackInterpreter::Execute()
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
-	      cerr << "Unable to join thread!" << endl;
-	      exit(-1);
+	cerr << "Unable to join thread!" << endl;
+	exit(-1);
       }
 #endif
     }
@@ -652,9 +659,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -670,9 +677,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -688,9 +695,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -1145,7 +1152,7 @@ DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
-    &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
+		  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
   
 #ifdef _DEBUG
   cout << "# Starting thread=" << vm_thread << " #" << endl;
@@ -1527,6 +1534,34 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
   long index = ArrayIndex(instr, array, size);
   FLOAT_VALUE value = PopFloat();
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
+}
+
+/********************************
+ * Native call to a DLL
+ ********************************/
+void StackInterpreter::ProcessDllCall()
+{
+  int (*native_dll_call)(char*, void*);
+  char *error;
+  
+  void* handle = dlopen ("./test.so.1.0.1", RTLD_LAZY);
+  if (!handle) {
+    fputs (dlerror(), stderr);
+    exit(1);
+  }
+  
+  // get from instance
+  native_dll_call = (int (*)(char*, void*))dlsym(handle, "foo");
+  if ((error = dlerror()) != NULL)  {
+    fputs(error, stderr);
+    exit(1);
+  }
+  
+  void* data = malloc(8);
+  char name[] = "some name";
+  
+  (*native_dll_call)(name, data);
+  dlclose(handle);  
 }
 
 /********************************
