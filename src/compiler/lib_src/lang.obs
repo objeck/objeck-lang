@@ -1073,6 +1073,26 @@ bundle System {
 			@string->PrintLine();
 		}
 	}
+
+	#~~
+	# Native library
+	~~#	
+	class NativeLibrary {
+		@lib_ptr : Int;
+		@name : String;
+
+		New(name : String) {
+			@name := name;
+		}
+
+		method : public : IsLoaded() ~ Bool {
+			return @lib_ptr <> 0;
+		}	
+		
+		method : public : Call(name : String, params : System.Base[]) ~ Nil {
+			NATIVE_DLL_CALL;
+		}
+	}
 	
 	#~~
 	# Runtime system class

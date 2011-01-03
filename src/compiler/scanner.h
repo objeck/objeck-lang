@@ -205,6 +205,7 @@ enum TokenType {
   // platform
   PLTFRM,
   EXIT,
+  NATIVE_DLL_CALL,
 #endif
 };
 

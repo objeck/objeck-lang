@@ -876,6 +876,12 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::EXIT);
       NextToken();
       break;
+
+    case NATIVE_DLL_CALL:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::NATIVE_DLL_CALL);
+      NextToken();
+      break;
       
     case TIMER_START:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,

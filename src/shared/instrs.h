@@ -132,6 +132,7 @@ namespace instructions {
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
     // system directives
+    NATIVE_DLL_CALL,
     END_STMTS,
   } 
   InstructionType;
