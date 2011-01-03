@@ -166,6 +166,7 @@ void Scanner::LoadKeywords()
   ident_map["SYS_TIME"] = SYS_TIME;
   ident_map["PLTFRM"] = PLTFRM;
   ident_map["EXIT"] = EXIT;
+  ident_map["NATIVE_DLL_CALL"] = NATIVE_DLL_CALL;
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
   ident_map["SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
@@ -281,6 +282,7 @@ void Scanner::CheckIdentifier(int index)
   case SYS_TIME:
   case PLTFRM:
   case EXIT:
+  case NATIVE_DLL_CALL:
   case TIMER_START:
   case TIMER_END:
   case SOCK_TCP_CONNECT:
