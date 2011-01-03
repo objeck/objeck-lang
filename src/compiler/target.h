@@ -369,10 +369,18 @@ public:
            << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
       break;
       
-    case instructions::NATIVE_DLL_CALL:
-      cout << "NATIVE_DLL_CALL" << endl;
+    case instructions::DLL_LOAD:
+      cout << "DLL_LOAD" << endl;
+      break;
+    
+    case instructions::DLL_UNLOAD:
+      cout << "DLL_UNLOAD" << endl;
       break;
       
+    case instructions::DLL_FUNC_CALL:
+      cout << "DLL_FUNC_CALL" << endl;
+      break;
+
     case instructions::THREAD_JOIN:
       cout << "THREAD_JOIN" << endl;
       break;

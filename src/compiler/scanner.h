@@ -193,6 +193,10 @@ enum TokenType {
   SOCK_TCP_OUT_BYTE_ARY,
   SOCK_TCP_OUT_STRING,
   SOCK_TCP_HOST_NAME,
+  // shared library support
+  DLL_LOAD,
+  DLL_UNLOAD,
+  DLL_FUNC_CALL,
   // thread management
   ASYNC_MTHD_CALL,
   THREAD_MUTEX,
@@ -205,7 +209,6 @@ enum TokenType {
   // platform
   PLTFRM,
   EXIT,
-  NATIVE_DLL_CALL,
 #endif
 };
 

@@ -116,6 +116,10 @@ namespace instructions {
     // external OS traps
     TRAP,
     TRAP_RTRN,
+    // shared libraries
+    DLL_LOAD,
+    DLL_UNLOAD,
+    DLL_FUNC_CALL,
     // stack ops
     SWAP_INT,
     POP_INT,
@@ -132,7 +136,6 @@ namespace instructions {
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
     // system directives
-    NATIVE_DLL_CALL,
     END_STMTS,
   } 
   InstructionType;

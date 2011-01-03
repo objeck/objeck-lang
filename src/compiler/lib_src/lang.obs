@@ -1073,24 +1073,29 @@ bundle System {
 			@string->PrintLine();
 		}
 	}
-
+	
 	#~~
-	# Native library
+	# Runtime system class
 	~~#	
-	class NativeLibrary {
+	class DllProxy {
 		@name : String;
-		@lib_ptr : Int;
-
+		@ptr : Int;
+		
 		New(name : String) {
 			@name := name;
+			DLL_LOAD;
 		}
-
-		method : public : IsLoaded() ~ Bool {
-			return @lib_ptr <> 0;
-		}	
 		
-		method : public : Call(name : String, params : System.Base[]) ~ Nil {
-			NATIVE_DLL_CALL;
+		method : public : IsLoaded() ~ Bool {
+			return @ptr <> 0;
+		}
+		
+		method : public : UnLoaded() ~ Nil {
+			DLL_UNLOAD;
+		}
+		
+		method : public : CallFunction(name : String, args : Base[]) ~ Nil {
+			DLL_FUNC_CALL;
 		}
 	}
 	
