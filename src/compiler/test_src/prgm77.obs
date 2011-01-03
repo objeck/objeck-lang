@@ -1,25 +1,42 @@
-use IO;
-use XML;
-
 bundle Default {
-	class Test {
+	enum Signal {
+		Destroy
+	}
+
+	class GtkWindow {
+		widget_ptr : Int;
+
+		New() {
+		}
+		
+		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Bool) ~ Nil {
+			dym_lib := NativeLibrary->New("Foo");
+			args := Base->New[2];
+			args[0] := Structure.IntHolder->New(0);
+			args[1] := Structure.IntHolder->New(10);
+			dym_lib->Call("foo", args);
+		}
+
+		method : public : Main() ~ Nil {
+		}
+	}
+
+	class GtkWidget {
+	}
+
+	class GdkEvent {
+	}
+
+	class Gtk2 {
+		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Bool {
+			return true;
+		}
+
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				parser := XmlParser->New(FileReader->ReadFile(args[0]));
-				if(parser->Parse()) {
-					results := parser->FindElements("//nutrition/food[last()]/calories[fat]");
-					if(results <> Nil) {
-						each(i : results) {					
-							element := results->Get(i)->As(XMLElement);
-							element->GetAttribute("total")->PrintLine();
-						};
-					};
-				}
-				else {
-					parser->GetError()->PrintLine();
-				};
-			};
+			window := GtkWindow->New();	
+			f := DeleteEvent(GtkWidget, GdkEvent) ~ Bool;
+			window->SignalConnect(Signal->Destroy, f);
+			window->Main();
 		}
 	}
 }
-
