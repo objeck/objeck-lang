@@ -845,8 +845,16 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
       break;
       
-    case NATIVE_DLL_CALL:
-      instrs.push_back(new LibraryInstr(line_num, NATIVE_DLL_CALL));
+    case DLL_LOAD:
+      instrs.push_back(new LibraryInstr(line_num, DLL_LOAD));
+      break;
+
+    case DLL_UNLOAD:
+      instrs.push_back(new LibraryInstr(line_num, DLL_UNLOAD));
+      break;
+
+    case DLL_FUNC_CALL:
+      instrs.push_back(new LibraryInstr(line_num, DLL_FUNC_CALL));
       break;
       
     case THREAD_JOIN:

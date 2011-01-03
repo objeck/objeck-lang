@@ -838,6 +838,24 @@ Statement* Parser::ParseStatement(int depth)
     case ASYNC_MTHD_CALL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::ASYNC_MTHD_CALL);
+      NextToken();      
+      break;
+      
+    case DLL_LOAD:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DLL_LOAD);
+      NextToken();
+      break;
+
+    case DLL_UNLOAD:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DLL_UNLOAD);
+      NextToken();
+      break;
+      
+    case DLL_FUNC_CALL:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DLL_FUNC_CALL);
       NextToken();
       break;
       
@@ -874,12 +892,6 @@ Statement* Parser::ParseStatement(int depth)
     case EXIT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::EXIT);
-      NextToken();
-      break;
-
-    case NATIVE_DLL_CALL:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::NATIVE_DLL_CALL);
       NextToken();
       break;
       

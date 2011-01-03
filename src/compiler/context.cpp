@@ -2907,7 +2907,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program enum
   //
-  if(SearchProgramEnums(left->GetClassName())) {
+  if(SearchProgramEnums(left->GetClassName()) && right) {
     Enum* left_enum = SearchProgramEnums(left->GetClassName());
     // program
     Enum* right_enum = SearchProgramEnums(right->GetClassName());
@@ -2919,21 +2919,22 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
       }
     }
     // library
-    else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
+    else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses()) && right) {
       LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
       if(left_enum->GetName() != right_lib_enum->GetName()) {
         ProcessError(expression, "Invalid cast between enums: '" +
                      left->GetClassName() + "' and '" +
                      right->GetClassName() + "'");
       }
-    } else {
+    } 
+    else {
       ProcessError(expression, "Invalid cast between enum and class");
     }
   }
   //
   // program class
   //
-  else if(SearchProgramClasses(left->GetClassName())) {
+  else if(SearchProgramClasses(left->GetClassName()) && right) {
     Class* left_class = SearchProgramClasses(left->GetClassName());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
@@ -3007,7 +3008,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // class libary
   //
-  else if(right && linker->SearchClassLibraries(left->GetClassName(), program->GetUses())) {
+  else if(linker->SearchClassLibraries(left->GetClassName(), program->GetUses()) && right) {
     LibraryClass* left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
@@ -3049,7 +3050,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
     } else {
       ProcessError(expression, "Invalid cast between class and enum");
     }
-  } else {
+  } 
+  else {
     ProcessError(expression, "Invalid class or enum");
   }
 }
