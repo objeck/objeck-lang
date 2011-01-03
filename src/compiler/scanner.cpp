@@ -160,13 +160,15 @@ void Scanner::LoadKeywords()
   ident_map["DIR_EXISTS"] = DIR_EXISTS;
   ident_map["DIR_LIST"] = DIR_LIST;
   ident_map["ASYNC_MTHD_CALL"] = ASYNC_MTHD_CALL;
+  ident_map["DLL_LOAD"] = DLL_LOAD;
+  ident_map["DLL_UNLOAD"] = DLL_UNLOAD;
+  ident_map["DLL_FUNC_CALL"] = DLL_FUNC_CALL;
   ident_map["THREAD_MUTEX"] = THREAD_MUTEX;
   ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map["THREAD_JOIN"] = THREAD_JOIN;
   ident_map["SYS_TIME"] = SYS_TIME;
   ident_map["PLTFRM"] = PLTFRM;
   ident_map["EXIT"] = EXIT;
-  ident_map["NATIVE_DLL_CALL"] = NATIVE_DLL_CALL;
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
   ident_map["SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
@@ -276,13 +278,15 @@ void Scanner::CheckIdentifier(int index)
   case DIR_EXISTS:
   case DIR_LIST:
   case ASYNC_MTHD_CALL:
+  case DLL_LOAD:
+  case DLL_UNLOAD:
+  case DLL_FUNC_CALL:
   case THREAD_MUTEX:
   case THREAD_SLEEP:
   case THREAD_JOIN:
   case SYS_TIME:
   case PLTFRM:
   case EXIT:
-  case NATIVE_DLL_CALL:
   case TIMER_START:
   case TIMER_END:
   case SOCK_TCP_CONNECT:
