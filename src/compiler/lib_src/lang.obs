@@ -1078,8 +1078,8 @@ bundle System {
 	# Native library
 	~~#	
 	class NativeLibrary {
-		@lib_ptr : Int;
 		@name : String;
+		@lib_ptr : Int;
 
 		New(name : String) {
 			@name := name;
