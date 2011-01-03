@@ -763,6 +763,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, RTRN));
       break;
 
+    case NATIVE_DLL_CALL:
+      method->AddInstruction(new StackInstr(line_num, NATIVE_DLL_CALL));
+      break;
+      
     case THREAD_JOIN:
       method->AddInstruction(new StackInstr(line_num, THREAD_JOIN));
       break;

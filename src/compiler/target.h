@@ -369,6 +369,10 @@ public:
            << operand2 << "; native=" << (operand3 ? "true" : "false") << endl;
       break;
       
+    case instructions::NATIVE_DLL_CALL:
+      cout << "NATIVE_DLL_CALL" << endl;
+      break;
+      
     case instructions::THREAD_JOIN:
       cout << "THREAD_JOIN" << endl;
       break;
