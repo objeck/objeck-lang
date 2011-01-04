@@ -1593,15 +1593,15 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   long* str_obj = (long*)frame->GetMemory()[1];
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
-  void* args = (void*)frame->GetMemory()[2];
+  long* args = (long*)frame->GetMemory()[2];
 
   // load function
   if(dll_handle) {
-    void (*ext_func)(void*);
-    ext_func = (void (*)(void*))dlsym(dll_handle, str);
+    void (*ext_func)(long*);
+    ext_func = (void (*)(long*))dlsym(dll_handle, str);
     char* error;
     if((error = dlerror()) != NULL)  {
-      cerr << "Runtime error loading DLL: " << error << endl;
+      cerr << "Runtime error calling function '" << str << "': " << error << endl;
       exit(1);
     }
     // call function
