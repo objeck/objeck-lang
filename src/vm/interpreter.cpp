@@ -1558,20 +1558,20 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   // load DLL
 #ifdef _WIN32
   // Load DLL file
-	HINSTANCE dll_handle = LoadLibrary(str);
-	if(!dll_handle) {
-		cerr << "Runtime error loading DLL: " << str << endl;
-    exit(1);
-  }
-  instance[1] = (long)dll_handle;
+  HINSTANCE dll_handle = LoadLibrary(str);
+    if(!dll_handle) {
+      cerr << "Runtime error loading DLL: " << str << endl;
+      exit(1);
+    }
+    instance[1] = (long)dll_handle;
 #else
-  void* dll_handle = dlopen(str, RTLD_LAZY);
-  if(!dll_handle) {
-    cerr << "Runtime error loading DLL: " << dlerror() << endl;
-    dlclose(dll_handle);
-    exit(1);
-  }
-  instance[1] = (long)dll_handle;
+    void* dll_handle = dlopen(str, RTLD_LAZY);
+    if(!dll_handle) {
+      cerr << "Runtime error loading DLL: " << dlerror() << endl;
+      dlclose(dll_handle);
+      exit(1);
+    }
+    instance[1] = (long)dll_handle;
 #endif
 }
 
@@ -1595,6 +1595,10 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #endif
 }
 
+// ext_fun_def(long* data, long* op_stack, long *stack_pos, 
+//             const long ip, StackProgram* program)
+typedef void (*ext_func_def)(long*, long*, long*, const long, StackProgram*);
+
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1605,18 +1609,18 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
   long* args = (long*)frame->GetMemory()[2];
-  void (*ext_func)(long*);
-
+  ext_func_def ext_func;
+  
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
     // Get function pointer
-	  ext_func = (void (*)(long*))GetProcAddress(dll_handle, str);
-	  if(!ext_func) {
-		  cerr << "Runtime error calling function: " << str << endl;
-		  FreeLibrary(dll_handle);
-		  exit(1);
-	  }
+    ext_func = (ext_func_def)GetProcAddress(dll_handle, str);
+    if(!ext_func) {
+      cerr << "Runtime error calling function: " << str << endl;
+      FreeLibrary(dll_handle);
+      exit(1);
+    }
     // call function
     (*ext_func)(args);
   }
@@ -1624,7 +1628,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   // load function
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
-    ext_func = (void (*)(long*))dlsym(dll_handle, str);
+    ext_func = (ext_func_def)dlsym(dll_handle, str);
     char* error;
     if((error = dlerror()) != NULL)  {
       cerr << "Runtime error calling function: " << error << endl;
@@ -1632,7 +1636,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-    (*ext_func)(args);
+    (*ext_func)(args, op_stack, stack_pos, ip, program);
   }  
 #endif
 }

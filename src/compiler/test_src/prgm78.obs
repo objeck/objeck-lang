@@ -1,13 +1,31 @@
 use Structure;
 
 bundle Default {
+	class FuncHolder {
+		@func : (Int) ~ Bool;
+
+		New(func : (Int) ~ Bool) {
+			@func := func;
+		}
+		
+		method : public : Get() ~ (Int) ~ Bool {
+			return @func;
+		}
+	}	
+
 	class DllTest {
+		function : Filter(i : Int) ~ Bool {
+			"Hello"->PrintLine();
+			return true;
+		}
+
 		function : Main(args : String[]) ~ Nil {
 			dll_proxy := DllProxy->New("lib/linux64/test_dll.so.1.0.1");
-			dll_args := Base->New[3];
+			dll_args := Base->New[4];
 			dll_args[0] := IntHolder->New(0);
 			dll_args[1] := IntHolder->New(13);
 			dll_args[2] := FloatHolder->New(3.33);
+			dll_args[3] := FuncHolder->New(Filter(Int) ~ Bool);
 			dll_proxy->CallFunction("foo", dll_args);
 			dll_proxy->Unload();
 

@@ -33,6 +33,8 @@
 #define __DLL_TOOLS_H__
 
 #include <string.h>
+#include "../vm/common.h"
+#include "../vm/interpreter.h"
 
 int DLLTools_GetArraySize(long* array) {
   if(array) {
@@ -79,6 +81,32 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
     long* float_holder = (long*)array[index];
     memcpy(float_holder, &value, sizeof(value));
   }
+}
+
+//////////////////////////
+
+void DLLTools_ExecuteMethod(int cls_id, int mthd_id, 
+			    long* op_stack, long *stack_pos, 
+			    const long ip, StackProgram* program) {
+  Runtime::StackInterpreter intpr;
+  intpr.Execute((long*)op_stack, (long*)stack_pos, ip, 
+		program->GetClass(cls_id)->GetMethod(mthd_id), NULL, true);
+}
+
+long DLLTools_PopInt(long* op_stack, long *stack_pos) {
+  long value = op_stack[--(*stack_pos)];
+#ifdef _DEBUG
+  cout << "\t[pop_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+#endif
+
+  return value;
+}
+
+void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
+  op_stack[(*stack_pos)++] = value;
+#ifdef _DEBUG
+  cout << "\t[push_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+#endif
 }
 
 #endif
