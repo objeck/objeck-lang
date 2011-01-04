@@ -1187,10 +1187,19 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, int depth)
 void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int depth)
 {
   MethodCall* method_call = expression->GetMethodCall();
+
+  
+
   if(method_call) {
     string encoding;
     Class* klass = NULL;
     LibraryClass* lib_klass = NULL;
+
+    // TODO: fix need to change intermediate emit code so that element value
+    // is loaded instead of instance
+    if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {
+      ProcessError(expression, "Method call from array element not allowed");
+    }
 
     // check expression class
     bool is_enum_call = false;
