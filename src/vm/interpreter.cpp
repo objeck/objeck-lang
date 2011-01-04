@@ -1551,18 +1551,24 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   cout << "stack oper: DLL_LOAD; call_pos=" << call_stack_pos << endl;
 #endif
   long* instance = (long*)frame->GetMemory()[0];
-
   long* str_obj = (long*)instance[0];
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
   
   // load DLL
 #ifdef _WIN32
-  // TODO
+  // Load DLL file
+	HINSTANCE dll_handle = LoadLibrary(str);
+	if(!dll_handle) {
+		cerr << "Runtime error loading DLL: " << str << endl;
+    exit(1);
+  }
+  instance[1] = (long)dll_handle;
 #else
   void* dll_handle = dlopen(str, RTLD_LAZY);
   if(!dll_handle) {
     cerr << "Runtime error loading DLL: " << dlerror() << endl;
+    dlclose(dll_handle);
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1574,12 +1580,19 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #ifdef _DEBUG
   cout << "stack oper: DLL_UNLOAD; call_pos=" << call_stack_pos << endl;
 #endif
-  
   long* instance = (long*)frame->GetMemory()[0];
+  // unload DLL
+#ifdef _WIN32
+  HINSTANCE dll_handle = (HINSTANCE)instance[1];
+  if(dll_handle) {
+    FreeLibrary(dll_handle);
+  }
+#else
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
     dlclose(dll_handle);
   }
+#endif
 }
 
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
@@ -1587,26 +1600,41 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
 #ifdef _DEBUG
   cout << "stack oper: DLL_FUNC_CALL; call_pos=" << call_stack_pos << endl;
 #endif 
-
   long* instance = (long*)frame->GetMemory()[0];
-  void* dll_handle = (void*)instance[1];
   long* str_obj = (long*)frame->GetMemory()[1];
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
   long* args = (long*)frame->GetMemory()[2];
+  void (*ext_func)(long*);
 
-  // load function
+#ifdef _WIN32
+  HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
-    void (*ext_func)(long*);
+    // Get function pointer
+	  ext_func = (void (*)(long*))GetProcAddress(dll_handle, str);
+	  if(!ext_func) {
+		  cerr << "Runtime error calling function: " << str << endl;
+		  FreeLibrary(dll_handle);
+		  exit(1);
+	  }
+    // call function
+    (*ext_func)(args);
+  }
+#else
+  // load function
+  void* dll_handle = (void*)instance[1];
+  if(dll_handle) {
     ext_func = (void (*)(long*))dlsym(dll_handle, str);
     char* error;
     if((error = dlerror()) != NULL)  {
-      cerr << "Runtime error calling function '" << str << "': " << error << endl;
+      cerr << "Runtime error calling function: " << error << endl;
+      dlclose(dll_handle);
       exit(1);
     }
     // call function
     (*ext_func)(args);
   }  
+#endif
 }
 
 /********************************

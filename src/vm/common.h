@@ -46,7 +46,6 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
-#include <dlfcn.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
@@ -56,6 +55,7 @@
 #include <hash_map>
 using namespace stdext;
 #else
+#include <dlfcn.h>
 #include <ext/hash_map>
 #include <pthread.h>
 #include <stdint.h>
