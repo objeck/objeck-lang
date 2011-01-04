@@ -9,7 +9,8 @@ bundle Default {
 			dll_args[1] := IntHolder->New(13);
 			dll_proxy->CallFunction("foo", dll_args);
 			dll_proxy->Unload();
-			dll_args[0]->As(IntHolder)->Get()->PrintLine();
+			holder := dll_args[0]->As(IntHolder);
+			holder->Get()->PrintLine();
 		}
 	}
 }
