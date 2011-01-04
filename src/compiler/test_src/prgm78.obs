@@ -1,6 +1,10 @@
 bundle Default {
 	class DllTest {
 		function : Main(args : String[]) ~ Nil {
+#~
+			s := String->New();
+			s->Size();
+~#
 			dll_proxy := DllProxy->New("foo.so.1");
 			dll_proxy->CallFunction("foo", Nil->As(Base[]));
 		}
