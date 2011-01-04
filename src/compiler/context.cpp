@@ -726,6 +726,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int dept
     char_str_index++;
   }
   
+#ifndef _SYSTEM
   LibraryClass* lib_klass = linker->SearchClassLibraries("System.String", program->GetUses());
   if(lib_klass) {
     lib_klass->SetCalled(true);
@@ -733,6 +734,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int dept
   else {
     ProcessError(char_str, "Internal compiler error.");
   } 
+#endif
 }
 
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
