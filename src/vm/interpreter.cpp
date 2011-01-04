@@ -625,9 +625,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
       
 #ifdef _WIN32
@@ -640,8 +640,8 @@ void StackInterpreter::Execute()
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
-	      cerr << "Unable to join thread!" << endl;
-	      exit(-1);
+	cerr << "Unable to join thread!" << endl;
+	exit(-1);
       }
 #endif
     }
@@ -665,9 +665,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -683,9 +683,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -701,9 +701,9 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	      StackErrorUnwind();
-	      exit(1);
+	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
 #ifdef _WIN32
       LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -1158,7 +1158,7 @@ DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
-    &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
+		  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
   
 #ifdef _DEBUG
   cout << "# Starting thread=" << vm_thread << " #" << endl;
@@ -1554,18 +1554,18 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 
   long* str_obj = (long*)instance[0];
   long* array = (long*)str_obj[0];
-  // const long size = array[0];
   const char* str = (char*)(array + 3);
   
+  // load DLL
 #ifdef _WIN32
   // TODO
 #else
-  void* handle = dlopen(str, RTLD_LAZY);
-  if(!handle) {
-    cerr << "Runtime error: " << dlerror() << endl;
+  void* dll_handle = dlopen(str, RTLD_LAZY);
+  if(!dll_handle) {
+    cerr << "Runtime error loading DLL: " << dlerror() << endl;
     exit(1);
   }
-  instance[1] = (long)handle;
+  instance[1] = (long)dll_handle;
 #endif
 }
 
@@ -1573,7 +1573,13 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: DLL_UNLOAD; call_pos=" << call_stack_pos << endl;
-#endif 
+#endif
+  
+  long* instance = (long*)frame->GetMemory()[0];
+  void* dll_handle = (void*)instance[1];
+  if(dll_handle) {
+    dlclose(dll_handle);
+  }
 }
 
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
@@ -1581,6 +1587,26 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
 #ifdef _DEBUG
   cout << "stack oper: DLL_FUNC_CALL; call_pos=" << call_stack_pos << endl;
 #endif 
+
+  long* instance = (long*)frame->GetMemory()[0];
+  void* dll_handle = (void*)instance[1];
+  long* str_obj = (long*)frame->GetMemory()[1];
+  long* array = (long*)str_obj[0];
+  const char* str = (char*)(array + 3);
+  void* args = (void*)frame->GetMemory()[2];
+
+  // load function
+  if(dll_handle) {
+    void (*ext_func)(void*);
+    ext_func = (void (*)(void*))dlsym(dll_handle, str);
+    char* error;
+    if((error = dlerror()) != NULL)  {
+      cerr << "Runtime error loading DLL: " << error << endl;
+      exit(1);
+    }
+    // call function
+    (*ext_func)(args);
+  }  
 }
 
 /********************************

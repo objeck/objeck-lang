@@ -1090,7 +1090,7 @@ bundle System {
 			return @ptr <> 0;
 		}
 		
-		method : public : UnLoaded() ~ Nil {
+		method : public : Unload() ~ Nil {
 			DLL_UNLOAD;
 		}
 		
