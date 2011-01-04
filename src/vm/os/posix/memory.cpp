@@ -340,6 +340,14 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
     return NULL;
   }
   
+  // invalid array cast
+  if(id < 0) {
+#ifndef _GC_SERIAL
+    pthread_mutex_unlock(&allocated_mutex);
+#endif
+    return NULL;
+  }
+  
   // upcast
   while(id != -1) {
     if(id == to_id) {
