@@ -46,6 +46,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <dlfcn.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
