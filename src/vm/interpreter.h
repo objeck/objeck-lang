@@ -287,7 +287,10 @@ namespace Runtime {
     inline void ProcessCurrentTime();
     inline void ProcessPlatform();
     inline void ProcessTrap(StackInstr* instr);
-
+    inline void ProcessDllLoad(StackInstr* instr);
+    inline void ProcessDllUnload(StackInstr* instr);
+    inline void ProcessDllCall(StackInstr* instr);
+    
   public:
     static void Initialize(StackProgram* p);
 

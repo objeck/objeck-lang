@@ -601,6 +601,19 @@ void StackInterpreter::Execute()
 #endif
       ProcessTrap(instr);
       break;
+
+      // DLL support
+    case DLL_LOAD:
+      ProcessDllLoad(instr);
+      break;
+      
+    case DLL_UNLOAD:
+      ProcessDllUnload(instr);
+      break;
+      
+    case DLL_FUNC_CALL:
+      ProcessDllCall(instr);
+      break;
       
       //
       // Start: Thread support
@@ -1527,6 +1540,47 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
   long index = ArrayIndex(instr, array, size);
   FLOAT_VALUE value = PopFloat();
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
+}
+
+/********************************
+ * Shared library operations
+ ********************************/
+void StackInterpreter::ProcessDllLoad(StackInstr* instr)
+{
+#ifdef _DEBUG
+  cout << "stack oper: DLL_LOAD; call_pos=" << call_stack_pos << endl;
+#endif
+  long* instance = (long*)frame->GetMemory()[0];
+
+  long* str_obj = (long*)instance[0];
+  long* array = (long*)str_obj[0];
+  // const long size = array[0];
+  const char* str = (char*)(array + 3);
+  
+#ifdef _WIN32
+  // TODO
+#else
+  void* handle = dlopen(str, RTLD_LAZY);
+  if(!handle) {
+    cerr << "Runtime error: " << dlerror() << endl;
+    exit(1);
+  }
+  instance[1] = (long)handle;
+#endif
+}
+
+void StackInterpreter::ProcessDllUnload(StackInstr* instr)
+{
+#ifdef _DEBUG
+  cout << "stack oper: DLL_UNLOAD; call_pos=" << call_stack_pos << endl;
+#endif 
+}
+
+void StackInterpreter::ProcessDllCall(StackInstr* instr)
+{
+#ifdef _DEBUG
+  cout << "stack oper: DLL_FUNC_CALL; call_pos=" << call_stack_pos << endl;
+#endif 
 }
 
 /********************************
