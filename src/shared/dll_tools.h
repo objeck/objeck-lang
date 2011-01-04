@@ -1,7 +1,7 @@
 /***************************************************************************
  * DLL tools
  *
- * Copyright (c) 2008-2009, Randy Hollines
+ * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,30 +32,53 @@
 #ifndef __DLL_TOOLS_H__
 #define __DLL_TOOLS_H__
 
-int DLLTools_GetArraySize(long* array) {
-	if(array) {
-		return array[0];
-	}
+#include <string.h>
 
-	return -1;
+int DLLTools_GetArraySize(long* array) {
+  if(array) {
+    return array[0];
+  }
+
+  return 0;
 }
 
 int DLLTools_GetIntValue(long* array, int index) {
-	if(array && index < array[0]) {
-		array += 3;
-		long* int_holder = (long*)array[index];
-		return int_holder[0];
-	}
+  if(array && index < array[0]) {
+    array += 3;
+    long* int_holder = (long*)array[index];
+    return int_holder[0];
+  }
 
-	return -1;
+  return 0.0;
 }
 
 void DLLTools_SetIntValue(long* array, int index, int value) {
-	if(array && index < array[0]) {
-		array += 3;
-		long* int_holder = (long*)array[index];
-		int_holder[0] = value;
-	}
+  if(array && index < array[0]) {
+    array += 3;
+    long* int_holder = (long*)array[index];
+    int_holder[0] = value;
+  }
+}
+
+double DLLTools_GetFloatValue(long* array, int index) {
+  if(array && index < array[0]) {
+    array += 3;
+    long* float_holder = (long*)array[index];
+		
+    double value;
+    memcpy(&value, float_holder, sizeof(value));
+    return value;
+  }
+
+  return -1.0;
+} 
+
+void DLLTools_SetFloatValue(long* array, int index, double value) {
+  if(array && index < array[0]) {
+    array += 3;
+    long* float_holder = (long*)array[index];
+    memcpy(float_holder, &value, sizeof(value));
+  }
 }
 
 #endif

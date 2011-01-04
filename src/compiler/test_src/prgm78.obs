@@ -4,13 +4,18 @@ bundle Default {
 	class DllTest {
 		function : Main(args : String[]) ~ Nil {
 			dll_proxy := DllProxy->New("lib/linux64/test_dll.so.1.0.1");
-			dll_args := Base->New[2];
+			dll_args := Base->New[3];
 			dll_args[0] := IntHolder->New(0);
 			dll_args[1] := IntHolder->New(13);
+			dll_args[2] := FloatHolder->New(3.33);
 			dll_proxy->CallFunction("foo", dll_args);
 			dll_proxy->Unload();
-			holder := dll_args[0]->As(IntHolder);
-			holder->Get()->PrintLine();
+
+			int_holder := dll_args[0]->As(IntHolder);
+			int_holder->Get()->PrintLine();
+
+			float_holder := dll_args[2]->As(FloatHolder);
+			float_holder->Get()->PrintLine();
 		}
 	}
 }
