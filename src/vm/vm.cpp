@@ -51,7 +51,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _TIMING
     clock_t start = clock();
 #endif
-    Runtime::StackInterpreter intpr(loader.GetProgram());
+    Runtime::StackInterpreter intpr(Loader::GetProgram());
     intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
     clock_t end = clock();

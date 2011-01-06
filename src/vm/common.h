@@ -1036,4 +1036,7 @@ public:
   }
 };
 
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, int, int);
+int DLLTools_MethodCall(long*, long*, int, int);
+
 #endif

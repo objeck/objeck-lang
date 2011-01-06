@@ -1,5 +1,5 @@
 /***************************************************************************
- * DLL tools
+ * Shared library utilities
  *
  * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
@@ -33,8 +33,8 @@
 #define __DLL_TOOLS_H__
 
 #include <string.h>
-#include "../vm/common.h"
-#include "../vm/interpreter.h"
+
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, int, int);
 
 int DLLTools_GetArraySize(long* array) {
   if(array) {
@@ -51,7 +51,7 @@ int DLLTools_GetIntValue(long* array, int index) {
     return int_holder[0];
   }
 
-  return 0.0;
+  return 0;
 }
 
 void DLLTools_SetIntValue(long* array, int index, int value) {
@@ -72,7 +72,7 @@ double DLLTools_GetFloatValue(long* array, int index) {
     return value;
   }
 
-  return -1.0;
+  return 0.0;
 } 
 
 void DLLTools_SetFloatValue(long* array, int index, double value) {
@@ -94,10 +94,42 @@ long DLLTools_PopInt(long* op_stack, long *stack_pos) {
   return value;
 }
 
+double DLLTools_PopFloat(long* op_stack, long *stack_pos) {
+  double v;
+
+#ifdef _X64
+  (*stack_pos)--;
+#else
+  (*stack_pos) -= 2;
+#endif
+
+  memcpy(&v, &op_stack[(*stack_pos)], sizeof(double));
+#ifdef _DEBUG
+  cout << "  [pop_f: stack_pos=" << (*stack_pos) << "; value=" << v
+       << "]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
+#endif
+
+  return v;
+}
+
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
   op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
   cout << "\t[push_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+#endif
+}
+
+void DLLTools_PushFloat(long* op_stack, long *stack_pos, double v) {
+#ifdef _DEBUG
+  cout << "  [push_f: stack_pos=" << (*stack_pos) << "; value=" << v
+       << "]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
+#endif
+  memcpy(&op_stack[(*stack_pos)], &v, sizeof(double));
+  
+#ifdef _X64
+  (*stack_pos)++;
+#else
+  (*stack_pos) += 2;
 #endif
 }
 
