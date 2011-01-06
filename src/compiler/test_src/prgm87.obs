@@ -6,8 +6,18 @@ bundle Default {
 	}
 
 	class GtkWidget {
+		native_ptr : Int;
+
 		New() {
 		}
+
+		method : public : Show() ~ Nil {
+			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+         array_args := Base->New[1];
+         array_args[0] := IntHolder->New(native_ptr);
+         lib_proxy->CallFunction("g_widget_show", array_args);
+		}
+
 	}
 
 	class GdkEvent {
@@ -15,10 +25,10 @@ bundle Default {
 		}
 	}
 
-	class GtkWindow {
-		native_ptr : Int;
-
+	class GtkWindow from GtkWidget {
 		New() {
+			Parent();
+
 			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
          array_args := Base->New[1];
          array_args[0] := IntHolder->New(0);
@@ -28,13 +38,6 @@ bundle Default {
 		}
 		
 		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Bool) ~ Nil {
-		}
-
-		method : public : Show() ~ Nil {
-			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
-         array_args := Base->New[1];
-         array_args[0] := IntHolder->New(native_ptr);
-         lib_proxy->CallFunction("g_widget_show", array_args);
 		}
 
 		method : public : Main() ~ Nil {
