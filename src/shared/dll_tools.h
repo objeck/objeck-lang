@@ -34,7 +34,7 @@
 
 #include <string.h>
 
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, int, int);
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
 
 int DLLTools_GetArraySize(long* array) {
   if(array) {
@@ -85,6 +85,7 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
 
 //////////////////////////
 
+/*
 long DLLTools_PopInt(long* op_stack, long *stack_pos) {
   long value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
@@ -111,6 +112,7 @@ double DLLTools_PopFloat(long* op_stack, long *stack_pos) {
 
   return v;
 }
+*/
 
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
   op_stack[(*stack_pos)++] = value;
