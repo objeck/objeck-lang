@@ -1597,7 +1597,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 
 // ext_fun_def(long* data, long* op_stack, long *stack_pos, 
 //             const long ip, StackProgram* program)
-typedef void (*ext_func_def)(long*, long*, long*, const long, StackProgram*);
+typedef void (*ext_func_def)(long*, long*, long*, const long, DLLTools_MethodCall_Ptr);
 
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
 {
@@ -1636,7 +1636,8 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-    (*ext_func)(args, op_stack, stack_pos, ip, program);
+    DLLTools_MethodCall_Ptr callback = DLLTools_MethodCall;
+    (*ext_func)(args, op_stack, stack_pos, ip, callback);
   }  
 #endif
 }

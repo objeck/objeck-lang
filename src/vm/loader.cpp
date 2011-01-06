@@ -32,6 +32,12 @@
 #include "loader.h"
 #include "common.h"
 
+StackProgram* Loader::program;
+
+StackProgram* Loader::GetProgram() {
+  return program;
+}
+
 void Loader::Load()
 {
   int magic_num = ReadInt();

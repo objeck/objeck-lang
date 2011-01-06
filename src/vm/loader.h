@@ -38,6 +38,7 @@
 using namespace std;
 
 class Loader {
+  static StackProgram* program;
   int arg_count;
   vector<string> arguments;
   int num_float_strings;
@@ -45,7 +46,6 @@ class Loader {
   int num_char_strings;
   StackMethod* init_method;
   int string_cls_id;
-  StackProgram* program;
   string filename;
   char* buffer;
   char* alloc_buffer;
@@ -149,9 +149,7 @@ public:
     program = NULL;
   }
 
-  StackProgram* GetProgram() {
-    return program;
-  }
+  static StackProgram* GetProgram();
 
   void Load();
 };
