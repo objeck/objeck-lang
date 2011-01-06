@@ -1036,7 +1036,8 @@ public:
   }
 };
 
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, int, int);
-int DLLTools_MethodCall(long*, long*, int, int);
+// call back for DLL method calls
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
+void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, int cls_id, int mthd_id);
 
 #endif
