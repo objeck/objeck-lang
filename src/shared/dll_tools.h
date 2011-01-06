@@ -85,14 +85,6 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
 
 //////////////////////////
 
-void DLLTools_ExecuteMethod(int cls_id, int mthd_id, 
-			    long* op_stack, long *stack_pos, 
-			    const long ip, StackProgram* program) {
-  Runtime::StackInterpreter intpr;
-  intpr.Execute((long*)op_stack, (long*)stack_pos, ip, 
-		program->GetClass(cls_id)->GetMethod(mthd_id), NULL, true);
-}
-
 long DLLTools_PopInt(long* op_stack, long *stack_pos) {
   long value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
