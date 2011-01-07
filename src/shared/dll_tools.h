@@ -32,7 +32,10 @@
 #ifndef __DLL_TOOLS_H__
 #define __DLL_TOOLS_H__
 
+#include <string>
 #include <string.h>
+
+using namespace std;
 
 typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
 
@@ -82,6 +85,19 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
     memcpy(float_holder, &value, sizeof(value));
   }
 }
+
+char* DLLTools_GetStringValue(long* array, int index) {
+  if(array && index < array[0]) {
+    array += 3;
+    long* string_holder = (long*)array[index];
+    long* char_array = (long*)string_holder[0];
+    char* str = (char*)(char_array + 3);
+    return str;
+  }
+
+  return NULL;
+}
+
 
 //////////////////////////
 
