@@ -74,7 +74,8 @@ bundle Default {
 
 	class Gtk2 {
 		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Nil {
-			"@@@ HELLO @@@"->PrintLine();
+			(7+9)->PrintLine();
+			9999->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {

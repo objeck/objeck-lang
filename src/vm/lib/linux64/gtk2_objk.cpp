@@ -14,7 +14,7 @@ extern "C" {
 		DLLTools_MethodCall_Ptr callback;
 	} callback_data;
 
-   static void destroy_callback_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
+   static void destroy_callback_handler(GtkWidget *widget, gpointer data);
 
 	void load_lib() {
 		int argc = 0; char** argv = NULL;
@@ -62,11 +62,10 @@ extern "C" {
 		gtk_main();
 	}
 
-   void destroy_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer data) {
+   void destroy_callback_handler(GtkWidget* widget, gpointer data) {
 		callback_data* cbd = (callback_data*)data;
-//		cout << "@@@ CALLBACK " << cbd->cls_id << ", " << cbd->mthd_id << " @@@" << endl;
-		cout << "@@@ CALLBACK " << data << endl;
 		DLLTools_MethodCall_Ptr callback = cbd->callback;
+		DLLTools_PushInt(cbd->op_stack, cbd->stack_pos, 0);
 		DLLTools_PushInt(cbd->op_stack, cbd->stack_pos, 0);
 		DLLTools_PushInt(cbd->op_stack, cbd->stack_pos, 0);
 		(*callback)(cbd->op_stack, cbd->stack_pos, NULL, cbd->cls_id, cbd->mthd_id);
