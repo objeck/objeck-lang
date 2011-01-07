@@ -6,13 +6,13 @@ bundle Default {
 	}
 
 	class CallbackHolder {
-		@callback : (GtkWidget, GdkEvent) ~ Nil;
+		@callback : (GtkWidget) ~ Nil;
 
-		New(callback : (GtkWidget, GdkEvent) ~ Nil) {
+		New(callback : (GtkWidget) ~ Nil) {
 			@callback := callback;
 		}
 
-		method : public : Get() ~ (GtkWidget, GdkEvent) ~ Nil {
+		method : public : Get() ~ (GtkWidget) ~ Nil {
 			return @callback;
 		}
 	}
@@ -31,12 +31,13 @@ bundle Default {
 			return @lib_proxy;
 		}
 
-		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Nil) ~ Nil {
+		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil) ~ Nil {
 			lib_proxy := GetDllProxy();
-         array_args := Base->New[3];
+         array_args := Base->New[4];
          array_args[0] := IntHolder->New(@native_ptr);
 			array_args[1] := IntHolder->New(signal->As(Int));
-         array_args[2] := CallbackHolder->New(callback);
+			array_args[2] := @self;
+         array_args[3] := CallbackHolder->New(callback);
          lib_proxy->CallFunction("signal_connect", array_args);
 		}
 
@@ -45,12 +46,6 @@ bundle Default {
          array_args := Base->New[1];
          array_args[0] := IntHolder->New(@native_ptr);
          lib_proxy->CallFunction("g_widget_show", array_args);
-		}
-
-	}
-
-	class GdkEvent {
-		New() {
 		}
 	}
 
@@ -73,14 +68,14 @@ bundle Default {
 	}
 
 	class Gtk2 {
-		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Nil {
+		function : DeleteEvent(widget : GtkWidget) ~ Nil {
 			(7+9)->PrintLine();
 			9999->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			window := GtkWindow->New();	
-			callback := DeleteEvent(GtkWidget, GdkEvent) ~ Nil;
+			callback := DeleteEvent(GtkWidget) ~ Nil;
 			window->SignalConnect(Signal->Destroy, callback);
 			window->Show();
 			window->Main();
