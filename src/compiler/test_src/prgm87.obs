@@ -33,11 +33,10 @@ bundle Default {
 
 		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil) ~ Nil {
 			lib_proxy := GetDllProxy();
-         array_args := Base->New[4];
-         array_args[0] := IntHolder->New(@native_ptr);
+         array_args := Base->New[3];
+         array_args[0] := @self;
 			array_args[1] := IntHolder->New(signal->As(Int));
-			array_args[2] := @self;
-         array_args[3] := CallbackHolder->New(callback);
+         array_args[2] := CallbackHolder->New(callback);
          lib_proxy->CallFunction("signal_connect", array_args);
 		}
 
