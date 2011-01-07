@@ -2624,7 +2624,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Byte and " + right->GetClassName());
+	if(!SearchProgramEnums(right->GetClassName()) && 
+	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: Byte and " + right->GetClassName());
+	}
         break;
 
       case BOOLEAN_TYPE:
@@ -2664,7 +2667,10 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Char and " + right->GetClassName());
+	if(!SearchProgramEnums(right->GetClassName()) && 
+	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: Char and " + right->GetClassName());
+	}
         break;
 
       case BOOLEAN_TYPE:
@@ -2704,7 +2710,11 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-        ProcessError(expression, "Invalid cast with classes: Int and " + right->GetClassName());
+	if(!SearchProgramEnums(right->GetClassName()) && 
+	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: Int and " + 
+		       right->GetClassName());
+	}
         break;
 
       case BOOLEAN_TYPE:
@@ -2768,15 +2778,24 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case BYTE_TYPE:
-        ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Byte");
+	if(!SearchProgramEnums(left->GetClassName()) && 
+	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Byte");
+	}
         break;
 
       case CHAR_TYPE:
-        ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Char");
+	if(!SearchProgramEnums(left->GetClassName()) && 
+	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Char");
+	}
         break;
 
       case INT_TYPE:
-        ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Int");
+	if(!SearchProgramEnums(left->GetClassName()) && 
+	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
+	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Int");
+	}
         break;
 
       case FLOAT_TYPE:
