@@ -1,11 +1,20 @@
 #include <iostream>
+#include <stdlib.h>
 #include <gtk/gtk.h>
 #include "../../../shared/dll_tools.h"
 
 using namespace std;
 
 extern "C" {
-   static void callback_handler(GtkWidget *widget, GdkEvent  *event, gpointer   data);
+ 	typedef struct _callback_data {
+		int cls_id;
+		int mthd_id;
+		long* op_stack;
+		long* stack_pos;
+		DLLTools_MethodCall_Ptr callback;
+	} callback_data;
+
+   static void destroy_callback_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
 
 	void load_lib() {
 		int argc = 0; char** argv = NULL;
@@ -32,17 +41,34 @@ extern "C" {
 		int signal = DLLTools_GetIntValue(data_array, 1);
 		int cls_id = DLLTools_GetIntValue(data_array, 2);
 		int mthd_id = DLLTools_GetIntValue(data_array, 3);
-    cout << "@@@ " << signal << ", " << cls_id << ", " << mthd_id << " @@@" << endl;
-		g_signal_connect(widget, "destroy", G_CALLBACK(callback_handler), NULL);
+//    cout << "@@@ " << signal << ", " << cls_id << ", " << mthd_id << " @@@" << endl;
+		callback_data* cbd = new callback_data;
+		cbd->cls_id = cls_id;
+		cbd->mthd_id = mthd_id;
+		cbd->op_stack = op_stack;
+		cbd->stack_pos = stack_pos;
+		cbd->callback = callback;
+
+		cout << "@@@ " << cbd << " @@@" << endl;
+
+		switch(signal) {
+		case -100:
+			g_signal_connect(widget, "destroy", G_CALLBACK(destroy_callback_handler), (gpointer)cbd);
+			break;
+		}
    }
 
 	void g_main(long* data_array, long* op_stack, long* stack_pos, DLLTools_MethodCall_Ptr callback) {
 		gtk_main();
 	}
 
-   void callback_handler(GtkWidget* widget, GdkEvent* event, gpointer data)
-{
-  g_print ("Hello World\n");
-}
-
+   void destroy_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer data) {
+		callback_data* cbd = (callback_data*)data;
+//		cout << "@@@ CALLBACK " << cbd->cls_id << ", " << cbd->mthd_id << " @@@" << endl;
+		cout << "@@@ CALLBACK " << data << endl;
+		DLLTools_MethodCall_Ptr callback = cbd->callback;
+		DLLTools_PushInt(cbd->op_stack, cbd->stack_pos, 0);
+		DLLTools_PushInt(cbd->op_stack, cbd->stack_pos, 0);
+		(*callback)(cbd->op_stack, cbd->stack_pos, NULL, cbd->cls_id, cbd->mthd_id);
+	}
 }
