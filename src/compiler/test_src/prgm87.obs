@@ -17,24 +17,33 @@ bundle Default {
 		}
 	}
 	class GtkWidget {
-		native_ptr : Int;
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
 
 		New() {
 		}
 
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+			};
+
+			return @lib_proxy;
+		}
+
 		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Nil) ~ Nil {
-			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+			lib_proxy := GetDllProxy();
          array_args := Base->New[3];
-         array_args[0] := IntHolder->New(native_ptr);
+         array_args[0] := IntHolder->New(@native_ptr);
 			array_args[1] := IntHolder->New(signal->As(Int));
          array_args[2] := CallbackHolder->New(callback);
          lib_proxy->CallFunction("signal_connect", array_args);
 		}
 
 		method : public : Show() ~ Nil {
-			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+			lib_proxy := GetDllProxy();
          array_args := Base->New[1];
-         array_args[0] := IntHolder->New(native_ptr);
+         array_args[0] := IntHolder->New(@native_ptr);
          lib_proxy->CallFunction("g_widget_show", array_args);
 		}
 
@@ -49,22 +58,23 @@ bundle Default {
 		New() {
 			Parent();
 
-			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+			lib_proxy := GetDllProxy();
          array_args := Base->New[1];
          array_args[0] := IntHolder->New(0);
          lib_proxy->CallFunction("g_window_new", array_args);
 			ptr_holder := array_args[0]->As(IntHolder);
-			native_ptr := ptr_holder->Get();
+			@native_ptr := ptr_holder->Get();
 		}
 		
 		method : public : Main() ~ Nil {
-			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+			lib_proxy := GetDllProxy();
          lib_proxy->CallFunction("g_main", Nil->As(Base[]));
 		}
 	}
 
 	class Gtk2 {
 		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Nil {
+			"@@@ HELLO @@@"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
