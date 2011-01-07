@@ -47,7 +47,7 @@ extern "C" {
 		cbd->mthd_id = mthd_id;
 		cbd->op_stack = op_stack;
 		cbd->stack_pos = stack_pos;
-		cbd->self = self;
+		cbd->self = (long*)data_array[0];
 		cbd->callback = callback;
 
 	// cout << "@@@ " << widget << ", " << (long*)self[0] << ", " << self << " @@@" << endl;
