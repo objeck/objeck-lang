@@ -1,6 +1,10 @@
 use Structure;
 
 bundle Default {
+	enum Signal := -100 {
+		Destroy
+	}
+
 	class CallbackHolder {
 		@callback : (GtkWidget, GdkEvent) ~ Nil;
 
@@ -18,11 +22,11 @@ bundle Default {
 		New() {
 		}
 
-		method : public : SignalConnect(name : String, callback : (GtkWidget, GdkEvent) ~ Nil) ~ Nil {
+		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Nil) ~ Nil {
 			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
          array_args := Base->New[3];
          array_args[0] := IntHolder->New(native_ptr);
-         array_args[1] := name;
+			array_args[1] := IntHolder->New(signal->As(Int));
          array_args[2] := CallbackHolder->New(callback);
          lib_proxy->CallFunction("signal_connect", array_args);
 		}
@@ -65,8 +69,8 @@ bundle Default {
 
 		function : Main(args : String[]) ~ Nil {
 			window := GtkWindow->New();	
-			f := DeleteEvent(GtkWidget, GdkEvent) ~ Nil;
-			window->SignalConnect("destory", f);
+			callback := DeleteEvent(GtkWidget, GdkEvent) ~ Nil;
+			window->SignalConnect(Signal->Destroy, callback);
 			window->Show();
 			window->Main();
 		}

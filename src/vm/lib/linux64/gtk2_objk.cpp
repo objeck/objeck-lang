@@ -28,11 +28,12 @@ extern "C" {
 	void signal_connect(long* data_array, long* op_stack, long* stack_pos, DLLTools_MethodCall_Ptr callback) {
 
 		GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-		char* name = DLLTools_GetStringValue(data_array, 1);
+//		char* name = DLLTools_GetStringValue(data_array, 1);
+		int signal = DLLTools_GetIntValue(data_array, 1);
 		int cls_id = DLLTools_GetIntValue(data_array, 2);
 		int mthd_id = DLLTools_GetIntValue(data_array, 3);
-//    cout << "@@@ " << name << ", " << cls_id << ", " << mthd_id << " @@@" << endl;
-		g_signal_connect(widget, name, G_CALLBACK(callback_handler), NULL);
+    cout << "@@@ " << signal << ", " << cls_id << ", " << mthd_id << " @@@" << endl;
+		g_signal_connect(widget, "destroy", G_CALLBACK(callback_handler), NULL);
    }
 
 	void g_main(long* data_array, long* op_stack, long* stack_pos, DLLTools_MethodCall_Ptr callback) {
