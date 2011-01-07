@@ -1,14 +1,30 @@
 use Structure;
 
 bundle Default {
-	enum Signal {
-		Destroy
-	}
+	class CallbackHolder {
+		@callback : (GtkWidget, GdkEvent) ~ Nil;
 
+		New(callback : (GtkWidget, GdkEvent) ~ Nil) {
+			@callback := callback;
+		}
+
+		method : public : Get() ~ (GtkWidget, GdkEvent) ~ Nil {
+			return @callback;
+		}
+	}
 	class GtkWidget {
 		native_ptr : Int;
 
 		New() {
+		}
+
+		method : public : SignalConnect(name : String, callback : (GtkWidget, GdkEvent) ~ Nil) ~ Nil {
+			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
+         array_args := Base->New[3];
+         array_args[0] := IntHolder->New(native_ptr);
+         array_args[1] := name;
+         array_args[2] := CallbackHolder->New(callback);
+         lib_proxy->CallFunction("signal_connect", array_args);
 		}
 
 		method : public : Show() ~ Nil {
@@ -37,9 +53,6 @@ bundle Default {
 			native_ptr := ptr_holder->Get();
 		}
 		
-		method : public : SignalConnect(signal : Signal, callback : (GtkWidget, GdkEvent) ~ Bool) ~ Nil {
-		}
-
 		method : public : Main() ~ Nil {
 			lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
          lib_proxy->CallFunction("g_main", Nil->As(Base[]));
@@ -47,14 +60,13 @@ bundle Default {
 	}
 
 	class Gtk2 {
-		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Bool {
-			return true;
+		function : DeleteEvent(widget : GtkWidget, event : GdkEvent) ~ Nil {
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			window := GtkWindow->New();	
-			f := DeleteEvent(GtkWidget, GdkEvent) ~ Bool;
-			window->SignalConnect(Signal->Destroy, f);
+			f := DeleteEvent(GtkWidget, GdkEvent) ~ Nil;
+			window->SignalConnect("destory", f);
 			window->Show();
 			window->Main();
 		}
