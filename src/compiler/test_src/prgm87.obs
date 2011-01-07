@@ -16,6 +16,7 @@ bundle Default {
 			return @callback;
 		}
 	}
+
 	class GtkWidget {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -33,36 +34,70 @@ bundle Default {
 
 		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil) ~ Nil {
 			lib_proxy := GetDllProxy();
-         array_args := Base->New[3];
-         array_args[0] := @self;
+			array_args := Base->New[3];
+			array_args[0] := @self;
 			array_args[1] := IntHolder->New(signal->As(Int));
-         array_args[2] := CallbackHolder->New(callback);
-         lib_proxy->CallFunction("signal_connect", array_args);
+			array_args[2] := CallbackHolder->New(callback);
+			lib_proxy->CallFunction("og_signal_connect", array_args);
 		}
 
 		method : public : Show() ~ Nil {
 			lib_proxy := GetDllProxy();
-         array_args := Base->New[1];
-         array_args[0] := IntHolder->New(@native_ptr);
-         lib_proxy->CallFunction("g_widget_show", array_args);
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_show", array_args);
 		}
 	}
 
-	class GtkWindow from GtkWidget {
+	class GtkContainer from GtkWidget {
 		New() {
 			Parent();
+		}
 
+		method : public : SetBorderWidth(width : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
-         array_args := Base->New[1];
-         array_args[0] := IntHolder->New(0);
-         lib_proxy->CallFunction("g_window_new", array_args);
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := IntHolder->New(width);
+			lib_proxy->CallFunction("og_container_width", array_args);
+		}
+		
+		method : public : ContainerAdd(widget : GtkWidget) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := widget;
+			lib_proxy->CallFunction("og_container_add", array_args);
+		}
+	}
+
+	class GtkButton from GtkContainer {
+		New(name : String) {
+			Parent();
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(0);
+			array_args[1] := name;
+			lib_proxy->CallFunction("og_button_new_with_label", array_args);
+			ptr_holder := array_args[0]->As(IntHolder);
+			@native_ptr := ptr_holder->Get();
+		}
+	}	
+
+	class GtkWindow from GtkContainer {
+		New() {
+			Parent();
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(0);
+			lib_proxy->CallFunction("og_window_new", array_args);
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
 		}
 		
 		method : public : Main() ~ Nil {
 			lib_proxy := GetDllProxy();
-         lib_proxy->CallFunction("g_main", Nil->As(Base[]));
+         lib_proxy->CallFunction("og_main", Nil->As(Base[]));
 		}
 	}
 
@@ -74,8 +109,14 @@ bundle Default {
 
 		function : Main(args : String[]) ~ Nil {
 			window := GtkWindow->New();	
+			button := GtkButton->New("Hello");
+			
+			window->ContainerAdd(button->As(GtkWidget));
 			callback := DeleteEvent(GtkWidget) ~ Nil;
 			window->SignalConnect(Signal->Destroy, callback);
+			window->SetBorderWidth(400);
+					
+			button->Show();			
 			window->Show();
 			window->Main();
 		}
