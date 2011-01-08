@@ -91,6 +91,41 @@ extern "C" {
       break;
     }
   }
+  
+  void og_signal_connect_swapped(long* data_array, long* op_stack, long* stack_pos, 
+			 DLLTools_MethodCall_Ptr callback) {
+    long* self = (long*)DLLTools_GetIntValue(data_array, 0);
+    long* widget = (long*)DLLTools_GetIntValue(data_array, 1);
+    int signal = DLLTools_GetIntValue(data_array, 2);
+    int cls_id = DLLTools_GetIntValue(data_array, 3);
+    int mthd_id = DLLTools_GetIntValue(data_array, 4);
+    
+    callback_data* data = new callback_data;
+    data->cls_id = cls_id;
+    data->mthd_id = mthd_id;
+    data->op_stack = op_stack;
+    data->stack_pos = stack_pos;
+    data->self = (long*)data_array[ARRAY_HEADER_OFFSET + 1];
+    data->callback = callback;
+    
+#ifdef _DEBUG
+    cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
+	 << ", signal=" << signal << ", self=" << data->self <<   " @@@" << endl;
+#endif
+    
+    // find right handler
+    switch(signal) {
+    case -100:
+      g_signal_connect((GtkWidget*)self, "destroy", 
+		       G_CALLBACK(callback_handler), data);
+      break;
+      
+    case -99:
+      g_signal_connect((GtkWidget*)self, "clicked", 
+		       G_CALLBACK(callback_handler), data);
+      break;
+    }
+  }
 
   //
   // container functions
