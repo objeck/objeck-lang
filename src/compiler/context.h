@@ -248,22 +248,37 @@ class ContextAnalyzer {
     SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + ":" + name);
     if(entry) {
       return entry;
-    } else {
+    } 
+    else {
       // check class
       SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
       entry = table->GetEntry(current_class->GetName() + ":" + name);
       if(entry) {
         return entry;
-      } else {
+      } 
+      else {
         // check parents
-        Class* parent = bundle->GetClass(current_class->GetParentName());
+	const string& bundle_name = bundle->GetName();
+        Class* parent;
+	if(bundle_name.size() > 0) {
+	  parent = bundle->GetClass(bundle_name + "." + current_class->GetParentName());
+	}
+	else {
+	  parent = bundle->GetClass(current_class->GetParentName());
+	}
         while(parent && !entry) {
           SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
           entry = table->GetEntry(parent->GetName() + ":" + name);
           if(entry) {
             return entry;
           }
-          parent = bundle->GetClass(parent->GetParentName());
+	  // get next parent	  
+	  if(bundle_name.size() > 0) {
+	    parent = bundle->GetClass(bundle_name + "." + parent->GetParentName());
+	  }
+	  else {
+	    parent = bundle->GetClass(parent->GetParentName());
+	  }
         }
       }
     }

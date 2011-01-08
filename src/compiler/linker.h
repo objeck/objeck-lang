@@ -234,6 +234,11 @@ public:
       index++;
       break;
 
+    case 'm':
+      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE);
+      index++;
+      break;
+
     case 'o':
       index = 2;
       while(index < rtrn_name.size() && rtrn_name[index] != '*') {

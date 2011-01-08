@@ -1,7 +1,6 @@
 use Structure;
-# use Gtk2;
 
-bundle Default {
+bundle Gtk2 {
 	enum Signal := -100 {
 		Destroy,
 		Clicked
@@ -78,7 +77,7 @@ bundle Default {
 		method : public : ContainerAdd(widget : GtkWidget) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[2];
-#			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[0] := IntHolder->New(@native_ptr);
 			array_args[1] := widget;
 			lib_proxy->CallFunction("og_container_add", array_args);
 		}
@@ -120,33 +119,6 @@ bundle Default {
 			array_args := Base->New[1];
 			array_args[0] := widget;
 			lib_proxy->CallFunction("og_widget_destroy", array_args);
-		}
-	}
-}
-
-bundle Default {
-	class Appliction {
-		function : TestHandle(widget : GtkWidget) ~ Nil {
-			"Hello Gtk2"->PrintLine();
-		}
-
-		function : Main(args : String[]) ~ Nil {
-			# callbacks
-			delete_callback := Gtk2->DeleteEvent(GtkWidget) ~ Nil;
-			test_callback := TestHandle(GtkWidget) ~ Nil;
-						
-			# create 
-			button := GtkButton->New("Hello World!");			
-			window := GtkWindow->New();
-			window->SignalConnect(Signal->Destroy, test_callback);
-			window->SetBorderWidth(10);
-			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
-			window->ContainerAdd(button->As(GtkWidget));
-			
-			# show
-			button->Show();			
-			window->Show();
-			window->Main();
 		}
 	}
 }
