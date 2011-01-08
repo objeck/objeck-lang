@@ -44,5 +44,5 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, int cls_id, int mthd_id) {
   Runtime::StackInterpreter intpr;
   intpr.Execute((long*)op_stack, (long*)stack_pos, 0, 
-		Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id), instance, true);
+		Loader::GetProgram()->GetClass(cls_id)->GetMethod(mthd_id), instance, false);
 }

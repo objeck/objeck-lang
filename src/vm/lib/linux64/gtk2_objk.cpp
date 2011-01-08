@@ -5,7 +5,11 @@
 using namespace std;
 
 extern "C" {
+  static void callback_handler(GtkWidget *widget, gpointer data);
+
+  //
   // callback holder
+  //
   typedef struct _callback_data {
     int cls_id;
     int mthd_id;
@@ -14,8 +18,6 @@ extern "C" {
     long* self;
     DLLTools_MethodCall_Ptr callback;
   } callback_data;
-
-  static void destroy_callback_handler(GtkWidget *widget, gpointer data);
   
   //
   // loading and unloading of library
@@ -68,14 +70,24 @@ extern "C" {
     data->mthd_id = mthd_id;
     data->op_stack = op_stack;
     data->stack_pos = stack_pos;
-    data->self = (long*)data_array[0];
+    data->self = (long*)data_array[ARRAY_HEADER_OFFSET];
     data->callback = callback;
+    
+#ifdef _DEBUG
+    cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
+	 << ", signal=" << signal << ", self=" << data->self <<   " @@@" << endl;
+#endif
     
     // find right handler
     switch(signal) {
     case -100:
       g_signal_connect((GtkWidget*)self, "destroy", 
-		       G_CALLBACK(destroy_callback_handler), data);
+		       G_CALLBACK(callback_handler), data);
+      break;
+      
+    case -99:
+      g_signal_connect((GtkWidget*)self, "clicked", 
+		       G_CALLBACK(callback_handler), data);
       break;
     }
   }
@@ -104,14 +116,25 @@ extern "C" {
 	       DLLTools_MethodCall_Ptr callback) {
     gtk_main();
   }
+
+  void og_widget_destroy(long* data_array, long* op_stack, long* stack_pos, 
+			 DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    gtk_widget_destroy(widget);
+  }
   
   //
   // callbacks
   //
-  void destroy_callback_handler(GtkWidget* widget, gpointer args) {
+  void callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
-
     DLLTools_MethodCall_Ptr callback = data->callback;
+
+#ifdef _DEBUG
+    cout << "@@@ Callback: cls_id=" << data->cls_id << ", mthd_id=" 
+	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
+#endif
+    
     DLLTools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
     (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
     

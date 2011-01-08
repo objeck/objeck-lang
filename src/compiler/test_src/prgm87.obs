@@ -2,7 +2,8 @@ use Structure;
 
 bundle Default {
 	enum Signal := -100 {
-		Destroy
+		Destroy,
+		Clicked
 	}
 
 	class CallbackHolder {
@@ -103,18 +104,29 @@ bundle Default {
 
 	class Gtk2 {
 		function : DeleteEvent(widget : GtkWidget) ~ Nil {
+			lib_proxy := GtkWidget->GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := widget;
+			lib_proxy->CallFunction("og_widget_destroy", array_args);
+		}
+	}
+	
+	class Appliction {
+		function : TestHandle(widget : GtkWidget) ~ Nil {
 			(7+9)->PrintLine();
 			9999->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			window := GtkWindow->New();	
 			button := GtkButton->New("Hello");
+			delete_callback := Gtk2->DeleteEvent(GtkWidget) ~ Nil;
+			button->SignalConnect(Signal->Clicked, delete_callback);
 			
+			window := GtkWindow->New();
+			test_callback := TestHandle(GtkWidget) ~ Nil;
+			window->SignalConnect(Signal->Destroy, test_callback);
+			window->SetBorderWidth(10);
 			window->ContainerAdd(button->As(GtkWidget));
-			callback := DeleteEvent(GtkWidget) ~ Nil;
-			window->SignalConnect(Signal->Destroy, callback);
-			window->SetBorderWidth(400);
 					
 			button->Show();			
 			window->Show();
