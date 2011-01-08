@@ -1,0 +1,28 @@
+use Gtk2;
+
+bundle Default {
+	class Appliction {
+		function : TestHandle(widget : GtkWidget) ~ Nil {
+			"Hello Gtk2"->PrintLine();
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			# callbacks
+			delete_callback := Gtk2->DeleteEvent(GtkWidget) ~ Nil;
+			test_callback := TestHandle(GtkWidget) ~ Nil;
+						
+			# create 
+			button := GtkButton->New("Hello World!");			
+			window := GtkWindow->New();
+			window->SignalConnect(Signal->Destroy, test_callback);
+			window->SetBorderWidth(10);
+			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
+			window->ContainerAdd(button->As(GtkWidget));
+			
+			# show
+			button->Show();			
+			window->Show();
+			window->Main();
+		}
+	}
+}
