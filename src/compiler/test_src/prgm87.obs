@@ -1,4 +1,5 @@
 use Structure;
+# use Gtk2;
 
 bundle Default {
 	enum Signal := -100 {
@@ -41,6 +42,17 @@ bundle Default {
 			array_args[2] := CallbackHolder->New(callback);
 			lib_proxy->CallFunction("og_signal_connect", array_args);
 		}
+				
+		method : public : SignalConnectSwapped(signal : Signal, widget : GtkWidget, 
+				callback : (GtkWidget) ~ Nil) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[4];
+			array_args[0] := @self;
+			array_args[1] := widget;
+			array_args[2] := IntHolder->New(signal->As(Int));
+			array_args[3] := CallbackHolder->New(callback);
+			lib_proxy->CallFunction("og_signal_connect_swapped", array_args);
+		}
 
 		method : public : Show() ~ Nil {
 			lib_proxy := GetDllProxy();
@@ -66,7 +78,7 @@ bundle Default {
 		method : public : ContainerAdd(widget : GtkWidget) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
+#			array_args[0] := IntHolder->New(@native_ptr);
 			array_args[1] := widget;
 			lib_proxy->CallFunction("og_container_add", array_args);
 		}
@@ -110,24 +122,28 @@ bundle Default {
 			lib_proxy->CallFunction("og_widget_destroy", array_args);
 		}
 	}
-	
+}
+
+bundle Default {
 	class Appliction {
 		function : TestHandle(widget : GtkWidget) ~ Nil {
-			(7+9)->PrintLine();
-			9999->PrintLine();
+			"Hello Gtk2"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			button := GtkButton->New("Hello");
+			# callbacks
 			delete_callback := Gtk2->DeleteEvent(GtkWidget) ~ Nil;
-			button->SignalConnect(Signal->Clicked, delete_callback);
-			
-			window := GtkWindow->New();
 			test_callback := TestHandle(GtkWidget) ~ Nil;
+						
+			# create 
+			button := GtkButton->New("Hello World!");			
+			window := GtkWindow->New();
 			window->SignalConnect(Signal->Destroy, test_callback);
 			window->SetBorderWidth(10);
+			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
 			window->ContainerAdd(button->As(GtkWidget));
-					
+			
+			# show
 			button->Show();			
 			window->Show();
 			window->Main();
