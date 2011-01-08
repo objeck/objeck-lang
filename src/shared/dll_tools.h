@@ -37,6 +37,8 @@
 
 using namespace std;
 
+#define ARRAY_HEADER_OFFSET 3
+
 typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
 
 int DLLTools_GetArraySize(long* array) {
@@ -49,7 +51,7 @@ int DLLTools_GetArraySize(long* array) {
 
 int DLLTools_GetIntValue(long* array, int index) {
   if(array && index < array[0]) {
-    array += 3;
+    array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
     return int_holder[0];
   }
@@ -59,7 +61,7 @@ int DLLTools_GetIntValue(long* array, int index) {
 
 void DLLTools_SetIntValue(long* array, int index, int value) {
   if(array && index < array[0]) {
-    array += 3;
+    array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
     int_holder[0] = value;
   }
@@ -67,7 +69,7 @@ void DLLTools_SetIntValue(long* array, int index, int value) {
 
 double DLLTools_GetFloatValue(long* array, int index) {
   if(array && index < array[0]) {
-    array += 3;
+    array += ARRAY_HEADER_OFFSET;
     long* float_holder = (long*)array[index];
 		
     double value;
@@ -80,7 +82,7 @@ double DLLTools_GetFloatValue(long* array, int index) {
 
 void DLLTools_SetFloatValue(long* array, int index, double value) {
   if(array && index < array[0]) {
-    array += 3;
+    array += ARRAY_HEADER_OFFSET;
     long* float_holder = (long*)array[index];
     memcpy(float_holder, &value, sizeof(value));
   }
@@ -88,7 +90,7 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
 
 char* DLLTools_GetStringValue(long* array, int index) {
   if(array && index < array[0]) {
-    array += 3;
+    array += ARRAY_HEADER_OFFSET;
     long* string_holder = (long*)array[index];
     long* char_array = (long*)string_holder[0];
     char* str = (char*)(char_array + 3);
@@ -132,16 +134,9 @@ double DLLTools_PopFloat(long* op_stack, long *stack_pos) {
 
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
   op_stack[(*stack_pos)++] = value;
-#ifdef _DEBUG
-  cout << "\t[push_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
-#endif
 }
 
 void DLLTools_PushFloat(long* op_stack, long *stack_pos, double v) {
-#ifdef _DEBUG
-  cout << "  [push_f: stack_pos=" << (*stack_pos) << "; value=" << v
-       << "]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
-#endif
   memcpy(&op_stack[(*stack_pos)], &v, sizeof(double));
   
 #ifdef _X64
