@@ -169,4 +169,7 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_main_quit", Nil->As(Base[]));
 		}
 	}
-}
+}  
+
+
+ 
