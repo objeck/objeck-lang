@@ -1,5 +1,8 @@
 use Structure;
 
+# Gtk2 wrapper
+# R. Hollines
+
 bundle Gtk2 {
 	# signals
 	enum Signal := -100 {
@@ -71,6 +74,7 @@ bundle Gtk2 {
 		}
 	}
 	
+	# GtkContainer class
 	class GtkContainer from GtkWidget {
 		New() {
 			Parent();
@@ -111,6 +115,7 @@ bundle Gtk2 {
 		}
 	}
 
+	# GtkButton class
 	class GtkButton from GtkContainer {
 		New(name : String) {
 			Parent();
@@ -124,6 +129,7 @@ bundle Gtk2 {
 		}
 	}	
 
+	# GtkWindow class
 	class GtkWindow from GtkContainer {
 		New() {
 			Parent();
@@ -134,8 +140,17 @@ bundle Gtk2 {
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
 		}
+
+		method : public : SetTitle(title : String) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := title;
+			lib_proxy->CallFunction("og_window_set_title", array_args);
+		}
 	}
 
+	# Events class
 	class Events {
 		function : DeleteEvent(widget : GtkWidget) ~ Nil {
 			lib_proxy := GtkWidget->GetDllProxy();
@@ -145,6 +160,7 @@ bundle Gtk2 {
 		}
 	}
 
+	# Appliction class
 	class Appliction {
 		function : Main() ~ Nil {
 			lib_proxy := GtkWidget->GetDllProxy();
