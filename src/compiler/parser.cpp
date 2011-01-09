@@ -234,6 +234,11 @@ void Parser::ParseBundle(int depth)
         ProcessError(TOKEN_CLOSED_BRACE);
       }
       NextToken();
+      
+      if(!Match(TOKEN_END_OF_STREAM)) {
+	ProcessError("Stray tokens at the end of file");
+      }
+
       program->AddBundle(bundle);
     }
   }
