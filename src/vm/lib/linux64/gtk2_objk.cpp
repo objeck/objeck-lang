@@ -5,8 +5,9 @@
 using namespace std;
 
 extern "C" {
+  static gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args);
   static void callback_handler(GtkWidget *widget, gpointer data);
-
+  
   //
   // callback holder
   //
@@ -108,13 +109,18 @@ extern "C" {
     glong id;
     switch(signal) {
     case -100:
-      id = g_signal_connect((GtkWidget*)self, "destroy", 
-		       G_CALLBACK(callback_handler), data);
+      id = g_signal_connect((GtkWidget*)self, "delete-event",
+			    G_CALLBACK(delete_callback_handler), data);
       break;
       
     case -99:
+      id = g_signal_connect((GtkWidget*)self, "destroy", 
+			    G_CALLBACK(callback_handler), data);
+      break;
+      
+    case -98:
       id = g_signal_connect((GtkWidget*)self, "clicked", 
-		       G_CALLBACK(callback_handler), data);
+			    G_CALLBACK(callback_handler), data);
       break;
     }
     // set return
@@ -209,6 +215,21 @@ extern "C" {
   //
   // callbacks
   //
+  gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
+    callback_data* data = (callback_data*)args;
+    DLLTools_MethodCall_Ptr callback = data->callback;
+
+#ifdef _DEBUG
+    cout << "@@@ Delete callback: cls_id=" << data->cls_id << ", mthd_id=" 
+	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
+#endif
+    
+    DLLTools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
+    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
+    
+    return TRUE;
+  }
+
   void callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
     DLLTools_MethodCall_Ptr callback = data->callback;
