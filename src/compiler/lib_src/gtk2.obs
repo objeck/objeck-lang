@@ -1,8 +1,5 @@
 use Structure;
 
-# Gtk2 wrapper
-# R. Hollines
-
 bundle Gtk2 {
 	# signals
 	enum Signal := -100 {
