@@ -43,12 +43,19 @@ extern "C" {
   //
   // window functions
   //
+  void og_window_set_title(long* data_array, long* op_stack, long* stack_pos, 
+			   DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* window = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    char* name = DLLTools_GetStringValue(data_array, 1);    
+    gtk_window_set_title(GTK_WINDOW(window), name);
+  }
+
   void og_window_new(long* data_array, long* op_stack, long* stack_pos, 
 		     DLLTools_MethodCall_Ptr callback) {
     GtkWidget* window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     DLLTools_SetIntValue(data_array, 0, (long)window);
   }
-
+  
   //
   // widget functions
   //
