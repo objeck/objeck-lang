@@ -955,6 +955,11 @@ bundle Structure {
 	class IntHolder from Compare {
 		@value : Int;
 
+		New() {
+			Parent();
+			@value := 0;
+		}
+
 		New(value : Int) {
 			Parent();
 			@value := value;
@@ -1058,6 +1063,11 @@ bundle Structure {
 	
 	class FloatHolder from Compare {
 		@value : Float;
+
+		New() {
+			Parent();
+			@value := 0.0;
+		}
 
 		New(value : Float) {
 			Parent();

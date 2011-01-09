@@ -77,12 +77,19 @@ extern "C" {
     gtk_widget_hide(widget);
   }
   
+  void og_signal_handler_disconnect(long* data_array, long* op_stack, long* stack_pos, 
+				    DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    glong id = DLLTools_GetIntValue(data_array, 1);
+    g_signal_handler_disconnect(widget, id);
+  }
+
   void og_signal_connect(long* data_array, long* op_stack, long* stack_pos, 
 			 DLLTools_MethodCall_Ptr callback) {
-    long* self = (long*)DLLTools_GetIntValue(data_array, 0);
-    int signal = DLLTools_GetIntValue(data_array, 1);
-    int cls_id = DLLTools_GetFunctionValue(data_array, 2, CLS_ID);
-    int mthd_id = DLLTools_GetFunctionValue(data_array, 2, MTHD_ID);
+    long* self = (long*)DLLTools_GetIntValue(data_array, 1);
+    int signal = DLLTools_GetIntValue(data_array, 2);
+    int cls_id = DLLTools_GetFunctionValue(data_array, 3, CLS_ID);
+    int mthd_id = DLLTools_GetFunctionValue(data_array, 3, MTHD_ID);
     
     callback_data* data = new callback_data;
     data->cls_id = cls_id;
@@ -98,17 +105,20 @@ extern "C" {
 #endif
     
     // find right handler
+    glong id;
     switch(signal) {
     case -100:
-      g_signal_connect((GtkWidget*)self, "destroy", 
+      id = g_signal_connect((GtkWidget*)self, "destroy", 
 		       G_CALLBACK(callback_handler), data);
       break;
       
     case -99:
-      g_signal_connect((GtkWidget*)self, "clicked", 
+      id = g_signal_connect((GtkWidget*)self, "clicked", 
 		       G_CALLBACK(callback_handler), data);
       break;
     }
+    // set return
+    DLLTools_SetIntValue(data_array, 0, id);
   }
   
   void og_signal_connect_swapped(long* data_array, long* op_stack, long* stack_pos, 
