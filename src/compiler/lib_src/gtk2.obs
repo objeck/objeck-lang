@@ -166,7 +166,7 @@ bundle Gtk2 {
 
 		function : MainQuit() ~ Nil {
 			lib_proxy := GtkWidget->GetDllProxy();
-			lib_proxy->CallFunction("og_main_quit", Nil->As(Base[]));
+			lib_proxy->CallFunction("og_main_quit", Nil->As(Base[]));			
 		}
 	}
-}
+}lib_proxy->CallFunction("og_main_quit", Nil->As(Base[]));

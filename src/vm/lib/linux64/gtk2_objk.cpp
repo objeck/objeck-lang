@@ -23,13 +23,19 @@ extern "C" {
   // loading and unloading of library
   //
   void load_lib() {
+#ifdef _DEBUG
+    cout << "@@@ Loading shared library @@@" << endl;
+#endif
     int argc = 0; char** argv = NULL;
     gtk_init(&argc, &argv);
   }
   
   void unload_lib() {
+#ifdef _DEBUG
+    cout << "@@@ Unloading shared library @@@" << endl;
+#endif
   }
-
+  
   //
   // button functions
   //
@@ -75,8 +81,8 @@ extern "C" {
 			 DLLTools_MethodCall_Ptr callback) {
     long* self = (long*)DLLTools_GetIntValue(data_array, 0);
     int signal = DLLTools_GetIntValue(data_array, 1);
-    int cls_id = DLLTools_GetIntValue(data_array, 2);
-    int mthd_id = DLLTools_GetIntValue(data_array, 3);
+    int cls_id = DLLTools_GetFunctionValue(data_array, 2, CLS_ID);
+    int mthd_id = DLLTools_GetFunctionValue(data_array, 2, MTHD_ID);
     
     callback_data* data = new callback_data;
     data->cls_id = cls_id;
@@ -205,7 +211,7 @@ extern "C" {
     DLLTools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
     (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
     
-    delete data;
-    data = NULL;
+    // TODO: "data" memory is freed when the application exits 
+    // and need to stay allocated for the live of the appliction
   }
 }
