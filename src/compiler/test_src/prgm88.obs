@@ -16,7 +16,8 @@ bundle Default {
 			button := GtkButton->New("Hello World!");			
 			window := GtkWindow->New();
 			window->SignalConnect(Signal->Destroy, test_callback);
-			window->SetBorderWidth(10);
+			window->SetBorderWidth(25);
+			window->SetTitle("Goodbye, World!");
 			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
 			window->Add(button->As(GtkWidget));
 			
