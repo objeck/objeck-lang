@@ -3,6 +3,7 @@ use Structure;
 bundle Gtk2 {
 	# signals
 	enum Signal := -100 {
+		Delete,
 		Destroy,
 		Clicked
 	}
