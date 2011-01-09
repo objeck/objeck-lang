@@ -1,14 +1,15 @@
 use Gtk2;
 
 bundle Default {
-	class Appliction {
+	class HelloGtk {
 		function : TestHandle(widget : GtkWidget) ~ Nil {
 			"Hello Gtk2"->PrintLine();
+			Appliction->MainQuit();
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			# callbacks
-			delete_callback := Gtk2->DeleteEvent(GtkWidget) ~ Nil;
+			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget) ~ Nil;
 						
 			# create 
@@ -17,12 +18,12 @@ bundle Default {
 			window->SignalConnect(Signal->Destroy, test_callback);
 			window->SetBorderWidth(10);
 			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
-			window->ContainerAdd(button->As(GtkWidget));
+			window->Add(button->As(GtkWidget));
 			
 			# show
 			button->Show();			
 			window->Show();
-			window->Main();
+			Appliction->Main();
 		}
 	}
 }
