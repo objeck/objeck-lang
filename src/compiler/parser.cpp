@@ -81,7 +81,8 @@ void Parser::ProcessError(const string &msg)
 #endif
 
   const string &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, string>(GetLineNumber(), GetFileName() + ":" + str_line_num + ": " + msg));
+  errors.insert(pair<int, string>(GetLineNumber(), GetFileName() + ":" + 
+				  str_line_num + ": " + msg));
 }
 
 /****************************
@@ -150,7 +151,7 @@ bool Parser::Parse()
     const string &file_name = src_path.substr(offset, src_path.size());
     ParseFile(file_name);
   }
-
+  
   return CheckErrors();
 }
 
@@ -235,12 +236,13 @@ void Parser::ParseBundle(int depth)
       }
       NextToken();
       
-      if(!Match(TOKEN_END_OF_STREAM)) {
-	ProcessError("Stray tokens at the end of file");
-      }
-
       program->AddBundle(bundle);
     }
+    
+    // detect stray characters
+    if(!Match(TOKEN_END_OF_STREAM)) {
+      ProcessError("Stray tokens at the end of file");
+    }    
   }
   program->SetUses(uses);
 }
