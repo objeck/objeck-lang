@@ -4,7 +4,7 @@ bundle Default {
 	class HelloGtk {
 		function : TestHandle(widget : GtkWidget) ~ Nil {
 			"Hello Gtk2"->PrintLine();
-#			Appliction->MainQuit();
+			Appliction->MainQuit();
 		}
 
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {
@@ -16,6 +16,8 @@ bundle Default {
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget) ~ Nil;
 			button_callback := ButtonHandle(GtkWidget) ~ Nil;
+
+			button_callback(Nil->As(GtkWidget));
 	
 			# create 
 			button := GtkButton->New("Hello World!");			

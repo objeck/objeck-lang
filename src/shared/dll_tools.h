@@ -39,6 +39,11 @@ using namespace std;
 
 #define ARRAY_HEADER_OFFSET 3
 
+enum FunctionId {
+  CLS_ID = 0,
+  MTHD_ID
+};
+
 typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
 
 int DLLTools_GetArraySize(long* array) {
@@ -47,6 +52,37 @@ int DLLTools_GetArraySize(long* array) {
   }
 
   return 0;
+}
+
+int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
+  if(array && index < array[0]) {
+    array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)array[index];
+    
+    if(id == CLS_ID) {
+      return int_holder[0];
+    }
+    else {
+      return int_holder[1];
+    }
+  }
+  
+  return 0;
+}
+
+int DLLTools_SetFunctionValue(long* array, int index, 
+			      FunctionId id, int value) {
+  if(array && index < array[0]) {
+    array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)array[index];
+    
+    if(id == CLS_ID) {
+      int_holder[0] = value;
+    }
+    else {
+      int_holder[1] = value;
+    }
+  }
 }
 
 int DLLTools_GetIntValue(long* array, int index) {
