@@ -4,21 +4,26 @@ bundle Default {
 	class HelloGtk {
 		function : TestHandle(widget : GtkWidget) ~ Nil {
 			"Hello Gtk2"->PrintLine();
-			Appliction->MainQuit();
+#			Appliction->MainQuit();
+		}
+
+		function : ButtonHandle(widget : GtkWidget) ~ Nil {
+			"Button Clicked!"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			# callbacks
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget) ~ Nil;
-						
+			button_callback := ButtonHandle(GtkWidget) ~ Nil;
+	
 			# create 
 			button := GtkButton->New("Hello World!");			
 			window := GtkWindow->New();
 			window->SignalConnect(Signal->Destroy, test_callback);
-			window->SetBorderWidth(25);
+			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
-			button->SignalConnectSwapped(Signal->Clicked, window->As(GtkWidget), delete_callback);
+			button->SignalConnect(Signal->Clicked, button_callback);
 			window->Add(button->As(GtkWidget));
 			
 			# show
