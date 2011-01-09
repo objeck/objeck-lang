@@ -57,6 +57,12 @@ extern "C" {
     GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
     gtk_widget_show(widget);
   }
+
+  void og_widget_hide(long* data_array, long* op_stack, long* stack_pos, 
+		      DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    gtk_widget_hide(widget);
+  }
   
   void og_signal_connect(long* data_array, long* op_stack, long* stack_pos, 
 			 DLLTools_MethodCall_Ptr callback) {
@@ -130,11 +136,18 @@ extern "C" {
   //
   // container functions
   //
-  void og_container_width(long* data_array, long* op_stack, long* stack_pos, 
-			  DLLTools_MethodCall_Ptr callback) {
+  void og_container_set_border_width(long* data_array, long* op_stack, long* stack_pos, 
+				     DLLTools_MethodCall_Ptr callback) {
     GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
     int width = DLLTools_GetIntValue(data_array, 1);
     gtk_container_set_border_width(GTK_CONTAINER (widget), width);
+  }
+
+  void og_container_get_border_width(long* data_array, long* op_stack, long* stack_pos, 
+				     DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    gint width =gtk_container_get_border_width(GTK_CONTAINER (widget));
+    DLLTools_SetIntValue(data_array, 1, width);
   }
 
   void og_container_add(long* data_array, long* op_stack, long* stack_pos, 
@@ -142,6 +155,13 @@ extern "C" {
     GtkWidget* container = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
     GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 1);
     gtk_container_add(GTK_CONTAINER (container), widget);
+  }
+
+  void og_container_remove(long* data_array, long* op_stack, long* stack_pos, 
+			DLLTools_MethodCall_Ptr callback) {
+    GtkWidget* container = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 1);
+    gtk_container_remove(GTK_CONTAINER (container), widget);
   }
   
   //
@@ -151,6 +171,11 @@ extern "C" {
 	       DLLTools_MethodCall_Ptr callback) {
     gtk_main();
   }
+  
+  void og_main_quit(long* data_array, long* op_stack, long* stack_pos, 
+		    DLLTools_MethodCall_Ptr callback) {
+    gtk_main_quit();
+  }  
 
   void og_widget_destroy(long* data_array, long* op_stack, long* stack_pos, 
 			 DLLTools_MethodCall_Ptr callback) {
