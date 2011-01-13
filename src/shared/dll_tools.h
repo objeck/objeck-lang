@@ -33,6 +33,7 @@
 #define __DLL_TOOLS_H__
 
 #include <string>
+#include <assert.h>
 #include <string.h>
 
 using namespace std;
@@ -70,7 +71,7 @@ int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
   return 0;
 }
 
-int DLLTools_SetFunctionValue(long* array, int index, 
+void DLLTools_SetFunctionValue(long* array, int index, 
 			      FunctionId id, int value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -136,37 +137,27 @@ char* DLLTools_GetStringValue(long* array, int index) {
   return NULL;
 }
 
-
-//////////////////////////
-
-/*
-long DLLTools_PopInt(long* op_stack, long *stack_pos) {
-  long value = op_stack[--(*stack_pos)];
+void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack, 
+		    long* stack_pos, long*, int cls_id, int mthd_id) {
+  (*callback)(op_stack, stack_pos, NULL, cls_id, mthd_id);
 #ifdef _DEBUG
-  cout << "\t[pop_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+  assert(*stack_pos == 0);
 #endif
-
-  return value;
 }
 
-double DLLTools_PopFloat(long* op_stack, long *stack_pos) {
-  double v;
-
-#ifdef _X64
-  (*stack_pos)--;
-#else
-  (*stack_pos) -= 2;
-#endif
-
-  memcpy(&v, &op_stack[(*stack_pos)], sizeof(double));
+long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_stack, 
+			       long* stack_pos, long*, int cls_id, int mthd_id) {
+  (*callback)(op_stack, stack_pos, NULL, cls_id, mthd_id);
 #ifdef _DEBUG
-  cout << "  [pop_f: stack_pos=" << (*stack_pos) << "; value=" << v
-       << "]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
+  assert(*stack_pos > 0);
 #endif
-
-  return v;
+  long rtrn_value = op_stack[--(*stack_pos)];
+#ifdef _DEBUG
+  assert(*stack_pos == 0);
+#endif
+  
+  return rtrn_value;
 }
-*/
 
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
   op_stack[(*stack_pos)++] = value;
@@ -174,7 +165,6 @@ void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
 
 void DLLTools_PushFloat(long* op_stack, long *stack_pos, double v) {
   memcpy(&op_stack[(*stack_pos)], &v, sizeof(double));
-  
 #ifdef _X64
   (*stack_pos)++;
 #else
