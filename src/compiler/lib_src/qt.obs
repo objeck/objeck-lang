@@ -1,0 +1,95 @@
+use Structure;
+
+bundle Qt {
+	# signals
+	enum Signal := -100 {
+		Delete,
+		Destroy,
+		Clicked
+	}
+ 
+	# callback method holder
+	class CallbackHolder {
+		@callback : (GtkWidget) ~ Nil;
+
+		New(callback : (GtkWidget) ~ Nil) {
+			@callback := callback;
+		}
+
+		method : public : Get() ~ (GtkWidget) ~ Nil {
+			return @callback;
+		}
+	}
+
+	# GtkWidget class
+	class QWidget {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+
+		New() {
+			array_args := Base->New[1];
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_widget_new", array_args);
+			
+			rtrn_value := array_args[0]->As(IntHolder);
+			@native_ptr := rtrn_value->Get();
+		}
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/osx/qt/ojk_qt.1.dylib");
+			};
+
+			return @lib_proxy;
+		}
+		
+		method : public : SetWindowTitle(title : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := title;
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_widget_set_title", array_args);
+		}
+		
+		method : public : Resize(width : Int, height : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := IntHolder->New(width);
+			array_args[2] := IntHolder->New(height);
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_widget_resize", array_args);
+		}
+		
+		method : public : Show() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_widget_show", array_args);
+		}
+	}
+
+	# Appliction class
+	class QAppliction {
+		@native_ptr : static : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : Exec() ~ Nil {
+			if(@native_ptr <> 0) {
+				array_args := Base->New[1];
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_app_exec", array_args);
+				
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+		
+		function : Delete() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_app_delete", array_args);
+		}
+	}
+}
+
