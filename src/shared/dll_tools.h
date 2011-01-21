@@ -146,7 +146,7 @@ void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack,
 }
 
 long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_stack, 
-			       long* stack_pos, long*, int cls_id, int mthd_id) {
+				   long* stack_pos, long*, int cls_id, int mthd_id) {
   (*callback)(op_stack, stack_pos, NULL, cls_id, mthd_id);
 #ifdef _DEBUG
   assert(*stack_pos > 0);
