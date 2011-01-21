@@ -4,8 +4,8 @@ QT_LIBS=-F/Library/Frameworks -L/Library/Frameworks -framework QtGui -framework 
 ARGS=-g -D_DEBUG -shared -fPIC $(QT_INCS) -Wno-deprecated -D_X64 -pthread -D_X64
 
 CC=g++
-SRC=test.o
-EXE=test.1.dylib 
+SRC=qt_wrapper.o
+EXE=ojk.1.dylib 
 
 $(EXE): $(SRC)
 	$(CC) -m64 -pthread -dynamiclib $(QT_LIBS) -o $(EXE) $(SRC)
