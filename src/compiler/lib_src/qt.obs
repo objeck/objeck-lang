@@ -1,13 +1,6 @@
 use Structure;
 
 bundle Qt {
-	# signals
-	enum Signal := -100 {
-		Delete,
-		Destroy,
-		Clicked
-	}
- 
 	# callback method holder
 	class CallbackHolder {
 		@callback : (GtkWidget) ~ Nil;
@@ -20,20 +13,41 @@ bundle Qt {
 			return @callback;
 		}
 	}
-
-	# GtkWidget class
-	class QWidget {
+	
+	# QObject class
+	class QObject {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
-
+		
 		New() {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
+			if(@native_ptr = 0) {
+			};
+		}
+		
+		function : Connect(sender : QObject, signal : String, recv : QObject, mthd : String) ~ Nil {
+			array_args := Base->New[4];
+			array_args[0] := sender;
+			array_args[1] := signal;
+			array_args[2] := recv;
+			array_args[3] := mthd;
 			@lib_proxy := QWidget->GetDllProxy();
-			@lib_proxy->CallFunction("qt_widget_new", array_args);
+			@lib_proxy->CallFunction("qt_object_connect", array_args);
+		}
+	}
+	
+	# QWidget class
+	class QWidget from QObject {
+		New() {
+			Parent();
 			
-			rtrn_value := array_args[0]->As(IntHolder);
-			@native_ptr := rtrn_value->Get();
+			if(@native_ptr = 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New();
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_widget_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
 		}
 		
 		function : GetDllProxy() ~ DllProxy {
@@ -69,7 +83,7 @@ bundle Qt {
 		}
 	}
 
-	# Appliction class
+	# QAppliction class
 	class QAppliction {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
