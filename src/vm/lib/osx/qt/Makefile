@@ -5,7 +5,7 @@ ARGS=-g -D_DEBUG -shared -fPIC $(QT_INCS) -Wno-deprecated -D_X64 -pthread -D_X64
 
 CC=g++
 SRC=qt_wrapper.o
-EXE=ojk.1.dylib 
+EXE=ojk_qt.1.dylib 
 
 $(EXE): $(SRC)
 	$(CC) -m64 -pthread -dynamiclib $(QT_LIBS) -o $(EXE) $(SRC)

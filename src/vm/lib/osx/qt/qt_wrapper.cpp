@@ -37,10 +37,16 @@ extern "C" {
 
   void qt_widget_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
     QWidget* widget = new QWidget;
+#ifdef _DEBUG
+    cout << "@@@@ qt_widget_new: " << widget << " @@@@" << endl;
+#endif
     DLLTools_SetIntValue(data_array, 0, (long)widget);
   }
 
   void qt_widget_show(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_widget_show @@@@" << endl;
+#endif
     QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 0);
     if(widget) {
       widget->show();
@@ -48,6 +54,9 @@ extern "C" {
   }
 
   void qt_widget_set_title(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_widget_set_title @@@@" << endl;
+#endif
     QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 0);
     if(widget) {
       char* title = DLLTools_GetStringValue(data_array, 1);
@@ -57,22 +66,40 @@ extern "C" {
   
   void qt_widget_resize(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
     QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 0);
+#ifdef _DEBUG
+    cout << "@@@@ qt_widget_resize: " << widget << " @@@@" << endl;
+#endif
     if(widget) {
       int width = DLLTools_GetIntValue(data_array, 1);
       int height = DLLTools_GetIntValue(data_array, 2);
+      cout << "### " << widget << ": " << width << ", " << height << " ###" << endl;
       widget->resize(width, height);
     }
   }
 
-  void qt_app_exec(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
-    int argc = 0;     
-    char* argv[0];
-    
+  void qt_app_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_app_new @@@@" << endl;
+#endif
+    int argc = 0; char** argv = NULL;
     QApplication* application = new QApplication(argc, argv);
     DLLTools_SetIntValue(data_array, 0, (long)application);
   }
+  
+  void qt_app_exec(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_app_exec @@@@" << endl;
+#endif
+    QApplication* application = (QApplication*)DLLTools_GetIntValue(data_array, 0);
+    if(application) {
+      application->exec();
+    }
+  }
 
   void qt_app_delete(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_app_delete @@@@" << endl;
+#endif
     QApplication* application = (QApplication*)DLLTools_GetIntValue(data_array, 0);
     if(application) {
       delete application;

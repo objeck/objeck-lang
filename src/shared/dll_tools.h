@@ -86,7 +86,7 @@ void DLLTools_SetFunctionValue(long* array, int index,
   }
 }
 
-int DLLTools_GetIntValue(long* array, int index) {
+long DLLTools_GetIntValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
@@ -96,7 +96,7 @@ int DLLTools_GetIntValue(long* array, int index) {
   return 0;
 }
 
-void DLLTools_SetIntValue(long* array, int index, int value) {
+void DLLTools_SetIntValue(long* array, int index, long value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];

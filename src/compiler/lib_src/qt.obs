@@ -28,6 +28,7 @@ bundle Qt {
 
 		New() {
 			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
 			@lib_proxy := QWidget->GetDllProxy();
 			@lib_proxy->CallFunction("qt_widget_new", array_args);
 			
@@ -70,25 +71,37 @@ bundle Qt {
 
 	# Appliction class
 	class QAppliction {
-		@native_ptr : static : Int;
+		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
 		
-		function : Exec() ~ Nil {
-			if(@native_ptr <> 0) {
+		New() {
+			if(@native_ptr = 0) {
 				array_args := Base->New[1];
+				array_args[0] := IntHolder->New();
 				@lib_proxy := QWidget->GetDllProxy();
-				@lib_proxy->CallFunction("qt_app_exec", array_args);
+				@lib_proxy->CallFunction("qt_app_new", array_args);
 				
 				rtrn_value := array_args[0]->As(IntHolder);
 				@native_ptr := rtrn_value->Get();
 			};
 		}
 		
-		function : Delete() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			@lib_proxy := QWidget->GetDllProxy();
-			@lib_proxy->CallFunction("qt_app_delete", array_args);
+		method : public : Exec() ~ Nil {
+			if(@native_ptr <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_ptr);
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_app_exec", array_args);
+			};
+		}
+		
+		method : public : Delete() ~ Nil {
+			if(@native_ptr <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_ptr);
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_app_delete", array_args);
+			};
 		}
 	}
 }
