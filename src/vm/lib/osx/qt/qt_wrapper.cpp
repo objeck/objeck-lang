@@ -35,6 +35,14 @@ extern "C" {
   void load_lib() {}
   void unload_lib() {}
 
+  void qt_object_connect(long* data_array, long* op_stack, long *stack_pos, 
+			 DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_object_connect @@@@" << endl;
+#endif
+    
+  }
+
   void qt_widget_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
     QWidget* widget = new QWidget;
 #ifdef _DEBUG
@@ -81,7 +89,7 @@ extern "C" {
 #ifdef _DEBUG
     cout << "@@@@ qt_app_new @@@@" << endl;
 #endif
-    int argc = 0; char** argv = NULL;
+    int argc = 0; char* argv[0];
     QApplication* application = new QApplication(argc, argv);
     DLLTools_SetIntValue(data_array, 0, (long)application);
   }
