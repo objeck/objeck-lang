@@ -21,6 +21,7 @@ bundle Qt {
 		
 		New() {
 			if(@native_ptr = 0) {
+				# TODO...
 			};
 		}
 		
