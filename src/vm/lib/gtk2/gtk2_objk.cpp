@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 #include <iostream>
-#include "../../../../shared/dll_tools.h"
+#include "../../../shared/dll_tools.h"
 
 using namespace std;
 
