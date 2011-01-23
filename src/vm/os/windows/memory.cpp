@@ -77,8 +77,8 @@ MemoryManager* MemoryManager::Instance()
 void MemoryManager::AddStaticMemory(long* mem)
 {
 #ifndef _GC_SERIAL
-  EnterCriticalSection(&allocated_cs);
   EnterCriticalSection(&static_cs);
+  EnterCriticalSection(&allocated_cs);
 #endif
   
   // only add static references that don't exist
