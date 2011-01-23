@@ -32,7 +32,11 @@
 #include "qt_wrapper.h"
 
 extern "C" {
-  void load_lib() {}
+  void load_lib() {
+    cout << "$$$ " << SIGNAL(clicked()) << ", " << SLOT(quit()) << " $$$" << endl;
+    cout << "$$$ " << SIGNAL(quit(int)) << ", " << SLOT(clicked()) << " $$$" << endl;
+  }
+  
   void unload_lib() {}
 
   void qt_object_connect(long* data_array, long* op_stack, long *stack_pos, 
@@ -41,6 +45,21 @@ extern "C" {
     cout << "@@@@ qt_object_connect @@@@" << endl;
 #endif
     
+    long* sender = (long*)DLLTools_GetIntValue(data_array, 0);
+    char* sender_str = (char*)DLLTools_GetStringValue(data_array, 1);    
+    long* recv = (long*)DLLTools_GetIntValue(data_array, 2);
+    char* recv_str = (char*)DLLTools_GetStringValue(data_array, 3);
+    
+    if(sender && sender_str && recv && recv_str) {
+      QObject* sender_obj = (QObject*)sender[0];
+      QObject* recv_obj = (QObject*)recv[0];
+      
+#ifdef _DEBUG
+      cout << "@@@@ qt_object_connect: " << sender_obj << ":" << sender_str 
+	   << ", " << recv << ": " << recv_str << "  @@@@" << endl;
+#endif      
+      QObject::connect(sender_obj, sender_str, recv_obj, recv_str);
+    }
   }
 
   void qt_widget_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
