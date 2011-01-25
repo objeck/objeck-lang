@@ -90,6 +90,9 @@ long DLLTools_GetIntValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
+#ifdef _DEBUG
+    assert(int_holder);
+#endif
     return int_holder[0];
   }
 
@@ -100,6 +103,9 @@ void DLLTools_SetIntValue(long* array, int index, long value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
+#ifdef _DEBUG
+    assert(int_holder);
+#endif
     int_holder[0] = value;
   }
 }
@@ -108,7 +114,10 @@ double DLLTools_GetFloatValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* float_holder = (long*)array[index];
-		
+
+#ifdef _DEBUG
+    assert(float_holder);
+#endif		
     double value;
     memcpy(&value, float_holder, sizeof(value));
     return value;
@@ -121,6 +130,10 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* float_holder = (long*)array[index];
+
+#ifdef _DEBUG
+    assert(float_holder);
+#endif
     memcpy(float_holder, &value, sizeof(value));
   }
 }
@@ -129,6 +142,10 @@ char* DLLTools_GetStringValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* string_holder = (long*)array[index];
+
+#ifdef _DEBUG
+    assert(string_holder);
+#endif
     long* char_array = (long*)string_holder[0];
     char* str = (char*)(char_array + 3);
     return str;
