@@ -1566,6 +1566,15 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     exit(1);
   }
   instance[1] = (long)dll_handle;
+
+  // call load function
+  ext_load_def ext_load = (ext_load_def)GetProcAddress(dll_handle, "load_lib");
+  if(!ext_load) {
+    cerr << "Runtime error calling function: load_lib" << endl;
+    FreeLibrary(dll_handle);
+    exit(1);
+  }
+  (*ext_load)();
 #else
   void* dll_handle = dlopen(str, RTLD_LAZY);
   if(!dll_handle) {
@@ -1599,6 +1608,15 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
   if(dll_handle) {
     FreeLibrary(dll_handle);
   }
+
+  // call unload function  
+  ext_load_def ext_unload = (ext_load_def)GetProcAddress(dll_handle, "unload_lib");
+  if(!ext_unload) {
+    cerr << "Runtime error calling function: unload_lib" << endl;
+    FreeLibrary(dll_handle);
+    exit(1);
+  }
+  (*ext_unload)();
 #else
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
