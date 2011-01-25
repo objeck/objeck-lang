@@ -5,6 +5,9 @@
 using namespace std;
 
 extern "C" {
+  void load_lib() {}
+  void unload_lib() {}
+
 	void foo(long* data_array, long* op_stack, long *stack_pos, 
             DLLTools_MethodCall_Ptr callback) {
 		int size = DLLTools_GetArraySize(data_array);
