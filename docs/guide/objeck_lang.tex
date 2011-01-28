@@ -1592,7 +1592,11 @@ bundle Default {
 
 \newpage
 
-\section{Appendix A: Example Debugging Session}
+\section{Appendix A: Shared Library Support}
+The Objeck Language has the ability to interact with native C/C++ shared libraries (DLLs) via compiler and runtime extensions.  The APIs allow a programmer to load a shared library and invoke native C functions.  Data is passed between the two layers via \texttt{Object[]}.  Basic objects such as \texttt{Int} and \texttt{Float} types must be wrapped in  \texttt{IntHolder} and \texttt{FloatHolder} classes respectively.  Please refer to the examples directory for additional information.
+
+
+\section{Appendix B: Example Debugging Session}
 \subsection{Sample Source}
 \begin{verbatim}
 bundle Default {
@@ -1697,7 +1701,7 @@ print: type=Float, value=8.085
 goodbye.
 \end{verbatim}
 
-\section{Appendix B: Compiler and VM Design}
+\section{Appendix C: Compiler and VM Design}
 \includegraphics[scale=0.60]{../../images/compiler_data_flow.png}
 
 The following section gives a brief overview of the major architectural components the comprise the Objeck language compiler and virtual machine.
