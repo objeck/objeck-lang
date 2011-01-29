@@ -1,5 +1,6 @@
 # ARGS=-g -D_DEBUG -D_OSX -D_JIT_SERIAL -Wno-deprecated -Wunused -D_X64 -pthread
-ARGS=-O3 -Wno-deprecated -D_OSX -D_JIT_SERIAL -pthread -D_X64
+# ARGS=-O3 -Wno-deprecated -D_OSX -D_X64 -pthread
+ARGS=-O3 -Wno-deprecated -D_OSX -D_X64 -D_TIMING -pthread
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
