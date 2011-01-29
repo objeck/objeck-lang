@@ -19,7 +19,7 @@ extern "C" {
     
     cout << "---0---" << endl;
     
-    DLLTools_PushInt(op_stack, stack_pos, 13);
+//    DLLTools_PushInt(op_stack, stack_pos, 13);
     DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
     DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, 4, 15);
     
