@@ -1,1 +1,1 @@
-cl /EHsc /LDd /Zi /Ge /W2 test.cpp
+cl /EHsc /LDd /Zi /Gs /W2 test.cpp
