@@ -1556,13 +1556,27 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   long* str_obj = (long*)instance[0];
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
+
+  string dll_string(str);
+  if(dll_string.size() == 0) {
+    cerr << "Name of runtime DLL was not specified!" << endl;
+    exit(1);
+  }
+
+#ifdef _WIN32
+  dll_string += ".dll";
+#elif _OSX
+  dll_string += ".dylib";
+#else
+  dll_string += ".so";
+#endif 
   
   // load DLL
 #ifdef _WIN32
   // Load DLL file
-  HINSTANCE dll_handle = LoadLibrary(str);
+  HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
-    cerr << "Runtime error loading DLL: " << str << endl;
+    cerr << "Runtime error loading DLL: " << dll_string.c_str() << endl;
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1576,7 +1590,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   }
   (*ext_load)();
 #else
-  void* dll_handle = dlopen(str, RTLD_LAZY);
+  void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
     cerr << "Runtime error loading DLL: " << dlerror() << endl;
     exit(1);
