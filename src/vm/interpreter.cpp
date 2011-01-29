@@ -1620,17 +1620,17 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
+    // call unload function  
+    ext_load_def ext_unload = (ext_load_def)GetProcAddress(dll_handle, "unload_lib");
+    if(!ext_unload) {
+      cerr << "Runtime error calling function: unload_lib" << endl;
+      FreeLibrary(dll_handle);
+      exit(1);
+    }
+    (*ext_unload)();
+    // free handle
     FreeLibrary(dll_handle);
   }
-
-  // call unload function  
-  ext_load_def ext_unload = (ext_load_def)GetProcAddress(dll_handle, "unload_lib");
-  if(!ext_unload) {
-    cerr << "Runtime error calling function: unload_lib" << endl;
-    FreeLibrary(dll_handle);
-    exit(1);
-  }
-  (*ext_unload)();
 #else
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
