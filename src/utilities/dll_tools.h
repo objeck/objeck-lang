@@ -38,15 +38,20 @@
 
 using namespace std;
 
+// offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
 
+// function identifiers consist of two integer IDs
 enum FunctionId {
   CLS_ID = 0,
   MTHD_ID
 };
 
+// function declaration for native C callbacks
+// parameters: 1) operation stack 2) operation stack position 3) self instance 4) method name
 typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, const char*, const char*);
 
+// gets the size of an Object[] array
 int DLLTools_GetArraySize(long* array) {
   if(array) {
     return array[0];
@@ -55,6 +60,7 @@ int DLLTools_GetArraySize(long* array) {
   return 0;
 }
 
+// gets the requested function ID from an Object[]
 int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -71,6 +77,8 @@ int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
   return 0;
 }
 
+// sets the requested function ID from an Object[].  Please note, that 
+// memory should be allocated for this element prior to array access.
 void DLLTools_SetFunctionValue(long* array, int index, 
 			      FunctionId id, int value) {
   if(array && index < array[0]) {
@@ -86,6 +94,7 @@ void DLLTools_SetFunctionValue(long* array, int index,
   }
 }
 
+// get the requested integer value from an Object[].
 long DLLTools_GetIntValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -99,6 +108,8 @@ long DLLTools_GetIntValue(long* array, int index) {
   return 0;
 }
 
+// sets the requested function ID from an Object[].  Please note, that 
+// memory should be allocated for this element prior to array access.
 void DLLTools_SetIntValue(long* array, int index, long value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -110,6 +121,7 @@ void DLLTools_SetIntValue(long* array, int index, long value) {
   }
 }
 
+// get the requested double value from an Object[].
 double DLLTools_GetFloatValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -126,6 +138,8 @@ double DLLTools_GetFloatValue(long* array, int index) {
   return 0.0;
 } 
 
+// sets the requested float value for an Object[].  Please note, that 
+// memory should be allocated for this element prior to array access.
 void DLLTools_SetFloatValue(long* array, int index, double value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -138,6 +152,7 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
   }
 }
 
+// get the requested string value from an Object[].
 char* DLLTools_GetStringValue(long* array, int index) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
@@ -154,6 +169,7 @@ char* DLLTools_GetStringValue(long* array, int index) {
   return NULL;
 }
 
+// invokes a runtime Objeck method
 void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack, 
 			 long* stack_pos, long* inst, const char* mthd_id) {
   string qualified_method_name(mthd_id);
@@ -172,6 +188,7 @@ void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack,
   }
 }
 
+// invokes a runtime Objeck method that returns a value, which may be a point to memory
 long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_stack, 
 				   long* stack_pos, long* inst, const char* mthd_id) {
   string qualified_method_name(mthd_id);
@@ -196,10 +213,12 @@ long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_st
   }
 }
 
+// pushes an integer value onto the runtime stack
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
   op_stack[(*stack_pos)++] = value;
 }
 
+// pushes an double value onto the runtime stack
 void DLLTools_PushFloat(long* op_stack, long *stack_pos, double v) {
   memcpy(&op_stack[(*stack_pos)], &v, sizeof(double));
 #ifdef _X64
