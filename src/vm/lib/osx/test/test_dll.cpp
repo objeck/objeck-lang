@@ -21,7 +21,7 @@ extern "C" {
     
 //    DLLTools_PushInt(op_stack, stack_pos, 13);
     DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-    DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, 4, 15);
+    DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
     
     cout << "---1---" << endl;
   }

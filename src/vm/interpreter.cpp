@@ -625,7 +625,7 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
@@ -633,15 +633,15 @@ void StackInterpreter::Execute()
 #ifdef _WIN32
       HANDLE vm_thread = (HANDLE)instance[0];
       if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-        cerr << "Unable to join thread!" << endl;
-        exit(-1);
+        cerr << ">>> Unable to join thread! <<<" << endl;
+        exit(1);
       }
 #else
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
-	cerr << "Unable to join thread!" << endl;
-	exit(-1);
+	cerr << ">>> Unable to join thread! <<<" << endl;
+	exit(1);
       }
 #endif
     }
@@ -665,7 +665,7 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
@@ -683,7 +683,7 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
@@ -701,7 +701,7 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
@@ -800,7 +800,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr)
   else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -826,7 +826,7 @@ void StackInterpreter::ProcessLoadInt(StackInstr* instr)
   else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -851,7 +851,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
   } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -878,7 +878,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr)
   else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -904,7 +904,7 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr)
   else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -937,7 +937,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
   } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -962,7 +962,7 @@ void StackInterpreter::ProcessCopyInt(StackInstr* instr)
   } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -987,7 +987,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr)
   } else {
     long* cls_inst_mem = (long*)PopInt();
     if(!cls_inst_mem) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -1118,7 +1118,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 #ifdef _WIN32
   HANDLE vm_thread = CreateThread(NULL, 0, AsyncMethodCall, holder, 0, NULL);
   if(!vm_thread) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << ">>> Unable to create garbage collection thread! <<<" << endl;
     exit(-1);
   }
 #else
@@ -1129,7 +1129,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   // execute thread
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
-    cerr << "Unable to create runtime thread!" << endl;
+    cerr << ">>> Unable to create runtime thread! <<<" << endl;
     exit(-1);
   }
 #endif  
@@ -1281,7 +1281,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
     if(!impl_class) {
-      cerr << "Attempting to envoke a virtual method!" << endl;
+      cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
@@ -1388,7 +1388,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     else { 
       HANDLE thread_id = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
       if(!thread_id) {
-	cerr << "Unable to create thread to compile method!" << endl;
+	cerr << ">>> Unable to create thread to compile method! <<<" << endl;
 	exit(-1);
       }
       program->AddThread(thread_id);
@@ -1408,7 +1408,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
       
       pthread_t jit_thread;
       if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
-	cerr << "Unable to create thread to compile method!" << endl;
+	cerr << ">>> Unable to create thread to compile method! <<<" << endl;
 	exit(-1);
       }
       program->AddThread(jit_thread);
@@ -1559,7 +1559,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 
   string dll_string(str);
   if(dll_string.size() == 0) {
-    cerr << "Name of runtime DLL was not specified!" << endl;
+    cerr << ">>> Name of runtime DLL was not specified! <<<" << endl;
     exit(1);
   }
 
@@ -1576,7 +1576,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   // Load DLL file
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
-    cerr << "Runtime error loading DLL: " << dll_string.c_str() << endl;
+    cerr << ">>> Runtime error loading DLL: " << dll_string.c_str() << " <<<" << endl;
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1584,7 +1584,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   // call load function
   ext_load_def ext_load = (ext_load_def)GetProcAddress(dll_handle, "load_lib");
   if(!ext_load) {
-    cerr << "Runtime error calling function: load_lib" << endl;
+    cerr << ">>> Runtime error calling function: load_lib <<<" << endl;
     FreeLibrary(dll_handle);
     exit(1);
   }
@@ -1592,7 +1592,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
-    cerr << "Runtime error loading DLL: " << dlerror() << endl;
+    cerr << ">>> Runtime error loading DLL: " << dlerror() << " <<<" << endl;
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1601,7 +1601,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   ext_load_def ext_load = (ext_load_def)dlsym(dll_handle, "load_lib");
   char* error;
   if((error = dlerror()) != NULL)  {
-    cerr << "Runtime error calling function: " << error << endl;
+    cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
     exit(1);
   }
   // call function
@@ -1623,7 +1623,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     // call unload function  
     ext_load_def ext_unload = (ext_load_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
-      cerr << "Runtime error calling function: unload_lib" << endl;
+      cerr << ">>> Runtime error calling function: unload_lib <<<" << endl;
       FreeLibrary(dll_handle);
       exit(1);
     }
@@ -1638,7 +1638,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     ext_unload_def ext_unload = (ext_unload_def)dlsym(dll_handle, "unload_lib");
     char* error;
     if((error = dlerror()) != NULL)  {
-      cerr << "Runtime error calling function: " << error << endl;
+      cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
       exit(1);
     }
     // call function
@@ -1670,7 +1670,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
     // get function pointer
     ext_func = (ext_func_def)GetProcAddress(dll_handle, str);
     if(!ext_func) {
-      cerr << "Runtime error calling function: " << str << endl;
+      cerr << ">>> Runtime error calling function: " << str << " <<<" << endl;
       FreeLibrary(dll_handle);
       exit(1);
     }
@@ -1685,7 +1685,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
     ext_func = (ext_func_def)dlsym(dll_handle, str);
     char* error;
     if((error = dlerror()) != NULL)  {
-      cerr << "Runtime error calling function: " << error << endl;
+      cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
       exit(1);
     }
     // call function
@@ -1708,7 +1708,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case LOAD_ARY_SIZE: {
     long* array = (long*)PopInt();
     if(!array) {
-      cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
       exit(1);
     }
