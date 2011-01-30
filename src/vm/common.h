@@ -726,7 +726,7 @@ public:
   }
 #endif
 
-  inline StackMethod* GetMethod(const string n) {
+  inline StackMethod* GetMethod(const string &n) {
     map<const string, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
       return result->second;
@@ -971,7 +971,6 @@ public:
   }
 #endif
   
-#ifdef _DEBUGGER
   StackClass* GetClass(const string &n) {
     if(classes) {
       map<string, StackClass*>::iterator find = cls_map.find(n);
@@ -982,7 +981,6 @@ public:
     
     return NULL;
   }
-#endif
   
   void SetHierarchy(int* h) {
     cls_hierarchy = h;
@@ -1062,7 +1060,8 @@ public:
 };
 
 // call back for DLL method calls
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
-void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, int cls_id, int mthd_id);
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, const char*, const char*);
+void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
+			 const char* cls_id, const char* mthd_id);
 
 #endif

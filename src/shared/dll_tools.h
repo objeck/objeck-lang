@@ -1,5 +1,5 @@
 /***************************************************************************
- * Shared library utilities
+ * Shared library (DLL) utilities
  *
  * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -45,7 +45,7 @@ enum FunctionId {
   MTHD_ID
 };
 
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, int, int);
+typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, const char*, const char*);
 
 int DLLTools_GetArraySize(long* array) {
   if(array) {
@@ -155,25 +155,45 @@ char* DLLTools_GetStringValue(long* array, int index) {
 }
 
 void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack, 
-		    long* stack_pos, long*, int cls_id, int mthd_id) {
-  (*callback)(op_stack, stack_pos, NULL, cls_id, mthd_id);
+			 long* stack_pos, long* inst, const char* mthd_id) {
+  string qualified_method_name(mthd_id);
+  size_t delim = qualified_method_name.find(':');
+  if(delim != string::npos) {
+    string cls_name = qualified_method_name.substr(0, delim);
+    (*callback)(op_stack, stack_pos, inst, cls_name.c_str(), mthd_id);
+    
 #ifdef _DEBUG
-  assert(*stack_pos == 0);
+    assert(*stack_pos == 0);
 #endif
+  }
+  else {
+    cerr << ">>> DLL call: Invalid method name: '" << mthd_id << "'" << endl;
+    exit(1);
+  }
 }
 
 long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_stack, 
-				   long* stack_pos, long*, int cls_id, int mthd_id) {
-  (*callback)(op_stack, stack_pos, NULL, cls_id, mthd_id);
+				   long* stack_pos, long* inst, const char* mthd_id) {
+  string qualified_method_name(mthd_id);
+  size_t delim = qualified_method_name.find(':');
+  if(delim != string::npos) {
+    string cls_name = qualified_method_name.substr(0, delim);
+    (*callback)(op_stack, stack_pos, inst, cls_name.c_str(), mthd_id);
+    
 #ifdef _DEBUG
-  assert(*stack_pos > 0);
+    assert(*stack_pos > 0);
 #endif
-  long rtrn_value = op_stack[--(*stack_pos)];
+    long rtrn_value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
-  assert(*stack_pos == 0);
+    assert(*stack_pos == 0);
 #endif
-  
-  return rtrn_value;
+    
+    return rtrn_value;
+  }
+  else {
+    cerr << ">>> DLL call: Invalid method name: '" << mthd_id << "'" << endl;
+    exit(1);
+  }
 }
 
 void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
