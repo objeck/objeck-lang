@@ -468,6 +468,15 @@ public:
     lib_children.clear();
   }
 
+#ifdef _UTILS
+  void List() {
+    map<const string, LibraryMethod*>::iterator iter;
+    for(iter = methods.begin(); iter != methods.end(); iter++) {
+      cout << "  method='" << iter->second->GetName() << "'" << endl;
+    }
+  }
+#endif
+  
   void SetId(int i) {
     id = i;
   }
@@ -714,6 +723,18 @@ public:
     }
   }
 
+#ifdef _UTILS
+  void List() {
+    map<const string, LibraryClass*>::iterator cls_iter;
+    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); cls_iter++) {
+      cout << "==================================" << endl;
+      cout << "class='" << cls_iter->second->GetName() << "'" << endl;
+      cout << "==================================" << endl;
+      cls_iter->second->List();
+    }
+  }
+#endif
+  
   bool HasBundleName(const string& name) {
     vector<string>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
     return found != bundle_names.end();

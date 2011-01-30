@@ -30,20 +30,34 @@
  ***************************************************************************/
 
 #include "../shared/version.h"
+#include "../compiler/linker.h"
 #include "../vm/vm.h"
 
 int main(int argc, const char* argv[])
 {
-  if(argc > 1) {
-    // loader; when this goes out of scope program memory is released
-    srand(time(NULL)); rand(); // calling rand() once improves random number generation
-    Loader loader(argc, argv);
-    loader.Load();
-    
-    StackProgram* program = Loader::GetProgram();      
-    program->List();
+  if(argc == 2) {
+    string file_name(argv[1]);
+    if(file_name.rfind(".obe") != string::npos) {
+      cout << "[Contains of Objeck executable file: '" << file_name << "']" << endl << endl;
 
-    // TODO: support for libraries
+      // loader; when this goes out of scope program memory is released
+      Loader loader(argc, argv);
+      loader.Load();      
+      // list contents
+      StackProgram* program = Loader::GetProgram();      
+      program->List();
+    }
+    else if(file_name.rfind(".obl") != string::npos) {
+      cout << "*** [Contains of the Objeck library file: '" << file_name << "'] ***" << endl << endl;
+
+      Library linker(file_name);
+      linker.Load();
+      // list contents
+      linker.List();
+    }
+    else {
+      cerr << "Files must end in '.obe' or 'obl'" << endl;
+    }
   }
   else {
     string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
