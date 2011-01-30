@@ -302,23 +302,23 @@ class StackMethod {
           }
           break;
 
-		case 'm':
+	case 'm':
           param = FUNC_PARM;
           state = 6;
           index++;
           while(index < params_name.size() && params_name[index] != '~') {
             index++;
           }
-		  while(index < params_name.size() && params_name[index] != ',') {
+	  while(index < params_name.size() && params_name[index] != ',') {
             index++;
           }
           break;
 
-		default:
+	default:
 #ifdef _DEBUG
-			assert(false);
+	  assert(false);
 #endif
-			break;
+	  break;
         }
 
         // check array
@@ -380,13 +380,13 @@ class StackMethod {
           cout << "  OBJ_ARY_PARM" << endl;
           break;
 
-		case FUNC_PARM:
+	case FUNC_PARM:
           cout << "  FUNC_PARM" << endl;
           break;
 
-		default:
-			assert(false);
-			break;
+	default:
+	  assert(false);
+	  break;
         }
 #endif
 
@@ -398,7 +398,7 @@ class StackMethod {
     return name;
   }
   
-public:
+ public:
   // mutex variable used to support 
   // concurrent JIT compiling
 #ifdef _WIN32
@@ -716,6 +716,16 @@ public:
     return found;
   }
   
+#ifdef _UTILS
+  void List() {
+    map<const string, StackMethod*>::iterator iter;
+    for(iter = method_name_map.begin(); iter != method_name_map.end(); iter++) {
+      StackMethod* mthd = iter->second;
+      cout << "  method='" << mthd->GetName() << "'" << endl;
+    }
+  }
+#endif
+
   inline StackMethod* GetMethod(const string n) {
     map<const string, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
@@ -794,13 +804,15 @@ public:
   }
 
   ~StackProgram() {
-    for(int i = 0; i < class_num; i++) {
-      StackClass* klass = classes[i];
-      delete klass;
-      klass = NULL;
+    if(classes) {
+      for(int i = 0; i < class_num; i++) {
+	StackClass* klass = classes[i];
+	delete klass;
+	klass = NULL;
+      }
+      delete[] classes;
+      classes = NULL;
     }
-    delete[] classes;
-    classes = NULL;
 
     if(cls_hierarchy) {
       delete[] cls_hierarchy;
@@ -945,6 +957,19 @@ public:
       }
     }
   }
+
+#ifdef _UTILS
+  void List() {
+    map<string, StackClass*>::iterator iter;
+    for(iter = cls_map.begin(); iter != cls_map.end(); iter++) {
+      StackClass* cls = iter->second;
+      cout << "==================================" << endl;
+      cout << "class='" << cls->GetName() << "'" << endl;
+      cout << "==================================" << endl;
+      cls->List();
+    }
+  }
+#endif
   
 #ifdef _DEBUGGER
   StackClass* GetClass(const string &n) {

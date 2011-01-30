@@ -1,7 +1,7 @@
 /***************************************************************************
+ * Starting point for the VM.
  *
- *
- * Copyright (c) 2008-2009, Randy Hollines
+ * Copyright (c) 2008-2011, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck Team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -29,9 +29,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __VER_H__
-#define __VER_H__
+#include "../shared/version.h"
+#include "../vm/vm.h"
 
-#define VERSION_STRING "v1.4.0_0"
+int main(int argc, const char* argv[])
+{
+  if(argc > 1) {
+    // loader; when this goes out of scope program memory is released
+    srand(time(NULL)); rand(); // calling rand() once improves random number generation
+    Loader loader(argc, argv);
+    loader.Load();
+    
+    StackProgram* program = Loader::GetProgram();      
+    program->List();
 
-#endif
+    // TODO: support for libraries
+  }
+  else {
+    string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
+    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += "FOR MORE INFORMATION.\n\n";
+    usage += VERSION_STRING;
+    usage += "\n\n";
+    usage += "usage: obu <program>\n\n";
+    usage += "example: \"obu hello.obe\"";
+    cerr << usage << endl << endl;
+
+    return 1;
+  }
+}
