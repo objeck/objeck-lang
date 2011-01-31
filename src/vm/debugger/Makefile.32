@@ -25,7 +25,7 @@ JIT_PATH=../jit/ia32
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
