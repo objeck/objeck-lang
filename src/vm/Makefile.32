@@ -9,7 +9,7 @@
 ##############
 # For Linux
 ##############
-ARGS=-pthread -D_TIMING -O3 -Wno-deprecated
+ARGS=-pthread -O3 -Wno-deprecated
 # ARGS=-g -Wunused -pthread
 # ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wno-deprecated
 # ARGS=-g -D_DEBUG -Wunused -pthread
@@ -23,7 +23,7 @@ JIT_PATH=jit/ia32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
 memory.a:
 	cd $(MEM_PATH); make	
