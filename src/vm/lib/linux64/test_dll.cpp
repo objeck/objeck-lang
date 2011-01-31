@@ -20,7 +20,7 @@ extern "C" {
 		cout << "---0---" << endl;
 
 		DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-		(*callback)(op_stack, stack_pos, NULL, 4, 15);
+		DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
 
 		cout << "---1---" << endl;
 	}

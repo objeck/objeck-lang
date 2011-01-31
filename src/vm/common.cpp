@@ -41,6 +41,7 @@ list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
+#ifndef _UTILS
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
 			 const char* cls_id, const char* mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
@@ -60,3 +61,4 @@ void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance,
     exit(1);
   }
 }
+#endif
