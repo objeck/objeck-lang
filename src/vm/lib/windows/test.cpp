@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "../../../shared/dll_tools.h"
+#include "../../../utilities/dll_tools.h"
 
 using namespace std;
 
@@ -10,7 +10,7 @@ extern "C" {
   __declspec(dllexport) void unload_lib() {}
 
   __declspec(dllexport) void foo(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
-		int size = DLLTools_GetArraySize(data_array);
+		long size = DLLTools_GetArraySize(data_array);
 		cout << size << endl;
 		cout << DLLTools_GetIntValue(data_array, 1) << endl;
 		cout << DLLTools_GetFloatValue(data_array, 2) << endl;
@@ -19,8 +19,8 @@ extern "C" {
 
 		cout << "---0---" << endl;
 
-		DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-		(*callback)(op_stack, stack_pos, NULL, 4, 15);
+		DLLTools_PushFloat(op_stack, stack_pos, 3.14);
+		DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
 
 		cout << "---1---" << endl;
 	}
