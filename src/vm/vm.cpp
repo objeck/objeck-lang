@@ -56,6 +56,11 @@ int Execute(const int argc, const char* argv[])
 #ifdef _TIMING
     clock_t end = clock();
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
     cout << "---------------------------" << endl;
     cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
          << " second(s)." << endl;
@@ -63,6 +68,11 @@ int Execute(const int argc, const char* argv[])
 
 #ifdef _DEBUG
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
 #endif
     
     // wait for outstanding threads

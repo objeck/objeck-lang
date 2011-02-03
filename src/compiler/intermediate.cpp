@@ -1553,11 +1553,14 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
     
+    // edge case for empty 'if' statements
+    if(if_statements.size() == 0 && !if_stmt->GetNext()) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT)); 
+    }
 
     // if-else
     if(if_stmt->GetNext()) {
       EmitIf(if_stmt->GetNext(), conditional, end_label);
-
     }
     // else
     if(if_stmt->GetElseStatements()) {
