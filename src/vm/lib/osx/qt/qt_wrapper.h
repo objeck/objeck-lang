@@ -35,14 +35,11 @@
 #include <QtGui>
 #include <iostream>
 #include <string>
-#include "../../../../shared/dll_tools.h"
+#include "../../../../utilities/dll_tools.h"
 
 using namespace std;
 
 extern "C" {
-  void load_lib();
-  void unload_lib();
-  void qt_exec(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback);
 }
 
 #endif

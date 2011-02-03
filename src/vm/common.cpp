@@ -42,6 +42,27 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 #ifndef _UTILS
+
+void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
+			 int cls_id, int mthd_id) {
+  StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+  if(cls) {
+    StackMethod* mthd = cls->GetMethod(mthd_id);
+    if(mthd) {
+      Runtime::StackInterpreter intpr;
+      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, instance, false);
+    }
+    else {
+      cerr << ">>> DLL call: Unable to locate method; id=" << mthd_id << " <<<" << endl;
+      exit(1);
+    }
+  }
+  else {
+    cerr << ">>> DLL call: Unable to locate class; id=" << cls_id << " <<<" << endl;
+    exit(1);
+  }
+}
+
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
 			 const char* cls_id, const char* mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
@@ -52,12 +73,12 @@ void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance,
       intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, instance, false);
     }
     else {
-      cerr << ">>> DLL call: Unable to locate method: " << mthd_id << " <<<" << endl;
+      cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
       exit(1);
     }
   }
   else {
-    cerr << ">>> DLL call: Unable to locate class: " << cls_id << " <<<" << endl;
+    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
     exit(1);
   }
 }
