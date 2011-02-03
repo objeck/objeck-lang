@@ -14,6 +14,38 @@ bundle Qt {
 		}
 	}
 	
+	# QLayout class
+	class QLayout from QObject {
+		New() {
+			Parent();
+			if(@native_ptr = 0) {
+			};
+		}
+	}
+	
+	# QHBoxLayout class
+	class QHBoxLayout from QLayout {
+		New() {
+			Parent();
+			if(@native_ptr = 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New();
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_qhboxlayout_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+		
+		method : public : AddWidget(widget : QWidget) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := widget;
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_qhboxlayout_addwidget", array_args);
+		}
+	}
+	
 	# QObject class
 	class QObject {
 		@native_ptr : Int;
@@ -21,11 +53,7 @@ bundle Qt {
 		
 		New() {	
 			if(@native_ptr = 0) {
-#				"a"->PrintLine();
-			};
-			
-			if(@native_ptr = 0) {
-#				"a"->PrintLine();
+#	TODO
 			};
 		}
 		
@@ -78,6 +106,15 @@ bundle Qt {
 			array_args[2] := IntHolder->New(height);
 			@lib_proxy := QWidget->GetDllProxy();
 			@lib_proxy->CallFunction("qt_widget_resize", array_args);
+		}
+		
+		method : public : Move(width : Int, height : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := IntHolder->New(width);
+			array_args[2] := IntHolder->New(height);
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_widget_move", array_args);
 		}
 		
 		method : public : Show() ~ Nil {

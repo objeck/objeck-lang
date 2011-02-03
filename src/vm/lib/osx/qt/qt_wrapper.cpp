@@ -79,7 +79,26 @@ extern "C" {
       widget->show();
     }
   }
+  
+  void qt_qhboxlayout_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+    QHBoxLayout* layout = new QHBoxLayout;
+#ifdef _DEBUG
+    cout << "@@@@ qt_qhboxlayout_new: " << layout << " @@@@" << endl;
+#endif
+    DLLTools_SetIntValue(data_array, 0, (long)layout);
+  }
 
+  void qt_qhboxlayout_addwidget(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_qhboxlayout_addwidget @@@@" << endl;
+#endif
+    QHBoxLayout* layout = (QHBoxLayout*)DLLTools_GetIntValue(data_array, 0);
+    if(layout) {
+      QWidget* widget = (QWidget*)DLLTools_GetStringValue(data_array, 1);
+      layout->addWidget(widget);
+    }
+  }
+  
   void qt_widget_set_title(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
 #ifdef _DEBUG
     cout << "@@@@ qt_widget_set_title @@@@" << endl;
@@ -99,8 +118,19 @@ extern "C" {
     if(widget) {
       int width = DLLTools_GetIntValue(data_array, 1);
       int height = DLLTools_GetIntValue(data_array, 2);
-      cout << "### " << widget << ": " << width << ", " << height << " ###" << endl;
       widget->resize(width, height);
+    }
+  }
+
+  void qt_widget_move(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+    QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 0);
+#ifdef _DEBUG
+    cout << "@@@@ qt_widget_move: " << widget << " @@@@" << endl;
+#endif
+    if(widget) {
+      int x = DLLTools_GetIntValue(data_array, 1);
+      int y = DLLTools_GetIntValue(data_array, 2);
+      widget->move(x, y);
     }
   }
 
