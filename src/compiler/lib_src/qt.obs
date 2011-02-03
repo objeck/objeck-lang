@@ -19,9 +19,13 @@ bundle Qt {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
 		
-		New() {
+		New() {	
 			if(@native_ptr = 0) {
-				# TODO...
+#				"a"->PrintLine();
+			};
+			
+			if(@native_ptr = 0) {
+#				"a"->PrintLine();
 			};
 		}
 		
@@ -53,7 +57,7 @@ bundle Qt {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/osx/qt/ojk_qt.1.dylib");
+				@lib_proxy := DllProxy->New("lib/osx/qt/ojk_qt.1");
 			};
 
 			return @lib_proxy;
@@ -107,6 +111,15 @@ bundle Qt {
 				array_args[0] := IntHolder->New(@native_ptr);
 				@lib_proxy := QWidget->GetDllProxy();
 				@lib_proxy->CallFunction("qt_app_exec", array_args);
+			};
+		}
+		
+		method : public : Beep() ~ Nil {
+			if(@native_ptr <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_ptr);
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_app_beep", array_args);
 			};
 		}
 		
