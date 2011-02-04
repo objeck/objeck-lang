@@ -1720,7 +1720,7 @@ namespace Runtime {
 	  vector<string> files = File::ListDir(name);
 
 	  // create 'System.String' object array
-	  long str_obj_array_size = files.size();
+	  const long str_obj_array_size = files.size();
 	  const long str_obj_array_dim = 1;  
 	  long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
 										str_obj_array_dim + 2, 
