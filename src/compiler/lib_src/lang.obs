@@ -383,6 +383,11 @@ bundle System {
 		New() {
 		}
 
+		method : public : GetClass() ~ Class {
+#		method : public : native : GetClass() ~ Class {
+			LOAD_CLS;
+		}
+		
 		method : public : native : GetClassID() ~ ClassID {
 			LOAD_CLS_INST_ID;
 		}
@@ -1255,7 +1260,7 @@ bundle System {
 		}
 	}
 	
-	enum TypeId {
+	enum TypeId := -1000 {
 		BYTE,
 		CHAR,
 		INT,
