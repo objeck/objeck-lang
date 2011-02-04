@@ -586,7 +586,7 @@ void StackInterpreter::Execute()
 #endif
       PushInt((long)frame->GetMethod()->GetClass()->GetClassMemory());
       break;
-
+      
     case LOAD_INST_MEM:
 #ifdef _DEBUG
       cout << "stack oper: LOAD_INST_MEM; call_pos=" << call_stack_pos << endl;
@@ -1705,6 +1705,19 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     PushInt(MemoryManager::Instance()->GetObjectID((long*)PopInt()));
     break;
 
+  case LOAD_CLS: {
+#ifdef _DEBUG
+    cout << "stack oper: LOAD_CLS; call_pos=" << call_stack_pos << endl;
+#endif
+    
+    long* inst = (long*)frame->GetMemory()[0];    
+    cout << "$$$ " << cls->GetName() << " $$$" << endl;
+
+    long* cls_obj_inst = (long*)frame->GetMemory()[1];
+    cout << "$$$ " << cls_obj_inst << " $$$" << endl;
+  }
+    break;
+    
   case LOAD_ARY_SIZE: {
     long* array = (long*)PopInt();
     if(!array) {
@@ -2296,7 +2309,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     vector<string> files = File::ListDir(name);
 
     // create 'System.String' object array
-    long str_obj_array_size = files.size();
+    const long str_obj_array_size = files.size();
     const long str_obj_array_dim = 1;
     long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size +
 									  str_obj_array_dim + 2,
@@ -2309,33 +2322,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     // create and assign 'System.String' instances to array
     for(unsigned long i = 0; i < files.size(); i++) {
-      // get value string
-      string &value_str = files[i];
-
-      // create character array
-      const long char_array_size = value_str.size();
-      const long char_array_dim = 1;
-      long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
-									 ((char_array_dim + 2) *
-									  sizeof(long)),
-									 BYTE_ARY_TYPE,
-									 op_stack, *stack_pos);
-      char_array[0] = char_array_size;
-      char_array[1] = char_array_dim;
-      char_array[2] = char_array_size;
-
-      // copy string
-      char* char_array_ptr = (char*)(char_array + 3);
-      strcpy(char_array_ptr, value_str.c_str());
-
-      // create 'System.String' object instance
-      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
-								(long*)op_stack, *stack_pos);
-      str_obj[0] = (long)char_array;
-      str_obj[1] = char_array_size;
-
-      // add to object array
-      str_obj_array_ptr[i] = (long)str_obj;
+      str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
     }
 
     PushInt((long)str_obj_array);
