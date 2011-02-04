@@ -385,7 +385,9 @@ bundle System {
 
 		method : public : GetClass() ~ Class {
 #		method : public : native : GetClass() ~ Class {
+			cls := Class->New();
 			LOAD_CLS;
+			return cls;
 		}
 		
 		method : public : native : GetClassID() ~ ClassID {
@@ -1195,15 +1197,14 @@ bundle System {
 		@methods : Method[];
 		
 		New() {
-			# TODO
+#			LOAD_MTHDS;
 		}
-		
+
 		method : public : GetName() ~ String {
 			return @name;
 		}
 		
 		method : public : GetMethods() ~ Method[] {
-			LOAD_MTHDS;
 			return @methods;
 		}
 		
