@@ -1181,11 +1181,91 @@ bundle System {
 		method : public : GetElapsedTime() ~ Int {
 			return @elapsed;
 		}
+	}
+	
+	# introspection
+	class Class {
+		@cls_ptr : Int;
+		@name : String;
+		@methods : Method[];
+		
+		New() {
+			# TODO
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetMethods() ~ Method[] {
+			return @methods;
+		}
+		
+		method : public : GetMethodNumber() ~ Int {
+			return @methods->Size();
+		}
+	}
+	
+	class Method {
+		@cls_ptr : Int;
+		@name : String;
+		@parameters : Parameter[];
+		@rtrn_type  : DataType;
+		
+		New() {
+			# TODO
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetParameters() ~ Parameter[] {
+			return @parameters;
+		}
+		
+		method : public : GetReturn() ~ DataType {
+			return @rtrn_type;
+		}
+	}
+	
+	class Parameter {
+		@name : String;
+		@data_type  : DataType;
+		
+		New() {
+			# TODO
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+	}
+	
+	class DataType {
+		@cls_name : String;
+		@id  : TypeId;
+		
+		New() {
+			# TODO
+		}
+		
+		method : public : GetClassName() ~ String {
+			return @cls_name;
+		}
+	}
+	
+	enum TypeId {
+		BYTE,
+		CHAR,
+		INT,
+		FLOAT,
+		CLASS
 	}	
 	
 	#------------ Threads ------------
 	
-	#~~
+	#~~d
 	# System thread class
 	~~#	
 	class Thread {
