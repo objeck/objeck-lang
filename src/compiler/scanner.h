@@ -144,6 +144,8 @@ enum TokenType {
   SQRT_FLOAT,
   RAND_FLOAT,
   LOAD_CLS_INST_ID,
+  LOAD_CLS,
+  LOAD_MTHDS,
   LOAD_INST_UID,
   // standard i/o
   STD_OUT_BOOL,
