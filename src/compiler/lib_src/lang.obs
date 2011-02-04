@@ -1203,6 +1203,7 @@ bundle System {
 		}
 		
 		method : public : GetMethods() ~ Method[] {
+			LOAD_MTHDS;
 			return @methods;
 		}
 		
@@ -1218,7 +1219,6 @@ bundle System {
 		@rtrn_type  : DataType;
 		
 		New() {
-			# TODO
 		}
 		
 		method : public : GetName() ~ String {
