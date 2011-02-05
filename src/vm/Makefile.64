@@ -1,8 +1,8 @@
 # ARGS=-g -Wunused -D_X64 -pthread
-# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wno-deprecated -Wunused -D_X64 -pthread
+ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wno-deprecated -Wunused -D_X64 -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread -D_X64
 # ARGS=-g -D_DEBUG -Wunused -D_JIT_SERIAL -pthread -D_X64
-ARGS=-O3 -Wno-deprecated -D_TIMING -D_JIT_SERIAL -pthread -D_X64
+# ARGS=-O3 -Wno-deprecated -D_TIMING -D_JIT_SERIAL -pthread -D_X64
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
@@ -12,7 +12,7 @@ JIT_PATH= jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
 
 memory.a:
 	cd $(MEM_PATH); make	

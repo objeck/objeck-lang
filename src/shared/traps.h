@@ -38,7 +38,7 @@ namespace instructions {
     // core operations
     LOAD_CLS_INST_ID = -4000,
     LOAD_CLS,
-    LOAD_MTHDS, // replace with INVOKE_MTHD
+    INVOKE_MTHD,
     LOAD_INST_UID,
     LOAD_ARY_SIZE,
     CPY_CHAR_STR_ARY,

@@ -259,11 +259,24 @@ namespace Runtime {
       return index;
     }
     
-    long* CreateMethodObject(StackMethod* mthd) {
+    long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodClassId(),
 								 (long*)op_stack, *stack_pos);
+      // method and class object
       mthd_obj[0] = (long)mthd;
-      mthd_obj[1] = (long)CreateStringObject(mthd->GetName());
+      mthd_obj[1] = (long)cls_obj;
+      
+      // set method name
+      const string &qual_mthd_name = mthd->GetName();
+      const long semi_qual_mthd_index = qual_mthd_name.find(':');
+      if(semi_qual_mthd_index == string::npos) {
+	cerr << ">>> Internal error: invalid method name <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }      
+      const string &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
+      mthd_obj[2] = (long)CreateStringObject(semi_qual_mthd_string);
+      
       
       return mthd_obj;
     }

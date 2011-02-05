@@ -807,6 +807,7 @@ public:
     cls_hierarchy = NULL;
     classes = NULL;
     char_strings = NULL;
+    mthd_cls_id = -1;
     string_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
