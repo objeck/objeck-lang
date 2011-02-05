@@ -735,6 +735,14 @@ public:
     return NULL;
   }
 
+  inline StackMethod** GetMethods() {
+    return methods;
+  }
+
+  inline int GetMethodCount() {
+    return method_num;
+  }
+
 #ifdef _DEBUGGER
   int GetDeclaration(const string& name, StackDclr& found) {
     if(name.size() > 0) {
@@ -773,7 +781,9 @@ class StackProgram {
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
-
+  long string_cls_id;
+  long mthd_cls_id;
+  
   FLOAT_VALUE** float_strings;
   int num_float_strings;
 
@@ -784,7 +794,6 @@ class StackProgram {
   int num_char_strings;
 
   StackMethod* init_method;
-  long string_cls_id;
 #ifdef _WIN32
   static list<HANDLE> thread_ids;
   static CRITICAL_SECTION program_cs;
@@ -798,6 +807,7 @@ public:
     cls_hierarchy = NULL;
     classes = NULL;
     char_strings = NULL;
+    string_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
 #endif
@@ -910,15 +920,28 @@ public:
   StackMethod* GetInitializationMethod() {
     return init_method;
   }
-
-  void SetStringClassId(long id) {
-    string_cls_id = id;
-  }
-
+  
   long GetStringClassId() {
     return string_cls_id;
   }
-
+  
+  void SetStringClassId(long id) {
+    string_cls_id = id;
+  }
+  
+  long GetMethodClassId() {
+    if(mthd_cls_id < 0) {
+      StackClass* cls = GetClass("System.Method");
+      if(!cls) {
+	cerr << ">>> Internal error: unable to find class: System.Method <<<" << endl;
+	exit(1);
+      }
+      mthd_cls_id = cls->GetId();
+    }
+    
+    return mthd_cls_id;
+  }
+  
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
     num_float_strings = n;

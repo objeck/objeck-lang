@@ -258,7 +258,16 @@ namespace Runtime {
       
       return index;
     }
-
+    
+    long* CreateMethodObject(StackMethod* mthd) {
+      long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodClassId(),
+								 (long*)op_stack, *stack_pos);
+      mthd_obj[0] = (long)mthd;
+      mthd_obj[1] = (long)CreateStringObject(mthd->GetName());
+      
+      return mthd_obj;
+    }
+    
     // TODO: move this code to JIT headers?
     long* CreateStringObject(const string &value_str) {
       // create character array
