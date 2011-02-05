@@ -1248,6 +1248,9 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
+
+    delete left;
+    left = NULL;
   }
     break;
 
@@ -1258,6 +1261,9 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
+
+    delete left;
+    left = NULL;
   }
     break;
 
@@ -1274,6 +1280,9 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
+
+    delete left;
+    left = NULL;
   }
     break;
 
@@ -1284,6 +1293,9 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     // save register
     working_stack.pop_front();
     working_stack.push_front(new RegInstr(holder));
+
+    delete left;
+    left = NULL;
   }
     break;
 
@@ -1293,9 +1305,6 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
   }
     break;
   }
-
-  delete left;
-  left = NULL;
 }
 
 void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
