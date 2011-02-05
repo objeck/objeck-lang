@@ -1192,7 +1192,6 @@ bundle System {
 	
 	# introspection
 	class Class {
-		@cls_ptr : Int;
 		@name : String;
 		@methods : Method[];
 		
