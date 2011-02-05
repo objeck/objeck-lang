@@ -1706,15 +1706,45 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case LOAD_CLS: {
+    // TODO: check for memory access; valigrind
 #ifdef _DEBUG
     cout << "stack oper: LOAD_CLS; call_pos=" << call_stack_pos << endl;
 #endif
-    
-    long* inst = (long*)frame->GetMemory()[0];    
-    cout << "$$$ " << cls->GetName() << " $$$" << endl;
 
-    long* cls_obj_inst = (long*)frame->GetMemory()[1];
-    cout << "$$$ " << cls_obj_inst << " $$$" << endl;
+    long* inst = (long*)frame->GetMemory()[0];
+    StackClass* cls = MemoryManager::Instance()->GetClass(inst);
+    if(!cls) {
+      cerr << ">>> Internal error looking up class instance: " << inst << " <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
+    }
+    
+    // set class name
+    long* cls_inst = (long*)frame->GetMemory()[1];
+    cls_inst[0] = (long)CreateStringObject(cls->GetName());
+    
+    // create and set methods
+    const long mthd_obj_array_size = cls->GetMethodCount();
+    const long mthd_obj_array_dim = 1;
+    long* mthd_obj_array = (long*)MemoryManager::Instance()->AllocateArray(mthd_obj_array_size +
+									   mthd_obj_array_dim + 2,
+									   INT_TYPE, op_stack,
+									   *stack_pos);
+
+    mthd_obj_array[0] = mthd_obj_array_size;
+    mthd_obj_array[1] = mthd_obj_array_dim;
+    mthd_obj_array[2] = mthd_obj_array_size;
+    long* mthd_obj_array_ptr = mthd_obj_array + 3;
+
+    StackMethod** methods = cls->GetMethods();
+    for(int i = 0; i < mthd_obj_array_size; i++) {
+      long* mthd_obj = CreateMethodObject(methods[i]);
+      mthd_obj_array_ptr[i] = (long)mthd_obj;
+    }
+    cls_inst[1] = (long)mthd_obj_array;
+    
+    // TODO
+    // ...
   }
     break;
     
