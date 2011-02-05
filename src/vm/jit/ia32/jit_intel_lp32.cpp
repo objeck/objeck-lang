@@ -1235,6 +1235,9 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
   }
     break;
   }
+  
+  delete left;
+  left = NULL;
 }
 
 void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,

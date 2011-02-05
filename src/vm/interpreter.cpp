@@ -1738,7 +1738,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     StackMethod** methods = cls->GetMethods();
     for(int i = 0; i < mthd_obj_array_size; i++) {
-      long* mthd_obj = CreateMethodObject(methods[i]);
+      long* mthd_obj = CreateMethodObject(cls_inst, methods[i]);
       mthd_obj_array_ptr[i] = (long)mthd_obj;
     }
     cls_inst[1] = (long)mthd_obj_array;

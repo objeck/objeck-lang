@@ -277,7 +277,6 @@ namespace Runtime {
       const string &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
       mthd_obj[2] = (long)CreateStringObject(semi_qual_mthd_string);
       
-      
       return mthd_obj;
     }
     
