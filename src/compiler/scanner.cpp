@@ -126,7 +126,7 @@ void Scanner::LoadKeywords()
   ident_map["RAND_FLOAT"] = RAND_FLOAT;
   ident_map["LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
   ident_map["LOAD_CLS"] = LOAD_CLS;
-  ident_map["LOAD_MTHDS"] = LOAD_MTHDS;
+  ident_map["INVOKE_MTHD"] = INVOKE_MTHD;
   ident_map["LOAD_INST_UID"] = LOAD_INST_UID;
   ident_map["LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
   // standard i/o
@@ -250,7 +250,7 @@ void Scanner::CheckIdentifier(int index)
   case RAND_FLOAT:
   case LOAD_CLS_INST_ID:
   case LOAD_CLS:
-  case LOAD_MTHDS:
+  case INVOKE_MTHD:
   case LOAD_INST_UID:
   case STD_OUT_BOOL:
   case LOAD_ARY_SIZE:

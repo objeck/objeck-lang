@@ -1213,7 +1213,8 @@ bundle System {
 	}
 	
 	class Method {
-		@cls_ptr : Int;
+		@mthd_ptr : Int;
+		@cls : Class;
 		@name : String;
 		@parameters : Parameter[];
 		@rtrn_type  : DataType;
@@ -1221,6 +1222,10 @@ bundle System {
 		New() {
 		}
 		
+		method : public : GetClass() ~ Class {
+			return @cls;
+		}
+
 		method : public : GetName() ~ String {
 			return @name;
 		}
