@@ -1016,9 +1016,9 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
       
-    case LOAD_MTHDS:
+    case INVOKE_MTHD:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::LOAD_MTHDS);
+							       instructions::INVOKE_MTHD);
       NextToken();
       break;
       

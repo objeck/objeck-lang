@@ -1714,7 +1714,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* inst = (long*)frame->GetMemory()[0];
     StackClass* cls = MemoryManager::Instance()->GetClass(inst);
     if(!cls) {
-      cerr << ">>> Internal error looking up class instance: " << inst << " <<<" << endl;
+      cerr << ">>> Internal error: looking up class instance " << inst << " <<<" << endl;
         StackErrorUnwind();
         exit(1);
     }
