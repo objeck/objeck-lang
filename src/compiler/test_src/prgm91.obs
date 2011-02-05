@@ -1,0 +1,14 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			s := "Hello";
+			c := s->GetClass();
+			c->GetName()->PrintLine();
+			m := c->GetMethods();
+			each(i : m) {
+				n := m[i];
+				n->GetName()->PrintLine();
+			};
+		}
+	}
+}
