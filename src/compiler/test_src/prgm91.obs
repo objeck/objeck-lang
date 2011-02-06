@@ -10,11 +10,10 @@ bundle Default {
 			each(i : m) {
 				n := m[i];
 				n->GetName()->PrintLine();
-				p := n->GetParameters();
-y := n->GetName();
-b : Bool := y->Equals("#KAFKDF");
-b->PrintLine();
+				b := n->GetName()->Equals("New");
 				Console->Print("const=")->PrintLine(b);
+
+				p := n->GetParameters();
 				each(j : p) {
 					a := p[j];
 					Console->Print("\ttype=")->PrintLine(a->GetType()->As(Int));
