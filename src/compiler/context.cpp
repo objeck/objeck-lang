@@ -1199,7 +1199,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int de
     // TODO: fix need to change intermediate emit code so that element value
     // is loaded instead of instance
     if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {
-      ProcessError(expression, "Method call from array element not allowed");
+      ProcessError(expression, "Method call from element cast not allowed");
     }
     
     // check expression class
