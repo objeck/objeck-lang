@@ -273,9 +273,112 @@ namespace Runtime {
 	cerr << ">>> Internal error: invalid method name <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
-      }      
+      }
+      
       const string &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
-      mthd_obj[2] = (long)CreateStringObject(semi_qual_mthd_string);
+      const long mthd_index = semi_qual_mthd_string.find(':');
+      if(mthd_index == string::npos) {
+	cerr << ">>> Internal error: invalid method name <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      const string &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
+      mthd_obj[2] = (long)CreateStringObject(mthd_string);
+
+      // create types
+      const long type_obj_array_size = mthd->GetParamCount(); //mthd->GetNumberDeclarations();
+      const long type_obj_array_dim = 1;
+      long* type_obj_array = (long*)MemoryManager::Instance()->AllocateArray(type_obj_array_size +
+									     type_obj_array_dim + 2,
+									     INT_TYPE, op_stack,
+									     *stack_pos);
+      type_obj_array[0] = type_obj_array_size;
+      type_obj_array[1] = type_obj_array_dim;
+      type_obj_array[2] = type_obj_array_size;
+      long* type_obj_array_ptr = type_obj_array + 3;
+      
+      // parse parameter string
+      const string &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
+      
+      int index = 0;
+      int i = 0;
+      
+      cout << "$$$ '" << qual_mthd_name << "', " << type_obj_array_size << " $$$" << endl;
+      for(int z = 0; z < type_obj_array_size; z++) {
+	cout << "\tparam=" <<  mthd->GetDeclarations()[z]->type << endl;
+      }
+
+      while(index < params_string.size()) {
+	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeClassId(),
+									(long*)op_stack, *stack_pos);
+	type_obj_array_ptr[i++] = (long)data_type_obj; 
+        switch(params_string[index]) {
+        case 'l':
+	  data_type_obj[0] = -1000;
+	  index++;
+          break;
+	  
+        case 'b':
+	  data_type_obj[0] = -999;
+	  index++;
+          break;
+
+        case 'i':
+	  data_type_obj[0] = -997;
+	  index++;
+          break;
+
+        case 'f':
+	  data_type_obj[0] = -996;
+	  index++;
+          break;
+
+        case 'c':
+	  data_type_obj[0] = -998;
+	  index++;
+          break;
+	  
+        case 'o': {
+	  data_type_obj[0] = -995;
+          index++;
+	  const int start_index = index + 1;
+          while(index < params_string.size() && params_string[index] != ',') {
+            index++;
+          }
+	  data_type_obj[1] = (long)CreateStringObject(params_string.substr(start_index, index - 2));
+	}
+          break;
+	  
+	case 'm':
+	  data_type_obj[0] = -994;
+          index++;
+          while(index < params_string.size() && params_string[index] != '~') {
+            index++;
+          }
+	  while(index < params_string.size() && params_string[index] != ',') {
+            index++;
+          }
+          break;
+	  
+	default:
+#ifdef _DEBUG
+	  assert(false);
+#endif
+	  break;
+        }
+	
+        // check array dimension
+        int dimension = 0;
+        while(index < params_string.size() && params_string[index] == '*') {
+          dimension++;
+          index++;
+        }
+	data_type_obj[2] = dimension;
+	
+	// match ','
+        index++;
+      }
+      mthd_obj[3] = (long)type_obj_array;
       
       return mthd_obj;
     }

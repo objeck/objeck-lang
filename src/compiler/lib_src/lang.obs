@@ -1190,7 +1190,8 @@ bundle System {
 		}
 	}
 	
-	# introspection
+	#------------ Introspection ------------#
+	
 	class Class {
 		@name : String;
 		@methods : Method[];
@@ -1213,15 +1214,15 @@ bundle System {
 	}
 	
 	class Method {
-		@mthd_ptr : Int;
+		@native_mthd_ptr : Int;
 		@cls : Class;
 		@name : String;
-		@parameters : Parameter[];
+		@parameters : DataType[];
 		@rtrn_type  : DataType;
-		
+	
 		New() {
 		}
-		
+						
 		method : public : GetClass() ~ Class {
 			return @cls;
 		}
@@ -1230,7 +1231,7 @@ bundle System {
 			return @name;
 		}
 		
-		method : public : GetParameters() ~ Parameter[] {
+		method : public : GetParameters() ~ DataType[] {
 			return @parameters;
 		}
 		
@@ -1239,25 +1240,20 @@ bundle System {
 		}
 	}
 	
-	class Parameter {
-		@name : String;
-		@data_type  : DataType;
-		
-		New() {
-			# TODO
-		}
-		
-		method : public : GetName() ~ String {
-			return @name;
-		}
-	}
-	
 	class DataType {
+		@type  : TypeId;
 		@cls_name : String;
-		@id  : TypeId;
+		@dimension : Int;
 		
 		New() {
-			# TODO
+		}		
+		
+		method : public : GetType() ~ TypeId {
+			return @type;
+		}
+		
+		method : public : GetDimension() ~ Int {
+			return @dimension;
 		}
 		
 		method : public : GetClassName() ~ String {
@@ -1266,16 +1262,18 @@ bundle System {
 	}
 	
 	enum TypeId := -1000 {
+		BOOL,
 		BYTE,
 		CHAR,
 		INT,
 		FLOAT,
-		CLASS
+		CLASS,
+		FUNC
 	}	
 	
 	#------------ Threads ------------
 	
-	#~~d
+	#~~
 	# System thread class
 	~~#	
 	class Thread {
