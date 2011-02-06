@@ -303,10 +303,12 @@ namespace Runtime {
       int index = 0;
       int i = 0;
       
+      /*
       cout << "$$$ '" << qual_mthd_name << "', " << type_obj_array_size << " $$$" << endl;
       for(int z = 0; z < type_obj_array_size; z++) {
 	cout << "\tparam=" <<  mthd->GetDeclarations()[z]->type << endl;
       }
+      */
 
       while(index < params_string.size()) {
 	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeClassId(),
@@ -384,7 +386,7 @@ namespace Runtime {
     }
     
     // TODO: move this code to JIT headers?
-    long* CreateStringObject(const string &value_str) {
+    inline long* CreateStringObject(const string &value_str) {
       // create character array
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
@@ -406,6 +408,7 @@ namespace Runtime {
 								(long*)op_stack, *stack_pos);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
+      str_obj[2] = char_array_size;
       
       return str_obj;
     }
