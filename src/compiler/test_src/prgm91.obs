@@ -11,15 +11,18 @@ bundle Default {
 				n := m[i];
 				n->GetName()->PrintLine();
 				p := n->GetParameters();
-				p->Size()->PrintLine();
-"#####"->PrintLine();
+y := n->GetName();
+b : Bool := y->Equals("#KAFKDF");
+b->PrintLine();
+				Console->Print("const=")->PrintLine(b);
 				each(j : p) {
 					a := p[j];
-					Console->Print("\ttype: ")->PrintLine(a->GetType()->As(Int));
+					Console->Print("\ttype=")->PrintLine(a->GetType()->As(Int));
 					if(a->GetType() = TypeId->CLASS) {
 						Console->Print("\tname=")->PrintLine(a->GetClassName());
 					};
 				};
+				"#####"->PrintLine();
 			};
 		}
 	}
