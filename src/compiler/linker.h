@@ -443,7 +443,12 @@ public:
     inst_space = is;
     entries = e;
     library = l;
-    was_called = false;
+    if(name == "System.Class" || name == "System.Method" || name == "System.DataType") {
+      was_called = true;
+    }
+    else {
+      was_called = false;
+    }
     is_debug = d;
     file_name = fn;
   }

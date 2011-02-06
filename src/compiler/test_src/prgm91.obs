@@ -9,7 +9,7 @@ bundle Default {
 			m := c->GetMethods();
 			each(i : m) {
 				n := m[i];
-				n->GetName()->PrintLine();
+				m[i]->GetName()->PrintLine();
 				b := n->GetName()->Equals("New");
 				Console->Print("const=")->PrintLine(b);
 
