@@ -2230,8 +2230,14 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   const string &method_ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
-  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, variable, method_ident,
-						 ParseExpressionList(depth + 1));
+  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, variable, method_ident,
+							     ParseExpressionList(depth + 1));
+  
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+    call->SetMethodCall(ParseMethodCall(variable->GetName(), depth + 1));
+  }
+  
+  return call;
 }
 
 /****************************
