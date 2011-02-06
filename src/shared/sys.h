@@ -46,26 +46,26 @@
 
 
 namespace instructions {
-// vm types
-typedef enum _MemoryType {
-  NIL_TYPE = -1000,
-  BYTE_ARY_TYPE,
-  INT_TYPE,
-  FLOAT_TYPE,
-  FUNC_TYPE
-} MemoryType;
+  // vm types
+  typedef enum _MemoryType {
+    NIL_TYPE = -1000,
+    BYTE_ARY_TYPE,
+    INT_TYPE,
+    FLOAT_TYPE,
+    FUNC_TYPE
+  } MemoryType;
 
-// garbage types
-typedef enum _ParamType {
-  INT_PARM = -1500,
-  FLOAT_PARM,
-  BYTE_ARY_PARM,
-  INT_ARY_PARM,
-  FLOAT_ARY_PARM,
-  OBJ_PARM,
-  OBJ_ARY_PARM,
-  FUNC_PARM,
-} ParamType;
+  // garbage types
+  typedef enum _ParamType {
+    INT_PARM = -1500,
+    FLOAT_PARM,
+    BYTE_ARY_PARM,
+    INT_ARY_PARM,
+    FLOAT_ARY_PARM,
+    OBJ_PARM,
+    OBJ_ARY_PARM,
+    FUNC_PARM,
+  } ParamType;
 }
 
 #endif

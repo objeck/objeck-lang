@@ -418,7 +418,6 @@ class StackMethod {
     name = ParseName(n);
     is_virtual = v;
     has_and_or = h;
-    param_count = 0;
     native_code = NULL;
     dclrs = d;
     num_dclrs = nd;
@@ -512,7 +511,7 @@ class StackMethod {
   inline const int GetNumberDeclarations() {
     return num_dclrs;
   }
-
+  
   void SetNativeCode(NativeCode* c) {
     native_code = c;
   }
@@ -783,6 +782,7 @@ class StackProgram {
   int* cls_hierarchy;
   long string_cls_id;
   long mthd_cls_id;
+  long data_type_cls_id;
   
   FLOAT_VALUE** float_strings;
   int num_float_strings;
@@ -807,13 +807,12 @@ public:
     cls_hierarchy = NULL;
     classes = NULL;
     char_strings = NULL;
-    mthd_cls_id = -1;
-    string_cls_id = -1;
+    string_cls_id = mthd_cls_id = data_type_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
 #endif
   }
-
+  
   ~StackProgram() {
     if(classes) {
       for(int i = 0; i < class_num; i++) {
@@ -941,6 +940,19 @@ public:
     }
     
     return mthd_cls_id;
+  }
+  
+  long GetDataTypeClassId() {
+    if(data_type_cls_id < 0) {
+      StackClass* cls = GetClass("System.DataType");
+      if(!cls) {
+	cerr << ">>> Internal error: unable to find class: System.DataType <<<" << endl;
+	exit(1);
+      }
+      data_type_cls_id = cls->GetId();
+    }
+    
+    return data_type_cls_id;
   }
   
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
