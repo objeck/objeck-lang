@@ -1197,9 +1197,8 @@ bundle System {
 		@methods : Method[];
 		
 		New() {
-#			LOAD_MTHDS;
 		}
-
+		
 		method : public : GetName() ~ String {
 			return @name;
 		}
