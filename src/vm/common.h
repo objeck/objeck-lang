@@ -780,9 +780,10 @@ class StackProgram {
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
-  long string_cls_id;
-  long mthd_cls_id;
-  long data_type_cls_id;
+  int string_cls_id;
+  int cls_cls_id;
+  int mthd_cls_id;
+  int data_type_cls_id;
   
   FLOAT_VALUE** float_strings;
   int num_float_strings;
@@ -807,7 +808,7 @@ public:
     cls_hierarchy = NULL;
     classes = NULL;
     char_strings = NULL;
-    string_cls_id = mthd_cls_id = data_type_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = data_type_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
 #endif
@@ -921,15 +922,28 @@ public:
     return init_method;
   }
   
-  long GetStringClassId() {
+  int GetStringObjectId() {
     return string_cls_id;
   }
   
-  void SetStringClassId(long id) {
+  void SetStringObjectId(int id) {
     string_cls_id = id;
   }
   
-  long GetMethodClassId() {
+  int GetClassObjectId() {
+    if(cls_cls_id < 0) {
+      StackClass* cls = GetClass("System.Class");
+      if(!cls) {
+	cerr << ">>> Internal error: unable to find class: System.Class <<<" << endl;
+	exit(1);
+      }
+      cls_cls_id = cls->GetId();
+    }
+    
+    return cls_cls_id;
+  }
+  
+  int GetMethodObjectId() {
     if(mthd_cls_id < 0) {
       StackClass* cls = GetClass("System.Method");
       if(!cls) {
@@ -942,7 +956,7 @@ public:
     return mthd_cls_id;
   }
   
-  long GetDataTypeClassId() {
+  int GetDataTypeObjectId() {
     if(data_type_cls_id < 0) {
       StackClass* cls = GetClass("System.DataType");
       if(!cls) {

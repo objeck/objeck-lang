@@ -260,7 +260,7 @@ namespace Runtime {
     }
     
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
-      long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodClassId(),
+      long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
 								 (long*)op_stack, *stack_pos);
       // method and class object
       mthd_obj[0] = (long)mthd;
@@ -311,7 +311,7 @@ namespace Runtime {
       */
 
       while(index < params_string.size()) {
-	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeClassId(),
+	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
 									(long*)op_stack, *stack_pos);
 	type_obj_array_ptr[i++] = (long)data_type_obj; 
         switch(params_string[index]) {
@@ -404,7 +404,7 @@ namespace Runtime {
       strcpy(char_array_ptr, value_str.c_str());
 
       // create 'System.String' object instance
-      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
+      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
 								(long*)op_stack, *stack_pos);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
