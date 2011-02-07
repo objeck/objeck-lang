@@ -8,12 +8,11 @@ bundle Default {
 			c->GetName()->PrintLine();
 			m := c->GetMethods();
 			each(i : m) {
-				n := m[i];
 				m[i]->GetName()->PrintLine();
-				b := n->GetName()->Equals("New");
+				b := m[i]->GetName()->Equals("New");
 				Console->Print("const=")->PrintLine(b);
 
-				p := n->GetParameters();
+				p := m[i]->GetParameters();
 				each(j : p) {
 					a := p[j];
 					Console->Print("\ttype=")->PrintLine(a->GetType()->As(Int));

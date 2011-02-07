@@ -37,7 +37,8 @@ namespace instructions {
   typedef enum _Traps {
     // core operations
     LOAD_CLS_INST_ID = -4000,
-    LOAD_CLS,
+    LOAD_CLS_BY_INST,
+    LOAD_CLS_BY_NAME,
     INVOKE_MTHD,
     LOAD_INST_UID,
     LOAD_ARY_SIZE,

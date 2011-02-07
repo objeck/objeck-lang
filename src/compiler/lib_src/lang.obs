@@ -383,10 +383,9 @@ bundle System {
 		New() {
 		}
 
-		method : public : GetClass() ~ Class {
-#		method : public : native : GetClass() ~ Class {
+		method : public : GetClass() ~ Introspection.Class {
 			cls : Class;
-			LOAD_CLS;
+			LOAD_CLS_BY_INST;
 			return cls;
 		}
 		
@@ -1190,77 +1189,6 @@ bundle System {
 		}
 	}
 	
-	#------------ Introspection ------------#
-	
-	class Class {
-		@name : String;
-		@methods : Method[];
-		
-		method : public : GetName() ~ String {
-			return @name;
-		}
-		
-		method : public : GetMethods() ~ Method[] {
-			return @methods;
-		}
-		
-		method : public : GetMethodNumber() ~ Int {
-			return @methods->Size();
-		}
-	}
-	
-	class Method {
-		@native_mthd_ptr : Int;
-		@cls : Class;
-		@name : String;
-		@parameters : DataType[];
-		@rtrn_type  : DataType;
-	
-		method : public : GetClass() ~ Class {
-			return @cls;
-		}
-
-		method : public : GetName() ~ String {
-			return @name;
-		}
-		
-		method : public : GetParameters() ~ DataType[] {
-			return @parameters;
-		}
-		
-		method : public : GetReturn() ~ DataType {
-			return @rtrn_type;
-		}
-	}
-	
-	class DataType {
-		@type  : TypeId;
-		@cls_name : String;
-		@dimension : Int;
-		
-		method : public : GetType() ~ TypeId {
-			return @type;
-		}
-		
-		method : public : GetDimension() ~ Int {
-			return @dimension;
-		}
-		
-		method : public : GetClassName() ~ String {
-			return @cls_name;
-		}
-	}
-	
-	enum TypeId := -1000 {
-		BOOL,
-		BYTE,
-		CHAR,
-		INT,
-		FLOAT,
-		CLASS,
-		FUNC
-	}	
-	
 	#------------ Threads ------------
 	
 	#~~
@@ -1713,3 +1641,83 @@ bundle Net {
 		}
 	}	
 }
+
+#------------ Introspection ------------#
+bundle Introspection {
+	class Class {
+		@name : String;
+		@methods : Method[];
+		
+		New(name : String) {
+			LOAD_CLS_BY_NAME;
+		}
+		
+		method : public : IsLoaded() ~ Bool {
+			return @methods <> Nil;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetMethods() ~ Method[] {
+			return @methods;
+		}
+		
+		method : public : GetMethodNumber() ~ Int {
+			return @methods->Size();
+		}
+	}
+	
+	class Method {
+		@native_mthd_ptr : Int;
+		@cls : Class;
+		@name : String;
+		@parameters : DataType[];
+		@rtrn_type  : DataType;
+	
+		method : public : GetClass() ~ Class {
+			return @cls;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetParameters() ~ DataType[] {
+			return @parameters;
+		}
+		
+		method : public : GetReturn() ~ DataType {
+			return @rtrn_type;
+		}
+	}
+	
+	class DataType {
+		@type  : TypeId;
+		@cls_name : String;
+		@dimension : Int;
+		
+		method : public : GetType() ~ TypeId {
+			return @type;
+		}
+		
+		method : public : GetDimension() ~ Int {
+			return @dimension;
+		}
+		
+		method : public : GetClassName() ~ String {
+			return @cls_name;
+		}
+	}
+	
+	enum TypeId := -1000 {
+		BOOL,
+		BYTE,
+		CHAR,
+		INT,
+		FLOAT,
+		CLASS,
+		FUNC
+	}	
+}	
