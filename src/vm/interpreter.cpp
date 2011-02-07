@@ -774,7 +774,7 @@ void StackInterpreter::ProcessPlatform()
   strcpy(char_array_ptr, value_str.c_str());
 
   // create 'System.String' object instance
-  long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(),
+  long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
 							    (long*)op_stack, *stack_pos);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
@@ -1720,7 +1720,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     }
     
     // set class name
-    long* cls_inst = (long*)frame->GetMemory()[1];
+    long* cls_inst = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
+							       (long*)op_stack, *stack_pos);
     cls_inst[0] = (long)CreateStringObject(cls->GetName());
     
     // create and set methods
@@ -1744,7 +1745,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cls_inst[1] = (long)mthd_obj_array;
     
     // TODO
-    // ...
+    frame->GetMemory()[1] = (long)cls_inst;
   }
     break;
     
