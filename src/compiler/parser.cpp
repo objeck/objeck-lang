@@ -1010,9 +1010,15 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
-    case LOAD_CLS:
+    case LOAD_CLS_BY_INST:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::LOAD_CLS);
+							       instructions::LOAD_CLS_BY_INST);
+      NextToken();
+      break;
+
+    case LOAD_CLS_BY_NAME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::LOAD_CLS_BY_NAME);
       NextToken();
       break;
       

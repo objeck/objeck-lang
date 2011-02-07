@@ -1705,10 +1705,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     PushInt(MemoryManager::Instance()->GetObjectID((long*)PopInt()));
     break;
 
-  case LOAD_CLS: {
+  case LOAD_CLS_BY_INST: {
     // TODO: check for memory access; valigrind
 #ifdef _DEBUG
-    cout << "stack oper: LOAD_CLS; call_pos=" << call_stack_pos << endl;
+    cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos << endl;
 #endif
 
     long* inst = (long*)frame->GetMemory()[0];
@@ -1720,9 +1720,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     }
     
     // set class name
-    long* cls_inst = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
+    long* cls_obj = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
 							       (long*)op_stack, *stack_pos);
-    cls_inst[0] = (long)CreateStringObject(cls->GetName());
+    cls_obj[0] = (long)CreateStringObject(cls->GetName());
     
     // create and set methods
     const long mthd_obj_array_size = cls->GetMethodCount();
@@ -1739,13 +1739,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     StackMethod** methods = cls->GetMethods();
     for(int i = 0; i < mthd_obj_array_size; i++) {
-      long* mthd_obj = CreateMethodObject(cls_inst, methods[i]);
+      long* mthd_obj = CreateMethodObject(cls_obj, methods[i]);
       mthd_obj_array_ptr[i] = (long)mthd_obj;
     }
-    cls_inst[1] = (long)mthd_obj_array;
+    cls_obj[1] = (long)mthd_obj_array;
     
     // TODO
-    frame->GetMemory()[1] = (long)cls_inst;
+    frame->GetMemory()[1] = (long)cls_obj;
   }
     break;
     
