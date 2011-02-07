@@ -150,7 +150,7 @@ void Loader::Load()
   init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
-  program->SetStringClassId(string_cls_id);
+  program->SetStringObjectId(string_cls_id);
 }
 
 void Loader::LoadEnums()

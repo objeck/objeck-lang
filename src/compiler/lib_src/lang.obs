@@ -385,7 +385,7 @@ bundle System {
 
 		method : public : GetClass() ~ Class {
 #		method : public : native : GetClass() ~ Class {
-			cls := Class->New();
+			cls : Class;
 			LOAD_CLS;
 			return cls;
 		}
@@ -1196,9 +1196,6 @@ bundle System {
 		@name : String;
 		@methods : Method[];
 		
-		New() {
-		}
-		
 		method : public : GetName() ~ String {
 			return @name;
 		}
@@ -1219,9 +1216,6 @@ bundle System {
 		@parameters : DataType[];
 		@rtrn_type  : DataType;
 	
-		New() {
-		}
-						
 		method : public : GetClass() ~ Class {
 			return @cls;
 		}
@@ -1243,9 +1237,6 @@ bundle System {
 		@type  : TypeId;
 		@cls_name : String;
 		@dimension : Int;
-		
-		New() {
-		}		
 		
 		method : public : GetType() ~ TypeId {
 			return @type;

@@ -1649,7 +1649,7 @@ namespace Runtime {
 	  vector<string> files = File::ListDir(name);
 
 	  // create 'System.String' object array
-	  const long str_obj_array_size = files.size();
+	  const xlong str_obj_array_size = files.size();
 	  const long str_obj_array_dim = 1;  
 	  long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
 										str_obj_array_dim + 2, 
@@ -1682,7 +1682,7 @@ namespace Runtime {
 	    strcpy(char_array_ptr, value_str.c_str()); 
       
 	    // create 'System.String' object instance
-	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(), 
+	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(), 
 								      (long*)op_stack, *stack_pos);
 	    str_obj[0] = (long)char_array;
 	    str_obj[1] = char_array_size;

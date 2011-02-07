@@ -1753,7 +1753,7 @@ namespace Runtime {
 	    strcpy(char_array_ptr, value_str.c_str()); 
       
 	    // create 'System.String' object instance
-	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringClassId(), 
+	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(), 
 								      (long*)op_stack, *stack_pos);
 	    str_obj[0] = (long)char_array;
 	    str_obj[1] = char_array_size;
