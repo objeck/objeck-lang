@@ -932,9 +932,9 @@ public:
   
   int GetClassObjectId() {
     if(cls_cls_id < 0) {
-      StackClass* cls = GetClass("System.Class");
+      StackClass* cls = GetClass("Introspection.Class");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.Class <<<" << endl;
+	cerr << ">>> Internal error: unable to find class: Introspection.Class <<<" << endl;
 	exit(1);
       }
       cls_cls_id = cls->GetId();
@@ -945,9 +945,9 @@ public:
   
   int GetMethodObjectId() {
     if(mthd_cls_id < 0) {
-      StackClass* cls = GetClass("System.Method");
+      StackClass* cls = GetClass("Introspection.Method");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.Method <<<" << endl;
+	cerr << ">>> Internal error: unable to find class: Introspection.Method <<<" << endl;
 	exit(1);
       }
       mthd_cls_id = cls->GetId();
@@ -958,9 +958,9 @@ public:
   
   int GetDataTypeObjectId() {
     if(data_type_cls_id < 0) {
-      StackClass* cls = GetClass("System.DataType");
+      StackClass* cls = GetClass("Introspection.DataType");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.DataType <<<" << endl;
+	cerr << ">>> Internal error: unable to find class: Introspection.DataType <<<" << endl;
 	exit(1);
       }
       data_type_cls_id = cls->GetId();

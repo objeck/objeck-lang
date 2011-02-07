@@ -125,7 +125,8 @@ void Scanner::LoadKeywords()
   ident_map["SQRT_FLOAT"] = SQRT_FLOAT;
   ident_map["RAND_FLOAT"] = RAND_FLOAT;
   ident_map["LOAD_CLS_INST_ID"] = LOAD_CLS_INST_ID;
-  ident_map["LOAD_CLS"] = LOAD_CLS;
+  ident_map["LOAD_CLS_BY_INST"] = LOAD_CLS_BY_INST;
+  ident_map["LOAD_CLS_BY_NAME"] = LOAD_CLS_BY_NAME;
   ident_map["INVOKE_MTHD"] = INVOKE_MTHD;
   ident_map["LOAD_INST_UID"] = LOAD_INST_UID;
   ident_map["LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
@@ -249,7 +250,8 @@ void Scanner::CheckIdentifier(int index)
   case SQRT_FLOAT:
   case RAND_FLOAT:
   case LOAD_CLS_INST_ID:
-  case LOAD_CLS:
+  case LOAD_CLS_BY_INST:
+  case LOAD_CLS_BY_NAME:
   case INVOKE_MTHD:
   case LOAD_INST_UID:
   case STD_OUT_BOOL:

@@ -443,7 +443,9 @@ public:
     inst_space = is;
     entries = e;
     library = l;
-    if(name == "System.Class" || name == "System.Method" || name == "System.DataType") {
+    if(name == "Introspection.Class" || 
+       name == "Introspection.Method" || 
+       name == "Introspection.DataType") {
       was_called = true;
     }
     else {
