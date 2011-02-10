@@ -1,9 +1,8 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() > 0) {
-				args[0]->PrintLine();
-			};
+			a := 62.5->TypeOf(Char);
+			a->PrintLine();
 		}
 	}
 }
