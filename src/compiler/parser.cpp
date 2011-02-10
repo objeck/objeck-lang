@@ -739,12 +739,13 @@ Statement* Parser::ParseStatement(int depth)
 	
       case TOKEN_ASSESSOR:
         // subsequent method
-        if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+        if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
+	   !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
           statement = ParseMethodCall(variable, depth + 1);
         }
         // type cast
         else {
-          ParseCast(variable, depth + 1);
+          ParseCastTypeOf(variable, depth + 1);
           statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, variable);
         }
 	break;
@@ -1919,12 +1920,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       // method call
     case TOKEN_ASSESSOR:
     case TOKEN_OPEN_PAREN:
-      if(!Match(TOKEN_AS_ID, SECOND_INDEX)) {
+      if(!Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
         expression = ParseMethodCall(ident, depth + 1);
       } 
       else {
         expression = ParseVariable(ident, depth + 1);
-        ParseCast(expression, depth + 1);
+        ParseCastTypeOf(expression, depth + 1);
       }
       break;
       
@@ -2016,7 +2017,8 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
 
   // subsequent method calls
-  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
+     !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
     if(expression->GetExpressionType() == VAR_EXPR) {
       expression = ParseMethodCall(static_cast<Variable*>(expression), depth + 1);
     } else {
@@ -2025,7 +2027,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
   // type cast
   else {
-    ParseCast(expression, depth + 1);
+    ParseCastTypeOf(expression, depth + 1);
   }
 
   return expression;
@@ -2033,31 +2035,50 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
 /****************************
  * Parses an explicit type
- * cast.
+ * cast or typeof
  ****************************/
-void Parser::ParseCast(Expression* expression, int depth)
+void Parser::ParseCastTypeOf(Expression* expression, int depth)
 {
   if(Match(TOKEN_ASSESSOR)) {
     NextToken();
 
-    if(!Match(TOKEN_AS_ID)) {
-      ProcessError(TOKEN_AS_ID);
-    }
-    NextToken();
+    if(Match(TOKEN_AS_ID)) {  
+      NextToken();
+      
+      if(!Match(TOKEN_OPEN_PAREN)) {
+	ProcessError(TOKEN_OPEN_PAREN);
+      }
+      NextToken();
 
-    if(!Match(TOKEN_OPEN_PAREN)) {
-      ProcessError(TOKEN_OPEN_PAREN);
-    }
-    NextToken();
+      if(expression) {
+	expression->SetCastType(ParseType(depth + 1));
+      }
 
-    if(expression) {
-      expression->SetCastType(ParseType(depth + 1));
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError(TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
     }
+    else if(Match(TOKEN_TYPE_OF_ID)) {
+      NextToken();
 
-    if(!Match(TOKEN_CLOSED_PAREN)) {
-      ProcessError(TOKEN_CLOSED_PAREN);
+      if(!Match(TOKEN_OPEN_PAREN)) {
+	ProcessError(TOKEN_OPEN_PAREN);
+      }
+      NextToken();
+
+      if(expression) {
+	expression->SetTypeOf(ParseType(depth + 1));
+      }
+
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError(TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
     }
-    NextToken();
+    else {
+      ProcessError("Expected cast or typeof", TOKEN_SEMI_COLON);
+    }
 
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR)) {
@@ -2157,6 +2178,32 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 	method_call->SetCastType(variable->GetCastType());
       }
     }
+    else if(Match(TOKEN_TYPE_OF_ID)) {
+      Variable* variable = ParseVariable(ident, depth + 1);
+      
+      NextToken();
+      if(!Match(TOKEN_OPEN_PAREN)) {
+	ProcessError(TOKEN_OPEN_PAREN);
+      }
+      NextToken();
+      
+      if(variable) {
+	variable->SetTypeOf(ParseType(depth + 1));
+      }
+      
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+	ProcessError(TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
+      
+      /*
+      // subsequent method calls
+      if(Match(TOKEN_ASSESSOR)) {
+	method_call = ParseMethodCall(variable, depth + 1);
+	method_call->SetCastType(variable->GetCastType());
+      }
+      */
+    }
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);
     }
@@ -2176,12 +2223,13 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
   }
 
   // subsequent method calls
-  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
+     !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
     ParseMethodCall(method_call, depth + 1);
   }
   // type cast
   else {
-    ParseCast(method_call, depth + 1);
+    ParseCastTypeOf(method_call, depth + 1);
   }
 
   return method_call;
@@ -2211,12 +2259,13 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
   if(expression) {
     expression->SetMethodCall(ParseMethodCall(ident, depth + 1));
     // subsequent method calls
-    if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+    if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
+       !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
       ParseMethodCall(expression->GetMethodCall(), depth + 1);
     }
     // type cast
     else {
-      ParseCast(expression->GetMethodCall(), depth + 1);
+      ParseCastTypeOf(expression->GetMethodCall(), depth + 1);
     }
   }
 }
@@ -2239,7 +2288,8 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, variable, method_ident,
 							     ParseExpressionList(depth + 1));
   
-  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX)) {
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
+     !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
     call->SetMethodCall(ParseMethodCall(variable->GetName(), depth + 1));
   }
   

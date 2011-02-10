@@ -120,14 +120,16 @@ namespace frontend {
     int func_param_count;
     
     Type(Type* t) {
-      type = t->type;
-      dimension = t->dimension;
-      class_name = t->class_name;
-      func_rtrn = t->func_rtrn;
-      func_params = t->func_params;
-      func_param_count = -1;
+      if(t) {
+	type = t->type;
+	dimension = t->dimension;
+	class_name = t->class_name;
+	func_rtrn = t->func_rtrn;
+	func_params = t->func_params;
+	func_param_count = -1;
+      }
     }
-
+    
     Type(EntryType t) {
       type = t;
       dimension = 0;

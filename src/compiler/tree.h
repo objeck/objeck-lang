@@ -444,13 +444,14 @@ namespace frontend {
     Type* base_type;
     Type* eval_type;
     Type* cast_type;
+    Type* type_of;
     MethodCall* method_call;
     Expression* prev_expr;
     Class* to_class;
     LibraryClass* to_lib_class;
 
   Expression(const string &f, const int l) : ParseNode(f, l) {
-      base_type = eval_type = cast_type = NULL;
+      base_type = eval_type = cast_type = type_of = NULL;
       method_call = NULL;
       prev_expr = NULL;
       to_class = NULL;
@@ -464,6 +465,7 @@ namespace frontend {
       prev_expr = NULL;
       to_class = NULL;
       to_lib_class = NULL;
+      type_of = NULL;
     }
 
     ~Expression() {
@@ -534,6 +536,14 @@ namespace frontend {
 
     Type* GetCastType() {
       return cast_type;
+    }
+    
+    void SetTypeOf(Type* c) {
+      type_of = TypeFactory::Instance()->MakeType(c);
+    }
+    
+    Type* GetTypeOf() {
+      return type_of;
     }
 
     virtual const ExpressionType GetExpressionType() = 0;

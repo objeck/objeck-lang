@@ -25,4 +25,6 @@
 * Fixed bug related to the collection of static object arrays
 * Fixed bug related to the explicit casting of subexpressions
 2/6/11
-* method calls from array and array elements
+* method calls from array and array elements (fixed - mostly)
+2/8/11
+* support for object clone/copy

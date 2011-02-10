@@ -172,7 +172,7 @@ class Parser {
   ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN,
                                       TokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
-  void ParseCast(Expression* expression, int depth);
+  void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);

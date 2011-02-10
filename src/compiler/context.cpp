@@ -1980,10 +1980,14 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
 
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* method_call = static_cast<MethodCall*>(expression);
+    // 'Nil' return check
     if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
        !method_call->IsFunctionDefinition()) {
       ProcessError(expression, "Invalid assignment method '" + method_call->GetMethod()->GetName() + "(..)' does not return a value");
     }
+
+    // TODO: 'checked' return variable
+    //...
   }
 }
 
