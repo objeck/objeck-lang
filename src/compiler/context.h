@@ -596,7 +596,6 @@ class ContextAnalyzer {
   void AnalyzeCalculation(CalculatedExpression* expression, int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, int depth);
   void AnalyzeDeclaration(Declaration* declaration, int depth);
-  void AnalyzeEntries(ParseNode* node, const string &scope, int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,

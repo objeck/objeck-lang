@@ -1,9 +1,10 @@
 use IO;
+use Structure;
 
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			s := "Hello";
+			s := IntVector->New();
 			c := s->GetClass();
 			c->GetName()->PrintLine();
 			m := c->GetMethods();
@@ -13,9 +14,11 @@ bundle Default {
 				Console->Print("const=")->PrintLine(b);
 
 				p := m[i]->GetParameters();
+				Console->Print("size=")->PrintLine(p->Size());
 				each(j : p) {
 					a := p[j];
 					Console->Print("\ttype=")->PrintLine(a->GetType()->As(Int));
+					Console->Print("\tdim=")->PrintLine(a->GetDimension());
 					if(a->GetType() = TypeId->CLASS) {
 						Console->Print("\tname=")->PrintLine(a->GetClassName());
 					};

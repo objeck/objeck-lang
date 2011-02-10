@@ -231,8 +231,6 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
       }
     }
   }
-  AnalyzeEntries(klass, klass->GetName(), depth + 1);
-
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(unsigned int i = 0; i < statements.size(); i++) {
@@ -474,8 +472,6 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
   current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
   method->SetSymbolTable(current_table);
 
-  // entries
-  AnalyzeEntries(current_method, current_method->GetEncodedName(), depth + 1);
   // declarations
   vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
   for(unsigned int i = 0; i < declarations.size(); i++) {
@@ -3294,83 +3290,3 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
   return encoded_name;
 }
 
-/****************************
- * Checks variable entires.
- * This is mainly used to make
- * sure class declaration are valid.
- ****************************/
-void ContextAnalyzer::AnalyzeEntries(ParseNode* node, const string &scope, int depth)
-{
-  vector<SymbolEntry*> entries = symbol_table->GetEntries(scope);
-  for(unsigned int i = 0; i < entries.size(); i++) {
-    SymbolEntry* entry = entries[i];
-
-#ifdef _DEBUG
-    string msg = "- variable declaration: name='" + entry->GetName() + "'";
-#endif
-
-    Type* type = entry->GetType();
-    switch(type->GetType()) {
-    case BYTE_TYPE:
-#ifdef _DEBUG
-      msg += ", type=byte, dimension=";
-#endif
-      break;
-
-    case INT_TYPE:
-#ifdef _DEBUG
-      msg += ", type=int, dimension=";
-#endif
-      break;
-
-    case FLOAT_TYPE:
-#ifdef _DEBUG
-      msg += ", type=float, dimension=";
-#endif
-      break;
-
-    case CHAR_TYPE:
-#ifdef _DEBUG
-      msg += ", type=char, dimension=";
-#endif
-      break;
-
-    case BOOLEAN_TYPE:
-#ifdef _DEBUG
-      msg += ", type=boolean, dimension=";
-#endif
-      break;
-
-    case CLASS_TYPE:
-#ifdef _DEBUG
-      if(entry->IsSelf()) {
-        msg += ", type=self, id=" + type->GetClassName() + ", dimension=";
-      } else {
-        msg += ", type=class, id=" + type->GetClassName() + ", dimension=";
-      }
-#endif
-      break;
-
-    case VAR_TYPE:
-#ifdef _DEBUG
-      msg += ", type=variable, dimension=";
-#endif
-      break;
-      
-    case FUNC_TYPE:
-#ifdef _DEBUG
-      msg += ", type=function, id=" + type->GetClassName() + ", dimension=";
-#endif
-      break;
-      
-    default:
-      ProcessError(node, "Invalid use of data type in this context");
-      break;
-    }
-
-#ifdef _DEBUG
-    msg += ToString(type->GetDimension());
-    Show(msg, node->GetLineNumber(), depth);
-#endif
-  }
-}

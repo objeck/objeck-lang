@@ -285,36 +285,19 @@ namespace Runtime {
       const string &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
       mthd_obj[2] = (long)CreateStringObject(mthd_string);
 
-      // create types
-      const long type_obj_array_size = mthd->GetParamCount(); //mthd->GetNumberDeclarations();
-      const long type_obj_array_dim = 1;
-      long* type_obj_array = (long*)MemoryManager::Instance()->AllocateArray(type_obj_array_size +
-									     type_obj_array_dim + 2,
-									     INT_TYPE, op_stack,
-									     *stack_pos);
-      type_obj_array[0] = type_obj_array_size;
-      type_obj_array[1] = type_obj_array_dim;
-      type_obj_array[2] = type_obj_array_size;
-      long* type_obj_array_ptr = type_obj_array + 3;
+      
       
       // parse parameter string
       const string &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
       
       int index = 0;
-      int i = 0;
-      
-      /*
-      cout << "$$$ '" << qual_mthd_name << "', " << type_obj_array_size << " $$$" << endl;
-      for(int z = 0; z < type_obj_array_size; z++) {
-	cout << "\tparam=" <<  mthd->GetDeclarations()[z]->type << endl;
-      }
-      */
-
+      vector<long*> data_type_obj_holder;
       while(index < params_string.size()) {
 	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
 									(long*)op_stack, *stack_pos);
-	type_obj_array_ptr[i++] = (long)data_type_obj; 
-        switch(params_string[index]) {
+	data_type_obj_holder.push_back(data_type_obj);
+        
+	switch(params_string[index]) {
         case 'l':
 	  data_type_obj[0] = -1000;
 	  index++;
@@ -380,6 +363,23 @@ namespace Runtime {
 	// match ','
         index++;
       }
+      
+      // create type array
+      const long type_obj_array_size = (long)data_type_obj_holder.size();
+      const long type_obj_array_dim = 1;
+      long* type_obj_array = (long*)MemoryManager::Instance()->AllocateArray(type_obj_array_size +
+									     type_obj_array_dim + 2,
+									     INT_TYPE, op_stack,
+									     *stack_pos);
+      type_obj_array[0] = type_obj_array_size;
+      type_obj_array[1] = type_obj_array_dim;
+      type_obj_array[2] = type_obj_array_size;
+      long* type_obj_array_ptr = type_obj_array + 3;
+      // copy types objects
+      for(int i = 0; i < type_obj_array_size; i++) {
+	type_obj_array_ptr[i] = (long)data_type_obj_holder[i];
+      }
+      // set type array
       mthd_obj[3] = (long)type_obj_array;
       
       return mthd_obj;
