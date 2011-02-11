@@ -475,7 +475,20 @@ void StackInterpreter::Execute()
 #endif
       PopFloat();
       break;
-
+      
+    case OBJ_TYPE_OF: {
+      long* mem = (long*)PopInt();
+      long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+								program->GetHierarchy());
+      if(result) {
+	PushInt(1);
+      }
+      else {
+	PushInt(0);
+      }
+    }
+      break;
+      
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt();
       long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
