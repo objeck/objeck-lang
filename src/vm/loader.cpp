@@ -592,7 +592,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, OBJ_INST_CAST, to));
     }
       break;
-
+      
+    case OBJ_TYPE_OF: {
+      long check = ReadInt();
+      method->AddInstruction(new StackInstr(line_num, OBJ_TYPE_OF, check));
+    }
+      break;
+      
     case OR_INT:
       method->AddInstruction(new StackInstr(line_num, OR_INT));
       break;

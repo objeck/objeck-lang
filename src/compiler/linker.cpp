@@ -114,7 +114,7 @@ void Linker::ResloveExternalMethodCalls()
               exit(1);
             }
           }
-          break;
+	    break;
 
           case LIB_OBJ_INST_CAST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
@@ -127,9 +127,9 @@ void Linker::ResloveExternalMethodCalls()
               exit(1);
             }
           }
-          break;
+	    break;
 
-          // MTHD_CALL
+	    // MTHD_CALL
           case instructions::LIB_MTHD_CALL: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
@@ -150,7 +150,7 @@ void Linker::ResloveExternalMethodCalls()
               exit(1);
             }
           }
-          break;
+	    break;
           }
         }
       }
@@ -407,8 +407,8 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 
 #ifdef _DEBUG
     const string &msg = "(method: name=" + name + "; id=" + Linker::ToString(id) + "; num_params: " +
-                        Linker::ToString(params) + "; mem_size=" + Linker::ToString(mem_size) + "; is_native=" +
-                        Linker::ToString(is_native) +  "; is_debug=" + Linker::ToString(is_debug) + "]";
+      Linker::ToString(params) + "; mem_size=" + Linker::ToString(mem_size) + "; is_native=" +
+      Linker::ToString(is_native) +  "; is_debug=" + Linker::ToString(is_debug) + "]";
     Linker::Show(msg, 0, 1);
 #endif
 
@@ -466,14 +466,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case STOR_INT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
-    break;
+      break;
     
     case STOR_FUNC_VAR: {
       long id = ReadInt();
@@ -487,59 +487,59 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case COPY_INT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_INT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case COPY_FLOAT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
     }
-    break;
+      break;
 
     case NEW_INT_ARY: {
       INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
     }
-    break;
+      break;
 
     case NEW_FLOAT_ARY: {
       INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_FLOAT_ARY, dim));
     }
-    break;
+      break;
 
     case NEW_BYTE_ARY: {
       INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
-    break;
+      break;
 
     case NEW_OBJ_INST: {
       INT_VALUE obj_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
-    break;
+      break;
       
     case JMP: {
       INT_VALUE label = ReadInt();
       INT_VALUE cond = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, JMP, label, cond));
     }
-    break;
+      break;
 
     case LBL: {
       INT_VALUE id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LBL, id));
     }
-    break;
+      break;
 
     case MTHD_CALL: {
       int cls_id = ReadInt();
@@ -547,7 +547,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       int is_native = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
     }
-    break;
+      break;
 
     case DYN_MTHD_CALL: {
       int num_params = ReadInt();
@@ -564,7 +564,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_INST_CAST, cls_name));
     }
-    break;
+      break;
 
     case LIB_NEW_OBJ_INST: {
       const string& cls_name = ReadString();
@@ -574,7 +574,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_NEW_OBJ_INST, cls_name));
     }
-    break;
+      break;
 
     case LIB_MTHD_CALL: {
       int is_native = ReadInt();
@@ -586,55 +586,61 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name));
     }
-    break;
+      break;
 
     case OBJ_INST_CAST: {
       INT_VALUE to_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
     }
-    break;
-
+      break;
+      
+    case OBJ_TYPE_OF: {
+      INT_VALUE check_id = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
+    }
+      break;
+      
     case LOAD_BYTE_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case LOAD_INT_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case LOAD_FLOAT_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_BYTE_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_INT_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case STOR_FLOAT_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       INT_VALUE mem_context = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
-    break;
+      break;
 
     case RTRN:
       instrs.push_back(new LibraryInstr(line_num, RTRN));
@@ -884,7 +890,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 #endif
       exit(1);
     }
-    break;
+      break;
     }
     // update    
     type = ReadByte();

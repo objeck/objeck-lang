@@ -111,8 +111,9 @@ namespace instructions {
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
     NEW_OBJ_INST,
-    // casting
+    // casting & type check
     OBJ_INST_CAST,
+    OBJ_TYPE_OF,
     // external OS traps
     TRAP,
     TRAP_RTRN,

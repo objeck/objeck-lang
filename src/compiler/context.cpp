@@ -1648,16 +1648,22 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
  ****************************/
 void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
 {
-  Type* cast_type = expression->GetCastType();
-  if(cast_type) {
+  // cast
+  if(expression->GetCastType()) {
+    Type* cast_type = expression->GetCastType();    
     // cannot cast across different dimensions
     if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() &&
-      cast_type->GetDimension() != expression->GetBaseType()->GetDimension()) {
+       cast_type->GetDimension() != expression->GetBaseType()->GetDimension()) {
       ProcessError(expression, "Dimension size mismatch");
-    }
-
+    }    
     AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
-    // expression->SetEvalType(cast_type, false);
+  }
+  // typeof
+  else if(expression->GetTypeOf()) {
+    if(expression->GetTypeOf()->GetType() == NIL_TYPE || expression->GetTypeOf()->GetType() == VAR_TYPE) {
+      ProcessError(expression, "Invalid 'typeof' check");
+    }
+    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
   }
 }
 
