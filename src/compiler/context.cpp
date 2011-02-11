@@ -1660,8 +1660,24 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
   }
   // typeof
   else if(expression->GetTypeOf()) {
-    if(expression->GetTypeOf()->GetType() == NIL_TYPE || expression->GetTypeOf()->GetType() == VAR_TYPE) {
-      ProcessError(expression, "Invalid 'typeof' check");
+    if(expression->GetTypeOf()->GetType() != CLASS_TYPE || 
+       expression->GetEvalType()->GetType() != CLASS_TYPE) {
+      ProcessError(expression, "Invalid 'TypeOf' check, only complex classes are supported");
+    }
+    
+    Type* type_of = expression->GetTypeOf();
+    if(SearchProgramClasses(type_of->GetClassName())) {
+      Class* klass = SearchProgramClasses(type_of->GetClassName());
+      klass->SetCalled(true);
+      type_of->SetClassName(klass->GetName());
+    }
+    else if(linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses())) {
+      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses());
+      lib_klass->SetCalled(true);
+      type_of->SetClassName(lib_klass->GetName());
+    }
+    else {
+      ProcessError(expression, "Invalid 'TypeOf' check, unknown class '" + type_of->GetClassName() + "'");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
   }
