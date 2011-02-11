@@ -2247,8 +2247,20 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     }
   }
   else if(expression->GetTypeOf()) {
+    frontend::Type* type_of = expression->GetTypeOf();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF,
-									       expression->GetTypeOf()->GetType()));
+									       type_of->GetType()));
+    if(type_of->GetType() == frontend::CLASS_TYPE) {
+      if(SearchProgramClasses(type_of->GetClassName())) {
+	// TODO: wascalled(true) in context check
+	int id = SearchProgramClasses(type_of->GetClassName())->GetId();
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, id));
+      }
+      else {
+      	int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, id));
+      }
+    }
   }
 }
 
