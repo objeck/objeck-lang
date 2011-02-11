@@ -2213,9 +2213,9 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 void IntermediateEmitter::EmitCast(Expression* expression)
 {
   cur_line_num = expression->GetLineNumber();
-
-  frontend::Type* cast_type = expression->GetCastType();
-  if(cast_type) {
+  
+  if(expression->GetCastType()) {
+    frontend::Type* cast_type = expression->GetCastType();
     Type* base_type;
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
       MethodCall* call = static_cast<MethodCall*>(expression);
@@ -2245,6 +2245,10 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       }
       break;
     }
+  }
+  else if(expression->GetTypeOf()) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF,
+									       expression->GetTypeOf()->GetType()));
   }
 }
 

@@ -1,8 +1,8 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			a := 62.5->TypeOf(Char);
-			a->PrintLine();
+			a : Bool := 62.5->TypeOf(String);
+#			a->PrintLine();
 		}
 	}
 }
