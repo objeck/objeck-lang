@@ -921,6 +921,19 @@ namespace Runtime {
 	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
+
+      case OBJ_TYPE_OF: {
+	long* mem = (long*)PopInt(op_stack, stack_pos);
+	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+								  program->GetHierarchy());
+	if(result) {
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
 	
       case OBJ_INST_CAST: {
 	int32_t* mem = (int32_t*)PopInt(op_stack, stack_pos);
@@ -1649,7 +1662,7 @@ namespace Runtime {
 	  vector<string> files = File::ListDir(name);
 
 	  // create 'System.String' object array
-	  const xlong str_obj_array_size = files.size();
+	  const long str_obj_array_size = files.size();
 	  const long str_obj_array_dim = 1;  
 	  long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
 										str_obj_array_dim + 2, 

@@ -1,8 +1,12 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
 			s := "xxx";
-			a : Bool := s->TypeOf(Int);
+			a : Bool := s->TypeOf(Method);
 #			a->PrintLine();
 		}
 	}
