@@ -580,6 +580,10 @@ public:
       cout << "OBJ_INST_CAST: to=" << operand << endl;
       break;
 
+    case OBJ_TYPE_OF:
+      cout << "OBJ_TYPE_OF: check=" << operand << endl;
+      break;
+      
     case NEW_FLOAT_ARY:
       cout << "NEW_FLOAT_ARY: dimension=" << operand << endl;
       break;
