@@ -1,7 +1,8 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			a : Bool := 62.5->TypeOf(Introspection.Class);
+			s := "xxx";
+			a : Bool := s->TypeOf(Int);
 #			a->PrintLine();
 		}
 	}
