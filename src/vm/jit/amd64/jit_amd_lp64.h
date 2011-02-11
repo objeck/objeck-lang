@@ -1110,6 +1110,19 @@ namespace Runtime {
       }
 	break;
 	
+      case OBJ_TYPE_OF: {
+	long* mem = (long*)PopInt(op_stack, stack_pos);
+	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+								  program->GetHierarchy());
+	if(result) {
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
+	
       case OBJ_INST_CAST: {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
 	long to_id = instr->GetOperand();

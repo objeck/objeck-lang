@@ -669,6 +669,15 @@ void JitCompilerIA64::ProcessInstructions() {
 #endif
       ProcessIntToFloat(instr);
       break;
+
+    case OBJ_TYPE_OF: {
+#ifdef _DEBUG
+      cout << "OBJ_TYPE_OF: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(OBJ_TYPE_OF, instr, instr_index, 1);
+      ProcessReturnParameters(INT_TYPE);
+    }
+      break;
       
     case OBJ_INST_CAST: {
 #ifdef _DEBUG
