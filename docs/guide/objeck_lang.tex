@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{1.4.0\_0}.  For
+  functionality that is included in release \textit{1.4.1\_0}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://sourceforge.net/projects/objeck-lang/}
   and
@@ -544,6 +544,17 @@ method : public : Compare(right : Base) ~ Int {
     ...	
 \end{verbatim}
 
+To determine if an object instance is of a certain class type it's
+\texttt{TypeOf} method can be invoked.  This method will return
+\texttt{true} if the instance is of the same or a derived type,
+\texttt{false} otherwise.  This method can be used to check a class
+instance type before casting it.
+
+\begin{verbatim}
+s := "aString";
+s->TypeOf(String)->PrintLine();
+\end{verbatim}
+
 The class that a given object instance belongs to can found by calling
 its \texttt{GetClassID} method.  This method returns an enum that is
 associated with that instance's class type.  This method is generally
@@ -727,6 +738,10 @@ are added they will be documented in this section.
 \subsubsection{Base}
 Base class for all objects.
 \begin{itemize}
+\item \texttt{GetClass} - returns metadata about a class
+  \begin{itemize}
+  \item method : public : GetClass, Class
+  \end{itemize}
 \item \texttt{GetClassID} - returns the class ID
   \begin{itemize}
   \item method : public : native : GetClassID(), ClassID
@@ -1015,6 +1030,106 @@ Base class for all objects.
   \end{itemize}
 \end{itemize}
 
+\subsubsection{Bool}
+\begin{itemize}
+\item \texttt{Print} - prints the current value
+  \begin{itemize}
+  \item method : native : Print(), Nil
+  \end{itemize}
+\item \texttt{PrintLine} - prints the current value along with a line
+  return
+  \begin{itemize}
+  \item method : native : PrintLine(), Nil
+  \end{itemize}
+\item \texttt{ToString} - converts the current value to a
+  \texttt{String} object instance
+  \begin{itemize}
+  \item method : native : ToString(), String
+  \end{itemize}
+\end{itemize}
+
+\subsection{Introspection}
+\subsubsection{Class}
+\begin{itemize}
+\item New(c : String)
+\item \texttt{IsLoaded} - returns true if this class has been loaded
+  \begin{itemize}
+  \item method : public : IsLoaded(), Bool
+  \end{itemize}
+\item \texttt{IsLoaded} - returns true if this class has been loaded,
+  false otherwise
+  \begin{itemize}
+  \item method : public : IsLoaded(), Bool
+  \end{itemize}
+\item \texttt{GetName} - returns the name of the class
+  \begin{itemize}
+  \item method : public : GetName(), String
+  \end{itemize}
+\item \texttt{GetMethods} - returns an array of methods
+  \begin{itemize}
+  \item method : public : GetMethods(), GetMethods[]
+  \end{itemize}
+\item \texttt{GetMethodNumber} - returns the number of methods in the class
+  \begin{itemize}
+  \item method : public : GetMethodNumber(), Int
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Method}
+\begin{itemize}
+
+\item \texttt{GetClass} - returns class assoicated with the method
+  \begin{itemize}
+  \item method : public : GetClass(), Class
+  \end{itemize}
+
+\item \texttt{GetName} - returns the pretty name of the method
+  \begin{itemize}
+  \item method : public : GetName(), String
+  \end{itemize}
+
+\item \texttt{GetParameters} - returns the datatypes of the parameters
+  \begin{itemize}
+  \item method : public : GetParameters(), DataType[]
+  \end{itemize}
+
+\item \texttt{GetReturn} - returns the datatype of the return
+  \begin{itemize}
+  \item method : public : GetReturn(), DataType
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{DataType}
+\begin{itemize}
+
+\item \texttt{GetType} - returns the type ID
+  \begin{itemize}
+  \item method : public : GetType(), TypeId
+  \end{itemize}
+
+\item \texttt{GetDimension} - returns dimensions of the datatype
+  \begin{itemize}
+  \item method : public : GetDimension(), Int
+  \end{itemize}
+
+\item \texttt{GetClassName} - returns string name of non-basic
+  objects, Nil otherwise
+  \begin{itemize}
+  \item method : public : GetClassName(), String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TypeId}
+ \begin{itemize}
+ \item BOOL
+ \item BYTE
+ \item CHAR
+ \item INT
+ \item FLOAT
+ \item CLASS
+ \item FUNC
+ \end{itemize}
+ 
 \subsection{Data Structures}
 Please note that these classes are in the `Structure' bundle.
 \subsubsection{Compare}
