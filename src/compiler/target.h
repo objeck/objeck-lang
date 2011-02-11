@@ -192,6 +192,7 @@ public:
     case NEW_BYTE_ARY:
     case NEW_OBJ_INST:
     case OBJ_INST_CAST:
+    case OBJ_TYPE_OF:
     case TRAP:
     case TRAP_RTRN:
       WriteInt(operand, file_out);
