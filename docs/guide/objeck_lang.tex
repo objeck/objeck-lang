@@ -97,7 +97,6 @@ obc -src examples/xml_parser.obs -lib struct.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
-\begin{center}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Option} & \emph{Description} \\ \hline \hline
@@ -109,7 +108,6 @@ Additional compiler options are:
     \texttt{-dest} & output file name \\ \hline
     \texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
   \end{tabular}
-\end{center}
 
 \subsection{Executing}
 The command-line example below executes the \texttt{hello.obe}
@@ -130,7 +128,6 @@ Let's first start with a list of keywords that exist in language.
 These words are reserved for the language and may not be used as
 variable, class or enum identifiers.
 
-\begin{center}
   \begin{tabular}{ | c | c | c | c | c | }
     \hline
     \multicolumn{5}{|c|}{\emph{Keywords}} \\ \hline \hline
@@ -140,10 +137,9 @@ variable, class or enum identifiers.
     for & from & function & if & Int \\ \hline
     interface & label & method & native & New \\ \hline
     or & other & Parent & private & public \\ \hline
-    return & select & static & true & use \\ \hline
-    virtual & --- & while & --- & xor \\ \hline
+    return & select & static & true & TypeOf \\ \hline
+    use & virtual & --- & while & xor \\ \hline
   \end{tabular}
-\end{center}
 
 In Objeck, all data types (excluding higher-order functions) are
 treated as objects. Basic objects provide supports for boolean,
@@ -151,7 +147,6 @@ character, byte, integer and decimal types.  These basic objects can
 be used to create more complex user defined objects.  The listing
 below defines the basic objects that are supported in the language:
 
-\begin{center}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
@@ -167,7 +162,6 @@ below defines the basic objects that are supported in the language:
     \texttt{Float[]} &  decimal array \\ \hline
     \texttt{Function} &  Two 4--byte integers \\ \hline
   \end{tabular}
-\end{center}
 
 As mentioned above, basic types are objects and have associated
 methods for each basic class type.  For example:
@@ -205,7 +199,6 @@ Types that are not initialized at declaration time are initialized
 with the following default values:
 
 \vspace{\baselineskip}
-\begin{center}
   \begin{tabular}{| l | c |}
     \hline
     \emph{Type} & \emph{Initialization} \\ \hline \hline
@@ -217,7 +210,6 @@ with the following default values:
     Object & \texttt{Nil} \\ \hline
     Function & \texttt{Nil} \\ \hline
   \end{tabular}
-\end{center}
 
 \subsection{Expressions}
 The Objeck language supports various type of expressions.  Some of
@@ -706,7 +698,6 @@ instance level variables the path must start with
 \texttt{@self$\rightarrow$}.
 
 \subsection{Debugging Commands}
-\begin{center}
   \begin{tabular}{| l |p{4 cm} |p{6 cm} |}
     \hline
     \emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
@@ -726,7 +717,6 @@ instance level variables the path must start with
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
     \texttt{[q]uit} &  exits a given debugging session &  \\ \hline
   \end{tabular}
-\end{center}
 
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system
@@ -2195,7 +2185,6 @@ executed by the Objeck VM.  The VM was designed to be portable and
 language independent.  Early development versions of the VM included
 an inline assembler, which may be re-added in future releases.
 
-\begin{center}
   \begin{tabular}{| l | l | p{6 cm} |}
     \hline
     \multicolumn{3}{|c|}{\textbf{Stack Operators}} \\
@@ -2292,6 +2281,7 @@ an inline assembler, which may be re-added in future releases.
     NEW\_INT\_ARY & array dimension & pushes address of new integer array \\ \hline
     NEW\_FLOAT\_ARY & array dimension & pushes address of new float array \\ \hline
     NEW\_OBJ\_INST & integer value for class id & pushes address of new class instance \\ \hline
+    OBJ\_TYPE\_OF & integer value of ``check'' class & performs runtime object instance check \\ \hline
     OBJ\_INST\_CAST & integer values for ``from'' class and ``to'' class & performs runtime class cast check (note: only required for up casting) \\ \hline
   \end{tabular}
 
@@ -2311,7 +2301,5 @@ an inline assembler, which may be re-added in future releases.
     LIB\_MTHD\_CALL & n/a & symbolic library link for a method call  \\ \hline
     LIB\_OBJ\_INST\_CAST & n/a & symbolic library link for an object cast  \\ \hline
   \end{tabular}
-
-\end{center}
 
 \end{document}
