@@ -42,7 +42,7 @@ using namespace std;
  * Starts the compilation
  * process.
  ****************************/
-int Compile(map<const string, string> arguments, const string usage)
+int Compile(map<const string, string> &arguments, list<string> &argument_options, const string usage)
 {
   // check source input
   map<const string, string>::iterator result = arguments.find("src");
@@ -50,18 +50,24 @@ int Compile(map<const string, string> arguments, const string usage)
     cerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
+  argument_options.remove("src");
+  
   // check program output
   result = arguments.find("dest");
   if(result == arguments.end()) {
     cerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
+  argument_options.remove("dest");
+  
   // check program libraries path
   string libs_path = "lang.obl";
   result = arguments.find("lib");
   if(result != arguments.end()) {
     libs_path += "," + result->second;
+    argument_options.remove("lib");
   }
+  
   // check for optimize flag
   string optimize;
   result = arguments.find("opt");
@@ -72,7 +78,9 @@ int Compile(map<const string, string> arguments, const string usage)
       cerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
+    argument_options.remove("opt");
   }
+  
   // check program libraries path
   string target;
   result = arguments.find("tar");
@@ -82,12 +90,20 @@ int Compile(map<const string, string> arguments, const string usage)
       cerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
+    argument_options.remove("tar");
   }
+  
   // check for debug flag
   bool is_debug = false;
   result = arguments.find("debug");
   if(result != arguments.end()) {
     is_debug = true;
+    argument_options.remove("debug");
+  }
+
+  if(argument_options.size() != 0) {
+    cerr << usage << endl << endl;
+    return COMMAND_ERROR;
   }
   
   // parse source code

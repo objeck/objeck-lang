@@ -37,6 +37,7 @@
 #include "../shared/version.h"
 #include <iostream>
 #include <string>
+#include <list>
 #include <map>
 
 using namespace std;
@@ -75,6 +76,7 @@ int main(int argc, char* argv[])
     // parse path
     int end = (int)path.size();
     map<const string, string> arguments;
+    list<string> argument_options;
     int pos = 0;
     while(pos < end) {
       // ignore leading white space
@@ -119,6 +121,7 @@ int main(int argc, char* argv[])
 	else {
 	  value = path.substr(start, pos - start);
 	}
+	argument_options.push_back(key);
 	arguments.insert(pair<string, string>(key, value));
       } 
       else {
@@ -134,7 +137,7 @@ int main(int argc, char* argv[])
       }
     }
     // compile source
-    status = Compile(arguments, usage);
+    status = Compile(arguments, argument_options, usage);
   } 
   else {
     cerr << usage << endl << endl;
