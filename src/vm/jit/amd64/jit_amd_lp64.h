@@ -1291,7 +1291,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    instance[0] = NULL;
 	    IPSocket::Close(sock);
 	  }
@@ -1304,7 +1304,7 @@ namespace Runtime {
 	  SOCKET sock = (SOCKET)instance[0];
 	  char* data = (char*)(array + 3);
     
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    IPSocket::WriteBytes(data, strlen(data), sock);
 	  }
 	}
@@ -1318,7 +1318,7 @@ namespace Runtime {
 	  SOCKET sock = (SOCKET)instance[0];
 
 	  int status;
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    int index = 0;
 	    BYTE_VALUE value;
 	    bool end_line = false;

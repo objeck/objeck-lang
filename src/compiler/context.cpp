@@ -2980,7 +2980,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
       }
     }
     // library
-    else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses()) && right) {
+    else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
       LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
       if(left_enum->GetName() != right_lib_enum->GetName()) {
         ProcessError(expression, "Invalid cast between enums: '" +
@@ -2995,7 +2995,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program class
   //
-  else if(SearchProgramClasses(left->GetClassName()) && right) {
+  else if(SearchProgramClasses(left->GetClassName())) {
     Class* left_class = SearchProgramClasses(left->GetClassName());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
@@ -3025,7 +3025,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(right_lib_class->IsInterface() || ValidUpCast(left_class->GetName(), right_lib_class)) {
+      else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_class->GetName(), right_lib_class))) {
         expression->SetToClass(left_class);
         return;
       }
@@ -3098,7 +3098,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
         return;
       }
       // upcast
-      else if(right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class)) {
+      else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class))) {
         expression->SetToLibraryClass(left_lib_class);
         return;
       }
