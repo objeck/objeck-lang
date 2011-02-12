@@ -35,7 +35,6 @@
 #include "linker.h"
 #include "types.h"
 #include "tree.h"
-#include "context.h"
 
 using namespace frontend;
 

@@ -1129,7 +1129,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    instance[0] = NULL;
 	    IPSocket::Close(sock);
 	  }
@@ -1142,7 +1142,7 @@ namespace Runtime {
 	  SOCKET sock = (SOCKET)instance[0];
 	  char* data = (char*)(array + 3);
     
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    IPSocket::WriteBytes(data, strlen(data), sock);
 	  }
 	}
@@ -1156,7 +1156,7 @@ namespace Runtime {
 	  SOCKET sock = (SOCKET)instance[0];
 
 	  int status;
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    int index = 0;
 	    BYTE_VALUE value;
 	    bool end_line = false;
@@ -1405,7 +1405,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  SOCKET sock = (SOCKET)instance[0];
     
-	  if(sock >= 0) {
+	  if(sock > -1) {
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
@@ -1430,7 +1430,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  SOCKET sock = (SOCKET)instance[0];
     
-	  if(sock >= 0 && offset + num < array[0]) {
+	  if(sock > -1 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
 	  }
@@ -1457,7 +1457,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  SOCKET sock = (SOCKET)instance[0];
 
-	  if(sock >= 0 && offset + num < array[0]) {
+	  if(sock > -1 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
 	  } 
