@@ -1,6 +1,7 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
+			Run2();
 			Run();
 		}
 
@@ -12,10 +13,10 @@ bundle Default {
 		function : native : Run2() ~ Nil {
 			s := "xxx";
 			if(s->TypeOf(String)) {
-				"true"->PrintLine();
+				">> true <<"->PrintLine();
 			}
 			else {
-				"false"->PrintLine();
+				">> false <<"->PrintLine();
 			};
 		}
 	}

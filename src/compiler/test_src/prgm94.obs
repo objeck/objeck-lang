@@ -1,0 +1,16 @@
+bundle Default {
+	class Hello {
+		function : Foo() ~ Int {
+			return 10;
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			a : Int := Foo();
+			a := 9;
+#~
+			if(a < 10) {
+			};
+~#
+		}
+	}
+}
