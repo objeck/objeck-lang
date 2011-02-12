@@ -5,9 +5,18 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
+			c := Class->New("System.String");
+			c->IsLoaded()->PrintLine();
+		}
+
+		function : native : Run2() ~ Nil {
 			s := "xxx";
-			a : Bool := s->TypeOf(Method);
-#			a->PrintLine();
+			if(s->TypeOf(String)) {
+				"true"->PrintLine();
+			}
+			else {
+				"false"->PrintLine();
+			};
 		}
 	}
 }
