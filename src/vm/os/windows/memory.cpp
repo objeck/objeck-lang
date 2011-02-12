@@ -181,10 +181,13 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #endif
 
   // zero out memory
+  /*
   const long size = offset / sizeof(long);
   for(int i = 0; i < size; i++) {
     mem[i] = 0;
   }
+  */
+  memset(mem, 0, offset);
 
   ClassMethodId* mthd_info = new ClassMethodId;
   mthd_info->self = self;
