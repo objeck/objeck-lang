@@ -275,10 +275,12 @@ Enum* Parser::ParseEnum(int depth)
   if(Match(TOKEN_ASSIGN)) {
     NextToken();
     Expression* label = ParseSimpleExpression(depth + 1);
-    if(label->GetExpressionType() != INT_LIT_EXPR) {
-      ProcessError("Expected integer", TOKEN_CLOSED_PAREN);
+    if(label) {
+      if(label->GetExpressionType() != INT_LIT_EXPR) {
+        ProcessError("Expected integer", TOKEN_CLOSED_PAREN);
+      }
+      offset = static_cast<IntegerLiteral*>(label)->GetValue();
     }
-    offset = static_cast<IntegerLiteral*>(label)->GetValue();
   }
 
   if(!Match(TOKEN_OPEN_BRACE)) {
@@ -2020,7 +2022,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   // subsequent method calls
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-    if(expression->GetExpressionType() == VAR_EXPR) {
+    if(expression && expression->GetExpressionType() == VAR_EXPR) {
       expression = ParseMethodCall(static_cast<Variable*>(expression), depth + 1);
     } else {
       ParseMethodCall(expression, depth + 1);
