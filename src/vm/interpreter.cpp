@@ -1718,12 +1718,30 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     PushInt(MemoryManager::Instance()->GetObjectID((long*)PopInt()));
     break;
 
+  case LOAD_CLS_BY_NAME: {
+#ifdef _DEBUG
+    cout << "stack oper: LOAD_CLS_BY_NAME; call_pos=" << call_stack_pos << endl;
+#endif
+    long* cls_str_obj = (long*)frame->GetMemory()[1];
+    if(cls_str_obj) {
+      long* char_ary = (long*)cls_str_obj[0];
+      // set name and 'Class' instance
+      const char* cls_name_ptr = (char*)(char_ary + 3);  
+      long* cls_obj = (long*)frame->GetMemory()[0];
+      cls_obj[0] = (long)CreateStringObject(cls_name_ptr);
+      StackClass* cls = program->GetClass(cls_name_ptr);
+      if(cls) {
+	CreateClassObject(cls, cls_obj);
+      }
+    }
+  }
+    break;
+    
   case LOAD_CLS_BY_INST: {
-    // TODO: check for memory access; valigrind
 #ifdef _DEBUG
     cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos << endl;
 #endif
-
+    
     long* inst = (long*)frame->GetMemory()[0];
     StackClass* cls = MemoryManager::Instance()->GetClass(inst);
     if(!cls) {
@@ -1731,34 +1749,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
         StackErrorUnwind();
         exit(1);
     }
-    
-    // set class name
+    /// set name and create 'Class' instance
     long* cls_obj = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
-							       (long*)op_stack, *stack_pos);
+							      (long*)op_stack, *stack_pos);
     cls_obj[0] = (long)CreateStringObject(cls->GetName());
-    
-    // create and set methods
-    const long mthd_obj_array_size = cls->GetMethodCount();
-    const long mthd_obj_array_dim = 1;
-    long* mthd_obj_array = (long*)MemoryManager::Instance()->AllocateArray(mthd_obj_array_size +
-									   mthd_obj_array_dim + 2,
-									   INT_TYPE, op_stack,
-									   *stack_pos);
-
-    mthd_obj_array[0] = mthd_obj_array_size;
-    mthd_obj_array[1] = mthd_obj_array_dim;
-    mthd_obj_array[2] = mthd_obj_array_size;
-    long* mthd_obj_array_ptr = mthd_obj_array + 3;
-
-    StackMethod** methods = cls->GetMethods();
-    for(int i = 0; i < mthd_obj_array_size; i++) {
-      long* mthd_obj = CreateMethodObject(cls_obj, methods[i]);
-      mthd_obj_array_ptr[i] = (long)mthd_obj;
-    }
-    cls_obj[1] = (long)mthd_obj_array;
-    
-    // TODO
     frame->GetMemory()[1] = (long)cls_obj;
+    CreateClassObject(cls, cls_obj);
   }
     break;
     

@@ -259,6 +259,37 @@ namespace Runtime {
       return index;
     }
     
+    void CreateClassObject(StackClass* cls, long* cls_obj) {
+      /*
+      // set class name
+      long* cls_obj = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
+								(long*)op_stack, *stack_pos);
+      cls_obj[0] = (long)CreateStringObject(cls->GetName());
+      frame->GetMemory()[1] = (long)cls_obj;
+      */
+      
+      // create and set methods
+      const long mthd_obj_array_size = cls->GetMethodCount();
+      const long mthd_obj_array_dim = 1;
+      long* mthd_obj_array = (long*)MemoryManager::Instance()->AllocateArray(mthd_obj_array_size +
+									     mthd_obj_array_dim + 2,
+									     INT_TYPE, op_stack,
+									     *stack_pos);
+      
+      mthd_obj_array[0] = mthd_obj_array_size;
+      mthd_obj_array[1] = mthd_obj_array_dim;
+      mthd_obj_array[2] = mthd_obj_array_size;
+      
+      StackMethod** methods = cls->GetMethods();
+      long* mthd_obj_array_ptr = mthd_obj_array + 3;
+      for(int i = 0; i < mthd_obj_array_size; i++) {
+	long* mthd_obj = CreateMethodObject(cls_obj, methods[i]);
+	mthd_obj_array_ptr[i] = (long)mthd_obj;
+      }
+      cls_obj[1] = (long)mthd_obj_array;
+
+    }
+    
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
 								 (long*)op_stack, *stack_pos);
