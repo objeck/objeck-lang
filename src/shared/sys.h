@@ -39,11 +39,17 @@
 #define int32_t __int32
 #endif
 
+#ifdef _MINGW
+#define BYTE_VALUE unsigned char
+#define CHAR_VALUE char
+#define INT_VALUE int
+#define FLOAT_VALUE double
+#else
 #define BYTE_VALUE uint8_t
 #define CHAR_VALUE int8_t
 #define INT_VALUE int32_t
 #define FLOAT_VALUE double
-
+#endif
 
 namespace instructions {
   // vm types
