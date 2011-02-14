@@ -566,10 +566,6 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       current_class->SetVirtual(true);
     }
 
-    if(virtual_requried && !is_virtual) {
-      ProcessError("Method or function must be declared as virtual", TOKEN_IDENT);
-    }
-
     // public/private methods
     if(Match(TOKEN_PUBLIC_ID)) {
       method_type = PUBLIC_METHOD;
@@ -643,10 +639,14 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       ProcessError(TOKEN_SEMI_COLON);
     }
     NextToken();
-  } else {
+  } 
+  else if(virtual_requried && !is_virtual) {
+    ProcessError("Method or function must be declared as virtual", TOKEN_SEMI_COLON);
+  }
+  else {
     method->SetStatements(ParseStatementList(depth + 1));
   }
-
+  
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = NULL;
 
