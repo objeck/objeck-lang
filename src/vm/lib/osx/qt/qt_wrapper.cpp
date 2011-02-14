@@ -80,19 +80,30 @@ extern "C" {
     }
   }
   
-  void qt_qhboxlayout_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
-    QHBoxLayout* layout = new QHBoxLayout;
+  void qt_qboxlayout_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+    QBoxLayout::Direction direction = (QBoxLayout::Direction)DLLTools_GetIntValue(data_array, 1);
+    QBoxLayout* layout = new QBoxLayout(direction);
 #ifdef _DEBUG
-    cout << "@@@@ qt_qhboxlayout_new: " << layout << " @@@@" << endl;
+    cout << "@@@@ qt_qboxlayout_new: " << layout << " @@@@" << endl;
 #endif
     DLLTools_SetIntValue(data_array, 0, (long)layout);
   }
 
-  void qt_qhboxlayout_addwidget(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+  void qt_qboxlayout_new_1(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+    QBoxLayout::Direction direction = (QBoxLayout::Direction)DLLTools_GetIntValue(data_array, 1);
+    QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 2);
+    QBoxLayout* layout = new QBoxLayout(direction, widget);
 #ifdef _DEBUG
-    cout << "@@@@ qt_qhboxlayout_addwidget @@@@" << endl;
+    cout << "@@@@ qt_qboxlayout_new_1: " << layout << " @@@@" << endl;
 #endif
-    QHBoxLayout* layout = (QHBoxLayout*)DLLTools_GetIntValue(data_array, 0);
+    DLLTools_SetIntValue(data_array, 0, (long)layout);
+  }
+  
+  void qt_qboxlayout_addwidget(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_qboxlayout_addwidget @@@@" << endl;
+#endif
+    QBoxLayout* layout = (QBoxLayout*)DLLTools_GetIntValue(data_array, 0);
     if(layout) {
       QWidget* widget = (QWidget*)DLLTools_GetStringValue(data_array, 1);
       layout->addWidget(widget);
