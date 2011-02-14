@@ -148,7 +148,7 @@ class Parser {
   string ParseBundleName(int depth);
   Class* ParseClass(const string &bundle_id, int depth);
   Class* ParseInterface(const string &bundle_id, int depth);
-  Method* ParseMethod(bool is_function, int depth);
+  Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Variable* ParseVariable(const string &ident, int depth);
   MethodCall* ParseMethodCall(int depth);
   MethodCall* ParseMethodCall(const string &ident, int depth);

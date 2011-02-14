@@ -79,6 +79,17 @@ extern "C" {
       widget->show();
     }
   }
+
+
+  void qt_pushbutton_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+    QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 1);
+    QPushButton* button = new QPushButton(widget);
+#ifdef _DEBUG
+    cout << "@@@@ qt_pushbutton_new: " << button << " @@@@" << endl;
+#endif
+    DLLTools_SetIntValue(data_array, 0, (long)button);
+  }
+
   
   void qt_qboxlayout_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
     QBoxLayout::Direction direction = (QBoxLayout::Direction)DLLTools_GetIntValue(data_array, 1);

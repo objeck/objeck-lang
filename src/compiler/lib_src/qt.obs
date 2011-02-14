@@ -1,6 +1,40 @@
 use Structure;
 
 bundle Qt {
+	# QAbstractButton interface
+	interface QAbstractButton {
+		method : public : SetText(text : String) ~ Nil;
+#		method : virtual : public : SetText(text : String) ~ Nil;
+	}
+	
+	class QPushButton from QObject implements QAbstractButton {
+		New() {
+			Parent();
+			if(@native_ptr = 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := Nil;
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_pushbutton_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+		
+		New(parent : QWidget) {
+			Parent();
+			if(@native_ptr = 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := parent;
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_pushbutton_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+	}
+	
 	# QLayout interface
 	interface QLayout {
 	}
