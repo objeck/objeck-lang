@@ -80,6 +80,16 @@ extern "C" {
     }
   }
 
+  void qt_pushbutton_set_text(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
+#ifdef _DEBUG
+    cout << "@@@@ qt_pushbutton_set_text @@@@" << endl;
+#endif
+    QPushButton* button = (QPushButton*)DLLTools_GetIntValue(data_array, 0);
+    if(button) {
+      const char* text = DLLTools_GetStringValue(data_array, 1);
+      button->setText(text);
+    }
+  }
 
   void qt_pushbutton_new(long* data_array, long* op_stack, long *stack_pos, DLLTools_MethodCall_Ptr callback) {
     QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 1);
@@ -127,7 +137,7 @@ extern "C" {
 #endif
     QWidget* widget = (QWidget*)DLLTools_GetIntValue(data_array, 0);
     if(widget) {
-      char* title = DLLTools_GetStringValue(data_array, 1);
+      const char* title = DLLTools_GetStringValue(data_array, 1);
       widget->setWindowTitle(title);
     }
   }
