@@ -14,24 +14,45 @@ bundle Qt {
 		}
 	}
 	
-	# QLayout class
-	class QLayout from QObject {
-		New() {
-			Parent();
-			if(@native_ptr = 0) {
-			};
-		}
+	# QLayout interface
+	interface QLayout {
 	}
 	
-	# QHBoxLayout class
-	class QHBoxLayout from QLayout {
-		New() {
+	# QLayoutItem interface
+	interface QLayoutItem {
+	}
+	
+	# QBoxLayout class
+	enum LayoutDirection := 0 {
+		LeftToRight, 
+		RightToLeft, 
+		TopToBottom, 
+		BottomToTop
+	}
+	
+	class QBoxLayout from QObject implements QLayout, QLayoutItem {
+		New(direction : LayoutDirection) {
 			Parent();
 			if(@native_ptr = 0) {
-				array_args := Base->New[1];
+				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(direction->As(Int));
 				@lib_proxy := QWidget->GetDllProxy();
-				@lib_proxy->CallFunction("qt_qhboxlayout_new", array_args);
+				@lib_proxy->CallFunction("qt_qboxlayout_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+		
+		New(direction : LayoutDirection, parent : QWidget) {
+			Parent();
+			if(@native_ptr = 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(direction->As(Int));
+				array_args[2] := parent;
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_qboxlayout_new_1", array_args);
 				rtrn_value := array_args[0]->As(IntHolder);
 				@native_ptr := rtrn_value->Get();
 			};
@@ -42,7 +63,7 @@ bundle Qt {
 			array_args[0] := IntHolder->New(@native_ptr);
 			array_args[1] := widget;
 			@lib_proxy := QWidget->GetDllProxy();
-			@lib_proxy->CallFunction("qt_qhboxlayout_addwidget", array_args);
+			@lib_proxy->CallFunction("qt_qboxlayout_addwidget", array_args);
 		}
 	}
 	
