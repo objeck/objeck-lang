@@ -1,19 +1,6 @@
 use Structure;
 
 bundle Qt {
-	# callback method holder
-	class CallbackHolder {
-		@callback : (GtkWidget) ~ Nil;
-
-		New(callback : (GtkWidget) ~ Nil) {
-			@callback := callback;
-		}
-
-		method : public : Get() ~ (GtkWidget) ~ Nil {
-			return @callback;
-		}
-	}
-	
 	# QLayout interface
 	interface QLayout {
 	}
@@ -72,12 +59,14 @@ bundle Qt {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
 		
+#~		
 		New() {	
 			if(@native_ptr = 0) {
-#	TODO
+				#	TODO
 			};
 		}
-		
+~#
+
 		function : Connect(sender : QObject, signal : String, recv : QObject, mthd : String) ~ Nil {
 			array_args := Base->New[4];
 			array_args[0] := sender;
