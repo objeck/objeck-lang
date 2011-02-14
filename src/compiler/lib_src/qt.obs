@@ -3,26 +3,12 @@ use Structure;
 bundle Qt {
 	# QAbstractButton interface
 	interface QAbstractButton {
-		method : public : SetText(text : String) ~ Nil;
-#		method : virtual : public : SetText(text : String) ~ Nil;
+		method : virtual : public : SetText(text : String) ~ Nil;
 	}
 	
-	class QPushButton from QObject implements QAbstractButton {
-		New() {
-			Parent();
-			if(@native_ptr = 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New();
-				array_args[1] := Nil;
-				@lib_proxy := QWidget->GetDllProxy();
-				@lib_proxy->CallFunction("qt_pushbutton_new", array_args);
-				rtrn_value := array_args[0]->As(IntHolder);
-				@native_ptr := rtrn_value->Get();
-			};
-		}
-		
+	class QPushButton from QWidget implements QAbstractButton {
 		New(parent : QWidget) {
-			Parent();
+			Parent(false);
 			if(@native_ptr = 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
@@ -32,6 +18,14 @@ bundle Qt {
 				rtrn_value := array_args[0]->As(IntHolder);
 				@native_ptr := rtrn_value->Get();
 			};
+		}
+		
+		method : public : SetText(text : String) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := text;
+			@lib_proxy := QWidget->GetDllProxy();
+			@lib_proxy->CallFunction("qt_pushbutton_set_text", array_args);
 		}
 	}
 	
@@ -93,14 +87,6 @@ bundle Qt {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
 		
-#~		
-		New() {	
-			if(@native_ptr = 0) {
-				#	TODO
-			};
-		}
-~#
-
 		function : Connect(sender : QObject, signal : String, recv : QObject, mthd : String) ~ Nil {
 			array_args := Base->New[4];
 			array_args[0] := sender;
@@ -115,9 +101,20 @@ bundle Qt {
 	# QWidget class
 	class QWidget from QObject {
 		New() {
-			Parent();
-			
+			Parent();			
 			if(@native_ptr = 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New();
+				@lib_proxy := QWidget->GetDllProxy();
+				@lib_proxy->CallFunction("qt_widget_new", array_args);
+				rtrn_value := array_args[0]->As(IntHolder);
+				@native_ptr := rtrn_value->Get();
+			};
+		}
+		
+		New(create : Bool) {
+			Parent();			
+			if(create & @native_ptr = 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntHolder->New();
 				@lib_proxy := QWidget->GetDllProxy();
