@@ -1,0 +1,5 @@
+Objeck v1.4.1_0
+
+This release provides support for runtime introspection.  Fixed an issue related to the linking of Windows binaries. New classes where added to support introspection along with the inclusion of the 'TypeOf' keyword.  In addition, performance tuning was done along with minor bug fixes.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
