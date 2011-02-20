@@ -48,6 +48,9 @@
     <ClInclude Include="..\jit\ia32\jit_intel_lp32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\callback.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

@@ -30,7 +30,7 @@
  ***************************************************************************/
 
 #include "interpreter.h"
-#include "math.h"
+#include "callback.h"
 
 #ifdef _X64
 #include "jit/amd64/jit_amd_lp64.h"
@@ -47,6 +47,8 @@
 #ifdef _DEBUGGER
 #include "debugger/debugger.h"
 #endif
+
+#include <math.h>
 
 using namespace Runtime;
 
@@ -1662,9 +1664,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #endif
 }
 
-// ext_fun_def(long* data, long* op_stack, long *stack_pos, 
-//             DLLTools_MethodCall_Ptr* callback)
-typedef void (*ext_func_def)(long*, long*, long*, DLLTools_MethodCall_Ptr);
+typedef void (*lib_func_def) (long* data, long* op_stack, long *stack_pos, Callbacks& callbacks);
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1675,27 +1675,30 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   long* array = (long*)str_obj[0];
   const char* str = (char*)(array + 3);
   long* args = (long*)frame->GetMemory()[2];
-  ext_func_def ext_func;
+  lib_func_def ext_func;
   
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
     // get function pointer
-    ext_func = (ext_func_def)GetProcAddress(dll_handle, str);
+    ext_func = (lib_func_def)GetProcAddress(dll_handle, str);
     if(!ext_func) {
       cerr << ">>> Runtime error calling function: " << str << " <<<" << endl;
       FreeLibrary(dll_handle);
       exit(1);
     }
     // call function
-    DLLTools_MethodCall_Ptr callback = DLLTools_MethodCall;
-    (*ext_func)(args, op_stack, stack_pos, callback);
+	Callbacks callbacks;
+	callbacks.method_call = DLLTools_MethodCall;
+	callbacks.mem_mgr = MemoryManager::Instance();
+
+    (*ext_func)(args, op_stack, stack_pos, callbacks);
   }
 #else
   // load function
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
-    ext_func = (ext_func_def)dlsym(dll_handle, str);
+    ext_func = (lib_func_def)dlsym(dll_handle, str);
     char* error;
     if((error = dlerror()) != NULL)  {
       cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;

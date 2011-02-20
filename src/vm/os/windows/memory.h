@@ -84,6 +84,14 @@ public:
   static void Initialize(StackProgram* p);
   static MemoryManager* Instance();
 
+  // recover memory
+  static void CollectMemory(long* op_stack, long stack_pos);
+  static DWORD WINAPI CollectMemory(LPVOID arg);
+  static DWORD WINAPI CheckStatic(LPVOID arg);
+  static DWORD WINAPI CheckStack(LPVOID arg);
+  static DWORD WINAPI CheckJitRoots(LPVOID arg);
+  static DWORD WINAPI CheckPdaRoots(LPVOID arg);
+
   static void Clear() {
     while(!jit_roots.empty()) {
       ClassMethodId* tmp = jit_roots.front();
@@ -122,15 +130,6 @@ public:
   // add and remove pda roots
   void AddPdaMethodRoot(StackFrame* frame);
   void RemovePdaMethodRoot(StackFrame* frame);
-
-  // recover memory
-  static void CollectMemory(long* op_stack, long stack_pos);
-
-  static DWORD WINAPI CollectMemory(LPVOID arg);
-  static DWORD WINAPI CheckStatic(LPVOID arg);
-  static DWORD WINAPI CheckStack(LPVOID arg);
-  static DWORD WINAPI CheckJitRoots(LPVOID arg);
-  static DWORD WINAPI CheckPdaRoots(LPVOID arg);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
