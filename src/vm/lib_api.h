@@ -32,7 +32,7 @@
 #ifndef __LIB_API_H__
 #define __LIB_API_H__
 
-#include "common.h"
+#include "../shared/sys.h"
 
 #ifdef _WIN32
 #include "os/windows/memory.h"
