@@ -35,21 +35,19 @@
 #include <string>
 #include <assert.h>
 #include <string.h>
+#include "../vm/callback.h"
 
 using namespace std;
 
 // offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
 
+
 // function identifiers consist of two integer IDs
 enum FunctionId {
   CLS_ID = 0,
   MTHD_ID
 };
-
-// function declaration for native C callbacks
-// parameters: 1) operation stack 2) operation stack position 3) self instance 4) method name
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, const char*, const char*);
 
 // gets the size of an Object[] array
 int DLLTools_GetArraySize(long* array) {
