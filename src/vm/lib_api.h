@@ -1,10 +1,10 @@
 /***************************************************************************
- * API header file
+ * Shared library API header file
  *
- * Copyright (c) 2008-2011, Randy Hollines
+ * Copyright (c) 2011, Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
+ * Redistribution and use in sohurce and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -44,14 +44,16 @@
 #define ARRAY_HEADER_OFFSET 3
 
 // function declaration for native C callbacks
-typedef void(*DLLTools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, const char* cls_id, const char* mthd_id);
+typedef void(*DLLTools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
+					const char* cls_id, const char* mthd_id);
 typedef long*(*DLLTools_AllocateObject_Ptr) (const long obj_id, long* op_stack, long stack_pos);
-typedef long*(*DLLTools_AllocateArray_Ptr) (const long size, const MemoryType type, long* op_stack, long stack_pos);
+typedef long*(*DLLTools_AllocateArray_Ptr) (const long size, const MemoryType type, 
+					    long* op_stack, long stack_pos);
 
 struct Callbacks {
-	DLLTools_MethodCall_Ptr method_call;
-	DLLTools_AllocateObject_Ptr alloc_obj;
-	DLLTools_AllocateArray_Ptr alloc_array;
+  DLLTools_MethodCall_Ptr method_call;
+  DLLTools_AllocateObject_Ptr alloc_obj;
+  DLLTools_AllocateArray_Ptr alloc_array;
 };
 
 // function identifiers consist of two integer IDs
@@ -89,7 +91,7 @@ int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
 void DLLTools_SetFunctionValue(long* array, int index, 
-			      FunctionId id, int value) {
+			       FunctionId id, int value) {
   if(array && index < array[0]) {
     array += ARRAY_HEADER_OFFSET;
     long* int_holder = (long*)array[index];
