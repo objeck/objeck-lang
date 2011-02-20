@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __CALLBACK_H__
-#define __CALLBACK_H__
+#ifndef __LIB_API_H__
+#define __LIB_API_H__
 
 #include "common.h"
 
