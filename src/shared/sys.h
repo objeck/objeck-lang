@@ -59,7 +59,8 @@ namespace instructions {
     INT_TYPE,
     FLOAT_TYPE,
     FUNC_TYPE
-  } MemoryType;
+  } 
+  MemoryType;
 
   // garbage types
   typedef enum _ParamType {
@@ -71,7 +72,8 @@ namespace instructions {
     OBJ_PARM,
     OBJ_ARY_PARM,
     FUNC_PARM,
-  } ParamType;
+  } 
+  ParamType;
 }
 
 #endif
