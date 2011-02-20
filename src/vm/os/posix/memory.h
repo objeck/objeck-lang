@@ -134,8 +134,8 @@ public:
 
   // TODO: change to static
   // memory allocation
-  long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
-  long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
+  static long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
+  static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
 
   // object verification
   long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
