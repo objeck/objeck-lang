@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "../../../vm/callback.h"
+#include "../../../vm/lib_api.h"
 
 using namespace std;
 
