@@ -32,13 +32,12 @@
 #ifndef __LIB_API_H__
 #define __LIB_API_H__
 
+#include <assert.h>
+#include <stdlib.h>
+#include <string>
 #include "../shared/sys.h"
 
-#ifdef _WIN32
-#include "os/windows/memory.h"
-#else
-#include "os/posix/memory.h"
-#endif
+using namespace std;
 
 // offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
@@ -47,7 +46,7 @@
 typedef void(*DLLTools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const char* cls_id, const char* mthd_id);
 typedef long*(*DLLTools_AllocateObject_Ptr) (const long obj_id, long* op_stack, long stack_pos);
-typedef long*(*DLLTools_AllocateArray_Ptr) (const long size, const MemoryType type, 
+typedef long*(*DLLTools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos);
 
 struct Callbacks {
