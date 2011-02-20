@@ -1688,11 +1688,10 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-	Callbacks callbacks;
-	callbacks.method_call = DLLTools_MethodCall;
-	callbacks.alloc_array = MemoryManager::AllocateArray;
-	callbacks.alloc_obj = MemoryManager::AllocateObject;
-
+    Callbacks callbacks;
+    callbacks.method_call = DLLTools_MethodCall;
+    callbacks.alloc_array = MemoryManager::AllocateArray;
+    callbacks.alloc_obj = MemoryManager::AllocateObject;    
     (*ext_func)(args, op_stack, stack_pos, callbacks);
   }
 #else
@@ -1706,8 +1705,11 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-    DLLTools_MethodCall_Ptr callback = DLLTools_MethodCall;
-    (*ext_func)(args, op_stack, stack_pos, callback);
+    Callbacks callbacks;
+    callbacks.method_call = DLLTools_MethodCall;
+    callbacks.alloc_array = MemoryManager::AllocateArray;
+    callbacks.alloc_obj = MemoryManager::AllocateObject;
+    (*ext_func)(args, op_stack, stack_pos, callbacks);
   }  
 #endif
 }
