@@ -1110,7 +1110,6 @@ public:
 };
 
 // call back for DLL method calls
-typedef void(*DLLTools_MethodCall_Ptr)(long*, long*, long*, const char*, const char*);
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
 			 const char* cls_id, const char* mthd_id);
 
