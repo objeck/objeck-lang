@@ -172,10 +172,10 @@
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\callback.h" />
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\interpreter.h" />
     <ClInclude Include="..\jit\ia32\jit_intel_lp32.h" />
+    <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\os\windows\memory.h" />
     <ClInclude Include="resource.h" />
