@@ -850,7 +850,7 @@ namespace Runtime {
 	  indices[dim++] = value;
 	}
 	size++;
-	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(int32_t)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
+	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
@@ -916,7 +916,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	cout << "jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
-	int32_t* mem = (int32_t*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
+	int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(), 
 									   (long*)op_stack, *stack_pos);
 	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
@@ -1664,7 +1664,7 @@ namespace Runtime {
 	  // create 'System.String' object array
 	  const long str_obj_array_size = files.size();
 	  const long str_obj_array_dim = 1;  
-	  long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
+	  long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + 
 										str_obj_array_dim + 2, 
 										INT_TYPE, (long*)op_stack, 
 										*stack_pos);
@@ -1681,7 +1681,7 @@ namespace Runtime {
 	    // create character array
 	    const long char_array_size = value_str.size();
 	    const long char_array_dim = 1;
-	    long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 + 
+	    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + 
 									       ((char_array_dim + 2) * 
 										sizeof(long)),  
 									       BYTE_ARY_TYPE, 
@@ -1695,7 +1695,7 @@ namespace Runtime {
 	    strcpy(char_array_ptr, value_str.c_str()); 
       
 	    // create 'System.String' object instance
-	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(), 
+	    long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), 
 								      (long*)op_stack, *stack_pos);
 	    str_obj[0] = (long)char_array;
 	    str_obj[1] = char_array_size;

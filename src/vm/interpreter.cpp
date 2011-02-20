@@ -775,7 +775,7 @@ void StackInterpreter::ProcessPlatform()
   // create character array
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
 								     ((char_array_dim + 2) *
 								      sizeof(long)),
 								     BYTE_ARY_TYPE,
@@ -789,7 +789,7 @@ void StackInterpreter::ProcessPlatform()
   strcpy(char_array_ptr, value_str.c_str());
 
   // create 'System.String' object instance
-  long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
+  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
 							    (long*)op_stack, *stack_pos);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
@@ -1021,7 +1021,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
   cout << "stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
 
-  long inst_mem = (long)MemoryManager::Instance()->AllocateObject(instr->GetOperand(),
+  long inst_mem = (long)MemoryManager::AllocateObject(instr->GetOperand(),
 								  op_stack, *stack_pos);
   PushInt(inst_mem);
 }
@@ -1050,7 +1050,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
     size *= 2;
   }
   // assumes that doubles are twice the size of integers
-  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + dim + 2, INT_TYPE,
+  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
 							      op_stack, *stack_pos);
   if(is_float) {
     mem[0] = size / 2;
@@ -1083,7 +1083,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
     indices[dim++] = value;
   }
   size++;
-  long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)),
+  long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
 							      BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
@@ -1690,7 +1690,8 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
     // call function
 	Callbacks callbacks;
 	callbacks.method_call = DLLTools_MethodCall;
-	callbacks.mem_mgr = MemoryManager::Instance();
+	callbacks.alloc_array = MemoryManager::AllocateArray;
+	callbacks.alloc_obj = MemoryManager::AllocateObject;
 
     (*ext_func)(args, op_stack, stack_pos, callbacks);
   }
@@ -1753,7 +1754,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
         exit(1);
     }
     /// set name and create 'Class' instance
-    long* cls_obj = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
+    long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
 							      (long*)op_stack, *stack_pos);
     cls_obj[0] = (long)CreateStringObject(cls->GetName());
     frame->GetMemory()[1] = (long)cls_obj;
@@ -2354,7 +2355,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     // create 'System.String' object array
     const long str_obj_array_size = files.size();
     const long str_obj_array_dim = 1;
-    long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size +
+    long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
 									  str_obj_array_dim + 2,
 									  INT_TYPE, op_stack,
 									  *stack_pos);
