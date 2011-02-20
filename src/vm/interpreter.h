@@ -323,7 +323,7 @@ namespace Runtime {
       
       int index = 0;
       vector<long*> data_type_obj_holder;
-      while(index < params_string.size()) {
+      while(index < (int)params_string.size()) {
 	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
 									(long*)op_stack, *stack_pos);
 	data_type_obj_holder.push_back(data_type_obj);
@@ -357,8 +357,8 @@ namespace Runtime {
         case 'o': {
 	  data_type_obj[0] = -995;
           index++;
-	  const int start_index = index + 1;
-          while(index < params_string.size() && params_string[index] != ',') {
+	   const int start_index = index + 1;
+          while(index < (int)params_string.size() && params_string[index] != ',') {
             index++;
           }
 	  data_type_obj[1] = (long)CreateStringObject(params_string.substr(start_index, index - 2));
@@ -368,10 +368,10 @@ namespace Runtime {
 	case 'm':
 	  data_type_obj[0] = -994;
           index++;
-          while(index < params_string.size() && params_string[index] != '~') {
+          while(index < (int)params_string.size() && params_string[index] != '~') {
             index++;
           }
-	  while(index < params_string.size() && params_string[index] != ',') {
+	  while(index < (int)params_string.size() && params_string[index] != ',') {
             index++;
           }
           break;
@@ -385,7 +385,7 @@ namespace Runtime {
 	
         // check array dimension
         int dimension = 0;
-        while(index < params_string.size() && params_string[index] == '*') {
+        while(index < (int)params_string.size() && params_string[index] == '*') {
           dimension++;
           index++;
         }
