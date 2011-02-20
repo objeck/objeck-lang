@@ -30,7 +30,7 @@
  ***************************************************************************/
 
 #include "interpreter.h"
-#include "callback.h"
+#include "lib_api.h"
 
 #ifdef _X64
 #include "jit/amd64/jit_amd_lp64.h"
