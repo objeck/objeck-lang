@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{1.4.1\_0}.  For
+  functionality that is included in release \textit{1.4.2\_0}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -772,6 +772,16 @@ Base class for all objects.
 
 \subsubsection{Char}
 \begin{itemize}
+\item \texttt{ToUpper} - coverts a character to a uppercase
+  character
+  \begin{itemize}
+  \item method : public : native : ToUpper(), Char
+  \end{itemize}
+\item \texttt{ToLower} - coverts a character to a lowercase
+  character
+  \begin{itemize}
+  \item method : public : native : ToLower(), Char
+  \end{itemize}
 \item \texttt{IsDigit} - determines if the character is a digit (in
   the range of \texttt{0-9})
   \begin{itemize}
@@ -785,12 +795,12 @@ Base class for all objects.
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Byte), Byte
+  \item method : native : Min(r : Char), Char
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Byte), Byte
+  \item method : native : Max(r : Char), Char
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
