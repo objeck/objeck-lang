@@ -1,0 +1,15 @@
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			'a'->ToUpperCase()->PrintLine();
+			'Z'->ToUpperCase()->PrintLine();
+			'R'->ToUpperCase()->PrintLine();
+			'q'->ToUpperCase()->PrintLine();
+
+			'a'->ToLowerCase()->PrintLine();
+			'Z'->ToLowerCase()->PrintLine();
+			'R'->ToLowerCase()->PrintLine();
+			'q'->ToLowerCase()->PrintLine();
+		}
+	}
+}

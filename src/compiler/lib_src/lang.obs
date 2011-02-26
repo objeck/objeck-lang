@@ -121,6 +121,22 @@ bundle System {
 	# Character class support
 	~~#	
 	class $Char {
+		function : native : ToLower(c : Char) ~ Char {
+			if(c >= 'A' & c <= 'Z') {
+				return c + 32;
+			};
+
+			return c;
+		}
+
+		function : native : ToUpper(c : Char) ~ Char {
+			if(c >= 'a' & c <= 'z') {
+				return c - 32;
+			};
+
+			return c;
+		}
+
 		function : native : IsDigit(c : Char) ~ Bool {
 			if(c >= '0' & c <= '9') {
 				return true;
