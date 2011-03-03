@@ -2,7 +2,7 @@ bundle Default {
 	class Pangram {
 		function : native : IsPangram(test : String) ~ Bool {
 			for(a := 'A'; a <= 'Z'; a += 1;) {
-				if(test->Find(a) = -1 & test->Find(a->ToLower()) = -1) {
+				if(test->Find(a) < 0 & test->Find(a->ToLower()) < 0) {
 					return false;
 				};
 			};
