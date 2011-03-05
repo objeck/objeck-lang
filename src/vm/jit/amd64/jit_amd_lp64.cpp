@@ -1171,6 +1171,9 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(long), dest);
+
+      delete left2;
+      left2 = NULL;
     }
     else {
       move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
@@ -1187,6 +1190,9 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       working_stack.pop_front();
       move_mem_reg(left2->GetOperand(), RBP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
+
+      delete left2;
+      left2 = NULL;
     }
     else {      
       move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());      
@@ -1211,6 +1217,9 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       
       move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
       ReleaseRegister(holder2);
+
+      delete left2;
+      left2 = NULL;
     }
     else {
       // mark static reference
