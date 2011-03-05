@@ -222,6 +222,30 @@ void JitCompilerIA64::ProcessParameters(long params) {
       // store int
       ProcessStore(instr);
     }
+    else if(instr->GetType() == STOR_FUNC_VAR) {
+      RegisterHolder* dest_holder = GetRegister();
+      dec_mem(0, stack_pos_holder->GetRegister());  
+      move_mem_reg(0, stack_pos_holder->GetRegister(), 
+		   stack_pos_holder->GetRegister());
+      shl_imm_reg(3, stack_pos_holder->GetRegister());
+      add_reg_reg(stack_pos_holder->GetRegister(),
+		  op_stack_holder->GetRegister());
+      move_mem_reg(0, op_stack_holder->GetRegister(), 
+		   dest_holder->GetRegister());
+      
+      RegisterHolder* dest_holder2 = GetRegister();
+      move_mem_reg(sizeof(long), op_stack_holder->GetRegister(), 
+		   dest_holder2->GetRegister());
+      
+      move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
+      dec_mem(0, stack_pos_holder->GetRegister());      
+
+      working_stack.push_front(new RegInstr(dest_holder2));
+      working_stack.push_front(new RegInstr(dest_holder));
+
+      // store int
+      ProcessStore(instr);
+    }
     else {
       RegisterHolder* dest_holder = GetXmmRegister();
       dec_mem(0, stack_pos_holder->GetRegister());
