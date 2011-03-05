@@ -341,16 +341,16 @@
 		<col def="S0">ISDotNetInstallerArgsRollback</col>
 		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.rtf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{02676309-511E-4DB2-86BF-54847921A51E}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{DC6C2EE5-97C7-434D-BE58-F1F825B49DDF}</td><td>DOCS</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{4CDDA7D0-7A63-43B5-9384-AAE094056F59}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{2319C6E4-73DA-4230-930D-046CB42B0FCD}</td><td>DOCS</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{A5D1F142-5A01-4900-8B77-DDD1DFF5F2AD}</td><td>SYNTAX_HIGHLIGHTING</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{B328B40C-CFCD-4BB0-BA3D-1A76157B9849}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{88DB3BF4-5A15-46BA-AB45-B2E169602079}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obc.exe</td><td>{C0D8B51F-BEB9-4A68-9204-C03F3E8D3723}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obd.exe</td><td>{826AA888-C110-4F09-9CD6-3B5B8B71D485}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obr.exe</td><td>{A6345849-07FB-4581-90B4-4B1816EB9F25}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obu.exe</td><td>{8C895ED4-236E-4294-B513-7B2A841D7FB2}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{780C35C8-5EC9-4779-8260-F089078F2E25}</td><td>SYNTAX_HIGHLIGHTING</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{36D1F05D-B210-44BC-B343-85AF069DC6E6}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{AC359A54-D1C6-4934-AE92-8C713A3691C0}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obc.exe</td><td>{DCEA91CF-529A-4874-8D85-41D66654DD9D}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obd.exe</td><td>{FB170562-88FE-4C6F-B941-760CAD8B20D3}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obr.exe</td><td>{D348816A-65EC-4B50-A9E4-D397C078D8E4}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obu.exe</td><td>{B671F500-F8A1-4CCB-8F76-0595E39ADE8B}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 	</table>
 
 	<table name="Condition">
@@ -1901,91 +1901,91 @@
 		<col def="S255">ISBuildSourcePath</col>
 		<col def="I4">ISAttributes</col>
 		<col def="S72">ISComponentSubFolder_</col>
-		<row><td>_d.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>2d.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\2d.obs</td><td>1</td><td/></row>
-		<row><td>accum.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>accum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\accum.obs</td><td>1</td><td/></row>
-		<row><td>args.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>args.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\args.obs</td><td>1</td><td/></row>
-		<row><td>array.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\array.obs</td><td>1</td><td/></row>
-		<row><td>array_concat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>ARRAY_~1.OBS|array_concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\array_concat.obs</td><td>1</td><td/></row>
-		<row><td>basic.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>basic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\basic.obs</td><td>1</td><td/></row>
-		<row><td>bin.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>bin.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\bin.obs</td><td>1</td><td/></row>
-		<row><td>bitwise.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>bitwise.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\bitwise.obs</td><td>1</td><td/></row>
-		<row><td>callback.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>callback.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\callback.obs</td><td>1</td><td/></row>
-		<row><td>cc_num.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>cc_num.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\cc_num.obs</td><td>1</td><td/></row>
-		<row><td>chars.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>chars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\chars.obs</td><td>1</td><td/></row>
-		<row><td>class.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\class.obs</td><td>1</td><td/></row>
-		<row><td>cocktail_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>COCKTA~1.OBS|cocktail_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\cocktail_sort.obs</td><td>1</td><td/></row>
-		<row><td>concat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\concat.obs</td><td>1</td><td/></row>
-		<row><td>concur.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>concur.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\concur.obs</td><td>1</td><td/></row>
-		<row><td>counting_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>COUNTI~1.OBS|counting_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\counting_sort.obs</td><td>1</td><td/></row>
-		<row><td>debug.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>debug.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\debug.obs</td><td>1</td><td/></row>
-		<row><td>door.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>door.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\door.obs</td><td>1</td><td/></row>
-		<row><td>dot.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>dot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\dot.obs</td><td>1</td><td/></row>
-		<row><td>each.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>each.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\each.obs</td><td>1</td><td/></row>
-		<row><td>evol.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>evol.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\evol.obs</td><td>1</td><td/></row>
-		<row><td>fact.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>fact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\fact.obs</td><td>1</td><td/></row>
-		<row><td>factors.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>factors.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\factors.obs</td><td>1</td><td/></row>
-		<row><td>file.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\file.obs</td><td>1</td><td/></row>
-		<row><td>filter.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>filter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\filter.obs</td><td>1</td><td/></row>
-		<row><td>for.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>for.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\for.obs</td><td>1</td><td/></row>
-		<row><td>func.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\func.obs</td><td>1</td><td/></row>
-		<row><td>gcd.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>gcd.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\gcd.obs</td><td>1</td><td/></row>
-		<row><td>guess.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>guess.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\guess.obs</td><td>1</td><td/></row>
-		<row><td>happynums.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>HAPPYN~1.OBS|happynums.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\happynums.obs</td><td>1</td><td/></row>
-		<row><td>hash.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\hash.obs</td><td>1</td><td/></row>
-		<row><td>hello.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>hello.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\hello.obs</td><td>1</td><td/></row>
-		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT5</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\syntax highlighting\howto.rtf</td><td>1</td><td/></row>
-		<row><td>http.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\http.obs</td><td>1</td><td/></row>
-		<row><td>inf.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>inf.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\inf.obs</td><td>1</td><td/></row>
-		<row><td>input_loop.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>INPUT_~1.OBS|input_loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\input_loop.obs</td><td>1</td><td/></row>
-		<row><td>insert_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>INSERT~1.OBS|insert_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\insert_sort.obs</td><td>1</td><td/></row>
-		<row><td>int.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>int.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\int.obs</td><td>1</td><td/></row>
-		<row><td>jensen.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>jensen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\jensen.obs</td><td>1</td><td/></row>
-		<row><td>lang.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>lang.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\lang.obl</td><td>1</td><td/></row>
-		<row><td>leap.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>leap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\leap.obs</td><td>1</td><td/></row>
-		<row><td>logic.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>logic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\logic.obs</td><td>1</td><td/></row>
-		<row><td>loop.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\loop.obs</td><td>1</td><td/></row>
-		<row><td>med.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>med.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\med.obs</td><td>1</td><td/></row>
-		<row><td>obc.exe</td><td>obc.exe</td><td>obc.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\obc.exe</td><td>1</td><td/></row>
-		<row><td>obd.exe</td><td>obd.exe</td><td>obd.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\obd.exe</td><td>1</td><td/></row>
-		<row><td>objeck.lang</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.LAN|objeck.lang</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\syntax highlighting\objeck.lang</td><td>1</td><td/></row>
-		<row><td>objeck.plist</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.PLI|objeck.plist</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\syntax highlighting\objeck.plist</td><td>1</td><td/></row>
-		<row><td>objeck.xml</td><td>ISX_DEFAULTCOMPONENT5</td><td>objeck.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\syntax highlighting\objeck.xml</td><td>1</td><td/></row>
-		<row><td>objeck_lang.pdf</td><td>ISX_DEFAULTCOMPONENT3</td><td>OBJECK~1.PDF|objeck_lang.pdf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\objeck_lang.pdf</td><td>1</td><td/></row>
-		<row><td>objeck_syntax.php</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.PHP|objeck-syntax.php</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\docs\syntax highlighting\objeck-syntax.php</td><td>1</td><td/></row>
-		<row><td>obr.exe</td><td>obr.exe</td><td>obr.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\obr.exe</td><td>1</td><td/></row>
-		<row><td>obu.exe</td><td>obu.exe</td><td>obu.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\obu.exe</td><td>1</td><td/></row>
-		<row><td>palindrome.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>PALIND~1.OBS|palindrome.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\palindrome.obs</td><td>1</td><td/></row>
-		<row><td>pangram.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>pangram.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\pangram.obs</td><td>1</td><td/></row>
-		<row><td>parser.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\parser.obs</td><td>1</td><td/></row>
-		<row><td>perfect.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>perfect.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\perfect.obs</td><td>1</td><td/></row>
-		<row><td>poly.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>poly.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\poly.obs</td><td>1</td><td/></row>
-		<row><td>qt.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>qt.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\lib\qt.obs</td><td>1</td><td/></row>
-		<row><td>random.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>random.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\random.obs</td><td>1</td><td/></row>
-		<row><td>readme.rtf</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\readme.rtf</td><td>1</td><td/></row>
-		<row><td>readme.txt</td><td>ISX_DEFAULTCOMPONENT7</td><td>readme.txt</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\lib\readme.txt</td><td>1</td><td/></row>
-		<row><td>repeat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>repeat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\repeat.obs</td><td>1</td><td/></row>
-		<row><td>roman.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>roman.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\roman.obs</td><td>1</td><td/></row>
-		<row><td>root_mean.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>ROOT_M~1.OBS|root_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\root_mean.obs</td><td>1</td><td/></row>
-		<row><td>roots.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>roots.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\roots.obs</td><td>1</td><td/></row>
-		<row><td>scrape.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>scrape.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\scrape.obs</td><td>1</td><td/></row>
-		<row><td>search.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>search.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\search.obs</td><td>1</td><td/></row>
-		<row><td>series.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>series.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\series.obs</td><td>1</td><td/></row>
-		<row><td>shell_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>SHELL_~1.OBS|shell_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\shell_sort.obs</td><td>1</td><td/></row>
-		<row><td>sim_func.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sim_func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\sim_func.obs</td><td>1</td><td/></row>
-		<row><td>sock.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sock.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\sock.obs</td><td>1</td><td/></row>
-		<row><td>sqrsum.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sqrsum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\sqrsum.obs</td><td>1</td><td/></row>
-		<row><td>std.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>std.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\std.obs</td><td>1</td><td/></row>
-		<row><td>struct.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>struct.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\struct.obl</td><td>1</td><td/></row>
-		<row><td>struct.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>struct.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\lib\struct.obs</td><td>1</td><td/></row>
-		<row><td>substr.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>substr.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\substr.obs</td><td>1</td><td/></row>
-		<row><td>thread.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>thread.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\thread.obs</td><td>1</td><td/></row>
-		<row><td>xml.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>xml.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\bin\xml.obl</td><td>1</td><td/></row>
-		<row><td>xml.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\lib\xml.obs</td><td>1</td><td/></row>
-		<row><td>xml_file.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\xml_file.obs</td><td>1</td><td/></row>
-		<row><td>xml_in.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_in.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\xml_in.obs</td><td>1</td><td/></row>
-		<row><td>xml_list.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\xml_list.obs</td><td>1</td><td/></row>
-		<row><td>xml_out.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_out.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\xml_out.obs</td><td>1</td><td/></row>
-		<row><td>xml_path.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_path.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_0_win\objeck-lang\examples\xml_path.obs</td><td>1</td><td/></row>
+		<row><td>_d.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>2d.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\2d.obs</td><td>1</td><td/></row>
+		<row><td>accum.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>accum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\accum.obs</td><td>1</td><td/></row>
+		<row><td>args.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>args.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\args.obs</td><td>1</td><td/></row>
+		<row><td>array.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\array.obs</td><td>1</td><td/></row>
+		<row><td>array_concat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>ARRAY_~1.OBS|array_concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\array_concat.obs</td><td>1</td><td/></row>
+		<row><td>basic.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>basic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\basic.obs</td><td>1</td><td/></row>
+		<row><td>bin.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>bin.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\bin.obs</td><td>1</td><td/></row>
+		<row><td>bitwise.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>bitwise.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\bitwise.obs</td><td>1</td><td/></row>
+		<row><td>callback.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>callback.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\callback.obs</td><td>1</td><td/></row>
+		<row><td>cc_num.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>cc_num.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\cc_num.obs</td><td>1</td><td/></row>
+		<row><td>chars.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>chars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\chars.obs</td><td>1</td><td/></row>
+		<row><td>class.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\class.obs</td><td>1</td><td/></row>
+		<row><td>cocktail_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>COCKTA~1.OBS|cocktail_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\cocktail_sort.obs</td><td>1</td><td/></row>
+		<row><td>concat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\concat.obs</td><td>1</td><td/></row>
+		<row><td>concur.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>concur.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\concur.obs</td><td>1</td><td/></row>
+		<row><td>counting_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>COUNTI~1.OBS|counting_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\counting_sort.obs</td><td>1</td><td/></row>
+		<row><td>debug.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>debug.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\debug.obs</td><td>1</td><td/></row>
+		<row><td>door.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>door.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\door.obs</td><td>1</td><td/></row>
+		<row><td>dot.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>dot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\dot.obs</td><td>1</td><td/></row>
+		<row><td>each.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>each.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\each.obs</td><td>1</td><td/></row>
+		<row><td>evol.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>evol.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\evol.obs</td><td>1</td><td/></row>
+		<row><td>fact.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>fact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\fact.obs</td><td>1</td><td/></row>
+		<row><td>factors.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>factors.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\factors.obs</td><td>1</td><td/></row>
+		<row><td>file.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\file.obs</td><td>1</td><td/></row>
+		<row><td>filter.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>filter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\filter.obs</td><td>1</td><td/></row>
+		<row><td>for.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>for.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\for.obs</td><td>1</td><td/></row>
+		<row><td>func.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\func.obs</td><td>1</td><td/></row>
+		<row><td>gcd.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>gcd.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\gcd.obs</td><td>1</td><td/></row>
+		<row><td>guess.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>guess.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\guess.obs</td><td>1</td><td/></row>
+		<row><td>happynums.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>HAPPYN~1.OBS|happynums.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\happynums.obs</td><td>1</td><td/></row>
+		<row><td>hash.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\hash.obs</td><td>1</td><td/></row>
+		<row><td>hello.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>hello.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\hello.obs</td><td>1</td><td/></row>
+		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT5</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\syntax highlighting\howto.rtf</td><td>1</td><td/></row>
+		<row><td>http.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\http.obs</td><td>1</td><td/></row>
+		<row><td>inf.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>inf.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\inf.obs</td><td>1</td><td/></row>
+		<row><td>input_loop.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>INPUT_~1.OBS|input_loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\input_loop.obs</td><td>1</td><td/></row>
+		<row><td>insert_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>INSERT~1.OBS|insert_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\insert_sort.obs</td><td>1</td><td/></row>
+		<row><td>int.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>int.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\int.obs</td><td>1</td><td/></row>
+		<row><td>jensen.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>jensen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\jensen.obs</td><td>1</td><td/></row>
+		<row><td>lang.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>lang.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\lang.obl</td><td>1</td><td/></row>
+		<row><td>leap.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>leap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\leap.obs</td><td>1</td><td/></row>
+		<row><td>logic.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>logic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\logic.obs</td><td>1</td><td/></row>
+		<row><td>loop.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\loop.obs</td><td>1</td><td/></row>
+		<row><td>med.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>med.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\med.obs</td><td>1</td><td/></row>
+		<row><td>obc.exe</td><td>obc.exe</td><td>obc.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\obc.exe</td><td>1</td><td/></row>
+		<row><td>obd.exe</td><td>obd.exe</td><td>obd.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\obd.exe</td><td>1</td><td/></row>
+		<row><td>objeck.lang</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.LAN|objeck.lang</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\syntax highlighting\objeck.lang</td><td>1</td><td/></row>
+		<row><td>objeck.plist</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.PLI|objeck.plist</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\syntax highlighting\objeck.plist</td><td>1</td><td/></row>
+		<row><td>objeck.xml</td><td>ISX_DEFAULTCOMPONENT5</td><td>objeck.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\syntax highlighting\objeck.xml</td><td>1</td><td/></row>
+		<row><td>objeck_lang.pdf</td><td>ISX_DEFAULTCOMPONENT3</td><td>OBJECK~1.PDF|objeck_lang.pdf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\objeck_lang.pdf</td><td>1</td><td/></row>
+		<row><td>objeck_syntax.php</td><td>ISX_DEFAULTCOMPONENT5</td><td>OBJECK~1.PHP|objeck-syntax.php</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\docs\syntax highlighting\objeck-syntax.php</td><td>1</td><td/></row>
+		<row><td>obr.exe</td><td>obr.exe</td><td>obr.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\obr.exe</td><td>1</td><td/></row>
+		<row><td>obu.exe</td><td>obu.exe</td><td>obu.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\obu.exe</td><td>1</td><td/></row>
+		<row><td>palindrome.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>PALIND~1.OBS|palindrome.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\palindrome.obs</td><td>1</td><td/></row>
+		<row><td>pangram.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>pangram.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\pangram.obs</td><td>1</td><td/></row>
+		<row><td>parser.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\parser.obs</td><td>1</td><td/></row>
+		<row><td>perfect.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>perfect.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\perfect.obs</td><td>1</td><td/></row>
+		<row><td>poly.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>poly.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\poly.obs</td><td>1</td><td/></row>
+		<row><td>qt.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>qt.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\lib\qt.obs</td><td>1</td><td/></row>
+		<row><td>random.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>random.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\random.obs</td><td>1</td><td/></row>
+		<row><td>readme.rtf</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\readme.rtf</td><td>1</td><td/></row>
+		<row><td>readme.txt</td><td>ISX_DEFAULTCOMPONENT7</td><td>readme.txt</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\lib\readme.txt</td><td>1</td><td/></row>
+		<row><td>repeat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>repeat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\repeat.obs</td><td>1</td><td/></row>
+		<row><td>roman.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>roman.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\roman.obs</td><td>1</td><td/></row>
+		<row><td>root_mean.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>ROOT_M~1.OBS|root_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\root_mean.obs</td><td>1</td><td/></row>
+		<row><td>roots.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>roots.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\roots.obs</td><td>1</td><td/></row>
+		<row><td>scrape.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>scrape.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\scrape.obs</td><td>1</td><td/></row>
+		<row><td>search.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>search.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\search.obs</td><td>1</td><td/></row>
+		<row><td>series.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>series.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\series.obs</td><td>1</td><td/></row>
+		<row><td>shell_sort.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>SHELL_~1.OBS|shell_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\shell_sort.obs</td><td>1</td><td/></row>
+		<row><td>sim_func.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sim_func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\sim_func.obs</td><td>1</td><td/></row>
+		<row><td>sock.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sock.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\sock.obs</td><td>1</td><td/></row>
+		<row><td>sqrsum.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>sqrsum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\sqrsum.obs</td><td>1</td><td/></row>
+		<row><td>std.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>std.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\std.obs</td><td>1</td><td/></row>
+		<row><td>struct.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>struct.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\struct.obl</td><td>1</td><td/></row>
+		<row><td>struct.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>struct.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\lib\struct.obs</td><td>1</td><td/></row>
+		<row><td>substr.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>substr.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\substr.obs</td><td>1</td><td/></row>
+		<row><td>thread.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>thread.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\thread.obs</td><td>1</td><td/></row>
+		<row><td>xml.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>xml.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\bin\xml.obl</td><td>1</td><td/></row>
+		<row><td>xml.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\lib\xml.obs</td><td>1</td><td/></row>
+		<row><td>xml_file.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\xml_file.obs</td><td>1</td><td/></row>
+		<row><td>xml_in.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_in.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\xml_in.obs</td><td>1</td><td/></row>
+		<row><td>xml_list.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\xml_list.obs</td><td>1</td><td/></row>
+		<row><td>xml_out.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_out.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\xml_out.obs</td><td>1</td><td/></row>
+		<row><td>xml_path.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>xml_path.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r1.4.2_1_win\objeck-lang\examples\xml_path.obs</td><td>1</td><td/></row>
 	</table>
 
 	<table name="FileSFPCatalog">
@@ -2244,16 +2244,16 @@
 		<col def="S0">Miscellaneous</col>
 		<row><td>ISX_DEFAULTCOMPONENT</td><td/><td/><td>_CB9E7C1B_EEDE_42D3_8844_4D48220A01E9_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td/><td/><td>_9C569BC4_0863_4A3D_8991_D3518474C1B2_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_F949F128_A4AC_4161_8F98_89C9233D6EB2_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_AA298C85_4C2E_431F_9B81_BD91E85922D9_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_C4388467_6049_496F_B4B6_BF266351D117_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_240BA4D7_1811_4CAA_96C6_AB74770A4356_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td/><td/><td>_5B84DF58_7183_477E_9229_5B3AC1C3B591_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_053A4AFC_01D8_47CA_BBAD_FBEFC693EE78_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_BE1DA305_FEF3_4EF2_AB6E_0AAAE8921707_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_BD1657FE_4BA1_4FD2_AB8F_037052F032A8_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obc.exe</td><td/><td/><td>_9D3E9399_EA3C_4964_9265_9BFC02C91C3D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obd.exe</td><td/><td/><td>_FE1B0612_3C95_4BF4_8047_279DD24F9496_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obr.exe</td><td/><td/><td>_05D017DE_740C_4039_967F_E74D2C626D5A_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obu.exe</td><td/><td/><td>_F5749E6D_291A_4078_8337_E725FE8A91AE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_ECD7A352_A46B_4018_BF69_30D1E224AEFD_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_98C8DC55_135F_4E9A_99FB_7686580F6597_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_AC38EFAB_FE69_4AAB_A0F5_5A4110B80B01_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obc.exe</td><td/><td/><td>_6EC78E23_2B91_4C47_99F0_BE2231351892_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obd.exe</td><td/><td/><td>_2F51BCF7_827A_41A8_90B5_D6E93C34606E_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obr.exe</td><td/><td/><td>_AF3353A2_1FED_48AD_A3AD_05181EF27A10_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obu.exe</td><td/><td/><td>_3A6BE7DF_568A_4697_90D6_F1485BE3D007_FILTER</td><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="ISCustomActionReference">
@@ -3989,9 +3989,9 @@
 		<row><td>ID_STRING2</td><td>1033</td><td>http://sourceforge.net/projects/objeck-lang/</td><td>0</td><td/><td>-350352052</td></row>
 		<row><td>ID_STRING20</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-434204406</td></row>
 		<row><td>ID_STRING21</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-257996585</td></row>
-		<row><td>ID_STRING22</td><td>1033</td><td>Readme</td><td>0</td><td/><td>295693063</td></row>
-		<row><td>ID_STRING23</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>295656231</td></row>
-		<row><td>ID_STRING24</td><td>1033</td><td>COMPIL~1|Compiler and VM Executables</td><td>0</td><td/><td>295686951</td></row>
+		<row><td>ID_STRING22</td><td>1033</td><td>COMPIL~1|Compiler and VM Executables</td><td>0</td><td/><td>698287588</td></row>
+		<row><td>ID_STRING23</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>698322404</td></row>
+		<row><td>ID_STRING24</td><td>1033</td><td>Readme</td><td>0</td><td/><td>698338788</td></row>
 		<row><td>ID_STRING3</td><td>1033</td><td>Randy Hollines</td><td>0</td><td/><td>-350311156</td></row>
 		<row><td>ID_STRING4</td><td>1033</td><td>OBJECK~1|Objeck Programming Language</td><td>0</td><td/><td>-199313356</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
@@ -4101,25 +4101,25 @@
 		<col def="S255">ISBuildSourcePath</col>
 		<col def="I2">ISIconIndex</col>
 		<row><td>ARPPRODUCTICON.exe</td><td/><td>&lt;ISProductFolder&gt;\redist\Language Independent\OS Independent\setupicon.ico</td><td>0</td></row>
-		<row><td>NewShortcut1_BAD062C1A9DA4161A46428F393BB6FE4.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\readme.ico</td><td>0</td></row>
+		<row><td>NewShortcut1_158C06B6AF3143E6949FCDF7618F2ABE.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\folder-blue-open.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_C64675E356EB410D86505CA38FB9D1E2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_0596DA41ED7D4B35AD32B5255AD7416F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_0D1F2A66FA2046F1A64E56C8FD8E5080.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_180E1FE376FB4A55929C834B750AC717.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_40479B40F7B24C7D8682A9E521EE1E6D.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut2_49CE0D1D864F4AD6B60EB2295E9ABE9C.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_5903D763B94243DA9A5DF973B0276E50.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_5B2285C6FE204D698A4B65AAD583AF0F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut2_7F98292683864354A96921F093353662.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A959DA6D846142AFB85C73BE68270CA6.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A9AAEE654BA44650B32AA7E21D75A8A2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_BE046172E5EB4B888CF2CD130859C31A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_08FC9DFE3B354FCE951EC8D806343E09.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\README.rtf</td><td>0</td></row>
-		<row><td>NewShortcut3_12E58850D19F4827AF27BA13F3489A68.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\folder-blue-open.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_1C64B98248454613B917537486ED1B8D.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_2D84039E8E9E4930875D5148D5BF6F91.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_6A038888799A4ABCBD2B12F71EC97FED.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_7320DA0CCC13489684FBB3EE342BB9C6.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_B3BFF5D23D694AA4808836E9227917CF.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut3_E404ECE2138A44B986A260A8BA4249B3.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_FB727371193C4004982838D09CDDD3A1.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_D623D50303DF4830A2976A6072725759.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\docs\objeck_lang.pdf</td><td>0</td></row>
 		<row><td>_3CD68358FFE7489B80C87A18483EB1CF.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td/></row>
@@ -4629,7 +4629,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck Programming Language</td><td/></row>
-		<row><td>ProductVersion</td><td>1.4.2.0</td><td/></row>
+		<row><td>ProductVersion</td><td>1.4.2.1</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
@@ -4792,9 +4792,9 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S255">ISComments</col>
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
-		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING22##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut1_BAD062C1A9DA4161A46428F393BB6FE4.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING23##</td><td>ISX_DEFAULTCOMPONENT3</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut2_49CE0D1D864F4AD6B60EB2295E9ABE9C.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING24##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut3_12E58850D19F4827AF27BA13F3489A68.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING22##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut1_158C06B6AF3143E6949FCDF7618F2ABE.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING23##</td><td>ISX_DEFAULTCOMPONENT3</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut2_7F98292683864354A96921F093353662.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING24##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut3_E404ECE2138A44B986A260A8BA4249B3.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="Signature">
