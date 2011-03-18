@@ -35,8 +35,12 @@ bundle System {
 
 			return string;			
 		}
+		
+		function : native : Serialize(b : Bool) ~ Byte[] {
+			SERL_INT;
+		}
 	}
-
+	
 	#~~
 	# Byte class support
 	~~#	
@@ -114,6 +118,10 @@ bundle System {
 			};
 
 			return string;
+		}
+		
+		function : native : Serialize(c : Byte) ~ Byte[] {
+			SERL_BYTE;
 		}
 	}
 
@@ -197,6 +205,10 @@ bundle System {
 			
 			return string;
 		}
+		
+		function : native : Serialize(c : Char) ~ Byte[] {
+			SERL_BYTE;
+		}
 	}
 	
 	class Number {
@@ -276,6 +288,10 @@ bundle System {
 			str := String->New();
 			Number->IntToString(i, str);
 			return str;
+		}
+		
+		function : native : Serialize(i : Int) ~ Byte[] {
+			SERL_INT;
 		}
 	}
 
@@ -375,6 +391,10 @@ bundle System {
 
 			return str;
 		}
+		
+		function : native : Serialize(f : Float) ~ Byte[] {
+			SERL_FLOAT;
+		}
 	}
 
 	#~~
@@ -384,6 +404,9 @@ bundle System {
 		function : native : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
+		
+# TODO		
+#		method : public : Serialize() ~ Byte[]
 	}
 
 	#~~
@@ -411,6 +434,10 @@ bundle System {
 
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
+		}
+		
+		method : public : Serialize() ~ Byte[] {
+			SERL_OBJ_INST;
 		}
 	}
 	

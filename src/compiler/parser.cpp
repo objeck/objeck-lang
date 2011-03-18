@@ -1238,7 +1238,31 @@ Statement* Parser::ParseStatement(int depth)
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_TCP_HOST_NAME);
       NextToken();
-      break;      
+      break;  
+
+    case SERL_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_BYTE);
+      NextToken();
+      break;
+      
+    case SERL_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_INT);
+      NextToken();
+      break;
+      
+    case SERL_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_FLOAT);
+      NextToken();
+      break;
+      
+    case SERL_OBJ_INST:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_OBJ_INST);
+      NextToken();
+      break;
 #endif
 
     default:
