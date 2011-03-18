@@ -2,7 +2,7 @@ bundle Default {
 	class Jensens {
 		i : static : Int;
 		
-		function : Sum(lo : Int, hi : Int, term : () ~ Float) ~ Float {
+		function : native : Sum(lo : Int, hi : Int, term : () ~ Float) ~ Float {
 			temp := 0.0;
 
 			for(i := lo; i <= hi; i += 1;) {

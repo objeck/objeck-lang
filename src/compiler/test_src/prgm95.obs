@@ -1,15 +1,15 @@
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			'a'->ToUpperCase()->PrintLine();
-			'Z'->ToUpperCase()->PrintLine();
-			'R'->ToUpperCase()->PrintLine();
-			'q'->ToUpperCase()->PrintLine();
+			'a'->ToUpper()->PrintLine();
+			'Z'->ToUpper()->PrintLine();
+			'R'->ToUpper()->PrintLine();
+			'q'->ToUpper()->PrintLine();
 
-			'a'->ToLowerCase()->PrintLine();
-			'Z'->ToLowerCase()->PrintLine();
-			'R'->ToLowerCase()->PrintLine();
-			'q'->ToLowerCase()->PrintLine();
+			'a'->ToLower()->PrintLine();
+			'Z'->ToLower()->PrintLine();
+			'R'->ToLower()->PrintLine();
+			'q'->ToLower()->PrintLine();
 		}
 	}
 }
