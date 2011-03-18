@@ -197,6 +197,11 @@ enum TokenType {
   SOCK_TCP_OUT_BYTE_ARY,
   SOCK_TCP_OUT_STRING,
   SOCK_TCP_HOST_NAME,
+  // serialization
+  SERL_BYTE,
+  SERL_INT,
+  SERL_FLOAT,
+  SERL_OBJ_INST,
   // shared library support
   DLL_LOAD,
   DLL_UNLOAD,
