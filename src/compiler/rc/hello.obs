@@ -1,7 +1,44 @@
+use Structure;
+
 bundle Default {
+	class Foo {
+		New() {
+		}
+
+		method : public : native : DoSomething(x : Int) ~ Int {
+			return x * 5;
+		}
+	}
+
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			"Hello World"->PrintLine();
+			string := "Hello World!";
+			string->Size()->PrintLine();
+			string->PrintLine();
+
+			input := IO.Console->ReadString();
+			input->GetClass()->GetName()->PrintLine();
+
+			if(input->StartsWith("Hello")) {
+				"saying hello :)"->PrintLine();
+			}
+			else {
+				"not a hello message"->PrintLine();
+			};
+			args->Size()->PrintLine();
+
+			each(i : args) {
+				IO.Console->Print("\t")->PrintLine(args[i]);
+			};
+
+			list := IntList->New();
+			list->AddFront(13);
+			list->AddBack(20);
+			list->AddFront(7);
+			list->Size()->PrintLine();
+
+			foo := Foo->New();
+			foo->DoSomething(45)->PrintLine();
 		}
 	}
 }

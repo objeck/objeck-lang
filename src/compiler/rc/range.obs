@@ -1,6 +1,6 @@
 bundle Default {
 	class Range {
-		function : MapRange(a1:Float, a2:Float, b1:Float, b2:Float, s:Float) ~ Float {
+		function : native : MapRange(a1:Float, a2:Float, b1:Float, b2:Float, s:Float) ~ Float {
 			return b1 + (s-a1)*(b2-b1)/(a2-a1);
 		}
 
