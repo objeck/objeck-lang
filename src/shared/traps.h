@@ -93,6 +93,11 @@ namespace instructions {
     SOCK_TCP_IN_STRING,
     SOCK_TCP_OUT_STRING,
     SOCK_TCP_HOST_NAME,
+    // serialization
+    SERL_BYTE,
+    SERL_INT,
+    SERL_FLOAT,
+    SERL_OBJ_INST,
     // platform
     PLTFRM,
     EXIT,
