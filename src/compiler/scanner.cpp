@@ -185,6 +185,10 @@ void Scanner::LoadKeywords()
   ident_map["SOCK_TCP_OUT_BYTE"] = SOCK_TCP_OUT_BYTE;
   ident_map["SOCK_TCP_OUT_BYTE_ARY"] = SOCK_TCP_OUT_BYTE_ARY;
   ident_map["SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
+  ident_map["SERL_BYTE"] = SERL_BYTE;
+  ident_map["SERL_INT"] = SERL_INT;
+  ident_map["SERL_FLOAT"] = SERL_FLOAT;
+  ident_map["SERL_OBJ_INST"] = SERL_OBJ_INST;
 #endif
 }
 
@@ -307,6 +311,10 @@ void Scanner::CheckIdentifier(int index)
   case SOCK_TCP_OUT_BYTE:
   case SOCK_TCP_OUT_BYTE_ARY:
   case SOCK_TCP_HOST_NAME:
+  case SERL_BYTE:
+  case SERL_INT:
+  case SERL_FLOAT:
+  case SERL_OBJ_INST:
 #endif
     tokens[index]->SetType(ident_type);
     break;
