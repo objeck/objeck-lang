@@ -7,7 +7,8 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			values := IntVector->New([1, 2, 3, 4, 5]);
+			"Print roots..."->PrintLine();
+			values := IntVector->New([1, 2, 3, 4, 5, 100]);
 			squares := values->Apply(Square(Int) ~ Int);
 			each(i : squares) {
 			  squares->Get(i)->PrintLine();
