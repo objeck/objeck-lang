@@ -1991,6 +1991,20 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
+    // ---------------- serialization ----------------
+  case SERL_BYTE:
+  case SERL_INT: {
+    long value = frame->GetMemory()[1];
+    cout << "?: |" << value << "|" << endl;
+  }
+    break;
+    
+  case SERL_FLOAT:
+    break;
+    
+  case SERL_OBJ_INST:
+    break;
+    
     // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();

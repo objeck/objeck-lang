@@ -36,7 +36,7 @@ bundle System {
 			return string;			
 		}
 		
-		function : native : Serialize(b : Bool) ~ Byte[] {
+		function : Serialize(b : Bool) ~ Byte[] {
 			SERL_INT;
 		}
 	}
@@ -120,7 +120,7 @@ bundle System {
 			return string;
 		}
 		
-		function : native : Serialize(c : Byte) ~ Byte[] {
+		function : Serialize(c : Byte) ~ Byte[] {
 			SERL_BYTE;
 		}
 	}
@@ -206,7 +206,7 @@ bundle System {
 			return string;
 		}
 		
-		function : native : Serialize(c : Char) ~ Byte[] {
+		function : Serialize(c : Char) ~ Byte[] {
 			SERL_BYTE;
 		}
 	}
@@ -290,7 +290,7 @@ bundle System {
 			return str;
 		}
 		
-		function : native : Serialize(i : Int) ~ Byte[] {
+		function : Serialize(i : Int) ~ Byte[] {
 			SERL_INT;
 		}
 	}
@@ -392,7 +392,7 @@ bundle System {
 			return str;
 		}
 		
-		function : native : Serialize(f : Float) ~ Byte[] {
+		function : Serialize(f : Float) ~ Byte[] {
 			SERL_FLOAT;
 		}
 	}
