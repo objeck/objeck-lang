@@ -35,10 +35,6 @@ bundle System {
 
 			return string;			
 		}
-		
-		function : Serialize(b : Bool) ~ Byte[] {
-			SERL_INT;
-		}
 	}
 	
 	#~~
@@ -118,10 +114,6 @@ bundle System {
 			};
 
 			return string;
-		}
-
-		function : Serialize(b : Byte) ~ Byte[] {
-			SERL_INT;
 		}
 	}
 
@@ -205,10 +197,6 @@ bundle System {
 			
 			return string;
 		}
-		
-		function : Serialize(c : Char) ~ Byte[] {
-			SERL_INT;
-		}
 	}
 	
 	class Number {
@@ -288,10 +276,6 @@ bundle System {
 			str := String->New();
 			Number->IntToString(i, str);
 			return str;
-		}
-		
-		function : Serialize(i : Int) ~ Byte[] {
-			SERL_INT;
 		}
 	}
 
@@ -391,10 +375,6 @@ bundle System {
 
 			return str;
 		}
-		
-		function : Serialize(f : Float) ~ Byte[] {
-			SERL_FLOAT;
-		}
 	}
 
 	#~~
@@ -434,10 +414,6 @@ bundle System {
 
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
-		}
-		
-		method : public : Serialize() ~ Byte[] {
-			SERL_OBJ_INST;
 		}
 	}
 	
@@ -1616,6 +1592,53 @@ bundle IO {
 		
 		function : List(n : System.String) ~ System.String[] {
 			DIR_LIST;
+		}
+	}
+
+	class Serializer  {
+		buffer : Byte[];
+
+		method : Add(b : Bool) ~ Nil {
+			SERL_INT;
+		}
+
+		method : Add(i : Int) ~ Nil {
+			SERL_INT;
+		}
+		
+		method : Add(f : Float) ~ Nil {
+			SERL_FLOAT;
+		}
+		
+		method : public : Add(o : Base) ~ Nil {
+			SERL_OBJ_INST;
+		}
+
+		method : Add(b : Bool[]) ~ Nil {
+			SERL_INT_ARY;
+		}
+
+		method : Add(b : Byte[]) ~ Nil {
+			SERL_BYTE_ARY;
+		}
+
+		method : Add(c : Char[]) ~ Nil {
+			SERL_BYTE_ARY;
+		}
+
+		method : Add(i : Int[]) ~ Nil {
+			SERL_INT_ARY;
+		}
+		
+		method : Add(f : Float[]) ~ Nil {
+			SERL_FLOAT_ARY;
+		}
+		
+		method : public : Add(o : Base[]) ~ Nil {
+			SERL_OBJ_INST_ARY;
+		}
+
+		method : public : Serialize() ~ Byte[] {
 		}
 	}
 }
