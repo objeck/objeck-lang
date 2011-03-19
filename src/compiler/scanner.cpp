@@ -185,10 +185,20 @@ void Scanner::LoadKeywords()
   ident_map["SOCK_TCP_OUT_BYTE"] = SOCK_TCP_OUT_BYTE;
   ident_map["SOCK_TCP_OUT_BYTE_ARY"] = SOCK_TCP_OUT_BYTE_ARY;
   ident_map["SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
-  ident_map["SERL_BYTE"] = SERL_BYTE;
   ident_map["SERL_INT"] = SERL_INT;
   ident_map["SERL_FLOAT"] = SERL_FLOAT;
   ident_map["SERL_OBJ_INST"] = SERL_OBJ_INST;
+  ident_map["SERL_BYTE_ARY"] = SERL_BYTE_ARY;
+  ident_map["SERL_INT_ARY"] = SERL_INT_ARY;
+  ident_map["SERL_FLOAT_ARY"] = SERL_FLOAT_ARY;
+  ident_map["SERL_OBJ_INST_ARY"] = SERL_OBJ_INST_ARY;
+  ident_map["DESERL_INT"] = DESERL_INT;
+  ident_map["DESERL_FLOAT"] = DESERL_FLOAT;
+  ident_map["DESERL_OBJ_INST"] = DESERL_OBJ_INST;
+  ident_map["DESERL_BYTE_ARY"] = DESERL_BYTE_ARY;
+  ident_map["DESERL_INT_ARY"] = DESERL_INT_ARY;
+  ident_map["DESERL_FLOAT_ARY"] = DESERL_FLOAT_ARY;
+  ident_map["DESERL_OBJ_INST_ARY"] = DESERL_OBJ_INST_ARY;
 #endif
 }
 
@@ -311,10 +321,21 @@ void Scanner::CheckIdentifier(int index)
   case SOCK_TCP_OUT_BYTE:
   case SOCK_TCP_OUT_BYTE_ARY:
   case SOCK_TCP_HOST_NAME:
-  case SERL_BYTE:
   case SERL_INT:
   case SERL_FLOAT:
   case SERL_OBJ_INST:
+  case SERL_BYTE_ARY:
+  case SERL_INT_ARY:
+  case SERL_FLOAT_ARY:
+  case SERL_OBJ_INST_ARY:
+  case DESERL_INT:
+  case DESERL_FLOAT:
+  case DESERL_OBJ_INST:
+  case DESERL_BYTE_ARY:
+  case DESERL_INT_ARY:
+  case DESERL_FLOAT_ARY:
+  case DESERL_OBJ_INST_ARY:
+
 #endif
     tokens[index]->SetType(ident_type);
     break;
