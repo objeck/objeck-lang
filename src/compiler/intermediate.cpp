@@ -1204,12 +1204,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 3));
     break;
     
-    //----------- serialization methods -----------
-  case SERL_BYTE:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_BYTE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
-    break;
-    
+    //----------- serialization methods -----------  
   case SERL_INT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
@@ -1223,6 +1218,39 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case SERL_OBJ_INST:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_OBJ_INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
+    break;
+    
+  case SERL_BYTE_ARY:
+    break;
+
+  case SERL_INT_ARY:
+    break;
+
+  case SERL_FLOAT_ARY:
+    break;
+
+  case SERL_OBJ_INST_ARY:
+    break;
+
+  case DESERL_INT:
+    break;
+
+  case DESERL_FLOAT:
+    break;
+
+  case DESERL_OBJ_INST:
+    break;
+
+  case DESERL_BYTE_ARY:
+    break;
+
+  case DESERL_INT_ARY:
+    break;
+
+  case DESERL_FLOAT_ARY:
+    break;
+
+  case DESERL_OBJ_INST_ARY:
     break;
     
     //----------- file methods -----------

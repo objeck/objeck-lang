@@ -119,9 +119,9 @@ bundle System {
 
 			return string;
 		}
-		
-		function : Serialize(c : Byte) ~ Byte[] {
-			SERL_BYTE;
+
+		function : Serialize(b : Byte) ~ Byte[] {
+			SERL_INT;
 		}
 	}
 
@@ -207,7 +207,7 @@ bundle System {
 		}
 		
 		function : Serialize(c : Char) ~ Byte[] {
-			SERL_BYTE;
+			SERL_INT;
 		}
 	}
 	

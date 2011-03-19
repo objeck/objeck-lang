@@ -1238,12 +1238,6 @@ Statement* Parser::ParseStatement(int depth)
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_TCP_HOST_NAME);
       NextToken();
-      break;  
-
-    case SERL_BYTE:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SERL_BYTE);
-      NextToken();
       break;
       
     case SERL_INT:
@@ -1263,8 +1257,74 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::SERL_OBJ_INST);
       NextToken();
       break;
-#endif
 
+    case SERL_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SERL_INT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_INT_ARY);
+      NextToken();
+      break;
+
+    case SERL_FLOAT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_FLOAT_ARY);
+      NextToken();
+      break;
+
+    case SERL_OBJ_INST_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SERL_OBJ_INST_ARY);
+      NextToken();
+      break;
+
+    case DESERL_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_INT);
+      NextToken();
+      break;
+
+    case DESERL_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_FLOAT);
+      NextToken();
+      break;
+
+    case DESERL_OBJ_INST:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_OBJ_INST);
+      NextToken();
+      break;
+
+    case DESERL_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_BYTE_ARY);
+      NextToken();
+      break;
+
+    case DESERL_INT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_INT_ARY);
+      NextToken();
+      break;
+      
+    case DESERL_FLOAT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_FLOAT_ARY);
+      NextToken();
+      break;
+
+    case DESERL_OBJ_INST_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DESERL_OBJ_INST_ARY);
+      NextToken();
+      break;
+#endif
+      
     default:
       statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num,
 							       ParseSimpleExpression(depth + 1));
@@ -2230,8 +2290,8 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       /*
       // subsequent method calls
       if(Match(TOKEN_ASSESSOR)) {
-	method_call = ParseMethodCall(variable, depth + 1);
-	method_call->SetCastType(variable->GetCastType());
+      method_call = ParseMethodCall(variable, depth + 1);
+      method_call->SetCastType(variable->GetCastType());
       }
       */
     }

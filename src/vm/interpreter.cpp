@@ -1992,14 +1992,48 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
     // ---------------- serialization ----------------
-  case SERL_BYTE:
   case SERL_INT: {
-    long value = frame->GetMemory()[1];
-    cout << "?: |" << value << "|" << endl;
+    // must be an int
+    int value = frame->GetMemory()[1];
+    
+    // create byte array
+    const long byte_array_size = sizeof(value);
+    const long byte_array_dim = 1;
+    // +1 not needed not a NULL terminated string
+    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size +
+								       ((byte_array_dim + 2) *
+									sizeof(long)),
+								       BYTE_ARY_TYPE,
+								       op_stack, *stack_pos);
+    byte_array[0] = byte_array_size;
+    byte_array[1] = byte_array_dim;
+    byte_array[2] = byte_array_size;
+  
+    memcpy(byte_array + 3, &value, sizeof(value));
+    PushInt((long)byte_array);
   }
     break;
     
-  case SERL_FLOAT:
+  case SERL_FLOAT: {
+    FLOAT_VALUE value;
+    memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
+    
+    // create byte array
+    const long byte_array_size = sizeof(value);
+    const long byte_array_dim = 1;
+    // +1 not needed not a NULL terminated string
+    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size +
+								       ((byte_array_dim + 2) *
+									sizeof(long)),
+								       BYTE_ARY_TYPE,
+								       op_stack, *stack_pos);
+    byte_array[0] = byte_array_size;
+    byte_array[1] = byte_array_dim;
+    byte_array[2] = byte_array_size;
+    
+    memcpy(byte_array + 3, &value, sizeof(value));
+    PushInt((long)byte_array);
+  }
     break;
     
   case SERL_OBJ_INST:
