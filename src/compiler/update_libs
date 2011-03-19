@@ -1,0 +1,3 @@
+#!/bin/sh
+./obc -src lib_src/struct.obs -tar lib -opt s3 -dest struct.obl
+./obc -src lib_src/xml.obs -lib struct.obl -tar lib -opt s3 -dest xml.obl
