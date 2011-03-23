@@ -47,12 +47,6 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
 
-    if(cur_frame) {
-cout << "### 0: func=" << frame->GetMethod()->GetName() << ", cur_func=" << cur_frame->GetMethod()->GetName() << " ###" << endl;
-    }
-
-    cout << "### 1: pos=" << call_stack_pos << ", cur_pos=" << cur_call_stack_pos << " ###" << endl;
-    
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  && 
        // step command
        (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) || 
@@ -974,7 +968,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	}
       }
       else {
-	cout << "source file or line number doesn't exist." << endl;
+	cout << "source file or line number doesn't exist. (is the program running?)" << endl;
 	is_error = true;
       }
     }
