@@ -70,10 +70,12 @@ Scanner::~Scanner()
 ****************************/
 void Scanner::LoadKeywords()
 {
-  ident_map["?next"] = TOKEN_NEXT_ID;
-  ident_map["?n"] = TOKEN_NEXT_ID;
-  ident_map["?out"] = TOKEN_OUT_ID;
-  ident_map["?o"] = TOKEN_OUT_ID;
+  ident_map["?next"] = TOKEN_NEXT_LINE_ID;
+  ident_map["?n"] = TOKEN_NEXT_LINE_ID;
+  ident_map["?step"] = TOKEN_NEXT_ID;
+  ident_map["?s"] = TOKEN_NEXT_ID;
+  ident_map["?jump"] = TOKEN_OUT_ID;
+  ident_map["?j"] = TOKEN_OUT_ID;
   ident_map["?cont"] = TOKEN_CONT_ID;
   ident_map["?c"] = TOKEN_CONT_ID;
   ident_map["?exe"] = TOKEN_EXE_ID;
@@ -123,6 +125,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_LIST_ID:
   case TOKEN_SELF_ID:
   case TOKEN_NEXT_ID:
+  case TOKEN_NEXT_LINE_ID:
   case TOKEN_OUT_ID:
   case TOKEN_CONT_ID:
   case TOKEN_EXE_ID:

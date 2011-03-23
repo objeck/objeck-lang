@@ -134,6 +134,7 @@ namespace Runtime {
     long cur_call_stack_pos;
     bool is_error;
     bool is_next;
+    bool is_next_line;
     bool is_jmp_out;
     long* ref_mem;
     StackClass* ref_klass;
