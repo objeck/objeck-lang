@@ -771,11 +771,16 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_LIT,
                                             ReadDouble()));
       break;
-
+      
     case RTRN:
-      method->AddInstruction(new StackInstr(line_num, RTRN));
+      if(is_debug) {
+	method->AddInstruction(new StackInstr(line_num + 1, RTRN));
+      }
+      else {
+	method->AddInstruction(new StackInstr(line_num, RTRN));
+      }
       break;
-
+      
     case DLL_LOAD:
       method->AddInstruction(new StackInstr(line_num, DLL_LOAD));
       break;
