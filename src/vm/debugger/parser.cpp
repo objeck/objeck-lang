@@ -331,20 +331,18 @@ Command* Parser::ParseBreak(int depth) {
   Show("Break", depth);
 #endif
   NextToken();
-
+  
   // file name
-  if(!Match(TOKEN_IDENT)) {
-    ProcessError(TOKEN_IDENT);
+  string file_name;
+  if(Match(TOKEN_IDENT)) {
+    file_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
     NextToken();
   }
-    
-  const string &file_name = scanner->GetToken()->GetIdentifier();
-  NextToken();
-  if(!Match(TOKEN_COLON)) {
-    ProcessError(TOKEN_COLON);
-  }
-  NextToken();
-  
+
   // line number
   int line_num = -1;
   if(Match(TOKEN_INT_LIT)) {
