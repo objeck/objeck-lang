@@ -49,6 +49,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  && 
        (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) || 
+	(is_next_line && cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName()) ||
 	FindBreak(line_num, file_name))) {
       // set current line
       cur_line_num = line_num;
@@ -56,7 +57,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       cur_frame = frame;
       cur_call_stack = call_stack;
       cur_call_stack_pos = call_stack_pos;
-      is_jmp_out = false;
+      is_jmp_out = is_next_line = false;
       
       // prompt for input
       const string &long_name = cur_frame->GetMethod()->GetName();
@@ -80,6 +81,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND && 
 			 command->GetCommandType() != NEXT_COMMAND &&
+			 command->GetCommandType() != NEXT_LINE_COMMAND &&
 			 command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
@@ -205,9 +207,8 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
-
-  const string &path = base_path + file_name;  
   
+  const string &path = base_path + file_name;  
   if(file_name.size() != 0 && FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
       cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
@@ -217,7 +218,7 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
     }
   }
   else {
-    cout << "file doesn't exit." << endl;
+    cout << "file doesn't exist or isn't loaded." << endl;
     is_error = true;
   }
 }
@@ -911,7 +912,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 #endif
 
   // parser input
-  is_next = false;
+  is_next = is_next_line = false;
   Parser parser;  
   Command* command = parser.Parse("?" + line);
   if(command) {
@@ -1008,6 +1009,15 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       }
       break;
 
+    case NEXT_LINE_COMMAND:
+      if(interpreter) {
+	is_next_line = true;
+      }
+      else {
+	cout << "program is not running." << endl;
+      }
+      break;
+      
     case JUMP_OUT_COMMAND:
       if(interpreter) {
 	is_jmp_out = true;
