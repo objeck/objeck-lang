@@ -603,7 +603,8 @@ public:
     if(pos >= max) {
       max *= 2;
       BYTE_VALUE* temp = new BYTE_VALUE[sizeof(long) * max];
-      for(int i = 0; i < pos; i++) {
+      int i = pos;
+      while(--i > -1) { 
         temp[i] = buffer[i];
       }
       delete buffer;
