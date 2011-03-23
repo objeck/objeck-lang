@@ -580,6 +580,48 @@ class StackMethod {
 };
 
 /********************************
+ * ByteBuffer class
+ ********************************/
+class ByteBuffer {
+	BYTE_VALUE* buffer;
+  int pos;
+  int max;
+
+public:
+  ByteBuffer() {
+    pos = 0;
+    max = 4;
+    buffer = new BYTE_VALUE[sizeof(long) * max];
+  }
+
+  ~ByteBuffer() {
+    delete buffer;
+    buffer = NULL;
+  }
+
+  inline void AddByte(BYTE_VALUE b) {
+    if(pos >= max) {
+      max *= 2;
+      BYTE_VALUE* temp = new BYTE_VALUE[sizeof(long) * max];
+      for(int i = 0; i < pos; i++) {
+        temp[i] = buffer[i];
+      }
+      delete buffer;
+      buffer = temp;
+    }
+    buffer[pos++] = b;
+  }
+
+  inline BYTE_VALUE* GetBuffer() {
+    return buffer;
+  }
+
+  inline int GetSize() {
+    return pos;
+  }
+};
+
+/********************************
  * StackClass class
  ********************************/
 class StackClass {
