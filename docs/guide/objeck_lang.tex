@@ -714,8 +714,10 @@ instance level variables the path must start with
     \texttt{breaks} &  shows all breakpoints &  \\ \hline
     \texttt{[d]elete} &  deletes a breakpoint & \texttt{d hello.obs:10} \\ \hline
     \texttt{clear} &  clears all breakpoints &  \\ \hline
-    \texttt{[n]ext} &  moves to the next line with debug information &  \\ \hline
-    \texttt{[o]ut} &  jumps out of an existing method/function and moves to the next line with debug information &  \\ \hline
+    \texttt{[n]ext} &  moves to the next line within the same
+    method/function with debug information & \\ \hline
+    \texttt{[s]tep} &  moves to the next line with debug information &  \\ \hline
+    \texttt{[j]ump} &  jumps out of an existing method/function and moves to the next line with debug information &  \\ \hline
     \texttt{args} &  specifies program arguments & \texttt{args "Hello World"} \\ \hline
     \texttt{[r]un} &  runs a loaded program &  \\ \hline
     \texttt{[p]rint} &  prints the value of an expression, along with metadata & \texttt{p @self$\rightarrow$value} \\ \hline
