@@ -1595,6 +1595,7 @@ bundle IO {
 		}
 	}
 
+#~
 	class Serializer  {
 		buffer : Byte[];
 
@@ -1641,6 +1642,7 @@ bundle IO {
 		method : public : Serialize() ~ Byte[] {
 		}
 	}
+~#
 }
 
 #------------ Socket ------------

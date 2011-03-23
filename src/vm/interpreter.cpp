@@ -776,10 +776,10 @@ void StackInterpreter::ProcessPlatform()
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
   long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-								     ((char_array_dim + 2) *
-								      sizeof(long)),
-								     BYTE_ARY_TYPE,
-								     op_stack, *stack_pos);
+							 ((char_array_dim + 2) *
+							  sizeof(long)),
+							 BYTE_ARY_TYPE,
+							 op_stack, *stack_pos);
   char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -790,7 +790,7 @@ void StackInterpreter::ProcessPlatform()
 
   // create 'System.String' object instance
   long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-							    (long*)op_stack, *stack_pos);
+						(long*)op_stack, *stack_pos);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
 
@@ -1022,7 +1022,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
 #endif
 
   long inst_mem = (long)MemoryManager::AllocateObject(instr->GetOperand(),
-								  op_stack, *stack_pos);
+						      op_stack, *stack_pos);
   PushInt(inst_mem);
 }
 
@@ -1051,7 +1051,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
   }
   // assumes that doubles are twice the size of integers
   long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-							      op_stack, *stack_pos);
+						  op_stack, *stack_pos);
   if(is_float) {
     mem[0] = size / 2;
   } else {
@@ -1084,7 +1084,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
   }
   size++;
   long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
-							      BYTE_ARY_TYPE, op_stack, *stack_pos);
+						  BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(long));
@@ -1752,12 +1752,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     StackClass* cls = MemoryManager::Instance()->GetClass(inst);
     if(!cls) {
       cerr << ">>> Internal error: looking up class instance " << inst << " <<<" << endl;
-        StackErrorUnwind();
-        exit(1);
+      StackErrorUnwind();
+      exit(1);
     }
     /// set name and create 'Class' instance
     long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-							      (long*)op_stack, *stack_pos);
+						  (long*)op_stack, *stack_pos);
     cls_obj[0] = (long)CreateStringObject(cls->GetName());
     frame->GetMemory()[1] = (long)cls_obj;
     CreateClassObject(cls, cls_obj);
@@ -1992,51 +1992,46 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
     // ---------------- serialization ----------------
-  case SERL_INT: {
-    // must be an int
-    int value = frame->GetMemory()[1];
-    
-    // create byte array
-    const long byte_array_size = sizeof(value);
-    const long byte_array_dim = 1;
-    // +1 not needed not a NULL terminated string
-    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size +
-								       ((byte_array_dim + 2) *
-									sizeof(long)),
-								       BYTE_ARY_TYPE,
-								       op_stack, *stack_pos);
-    byte_array[0] = byte_array_size;
-    byte_array[1] = byte_array_dim;
-    byte_array[2] = byte_array_size;
-  
-    memcpy(byte_array + 3, &value, sizeof(value));
-    PushInt((long)byte_array);
-  }
+  case SERL_INT:
     break;
-    
-  case SERL_FLOAT: {
-    FLOAT_VALUE value;
-    memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
-    
-    // create byte array
-    const long byte_array_size = sizeof(value);
-    const long byte_array_dim = 1;
-    // +1 not needed not a NULL terminated string
-    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size +
-								       ((byte_array_dim + 2) *
-									sizeof(long)),
-								       BYTE_ARY_TYPE,
-								       op_stack, *stack_pos);
-    byte_array[0] = byte_array_size;
-    byte_array[1] = byte_array_dim;
-    byte_array[2] = byte_array_size;
-    
-    memcpy(byte_array + 3, &value, sizeof(value));
-    PushInt((long)byte_array);
-  }
+
+  case SERL_FLOAT:
     break;
-    
+
   case SERL_OBJ_INST:
+    break;
+
+  case SERL_BYTE_ARY:
+    break;
+
+  case SERL_INT_ARY:
+    break;
+
+  case SERL_FLOAT_ARY:
+    break;
+
+  case SERL_OBJ_INST_ARY:
+    break;
+
+  case DESERL_INT:
+    break;
+
+  case DESERL_FLOAT:
+    break;
+
+  case DESERL_OBJ_INST:
+    break;
+
+  case DESERL_BYTE_ARY:
+    break;
+
+  case DESERL_INT_ARY:
+    break;
+
+  case DESERL_FLOAT_ARY:
+    break;
+
+  case DESERL_OBJ_INST_ARY:
     break;
     
     // ---------------- file i/o ----------------
@@ -2406,9 +2401,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long str_obj_array_size = files.size();
     const long str_obj_array_dim = 1;
     long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
-									  str_obj_array_dim + 2,
-									  INT_TYPE, op_stack,
-									  *stack_pos);
+							      str_obj_array_dim + 2,
+							      INT_TYPE, op_stack,
+							      *stack_pos);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
