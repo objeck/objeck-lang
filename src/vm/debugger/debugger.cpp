@@ -201,10 +201,14 @@ void Runtime::Debugger::ProcessRun() {
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   int line_num = break_command->GetLineNumber();
-  const string &file_name = break_command->GetFileName();
+  string file_name = break_command->GetFileName();
+  if(file_name.size() == 0) {
+    file_name = cur_file_name;
+  }
+
   const string &path = base_path + file_name;  
   
-  if(FileExists(path)) {  
+  if(file_name.size() != 0 && FileExists(path)) {  
     if(AddBreak(line_num, file_name)) {
       cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
     }
