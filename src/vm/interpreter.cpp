@@ -742,6 +742,10 @@ void StackInterpreter::Execute()
         ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
       }
       break;
+      
+      // note: just for debugger
+    case END_STMTS:
+      break;
     }
   }
 }
