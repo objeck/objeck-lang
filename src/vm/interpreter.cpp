@@ -2002,7 +2002,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SERL_FLOAT:
     break;
 
-  case SERL_OBJ_INST:
+  case SERL_OBJ_INST: {
+    long* obj = (long*)frame->GetMemory()[1];    
+    int id = MemoryManager::Instance()->GetObjectID(obj);
+    cout << "## 0 ##" << endl;
+  }
     break;
 
   case SERL_BYTE_ARY:

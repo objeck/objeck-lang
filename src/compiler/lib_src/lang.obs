@@ -1595,9 +1595,12 @@ bundle IO {
 		}
 	}
 
-#~
 	class Serializer  {
 		buffer : Byte[];
+
+		New() {
+			buffer := Byte->New[16];
+		}
 
 		method : Add(b : Bool) ~ Nil {
 			SERL_INT;
@@ -1642,7 +1645,6 @@ bundle IO {
 		method : public : Serialize() ~ Byte[] {
 		}
 	}
-~#
 }
 
 #------------ Socket ------------
