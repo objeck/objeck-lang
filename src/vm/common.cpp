@@ -94,9 +94,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 {
   // check method
   for(int i = 0; i < dcls_size; i++) {
-    long array_size = 0;
-
-
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       cout << "\t";
@@ -124,54 +121,65 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     }
     break;
 
-    case BYTE_ARY_PARM:
+    case BYTE_ARY_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      // NULL terminated string workaround
+
+      long* array = (long*)(*mem);
+      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << array << "("
+           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
       // update
       mem++;
+    }
       break;
 
-    case INT_ARY_PARM:
+    case INT_ARY_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": INT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      long* array = (long*)(*mem);
+      cout << "\t" << i << ": INT_ARY_PARM: addr=" << array << "("
+           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
       // update
       mem++;
+    }
       break;
-
-    case FLOAT_ARY_PARM:
+      
+    case FLOAT_ARY_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      long* array = (long*)(*mem);
+      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << array << "("
+           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
       // update
       mem++;
+    }
       break;
-
-    case OBJ_PARM:
+      
+    case OBJ_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": OBJ_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), id=" << array_size << endl;
+      long* array = (long*)(*mem);
+      cout << "\t" << i << ": OBJ_PARM: addr=" << array << "("
+           << (long)array << "), id=" << array[0] << endl;
 #endif
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
       // update
       mem++;
+    }
       break;
-
-    case OBJ_ARY_PARM:
+      
+    case OBJ_ARY_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      long* array = (long*)(*mem);
+      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << array << "("
+           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
       if(MarkMemory((long*)(*mem))) {
@@ -185,6 +193,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       }
       // update
       mem++;
+    }
       break;
     }
   }
