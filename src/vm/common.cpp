@@ -41,8 +41,170 @@ list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-#ifndef _UTILS
+/********************************
+ * ObjectSerializer struct
+ ********************************/
+void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
+{
+  if(mem) {
+    // TODO: optimize so this is not a double call.. see below
+    StackClass* cls = MemoryManager::Instance()->GetClass(mem);
+    if(cls) {
+#ifdef _DEBUG
+      for(int i = 0; i < depth; i++) {
+        cout << "\t";
+      }
+      cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
+           << cls->GetNumberDeclarations() << " -----" << endl;
+#endif
 
+      // mark data
+      if(MarkMemory(mem)) {
+        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+      }
+    } 
+    else {
+      // NOTE: this happens when we are trying to mark unidentified memory
+      // segments. these segments may be parts of that stack or temp for
+      // register variables
+#ifdef _DEBUG
+      for(int i = 0; i < depth; i++) {
+        cout << "\t";
+      }
+      cout <<"$: addr/value=" << mem << endl;
+      if(is_obj) {
+        assert(cls);
+      }
+#endif
+      // primitive or object array
+      if(MarkMemory(mem)) {
+	long* array = (mem);
+	const long size = array[0];
+	const long dim = array[1];
+	long* objects = (long*)(array + 2 + dim);
+	for(long k = 0; k < size; k++) {
+	  CheckObject((long*)objects[k], false, 2);
+	}
+      }
+    }
+  }
+}
+
+void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
+{
+  // check method
+  for(int i = 0; i < dcls_size; i++) {
+    long array_size = 0;
+
+
+#ifdef _DEBUG
+    for(int j = 0; j < depth; j++) {
+      cout << "\t";
+    }
+#endif
+    
+    // update address based upon type
+    switch(dclrs[i]->type) {
+    case INT_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
+#endif
+      // update
+      mem++;
+      break;
+
+    case FLOAT_PARM: {
+#ifdef _DEBUG
+      FLOAT_VALUE value;
+      memcpy(&value, mem, sizeof(FLOAT_VALUE));
+      cout << "\t" << i << ": FLOAT_PARM: value=" << value << endl;
+#endif
+      // update
+      mem += 2;
+    }
+    break;
+
+    case BYTE_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case INT_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": INT_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case FLOAT_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case OBJ_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": OBJ_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), id=" << array_size << endl;
+#endif
+      // check object
+      CheckObject((long*)(*mem), true, depth + 1);
+      // update
+      mem++;
+      break;
+
+    case OBJ_ARY_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << (long*)(*mem) << "("
+           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+#endif
+      // mark data
+      if(MarkMemory((long*)(*mem))) {
+        long* array = (long*)(*mem);
+        const long size = array[0];
+        const long dim = array[1];
+        long* objects = (long*)(array + 2 + dim);
+        for(long k = 0; k < size; k++) {
+          CheckObject((long*)objects[k], true, 2);
+        }
+      }
+      // update
+      mem++;
+      break;
+    }
+  }
+}
+
+void ObjectSerializer::Serialize(long* inst) {
+  CheckObject(inst, true, 0);
+}
+
+ObjectSerializer::ObjectSerializer(long* i) {
+  Serialize(i);
+}
+
+ObjectSerializer::~ObjectSerializer() {
+}
+
+/********************************
+ * SDK functions
+ ********************************/
+#ifndef _UTILS
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
 			 int cls_id, int mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
