@@ -660,16 +660,19 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {
-      // get memory size
-      long array_size = 0;
-
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
+      
+#ifdef _DEBUG
+      // get memory size
+      long array_size = 0;
       map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
+#endif
+      
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -823,15 +826,19 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 {
   // check method
   for(int i = 0; i < dcls_size; i++) {
-    // get memory size
-    long array_size = 0;
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
+    
+#ifdef _DEBUG
+    // get memory size
+    long array_size = 0;
     map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
+#endif
+    
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
 #endif
