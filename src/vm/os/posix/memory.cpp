@@ -825,7 +825,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
-  for(int i = 0; i < dcls_size; i++) {
+  for(long i = 0; i < dcls_size; i++) {
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
