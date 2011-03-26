@@ -242,20 +242,20 @@ public:
 class ObjectSerializer 
 {
   vector<BYTE_VALUE> values;
-  map<long*, int> serial_ids;
-  int cur_id;
+  map<long*, long> serial_ids;
+  long cur_id;
   
   void CheckObject(long* mem, bool is_obj, long depth);
   void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(long* inst);
 
-  int WasSerialized(long* mem) {
-    map<long*, int>::iterator find = serial_ids.find(mem);
+  long WasSerialized(long* mem) {
+    map<long*, long>::iterator find = serial_ids.find(mem);
     if(find != serial_ids.end()) {
       return find->second;
     }    
     cur_id++;
-    serial_ids.insert(pair<long*, int>(mem, cur_id));
+    serial_ids.insert(pair<long*, long>(mem, cur_id));
     
     return -1;
   }
@@ -283,7 +283,7 @@ class StackMethod {
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
-
+  
   const string& ParseName(const string &name) const {
     int state;
     unsigned int index = name.find_last_of(':');
