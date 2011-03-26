@@ -117,7 +117,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
   // check method
   for(long i = 0; i < dcls_size; i++) {
 #ifdef _DEBUG
-    for(int j = 0; j < depth; j++) {
+    for(long j = 0; j < depth; j++) {
       cout << "\t";
     }
 #endif
@@ -158,7 +158,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 #endif
       // mark data
       if(WasSerialized((long*)(*mem)) < 0) {
-	const int array_size = array[0];
+	const long array_size = array[0];
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
@@ -180,7 +180,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	  values.push_back(*(bp + i));
 	}
 	// dimension sizes
-	for(int i = 0; i < dim; i++) {
+	for(long i = 0; i < dim; i++) {
 	  bp = (BYTE_VALUE*)array++;
 	  for(long j = 0; j < sizeof(INT_VALUE); j++) {
 	    values.push_back(*(bp + j));
