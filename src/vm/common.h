@@ -241,12 +241,14 @@ public:
  ********************************/
 class ObjectSerializer 
 {
+  map<int, long*> serial_ids;
+  
   void CheckObject(long* mem, bool is_obj, long depth);
   void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(long* inst);
 
   bool MarkMemory(long* mem) {
-    return false;
+    return true;
   }
   
  public:
@@ -661,16 +663,16 @@ class StackClass {
   long num_dclrs;
   long* cls_mem;
   bool is_debug;
-
+  
   map<const string, StackMethod*> method_name_map;
 
   long InitMemory(long size) {
     cls_mem = new long[size];
     memset(cls_mem, 0, size * sizeof(long));
-
+    
     return size;
   }
-
+  
 public:
   StackClass(long i, const string &ne, const string &fn, long p, 
 	     bool v, StackDclr** d, long n, long cs, long is, bool b) {

@@ -1086,6 +1086,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
     size *= value;
     indices[dim++] = value;
   }
+  // NULL terminated string workaround
   size++;
   long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
 						  BYTE_ARY_TYPE, op_stack, *stack_pos);
