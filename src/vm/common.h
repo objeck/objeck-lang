@@ -241,14 +241,22 @@ public:
  ********************************/
 class ObjectSerializer 
 {
-  map<int, long*> serial_ids;
+  map<long*, int> serial_ids;
+  int cur_id;
   
   void CheckObject(long* mem, bool is_obj, long depth);
   void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(long* inst);
 
-  bool MarkMemory(long* mem) {
-    return true;
+  int WasSerialized(long* mem) {
+    map<long*, int>::iterator find = serial_ids.find(mem);
+    if(find != serial_ids.end()) {
+      return find->second;
+    }    
+    cur_id++;
+    serial_ids.insert(pair<long*, int>(mem, cur_id));
+    
+    return -1;
   }
   
  public:
