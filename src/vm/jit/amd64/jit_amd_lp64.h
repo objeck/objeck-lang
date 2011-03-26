@@ -1037,6 +1037,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
+	// NULL terminated string workaround
 	size++;
 	long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;

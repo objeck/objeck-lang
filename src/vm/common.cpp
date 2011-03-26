@@ -59,7 +59,13 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 #endif
 
       // mark data
-      if(MarkMemory(mem)) {
+      if(WasSerialized(mem) < 0) {
+#ifdef _DEBUG
+	for(int i = 0; i < depth; i++) {
+	  cout << "\t";
+	}
+	cout << "\t----- SERIALIZE -----" << endl;
+#endif	
         CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
       }
     } 
@@ -77,11 +83,19 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
       }
 #endif
       // primitive or object array
-      if(MarkMemory(mem)) {
+      if(WasSerialized(mem) < 0) {
 	long* array = (mem);
 	const long size = array[0];
 	const long dim = array[1];
 	long* objects = (long*)(array + 2 + dim);
+
+#ifdef _DEBUG
+	for(int i = 0; i < depth; i++) {
+	  cout << "\t";
+	}
+	cout << "\t----- SERIALIZE -----" << endl;
+#endif
+	
 	for(long k = 0; k < size; k++) {
 	  CheckObject((long*)objects[k], false, 2);
 	}
@@ -130,7 +144,14 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      if(WasSerialized((long*)(*mem)) < 0) {
+#ifdef _DEBUG
+	for(int i = 0; i < depth; i++) {
+	  cout << "\t";
+	}
+	cout << "\t----- SERIALIZE -----" << endl;
+#endif
+      }
       // update
       mem++;
     }
@@ -143,7 +164,14 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      if(WasSerialized((long*)(*mem)) < 0) {
+#ifdef _DEBUG
+	for(int i = 0; i < depth; i++) {
+	  cout << "\t";
+	}
+	cout << "\t----- SERIALIZE -----" << endl;
+#endif
+      }
       // update
       mem++;
     }
@@ -156,7 +184,14 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      if(WasSerialized((long*)(*mem)) < 0) {
+#ifdef _DEBUG
+	for(int i = 0; i < depth; i++) {
+	  cout << "\t";
+	}
+	cout << "\t----- SERIALIZE -----" << endl;
+#endif
+      }
       // update
       mem++;
     }
@@ -182,7 +217,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      if(MarkMemory((long*)(*mem))) {
+      if(WasSerialized((long*)(*mem)) < 0) {
         long* array = (long*)(*mem);
         const long size = array[0];
         const long dim = array[1];
@@ -200,6 +235,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 }
 
 void ObjectSerializer::Serialize(long* inst) {
+  cur_id = -1;
   CheckObject(inst, true, 0);
 }
 
