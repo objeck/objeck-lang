@@ -1,9 +1,9 @@
 bundle Default {
-	class Serial {
+	class BasicBlocks {
 		function : Main(args : System.String[]) ~ Nil {
 			msg := "Hello";
-			s := IO.Serializer->New();
-			s->Add(msg->As(Base));
+			serial = Serialize->New();
+			serial->Add(msg->As(Base));
 		}
 	}
 }
