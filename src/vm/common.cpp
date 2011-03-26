@@ -60,13 +60,21 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 
       // mark data
       if(WasSerialized(mem) < 0) {
+	long mem_size = cls->GetInstanceMemorySize();
+#ifdef _X64
+	mem_size *= 2;
+#endif
+        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE -----" << endl;
-#endif	
-        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+	cout << "\t----- SERIALIZE: size=" << mem_size << " byte(s) -----" << endl;
+#endif
+	BYTE_VALUE* bp = (BYTE_VALUE*)mem;
+	for(long i = 0; i < mem_size; i++) {
+	  values.push_back(*(bp + i));
+	}
       }
     } 
     else {
@@ -93,7 +101,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE -----" << endl;
+	cout << "\t----- SERIALIZE: size=" << (size * sizeof(INT_VALUE)) << " -----" << endl;	
 #endif
 	
 	for(long k = 0; k < size; k++) {
@@ -107,7 +115,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
-  for(int i = 0; i < dcls_size; i++) {
+  for(long i = 0; i < dcls_size; i++) {
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       cout << "\t";
@@ -116,12 +124,18 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     
     // update address based upon type
     switch(dclrs[i]->type) {
-    case INT_PARM:
+    case INT_PARM: {
 #ifdef _DEBUG
       cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
 #endif
+      // TODO: common code
+      BYTE_VALUE* bp = (BYTE_VALUE*)mem;
+      for(long i = 0; i < sizeof(INT_VALUE); i++) {
+	values.push_back(*(bp + i));
+      }
       // update
       mem++;
+    }
       break;
 
     case FLOAT_PARM: {
@@ -136,21 +150,47 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     break;
 
     case BYTE_ARY_PARM: {
-#ifdef _DEBUG
-      // NULL terminated string workaround
-
       long* array = (long*)(*mem);
+#ifdef _DEBUG
+      // uses a NULL terminated string workaround
       cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << array << "("
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
       if(WasSerialized((long*)(*mem)) < 0) {
+	const int array_size = array[0];
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE -----" << endl;
+	cout << "\t----- SERIALIZE: size=" << array_size << " byte(s) -----" << endl;
 #endif
+	// TODO: common code
+
+	// size
+	BYTE_VALUE* bp = (BYTE_VALUE*)array++;
+	for(long i = 0; i < sizeof(INT_VALUE); i++) {
+	  values.push_back(*(bp + i));
+	}
+	// dimension
+	const long dim = array[0];
+	bp = (BYTE_VALUE*)&dim;
+	array++;
+	for(long i = 0; i < sizeof(INT_VALUE); i++) {
+	  values.push_back(*(bp + i));
+	}
+	// dimension sizes
+	for(int i = 0; i < dim; i++) {
+	  bp = (BYTE_VALUE*)array++;
+	  for(long j = 0; j < sizeof(INT_VALUE); j++) {
+	    values.push_back(*(bp + j));
+	  }
+	}
+	// values
+	bp = (BYTE_VALUE*)array;
+	for(long i = 0; i < array_size; i++) {
+	  values.push_back(*(bp + i));
+	}
       }
       // update
       mem++;
@@ -158,8 +198,8 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       break;
 
     case INT_ARY_PARM: {
-#ifdef _DEBUG
       long* array = (long*)(*mem);
+#ifdef _DEBUG      
       cout << "\t" << i << ": INT_ARY_PARM: addr=" << array << "("
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
@@ -169,7 +209,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE -----" << endl;
+	cout << "\t----- SERIALIZE: size=" << (array[0] * sizeof(INT_VALUE)) << " byte(s) -----" << endl;
 #endif
       }
       // update
@@ -178,8 +218,8 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       break;
       
     case FLOAT_ARY_PARM: {
-#ifdef _DEBUG
       long* array = (long*)(*mem);
+#ifdef _DEBUG
       cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << array << "("
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
@@ -189,7 +229,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE -----" << endl;
+	cout << "\t----- SERIALIZE: size=" << (array[0] * sizeof(FLOAT_VALUE)) << " byte(s) -----" << endl;
 #endif
       }
       // update

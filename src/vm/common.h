@@ -241,6 +241,7 @@ public:
  ********************************/
 class ObjectSerializer 
 {
+  vector<BYTE_VALUE> values;
   map<long*, int> serial_ids;
   int cur_id;
   
