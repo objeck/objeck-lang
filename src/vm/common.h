@@ -79,7 +79,8 @@ inline string IntToString(int v)
 /********************************
  * StackDclr struct
  ********************************/
-struct StackDclr {
+struct StackDclr 
+{
   string name;
   ParamType type;
   long id;
@@ -88,7 +89,8 @@ struct StackDclr {
 /********************************
  * StackInstr class
  ********************************/
-class StackInstr {
+class StackInstr 
+{
   InstructionType type;
   long operand;
   long operand2;
@@ -190,7 +192,8 @@ public:
 /********************************
  * JIT compile code
  ********************************/
-class NativeCode {
+class NativeCode 
+{
   BYTE_VALUE* code;
   long size;
   FLOAT_VALUE* floats;
@@ -231,6 +234,24 @@ public:
   FLOAT_VALUE* GetFloats() {
     return floats;
   }
+};
+
+/********************************
+ * ObjectSerializer class
+ ********************************/
+class ObjectSerializer 
+{
+  void CheckObject(long* mem, bool is_obj, long depth);
+  void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
+  void Serialize(long* inst);
+
+  bool MarkMemory(long* mem) {
+    return false;
+  }
+  
+ public:
+  ObjectSerializer(long* i);
+  ~ObjectSerializer();
 };
 
 /********************************

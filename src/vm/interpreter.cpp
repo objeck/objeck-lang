@@ -2003,8 +2003,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case SERL_OBJ_INST: {
-    long* obj = (long*)frame->GetMemory()[1];    
-    int id = MemoryManager::Instance()->GetObjectID(obj);
+    ObjectSerializer serializer((long*)frame->GetMemory()[1]);
     cout << "## 0 ##" << endl;
   }
     break;
