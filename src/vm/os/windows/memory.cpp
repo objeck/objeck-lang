@@ -788,7 +788,7 @@ DWORD WINAPI MemoryManager::CheckPdaRoots(void* arg)
 void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
-  for(int i = 0; i < dcls_size; i++) {
+  for(long i = 0; i < dcls_size; i++) {
 #ifndef _SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
