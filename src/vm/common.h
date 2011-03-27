@@ -1217,6 +1217,10 @@ class ObjectSerializer
  public:
   ObjectSerializer(long* i);
   ~ObjectSerializer();
+  
+  vector<BYTE_VALUE>& GetValues() {
+    return values;
+  }
 };
 
 // call back for DLL method calls
