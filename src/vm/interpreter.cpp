@@ -2005,7 +2005,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
   case SERL_OBJ_INST: {
     ObjectSerializer serializer((long*)frame->GetMemory()[1]);
-    cout << "## 0 ##" << endl;
+    vector<BYTE_VALUE> values = serializer.GetValues();
   }
     break;
 

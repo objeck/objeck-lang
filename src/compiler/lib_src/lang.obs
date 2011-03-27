@@ -1597,9 +1597,11 @@ bundle IO {
 
 	class Serializer  {
 		buffer : Byte[];
+		pos : Int;
 
 		New() {
 			buffer := Byte->New[16];
+			pos := 0;
 		}
 
 		method : Add(b : Bool) ~ Nil {
