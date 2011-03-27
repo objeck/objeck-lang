@@ -1258,7 +1258,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
   long* instance = (long*)PopInt();
 
   // make call
-  int cls_id = PopInt();
+  long cls_id = PopInt();
   long mthd_id = PopInt();
 #ifdef _DEBUG
   cout << "stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << "," << mthd_id << endl;
@@ -2003,10 +2003,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SERL_FLOAT:
     break;
 
-  case SERL_OBJ_INST: {
-    ObjectSerializer serializer((long*)frame->GetMemory()[1]);
-    vector<BYTE_VALUE> values = serializer.GetValues();
-  }
+  case SERL_OBJ_INST:
+    SerializeObject();
     break;
 
   case SERL_BYTE_ARY:
@@ -2426,4 +2424,39 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
   }
+}
+
+void StackInterpreter::SerializeObject()
+{
+  ObjectSerializer serializer((long*)frame->GetMemory()[1]);
+  vector<BYTE_VALUE> src_buffer = serializer.GetValues();
+  long* inst = (long*)frame->GetMemory()[0];
+  long* dest_buffer = (long*)inst[0];
+
+  // expand buffer
+  const long src_buffer_size = src_buffer.size();
+  const long dest_buffer_size = dest_buffer[2];
+  if(src_buffer_size >= dest_buffer_size) {
+    // create byte array
+    const long byte_array_size = src_buffer_size;
+    const long byte_array_dim = 1;
+    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size + 1 +
+								       ((byte_array_dim + 2) *
+									sizeof(long)),
+								       BYTE_ARY_TYPE,
+								       op_stack, *stack_pos);
+    byte_array[0] = byte_array_size;
+    byte_array[1] = byte_array_dim;
+    byte_array[2] = byte_array_size;
+    
+    // copy string
+    char* byte_array_ptr = (char*)(byte_array + 3);
+    for(long i = 0; i < byte_array_size; i++) {
+      byte_array_ptr[i] = src_buffer[i];
+    }
+    inst[0] = (long)byte_array;
+    dest_buffer = byte_array;
+  }
+  
+  
 }
