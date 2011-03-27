@@ -1173,11 +1173,14 @@ class ObjectSerializer
     map<long*, long>::iterator find = serial_ids.find(mem);
     if(find != serial_ids.end()) {
       cur_id = find->second;
+      WriteInt(cur_id);
+      
       return true;
     }
     next_id++;
-    cur_id = next_id;
+    cur_id = next_id * -1;
     serial_ids.insert(pair<long*, long>(mem, cur_id));
+    WriteInt(cur_id);
     
     return false;
   }
