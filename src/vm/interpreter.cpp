@@ -784,7 +784,7 @@ void StackInterpreter::ProcessPlatform()
 							  sizeof(long)),
 							 BYTE_ARY_TYPE,
 							 op_stack, *stack_pos);
-  char_array[0] = char_array_size;
+  char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -2435,28 +2435,37 @@ void StackInterpreter::SerializeObject()
 
   // expand buffer
   const long src_buffer_size = src_buffer.size();
-  const long dest_buffer_size = dest_buffer[2];
+  long dest_buffer_size = dest_buffer[2];
+  long dest_pos = inst[1];
   if(src_buffer_size >= dest_buffer_size) {
+    while(src_buffer_size >= dest_buffer_size) {
+      dest_buffer_size += src_buffer_size / 2;
+    }
     // create byte array
-    const long byte_array_size = src_buffer_size;
+    const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
     long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size + 1 +
 								       ((byte_array_dim + 2) *
 									sizeof(long)),
 								       BYTE_ARY_TYPE,
 								       op_stack, *stack_pos);
-    byte_array[0] = byte_array_size;
+    byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
     byte_array[2] = byte_array_size;
     
-    // copy string
+    // copy content
     char* byte_array_ptr = (char*)(byte_array + 3);
-    for(long i = 0; i < byte_array_size; i++) {
-      byte_array_ptr[i] = src_buffer[i];
+    for(int i = 0; i < dest_pos; i++) {
+      byte_array_ptr[i] = dest_buffer[i];
     }
     inst[0] = (long)byte_array;
     dest_buffer = byte_array;
   }
   
-  
+  // copy content
+  char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+  for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
+    dest_buffer_ptr[i] = src_buffer[i];
+  }
+  inst[1] = dest_pos;
 }
