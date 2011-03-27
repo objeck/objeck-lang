@@ -260,14 +260,6 @@ namespace Runtime {
     }
     
     void CreateClassObject(StackClass* cls, long* cls_obj) {
-      /*
-      // set class name
-      long* cls_obj = MemoryManager::Instance()->AllocateObject(program->GetClassObjectId(),
-								(long*)op_stack, *stack_pos);
-      cls_obj[0] = (long)CreateStringObject(cls->GetName());
-      frame->GetMemory()[1] = (long)cls_obj;
-      */
-      
       // create and set methods
       const long mthd_obj_array_size = cls->GetMethodCount();
       const long mthd_obj_array_dim = 1;
@@ -416,7 +408,6 @@ namespace Runtime {
       return mthd_obj;
     }
     
-    // TODO: move this code to JIT headers?
     inline long* CreateStringObject(const string &value_str) {
       // create character array
       const long char_array_size = value_str.size();
@@ -426,7 +417,7 @@ namespace Runtime {
 									  sizeof(long)),
 									 BYTE_ARY_TYPE,
 									 op_stack, *stack_pos);
-      char_array[0] = char_array_size;
+      char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
 
