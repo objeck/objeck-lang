@@ -1,8 +1,10 @@
+use IO;
+
 bundle Default {
 	class BasicBlocks {
 		function : Main(args : System.String[]) ~ Nil {
 			msg := "Hello";
-			serial = Serialize->New();
+			serial := Serializer->New();
 			serial->Add(msg->As(Base));
 		}
 	}

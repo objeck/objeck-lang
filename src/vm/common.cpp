@@ -49,31 +49,26 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
   if(mem) {
     // TODO: optimize so this is not a double call.. see below
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
-    if(cls) {
-#ifdef _DEBUG
-      for(int i = 0; i < depth; i++) {
-        cout << "\t";
-      }
-      cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
-           << cls->GetNumberDeclarations() << " -----" << endl;
-#endif
-
+    if(cls) {      
       // mark data
       if(!WasSerialized(mem)) {
 	long mem_size = cls->GetInstanceMemorySize();
+	
 #ifdef _X64
 	mem_size *= 2;
 #endif
-        CheckMemory(mem, cls->GetDeclarations(), mem_size, depth);
-	WriteObject(cls, mem);
+	
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
-	cout << "\t----- SERIALIZE: size=" << mem_size << " byte(s) -----" << endl;
+	cout << "\t----- SERIALIZING object: cls_id=" << cls->GetId() << ", mem_id=" 
+	     << cur_id << ", size=" << mem_size << " byte(s) -----" << endl;
 #endif
-      }
-    } 
+	WriteObject(cls, mem);
+	CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth + 1);
+      } 
+    }
     else {
       // NOTE: this happens when we are trying to mark unidentified memory
       // segments. these segments may be parts of that stack or temp for
@@ -123,7 +118,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     switch(dclrs[i]->type) {
     case INT_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
+      cout << "\t" << i << ": ----- SERIALIZING int: value=" << (*mem) << ", size=" << sizeof(INT_VALUE) << " byte(s) -----" << endl;
 #endif
       WriteInt(*mem);
       // update
@@ -133,31 +128,25 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 
     case FLOAT_PARM: {
       FLOAT_VALUE value;
-#ifdef _DEBUG
       memcpy(&value, mem, sizeof(FLOAT_VALUE));
-      cout << "\t" << i << ": FLOAT_PARM: value=" << value << endl;
+#ifdef _DEBUG
+      cout << "\t" << i << ": ----- SERIALIZING float: value=" << value << ", size=" 
+	   << sizeof(FLOAT_VALUE) << " byte(s) -----" << endl;
 #endif
       WriteFloat(value);
       // update
       mem += 2;
     }
     break;
-
+    
     case BYTE_ARY_PARM: {
       long* array = (long*)(*mem);
-#ifdef _DEBUG
-      // uses a NULL terminated string workaround
-      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << array << "("
-           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
-#endif
       // mark data
       if(!WasSerialized((long*)(*mem))) {
 	const long array_size = array[0];
 #ifdef _DEBUG
-	for(int i = 0; i < depth; i++) {
-	  cout << "\t";
-	}
-	cout << "\t----- SERIALIZE: size=" << array_size << " byte(s) -----" << endl;
+	cout << "\t" << i << ": ----- SERIALIZING byte array: mem_id=" << cur_id << ", size=" 
+	     << array_size << " byte(s) -----" << endl;
 #endif
 	// write metadata
 	WriteInt(array[0]);
@@ -250,7 +239,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 }
 
 void ObjectSerializer::Serialize(long* inst) {
-  cur_id = -1;
+  next_id = 0;
   CheckObject(inst, true, 0);
 }
 
