@@ -59,22 +59,19 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 #endif
 
       // mark data
-      if(WasSerialized(mem) < 0) {
+      if(!WasSerialized(mem)) {
 	long mem_size = cls->GetInstanceMemorySize();
 #ifdef _X64
 	mem_size *= 2;
 #endif
-        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+        CheckMemory(mem, cls->GetDeclarations(), mem_size, depth);
+	WriteObject(cls, mem);
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
 	cout << "\t----- SERIALIZE: size=" << mem_size << " byte(s) -----" << endl;
 #endif
-	BYTE_VALUE* bp = (BYTE_VALUE*)mem;
-	for(long i = 0; i < mem_size; i++) {
-	  values.push_back(*(bp + i));
-	}
       }
     } 
     else {
@@ -91,7 +88,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
       }
 #endif
       // primitive or object array
-      if(WasSerialized(mem) < 0) {
+      if(!WasSerialized(mem)) {
 	long* array = (mem);
 	const long size = array[0];
 	const long dim = array[1];
@@ -128,22 +125,19 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 #ifdef _DEBUG
       cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
 #endif
-      // TODO: common code
-      BYTE_VALUE* bp = (BYTE_VALUE*)mem;
-      for(long i = 0; i < sizeof(INT_VALUE); i++) {
-	values.push_back(*(bp + i));
-      }
+      WriteInt(*mem);
       // update
       mem++;
     }
       break;
 
     case FLOAT_PARM: {
-#ifdef _DEBUG
       FLOAT_VALUE value;
+#ifdef _DEBUG
       memcpy(&value, mem, sizeof(FLOAT_VALUE));
       cout << "\t" << i << ": FLOAT_PARM: value=" << value << endl;
 #endif
+      WriteFloat(value);
       // update
       mem += 2;
     }
@@ -157,7 +151,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      if(WasSerialized((long*)(*mem)) < 0) {
+      if(!WasSerialized((long*)(*mem))) {
 	const long array_size = array[0];
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
@@ -165,32 +159,13 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	}
 	cout << "\t----- SERIALIZE: size=" << array_size << " byte(s) -----" << endl;
 #endif
-	// TODO: common code
-
-	// size
-	BYTE_VALUE* bp = (BYTE_VALUE*)array++;
-	for(long i = 0; i < sizeof(INT_VALUE); i++) {
-	  values.push_back(*(bp + i));
-	}
-	// dimension
-	const long dim = array[0];
-	bp = (BYTE_VALUE*)&dim;
-	array++;
-	for(long i = 0; i < sizeof(INT_VALUE); i++) {
-	  values.push_back(*(bp + i));
-	}
-	// dimension sizes
-	for(long i = 0; i < dim; i++) {
-	  bp = (BYTE_VALUE*)array++;
-	  for(long j = 0; j < sizeof(INT_VALUE); j++) {
-	    values.push_back(*(bp + j));
-	  }
-	}
+	// write metadata
+	WriteInt(array[0]);
+	WriteInt(array[1]);
+	WriteInt(array[2]);
+	array += 3;
 	// values
-	bp = (BYTE_VALUE*)array;
-	for(long i = 0; i < array_size; i++) {
-	  values.push_back(*(bp + i));
-	}
+	WriteBytes(array, array_size);
       }
       // update
       mem++;
@@ -204,7 +179,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      if(WasSerialized((long*)(*mem)) < 0) {
+      if(!WasSerialized((long*)(*mem))) {
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
@@ -224,7 +199,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      if(WasSerialized((long*)(*mem)) < 0) {
+      if(!WasSerialized((long*)(*mem))) {
 #ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
@@ -257,7 +232,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
            << (long)array << "), size=" << array[0] << " byte(s)" << endl;
 #endif
       // mark data
-      if(WasSerialized((long*)(*mem)) < 0) {
+      if(!WasSerialized((long*)(*mem))) {
         long* array = (long*)(*mem);
         const long size = array[0];
         const long dim = array[1];

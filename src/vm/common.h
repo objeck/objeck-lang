@@ -237,35 +237,6 @@ public:
 };
 
 /********************************
- * ObjectSerializer class
- ********************************/
-class ObjectSerializer 
-{
-  vector<BYTE_VALUE> values;
-  map<long*, long> serial_ids;
-  long cur_id;
-  
-  void CheckObject(long* mem, bool is_obj, long depth);
-  void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
-  void Serialize(long* inst);
-
-  long WasSerialized(long* mem) {
-    map<long*, long>::iterator find = serial_ids.find(mem);
-    if(find != serial_ids.end()) {
-      return find->second;
-    }    
-    cur_id++;
-    serial_ids.insert(pair<long*, long>(mem, cur_id));
-    
-    return -1;
-  }
-  
- public:
-  ObjectSerializer(long* i);
-  ~ObjectSerializer();
-};
-
-/********************************
  * StackMethod class
  ********************************/
 class StackMethod {
@@ -1182,6 +1153,67 @@ public:
   inline bool IsJitCalled() {
     return jit_called;
   }
+};
+
+/********************************
+ * ObjectSerializer class
+ ********************************/
+class ObjectSerializer 
+{
+  vector<BYTE_VALUE> values;
+  map<long*, long> serial_ids;
+  long next_id;
+  long cur_id;
+  
+  void CheckObject(long* mem, bool is_obj, long depth);
+  void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
+  void Serialize(long* inst);
+
+  bool WasSerialized(long* mem) {
+    map<long*, long>::iterator find = serial_ids.find(mem);
+    if(find != serial_ids.end()) {
+      cur_id = find->second;
+      return true;
+    }
+    next_id++;
+    cur_id = next_id;
+    serial_ids.insert(pair<long*, long>(mem, cur_id));
+    
+    return false;
+  }
+  
+  inline void WriteInt(INT_VALUE v) {
+    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
+    for(long i = 0; i < sizeof(v); i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+  
+  inline void WriteFloat(FLOAT_VALUE v) {
+    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
+    for(long i = 0; i < sizeof(v); i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+
+  inline void WriteBytes(long* array, const long len) {
+    BYTE_VALUE* bp = (BYTE_VALUE*)array;
+    for(long i = 0; i < len; i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+  
+  inline void WriteObject(StackClass* cls, long* obj) {
+    const long obj_size = cls->GetInstanceMemorySize();
+    BYTE_VALUE* bp = (BYTE_VALUE*)obj;
+    for(long i = 0; i < obj_size; i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+  
+ public:
+  ObjectSerializer(long* i);
+  ~ObjectSerializer();
 };
 
 // call back for DLL method calls
