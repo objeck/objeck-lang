@@ -384,9 +384,6 @@ bundle System {
 		function : native : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
-		
-# TODO		
-#		method : public : Serialize() ~ Byte[]
 	}
 
 	#~~
@@ -1645,6 +1642,12 @@ bundle IO {
 		}
 
 		method : public : Serialize() ~ Byte[] {
+			temp := Byte->New[pos];
+			for(i := 0; i < pos; i += 1;) {
+				temp[i] := buffer[i];
+			};		
+
+			return temp;
 		}
 	}
 }
