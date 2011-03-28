@@ -49,8 +49,10 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
   if(mem) {
     // TODO: optimize so this is not a double call.. see below
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
-    if(cls) {      
-      // mark data
+    if(cls) {
+      // write id
+      WriteInt(cls->GetId());
+      
       if(!WasSerialized(mem)) {
 	long mem_size = cls->GetInstanceMemorySize();
 	
@@ -113,6 +115,9 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       cout << "\t";
     }
 #endif
+
+    // write type
+    WriteInt(dclrs[i]->type);
     
     // update address based upon type
     switch(dclrs[i]->type) {
@@ -240,6 +245,8 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 
 void ObjectSerializer::Serialize(long* inst) {
   next_id = 0;
+
+  WriteInt(OBJ_PARM);
   CheckObject(inst, true, 0);
 }
 
