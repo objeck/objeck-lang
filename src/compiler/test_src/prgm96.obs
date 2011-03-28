@@ -6,6 +6,8 @@ bundle Default {
 			msg := "Hello";
 			serial := Serializer->New();
 			serial->Add(msg->As(Base));
+			bytes := serial->Serialize();
+			bytes->Size()->PrintLine();
 		}
 	}
 }
