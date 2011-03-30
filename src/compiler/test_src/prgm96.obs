@@ -8,6 +8,9 @@ bundle Default {
 			serial->Add(msg->As(Base));
 			bytes := serial->Serialize();
 			bytes->Size()->PrintLine();
+
+			deserial := Deserializer->New(bytes);
+			value := deserial->ReadObject();
 		}
 	}
 }
