@@ -284,7 +284,7 @@ namespace Runtime {
     
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
-								 (long*)op_stack, *stack_pos);
+								       (long*)op_stack, *stack_pos);
       // method and class object
       mthd_obj[0] = (long)mthd;
       mthd_obj[1] = (long)cls_obj;
@@ -308,12 +308,9 @@ namespace Runtime {
       const string &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
       mthd_obj[2] = (long)CreateStringObject(mthd_string);
 
-      
-      
-      // parse parameter string
-      const string &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
-      
+      // parse parameter string      
       int index = 0;
+      const string &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
       vector<long*> data_type_obj_holder;
       while(index < (int)params_string.size()) {
 	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
@@ -424,7 +421,7 @@ namespace Runtime {
       // copy string
       char* char_array_ptr = (char*)(char_array + 3);
       strcpy(char_array_ptr, value_str.c_str());
-
+      
       // create 'System.String' object instance
       long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
 								(long*)op_stack, *stack_pos);
@@ -465,6 +462,7 @@ namespace Runtime {
     inline void ProcessTrap(StackInstr* instr);
 
     inline void SerializeObject();
+    inline void DeserializeObject();
 
     inline void ProcessDllLoad(StackInstr* instr);
     inline void ProcessDllUnload(StackInstr* instr);
