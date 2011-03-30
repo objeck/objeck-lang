@@ -2026,6 +2026,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case DESERL_OBJ_INST:
+    DeserializeObject();
     break;
 
   case DESERL_BYTE_ARY:
@@ -2468,4 +2469,15 @@ void StackInterpreter::SerializeObject()
     dest_buffer_ptr[i] = src_buffer[i];
   }
   inst[1] = dest_pos;
+}
+
+void StackInterpreter::DeserializeObject()
+{
+  const long* inst = (long*)frame->GetMemory()[0];
+  long* byte_array = (long*)inst[0];
+  const long byte_array_size = byte_array[0];
+  const long byte_array_dim = byte_array[1];
+  const long byte_array_dim_size = byte_array[2];
+  
+  const long* byte_array_ptr = (byte_array + 3);
 }

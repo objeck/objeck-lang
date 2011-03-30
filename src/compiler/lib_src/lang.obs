@@ -1593,12 +1593,12 @@ bundle IO {
 	}
 
 	class Serializer  {
-		buffer : Byte[];
-		pos : Int;
+		@buffer : Byte[];
+		@pos : Int;
 
 		New() {
-			buffer := Byte->New[16];
-			pos := 0;
+			@buffer := Byte->New[16];
+			@pos := 0;
 		}
 
 		method : Add(b : Bool) ~ Nil {
@@ -1642,12 +1642,60 @@ bundle IO {
 		}
 
 		method : public : Serialize() ~ Byte[] {
-			temp := Byte->New[pos];
-			for(i := 0; i < pos; i += 1;) {
-				temp[i] := buffer[i];
+			temp := Byte->New[@pos];
+			for(i := 0; i < @pos; i += 1;) {
+				temp[i] := @buffer[i];
 			};		
 
 			return temp;
+		}
+	}
+	
+	class Deserializer  {
+		@buffer : Byte[];
+		
+		New(buffer : Byte[]) {
+			@buffer := buffer;
+		}
+
+		method : public : ReadBool() ~ Bool {
+			DESERL_INT;
+		}
+
+		method : public : ReadInt() ~ Int {
+			DESERL_INT;
+		}
+		
+		method : public : ReadFloat() ~ Float {
+			DESERL_FLOAT;
+		}
+		
+		method : public : ReadObject() ~ Base {
+			DESERL_OBJ_INST;
+		}
+
+		method : public : ReadBoolArray() ~ Bool[] {
+			DESERL_INT_ARY;
+		}
+
+		method : public : ReadByteArray() ~ Byte[] {
+			DESERL_BYTE_ARY;
+		}
+
+		method : public : ReadCharArray() ~ Char[] {
+			DESERL_BYTE_ARY;
+		}
+
+		method : public : ReadIntArray() ~ Int[] {
+			DESERL_INT_ARY;
+		}
+		
+		method : public : ReadFloatArray() ~ Float[] {
+			DESERL_FLOAT_ARY;
+		}
+		
+		method : public : ReadObjectArray() ~ Base[] {
+			DESERL_OBJ_INST_ARY;
 		}
 	}
 }
