@@ -2477,7 +2477,47 @@ void StackInterpreter::DeserializeObject()
   long* byte_array = (long*)inst[0];
   const long byte_array_size = byte_array[0];
   const long byte_array_dim = byte_array[1];
-  const long byte_array_dim_size = byte_array[2];
+  const long byte_array_dim_size = byte_array[2];  
+  const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
   
-  const long* byte_array_ptr = (byte_array + 3);
+  // process types
+  long byte_offset = 0;
+  while(byte_offset < byte_array_size) {
+    ParamType type;
+    memcpy(&type, byte_array_ptr + byte_offset, sizeof(type));
+    byte_offset += sizeof(type);
+    
+    switch(type) {
+    case INT_PARM: {
+    }
+      break;
+
+    case FLOAT_PARM: {
+    }
+      break;
+      
+    case BYTE_ARY_PARM: {
+    }
+      break;
+      
+    case INT_ARY_PARM: {
+    }
+      break;
+      
+    case FLOAT_ARY_PARM: {
+    }
+      break;
+      
+    case OBJ_PARM: {
+      long obj_id;
+      memcpy(&obj_id, byte_array_ptr + byte_offset, sizeof(obj_id));
+      byte_offset += sizeof(type);
+    }
+      break;
+      
+    case OBJ_ARY_PARM: {
+      break;
+    }
+    }
+  }
 }
