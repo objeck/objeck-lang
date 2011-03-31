@@ -258,6 +258,22 @@ ObjectSerializer::~ObjectSerializer() {
 }
 
 /********************************
+ * ObjectDeserializer class
+ ********************************/
+ObjectDeserializer::ObjectDeserializer(BYTE_VALUE* b) {
+  buffer = b;
+  buffer_offset = 0;
+}
+ 
+ObjectDeserializer::~ObjectDeserializer() {
+  
+}
+
+void ObjectDeserializer::DeserializeObject() {
+  
+}
+
+/********************************
  * SDK functions
  ********************************/
 #ifndef _UTILS

@@ -1223,6 +1223,35 @@ class ObjectSerializer
   }
 };
 
+/********************************
+ * ObjectDeserializer class
+ ********************************/
+class ObjectDeserializer 
+{
+  BYTE_VALUE* buffer;
+  long buffer_offset;
+  
+  long ReadInt() {
+    long value;
+    memcpy(&value, buffer + buffer_offset, sizeof(value));
+    buffer_offset += sizeof(value);    
+    return value;
+  }
+  
+  long ReadFloat() {
+    double value;
+    memcpy(&value, buffer + buffer_offset, sizeof(value));
+    buffer_offset += sizeof(value);    
+    return value;
+  }
+  
+ public:
+  ObjectDeserializer(BYTE_VALUE* b);
+  ~ObjectDeserializer();
+
+  void DeserializeObject();
+};
+
 // call back for DLL method calls
 void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
 			 const char* cls_id, const char* mthd_id);
