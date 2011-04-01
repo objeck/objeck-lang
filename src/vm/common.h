@@ -1231,6 +1231,8 @@ class ObjectDeserializer
   const BYTE_VALUE* buffer;
   long buffer_offset;
   long byte_array_size;
+  long* op_stack;
+  long* stack_pos;
   
   INT_VALUE ReadInt() {
     INT_VALUE value;
@@ -1247,7 +1249,9 @@ class ObjectDeserializer
   }
   
  public:
-  ObjectDeserializer(const BYTE_VALUE* b, long s) {
+  ObjectDeserializer(const BYTE_VALUE* b, long s, long* stack, long* pos) {
+    op_stack = stack;
+    stack_pos = pos;
     buffer = b;
     byte_array_size = s;
     buffer_offset = 0;
