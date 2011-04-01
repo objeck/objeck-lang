@@ -260,20 +260,9 @@ ObjectSerializer::~ObjectSerializer() {
 /********************************
  * ObjectDeserializer class
  ********************************/
-ObjectDeserializer::ObjectDeserializer(BYTE_VALUE* b) {
-  buffer = b;
-  buffer_offset = 0;
-}
- 
-ObjectDeserializer::~ObjectDeserializer() {
-  
-}
-
 void ObjectDeserializer::DeserializeObject() {
   while(buffer_offset < byte_array_size) {
-    ParamType type;
-    memcpy(&type,buffer + buffer_offset, sizeof(type));
-    buffer_offset += sizeof(type);
+    ParamType type = (ParamType)ReadInt();
     
     switch(type) {
     case INT_PARM: {
@@ -297,10 +286,7 @@ void ObjectDeserializer::DeserializeObject() {
       break;
       
     case OBJ_PARM: {
-      int obj_id;
-      memcpy(&obj_id, buffer + buffer_offset, sizeof(obj_id));
-      buffer_offset += sizeof(type);
-
+      INT_VALUE obj_id = ReadInt();
       StackClass* ref_cls = Loader::GetProgram()->GetClass(obj_id);
       cout << ref_cls->GetId() << endl;
     }

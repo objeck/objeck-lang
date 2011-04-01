@@ -1228,26 +1228,33 @@ class ObjectSerializer
  ********************************/
 class ObjectDeserializer 
 {
-  BYTE_VALUE* buffer;
+  const BYTE_VALUE* buffer;
   long buffer_offset;
+  long byte_array_size;
   
-  long ReadInt() {
-    long value;
+  INT_VALUE ReadInt() {
+    INT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);    
     return value;
   }
   
-  long ReadFloat() {
-    double value;
+  FLOAT_VALUE ReadFloat() {
+    FLOAT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);    
     return value;
   }
   
  public:
-  ObjectDeserializer(BYTE_VALUE* b);
-  ~ObjectDeserializer();
+  ObjectDeserializer(const BYTE_VALUE* b, long s) {
+    buffer = b;
+    byte_array_size = s;
+    buffer_offset = 0;
+  }
+  
+  ~ObjectDeserializer() {    
+  }
 
   void DeserializeObject();
 };
