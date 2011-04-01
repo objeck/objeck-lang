@@ -287,8 +287,11 @@ void ObjectDeserializer::DeserializeObject() {
       
     case OBJ_PARM: {
       INT_VALUE obj_id = ReadInt();
-      StackClass* ref_cls = Loader::GetProgram()->GetClass(obj_id);
-      cout << ref_cls->GetId() << endl;
+      StackClass* cls = Loader::GetProgram()->GetClass(obj_id);
+      INT_VALUE mem_id = ReadInt();
+      if(mem_id < 0) {
+	long* inst = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
+      }
     }
       break;
       
