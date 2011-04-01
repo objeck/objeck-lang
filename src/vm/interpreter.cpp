@@ -2476,6 +2476,7 @@ void StackInterpreter::DeserializeObject() {
   const long byte_array_dim_size = byte_array[2];  
   const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
   
-  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size);
+  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, 
+				  op_stack, stack_pos);
   deserializer.DeserializeObject();
 }
