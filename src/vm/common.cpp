@@ -270,7 +270,47 @@ ObjectDeserializer::~ObjectDeserializer() {
 }
 
 void ObjectDeserializer::DeserializeObject() {
-  
+  while(buffer_offset < byte_array_size) {
+    ParamType type;
+    memcpy(&type,buffer + buffer_offset, sizeof(type));
+    buffer_offset += sizeof(type);
+    
+    switch(type) {
+    case INT_PARM: {
+    }
+      break;
+
+    case FLOAT_PARM: {
+    }
+      break;
+      
+    case BYTE_ARY_PARM: {
+    }
+      break;
+      
+    case INT_ARY_PARM: {
+    }
+      break;
+      
+    case FLOAT_ARY_PARM: {
+    }
+      break;
+      
+    case OBJ_PARM: {
+      int obj_id;
+      memcpy(&obj_id, buffer + buffer_offset, sizeof(obj_id));
+      buffer_offset += sizeof(type);
+
+      StackClass* ref_cls = Loader::GetProgram()->GetClass(obj_id);
+      cout << ref_cls->GetId() << endl;
+    }
+      break;
+      
+    case OBJ_ARY_PARM: {
+      break;
+    }
+    }
+  }
 }
 
 /********************************

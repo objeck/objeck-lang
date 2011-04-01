@@ -2509,9 +2509,12 @@ void StackInterpreter::DeserializeObject()
       break;
       
     case OBJ_PARM: {
-      long obj_id;
+      int obj_id;
       memcpy(&obj_id, byte_array_ptr + byte_offset, sizeof(obj_id));
       byte_offset += sizeof(type);
+
+      StackClass* ref_cls = Loader::GetProgram()->GetClass(obj_id);
+      cout << ref_cls->GetId() << endl;
     }
       break;
       
