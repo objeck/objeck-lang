@@ -431,7 +431,39 @@ namespace Runtime {
       
       return str_obj;
     }
+    
+    // expand buffer
+    long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst) {
+      long dest_buffer_size = dest_buffer[2];      
+      if(src_buffer_size >= dest_buffer_size) {
+	long dest_pos = inst[1];
+	while(src_buffer_size >= dest_buffer_size) {
+	  dest_buffer_size += src_buffer_size / 2;
+	}
+	// create byte array
+	const long byte_array_size = dest_buffer_size;
+	const long byte_array_dim = 1;
+	long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size + 1 +
+									   ((byte_array_dim + 2) *
+									    sizeof(long)),
+									   BYTE_ARY_TYPE,
+									   op_stack, *stack_pos);
+	byte_array[0] = byte_array_size + 1;
+	byte_array[1] = byte_array_dim;
+	byte_array[2] = byte_array_size;
+    
+	// copy content
+	char* byte_array_ptr = (char*)(byte_array + 3);
+	for(int i = 0; i < dest_pos; i++) {
+	  byte_array_ptr[i] = dest_buffer[i];
+	}
+	
+	return byte_array;
+      }
 
+      return dest_buffer;
+    }
+    
     inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr);
     inline void ProcessNewObjectInstance(StackInstr* instr);
@@ -460,7 +492,11 @@ namespace Runtime {
     inline void ProcessCurrentTime();
     inline void ProcessPlatform();
     inline void ProcessTrap(StackInstr* instr);
-
+    
+    inline void SerializeInt();
+    inline void SerializeFloat();
+    inline void DeserializeInt();
+    inline void DeserializeFloat();
     inline void SerializeObject();
     inline void DeserializeObject();
 
