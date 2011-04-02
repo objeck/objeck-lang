@@ -1601,15 +1601,15 @@ bundle IO {
 			@pos := 0;
 		}
 
-		method : Add(b : Bool) ~ Nil {
+		method : public : Add(b : Bool) ~ Nil {
 			SERL_INT;
 		}
 
-		method : Add(i : Int) ~ Nil {
+		method : public : Add(i : Int) ~ Nil {
 			SERL_INT;
 		}
 		
-		method : Add(f : Float) ~ Nil {
+		method : public : Add(f : Float) ~ Nil {
 			SERL_FLOAT;
 		}
 		
@@ -1617,23 +1617,23 @@ bundle IO {
 			SERL_OBJ_INST;
 		}
 
-		method : Add(b : Bool[]) ~ Nil {
+		method : public : Add(b : Bool[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 
-		method : Add(b : Byte[]) ~ Nil {
+		method : public : Add(b : Byte[]) ~ Nil {
 			SERL_BYTE_ARY;
 		}
 
-		method : Add(c : Char[]) ~ Nil {
+		method : public : Add(c : Char[]) ~ Nil {
 			SERL_BYTE_ARY;
 		}
 
-		method : Add(i : Int[]) ~ Nil {
+		method : public : Add(i : Int[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 		
-		method : Add(f : Float[]) ~ Nil {
+		method : public : Add(f : Float[]) ~ Nil {
 			SERL_FLOAT_ARY;
 		}
 		
