@@ -280,10 +280,8 @@ long* ObjectDeserializer::DeserializeObject() {
     type = (ParamType)ReadInt();
     
     switch(type) {
-    case INT_PARM: {
+    case INT_PARM:
       instance[instance_pos++] = ReadInt();
-      cout << "### " << instance[instance_pos - 1] << endl;
-    }
       break;
 
     case FLOAT_PARM: {
@@ -318,7 +316,7 @@ long* ObjectDeserializer::DeserializeObject() {
       else {
 	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
 	if(found != mem_cache.end()) {
-	  // TODO: add error handling
+	  return NULL;
 	} 
 	instance[instance_pos++] = (long)found->second;
       }
@@ -336,7 +334,8 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case OBJ_PARM: {
-      cout << "-2-" << endl;
+      ObjectDeserializer deserializer(buffer, buffer_offset, buffer_array_size, op_stack, stack_pos);
+      instance[instance_pos++] = (long)deserializer.DeserializeObject();
     }
       break;
       
