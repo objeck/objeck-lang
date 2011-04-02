@@ -259,7 +259,7 @@ ObjectSerializer::~ObjectSerializer() {
 /********************************
  * ObjectDeserializer class
  ********************************/
-void ObjectDeserializer::DeserializeObject() {
+long* ObjectDeserializer::DeserializeObject() {
   ParamType type = (ParamType)ReadInt();
   INT_VALUE obj_id = ReadInt();
   cls = Loader::GetProgram()->GetClass(obj_id);
@@ -269,11 +269,11 @@ void ObjectDeserializer::DeserializeObject() {
       instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
     }
     else {
-      // TOOD: where would this be cached?
+      return NULL;
     }
   }
   else {
-    // TOOD: handle error
+    return NULL;
   }
   
   while(buffer_offset < buffer_array_size) {
@@ -346,6 +346,8 @@ void ObjectDeserializer::DeserializeObject() {
     }
     }
   }
+  
+  return instance;
 }
 
 /********************************
