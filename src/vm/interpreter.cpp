@@ -2478,5 +2478,5 @@ void StackInterpreter::DeserializeObject() {
   
   ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, 
 				  op_stack, stack_pos);
-  deserializer.DeserializeObject();
+  PushInt((long)deserializer.DeserializeObject());
 }

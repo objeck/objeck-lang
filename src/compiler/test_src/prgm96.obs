@@ -10,7 +10,8 @@ bundle Default {
 			bytes->Size()->PrintLine();
 
 			deserial := Deserializer->New(bytes);
-			value := deserial->ReadObject();
+			value := deserial->ReadObject()->As(String);
+			value->PrintLine();
 		}
 	}
 }

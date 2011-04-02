@@ -1259,7 +1259,7 @@ class ObjectDeserializer
   ~ObjectDeserializer() {    
   }
 
-  void DeserializeObject();
+  long* DeserializeObject();
 };
 
 // call back for DLL method calls
