@@ -1206,14 +1206,6 @@ class ObjectSerializer
     }
   }
   
-  inline void WriteObject(StackClass* cls, long* obj) {
-    const long obj_size = cls->GetInstanceMemorySize();
-    BYTE_VALUE* bp = (BYTE_VALUE*)obj;
-    for(long i = 0; i < obj_size; i++) {
-      values.push_back(*(bp + i));
-    }
-  }
-  
  public:
   ObjectSerializer(long* i);
   ~ObjectSerializer();
@@ -1233,18 +1225,26 @@ class ObjectDeserializer
   long byte_array_size;
   long* op_stack;
   long* stack_pos;
+  StackClass* cls;
+  long* instance;
   
   INT_VALUE ReadInt() {
-    INT_VALUE value;
-    memcpy(&value, buffer + buffer_offset, sizeof(value));
-    buffer_offset += sizeof(value);    
+    INT_VALUE value = 0;
+    if(buffer_offset + sizeof(value) < byte_array_size) {
+      memcpy(&value, buffer + buffer_offset, sizeof(value));
+      buffer_offset += sizeof(value);    
+    }
+      
     return value;
   }
   
   FLOAT_VALUE ReadFloat() {
-    FLOAT_VALUE value;
-    memcpy(&value, buffer + buffer_offset, sizeof(value));
-    buffer_offset += sizeof(value);    
+    FLOAT_VALUE value = 0.0;
+    if(buffer_offset + sizeof(value) < byte_array_size) {
+      memcpy(&value, buffer + buffer_offset, sizeof(value));
+      buffer_offset += sizeof(value);    
+    }
+    
     return value;
   }
   
@@ -1255,6 +1255,8 @@ class ObjectDeserializer
     buffer = b;
     byte_array_size = s;
     buffer_offset = 0;
+    cls = NULL;
+    instance = NULL;
   }
   
   ~ObjectDeserializer() {    

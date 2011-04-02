@@ -67,7 +67,6 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
 	cout << "\t----- SERIALIZING object: cls_id=" << cls->GetId() << ", mem_id=" 
 	     << cur_id << ", size=" << mem_size << " byte(s) -----" << endl;
 #endif
-	WriteObject(cls, mem);
 	CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth + 1);
       } 
     }
@@ -261,8 +260,22 @@ ObjectSerializer::~ObjectSerializer() {
  * ObjectDeserializer class
  ********************************/
 void ObjectDeserializer::DeserializeObject() {
+  ParamType type = (ParamType)ReadInt();
+  INT_VALUE obj_id = ReadInt();
+  cls = Loader::GetProgram()->GetClass(obj_id);
+  if(cls) {
+    INT_VALUE mem_id = ReadInt();
+    if(mem_id < 0) {
+      instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
+    }
+    else {
+
+    }
+  }
+  
+
   while(buffer_offset < byte_array_size) {
-    ParamType type = (ParamType)ReadInt();
+    type = (ParamType)ReadInt();
     
     switch(type) {
     case INT_PARM: {
@@ -274,6 +287,10 @@ void ObjectDeserializer::DeserializeObject() {
       break;
       
     case BYTE_ARY_PARM: {
+      INT_VALUE mem_id = ReadInt();
+      if(mem_id < 0) {
+	cout << mem_id << endl;
+      }
     }
       break;
       
@@ -286,12 +303,7 @@ void ObjectDeserializer::DeserializeObject() {
       break;
       
     case OBJ_PARM: {
-      INT_VALUE obj_id = ReadInt();
-      StackClass* cls = Loader::GetProgram()->GetClass(obj_id);
-      INT_VALUE mem_id = ReadInt();
-      if(mem_id < 0) {
-	long* inst = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
-      }
+      
     }
       break;
       
