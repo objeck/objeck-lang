@@ -289,6 +289,19 @@ void ObjectDeserializer::DeserializeObject() {
     case BYTE_ARY_PARM: {
       INT_VALUE mem_id = ReadInt();
       if(mem_id < 0) {
+	const long byte_array_size = ReadInt();
+	const long byte_array_dim = ReadInt();
+	const long byte_array_size_dim = ReadInt();
+	long* char_array = (long*)MemoryManager::AllocateArray(byte_array_size +
+							 ((byte_array_dim + 2) *
+							  sizeof(long)),
+							 BYTE_ARY_TYPE,
+							 op_stack, *stack_pos);
+	char_array[0] = byte_array_size;
+	char_array[1] = byte_array_dim;
+	char_array[2] = byte_array_size_dim;
+	
+	// TODO: copy content
 	cout << mem_id << endl;
       }
     }
