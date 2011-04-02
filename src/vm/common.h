@@ -1269,7 +1269,7 @@ class ObjectDeserializer
   
   ~ObjectDeserializer() {    
   }
-
+  
   long* DeserializeObject();
 };
 
