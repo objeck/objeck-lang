@@ -532,9 +532,9 @@ class StackMethod {
   }
   
   inline long GetLabelIndex(long label_id) {
-    hash_map<long, long>::iterator find = jump_table.find(label_id);
-    if(find != jump_table.end()) {
-      return find->second;
+    hash_map<long, long>::iterator found = jump_table.find(label_id);
+    if(found != jump_table.end()) {
+      return found->second;
     }    
     
     return -1;
@@ -749,7 +749,7 @@ public:
 #endif
     return methods[id];
   }
-
+  
   vector<StackMethod*> GetMethods(const string &n) {
     vector<StackMethod*> found;
     for(int i = 0; i < method_num; i++) {
@@ -1222,29 +1222,25 @@ class ObjectDeserializer
 {
   const BYTE_VALUE* buffer;
   long buffer_offset;
-  long byte_array_size;
+  long buffer_array_size;
   long* op_stack;
   long* stack_pos;
   StackClass* cls;
   long* instance;
+  long instance_pos;
+  map<INT_VALUE, long*> mem_cache;
   
   INT_VALUE ReadInt() {
-    INT_VALUE value = 0;
-    if(buffer_offset + sizeof(value) < byte_array_size) {
-      memcpy(&value, buffer + buffer_offset, sizeof(value));
-      buffer_offset += sizeof(value);    
-    }
-      
+    INT_VALUE value;
+    memcpy(&value, buffer + buffer_offset, sizeof(value));
+    buffer_offset += sizeof(value);
     return value;
   }
   
   FLOAT_VALUE ReadFloat() {
-    FLOAT_VALUE value = 0.0;
-    if(buffer_offset + sizeof(value) < byte_array_size) {
-      memcpy(&value, buffer + buffer_offset, sizeof(value));
-      buffer_offset += sizeof(value);    
-    }
-    
+    FLOAT_VALUE value;
+    memcpy(&value, buffer + buffer_offset, sizeof(value));
+    buffer_offset += sizeof(value);
     return value;
   }
   
@@ -1253,10 +1249,11 @@ class ObjectDeserializer
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
-    byte_array_size = s;
+    buffer_array_size = s;
     buffer_offset = 0;
     cls = NULL;
     instance = NULL;
+    instance_pos = 0;
   }
   
   ~ObjectDeserializer() {    

@@ -269,20 +269,26 @@ void ObjectDeserializer::DeserializeObject() {
       instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
     }
     else {
-
+      // TOOD: where would this be cached?
     }
   }
+  else {
+    // TOOD: handle error
+  }
   
-
-  while(buffer_offset < byte_array_size) {
+  while(buffer_offset < buffer_array_size) {
     type = (ParamType)ReadInt();
     
     switch(type) {
     case INT_PARM: {
+      instance[instance_pos++] = ReadInt();
+      cout << "### " << instance[instance_pos - 1] << endl;
     }
       break;
 
     case FLOAT_PARM: {
+      
+      instance_pos += 2;
     }
       break;
       
@@ -292,35 +298,50 @@ void ObjectDeserializer::DeserializeObject() {
 	const long byte_array_size = ReadInt();
 	const long byte_array_dim = ReadInt();
 	const long byte_array_size_dim = ReadInt();
-	long* char_array = (long*)MemoryManager::AllocateArray(byte_array_size +
+	long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
 							 ((byte_array_dim + 2) *
 							  sizeof(long)),
 							 BYTE_ARY_TYPE,
 							 op_stack, *stack_pos);
-	char_array[0] = byte_array_size;
-	char_array[1] = byte_array_dim;
-	char_array[2] = byte_array_size_dim;
+	char* byte_array_ptr = (char*)(byte_array + 3);
+	byte_array[0] = byte_array_size;
+	byte_array[1] = byte_array_dim;
+	byte_array[2] = byte_array_size_dim;
 	
-	// TODO: copy content
-	cout << mem_id << endl;
+	// copy content
+	memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
+	buffer_offset += byte_array_size;
+	// update cache
+	mem_cache[mem_id] = byte_array;
+	instance[instance_pos++] = (long)byte_array;
+      }
+      else {
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	if(found != mem_cache.end()) {
+	  // TODO: add error handling
+	} 
+	instance[instance_pos++] = (long)found->second;
       }
     }
       break;
       
     case INT_ARY_PARM: {
+      cout << "-0-" << endl;
     }
       break;
       
     case FLOAT_ARY_PARM: {
+      cout << "-1-" << endl;
     }
       break;
       
     case OBJ_PARM: {
-      
+      cout << "-2-" << endl;
     }
       break;
       
     case OBJ_ARY_PARM: {
+      cout << "-3-" << endl;
       break;
     }
     }
