@@ -1256,6 +1256,17 @@ class ObjectDeserializer
     instance_pos = 0;
   }
   
+  ObjectDeserializer(const BYTE_VALUE* b, long o, long s, long* stack, long* pos) {
+    op_stack = stack;
+    stack_pos = pos;
+    buffer = b;
+    buffer_array_size = s;
+    buffer_offset = o;
+    cls = NULL;
+    instance = NULL;
+    instance_pos = 0;
+  }
+  
   ~ObjectDeserializer() {    
   }
 
