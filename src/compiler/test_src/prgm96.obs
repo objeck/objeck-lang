@@ -5,17 +5,13 @@ bundle Default {
 		function : Main(args : System.String[]) ~ Nil {
 			msg := "Hello";
 			serial := Serializer->New();
-			serial->Add(3.5);
 			serial->Add(101);
-#			serial->Add(msg->As(Base));
 			bytes := serial->Serialize();
-			bytes->Size()->PrintLine();
+
 
 			deserial := Deserializer->New(bytes);
-			v0 := deserial->ReadFloat();
 			v1 := deserial->ReadInt();
-#			v2 := deserial->ReadObject()->As(String);
-#			v2->PrintLine();
+			v1->PrintLine();
 		}
 	}
 }

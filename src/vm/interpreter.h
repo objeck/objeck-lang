@@ -284,7 +284,7 @@ namespace Runtime {
     
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
-								       (long*)op_stack, *stack_pos);
+								 (long*)op_stack, *stack_pos);
       // method and class object
       mthd_obj[0] = (long)mthd;
       mthd_obj[1] = (long)cls_obj;
@@ -346,7 +346,7 @@ namespace Runtime {
         case 'o': {
 	  data_type_obj[0] = -995;
           index++;
-	   const int start_index = index + 1;
+	  const int start_index = index + 1;
           while(index < (int)params_string.size() && params_string[index] != ',') {
             index++;
           }
@@ -463,7 +463,65 @@ namespace Runtime {
 
       return dest_buffer;
     }
-    
+
+    void SerializeInt(INT_VALUE value) {
+      const long src_buffer_size = sizeof(value);
+      long* inst = (long*)frame->GetMemory()[0];
+      long* dest_buffer = (long*)inst[0];
+      long dest_pos = inst[1];
+  
+      // expand buffer, if needed
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      inst[0] = (long)dest_buffer;
+  
+      // copy content
+      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+      inst[1] = dest_pos + src_buffer_size;
+    }
+
+    INT_VALUE DeserializeInt() {
+      long* inst = (long*)frame->GetMemory()[0];
+      long* byte_array = (long*)inst[0];
+      long dest_pos = inst[1];
+      const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
+  
+      INT_VALUE value;
+      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+      inst[1] = dest_pos + sizeof(value);
+      
+      return value;
+    }
+
+    void SerializeFloat(FLOAT_VALUE value) {  
+      const long src_buffer_size = sizeof(value);
+      long* inst = (long*)frame->GetMemory()[0];
+      long* dest_buffer = (long*)inst[0];
+      long dest_pos = inst[1];
+  
+      // expand buffer, if needed
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      inst[0] = (long)dest_buffer;
+  
+      // copy content
+      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+      inst[1] = dest_pos + src_buffer_size;
+    }
+
+    FLOAT_VALUE DeserializeFloat() {
+      long* inst = (long*)frame->GetMemory()[0];
+      long* byte_array = (long*)inst[0];
+      long dest_pos = inst[1];
+      const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
+  
+      FLOAT_VALUE value;
+      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+      inst[1] = dest_pos + sizeof(value);
+      
+      return value;
+    }
+
     inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr);
     inline void ProcessNewObjectInstance(StackInstr* instr);
@@ -493,10 +551,6 @@ namespace Runtime {
     inline void ProcessPlatform();
     inline void ProcessTrap(StackInstr* instr);
     
-    inline void SerializeInt();
-    inline void SerializeFloat();
-    inline void DeserializeInt();
-    inline void DeserializeFloat();
     inline void SerializeObject();
     inline void DeserializeObject();
 

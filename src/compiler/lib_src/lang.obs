@@ -1653,9 +1653,11 @@ bundle IO {
 	
 	class Deserializer  {
 		@buffer : Byte[];
+		@pos : Int;
 		
 		New(buffer : Byte[]) {
 			@buffer := buffer;
+			@pos := 0;
 		}
 
 		method : public : ReadBool() ~ Bool {
