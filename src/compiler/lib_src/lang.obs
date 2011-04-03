@@ -1637,10 +1637,6 @@ bundle IO {
 			SERL_FLOAT_ARY;
 		}
 		
-		method : public : Add(o : Base[]) ~ Nil {
-			SERL_OBJ_INST_ARY;
-		}
-
 		method : public : Serialize() ~ Byte[] {
 			temp := Byte->New[@pos];
 			for(i := 0; i < @pos; i += 1;) {
@@ -1694,10 +1690,6 @@ bundle IO {
 		
 		method : public : ReadFloatArray() ~ Float[] {
 			DESERL_FLOAT_ARY;
-		}
-		
-		method : public : ReadObjectArray() ~ Base[] {
-			DESERL_OBJ_INST_ARY;
 		}
 	}
 }

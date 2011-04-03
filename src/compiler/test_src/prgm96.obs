@@ -7,34 +7,23 @@ bundle Default {
 			serial := Serializer->New();
 #			serial->Add(101);
 #			serial->Add(3.5);
-
+			array := Byte->New[4];
+			array[0] := 7;
+			array[1] := 27;
+			array[2] := 6;
+			array[3] := 13;
+			serial->Add(array);
 			bytes := serial->Serialize();
+
 			deserial := Deserializer->New(bytes);
-
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2 := deserial->ReadFloat();
-			v2->PrintLine();
-
+			x := deserial->ReadByteArray();
+			
+#~
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
+			v2 := deserial->ReadFloat();
+			v2->PrintLine();
+~#
 		}
 	}
 }
