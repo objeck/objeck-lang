@@ -454,12 +454,11 @@ namespace Runtime {
 	byte_array[0] = byte_array_size + 1;
 	byte_array[1] = byte_array_dim;
 	byte_array[2] = byte_array_size;
-    
+	
 	// copy content
 	char* byte_array_ptr = (char*)(byte_array + 3);
-	for(int i = 0; i < dest_pos; i++) {
-	  byte_array_ptr[i] = dest_buffer[i];
-	}
+	const char* dest_buffer_ptr = (char*)(dest_buffer + 3);	
+	memcpy(byte_array_ptr, dest_buffer_ptr, dest_pos);
 	
 	return byte_array;
       }
