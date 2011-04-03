@@ -12,13 +12,24 @@ bundle Default {
 			array[1] := 27;
 			array[2] := 6;
 			array[3] := 13;
+
+			array2:= Int->New[3];
+			array2[0] := 2;
+			array2[1] := 3;
+			array2[1] := 4;
+
 			serial->Add(array);
+			serial->Add(array2);
 			bytes := serial->Serialize();
 
 			deserial := Deserializer->New(bytes);
-			x := deserial->ReadByteArray();
-			y := x[1]->As(Int);
-			y->PrintLine();
+			a := deserial->ReadByteArray();
+			b := a[1]->As(Int);
+			b->PrintLine();
+
+			c := deserial->ReadIntArray();
+			d := c[1]->As(Int);
+			d->PrintLine();
 #~
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
