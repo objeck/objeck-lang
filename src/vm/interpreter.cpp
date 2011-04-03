@@ -1998,11 +1998,16 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
     // ---------------- serialization ----------------
   case SERL_INT:
-    SerializeInt();
+    SerializeInt(INT_PARM);
+    SerializeInt(frame->GetMemory()[1]);
     break;
     
-  case SERL_FLOAT:
-    SerializeFloat();
+  case SERL_FLOAT: {
+    SerializeInt(FLOAT_PARM);
+    FLOAT_VALUE value;
+    memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
+    SerializeFloat(value);
+  }
     break;
     
   case SERL_OBJ_INST:
@@ -2022,11 +2027,21 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case DESERL_INT:
-    DeserializeInt();
+    if(INT_PARM == (ParamType)DeserializeInt()) {
+      PushInt(DeserializeInt());
+    }
+    else {
+      PushInt(0);
+    }
     break;
 
   case DESERL_FLOAT:
-    DeserializeFloat();
+    if(FLOAT_PARM == (ParamType)DeserializeInt()) {
+      PushFloat(DeserializeFloat());
+    }
+    else {
+      PushFloat(0.0);
+    }
     break;
 
   case DESERL_OBJ_INST:
@@ -2429,63 +2444,6 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
   }
-}
-
-void StackInterpreter::SerializeInt() {
-  INT_VALUE value = frame->GetMemory()[1];
-  const long src_buffer_size = sizeof(value);
-  
-  long* inst = (long*)frame->GetMemory()[0];
-  long* dest_buffer = (long*)inst[0];
-  long dest_pos = inst[1];
-  
-  // expand buffer, if needed
-  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
-  inst[0] = (long)dest_buffer;
-  
-  // copy content
-  char* dest_buffer_ptr = (char*)(dest_buffer + 3);
-  memcpy(dest_buffer_ptr, &value, src_buffer_size);
-  inst[1] = dest_pos + src_buffer_size;
-}
-
-void StackInterpreter::SerializeFloat() {
-  FLOAT_VALUE value;
-  memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
-  const long src_buffer_size = sizeof(value);
-  
-  long* inst = (long*)frame->GetMemory()[0];
-  long* dest_buffer = (long*)inst[0];
-  long dest_pos = inst[1];
-  
-  // expand buffer, if needed
-  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
-  inst[0] = (long)dest_buffer;
-  
-  // copy content
-  char* dest_buffer_ptr = (char*)(dest_buffer + 3);
-  memcpy(dest_buffer_ptr, &value, src_buffer_size);
-  inst[1] = dest_pos + src_buffer_size;
-}
-
-void StackInterpreter::DeserializeInt() {
-  const long* inst = (long*)frame->GetMemory()[0];
-  long* byte_array = (long*)inst[0];
-  const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-  
-  INT_VALUE value;
-  memcpy(&value, byte_array_ptr, sizeof(value));
-  PushInt(value);
-}
-
-void StackInterpreter::DeserializeFloat() {
-  const long* inst = (long*)frame->GetMemory()[0];
-  long* byte_array = (long*)inst[0];
-  const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-  
-  FLOAT_VALUE value;
-  memcpy(&value, byte_array_ptr, sizeof(value));
-  PushFloat(value);
 }
 
 void StackInterpreter::SerializeObject() {
