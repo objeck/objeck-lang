@@ -27,9 +27,12 @@ bundle Default {
 			b := a[1]->As(Int);
 			b->PrintLine();
 
-			c := deserial->ReadIntArray();
+#			c := deserial->ReadIntArray();
+			c := deserial->ReadByteArray();
 			d := c[1]->As(Int);
+#~
 			d->PrintLine();
+~#
 #~
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
