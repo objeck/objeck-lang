@@ -432,7 +432,7 @@ namespace Runtime {
       return str_obj;
     }
 
-    inline void WriteBytes(const long* array, const long src_buffer_size) {
+    inline void WriteBytes(const BYTE_VALUE* array, const long src_buffer_size) {
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
       const long dest_pos = inst[1];
@@ -442,55 +442,89 @@ namespace Runtime {
       inst[0] = (long)dest_buffer;
   
       // copy content
-      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      BYTE_VALUE* dest_buffer_ptr = (BYTE_VALUE*)(dest_buffer + 3);
       memcpy(dest_buffer_ptr + dest_pos, array, src_buffer_size);
+      inst[1] = dest_pos + src_buffer_size;
     }
 
     inline void SerializeArray(const long* array, ParamType type) {
+      const long array_size = array[0];
       // write metadata
       SerializeInt(array[0]);
       SerializeInt(array[1]);
       SerializeInt(array[2]);
-      array += 3;
+      BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
       
       // write values
-      const long array_size = array[0];
       switch(type) {
-      case SERL_BYTE_ARY:
-	WriteBytes(array, array_size);
+      case BYTE_ARY_PARM:
+	WriteBytes(array_ptr, array_size);
 	break;
 	    
-      case SERL_INT_ARY:
-	WriteBytes(array, array_size * sizeof(INT_VALUE));
+      case INT_ARY_PARM:
+	WriteBytes(array_ptr, array_size * sizeof(INT_VALUE));
 	break;
 	  
-      case SERL_FLOAT_ARY:
-	WriteBytes(array, array_size * sizeof(FLOAT_VALUE));
+      case FLOAT_ARY_PARM:
+	WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
 	break;
       }
+    }
+
+    inline void ReadBytes(BYTE_VALUE* dest_array, const BYTE_VALUE* src_array, const long src_array_size) {
+      long* inst = (long*)frame->GetMemory()[0];
+      const long dest_pos = inst[1];
+      
+      if(dest_pos < src_array_size) {
+	INT_VALUE value;
+	memcpy(dest_array, src_array + dest_pos, sizeof(value));
+	inst[1] = dest_pos + sizeof(value);
+	
+      }      
+
     }
     
     inline long* DeserializeArray(ParamType type) {
       long* inst = (long*)frame->GetMemory()[0];
-      long* byte_array = (long*)inst[0];
+      long* src_array = (long*)inst[0];
       long dest_pos = inst[1];
       
-      if(dest_pos < byte_array[0]) {
-	const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-	
-	INT_VALUE v0;
-	memcpy(&v0, byte_array_ptr + dest_pos, sizeof(v0));       
-	dest_pos += sizeof(v0);
+      if(dest_pos < src_array[0]) {
+	const long dest_array_size = DeserializeInt();
+	const long dest_array_dim = DeserializeInt();
+	const long dest_array_dim_size = DeserializeInt();	
+	long* dest_array = (long*)MemoryManager::Instance()->AllocateArray(dest_array_size + 1 +
+									   ((dest_array_dim + 2) *
+									    sizeof(long)),
+									   BYTE_ARY_TYPE,
+									   op_stack, *stack_pos);
+	dest_array[0] = dest_array_size;
+	dest_array[1] = dest_array_dim;
+	dest_array[2] = dest_array_dim_size;
 
-	INT_VALUE v1;
-	memcpy(&v1, byte_array_ptr + dest_pos, sizeof(v1));       
-	dest_pos += sizeof(v1);
-
-	INT_VALUE v2;
-	memcpy(&v2, byte_array_ptr + dest_pos, sizeof(v2));       
-	dest_pos += sizeof(v2);
+	const BYTE_VALUE* src_array_ptr = (BYTE_VALUE*)(src_array + 3);	
+	BYTE_VALUE* dest_array_ptr = (BYTE_VALUE*)(dest_array + 3);
 	
-	inst[1] = dest_pos;
+	/*
+	INT_VALUE value;
+	memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+	inst[1] = dest_pos + sizeof(value);
+	*/
+	
+	switch(type) {
+	case BYTE_ARY_PARM:
+	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size);
+	  break;
+	  
+	case INT_ARY_PARM:
+	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size * sizeof(INT_VALUE));
+	  break;
+	  
+	case FLOAT_ARY_PARM:
+	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size * sizeof(FLOAT_VALUE));
+	  break;
+	}
+	
 	return NULL;
       }
       
@@ -521,8 +555,8 @@ namespace Runtime {
 	byte_array[2] = byte_array_size;
 	
 	// copy content
-	char* byte_array_ptr = (char*)(byte_array + 3);
-	const char* dest_buffer_ptr = (char*)(dest_buffer + 3);	
+	BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
+	const BYTE_VALUE* dest_buffer_ptr = (BYTE_VALUE*)(dest_buffer + 3);	
 	memcpy(byte_array_ptr, dest_buffer_ptr, dest_pos);
 	
 	return byte_array;
@@ -542,7 +576,7 @@ namespace Runtime {
       inst[0] = (long)dest_buffer;
   
       // copy content
-      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      BYTE_VALUE* dest_buffer_ptr = (BYTE_VALUE*)(dest_buffer + 3);
       memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
       inst[1] = dest_pos + src_buffer_size;
     }
@@ -575,7 +609,7 @@ namespace Runtime {
       inst[0] = (long)dest_buffer;
   
       // copy content
-      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      BYTE_VALUE* dest_buffer_ptr = (BYTE_VALUE*)(dest_buffer + 3);
       memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
       inst[1] = dest_pos + src_buffer_size;
     }
