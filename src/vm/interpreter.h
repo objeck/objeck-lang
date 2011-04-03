@@ -486,13 +486,17 @@ namespace Runtime {
       long* inst = (long*)frame->GetMemory()[0];
       long* byte_array = (long*)inst[0];
       const long dest_pos = inst[1];
-      const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-  
-      INT_VALUE value;
-      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
-      inst[1] = dest_pos + sizeof(value);
       
-      return value;
+      if(dest_pos < byte_array[0]) {
+	const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);	
+	INT_VALUE value;
+	memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+	inst[1] = dest_pos + sizeof(value);
+      
+	return value;
+      }
+      
+      return 0;
     }
 
     void SerializeFloat(FLOAT_VALUE value) {  
@@ -515,13 +519,16 @@ namespace Runtime {
       long* inst = (long*)frame->GetMemory()[0];
       long* byte_array = (long*)inst[0];
       const long dest_pos = inst[1];
-      const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-  
-      FLOAT_VALUE value;
-      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
-      inst[1] = dest_pos + sizeof(value);
-      
-      return value;
+
+      if(dest_pos < byte_array[0]) {
+	const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
+	FLOAT_VALUE value;
+	memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+	inst[1] = dest_pos + sizeof(value);      
+	return value;
+      }
+
+      return 0.0;
     }
 
     inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
