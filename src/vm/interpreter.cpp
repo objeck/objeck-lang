@@ -1471,6 +1471,11 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
   cout << "stack oper: LOAD_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1487,6 +1492,11 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1503,6 +1513,11 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
   cout << "stack oper: LOAD_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1520,6 +1535,11 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
   cout << "stack oper: STOR_BYTE_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1537,6 +1557,11 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
   cout << "stack oper: LOAD_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1555,6 +1580,11 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
   cout << "stack oper: STOR_FLOAT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1785,6 +1815,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     BYTE_VALUE* value_str = program->GetCharStrings()[index];
     // copy array
     long* array = (long*)PopInt();
+    if(!array) {
+      cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
     const long size = array[0];
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
     for(long i = 0; value_str[i] != '\0' && i < size; i++) {
@@ -1800,6 +1835,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case CPY_CHAR_STR_ARYS: {
     // copy array
     long* array = (long*)PopInt();
+    if(!array) {
+      cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
     const long size = array[0];
     const long dim = array[1];
     // copy elements
@@ -1818,7 +1858,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long index = PopInt();
     int* value_str = program->GetIntStrings()[index];
     // copy array
-    long* array = (long*)PopInt();    
+    long* array = (long*)PopInt();
+    if(!array) {
+      cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
     const long size = array[0];
     const long dim = array[1];    
     long* str = (long*)(array + dim + 2);
@@ -1836,7 +1881,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long index = PopInt();
     FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
     // copy array
-    long* array = (long*)PopInt();    
+    long* array = (long*)PopInt();
+    if(!array) {
+      cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
     const long size = array[0];
     const long dim = array[1];    
     FLOAT_VALUE* str = (FLOAT_VALUE*)(array + dim + 2);
