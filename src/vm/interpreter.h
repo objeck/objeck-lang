@@ -471,17 +471,18 @@ namespace Runtime {
       }
     }
 
-    inline void ReadBytes(BYTE_VALUE* dest_array, const BYTE_VALUE* src_array, const long src_array_size) {
+    inline void ReadBytes(const long* dest_array, const long* src_array) {
       long* inst = (long*)frame->GetMemory()[0];
       const long dest_pos = inst[1];
+      const long src_array_size = src_array[0];
+      const long dest_array_size = dest_array[0];
       
       if(dest_pos < src_array_size) {
-	INT_VALUE value;
-	memcpy(dest_array, src_array + dest_pos, sizeof(value));
-	inst[1] = dest_pos + sizeof(value);
-	
-      }      
-
+	const BYTE_VALUE* src_array_ptr = (BYTE_VALUE*)(src_array + 3);	
+	BYTE_VALUE* dest_array_ptr = (BYTE_VALUE*)(dest_array + 3);
+	memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+	inst[1] = dest_pos + dest_array_size;
+      }
     }
     
     inline long* DeserializeArray(ParamType type) {
@@ -490,6 +491,7 @@ namespace Runtime {
       long dest_pos = inst[1];
       
       if(dest_pos < src_array[0]) {
+	// TOOD: detect bad read?
 	const long dest_array_size = DeserializeInt();
 	const long dest_array_dim = DeserializeInt();
 	const long dest_array_dim_size = DeserializeInt();	
@@ -501,31 +503,22 @@ namespace Runtime {
 	dest_array[0] = dest_array_size;
 	dest_array[1] = dest_array_dim;
 	dest_array[2] = dest_array_dim_size;
-
-	const BYTE_VALUE* src_array_ptr = (BYTE_VALUE*)(src_array + 3);	
-	BYTE_VALUE* dest_array_ptr = (BYTE_VALUE*)(dest_array + 3);
-	
-	/*
-	INT_VALUE value;
-	memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
-	inst[1] = dest_pos + sizeof(value);
-	*/
 	
 	switch(type) {
 	case BYTE_ARY_PARM:
-	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size);
+	  ReadBytes(dest_array, src_array);
 	  break;
 	  
 	case INT_ARY_PARM:
-	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size * sizeof(INT_VALUE));
+	  ReadBytes(dest_array, src_array);
 	  break;
 	  
 	case FLOAT_ARY_PARM:
-	  ReadBytes(dest_array_ptr, src_array_ptr, dest_array_size * sizeof(FLOAT_VALUE));
+	  ReadBytes(dest_array, src_array);
 	  break;
 	}
 	
-	return NULL;
+	return dest_array;
       }
       
       return NULL;

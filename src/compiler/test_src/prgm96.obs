@@ -17,7 +17,8 @@ bundle Default {
 
 			deserial := Deserializer->New(bytes);
 			x := deserial->ReadByteArray();
-			
+			y := x[1]->As(Int);
+			y->PrintLine();
 #~
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
