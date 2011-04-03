@@ -471,15 +471,29 @@ namespace Runtime {
       }
     }
 
-    inline void ReadBytes(const long* dest_array, const long* src_array) {
+    inline void ReadBytes(const long* dest_array, const long* src_array, ParamType type) {
       long* inst = (long*)frame->GetMemory()[0];
       const long dest_pos = inst[1];
       const long src_array_size = src_array[0];
-      const long dest_array_size = dest_array[0];
+      long dest_array_size = dest_array[0];
       
       if(dest_pos < src_array_size) {
 	const BYTE_VALUE* src_array_ptr = (BYTE_VALUE*)(src_array + 3);	
 	BYTE_VALUE* dest_array_ptr = (BYTE_VALUE*)(dest_array + 3);
+
+	switch(type) {
+	case BYTE_ARY_PARM:
+	  break;
+	  
+	case INT_ARY_PARM:
+	  dest_array_size *= sizeof(INT_VALUE);
+	  break;
+	  
+	case FLOAT_ARY_PARM:
+	  dest_array_size *= sizeof(FLOAT_VALUE);
+	  break;
+	}
+
 	memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
 	inst[1] = dest_pos + dest_array_size;
       }
@@ -502,21 +516,8 @@ namespace Runtime {
 									   op_stack, *stack_pos);
 	dest_array[0] = dest_array_size;
 	dest_array[1] = dest_array_dim;
-	dest_array[2] = dest_array_dim_size;
-	
-	switch(type) {
-	case BYTE_ARY_PARM:
-	  ReadBytes(dest_array, src_array);
-	  break;
-	  
-	case INT_ARY_PARM:
-	  ReadBytes(dest_array, src_array);
-	  break;
-	  
-	case FLOAT_ARY_PARM:
-	  ReadBytes(dest_array, src_array);
-	  break;
-	}
+	dest_array[2] = dest_array_dim_size;	
+	ReadBytes(dest_array, src_array, type);
 	
 	return dest_array;
       }
