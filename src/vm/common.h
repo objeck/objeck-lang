@@ -1270,6 +1270,10 @@ class ObjectDeserializer
   ~ObjectDeserializer() {    
   }
   
+  inline long GetOffset() {
+    return buffer_offset;
+  }
+  
   long* DeserializeObject();
 };
 

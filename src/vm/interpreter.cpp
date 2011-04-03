@@ -1998,11 +1998,17 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
     // ---------------- serialization ----------------
   case SERL_INT:
+#ifdef _DEBUG
+    cout << "# serializing int #" << endl;
+#endif
     SerializeInt(INT_PARM);
     SerializeInt(frame->GetMemory()[1]);
     break;
     
   case SERL_FLOAT: {
+#ifdef _DEBUG
+    cout << "# serializing float #" << endl;
+#endif
     SerializeInt(FLOAT_PARM);
     FLOAT_VALUE value;
     memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
@@ -2027,6 +2033,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case DESERL_INT:
+#ifdef _DEBUG
+    cout << "# deserializing int #" << endl;
+#endif
     if(INT_PARM == (ParamType)DeserializeInt()) {
       PushInt(DeserializeInt());
     }
@@ -2036,6 +2045,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case DESERL_FLOAT:
+#ifdef _DEBUG
+    cout << "# deserializing float #" << endl;
+#endif
     if(FLOAT_PARM == (ParamType)DeserializeInt()) {
       PushFloat(DeserializeFloat());
     }
@@ -2467,11 +2479,13 @@ void StackInterpreter::SerializeObject() {
 }
 
 void StackInterpreter::DeserializeObject() {
-  const long* inst = (long*)frame->GetMemory()[0];
+  long* inst = (long*)frame->GetMemory()[0];
   long* byte_array = (long*)inst[0];
+  const long dest_pos = inst[1];
   const long byte_array_dim_size = byte_array[2];  
   const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
   
   ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
   PushInt((long)deserializer.DeserializeObject());
+  inst[1] = dest_pos + deserializer.GetOffset();
 }
