@@ -2021,17 +2021,20 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case SERL_BYTE_ARY:
+    SerializeInt(BYTE_ARY_PARM);
+    SerializeArray((long*)frame->GetMemory()[1], BYTE_ARY_PARM);
     break;
 
   case SERL_INT_ARY:
+    SerializeInt(INT_ARY_PARM);
+    SerializeArray((long*)frame->GetMemory()[1], INT_ARY_PARM);
     break;
 
   case SERL_FLOAT_ARY:
+    SerializeInt(FLOAT_ARY_PARM);
+    SerializeArray((long*)frame->GetMemory()[1], FLOAT_ARY_PARM);
     break;
-
-  case SERL_OBJ_INST_ARY:
-    break;
-
+    
   case DESERL_INT:
 #ifdef _DEBUG
     cout << "# deserializing int #" << endl;
@@ -2061,15 +2064,39 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case DESERL_BYTE_ARY:
+#ifdef _DEBUG
+    cout << "# deserializing byte array #" << endl;
+#endif
+    if(BYTE_ARY_PARM == (ParamType)DeserializeInt()) {
+      PushInt((long)DeserializeArray(BYTE_ARY_PARM));
+    }
+    else {
+      PushInt(0);
+    }
     break;
-
+    
   case DESERL_INT_ARY:
+#ifdef _DEBUG
+    cout << "# deserializing int array #" << endl;
+#endif
+    if(INT_ARY_PARM == (ParamType)DeserializeInt()) {
+      PushInt((long)DeserializeArray(INT_ARY_PARM));
+    }
+    else {
+      PushInt(0);
+    }
     break;
 
   case DESERL_FLOAT_ARY:
-    break;
-
-  case DESERL_OBJ_INST_ARY:
+#ifdef _DEBUG
+    cout << "# deserializing float array #" << endl;
+#endif
+    if(FLOAT_ARY_PARM == (ParamType)DeserializeInt()) {
+      PushInt((long)DeserializeArray(FLOAT_ARY_PARM));
+    }
+    else {
+      PushInt(0);
+    }
     break;
     
     // ---------------- file i/o ----------------

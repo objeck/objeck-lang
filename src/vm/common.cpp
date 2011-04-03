@@ -122,7 +122,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     switch(dclrs[i]->type) {
     case INT_PARM: {
 #ifdef _DEBUG
-      cout << "\t" << i << ": ----- SERIALIZING int: value=" << (*mem) << ", size=" << sizeof(INT_VALUE) << " byte(s) -----" << endl;
+      cout << "\t" << i << ": ----- serializing int: value=" << (*mem) << ", size=" << sizeof(INT_VALUE) << " byte(s) -----" << endl;
 #endif
       WriteInt(*mem);
       // update
@@ -134,7 +134,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       FLOAT_VALUE value;
       memcpy(&value, mem, sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
-      cout << "\t" << i << ": ----- SERIALIZING float: value=" << value << ", size=" 
+      cout << "\t" << i << ": ----- serializing float: value=" << value << ", size=" 
 	   << sizeof(FLOAT_VALUE) << " byte(s) -----" << endl;
 #endif
       WriteFloat(value);
@@ -164,21 +164,23 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
-
+      
     case INT_ARY_PARM: {
       long* array = (long*)(*mem);
-#ifdef _DEBUG      
-      cout << "\t" << i << ": INT_ARY_PARM: addr=" << array << "("
-           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
-#endif
       // mark data
       if(!WasSerialized((long*)(*mem))) {
+	const long array_size = array[0];
 #ifdef _DEBUG
-	for(int i = 0; i < depth; i++) {
-	  cout << "\t";
-	}
-	cout << "\t----- SERIALIZE: size=" << (array[0] * sizeof(INT_VALUE)) << " byte(s) -----" << endl;
+	cout << "\t" << i << ": ----- SERIALIZING int array: mem_id=" << cur_id << ", size=" 
+	     << array_size << " byte(s) -----" << endl;
 #endif
+	// write metadata
+	WriteInt(array[0]);
+	WriteInt(array[1]);
+	WriteInt(array[2]);
+	array += 3;
+	// values
+	WriteBytes(array, array_size * sizeof(INT_VALUE));
       }
       // update
       mem++;
@@ -187,18 +189,20 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       
     case FLOAT_ARY_PARM: {
       long* array = (long*)(*mem);
-#ifdef _DEBUG
-      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << array << "("
-           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
-#endif
       // mark data
       if(!WasSerialized((long*)(*mem))) {
+	const long array_size = array[0];
 #ifdef _DEBUG
-	for(int i = 0; i < depth; i++) {
-	  cout << "\t";
-	}
-	cout << "\t----- SERIALIZE: size=" << (array[0] * sizeof(FLOAT_VALUE)) << " byte(s) -----" << endl;
+	cout << "\t" << i << ": ----- SERIALIZING byte array: mem_id=" << cur_id << ", size=" 
+	     << array_size << " byte(s) -----" << endl;
 #endif
+	// write metadata
+	WriteInt(array[0]);
+	WriteInt(array[1]);
+	WriteInt(array[2]);
+	array += 3;
+	// write values
+	WriteBytes(array, array_size * sizeof(FLOAT_VALUE));
       }
       // update
       mem++;
