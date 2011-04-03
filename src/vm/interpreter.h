@@ -434,11 +434,14 @@ namespace Runtime {
     
     // expand buffer
     long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst) {
-      long dest_buffer_size = dest_buffer[2];      
-      if(src_buffer_size >= dest_buffer_size) {
-	long dest_pos = inst[1];
-	while(src_buffer_size >= dest_buffer_size) {
-	  dest_buffer_size += src_buffer_size / 2;
+      long dest_buffer_size = dest_buffer[2];
+      const long dest_pos = inst[1];      
+      const long calc_offset = src_buffer_size + dest_pos;
+      
+      if(calc_offset >= dest_buffer_size) {
+	const long dest_pos = inst[1];
+	while(calc_offset >= dest_buffer_size) {
+	  dest_buffer_size += calc_offset / 2;
 	}
 	// create byte array
 	const long byte_array_size = dest_buffer_size;
@@ -468,7 +471,7 @@ namespace Runtime {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
-      long dest_pos = inst[1];
+      const long dest_pos = inst[1];
   
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
@@ -483,7 +486,7 @@ namespace Runtime {
     INT_VALUE DeserializeInt() {
       long* inst = (long*)frame->GetMemory()[0];
       long* byte_array = (long*)inst[0];
-      long dest_pos = inst[1];
+      const long dest_pos = inst[1];
       const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
   
       INT_VALUE value;
@@ -497,7 +500,7 @@ namespace Runtime {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
-      long dest_pos = inst[1];
+      const long dest_pos = inst[1];
   
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
@@ -512,7 +515,7 @@ namespace Runtime {
     FLOAT_VALUE DeserializeFloat() {
       long* inst = (long*)frame->GetMemory()[0];
       long* byte_array = (long*)inst[0];
-      long dest_pos = inst[1];
+      const long dest_pos = inst[1];
       const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
   
       FLOAT_VALUE value;
