@@ -1276,12 +1276,6 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
-    case SERL_OBJ_INST_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SERL_OBJ_INST_ARY);
-      NextToken();
-      break;
-
     case DESERL_INT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::DESERL_INT);
@@ -1315,12 +1309,6 @@ Statement* Parser::ParseStatement(int depth)
     case DESERL_FLOAT_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::DESERL_FLOAT_ARY);
-      NextToken();
-      break;
-
-    case DESERL_OBJ_INST_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::DESERL_OBJ_INST_ARY);
       NextToken();
       break;
 #endif
