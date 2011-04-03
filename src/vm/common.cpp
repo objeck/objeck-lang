@@ -309,6 +309,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	// copy content
 	memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
 	buffer_offset += byte_array_size;
+	
 	// update cache
 	mem_cache[mem_id] = byte_array;
 	instance[instance_pos++] = (long)byte_array;
