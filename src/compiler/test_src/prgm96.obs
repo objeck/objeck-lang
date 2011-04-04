@@ -5,7 +5,7 @@ bundle Default {
 		function : Main(args : System.String[]) ~ Nil {
 			msg := "Hello";
 			serial := Serializer->New();
-
+#~
 			serial->Add(101);
 			serial->Add(3.5);
 			array := Byte->New[4];
@@ -25,11 +25,13 @@ bundle Default {
 			array3[0] := 3.5;
 			array3[1] := 4.5;
 			serial->Add(array3);
+~#
+			serial->Add(msg->As(Base));
 
 			bytes := serial->Serialize();
 
 			deserial := Deserializer->New(bytes);
-
+#~
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
 			v2 := deserial->ReadFloat();
@@ -46,6 +48,9 @@ bundle Default {
 			e := deserial->ReadFloatArray();
 			f := e[1]->As(Float);
 			f->PrintLine();
+~#
+			g := deserial->ReadObject()->As(String);
+			g->PrintLine();
 		}
 	}
 }
