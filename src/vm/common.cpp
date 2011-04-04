@@ -44,8 +44,7 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 /********************************
  * ObjectSerializer struct
  ********************************/
-void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
-{
+void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   if(mem) {
     // TODO: optimize so this is not a double call.. see below
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
@@ -105,8 +104,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth)
   }
 }
 
-void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
-{
+void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth) {
   // check method
   for(long i = 0; i < dcls_size; i++) {
 #ifdef _DEBUG
@@ -149,16 +147,16 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(!WasSerialized((long*)(*mem))) {
 	const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- SERIALIZING byte array: mem_id=" << cur_id << ", size=" 
+	cout << "\t" << i << ": ----- serializing byte array: mem_id=" << cur_id << ", size=" 
 	     << array_size << " byte(s) -----" << endl;
 #endif
 	// write metadata
 	WriteInt(array[0]);
 	WriteInt(array[1]);
 	WriteInt(array[2]);
-	array += 3;
+	BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
 	// values
-	WriteBytes(array, array_size);
+	WriteBytes(array_ptr, array_size);
       }
       // update
       mem++;
@@ -171,7 +169,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(!WasSerialized((long*)(*mem))) {
 	const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- SERIALIZING int array: mem_id=" << cur_id << ", size=" 
+	cout << "\t" << i << ": ----- serializing int array: mem_id=" << cur_id << ", size=" 
 	     << array_size << " byte(s) -----" << endl;
 #endif
 	// write metadata
@@ -193,16 +191,16 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(!WasSerialized((long*)(*mem))) {
 	const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- SERIALIZING byte array: mem_id=" << cur_id << ", size=" 
+	cout << "\t" << i << ": ----- serializing float array: mem_id=" << cur_id << ", size=" 
 	     << array_size << " byte(s) -----" << endl;
 #endif
 	// write metadata
 	WriteInt(array[0]);
 	WriteInt(array[1]);
 	WriteInt(array[2]);
-	array += 3;
+	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
 	// write values
-	WriteBytes(array, array_size * sizeof(FLOAT_VALUE));
+	WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
       }
       // update
       mem++;
@@ -312,8 +310,7 @@ long* ObjectDeserializer::DeserializeObject() {
       if(mem_id < 0) {
 	const long array_size = ReadInt();
 	const long array_dim = ReadInt();
-	const long array_size_dim = ReadInt();
-	
+	const long array_size_dim = ReadInt();	
 	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
 							  INT_TYPE, op_stack, *stack_pos);
 	
@@ -324,7 +321,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	
 	// copy content
 	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(INT_VALUE));
-	buffer_offset += array_size;
+	buffer_offset += array_size * sizeof(INT_VALUE);
 	
 	// update cache
 	mem_cache[mem_id] = array;
@@ -346,7 +343,6 @@ long* ObjectDeserializer::DeserializeObject() {
 	const long array_size = ReadInt();
 	const long array_dim = ReadInt();
 	const long array_size_dim = ReadInt();
-	
 	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
 							  INT_TYPE, op_stack, *stack_pos);
 	
@@ -357,7 +353,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	
 	// copy content
 	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
-	buffer_offset += array_size;
+	buffer_offset += array_size * sizeof(FLOAT_VALUE);
 	
 	// update cache
 	mem_cache[mem_id] = array;
