@@ -1231,7 +1231,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
 
   case SERL_FLOAT_ARY:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, (INT_VALUE)SERL_INT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_FLOAT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
     
@@ -1487,7 +1487,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   }
   
   EmitExpression(do_while_stmt->GetExpression());
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
+ imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
   
   break_label = break_labels.top();
   break_labels.pop();
