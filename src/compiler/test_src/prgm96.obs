@@ -1,9 +1,32 @@
 use IO;
 
 bundle Default {
+	class Test {
+		i : Int;
+		f : Float;
+		ii : Int[];
+		ff : Float[];
+
+		New() {
+			i := 13;
+			f := 33.78;
+
+			ii := Int->New[3];
+			ii[0] := 1;
+			ii[1] := 101;
+			ii[2] := 880;
+
+			ff := Float->New[3];
+			ff[0] := 3.5;
+			ff[1] := 13.15;
+			ff[2] := 30.52;
+		}
+	}
+
 	class BasicBlocks {
 		function : Main(args : System.String[]) ~ Nil {
-			msg := "Hello";
+#			msg := "Hello";
+			t := Test->New();
 			serial := Serializer->New();
 #~
 			serial->Add(101);
@@ -26,7 +49,7 @@ bundle Default {
 			array3[1] := 4.5;
 			serial->Add(array3);
 ~#
-			serial->Add(msg->As(Base));
+			serial->Add(t->As(Base));
 
 			bytes := serial->Serialize();
 
@@ -49,8 +72,7 @@ bundle Default {
 			f := e[1]->As(Float);
 			f->PrintLine();
 ~#
-			g := deserial->ReadObject()->As(String);
-			g->PrintLine();
+			g := deserial->ReadObject()->As(Test);
 		}
 	}
 }

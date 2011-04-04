@@ -1199,7 +1199,7 @@ class ObjectSerializer
     }
   }
 
-  inline void WriteBytes(long* array, const long len) {
+  inline void WriteBytes(void* array, const long len) {
     BYTE_VALUE* bp = (BYTE_VALUE*)array;
     for(long i = 0; i < len; i++) {
       values.push_back(*(bp + i));
