@@ -193,7 +193,7 @@ void Scanner::LoadKeywords()
   ident_map["SERL_FLOAT_ARY"] = SERL_FLOAT_ARY;
   ident_map["DESERL_INT"] = DESERL_INT;
   ident_map["DESERL_FLOAT"] = DESERL_FLOAT;
-  ident_map["DESERL_OBJ_INST"] = SERL_OBJ_INST;
+  ident_map["DESERL_OBJ_INST"] = DESERL_OBJ_INST;
   ident_map["DESERL_BYTE_ARY"] = DESERL_BYTE_ARY;
   ident_map["DESERL_INT_ARY"] = DESERL_INT_ARY;
   ident_map["DESERL_FLOAT_ARY"] = DESERL_FLOAT_ARY;

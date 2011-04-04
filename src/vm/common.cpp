@@ -221,27 +221,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
-      
-    case OBJ_ARY_PARM: {
-#ifdef _DEBUG
-      long* array = (long*)(*mem);
-      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << array << "("
-           << (long)array << "), size=" << array[0] << " byte(s)" << endl;
-#endif
-      // mark data
-      if(!WasSerialized((long*)(*mem))) {
-        long* array = (long*)(*mem);
-        const long size = array[0];
-        const long dim = array[1];
-        long* objects = (long*)(array + 2 + dim);
-        for(long k = 0; k < size; k++) {
-          CheckObject((long*)objects[k], true, 2);
-        }
-      }
-      // update
-      mem++;
-    }
-      break;
     }
   }
 }
@@ -301,11 +280,11 @@ long* ObjectDeserializer::DeserializeObject() {
 	const long byte_array_dim = ReadInt();
 	const long byte_array_size_dim = ReadInt();
 	long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
-							 ((byte_array_dim + 2) *
-							  sizeof(long)),
-							 BYTE_ARY_TYPE,
-							 op_stack, *stack_pos);
-	char* byte_array_ptr = (char*)(byte_array + 3);
+							       ((byte_array_dim + 2) *
+								sizeof(long)),
+							       BYTE_ARY_TYPE,
+							       op_stack, *stack_pos);
+	BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
 	byte_array[0] = byte_array_size;
 	byte_array[1] = byte_array_dim;
 	byte_array[2] = byte_array_size_dim;
@@ -329,12 +308,68 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case INT_ARY_PARM: {
-      cout << "-0-" << endl;
+      INT_VALUE mem_id = ReadInt();
+      if(mem_id < 0) {
+	const long array_size = ReadInt();
+	const long array_dim = ReadInt();
+	const long array_size_dim = ReadInt();
+	
+	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
+							  INT_TYPE, op_stack, *stack_pos);
+	
+	long* array_ptr = array + 3;
+	array[0] = array_size;
+	array[1] = array_dim;
+	array[2] = array_size_dim;
+	
+	// copy content
+	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(INT_VALUE));
+	buffer_offset += array_size;
+	
+	// update cache
+	mem_cache[mem_id] = array;
+	instance[instance_pos++] = (long)array;
+      }
+      else {
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	if(found != mem_cache.end()) {
+	  return NULL;
+	} 
+	instance[instance_pos++] = (long)found->second;
+      }
     }
       break;
       
     case FLOAT_ARY_PARM: {
-      cout << "-1-" << endl;
+      INT_VALUE mem_id = ReadInt();
+      if(mem_id < 0) {
+	const long array_size = ReadInt();
+	const long array_dim = ReadInt();
+	const long array_size_dim = ReadInt();
+	
+	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
+							  INT_TYPE, op_stack, *stack_pos);
+	
+	long* array_ptr = array + 3;
+	array[0] = array_size;
+	array[1] = array_dim;
+	array[2] = array_size_dim;
+	
+	// copy content
+	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
+	buffer_offset += array_size;
+	
+	// update cache
+	mem_cache[mem_id] = array;
+	instance[instance_pos++] = (long)array;
+      }
+      else {
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	if(found != mem_cache.end()) {
+	  return NULL;
+	} 
+	instance[instance_pos++] = (long)found->second;
+      }
     }
       break;
       
@@ -343,11 +378,6 @@ long* ObjectDeserializer::DeserializeObject() {
       instance[instance_pos++] = (long)deserializer.DeserializeObject();
     }
       break;
-      
-    case OBJ_ARY_PARM: {
-      cout << "-3-" << endl;
-      break;
-    }
     }
   }
   
