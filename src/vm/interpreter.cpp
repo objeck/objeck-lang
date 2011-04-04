@@ -1492,11 +1492,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
-  if(!array) {
-    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
-    StackErrorUnwind();
-    exit(1);
-  }
+  
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
