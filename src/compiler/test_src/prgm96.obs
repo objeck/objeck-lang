@@ -5,16 +5,16 @@ bundle Default {
 		f : Float;
 		i : Int;
 
-		New() {
-			f := 1001.45;
-			i := 113;
+		New(t : Int) {
+			f := 1001.45 * t;
+			i := t;
 		}
 
 		method : public : GetF() ~ Float {
 			return f;
 		}
 
-		method : public : GetI() ~ Float {
+		method : public : GetI() ~ Int {
 			return i;
 		}
 	}
@@ -25,7 +25,7 @@ bundle Default {
 		ii : Int[];
 		ff : Float[];
 		x : Foo;
-#		y : Foo;
+		y : Foo;
 
 		New() {
 			i := 13;
@@ -41,8 +41,9 @@ bundle Default {
 			ff[1] := 13.15;
 			ff[2] := 30.52;
 
-			x := Foo->New();
-#			y := Foo->New();
+			x := Foo->New(678);
+			y := x;
+#			y := Foo->New(4257);
 		}
 
 		method : public : GetII() ~ Int[] {
@@ -57,11 +58,9 @@ bundle Default {
 			return x;
 		}
 
-#~
 		method : public : GetBar() ~ Foo {
 			return y;
 		}
-~#
 	}
 
 	class BasicBlocks {
@@ -122,10 +121,8 @@ bundle Default {
 			o := g->GetFoo();
 			o->GetF()->PrintLine();
 
-#~
 			w := g->GetBar();
 			w->GetI()->PrintLine();
-~#
 		}
 	}
 }
