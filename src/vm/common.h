@@ -1234,6 +1234,7 @@ class ObjectDeserializer
     INT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
+
     return value;
   }
   
@@ -1241,6 +1242,7 @@ class ObjectDeserializer
     FLOAT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
+
     return value;
   }
   
@@ -1254,16 +1256,19 @@ class ObjectDeserializer
     cls = NULL;
     instance = NULL;
     instance_pos = 0;
-
-    ParamType type = (ParamType)ReadInt();
+    
+    // read OBJ_PARM value
+    ReadInt();
   }
   
-  ObjectDeserializer(const BYTE_VALUE* b, long o, long s, long* stack, long* pos) {
+  ObjectDeserializer(const BYTE_VALUE* b, long o, map<INT_VALUE, long*> &c, 
+		     long s, long* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
     buffer_array_size = s;
     buffer_offset = o;
+    mem_cache = c;
     cls = NULL;
     instance = NULL;
     instance_pos = 0;

@@ -70,9 +70,6 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
       } 
     }
     else {
-      // NOTE: this happens when we are trying to mark unidentified memory
-      // segments. these segments may be parts of that stack or temp for
-      // register variables
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
         cout << "\t";
@@ -376,7 +373,7 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case OBJ_PARM: {
-      ObjectDeserializer deserializer(buffer, buffer_offset, buffer_array_size, op_stack, stack_pos);
+      ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
       instance[instance_pos++] = (long)deserializer.DeserializeObject();
     }
       break;
