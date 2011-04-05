@@ -294,12 +294,13 @@ long* ObjectDeserializer::DeserializeObject() {
 	BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
 	byte_array[0] = byte_array_size;
 	byte_array[1] = byte_array_dim;
-	byte_array[2] = byte_array_size_dim;
-	
+	byte_array[2] = byte_array_size_dim;	
 	// copy content
 	memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
 	buffer_offset += byte_array_size;
-	
+#ifdef _DEBUG
+	cout << "--- deserialization: byte array; value=" << byte_array <<  ", size=" << byte_array_size << " ---" << endl;
+#endif
 	// update cache
 	mem_cache[mem_id] = byte_array;
 	instance[instance_pos++] = (long)byte_array;
@@ -330,6 +331,9 @@ long* ObjectDeserializer::DeserializeObject() {
 	for(int i = 0; i < array_size; i++) {
 	  array_ptr[i] = ReadInt();
 	}
+#ifdef _DEBUG
+	cout << "--- deserialization: int array; value=" << array <<  ",  size=" << array_size << " ---" << endl;
+#endif
 	// update cache
 	mem_cache[mem_id] = array;
 	instance[instance_pos++] = (long)array;
@@ -356,12 +360,13 @@ long* ObjectDeserializer::DeserializeObject() {
 	array[0] = array_size;
 	array[1] = array_dim;
 	array[2] = array_size_dim;
-	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
-	
+	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);	
 	// copy content
 	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
 	buffer_offset += array_size * sizeof(FLOAT_VALUE);
-	
+#ifdef _DEBUG
+	cout << "--- deserialization: float array; value=" << array <<  ", size=" << array_size << " ---" << endl;
+#endif
 	// update cache
 	mem_cache[mem_id] = array;
 	instance[instance_pos++] = (long)array;
