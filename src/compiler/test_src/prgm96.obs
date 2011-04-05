@@ -1,11 +1,26 @@
 use IO;
 
 bundle Default {
+	class Foo {
+		f : Float;
+		i : Int;
+
+		New() {
+			f := 1001.45;
+			i := 113;
+		}
+
+		method : public : GetF() ~ Float {
+			return f;
+		}
+	}
+		
 	class Test {
 		i : Int;
 		f : Float;
 		ii : Int[];
 		ff : Float[];
+		x : Foo;
 
 		New() {
 			i := 13;
@@ -20,6 +35,8 @@ bundle Default {
 			ff[0] := 3.5;
 			ff[1] := 13.15;
 			ff[2] := 30.52;
+
+			x := Foo->New();
 		}
 
 		method : public : GetII() ~ Int[] {
@@ -28,6 +45,10 @@ bundle Default {
 
 		method : public : GetFF() ~ Float[] {
 			return ff;
+		}
+
+		method : public : GetFoo() ~ Foo {
+			return x;
 		}
 	}
 
@@ -85,6 +106,8 @@ bundle Default {
 			gg[2]->PrintLine();
 			ggg := g->GetFF();
 			ggg[1]->PrintLine();
+			o := g->GetFoo();
+			o->GetF()->PrintLine();
 		}
 	}
 }
