@@ -1261,7 +1261,7 @@ class ObjectDeserializer
     ReadInt();
   }
   
-  ObjectDeserializer(const BYTE_VALUE* b, long &o, map<INT_VALUE, long*> &c, 
+  ObjectDeserializer(const BYTE_VALUE* b, long o, map<INT_VALUE, long*> &c, 
 		     long s, long* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
@@ -1279,6 +1279,10 @@ class ObjectDeserializer
   
   inline long GetOffset() {
     return buffer_offset;
+  }
+
+  map<INT_VALUE, long*> GetMemoryCache() {
+    return mem_cache;
   }
   
   long* DeserializeObject();

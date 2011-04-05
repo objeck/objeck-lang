@@ -247,9 +247,7 @@ long* ObjectDeserializer::DeserializeObject() {
       map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
       if(found == mem_cache.end()) {
 	return NULL;
-      }
-      cout << "@@ " << found->second << " @@" << endl;
-      
+      }      
       return found->second;
     }
   }
@@ -257,7 +255,8 @@ long* ObjectDeserializer::DeserializeObject() {
     return NULL;
   }
   
-  while(buffer_offset < buffer_array_size) {
+  const long var_count = cls->GetInstanceMemorySize() / sizeof(INT_VALUE);
+  while(instance_pos < var_count && buffer_offset < buffer_array_size) {
     ParamType type = (ParamType)ReadInt();
     
     switch(type) {
@@ -382,6 +381,9 @@ long* ObjectDeserializer::DeserializeObject() {
     case OBJ_PARM: {
       ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
       instance[instance_pos++] = (long)deserializer.DeserializeObject();
+      // TODO: refactor this!
+      buffer_offset = deserializer.GetOffset();
+      mem_cache = deserializer.GetMemoryCache();
     }
       break;
     }
