@@ -83,7 +83,6 @@ bundle Default {
 			g := deserial->ReadObject()->As(Test);
 			gg := g->GetII();
 			gg[2]->PrintLine();
-
 			ggg := g->GetFF();
 			ggg[1]->PrintLine();
 		}
