@@ -21,6 +21,14 @@ bundle Default {
 			ff[1] := 13.15;
 			ff[2] := 30.52;
 		}
+
+		method : public : GetII() ~ Int[] {
+			return ii;
+		}
+
+		method : public : GetFF() ~ Float[] {
+			return ff;
+		}
 	}
 
 	class BasicBlocks {
@@ -73,6 +81,11 @@ bundle Default {
 			f->PrintLine();
 ~#
 			g := deserial->ReadObject()->As(Test);
+			gg := g->GetII();
+			gg[2]->PrintLine();
+
+			ggg := g->GetFF();
+			ggg[1]->PrintLine();
 		}
 	}
 }
