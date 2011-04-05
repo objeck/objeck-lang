@@ -210,11 +210,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       break;
       
     case OBJ_PARM: {
-#ifdef _DEBUG
-      long* array = (long*)(*mem);
-      cout << "\t" << i << ": OBJ_PARM: addr=" << array << "("
-           << (long)array << "), id=" << array[0] << endl;
-#endif
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
       // update
@@ -243,7 +238,6 @@ ObjectSerializer::~ObjectSerializer() {
  * ObjectDeserializer class
  ********************************/
 long* ObjectDeserializer::DeserializeObject() {
-  ParamType type = (ParamType)ReadInt();
   INT_VALUE obj_id = ReadInt();
   cls = Loader::GetProgram()->GetClass(obj_id);
   if(cls) {
@@ -260,7 +254,7 @@ long* ObjectDeserializer::DeserializeObject() {
   }
   
   while(buffer_offset < buffer_array_size) {
-    type = (ParamType)ReadInt();
+    ParamType type = (ParamType)ReadInt();
     
     switch(type) {
     case INT_PARM:
