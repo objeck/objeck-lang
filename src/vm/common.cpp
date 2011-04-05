@@ -176,9 +176,9 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	WriteInt(array[0]);
 	WriteInt(array[1]);
 	WriteInt(array[2]);
-	array += 3;
+	INT_VALUE* array_ptr = (INT_VALUE*)(array + 3);
 	// values
-	WriteBytes(array, array_size * sizeof(INT_VALUE));
+	WriteBytes(array_ptr, array_size * sizeof(INT_VALUE));
       }
       // update
       mem++;
@@ -263,10 +263,17 @@ long* ObjectDeserializer::DeserializeObject() {
     switch(type) {
     case INT_PARM:
       instance[instance_pos++] = ReadInt();
+#ifdef _DEBUG
+      cout << "--- deserialization: int value=" << instance[instance_pos - 1] << " ---" << endl;
+#endif
       break;
 
     case FLOAT_PARM: {
-      
+      FLOAT_VALUE value = ReadFloat();
+      memcpy(&instance[instance_pos], &value, sizeof(value));
+#ifdef _DEBUG
+      cout << "--- deserialization: float value=" << value << " ---" << endl;
+#endif
       instance_pos += 2;
     }
       break;
@@ -314,11 +321,11 @@ long* ObjectDeserializer::DeserializeObject() {
 	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
 							  INT_TYPE, op_stack, *stack_pos);
 	
-	long* array_ptr = array + 3;
 	array[0] = array_size;
 	array[1] = array_dim;
 	array[2] = array_size_dim;
-	
+	INT_VALUE* array_ptr = (INT_VALUE*)(array + 3);
+
 	// copy content
 	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(INT_VALUE));
 	buffer_offset += array_size * sizeof(INT_VALUE);
@@ -346,10 +353,10 @@ long* ObjectDeserializer::DeserializeObject() {
 	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
 							  INT_TYPE, op_stack, *stack_pos);
 	
-	long* array_ptr = array + 3;
 	array[0] = array_size;
 	array[1] = array_dim;
 	array[2] = array_size_dim;
+	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
 	
 	// copy content
 	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
