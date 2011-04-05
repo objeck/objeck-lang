@@ -1179,7 +1179,7 @@ class ObjectSerializer
     }
     next_id++;
     cur_id = next_id * -1;
-    serial_ids.insert(pair<long*, long>(mem, cur_id));
+    serial_ids.insert(pair<long*, long>(mem, next_id));
     WriteInt(cur_id);
     
     return false;
@@ -1261,7 +1261,7 @@ class ObjectDeserializer
     ReadInt();
   }
   
-  ObjectDeserializer(const BYTE_VALUE* b, long o, map<INT_VALUE, long*> &c, 
+  ObjectDeserializer(const BYTE_VALUE* b, long &o, map<INT_VALUE, long*> &c, 
 		     long s, long* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;

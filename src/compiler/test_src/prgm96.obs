@@ -13,6 +13,10 @@ bundle Default {
 		method : public : GetF() ~ Float {
 			return f;
 		}
+
+		method : public : GetI() ~ Float {
+			return i;
+		}
 	}
 		
 	class Test {
@@ -21,6 +25,7 @@ bundle Default {
 		ii : Int[];
 		ff : Float[];
 		x : Foo;
+#		y : Foo;
 
 		New() {
 			i := 13;
@@ -37,6 +42,7 @@ bundle Default {
 			ff[2] := 30.52;
 
 			x := Foo->New();
+#			y := Foo->New();
 		}
 
 		method : public : GetII() ~ Int[] {
@@ -50,6 +56,12 @@ bundle Default {
 		method : public : GetFoo() ~ Foo {
 			return x;
 		}
+
+#~
+		method : public : GetBar() ~ Foo {
+			return y;
+		}
+~#
 	}
 
 	class BasicBlocks {
@@ -106,8 +118,14 @@ bundle Default {
 			gg[2]->PrintLine();
 			ggg := g->GetFF();
 			ggg[1]->PrintLine();
+
 			o := g->GetFoo();
 			o->GetF()->PrintLine();
+
+#~
+			w := g->GetBar();
+			w->GetI()->PrintLine();
+~#
 		}
 	}
 }

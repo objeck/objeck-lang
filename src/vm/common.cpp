@@ -241,9 +241,16 @@ long* ObjectDeserializer::DeserializeObject() {
     INT_VALUE mem_id = ReadInt();
     if(mem_id < 0) {
       instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
+      mem_cache[-mem_id] = instance;
     }
     else {
-      return NULL;
+      map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+      if(found == mem_cache.end()) {
+	return NULL;
+      }
+      cout << "@@ " << found->second << " @@" << endl;
+      
+      return found->second;
     }
   }
   else {
@@ -293,11 +300,11 @@ long* ObjectDeserializer::DeserializeObject() {
 	cout << "--- deserialization: byte array; value=" << byte_array <<  ", size=" << byte_array_size << " ---" << endl;
 #endif
 	// update cache
-	mem_cache[mem_id] = byte_array;
+	mem_cache[-mem_id] = byte_array;
 	instance[instance_pos++] = (long)byte_array;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
 	if(found != mem_cache.end()) {
 	  return NULL;
 	} 
@@ -326,11 +333,11 @@ long* ObjectDeserializer::DeserializeObject() {
 	cout << "--- deserialization: int array; value=" << array <<  ",  size=" << array_size << " ---" << endl;
 #endif
 	// update cache
-	mem_cache[mem_id] = array;
+	mem_cache[-mem_id] = array;
 	instance[instance_pos++] = (long)array;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
 	if(found != mem_cache.end()) {
 	  return NULL;
 	} 
@@ -359,11 +366,11 @@ long* ObjectDeserializer::DeserializeObject() {
 	cout << "--- deserialization: float array; value=" << array <<  ", size=" << array_size << " ---" << endl;
 #endif
 	// update cache
-	mem_cache[mem_id] = array;
+	mem_cache[-mem_id] = array;
 	instance[instance_pos++] = (long)array;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(-mem_id);
+	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
 	if(found != mem_cache.end()) {
 	  return NULL;
 	} 
