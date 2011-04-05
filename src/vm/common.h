@@ -1254,6 +1254,8 @@ class ObjectDeserializer
     cls = NULL;
     instance = NULL;
     instance_pos = 0;
+
+    ParamType type = (ParamType)ReadInt();
   }
   
   ObjectDeserializer(const BYTE_VALUE* b, long o, long s, long* stack, long* pos) {
