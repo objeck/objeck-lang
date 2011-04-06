@@ -1568,6 +1568,10 @@ bundle IO {
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_OUT_BYTE_ARY;
 		}
+
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
 		
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
