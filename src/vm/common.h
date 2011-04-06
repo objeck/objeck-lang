@@ -140,11 +140,11 @@ public:
   ~StackInstr() {
   }  
 
-  inline InstructionType GetType() {
+  inline InstructionType GetType() const {
     return type;
   }
 
-  int GetLineNumber() {
+  int GetLineNumber() const {
     return line_num;
   }
 
@@ -152,15 +152,15 @@ public:
     type = t;
   }
 
-  inline long GetOperand() {
+  inline long GetOperand() const {
     return operand;
   }
 
-  inline long GetOperand2() {
+  inline long GetOperand2() const {
     return operand2;
   }
 
-  inline long GetOperand3() {
+  inline long GetOperand3() const {
     return operand3;
   }
 
@@ -176,11 +176,11 @@ public:
     operand3 = o3;
   }
 
-  inline FLOAT_VALUE GetFloatOperand() {
+  inline FLOAT_VALUE GetFloatOperand() const {
     return float_operand;
   }
 
-  inline long GetOffset() {
+  inline long GetOffset() const {
     return native_offset;
   }
 
@@ -225,13 +225,13 @@ public:
     floats = NULL;
   }
 
-  BYTE_VALUE* GetCode() {
+  BYTE_VALUE* GetCode() const {
     return code;
   }
   long GetSize() {
     return size;
   }
-  FLOAT_VALUE* GetFloats() {
+  FLOAT_VALUE* GetFloats() const {
     return floats;
   }
 };
@@ -474,7 +474,7 @@ class StackMethod {
     return has_and_or;
   }
 
-  inline StackClass* GetClass() {
+  inline StackClass* GetClass() const {
     return cls;
   }
 
@@ -507,7 +507,7 @@ class StackMethod {
   }
 #endif
   
-  inline StackDclr** GetDeclarations() {
+  inline StackDclr** GetDeclarations() const {
     return dclrs;
   }
 
@@ -519,11 +519,11 @@ class StackMethod {
     native_code = c;
   }
 
-  NativeCode* GetNativeCode() {
+  NativeCode* GetNativeCode() const {
     return native_code;
   }
 
-  MemoryType GetReturn() {
+  MemoryType GetReturn() const {
     return rtrn_type;
   }
   
@@ -548,11 +548,11 @@ class StackMethod {
     instrs.push_back(i);
   }
 
-  long GetId() {
+  long GetId() const {
     return id;
   }
 
-  long GetParamCount() {
+  long GetParamCount() const {
     return param_count;
   }
 
@@ -569,15 +569,15 @@ class StackMethod {
     return mem;
   }
 
-  long GetMemorySize() {
+  long GetMemorySize() const {
     return mem_size;
   }
 
-  long GetInstructionCount() {
+  long GetInstructionCount() const {
     return instrs.size();
   }
 
-  StackInstr* GetInstruction(long i) {
+  StackInstr* GetInstruction(long i) const {
     return instrs[i];
   }
 };
@@ -616,11 +616,11 @@ public:
     buffer[pos++] = b;
   }
 
-  inline BYTE_VALUE* GetBuffer() {
+  inline BYTE_VALUE* GetBuffer() const {
     return buffer;
   }
 
-  inline int GetSize() {
+  inline int GetSize() const {
     return pos;
   }
 };
@@ -694,7 +694,7 @@ public:
     }
   }
 
-  inline long GetId() {
+  inline long GetId() const {
     return id;
   }
 
@@ -702,23 +702,23 @@ public:
     return is_debug;
   }
 
-  inline const string& GetName() const {
+  inline const string& GetName() {
     return name;
   }
 
-  inline const string& GetFileName() const {
+  inline const string& GetFileName() {
     return file_name;
   }
 
-  inline StackDclr** GetDeclarations() {
+  inline StackDclr** GetDeclarations() const {
     return dclrs;
   }
 
-  inline const int GetNumberDeclarations() {
+  inline int GetNumberDeclarations() const {
     return num_dclrs;
   }
 
-  inline long GetParentId() {
+  inline long GetParentId() const {
     return id;
   }
 
@@ -726,11 +726,11 @@ public:
     return is_virtual;
   }
 
-  inline long* GetClassMemory() {
+  inline long* GetClassMemory() const {
     return cls_mem;
   }
 
-  inline long GetInstanceMemorySize() {
+  inline long GetInstanceMemorySize() const {
     return inst_space;
   }
 
@@ -743,7 +743,7 @@ public:
     }
   }
 
-  inline StackMethod* GetMethod(long id) {
+  inline StackMethod* GetMethod(long id) const {
 #ifdef _DEBUG
     assert(id > -1 && id < method_num);
 #endif
@@ -780,11 +780,11 @@ public:
     return NULL;
   }
 
-  inline StackMethod** GetMethods() {
+  inline StackMethod** GetMethods() const {
     return methods;
   }
 
-  inline int GetMethodCount() {
+  inline int GetMethodCount() const {
     return method_num;
   }
 
@@ -964,11 +964,11 @@ public:
     init_method = i;
   }
 
-  StackMethod* GetInitializationMethod() {
+  StackMethod* GetInitializationMethod() const {
     return init_method;
   }
   
-  int GetStringObjectId() {
+  int GetStringObjectId() const {
     return string_cls_id;
   }
   
@@ -1030,15 +1030,15 @@ public:
     num_char_strings = n;
   }  
   
-  FLOAT_VALUE** GetFloatStrings() {
+  FLOAT_VALUE** GetFloatStrings() const {
     return float_strings;
   }
 
-  INT_VALUE** GetIntStrings() {
+  INT_VALUE** GetIntStrings() const {
     return int_strings;
   }
 
-  BYTE_VALUE** GetCharStrings() {
+  BYTE_VALUE** GetCharStrings() const {
     return char_strings;
   }
   
@@ -1082,11 +1082,11 @@ public:
     cls_hierarchy = h;
   }
 
-  inline int* GetHierarchy() {
+  inline int* GetHierarchy() const {
     return cls_hierarchy;
   }
 
-  inline StackClass* GetClass(long id) {
+  inline StackClass* GetClass(long id) const {
     if(id > -1 && id < class_num) {
       return classes[id];
     }
@@ -1130,11 +1130,11 @@ public:
     mem = NULL;
   }
   
-  inline StackMethod* GetMethod() {
+  inline StackMethod* GetMethod() const {
     return method;
   }
 
-  inline long* GetMemory() {
+  inline long* GetMemory() const {
     return mem;
   }
 
@@ -1142,7 +1142,7 @@ public:
     ip = i;
   }
 
-  inline long GetIp() {
+  inline long GetIp() const {
     return ip;
   }
 
@@ -1274,7 +1274,7 @@ class ObjectDeserializer
   ~ObjectDeserializer() {    
   }
   
-  inline long GetOffset() {
+  inline long GetOffset() const {
     return buffer_offset;
   }
 
