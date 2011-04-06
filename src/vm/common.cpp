@@ -46,7 +46,6 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
  ********************************/
 void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   if(mem) {
-    // TODO: optimize so this is not a double call.. see below
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
     if(cls) {
       // write id
@@ -110,9 +109,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     }
 #endif
 
-    // write type
-    WriteInt(dclrs[i]->type);
-    
     // update address based upon type
     switch(dclrs[i]->type) {
     case INT_PARM: {
@@ -220,7 +216,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 void ObjectSerializer::Serialize(long* inst) {
   next_id = 0;
 
-  WriteInt(OBJ_PARM);
+  // WriteInt(OBJ_PARM);
   CheckObject(inst, true, 0);
 }
 
@@ -254,10 +250,12 @@ long* ObjectDeserializer::DeserializeObject() {
   else {
     return NULL;
   }
-  
-  const long var_count = cls->GetInstanceMemorySize() / sizeof(INT_VALUE);
-  while(instance_pos < var_count && buffer_offset < buffer_array_size) {
-    ParamType type = (ParamType)ReadInt();
+
+  long dclr_pos = 0;  
+  StackDclr** dclrs = cls->GetDeclarations();
+  const long dclr_num = cls->GetNumberDeclarations();
+  while(dclr_pos < dclr_num && buffer_offset < buffer_array_size) {
+    ParamType type = dclrs[dclr_pos++]->type;
     
     switch(type) {
     case INT_PARM:

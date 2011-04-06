@@ -1256,9 +1256,6 @@ class ObjectDeserializer
     cls = NULL;
     instance = NULL;
     instance_pos = 0;
-    
-    // read OBJ_PARM value
-    ReadInt();
   }
   
   ObjectDeserializer(const BYTE_VALUE* b, long o, map<INT_VALUE, long*> &c, 
