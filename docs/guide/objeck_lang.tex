@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{1.4.2\_0}.  For
+  functionality that is included in release \textit{1.5.0}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -1642,6 +1642,7 @@ following operations:
   \end{itemize}
 \item \texttt{WriteBuffer} - writes n number of bytes to a file.
   \begin{itemize}
+  \item method : public : WriteBuffer(buffer : Byte[]), Int
   \item method : public : WriteBuffer(offset : Int, num : Int, buffer
     : Byte[]), Int
   \end{itemize}
@@ -1667,6 +1668,95 @@ the following operations:
 \item \texttt{List} - returns vector of file and directory names.
   \begin{itemize}
   \item function : List(n : String), String[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Serializer}
+The Serializer class allows datatypes to be deflated into a byte
+array for storage or transmission.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Add} - deflates a datatype
+  \begin{itemize}
+  \item method : public : Add(b : Bool), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(i : Int), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(f : Float), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(o : Base), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(b : Bool[]), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(b : Bool[]), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(b : Byte[]), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(c : Charl[]), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(i : Int[]), Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Add(f : Float[]), Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Deserializer}
+The Deserializer class allows datatypes to be inflated from a byte
+array.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(b : Byte[])
+  \end{itemize}
+\item \texttt{ReadBool} - reads a boolean value
+  \begin{itemize}
+  \item method : public : ReadBool(), Bool
+  \end{itemize}
+\item \texttt{ReadInt} - reads an integer value
+  \begin{itemize}
+  \item method : public : ReadInt(), Int
+  \end{itemize}
+\item \texttt{ReadFloat} - reads a float value
+  \begin{itemize}
+  \item method : public : ReadFloat(), Float
+  \end{itemize}
+\item \texttt{ReadObject} - reads an object
+  \begin{itemize}
+  \item method : public : ReadObject(), Float
+  \end{itemize}
+\item \texttt{ReadBoolArray} - reads a boolean array
+  \begin{itemize}
+  \item method : public : ReadBoolArray(), Bool[]
+  \end{itemize}
+\item \texttt{ReadByteArray} - reads a byte array
+  \begin{itemize}
+  \item method : public : ReadByteArray(), Byte[]
+  \end{itemize}
+\item \texttt{ReadCharArray} - reads a character array
+  \begin{itemize}
+  \item method : public : ReadCharArray(), Char[]
+  \end{itemize}
+\item \texttt{ReadIntArray} - reads an integer array
+  \begin{itemize}
+  \item method : public : ReadIntArray(), Byte[]
+  \end{itemize}
+\item \texttt{ReadFloatArray} - reads a float array
+  \begin{itemize}
+  \item method : public : ReadFloatArray(), Float[]
   \end{itemize}
 \end{itemize}
 
@@ -1748,7 +1838,6 @@ This class in the `Net' bundle:
   \item method : GetHeaders(), Map
   \end{itemize}
 \end{itemize}
-
 
 \subsubsection{XMLParser}
 The XMLParser class allows programmers to parse and search XML
