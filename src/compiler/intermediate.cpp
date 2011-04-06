@@ -577,7 +577,12 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
   for(unsigned int i = 0; i < declarations.size(); i++) {
-    num_params++;
+    if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
+      num_params += 2;
+    }
+    else {
+      num_params++;
+    }
   }
   // int num_params = (int)declarations.size();
   imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(),
