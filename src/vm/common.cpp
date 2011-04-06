@@ -215,8 +215,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 
 void ObjectSerializer::Serialize(long* inst) {
   next_id = 0;
-
-  // WriteInt(OBJ_PARM);
   CheckObject(inst, true, 0);
 }
 
