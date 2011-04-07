@@ -347,7 +347,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	const long array_size = ReadInt();
 	const long array_dim = ReadInt();
 	const long array_size_dim = ReadInt();
-	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
+	long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, 
 							  INT_TYPE, op_stack, *stack_pos);
 	
 	array[0] = array_size;

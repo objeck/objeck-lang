@@ -508,17 +508,30 @@ namespace Runtime {
 	// TOOD: detect bad read?
 	const long dest_array_size = DeserializeInt();
 	const long dest_array_dim = DeserializeInt();
-	const long dest_array_dim_size = DeserializeInt();	
-	long* dest_array = (long*)MemoryManager::Instance()->AllocateArray(dest_array_size + 1 +
-									   ((dest_array_dim + 2) *
-									    sizeof(long)),
-									   BYTE_ARY_TYPE,
-									   op_stack, *stack_pos);
+	const long dest_array_dim_size = DeserializeInt();
+
+	long* dest_array;
+	if(type == BYTE_ARY_PARM) {
+	  dest_array = (long*)MemoryManager::Instance()->AllocateArray(dest_array_size +
+								       ((dest_array_dim + 2) *
+									sizeof(long)),
+								       BYTE_ARY_TYPE,
+								       op_stack, *stack_pos);
+	}
+	else if(type == INT_ARY_PARM) {
+	  dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
+							   INT_TYPE, op_stack, *stack_pos);
+	}
+	else {
+	  dest_array = (long*)MemoryManager::AllocateArray(dest_array_size * 2 + dest_array_dim + 2, 
+							   INT_TYPE, op_stack, *stack_pos);
+	}
+	
 	dest_array[0] = dest_array_size;
 	dest_array[1] = dest_array_dim;
 	dest_array[2] = dest_array_dim_size;	
-	ReadBytes(dest_array, src_array, type);
 	
+	ReadBytes(dest_array, src_array, type);	
 	return dest_array;
       }
       
