@@ -1049,20 +1049,20 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
     size *= value;
     indices[dim++] = value;
   }
-  // double for double
+  
+  long* mem;
   if(is_float) {
-    size *= 2;
+    // doubles are twice the size of integers  
+    mem = (long*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
+					      op_stack, *stack_pos);
   }
-  // assumes that doubles are twice the size of integers
-  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-						  op_stack, *stack_pos);
-  if(is_float) {
-    mem[0] = size / 2;
-  } else {
-    mem[0] = size;
+  else {
+    mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+					      op_stack, *stack_pos);
   }
+  mem[0] = size;
   mem[1] = dim;
-
+  
   memcpy(mem + 2, indices, dim * sizeof(long));
   PushInt((long)mem);
 }
