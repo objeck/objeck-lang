@@ -1185,6 +1185,13 @@ class ObjectSerializer
     return false;
   }
   
+  inline void WriteByte(BYTE_VALUE v) {
+    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
+    for(long i = 0; i < sizeof(v); i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+  
   inline void WriteInt(INT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
     for(long i = 0; i < sizeof(v); i++) {
@@ -1207,8 +1214,12 @@ class ObjectSerializer
   }
   
  public:
-  ObjectSerializer(long* i);
-  ~ObjectSerializer();
+  ObjectSerializer(long* i) {
+    Serialize(i);
+  }
+  
+  ~ObjectSerializer() {
+  }
   
   vector<BYTE_VALUE>& GetValues() {
     return values;
@@ -1230,6 +1241,14 @@ class ObjectDeserializer
   long instance_pos;
   map<INT_VALUE, long*> mem_cache;
   
+  BYTE_VALUE ReadByte() {
+    BYTE_VALUE value;
+    memcpy(&value, buffer + buffer_offset, sizeof(value));
+    buffer_offset += sizeof(value);
+
+    return value;
+  }
+
   INT_VALUE ReadInt() {
     INT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
