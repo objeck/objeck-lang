@@ -2538,33 +2538,45 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 }
 
 void StackInterpreter::SerializeObject() {
-  ObjectSerializer serializer((long*)frame->GetMemory()[1]);
-  vector<BYTE_VALUE> src_buffer = serializer.GetValues();
-  const long src_buffer_size = src_buffer.size();
-  long* inst = (long*)frame->GetMemory()[0];
-  long* dest_buffer = (long*)inst[0];
-  long dest_pos = inst[1];
+  long* obj = (long*)frame->GetMemory()[1];
+  if(obj) {
+    SerializeByte(1);
+    ObjectSerializer serializer(obj);
+    vector<BYTE_VALUE> src_buffer = serializer.GetValues();
+    const long src_buffer_size = src_buffer.size();
+    long* inst = (long*)frame->GetMemory()[0];
+    long* dest_buffer = (long*)inst[0];
+    long dest_pos = inst[1];
   
-  // expand buffer, if needed
-  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
-  inst[0] = (long)dest_buffer;
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+    inst[0] = (long)dest_buffer;
   
-  // copy content
-  char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
-  for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
-    dest_buffer_ptr[i] = src_buffer[i];
+    // copy content
+    char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+    for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
+      dest_buffer_ptr[i] = src_buffer[i];
+    }
+    inst[1] = dest_pos;
   }
-  inst[1] = dest_pos;
+  else {
+    SerializeByte(0); 
+  }
 }
 
 void StackInterpreter::DeserializeObject() {
-  long* inst = (long*)frame->GetMemory()[0];
-  long* byte_array = (long*)inst[0];
-  const long dest_pos = inst[1];
-  const long byte_array_dim_size = byte_array[2];  
-  const BYTE_VALUE* byte_array_ptr = ((BYTE_VALUE*)(byte_array + 3) + dest_pos);
-  
-  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-  PushInt((long)deserializer.DeserializeObject());
-  inst[1] = dest_pos + deserializer.GetOffset();
+  if(!DeserializeByte()) {
+    PushInt(0);    
+  }
+  else {
+    long* inst = (long*)frame->GetMemory()[0];
+    long* byte_array = (long*)inst[0];
+    const long dest_pos = inst[1];
+    const long byte_array_dim_size = byte_array[2];  
+    const BYTE_VALUE* byte_array_ptr = ((BYTE_VALUE*)(byte_array + 3) + dest_pos);
+    
+    ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
+    PushInt((long)deserializer.DeserializeObject());
+    inst[1] = dest_pos + deserializer.GetOffset();
+  }
 }

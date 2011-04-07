@@ -136,20 +136,25 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     
     case BYTE_ARY_PARM: {
       long* array = (long*)(*mem);
-      // mark data
-      if(!WasSerialized((long*)(*mem))) {
-	const long array_size = array[0];
+      if(array) {
+	// mark data
+	if(!WasSerialized((long*)(*mem))) {
+	  const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- serializing byte array: mem_id=" << cur_id << ", size=" 
-	     << array_size << " byte(s) -----" << endl;
+	  cout << "\t" << i << ": ----- serializing byte array: mem_id=" << cur_id << ", size=" 
+	       << array_size << " byte(s) -----" << endl;
 #endif
-	// write metadata
-	WriteInt(array[0]);
-	WriteInt(array[1]);
-	WriteInt(array[2]);
-	BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
-	// values
-	WriteBytes(array_ptr, array_size);
+	  // write metadata
+	  WriteInt(array[0]);
+	  WriteInt(array[1]);
+	  WriteInt(array[2]);
+	  BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
+	  // values
+	  WriteBytes(array_ptr, array_size);
+	}
+      }
+      else {
+	// TODO: write Nil value
       }
       // update
       mem++;
@@ -158,22 +163,27 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       
     case INT_ARY_PARM: {
       long* array = (long*)(*mem);
-      // mark data
-      if(!WasSerialized((long*)(*mem))) {
-	const long array_size = array[0];
+      if(array) {
+	// mark data
+	if(!WasSerialized((long*)(*mem))) {
+	  const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- serializing int array: mem_id=" << cur_id << ", size=" 
-	     << array_size << " byte(s) -----" << endl;
+	  cout << "\t" << i << ": ----- serializing int array: mem_id=" << cur_id << ", size=" 
+	       << array_size << " byte(s) -----" << endl;
 #endif
-	// write metadata
-	WriteInt(array[0]);
-	WriteInt(array[1]);
-	WriteInt(array[2]);
-	long* array_ptr = array + 3;	
-	// values
-	for(int i = 0; i < array_size; i++) {
-	  WriteInt(array_ptr[i]);
+	  // write metadata
+	  WriteInt(array[0]);
+	  WriteInt(array[1]);
+	  WriteInt(array[2]);
+	  long* array_ptr = array + 3;	
+	  // values
+	  for(int i = 0; i < array_size; i++) {
+	    WriteInt(array_ptr[i]);
+	  }
 	}
+      }
+      else {
+	// TODO: write Nil value
       }
       // update
       mem++;
@@ -182,20 +192,25 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       
     case FLOAT_ARY_PARM: {
       long* array = (long*)(*mem);
-      // mark data
-      if(!WasSerialized((long*)(*mem))) {
-	const long array_size = array[0];
+      if(array) {
+	// mark data
+	if(!WasSerialized((long*)(*mem))) {
+	  const long array_size = array[0];
 #ifdef _DEBUG
-	cout << "\t" << i << ": ----- serializing float array: mem_id=" << cur_id << ", size=" 
-	     << array_size << " byte(s) -----" << endl;
+	  cout << "\t" << i << ": ----- serializing float array: mem_id=" << cur_id << ", size=" 
+	       << array_size << " byte(s) -----" << endl;
 #endif
-	// write metadata
-	WriteInt(array[0]);
-	WriteInt(array[1]);
-	WriteInt(array[2]);
-	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
-	// write values
-	WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+	  // write metadata
+	  WriteInt(array[0]);
+	  WriteInt(array[1]);
+	  WriteInt(array[2]);
+	  FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+	  // write values
+	  WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+	}
+      }
+      else {
+	// TODO: write Nil value
       }
       // update
       mem++;
@@ -216,13 +231,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 void ObjectSerializer::Serialize(long* inst) {
   next_id = 0;
   CheckObject(inst, true, 0);
-}
-
-ObjectSerializer::ObjectSerializer(long* i) {
-  Serialize(i);
-}
-
-ObjectSerializer::~ObjectSerializer() {
 }
 
 /********************************

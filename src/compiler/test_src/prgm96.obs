@@ -70,11 +70,14 @@ bundle Default {
 			serial->Add(101);
 			serial->Add(3.5);
 
+			array : Byte[];
+#~
 			array := Byte->New[4];
-			array[0] := 7;
+			array[0] := 200;
 			array[1] := 27;
 			array[2] := 6;
 			array[3] := 13;
+~#
 			serial->Add(array);
 
 #~
@@ -90,20 +93,26 @@ bundle Default {
 			serial->Add(array3);
 ~#
 
-			t := Test->New();
+#			t := Test->New();
+			t : Test;
 			serial->Add(t->As(Base));
 
 			deserial := Deserializer->New(serial->Serialize());
 
 			v1 := deserial->ReadInt();
 			v1->PrintLine();
+
 			v2 := deserial->ReadFloat();
 			v2->PrintLine();
 
 			a := deserial->ReadByteArray();
-			b := a[1]->As(Int);
-			b->PrintLine();
+			if(a <> Nil) {
+				b := a[1]->As(Int);
+				b->PrintLine();
 
+				b := a[0]->As(Int);
+				b->PrintLine();
+			};
 #~
 			c := deserial->ReadIntArray();
 			d := c[1]->As(Int);
@@ -114,18 +123,19 @@ bundle Default {
 			f->PrintLine();
 ~#
 
-
 			g := deserial->ReadObject()->As(Test);
-			gg := g->GetII();
-			gg[2]->PrintLine();
-			ggg := g->GetFF();
-			ggg[1]->PrintLine();
+			if(g <> Nil) {
+				gg := g->GetII();
+				gg[2]->PrintLine();
+				ggg := g->GetFF();
+				ggg[1]->PrintLine();
 
-			o := g->GetFoo();
-			o->GetF()->PrintLine();
+				o := g->GetFoo();
+				o->GetF()->PrintLine();
 
-			w := g->GetBar();
-			w->GetI()->PrintLine();
+				w := g->GetBar();
+				w->GetI()->PrintLine();
+			};
 		}
 	}
 }

@@ -446,28 +446,34 @@ namespace Runtime {
       memcpy(dest_buffer_ptr + dest_pos, array, src_buffer_size);
       inst[1] = dest_pos + src_buffer_size;
     }
-
+    
     inline void SerializeArray(const long* array, ParamType type) {
-      const long array_size = array[0];
-      // write metadata
-      SerializeInt(array[0]);
-      SerializeInt(array[1]);
-      SerializeInt(array[2]);
-      BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
+      if(array) {
+	SerializeByte(1);
+	const long array_size = array[0];
+	// write metadata
+	SerializeInt(array[0]);
+	SerializeInt(array[1]);
+	SerializeInt(array[2]);
+	BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
       
-      // write values
-      switch(type) {
-      case BYTE_ARY_PARM:
-	WriteBytes(array_ptr, array_size);
-	break;
+	// write values
+	switch(type) {
+	case BYTE_ARY_PARM:
+	  WriteBytes(array_ptr, array_size);
+	  break;
 	    
-      case INT_ARY_PARM:
-	WriteBytes(array_ptr, array_size * sizeof(INT_VALUE));
-	break;
+	case INT_ARY_PARM:
+	  WriteBytes(array_ptr, array_size * sizeof(INT_VALUE));
+	  break;
 	  
-      case FLOAT_ARY_PARM:
-	WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
-	break;
+	case FLOAT_ARY_PARM:
+	  WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+	  break;
+	}
+      }
+      else {
+	SerializeByte(0);
       }
     }
 
@@ -500,6 +506,10 @@ namespace Runtime {
     }
     
     inline long* DeserializeArray(ParamType type) {
+      if(!DeserializeByte()) {
+	return NULL;
+      }
+      
       long* inst = (long*)frame->GetMemory()[0];
       long* src_array = (long*)inst[0];
       long dest_pos = inst[1];
@@ -571,7 +581,40 @@ namespace Runtime {
 
       return dest_buffer;
     }
+    
+    void SerializeByte(BYTE_VALUE value) {
+      const long src_buffer_size = sizeof(value);
+      long* inst = (long*)frame->GetMemory()[0];
+      long* dest_buffer = (long*)inst[0];
+      const long dest_pos = inst[1];
+  
+      // expand buffer, if needed
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      inst[0] = (long)dest_buffer;
+  
+      // copy content
+      BYTE_VALUE* dest_buffer_ptr = (BYTE_VALUE*)(dest_buffer + 3);
+      memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+      inst[1] = dest_pos + src_buffer_size;
+    }
 
+    BYTE_VALUE DeserializeByte() {
+      long* inst = (long*)frame->GetMemory()[0];
+      long* byte_array = (long*)inst[0];
+      const long dest_pos = inst[1];
+      
+      if(dest_pos < byte_array[0]) {
+	const BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);	
+	BYTE_VALUE value;
+	memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+	inst[1] = dest_pos + sizeof(value);
+      
+	return value;
+      }
+      
+      return 0;
+    }
+    
     void SerializeInt(INT_VALUE value) {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
