@@ -1050,9 +1050,13 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
     indices[dim++] = value;
   }
   
-  long* mem;
+  long* mem;  
+#ifdef _X64
+  mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+					    op_stack, *stack_pos);
+#else
   if(is_float) {
-    // doubles are twice the size of integers  
+    // doubles are twice the size of integers for 32-bit target
     mem = (long*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
 					      op_stack, *stack_pos);
   }
@@ -1060,6 +1064,8 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
     mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
 					      op_stack, *stack_pos);
   }
+#endif
+  
   mem[0] = size;
   mem[1] = dim;
   
