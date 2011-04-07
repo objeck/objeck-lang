@@ -289,112 +289,132 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case BYTE_ARY_PARM: {
-      INT_VALUE mem_id = ReadInt();
-      if(mem_id < 0) {
-	const long byte_array_size = ReadInt();
-	const long byte_array_dim = ReadInt();
-	const long byte_array_size_dim = ReadInt();
-	long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
-							       ((byte_array_dim + 2) *
-								sizeof(long)),
-							       BYTE_ARY_TYPE,
-							       op_stack, *stack_pos);
-	BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
-	byte_array[0] = byte_array_size;
-	byte_array[1] = byte_array_dim;
-	byte_array[2] = byte_array_size_dim;	
-	// copy content
-	memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
-	buffer_offset += byte_array_size;
-#ifdef _DEBUG
-	cout << "--- deserialization: byte array; value=" << byte_array <<  ", size=" << byte_array_size << " ---" << endl;
-#endif
-	// update cache
-	mem_cache[-mem_id] = byte_array;
-	instance[instance_pos++] = (long)byte_array;
+      if(!ReadByte()) {
+	instance[instance_pos++] = 0;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	if(found != mem_cache.end()) {
-	  return NULL;
-	} 
-	instance[instance_pos++] = (long)found->second;
+	INT_VALUE mem_id = ReadInt();
+	if(mem_id < 0) {
+	  const long byte_array_size = ReadInt();
+	  const long byte_array_dim = ReadInt();
+	  const long byte_array_size_dim = ReadInt();
+	  long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
+								 ((byte_array_dim + 2) *
+								  sizeof(long)),
+								 BYTE_ARY_TYPE,
+								 op_stack, *stack_pos);
+	  BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
+	  byte_array[0] = byte_array_size;
+	  byte_array[1] = byte_array_dim;
+	  byte_array[2] = byte_array_size_dim;	
+	  // copy content
+	  memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
+	  buffer_offset += byte_array_size;
+#ifdef _DEBUG
+	  cout << "--- deserialization: byte array; value=" << byte_array <<  ", size=" << byte_array_size << " ---" << endl;
+#endif
+	  // update cache
+	  mem_cache[-mem_id] = byte_array;
+	  instance[instance_pos++] = (long)byte_array;
+	}
+	else {
+	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+	  if(found != mem_cache.end()) {
+	    return NULL;
+	  } 
+	  instance[instance_pos++] = (long)found->second;
+	}
       }
     }
       break;
       
     case INT_ARY_PARM: {
-      INT_VALUE mem_id = ReadInt();
-      if(mem_id < 0) {
-	const long array_size = ReadInt();
-	const long array_dim = ReadInt();
-	const long array_size_dim = ReadInt();	
-	long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
-							  INT_TYPE, op_stack, *stack_pos);
-	array[0] = array_size;
-	array[1] = array_dim;
-	array[2] = array_size_dim;
-	long* array_ptr = array + 3;	
-	// copy content
-	for(int i = 0; i < array_size; i++) {
-	  array_ptr[i] = ReadInt();
-	}
-#ifdef _DEBUG
-	cout << "--- deserialization: int array; value=" << array <<  ",  size=" << array_size << " ---" << endl;
-#endif
-	// update cache
-	mem_cache[-mem_id] = array;
-	instance[instance_pos++] = (long)array;
+      if(!ReadByte()) {
+	instance[instance_pos++] = 0;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	if(found != mem_cache.end()) {
-	  return NULL;
-	} 
-	instance[instance_pos++] = (long)found->second;
+	INT_VALUE mem_id = ReadInt();
+	if(mem_id < 0) {
+	  const long array_size = ReadInt();
+	  const long array_dim = ReadInt();
+	  const long array_size_dim = ReadInt();	
+	  long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
+							    INT_TYPE, op_stack, *stack_pos);
+	  array[0] = array_size;
+	  array[1] = array_dim;
+	  array[2] = array_size_dim;
+	  long* array_ptr = array + 3;	
+	  // copy content
+	  for(int i = 0; i < array_size; i++) {
+	    array_ptr[i] = ReadInt();
+	  }
+#ifdef _DEBUG
+	  cout << "--- deserialization: int array; value=" << array <<  ",  size=" << array_size << " ---" << endl;
+#endif
+	  // update cache
+	  mem_cache[-mem_id] = array;
+	  instance[instance_pos++] = (long)array;
+	}
+	else {
+	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+	  if(found != mem_cache.end()) {
+	    return NULL;
+	  } 
+	  instance[instance_pos++] = (long)found->second;
+	}
       }
     }
       break;
       
     case FLOAT_ARY_PARM: {
-      INT_VALUE mem_id = ReadInt();
-      if(mem_id < 0) {
-	const long array_size = ReadInt();
-	const long array_dim = ReadInt();
-	const long array_size_dim = ReadInt();
-	long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, 
-							  INT_TYPE, op_stack, *stack_pos);
-	
-	array[0] = array_size;
-	array[1] = array_dim;
-	array[2] = array_size_dim;
-	FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);	
-	// copy content
-	memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
-	buffer_offset += array_size * sizeof(FLOAT_VALUE);
-#ifdef _DEBUG
-	cout << "--- deserialization: float array; value=" << array <<  ", size=" << array_size << " ---" << endl;
-#endif
-	// update cache
-	mem_cache[-mem_id] = array;
-	instance[instance_pos++] = (long)array;
+      if(!ReadByte()) {
+	instance[instance_pos++] = 0;
       }
       else {
-	map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	if(found != mem_cache.end()) {
-	  return NULL;
-	} 
-	instance[instance_pos++] = (long)found->second;
+	INT_VALUE mem_id = ReadInt();
+	if(mem_id < 0) {
+	  const long array_size = ReadInt();
+	  const long array_dim = ReadInt();
+	  const long array_size_dim = ReadInt();
+	  long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, 
+							    INT_TYPE, op_stack, *stack_pos);
+	
+	  array[0] = array_size;
+	  array[1] = array_dim;
+	  array[2] = array_size_dim;
+	  FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);	
+	  // copy content
+	  memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
+	  buffer_offset += array_size * sizeof(FLOAT_VALUE);
+#ifdef _DEBUG
+	  cout << "--- deserialization: float array; value=" << array <<  ", size=" << array_size << " ---" << endl;
+#endif
+	  // update cache
+	  mem_cache[-mem_id] = array;
+	  instance[instance_pos++] = (long)array;
+	}
+	else {
+	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+	  if(found != mem_cache.end()) {
+	    return NULL;
+	  } 
+	  instance[instance_pos++] = (long)found->second;
+	}
       }
     }
       break;
       
     case OBJ_PARM: {
-      ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
-      instance[instance_pos++] = (long)deserializer.DeserializeObject();
-      // TODO: refactor this!
-      buffer_offset = deserializer.GetOffset();
-      mem_cache = deserializer.GetMemoryCache();
+      if(!ReadByte()) {
+	instance[instance_pos++] = 0;
+      }
+      else {
+	ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
+	instance[instance_pos++] = (long)deserializer.DeserializeObject();
+	// TODO: refactor this to be faster
+	buffer_offset = deserializer.GetOffset();
+	mem_cache = deserializer.GetMemoryCache();
+      }
     }
       break;
     }
