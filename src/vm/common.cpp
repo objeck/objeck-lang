@@ -46,6 +46,7 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
  ********************************/
 void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   if(mem) {
+    WriteByte(1);
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
     if(cls) {
       // write id
@@ -98,6 +99,9 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
       }
     }
   }
+  else {
+    WriteByte(0);
+  }
 }
 
 void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth) {
@@ -137,6 +141,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case BYTE_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
+	WriteByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -154,7 +159,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	}
       }
       else {
-	// TODO: write Nil value
+	WriteByte(0);
       }
       // update
       mem++;
@@ -164,6 +169,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case INT_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
+	WriteByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -183,7 +189,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	}
       }
       else {
-	// TODO: write Nil value
+	WriteByte(0);
       }
       // update
       mem++;
@@ -193,6 +199,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case FLOAT_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
+	WriteByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -210,7 +217,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	}
       }
       else {
-	// TODO: write Nil value
+	WriteByte(0);
       }
       // update
       mem++;
