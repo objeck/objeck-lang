@@ -212,10 +212,10 @@ public:
     code = NULL;
 #endif
 
-    // #ifdef _X64
+#ifdef _X64
     free(code);
     code = NULL;
-    // #endif
+#endif
 
 #ifndef _WIN32
     free(floats);
