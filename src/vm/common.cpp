@@ -46,11 +46,11 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
  ********************************/
 void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   if(mem) {
-    WriteByte(1);
+    SerializeByte(1);
     StackClass* cls = MemoryManager::Instance()->GetClass(mem);
     if(cls) {
       // write id
-      WriteInt(cls->GetId());
+      SerializeInt(cls->GetId());
       
       if(!WasSerialized(mem)) {
 	long mem_size = cls->GetInstanceMemorySize();
@@ -100,7 +100,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
     }
   }
   else {
-    WriteByte(0);
+    SerializeByte(0);
   }
 }
 
@@ -119,7 +119,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 #ifdef _DEBUG
       cout << "\t" << i << ": ----- serializing int: value=" << (*mem) << ", size=" << sizeof(INT_VALUE) << " byte(s) -----" << endl;
 #endif
-      WriteInt(*mem);
+      SerializeInt(*mem);
       // update
       mem++;
     }
@@ -132,7 +132,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       cout << "\t" << i << ": ----- serializing float: value=" << value << ", size=" 
 	   << sizeof(FLOAT_VALUE) << " byte(s) -----" << endl;
 #endif
-      WriteFloat(value);
+      SerializeFloat(value);
       // update
       mem += 2;
     }
@@ -141,7 +141,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case BYTE_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
-	WriteByte(1);
+	SerializeByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -150,16 +150,16 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	       << array_size << " byte(s) -----" << endl;
 #endif
 	  // write metadata
-	  WriteInt(array[0]);
-	  WriteInt(array[1]);
-	  WriteInt(array[2]);
+	  SerializeInt(array[0]);
+	  SerializeInt(array[1]);
+	  SerializeInt(array[2]);
 	  BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
 	  // values
-	  WriteBytes(array_ptr, array_size);
+	  SerializeBytes(array_ptr, array_size);
 	}
       }
       else {
-	WriteByte(0);
+	SerializeByte(0);
       }
       // update
       mem++;
@@ -169,7 +169,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case INT_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
-	WriteByte(1);
+	SerializeByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -178,18 +178,18 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	       << array_size << " byte(s) -----" << endl;
 #endif
 	  // write metadata
-	  WriteInt(array[0]);
-	  WriteInt(array[1]);
-	  WriteInt(array[2]);
+	  SerializeInt(array[0]);
+	  SerializeInt(array[1]);
+	  SerializeInt(array[2]);
 	  long* array_ptr = array + 3;	
 	  // values
 	  for(int i = 0; i < array_size; i++) {
-	    WriteInt(array_ptr[i]);
+	    SerializeInt(array_ptr[i]);
 	  }
 	}
       }
       else {
-	WriteByte(0);
+	SerializeByte(0);
       }
       // update
       mem++;
@@ -199,7 +199,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     case FLOAT_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
-	WriteByte(1);
+	SerializeByte(1);
 	// mark data
 	if(!WasSerialized((long*)(*mem))) {
 	  const long array_size = array[0];
@@ -208,16 +208,16 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
 	       << array_size << " byte(s) -----" << endl;
 #endif
 	  // write metadata
-	  WriteInt(array[0]);
-	  WriteInt(array[1]);
-	  WriteInt(array[2]);
+	  SerializeInt(array[0]);
+	  SerializeInt(array[1]);
+	  SerializeInt(array[2]);
 	  FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
 	  // write values
-	  WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+	  SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
 	}
       }
       else {
-	WriteByte(0);
+	SerializeByte(0);
       }
       // update
       mem++;
@@ -244,10 +244,10 @@ void ObjectSerializer::Serialize(long* inst) {
  * ObjectDeserializer class
  ********************************/
 long* ObjectDeserializer::DeserializeObject() {
-  INT_VALUE obj_id = ReadInt();
+  INT_VALUE obj_id = DeserializeInt();
   cls = Loader::GetProgram()->GetClass(obj_id);
   if(cls) {
-    INT_VALUE mem_id = ReadInt();
+    INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
       instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
       mem_cache[-mem_id] = instance;
@@ -272,14 +272,14 @@ long* ObjectDeserializer::DeserializeObject() {
     
     switch(type) {
     case INT_PARM:
-      instance[instance_pos++] = ReadInt();
+      instance[instance_pos++] = DeserializeInt();
 #ifdef _DEBUG
       cout << "--- deserialization: int value=" << instance[instance_pos - 1] << " ---" << endl;
 #endif
       break;
 
     case FLOAT_PARM: {
-      FLOAT_VALUE value = ReadFloat();
+      FLOAT_VALUE value = DeserializeFloat();
       memcpy(&instance[instance_pos], &value, sizeof(value));
 #ifdef _DEBUG
       cout << "--- deserialization: float value=" << value << " ---" << endl;
@@ -289,15 +289,15 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case BYTE_ARY_PARM: {
-      if(!ReadByte()) {
+      if(!DeserializeByte()) {
 	instance[instance_pos++] = 0;
       }
       else {
-	INT_VALUE mem_id = ReadInt();
+	INT_VALUE mem_id = DeserializeInt();
 	if(mem_id < 0) {
-	  const long byte_array_size = ReadInt();
-	  const long byte_array_dim = ReadInt();
-	  const long byte_array_size_dim = ReadInt();
+	  const long byte_array_size = DeserializeInt();
+	  const long byte_array_dim = DeserializeInt();
+	  const long byte_array_size_dim = DeserializeInt();
 	  long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
 								 ((byte_array_dim + 2) *
 								  sizeof(long)),
@@ -329,15 +329,15 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case INT_ARY_PARM: {
-      if(!ReadByte()) {
+      if(!DeserializeByte()) {
 	instance[instance_pos++] = 0;
       }
       else {
-	INT_VALUE mem_id = ReadInt();
+	INT_VALUE mem_id = DeserializeInt();
 	if(mem_id < 0) {
-	  const long array_size = ReadInt();
-	  const long array_dim = ReadInt();
-	  const long array_size_dim = ReadInt();	
+	  const long array_size = DeserializeInt();
+	  const long array_dim = DeserializeInt();
+	  const long array_size_dim = DeserializeInt();	
 	  long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
 							    INT_TYPE, op_stack, *stack_pos);
 	  array[0] = array_size;
@@ -346,7 +346,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	  long* array_ptr = array + 3;	
 	  // copy content
 	  for(int i = 0; i < array_size; i++) {
-	    array_ptr[i] = ReadInt();
+	    array_ptr[i] = DeserializeInt();
 	  }
 #ifdef _DEBUG
 	  cout << "--- deserialization: int array; value=" << array <<  ",  size=" << array_size << " ---" << endl;
@@ -367,15 +367,15 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case FLOAT_ARY_PARM: {
-      if(!ReadByte()) {
+      if(!DeserializeByte()) {
 	instance[instance_pos++] = 0;
       }
       else {
-	INT_VALUE mem_id = ReadInt();
+	INT_VALUE mem_id = DeserializeInt();
 	if(mem_id < 0) {
-	  const long array_size = ReadInt();
-	  const long array_dim = ReadInt();
-	  const long array_size_dim = ReadInt();
+	  const long array_size = DeserializeInt();
+	  const long array_dim = DeserializeInt();
+	  const long array_size_dim = DeserializeInt();
 	  long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, 
 							    INT_TYPE, op_stack, *stack_pos);
 	
@@ -405,7 +405,7 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
       
     case OBJ_PARM: {
-      if(!ReadByte()) {
+      if(!DeserializeByte()) {
 	instance[instance_pos++] = 0;
       }
       else {
