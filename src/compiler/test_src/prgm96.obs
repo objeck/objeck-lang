@@ -95,8 +95,8 @@ bundle Default {
 			serial->Add(array3);
 ~#
 
-			t := Test->New();
-#			t : Test;
+#			t := Test->New();
+			t : Test;
 			serial->Add(t->As(Base));
 
 			deserial := Deserializer->New(serial->Serialize());
