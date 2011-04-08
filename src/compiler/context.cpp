@@ -2100,13 +2100,13 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) && IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if((left->GetEvalType() && left->GetEvalType()->GetDimension() > 0) || 
-            (right->GetEvalType() && right->GetEvalType()->GetDimension() > 0)) {
+    else if(left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE || 
+	    right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
     break;
-
+    
   case MOD_EXPR: 
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
