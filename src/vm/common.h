@@ -1173,40 +1173,40 @@ class ObjectSerializer
     map<long*, long>::iterator find = serial_ids.find(mem);
     if(find != serial_ids.end()) {
       cur_id = find->second;
-      WriteInt(cur_id);
+      SerializeInt(cur_id);
       
       return true;
     }
     next_id++;
     cur_id = next_id * -1;
     serial_ids.insert(pair<long*, long>(mem, next_id));
-    WriteInt(cur_id);
+    SerializeInt(cur_id);
     
     return false;
   }
   
-  inline void WriteByte(BYTE_VALUE v) {
+  inline void SerializeByte(BYTE_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
     for(long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
-  inline void WriteInt(INT_VALUE v) {
+  inline void SerializeInt(INT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
     for(long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
-  inline void WriteFloat(FLOAT_VALUE v) {
+  inline void SerializeFloat(FLOAT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
     for(long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
 
-  inline void WriteBytes(void* array, const long len) {
+  inline void SerializeBytes(void* array, const long len) {
     BYTE_VALUE* bp = (BYTE_VALUE*)array;
     for(long i = 0; i < len; i++) {
       values.push_back(*(bp + i));
@@ -1227,7 +1227,7 @@ class ObjectSerializer
 };
 
 /********************************
- * ObjectDeserializer class
+ *  ObjectDeserializer class
  ********************************/
 class ObjectDeserializer 
 {
@@ -1241,7 +1241,7 @@ class ObjectDeserializer
   long instance_pos;
   map<INT_VALUE, long*> mem_cache;
   
-  BYTE_VALUE ReadByte() {
+  BYTE_VALUE DeserializeByte() {
     BYTE_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
@@ -1249,7 +1249,7 @@ class ObjectDeserializer
     return value;
   }
 
-  INT_VALUE ReadInt() {
+  INT_VALUE DeserializeInt() {
     INT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
@@ -1257,7 +1257,7 @@ class ObjectDeserializer
     return value;
   }
   
-  FLOAT_VALUE ReadFloat() {
+  FLOAT_VALUE DeserializeFloat() {
     FLOAT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
