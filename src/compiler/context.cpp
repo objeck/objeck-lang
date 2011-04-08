@@ -2083,7 +2083,8 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case NEQL_EXPR:
     if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
+    } 
+    else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
@@ -2095,7 +2096,12 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case GTR_EQL_EXPR:
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } else if(IsEnumExpression(left) && IsEnumExpression(right)) {
+    } 
+    else if(IsEnumExpression(left) && IsEnumExpression(right)) {
+      ProcessError(expression, "Invalid mathematical operation");
+    }
+    else if((left->GetEvalType() && left->GetEvalType()->GetDimension() > 0) || 
+            (right->GetEvalType() && right->GetEvalType()->GetDimension() > 0)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
