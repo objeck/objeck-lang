@@ -2141,8 +2141,8 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
   case EQL_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
+       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, EQL_INT));
@@ -2151,8 +2151,8 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case NEQL_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
+       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEQL_INT));
