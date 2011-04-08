@@ -72,12 +72,14 @@
     <ClCompile Include="..\..\compiler\types.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />
     <ClCompile Include="..\..\vm\loader.cpp" />
+    <ClCompile Include="..\..\vm\os\windows\memory.cpp" />
     <ClCompile Include="..\symbols.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\compiler\linker.h" />
     <ClInclude Include="..\..\compiler\types.h" />
     <ClInclude Include="..\..\vm\loader.h" />
+    <ClInclude Include="..\..\vm\os\windows\memory.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
