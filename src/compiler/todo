@@ -4,3 +4,6 @@
 # fixed debugger bugs
 # fixed exception handling
 # added support for serializtion
+
+== 4/10/11 ==
+* fixed a bug related to passing functions to native functions
