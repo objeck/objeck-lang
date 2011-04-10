@@ -245,6 +245,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
 
       // store int
       ProcessStore(instr);
+      i++;
     }
     else {
       RegisterHolder* dest_holder = GetXmmRegister();

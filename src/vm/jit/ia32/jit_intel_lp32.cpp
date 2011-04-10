@@ -191,6 +191,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
       
       // store int
       ProcessStore(instr);
+      i++;
     }
     else {
       RegisterHolder* dest_holder = GetXmmRegister();
