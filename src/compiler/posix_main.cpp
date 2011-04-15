@@ -115,13 +115,7 @@ int main(int argc, char* argv[])
 	    pos++;
 	  }
 	}
-	string value;
-	if(is_string) {
-	  value = path.substr(start, pos - start);
-	}
-	else {
-	  value = path.substr(start, pos - start);
-	}
+	string value = path.substr(start, pos - start);
 	argument_options.push_back(key);
 	arguments.insert(pair<string, string>(key, value));
       } 
