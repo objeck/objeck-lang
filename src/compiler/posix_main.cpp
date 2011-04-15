@@ -99,6 +99,7 @@ int main(int argc, char* argv[])
 	if(pos < end && path[pos] == '\'') {
 	  is_string = true;
 	  start++;
+    pos++;
 	}
 	bool not_end = true;
 	while(pos < end && not_end) {
@@ -116,7 +117,7 @@ int main(int argc, char* argv[])
 	}
 	string value;
 	if(is_string) {
-	  value = path.substr(start, pos - start - 1);
+	  value = path.substr(start, pos - start);
 	}
 	else {
 	  value = path.substr(start, pos - start);
