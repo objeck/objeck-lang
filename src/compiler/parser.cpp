@@ -151,6 +151,9 @@ bool Parser::Parse()
     const string &file_name = src_path.substr(offset, src_path.size());
     ParseFile(file_name);
   }
+  else if(run_prgm.size() > 0) {
+    ParseProgram();
+  }
   
   return CheckErrors();
 }
@@ -161,6 +164,19 @@ bool Parser::Parse()
 void Parser::ParseFile(const string &file_name)
 {
   scanner = new Scanner(file_name);
+  NextToken();
+  ParseBundle(0);
+  // clean up
+  delete scanner;
+  scanner = NULL;
+}
+
+/****************************
+ * Parses a file.
+ ****************************/
+void Parser::ParseProgram()
+{
+  scanner = new Scanner(run_prgm, true);
   NextToken();
   ParseBundle(0);
   // clean up

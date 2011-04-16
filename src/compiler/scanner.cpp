@@ -36,7 +36,7 @@
 /****************************
 * Scanner constructor
 ****************************/
-Scanner::Scanner(string f)
+Scanner::Scanner(string f, bool p)
 {
   // copy file name
   filename = f;
@@ -47,7 +47,19 @@ Scanner::Scanner(string f)
   // load identifiers into map
   LoadKeywords();
   // read file into memory
-  ReadFile();
+  if(p) {
+    buffer_pos = 0;
+    buffer_size = f.size();
+    buffer = (char*)calloc(buffer_size, sizeof(char));
+    strcpy(buffer, f.c_str());
+#ifdef _DEBUG
+  cout << "---------- Source (inline) ---------" << endl;
+  cout << buffer << endl;
+#endif
+  }
+  else {
+    ReadFile();
+  }
   // set line number to 1
   line_nbr = 1;
 }

@@ -47,7 +47,7 @@ int main(const int argc, const char* argv[])
     WSADATA data;
     int version = MAKEWORD(2, 2);
 
-	int status;
+    int status;
     if(WSAStartup(version, &data)) {
       cerr << "Unable to load Winsock 2.2!" << endl;
       status = SYSTEM_ERROR;
@@ -59,7 +59,7 @@ int main(const int argc, const char* argv[])
     // release winsock
     WSACleanup();
 
-	return status;
+    return status;
   } 
   else {
     string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
@@ -67,7 +67,7 @@ int main(const int argc, const char* argv[])
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
     usage += VERSION_STRING;
-	usage += "\n\n";
+    usage += "\n\n";
     usage += "usage: obr <program>\n\n";
     usage += "example: \"obr hello.obe\"";
     cerr << usage << endl << endl;

@@ -9,8 +9,8 @@ bundle Default {
 			IO.Console->PrintLine();
 		}
 	 
-#		function : native : CombSort(input : Int[]) ~ Nil {
-		function : CombSort(input : Int[]) ~ Nil {
+		function : native : CombSort(input : Int[]) ~ Nil {
+#		function : CombSort(input : Int[]) ~ Nil {
 			gap : Float := input->Size();
 			swaps := true;
 			while(gap > 1 | swaps) {
@@ -20,6 +20,7 @@ bundle Default {
 				swaps := false;
 				while(i + gap < input->Size()) {
 					igap : Int := i + gap->As(Int);
+# igap->PrintLine();
 					if (input[i] > input[igap]) {
 						swap : Int := input[i];
 						input[i] := input[igap];
