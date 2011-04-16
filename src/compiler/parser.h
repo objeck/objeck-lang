@@ -53,7 +53,8 @@ class Parser {
   map<TokenType, string> error_msgs;
   map<int, string> errors;
   string src_path;
-
+  string run_prgm;
+  
   inline void NextToken() {
     scanner->NextToken();
   }
@@ -144,6 +145,7 @@ class Parser {
 
   // parsing operations
   void ParseFile(const string& file_name);
+  void ParseProgram();
   void ParseBundle(int depth);
   string ParseBundleName(int depth);
   Class* ParseClass(const string &bundle_id, int depth);
@@ -182,8 +184,9 @@ class Parser {
   Expression* ParseSimpleExpression(int depth);
 
 public:
-  Parser(const string &p) {
+  Parser(const string &p, const string &r) {
     src_path = p;
+    run_prgm = r;
     program = new ParsedProgram;
     LoadErrorCodes();
     current_class = NULL;

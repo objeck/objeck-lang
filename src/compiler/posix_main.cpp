@@ -70,9 +70,17 @@ int main(int argc, char* argv[])
     string path;
     for(int i = 1; i < 32 && i < argc; i++) {
       path += " ";
-      path += argv[i];
+      char* cmd_param = argv[i];
+      if(strlen(cmd_param) > 0 && cmd_param[0]  != '\'' && 
+	 (strrchr(cmd_param, ' ') || strrchr(cmd_param, '\t'))) {
+	path += "'";
+	path += cmd_param;
+	path += "'";
+      }
+      else {
+	path += cmd_param;
+      }
     }
-
     // parse path
     int end = (int)path.size();
     map<const string, string> arguments;
@@ -99,7 +107,7 @@ int main(int argc, char* argv[])
 	if(pos < end && path[pos] == '\'') {
 	  is_string = true;
 	  start++;
-    pos++;
+	  pos++;
 	}
 	bool not_end = true;
 	while(pos < end && not_end) {
