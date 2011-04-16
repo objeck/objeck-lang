@@ -440,7 +440,7 @@ private:
 
 public:
   // default constructor
-  Scanner(string f);
+  Scanner(string f, bool p = false);
   // default destructor
   ~Scanner();
 

@@ -45,12 +45,22 @@ using namespace std;
 int Compile(map<const string, string> &arguments, list<string> &argument_options, const string usage)
 {
   // check source input
+  string run_string;
   map<const string, string>::iterator result = arguments.find("src");
   if(result == arguments.end()) {
-    cerr << usage << endl << endl;
-    return COMMAND_ERROR;
+    result = arguments.find("run");
+    if(result == arguments.end()) {
+      cerr << usage << endl << endl;
+      return COMMAND_ERROR;
+    }
+    run_string = "bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
+    run_string += arguments["run"];
+    run_string += "} } }";
+    argument_options.remove("run");
   }
-  argument_options.remove("src");
+  else {
+    argument_options.remove("src");
+  }
   
   // check program output
   result = arguments.find("dest");
@@ -105,9 +115,9 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
     cerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
-  
+
   // parse source code
-  Parser parser(arguments["src"]);
+  Parser parser(arguments["src"], run_string);
   if(parser.Parse()) {
     bool is_lib = target == "lib";
     // analyze parse tree
