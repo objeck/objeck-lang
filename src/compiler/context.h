@@ -378,6 +378,10 @@ class ContextAnalyzer {
 
   // checks for a valid upcast
   bool ValidUpCast(const string &to, Class* from_klass) {
+    if(from_klass->GetName() == "System.Base") {
+      return true;
+    }
+
     vector<string> interface_names = from_klass->GetInterfaceNames();
     vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
     if(result != interface_names.end() || to == from_klass->GetName()) {
@@ -397,6 +401,10 @@ class ContextAnalyzer {
 
   // checks for a valid upcast
   bool ValidUpCast(const string &to, LibraryClass* from_klass) {
+    if(from_klass->GetName() == "System.Base") {
+      return true;
+    }
+
     vector<string> interface_names = from_klass->GetInterfaceNames();
     vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
     if(result != interface_names.end() || to == from_klass->GetName()) {

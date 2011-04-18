@@ -3,7 +3,7 @@ bundle Default {
 		function : Main(args : System.String[]) ~ Nil {
 			msg := "Hello";
 			s := IO.Serializer->New();
-			s->Add(msg->As(Base));
+			s->Write(msg->As(Base));
 		}
 	}
 }
