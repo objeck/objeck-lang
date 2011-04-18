@@ -1524,6 +1524,20 @@ bundle IO {
 			
 			return Nil;
 		}
+		
+		function : ReadBinaryFile(name : String) ~ Byte[] {
+			len := File->Size(name);
+			buffer := Byte->New[len];
+			in := FileReader->New(name);
+			if(in->IsOpen()) {
+				in->ReadBuffer(0, len, buffer);
+				in->Close();
+				
+				return buffer;
+			};
+			
+			return Nil;
+		}
 	}
 	
 	class FileWriter from File {
@@ -1580,39 +1594,39 @@ bundle IO {
 			@pos := 0;
 		}
 
-		method : public : Add(b : Bool) ~ Nil {
+		method : public : Write(b : Bool) ~ Nil {
 			SERL_INT;
 		}
 
-		method : public : Add(i : Int) ~ Nil {
+		method : public : Write(i : Int) ~ Nil {
 			SERL_INT;
 		}
 		
-		method : public : Add(f : Float) ~ Nil {
+		method : public : Write(f : Float) ~ Nil {
 			SERL_FLOAT;
 		}
 		
-		method : public : Add(o : Base) ~ Nil {
+		method : public : Write(o : Base) ~ Nil {
 			SERL_OBJ_INST;
 		}
 
-		method : public : Add(b : Bool[]) ~ Nil {
+		method : public : Write(b : Bool[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 
-		method : public : Add(b : Byte[]) ~ Nil {
+		method : public : Write(b : Byte[]) ~ Nil {
 			SERL_BYTE_ARY;
 		}
 
-		method : public : Add(c : Char[]) ~ Nil {
+		method : public : Write(c : Char[]) ~ Nil {
 			SERL_BYTE_ARY;
 		}
 
-		method : public : Add(i : Int[]) ~ Nil {
+		method : public : Write(i : Int[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 		
-		method : public : Add(f : Float[]) ~ Nil {
+		method : public : Write(f : Float[]) ~ Nil {
 			SERL_FLOAT_ARY;
 		}
 		
