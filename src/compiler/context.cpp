@@ -3111,8 +3111,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
       // downcast
       else {
         // TODO: workaround for class cast issue
-        expression->SetToLibraryClass(left_lib_class);
-        return;
+        // expression->SetToLibraryClass(left_lib_class);
+	
+	ProcessError(expression, "Invalid cast between classes: '" +
+                     left_lib_class->GetName() + "' and '" +
+                     right_lib_class->GetName() + "'");        return;
       }
     } else {
       ProcessError(expression, "Invalid cast between class and enum");

@@ -1,0 +1,11 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			s := IO.Serializer->New();
+			s->Write(10);
+			buffer := Byte->New[0];
+         s := IO.Deserializer->New(buffer);
+			s->Write(20);
+		}
+	}
+}
