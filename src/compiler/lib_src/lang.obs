@@ -639,12 +639,16 @@ bundle System {
 			return -1;
 		}
 
-		method : public : Find(find : String) ~ Int {
-			if(find->Size() > 0) {
+		method : public : Find(find : String, offset : Int) ~ Int {
+find->Size()->PrintLine();
+offset->PrintLine();
+			size := find->Size();
+			if(size > 0 & offset < size) {
 				found_index := Find(find->Get(0));
 				while(found_index > -1) {
 					j := found_index;
 					match := true;
+					i : Int;
 					for(i := 0; match & i < find->Size() & j < @pos; i += 1;) {
 						if(find->Get(i) <> @string[j]) {
 							match := false;
@@ -652,7 +656,7 @@ bundle System {
 						j += 1;
 					};
 
-					if(match) {
+					if(match & i = find->Size()) {
 						return found_index;
 					};
 					
