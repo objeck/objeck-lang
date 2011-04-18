@@ -104,7 +104,6 @@ bundle Default {
 			writer->Close();
 			
 			data := FileReader->ReadBinaryFile("data.dat");
-			
 			deserial := Deserializer->New(data);
 
 			v1 := deserial->ReadInt();
