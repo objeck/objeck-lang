@@ -1,0 +1,7 @@
+bundle Default {
+	class Gamma {
+		function : Main(args : String[]) ~ Nil {
+			
+		}
+	}
+}
