@@ -1241,12 +1241,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
   case DESERL_INT:
-     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_INT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
 
   case DESERL_FLOAT:
-     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_FLOAT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));   
     break;
 
@@ -1492,7 +1492,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   }
   
   EmitExpression(do_while_stmt->GetExpression());
- imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
   
   break_label = break_labels.top();
   break_labels.pop();
@@ -2706,6 +2706,10 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     // literal and variable method calls
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
+
+    if(!is_str_array && new_char_str_count >= 2) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
+    }
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
       EmitVariable(variable);
@@ -2841,7 +2845,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         }
         // TODO: this needs to be looked at... simpiler?
         else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() ||
-                               variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+					   variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
 	else if(method_call->IsEnumCall()) {
