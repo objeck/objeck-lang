@@ -742,15 +742,15 @@ Base class for all objects.
 \begin{itemize}
 \item \texttt{GetClass} - returns metadata about a class
   \begin{itemize}
-  \item method : public : GetClass, Class
+  \item method : public : GetClass() \textasciitilde Class
   \end{itemize}
 \item \texttt{GetClassID} - returns the class ID
   \begin{itemize}
-  \item method : public : native : GetClassID(), ClassID
+  \item method : public : native : GetClassID() \textasciitilde ClassID
   \end{itemize}
 \item \texttt{GetInstanceID} - returns a unique instance ID
   \begin{itemize}
-  \item method : public : native : GetInstanceID(), Int
+  \item method : public : native : GetInstanceID() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
@@ -758,17 +758,17 @@ Base class for all objects.
 \begin{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToString} - converts the current value to a
   \texttt{String} object instance
   \begin{itemize}
-  \item method : native : ToString(), String
+  \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -777,46 +777,46 @@ Base class for all objects.
 \item \texttt{ToUpper} - coverts a character to a uppercase
   character
   \begin{itemize}
-  \item method : public : native : ToUpper(), Char
+  \item method : public : native : ToUpper() \textasciitilde Char
   \end{itemize}
 \item \texttt{ToLower} - coverts a character to a lowercase
   character
   \begin{itemize}
-  \item method : public : native : ToLower(), Char
+  \item method : public : native : ToLower() \textasciitilde Char
   \end{itemize}
 \item \texttt{IsDigit} - determines if the character is a digit (in
   the range of \texttt{0-9})
   \begin{itemize}
-  \item method : native : IsDigit(), Bool
+  \item method : native : IsDigit() \textasciitilde Bool
   \end{itemize}
 \item \texttt{IsChar} - determines if the character is a alpha (in the
   range of \texttt{A-Z} or \texttt{a-z})
   \begin{itemize}
-  \item method : native : IsChar(), Bool
+  \item method : native : IsChar() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Char), Char
+  \item method : native : Min(r : Char) \textasciitilde Char
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Char), Char
+  \item method : native : Max(r : Char) \textasciitilde Char
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToString} - converts the current value to a
   \texttt{String} object instance
   \begin{itemize}
-  \item method : native : ToString(), String
+  \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -825,30 +825,30 @@ Base class for all objects.
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Byte), Byte
+  \item method : native : Min(r : Byte) \textasciitilde Byte
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Byte), Byte
+  \item method : native : Max(r : Byte) \textasciitilde Byte
   \end{itemize}
 \item \texttt{Abs} - returns the absolute value of the current number
   \begin{itemize}
-  \item method : native : Abs(), Byte
+  \item method : native : Abs() \textasciitilde Byte
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToString} - converts the current value to a
   \texttt{String} object instance
   \begin{itemize}
-  \item method : native : ToString(), String
+  \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -857,71 +857,71 @@ Base class for all objects.
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Byte), Float
+  \item method : native : Min(r : Byte) \textasciitilde Float
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Byte), Float
+  \item method : native : Max(r : Byte) \textasciitilde Float
   \end{itemize}
 \item \texttt{Abs} - returns the absolute value of the current number
   \begin{itemize}
-  \item method : native : Abs(), Float
+  \item method : native : Abs() \textasciitilde Float
   \end{itemize}
 \item \texttt{Floor} - returns the floor of the current number
   \begin{itemize}
-  \item method : Floor(), Float
+  \item method : Floor() \textasciitilde Float
   \end{itemize}
 \item \texttt{Ceiling} - returns the ceiling of the current number
   \begin{itemize}
-  \item method : Ceiling(), Float
+  \item method : Ceiling() \textasciitilde Float
   \end{itemize}
 \item \texttt{Sin} - returns the sine of the radian value
   \begin{itemize}
-  \item method : Sin(), Float
+  \item method : Sin() \textasciitilde Float
   \end{itemize}
 \item \texttt{Cos} - returns the cosine of the radian value
   \begin{itemize}
-  \item method : Cos(), Float
+  \item method : Cos() \textasciitilde Float
   \end{itemize}
 \item \texttt{Tan} - returns the tangent of the radian value
   \begin{itemize}
-  \item method : Tan(), Float
+  \item method : Tan() \textasciitilde Float
   \end{itemize}
 \item \texttt{Log} - returns the natural log of the radian value
   \begin{itemize}
-  \item method : Log(), Float
+  \item method : Log() \textasciitilde Float
   \end{itemize}
 \item \texttt{Pi} - returns the value of Pi
   \begin{itemize}
-  \item function : Pi(), Float
+  \item function : Pi() \textasciitilde Float
   \end{itemize}
 \item \texttt{Power} - returns the exponential power value
   \begin{itemize}
-  \item method : Power(), Float
+  \item method : Power() \textasciitilde Float
   \end{itemize}
 \item \texttt{SquareRoot} - returns the square root
   \begin{itemize}
-  \item method : SquareRoot(), Float
+  \item method : SquareRoot() \textasciitilde Float
   \end{itemize}
 \item \texttt{Random} - returns a puedo-random number between 0.0 and
   1.0
   \begin{itemize}
-  \item function : Random(), Float
+  \item function : Random() \textasciitilde Float
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToString} - converts the current value to a
   \texttt{String} object instance
   \begin{itemize}
-  \item method : native : ToString(), String
+  \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -938,107 +938,107 @@ Base class for all objects.
   \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String
   instance
   \begin{itemize}
-  \item method : public : native : Append(s : String), Nil
-  \item method : public : native : Append(c : Char), Nil
-  \item method : public : native : Append(b : Byte), Nil
-  \item method : public : native : Append(i : Int), Nil
-  \item method : public : native : Append(f : Float), Nil
-  \item method : public : native : Append(a : Char[]), Nil
+  \item method : public : native : Append(s : String) \textasciitilde Nil
+  \item method : public : native : Append(c : Char) \textasciitilde Nil
+  \item method : public : native : Append(b : Byte) \textasciitilde Nil
+  \item method : public : native : Append(i : Int) \textasciitilde Nil
+  \item method : public : native : Append(f : Float) \textasciitilde Nil
+  \item method : public : native : Append(a : Char[]) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given Character; -1 if not found
   \begin{itemize}
-  \item method : public : native : Find(c : Char), Int
+  \item method : public : native : Find(c : Char) \textasciitilde Int
   \end{itemize}
   \texttt{Find} - returns the index of the first occurrence of a given
   Character; -1 if not found
   \begin{itemize}
-  \item method : public : native : Find(offset : Int, c : Char), Int
+  \item method : public : native : Find(offset : Int, c : Char) \textasciitilde Int
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given String; -1 if not found
   \begin{itemize}
-  \item method : public : native : Find(s : String), Int
+  \item method : public : native : Find(s : String) \textasciitilde Int
   \end{itemize}
 \item \texttt{Size} - returns the size of the String
   \begin{itemize}
-  \item method : public : native : Size(), Int
+  \item method : public : native : Size() \textasciitilde Int
   \end{itemize}
 \item \texttt{Get} - returns the Character at the given index or -1 if
   not found
   \begin{itemize}
-  \item method : public : native : Get(i : Int), Char
+  \item method : public : native : Get(i : Int) \textasciitilde Char
   \end{itemize}
 \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
   \begin{itemize}
-  \item method : public : native : ToCharArray(), Char[]
+  \item method : public : native : ToCharArray() \textasciitilde Char[]
   \end{itemize}
 \item \texttt{ToInt} - converts a string to a \texttt{Int}
   \begin{itemize}
-  \item method : public : native : ToInt(), Int
+  \item method : public : native : ToInt() \textasciitilde Int
   \end{itemize}
 \item \texttt{ToFloat} - converts a string to a \texttt{Float}
   \begin{itemize}
-  \item method : public : native : ToFloat(), Int
+  \item method : public : native : ToFloat() \textasciitilde Int
   \end{itemize}
 \item \texttt{SubString} - creates a new string that contains a subset
   of the string's contents
   \begin{itemize}
-  \item method : public : native : SubString(offset : Int), String
+  \item method : public : native : SubString(offset : Int) \textasciitilde String
   \item method : public : native : SubString(offset : Int, length :
-    Int), String
+    Int) \textasciitilde String
   \end{itemize}
 \item \texttt{Trim} - removes all leading and trailing whitespace
   \begin{itemize}
-  \item method : public : native : Trim(), String
+  \item method : public : native : Trim() \textasciitilde String
   \end{itemize}
 \item \texttt{StartsWith} - returns true if \texttt{String} starts
   with matching pattern; returns false otherwise
   \begin{itemize}
-  \item method : public : native : StartsWith(), Bool
+  \item method : public : native : StartsWith() \textasciitilde Bool
   \end{itemize}
 \item \texttt{EndsWith} - returns true if \texttt{String} ends with
   matching pattern; returns false otherwise
   \begin{itemize}
-  \item method : public : native : EndsWith(), Bool
+  \item method : public : native : EndsWith() \textasciitilde Bool
   \end{itemize}
 \item \texttt{ToUpper} - coverts all lowercase characters to uppercase
   characters
   \begin{itemize}
-  \item method : public : native : ToUpper(), String
+  \item method : public : native : ToUpper() \textasciitilde String
   \end{itemize}
 \item \texttt{ToLower} - coverts all uppercase characters to lowercase
   characters
   \begin{itemize}
-  \item method : public : native : ToLower(), String
+  \item method : public : native : ToLower() \textasciitilde String
   \end{itemize}
 \item \texttt{Reverse} - returns a string with reversed characters
   \begin{itemize}
-  \item method : public : native : Reverse(), String
+  \item method : public : native : Reverse() \textasciitilde String
   \end{itemize}
 \item \texttt{Equals} - compares two string returns \texttt{true} if
   they are equal
   \begin{itemize}
-  \item method : public : Equals(rhs : String), Bool
+  \item method : public : Equals(rhs : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Compare} - compares two string returns 0 if they are
   equal
   \begin{itemize}
-  \item method : public : native : Compare(rhs : Compare), Int
+  \item method : public : native : Compare(rhs : Compare) \textasciitilde Int
   \end{itemize}
 \item \texttt{Split} - breaks a string into tokens based upon a given
   delimiter
   \begin{itemize}
-  \item method : public : native : Split(delim : String), String[]
+  \item method : public : native : Split(delim : String) \textasciitilde String[]
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1046,17 +1046,17 @@ Base class for all objects.
 \begin{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
-  \item method : native : Print(), Nil
+  \item method : native : Print() \textasciitilde Nil
   \end{itemize}
 \item \texttt{PrintLine} - prints the current value along with a line
   return
   \begin{itemize}
-  \item method : native : PrintLine(), Nil
+  \item method : native : PrintLine() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToString} - converts the current value to a
   \texttt{String} object instance
   \begin{itemize}
-  \item method : native : ToString(), String
+  \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1066,24 +1066,24 @@ Base class for all objects.
 \item New(c : String)
 \item \texttt{IsLoaded} - returns true if this class has been loaded
   \begin{itemize}
-  \item method : public : IsLoaded(), Bool
+  \item method : public : IsLoaded() \textasciitilde Bool
   \end{itemize}
 \item \texttt{IsLoaded} - returns true if this class has been loaded,
   false otherwise
   \begin{itemize}
-  \item method : public : IsLoaded(), Bool
+  \item method : public : IsLoaded() \textasciitilde Bool
   \end{itemize}
 \item \texttt{GetName} - returns the name of the class
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \item \texttt{GetMethods} - returns an array of methods
   \begin{itemize}
-  \item method : public : GetMethods(), GetMethods[]
+  \item method : public : GetMethods() \textasciitilde GetMethods[]
   \end{itemize}
 \item \texttt{GetMethodNumber} - returns the number of methods in the class
   \begin{itemize}
-  \item method : public : GetMethodNumber(), Int
+  \item method : public : GetMethodNumber() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
@@ -1092,22 +1092,22 @@ Base class for all objects.
 
 \item \texttt{GetClass} - returns class assoicated with the method
   \begin{itemize}
-  \item method : public : GetClass(), Class
+  \item method : public : GetClass() \textasciitilde Class
   \end{itemize}
 
 \item \texttt{GetName} - returns the pretty name of the method
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 
 \item \texttt{GetParameters} - returns the datatypes of the parameters
   \begin{itemize}
-  \item method : public : GetParameters(), DataType[]
+  \item method : public : GetParameters() \textasciitilde DataType[]
   \end{itemize}
 
 \item \texttt{GetReturn} - returns the datatype of the return
   \begin{itemize}
-  \item method : public : GetReturn(), DataType
+  \item method : public : GetReturn() \textasciitilde DataType
   \end{itemize}
 \end{itemize}
 
@@ -1116,18 +1116,18 @@ Base class for all objects.
 
 \item \texttt{GetType} - returns the type ID
   \begin{itemize}
-  \item method : public : GetType(), TypeId
+  \item method : public : GetType() \textasciitilde TypeId
   \end{itemize}
 
 \item \texttt{GetDimension} - returns dimensions of the datatype
   \begin{itemize}
-  \item method : public : GetDimension(), Int
+  \item method : public : GetDimension() \textasciitilde Int
   \end{itemize}
 
 \item \texttt{GetClassName} - returns string name of non-basic
   objects, Nil otherwise
   \begin{itemize}
-  \item method : public : GetClassName(), String
+  \item method : public : GetClassName() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1150,12 +1150,12 @@ Base class for all objects that use comparative algorithms.
 \item \texttt{Compare} - compares two object instances; 0 if equal,
   less-then 0 if less and greater-then 0 if greater.
   \begin{itemize}
-  \item method : virtual : public : Compare(rhs : System.Compare), Int
+  \item method : virtual : public : Compare(rhs : System.Compare) \textasciitilde Int
   \end{itemize}
 \item \texttt{HashID} - returns a unique value for the given class
   type
   \begin{itemize}
-  \item method : virtual : public : HashID(), Int
+  \item method : virtual : public : HashID() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
@@ -1169,72 +1169,72 @@ supports the following operations:
 \begin{itemize}
 \item \texttt{AddBack} - adds a new value to the back of the list
   \begin{itemize}
-  \item method : public : native : AddBack(value : Compare), Nil
+  \item method : public : native : AddBack(value : Compare) \textasciitilde Nil
   \end{itemize}
 \item \texttt{RemoveBack} - removes the last element in the list
   \begin{itemize}
-  \item method : public : RemoveBack(), Nil
+  \item method : public : RemoveBack() \textasciitilde Nil
   \end{itemize}
 \item \texttt{AddFront} - adds a new value to the front of the list
   \begin{itemize}
-  \item method : public : native : AddFront(value : Compare), Nil
+  \item method : public : native : AddFront(value : Compare) \textasciitilde Nil
   \end{itemize}
 \item \texttt{RemoveFront} - removes the first element in the list
   \begin{itemize}
-  \item method : public : RemoveFront(), Nil
+  \item method : public : RemoveFront() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - finds an element in the list
   \begin{itemize}
-  \item method : public : Find(value : Compare), Bool
+  \item method : public : Find(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Has} - returns true if item is in list
   \begin{itemize}
-  \item method : public : Has(value : Compare), Bool
+  \item method : public : Has(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Insert} - inserts a new value in the position pointed to
   the cursor
   \begin{itemize}
-  \item method : public : Insert(value : Compare), Bool
+  \item method : public : Insert(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Remove} - removes the last element in the list
   \begin{itemize}
-  \item method : public : Remove(), Nil
+  \item method : public : Remove() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Insert} - inserts an element into the current cursor
   position
   \begin{itemize}
-  \item method : public : Insert(value : Compare), Bool
+  \item method : public : Insert(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Next} - advances the internal cursor by one element
   \begin{itemize}
-  \item method : public : Next(), Nil
+  \item method : public : Next() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Pervious} - retreats the internal cursor by one element
   \begin{itemize}
-  \item method : public : Pervious(), Nil
+  \item method : public : Pervious() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Get} - returns the value of the element pointed to by
   the cursor
   \begin{itemize}
-  \item method : public : Get(), Compare
+  \item method : public : Get() \textasciitilde Compare
   \end{itemize}
 \item \texttt{Forward} - moves the cursor to the end of the list
   \begin{itemize}
-  \item method : public : Forward(), Nil
+  \item method : public : Forward() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Rewind} - moves the cursor to the start of the list
   \begin{itemize}
-  \item method : public : Rewind(), Nil
+  \item method : public : Rewind() \textasciitilde Nil
   \end{itemize}
 \item \texttt{IsStart} - returns true if cursor is at the start of the
   list
   \begin{itemize}
-  \item method : public : IsStart(), Bool
+  \item method : public : IsStart() \textasciitilde Bool
   \end{itemize}
 \item \texttt{IsEnd} - returns true if cursor is at the end of the
   list
   \begin{itemize}
-  \item method : public : IsEnd(), Bool
+  \item method : public : IsEnd() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Size} - returns the size of the list
 \end{itemize}
@@ -1249,24 +1249,24 @@ operations:
 \begin{itemize}
 \item \texttt{Push} - pushes a new value onto the stack
   \begin{itemize}
-  \item method : public : Push(value : Base), Nil
+  \item method : public : Push(value : Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Pop} - pops a values from the top of the stack
   \begin{itemize}
-  \item method : public : Pop(), Base
+  \item method : public : Pop() \textasciitilde Base
   \end{itemize}
 \item \texttt{Top} - retrieves the top value from the stack (without
   popping the stack)
   \begin{itemize}
-  \item method : public : Top(), Base
+  \item method : public : Top() \textasciitilde Base
   \end{itemize}
 \item \texttt{IsEmpty} - returns true if stack is empty
   \begin{itemize}
-  \item method : public : IsEmpty(), Bool
+  \item method : public : IsEmpty() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Size} - returns the stack size
   \begin{itemize}
-  \item method : public : Size(), Int
+  \item method : public : Size() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
@@ -1288,61 +1288,61 @@ following operations:
   
 \item \texttt{AddBack} - adds a new value to the back of the vector
   \begin{itemize}
-  \item method : public : AddBack(value : Base), Nil
+  \item method : public : AddBack(value : Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{RemoveBack} - removes the last element in the vector
   \begin{itemize}
-  \item method : public : RemoveBack(), Nil
+  \item method : public : RemoveBack() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Get} - returns the value of the element pointed to by
   the cursor
   \begin{itemize}
-  \item method : public : Get(index : Int), Base
+  \item method : public : Get(index : Int) \textasciitilde Base
   \end{itemize}
 \item \texttt{Set} - replaces the list value based upon the given
   index
   \begin{itemize}
-  \item method : public : Set(value : Base, index : Int), Bool
+  \item method : public : Set(value : Base, index : Int) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Size} - returns the size of the list
   \begin{itemize}
-  \item method : public : Size(), Int
+  \item method : public : Size() \textasciitilde Int
   \end{itemize}
 \item \texttt{ToArray} - returns an array of elements
   \begin{itemize}
-  \item method : public : ToArray(), Base
+  \item method : public : ToArray() \textasciitilde Base
   \end{itemize}
   Additional methods for CompareVector/IntVector/FloatVector
 \item \texttt{Sort} - sorts a vector of values using a merge sort
   algorithm in $O(n \log_2 n)$ time.
   \begin{itemize}
-  \item method : public : Sort(), Nil
+  \item method : public : Sort() \textasciitilde Nil
   \end{itemize}
 \item \texttt{BinarySearch} - performs a binary search for an element
   in a \emph{sorted} vector using an iterative binary search algorithm
   in $O(\log_2 n)$ time.
   \begin{itemize}
-  \item method : public : BinarySearch(v : Compare), Nil
+  \item method : public : BinarySearch(v : Compare) \textasciitilde Nil
   \end{itemize}
   Additional methods for IntVector/FloatVector
 \item \texttt{Min} - returns the smallest value in the vector
   \begin{itemize}
-  \item method : public : native : Min(), Int/Float
+  \item method : public : native : Min() \textasciitilde Int/Float
   \end{itemize}
 \item \texttt{Max} - returns the largest value in the vector
   \begin{itemize}
-  \item method : public : native : Max(), Int/Float
+  \item method : public : native : Max() \textasciitilde Int/Float
   \end{itemize}
 \item \texttt{Average} - returns the calculated average for all values
   in the list
   \begin{itemize}
-  \item method : public : native : Average(), Int/Float
+  \item method : public : native : Average() \textasciitilde Int/Float
   \end{itemize}
 \item \texttt{Filter} - applys the result of the passed in function to
   each element in the array
   \begin{itemize}
   \item method : public : Filter(func : (Int/Float/Compare) $\sim$
-    Bool), IntVector/FloatVector/CompareVector
+    Bool) \textasciitilde IntVector/FloatVector/CompareVector
   \end{itemize}
 \item \texttt{Apply} - applys the result of the passed in function to
   each element in the array
@@ -1363,23 +1363,23 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
   \end{itemize}
 \item \texttt{Insert} - adds a new value to the tree
   \begin{itemize}
-  \item method : public : Insert(key : Compare, value : Base), Nil
+  \item method : public : Insert(key : Compare, value : Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Remove} - removes a value from the tree
   \begin{itemize}
-  \item method : public : Remove(key : Compare), Nil
+  \item method : public : Remove(key : Compare) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - searches for a value based upon a key
   \begin{itemize}
-  \item method : public : Find(key : Compare), Base
+  \item method : public : Find(key : Compare) \textasciitilde Base
   \end{itemize}
 \item \texttt{Has} - returns true if item is in map
   \begin{itemize}
-  \item method : public : Has(value : Compare), Bool
+  \item method : public : Has(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{GetKeys} - returns a vector of keys
   \begin{itemize}
-  \item method : public : GetKeys(), Vector
+  \item method : public : GetKeys() \textasciitilde Vector
   \end{itemize}
 \end{itemize}
 
@@ -1391,27 +1391,27 @@ for larger sets):
 \begin{itemize}
 \item \texttt{Insert} - adds a new value to the hash table
   \begin{itemize}
-  \item method : public : Insert(key : Compare, value : Base), Nil
+  \item method : public : Insert(key : Compare, value : Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Remove} - removes a value from the hash table
   \begin{itemize}
-  \item method : public : Remove(key : Compare), Nil
+  \item method : public : Remove(key : Compare) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - searches for a value based upon a key
   \begin{itemize}
-  \item method : public : Find(key : Compare), Base
+  \item method : public : Find(key : Compare) \textasciitilde Base
   \end{itemize}
 \item \texttt{Has} - returns true if item is in hash
   \begin{itemize}
-  \item method : public : Has(value : Compare), Bool
+  \item method : public : Has(value : Compare) \textasciitilde Bool
   \end{itemize}
 \item \texttt{GetKeys} - returns a vector of keys
   \begin{itemize}
-  \item method : public : GetKeys(), Vector
+  \item method : public : GetKeys() \textasciitilde Vector
   \end{itemize}
 \item \texttt{GetValues} - returns a vector of values
   \begin{itemize}
-  \item method : public : GetValues(), Vector
+  \item method : public : GetValues() \textasciitilde Vector
   \end{itemize}
 \end{itemize}.
 
@@ -1423,15 +1423,15 @@ environment.
 \item \texttt{GetPlatform} - returns a string containing information
   about the runtime environment
   \begin{itemize}
-  \item function : GetPlatform(), String
+  \item function : GetPlatform() \textasciitilde String
   \end{itemize}
 \item \texttt{GetTime} - returns the current time
   \begin{itemize}
-  \item method : public : GetTime(), Time
+  \item method : public : GetTime() \textasciitilde Time
   \end{itemize}
 \item \texttt{Exit} - exits the current running program
   \begin{itemize}
-  \item method : public : Exit(), Nil
+  \item method : public : Exit() \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1442,18 +1442,18 @@ the system console.  The class supports the following operations:
 \item \texttt{Print} - prints all basic types including
   \texttt{String} and \texttt{Char[]} to standard out.
   \begin{itemize}
-  \item function : Print(t : type), ConsoleIO
+  \item function : Print(t : type) \textasciitilde ConsoleIO
   \end{itemize}
 \item \texttt{PrintLine} - prints all basic types including
   \texttt{String} and \texttt{Char[]} to standard out followed by a
   newline.
   \begin{itemize}
-  \item function : PrintLine(t : type), ConsoleIO
+  \item function : PrintLine(t : type) \textasciitilde ConsoleIO
   \end{itemize}
 \item \texttt{ReadString} - reads in a line of text as a
   \texttt{Char[]} from standard in.
   \begin{itemize}
-  \item method : public : ReadString(), String
+  \item method : public : ReadString() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1468,28 +1468,28 @@ running system thread.
 \item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
   thread's \texttt{Run()} method in a separate thread.
   \begin{itemize}
-  \item method : public : Execute(param : System.Base), Nil
+  \item method : public : Execute(param : System.Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Sleep} - Sleeps a given thread for a number of
   milliseconds.
   \begin{itemize}
-  \item function : Sleep(t : Int), Nil
+  \item function : Sleep(t : Int) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Join} - Joins a thread instance with the creating thread
   \begin{itemize}
-  \item method : public : Join(), Nil
+  \item method : public : Join() \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetName} - Returns the name of the thread
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \item \texttt{GetRunID} - Returns running thread ID
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \item \texttt{Run} - Method that is executed by the new thread
   \begin{itemize}
-  \item method : virtual : public : Run(param : System.Base), Nil
+  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1503,7 +1503,7 @@ and unlocking running threads.
   \end{itemize}
 \item \texttt{GetName} - Returns the name of the thread
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1517,34 +1517,34 @@ time.  The class supports the following operations:
   \end{itemize}
 \item \texttt{GetDay} - return the current day as an \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetDay(), Int
+  \item method : public : GetDay() \textasciitilde Int
   \end{itemize}
 \item \texttt{GetMonth} - return the current month as an \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetMonth(), Int
+  \item method : public : GetMonth() \textasciitilde Int
   \end{itemize}
 \item \texttt{GetYear} - return the current year as an \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetYear(), Int
+  \item method : public : GetYear() \textasciitilde Int
   \end{itemize}
 \item \texttt{GetHours} - return the current hour as an \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetHours(), Int
+  \item method : public : GetHours() \textasciitilde Int
   \end{itemize}
 \item \texttt{GetMinutes} - return the current minutes as an
   \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetMinutes(), Int
+  \item method : public : GetMinutes() \textasciitilde Int
   \end{itemize}
 \item \texttt{GetSeconds} - return the current seconds as an
   \texttt{Int}.
   \begin{itemize}
-  \item method : public : GetSeconds(), Int
+  \item method : public : GetSeconds() \textasciitilde Int
   \end{itemize}
 \item \texttt{IsSavingsTime} - return true if daylights saving time,
   false otherwise
   \begin{itemize}
-  \item method : public : IsSavingsTime(), Bool
+  \item method : public : IsSavingsTime() \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
@@ -1558,36 +1558,36 @@ is in the `IO' bundle.  The class supports the following operations:
   \end{itemize}
 \item \texttt{IsOpen} - returns true if file is open.
   \begin{itemize}
-  \item method : public : IsOpen(), Bool
+  \item method : public : IsOpen() \textasciitilde Bool
   \end{itemize}
 \item \texttt{IsEOF} - returns true if the file pointer is at the EOF.
   \begin{itemize}
-  \item method : public : IsEOF(), Bool
+  \item method : public : IsEOF() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Seek} - seeks to a position in a file.
   \begin{itemize}
-  \item method : public : Seek(p : Int), Bool
+  \item method : public : Seek(p : Int) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Rewind} - moves the file pointer to the beginning of a
   file.
   \begin{itemize}
-  \item method : public : Rewind(), Nil
+  \item method : public : Rewind() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Size} - returns the size of the file.
   \begin{itemize}
-  \item function : Size(name : String), Int
+  \item function : Size(name : String) \textasciitilde Int
   \end{itemize}
 \item \texttt{Remove} - deletes a file.
   \begin{itemize}
-  \item function : Remove(n : String), Bool
+  \item function : Remove(n : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Exists} - returns true if the file exists.
   \begin{itemize}
-  \item function : Exists(n : String), Bool
+  \item function : Exists(n : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Rename} - renames a file
   \begin{itemize}
-  \item function : Rename(from : String, to : String), Bool
+  \item function : Rename(from : String, to : String) \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
@@ -1602,28 +1602,28 @@ following operations:
   \end{itemize}
 \item \texttt{Close} - closes a file.
   \begin{itemize}
-  \item method : public : Close(), Nil
+  \item method : public : Close() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ReadByte} - reads a byte from a file.
   \begin{itemize}
-  \item method : public : ReadByte(), Byte
+  \item method : public : ReadByte() \textasciitilde Byte
   \end{itemize}
-\item \texttt{ReadFile} - reads an entire file into a String.
+\item \texttt{ReadBinaryFile} - reads an entire file into a byte array.
   \begin{itemize}
-  \item function : public : ReadFile(file : String), String
+  \item function : public : ReadBinaryFile(file : String) \textasciitilde Byte[]
   \end{itemize}
 \item \texttt{ReadBuffer} - reads n number of bytes from a file.
   \begin{itemize}
   \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
-    Byte[]), Int
+    Byte[]) \textasciitilde Int
   \end{itemize}
 \item \texttt{ReadString} - reads a line from a file.
   \begin{itemize}
-  \item method : public : ReadString(), String
+  \item method : public : ReadString() \textasciitilde String
   \end{itemize}
 \item \texttt{ReadFile} - reads an entire file.
   \begin{itemize}
-  \item method : public : ReadFile(), String
+  \item method : public : ReadFile() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1634,21 +1634,21 @@ following operations:
 \begin{itemize}
 \item \texttt{Close} - closes a file.
   \begin{itemize}
-  \item method : public : Close(), Nil
+  \item method : public : Close() \textasciitilde Nil
   \end{itemize}
 \item \texttt{WriteByte} - writes a byte to a file.
   \begin{itemize}
-  \item method : public : WriteByte(b : Int), Bool
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
   \end{itemize}
 \item \texttt{WriteBuffer} - writes n number of bytes to a file.
   \begin{itemize}
-  \item method : public : WriteBuffer(buffer : Byte[]), Int
+  \item method : public : WriteBuffer(buffer : Byte[]) \textasciitilde Int
   \item method : public : WriteBuffer(offset : Int, num : Int, buffer
-    : Byte[]), Int
+    : Byte[]) \textasciitilde Int
   \end{itemize}
 \item \texttt{WriteString} - writes a string to a file.
   \begin{itemize}
-  \item method : public : WriteString(s : String), Nil
+  \item method : public : WriteString(s : String) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1659,15 +1659,15 @@ the following operations:
 \begin{itemize}
 \item \texttt{Create} - creates a new directory.
   \begin{itemize}
-  \item function : Create(n : String), Bool
+  \item function : Create(n : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Exists} - returns true if the directory exists.
   \begin{itemize}
-  \item function : Exists(n : String), Bool
+  \item function : Exists(n : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{List} - returns vector of file and directory names.
   \begin{itemize}
-  \item function : List(n : String), String[]
+  \item function : List(n : String) \textasciitilde String[]
   \end{itemize}
 \end{itemize}
 
@@ -1682,34 +1682,34 @@ the following operations:
   \end{itemize}
 \item \texttt{Add} - deflates a datatype
   \begin{itemize}
-  \item method : public : Add(b : Bool), Nil
+  \item method : public : Write(b : Bool) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(i : Int), Nil
+  \item method : public : Write(i : Int) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(f : Float), Nil
+  \item method : public : Write(f : Float) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(o : Base), Nil
+  \item method : public : Write(o : Base) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(b : Bool[]), Nil
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(b : Bool[]), Nil
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(b : Byte[]), Nil
+  \item method : public : Write(b : Byte[]) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(c : Charl[]), Nil
+  \item method : public : Write(c : Charl[]) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(i : Int[]), Nil
+  \item method : public : Write(i : Int[]) \textasciitilde Nil
   \end{itemize}
 \begin{itemize}
-  \item method : public : Add(f : Float[]), Nil
+  \item method : public : Write(f : Float[]) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1724,39 +1724,39 @@ the following operations:
   \end{itemize}
 \item \texttt{ReadBool} - reads a boolean value
   \begin{itemize}
-  \item method : public : ReadBool(), Bool
+  \item method : public : ReadBool() \textasciitilde Bool
   \end{itemize}
 \item \texttt{ReadInt} - reads an integer value
   \begin{itemize}
-  \item method : public : ReadInt(), Int
+  \item method : public : ReadInt() \textasciitilde Int
   \end{itemize}
 \item \texttt{ReadFloat} - reads a float value
   \begin{itemize}
-  \item method : public : ReadFloat(), Float
+  \item method : public : ReadFloat() \textasciitilde Float
   \end{itemize}
 \item \texttt{ReadObject} - reads an object
   \begin{itemize}
-  \item method : public : ReadObject(), Float
+  \item method : public : ReadObject() \textasciitilde Float
   \end{itemize}
 \item \texttt{ReadBoolArray} - reads a boolean array
   \begin{itemize}
-  \item method : public : ReadBoolArray(), Bool[]
+  \item method : public : ReadBoolArray() \textasciitilde Bool[]
   \end{itemize}
 \item \texttt{ReadByteArray} - reads a byte array
   \begin{itemize}
-  \item method : public : ReadByteArray(), Byte[]
+  \item method : public : ReadByteArray() \textasciitilde Byte[]
   \end{itemize}
 \item \texttt{ReadCharArray} - reads a character array
   \begin{itemize}
-  \item method : public : ReadCharArray(), Char[]
+  \item method : public : ReadCharArray() \textasciitilde Char[]
   \end{itemize}
 \item \texttt{ReadIntArray} - reads an integer array
   \begin{itemize}
-  \item method : public : ReadIntArray(), Byte[]
+  \item method : public : ReadIntArray() \textasciitilde Byte[]
   \end{itemize}
 \item \texttt{ReadFloatArray} - reads a float array
   \begin{itemize}
-  \item method : public : ReadFloatArray(), Float[]
+  \item method : public : ReadFloatArray() \textasciitilde Float[]
   \end{itemize}
 \end{itemize}
 
@@ -1771,41 +1771,41 @@ following operations:
   \end{itemize}
 \item \texttt{IsOpen} - returns true if the socket is connected.
   \begin{itemize}
-  \item method : public : IsOpen(), Bool
+  \item method : public : IsOpen() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Close} - closes a connected socket.
   \begin{itemize}
-  \item method : public : Close(), Nil
+  \item method : public : Close() \textasciitilde Nil
   \end{itemize}
 \item \texttt{WriteByte} - writes a byte to a file.
   \begin{itemize}
-  \item method : public : WriteByte(b : Int), Bool
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
   \end{itemize}
 \item \texttt{WriteBuffer} - writes n number of bytes to a file.
   \begin{itemize}
   \item method : public : WriteBuffer(offset : Int, num : Int, buffer
-    : Byte[]), Int
+    : Byte[]) \textasciitilde Int
   \end{itemize}
 \item \texttt{WriteString} - writes a string to a file.
   \begin{itemize}
-  \item method : public : WriteString(s : String), Nil
+  \item method : public : WriteString(s : String) \textasciitilde Nil
   \end{itemize}
 \item \texttt{ReadByte} - reads a byte from a file.
   \begin{itemize}
-  \item method : public : ReadByte(), Byte
+  \item method : public : ReadByte() \textasciitilde Byte
   \end{itemize}
 \item \texttt{ReadBuffer} - reads n number of bytes from a file.
   \begin{itemize}
   \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
-    Byte[]), Int
+    Byte[]) \textasciitilde Int
   \end{itemize}
 \item \texttt{ReadString} - reads a line from a file.
   \begin{itemize}
-  \item method : public : ReadString(), String
+  \item method : public : ReadString() \textasciitilde String
   \end{itemize}
 \item \texttt{HostName} - returns the host name
   \begin{itemize}
-  \item function : HostName(), String
+  \item function : HostName() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -1824,18 +1824,18 @@ This class in the `Net' bundle:
 \item \texttt{Post} - Performs a HTTP POST to the connected website,
   returns true is successful
   \begin{itemize}
-  \item method : public : Post(content : String), Bool
+  \item method : public : Post(content : String) \textasciitilde Bool
   \end{itemize}
 \item \texttt{Get} - Performs a HTTP GET from the connected website,
   returns a \texttt{Vector} of strings
   \begin{itemize}
-  \item method : public : Get(), Vector
+  \item method : public : Get() \textasciitilde Vector
   \end{itemize}
 \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers
   information.  HTTP header information is populated after a HTTP GET
   request.
   \begin{itemize}
-  \item method : GetHeaders(), Map
+  \item method : GetHeaders() \textasciitilde Map
   \end{itemize}
 \end{itemize}
 
@@ -1851,29 +1851,29 @@ bundle:
   \end{itemize}
 \item \texttt{ToString} - serializes the DOM into a string
   \begin{itemize}
-  \item method : public : ToString(), String
+  \item method : public : ToString() \textasciitilde String
   \end{itemize}
 \item \texttt{Parse} - Parses an XML stream into a DOM structure.
   Returns true if successful; false otherwise.
   \begin{itemize}
-  \item method : public : Parse(), Bool
+  \item method : public : Parse() \textasciitilde Bool
   \end{itemize}
 \item \texttt{GetVersion} - returns the XML document version
   \begin{itemize}
-  \item method : public : GetVersion(), String
+  \item method : public : GetVersion() \textasciitilde String
   \end{itemize}
 \item \texttt{GetEncoding} - returns the XML character encoding
   \begin{itemize}
-  \item method : public : GetEncoding(), String
+  \item method : public : GetEncoding() \textasciitilde String
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root node of the DOM.
   \begin{itemize}
-  \item method : public : GetRoot(), XMLElement
+  \item method : public : GetRoot() \textasciitilde XMLElement
   \end{itemize}
 \item \texttt{GetError} - Returns the last parsing error; if one
   occurred.
   \begin{itemize}
-  \item method : public : Parse(), Bool
+  \item method : public : Parse() \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
@@ -1889,27 +1889,27 @@ a string. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root element.
   \begin{itemize}
-  \item method : public : GetRoot(), XMLElement
+  \item method : public : GetRoot() \textasciitilde XMLElement
   \end{itemize}
 \item \texttt{ToString} - Serializes an element into a string
   \begin{itemize}
-  \item method : public : ToString(), String
+  \item method : public : ToString() \textasciitilde String
   \end{itemize}
 \item \texttt{GetVersion} - Returns the version name.
   \begin{itemize}
-  \item method : public : GetVersion(), String
+  \item method : public : GetVersion() \textasciitilde String
   \end{itemize}
 \item \texttt{SetVersion} - Sets the version name.
   \begin{itemize}
-  \item method : public : SetVersion(name : String), Nil
+  \item method : public : SetVersion(name : String) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetEncoding} - Returns the encoding name.
   \begin{itemize}
-  \item method : public : GetEncoding(), String
+  \item method : public : GetEncoding() \textasciitilde String
   \end{itemize}
 \item \texttt{SetEncoding} - Sets the encoding name.
   \begin{itemize}
-  \item method : public : SetEncoding(name : String), Nil
+  \item method : public : SetEncoding(name : String) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1926,50 +1926,50 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetName} - Returns the element name.
   \begin{itemize}
-  \item method : public : GetName(), String
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \item \texttt{SetName} - Sets the element name.
   \begin{itemize}
-  \item method : public : SetName(name : String), Nil
+  \item method : public : SetName(name : String) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root element.
   \begin{itemize}
-  \item method : public : GetRoot(), XMLElement
+  \item method : public : GetRoot() \textasciitilde XMLElement
   \end{itemize}
 \item \texttt{GetType} - Returns the element type.
   \begin{itemize}
-  \item method : public : GetType(), XMLElementType
+  \item method : public : GetType() \textasciitilde XMLElementType
   \end{itemize}
 \item \texttt{SetType} - Sets the element type.
   \begin{itemize}
-  \item method : public : SetType(type : XMLElementType), Nil
+  \item method : public : SetType(type : XMLElementType) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetParent} - Gets the parent element
   \begin{itemize}
-  \item method : public : GetParent(), XMLElement
+  \item method : public : GetParent() \textasciitilde XMLElement
   \end{itemize}
 \item \texttt{SetParent} - Sets the parent element
   \begin{itemize}
-  \item method : public : SetParent(parent : XMLElement), Nil
+  \item method : public : SetParent(parent : XMLElement) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetContent} - Returns the XML content between two tags.
   \begin{itemize}
-  \item method : public : GetContent(), String
+  \item method : public : GetContent() \textasciitilde String
   \end{itemize}
 \item \texttt{SetContent} - Sets the XML content between two tags.
   \begin{itemize}
-  \item method : public : SetContent(content : String), Nil
+  \item method : public : SetContent(content : String) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetChildCount} - Returns number of logical child
   elements.
   \begin{itemize}
-  \item method : public : GetChildCount(), Int
+  \item method : public : GetChildCount() \textasciitilde Int
   \end{itemize}
 \item \texttt{FindElements} - returns all elements that match the
   given query string.  The following XPath expressions are supported
   <num>, <attrib\_name>, first() and last().
   \begin{itemize}
-  \item method : public : FindElements(path : String), Vector
+  \item method : public : FindElements(path : String) \textasciitilde Vector
   \end{itemize}
 \item \texttt{GetChildren} - Returns all child elements.
   \begin{itemize}
@@ -1990,7 +1990,7 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetAttribute} - Returns the value of a given attribute.
   \begin{itemize}
-  \item method : public : GetAttribute(name : String), String
+  \item method : public : GetAttribute(name : String) \textasciitilde String
   \end{itemize}
 \item \texttt{SetAttribute} - Sets the name/value of a given
   attribute.
@@ -2000,15 +2000,15 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{ToString} - Serializes an element into a string
   \begin{itemize}
-  \item method : public : ToString(), String
+  \item method : public : ToString() \textasciitilde String
   \end{itemize}
 \item \texttt{DecodeString} - Decodes an XML encoded string
   \begin{itemize}
-  \item function : DecodeString(in : String), String
+  \item function : DecodeString(in : String) \textasciitilde String
   \end{itemize}
 \item \texttt{EncodeString} - Encodes an XML encoded string
   \begin{itemize}
-  \item function : EncodeString(in : String), String
+  \item function : EncodeString(in : String) \textasciitilde String
   \end{itemize}
 \end{itemize}
 
