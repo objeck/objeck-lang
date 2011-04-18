@@ -517,7 +517,7 @@ public:
   }
 
   bool IsInterface() {
-    return interface_names.size() == 0;
+    return interface_names.size() != 0;
   }
 
   const string& GetParentName() const {
