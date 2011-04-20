@@ -141,11 +141,10 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     return strength_reduced_blocks;
   }
 
-  return instruction_replaced_blocks;
+  //  return instruction_replaced_blocks;
 
-  /*  
   vector<IntermediateBlock*> method_lnlined_blocks;
-  if(optimization_level > 3) {
+  if(optimization_level > 3 && CanInlineMethod()) {
     // instruction replacement
 #ifdef _DEBUG
     cout << "  Method inlining..." << endl;
@@ -164,7 +163,6 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   }
   
   return method_lnlined_blocks;
-  */
 }
 
 IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
@@ -224,12 +222,13 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      const string &method_name = called->GetName();
+      const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
       if(!called->IsVirtual() && called->GetInstructionCount() < 16 && 
 	 !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
 	   current_method->GetId() == program->GetStartMethodId()) &&
-	 // TODO: pass constructor flag
-	 current_method->GetName().find(current_method->GetClass()->GetName() + ":New") != 0) {
-        InlineMethodCall(called, outputs);
+	 method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0) {
+	InlineMethodCall(called, outputs);
       }
       else {
 	outputs->AddInstruction(instr);
