@@ -91,7 +91,21 @@ class ItermediateOptimizer {
   void ReplacementInstruction(IntermediateInstruction* instr,
                               list<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
-
+  
+  bool CanInlineMethod() {
+    const string &method_name = current_method->GetName();
+    std::string sys_prefix("System"); std::string io_prefix("IO");
+    std::string net_prefix("Net"); std::string intro_prefix("Introspection");
+    if(!method_name.compare(0, sys_prefix.size(), sys_prefix) ||
+       !method_name.compare(0, io_prefix.size(), io_prefix) ||
+       !method_name.compare(0, net_prefix.size(), net_prefix) ||
+       !method_name.compare(0, intro_prefix.size(), intro_prefix)) {
+      return false;
+    }
+    
+    return true;
+  }
+  
 public:
   ItermediateOptimizer(IntermediateProgram* p, string optimize) {
     program = p;
