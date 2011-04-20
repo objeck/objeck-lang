@@ -3368,7 +3368,7 @@ void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(0xf2);
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
-  AddMachineCode(0x2d);
+  AddMachineCode(0x2c);
   AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
