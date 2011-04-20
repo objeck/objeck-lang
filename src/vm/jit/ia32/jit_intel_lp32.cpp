@@ -2315,6 +2315,7 @@ void JitCompilerIA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
 
 void JitCompilerIA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
+  move_mem_xreg(offset, EBP, holder->GetRegister());
   math_xreg_xreg(holder->GetRegister(), dest, type);
   ReleaseXmmRegister(holder);
 }
