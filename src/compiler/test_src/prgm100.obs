@@ -1,0 +1,28 @@
+use Structure;
+
+bundle Default {
+	class Hello {
+		function : f1() ~ Int {
+			a := 5;
+			return 2 + 5;
+		}
+	
+		function : Run() ~ Nil {
+#			(4 + f1())->PrintLine();
+			v := IntVector->New();
+			v->AddBack(12);
+			v->AddBack(13);
+			v->Size()->PrintLine();
+
+			
+			x := IntVector->New(v);
+			x->AddBack(12);
+			x->AddBack(13);
+			x->Size()->PrintLine();
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+	}
+}
