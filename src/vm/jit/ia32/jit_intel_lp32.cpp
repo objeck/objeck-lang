@@ -3233,14 +3233,14 @@ void JitCompilerIA32::cvt_imm_reg(RegInstr* instr, Register reg) {
 
 void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
-  cout << "  " << (++instr_count) << ": [cvtsd2di " << offset << "(%" 
+  cout << "  " << (++instr_count) << ": [cvtsd2si " << offset << "(%" 
        << GetRegisterName(src) << "), %" << GetRegisterName(dest) 
        << "]" << endl;
 #endif
   // encode
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
-  AddMachineCode(0x2d);
+  AddMachineCode(0x2c);
   AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
