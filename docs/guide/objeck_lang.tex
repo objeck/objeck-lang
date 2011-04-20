@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{1.5.0}.  For
+  functionality that is included in release \textit{1.5.2}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -342,7 +342,7 @@ an \texttt{else} statement will be executed (if it exists).  The
 example below demonstrates an \texttt{if} statement.
 
 \begin{verbatim}
-value : Int := Console->ReadLine()->ToInt();
+value := Console->ReadLine()->ToInt();
 if(value <> 3) {
   "Not equal to 3"->PrintLine();
 }
@@ -386,7 +386,7 @@ evaluates to \texttt{true}.  When its conditional expression evaluates
 to \texttt{false} than the loop body will cease to execute.
 
 \begin{verbatim}
-i : Int := 10;
+i := 10;
 while(i > 0) {
    i->PrintLine();
    i := i - 1;
@@ -402,7 +402,7 @@ its conditional expression evaluates to \texttt{false} than the loop
 body will cease to execute.
 
 \begin{verbatim}
-i : Int := 10;
+i := 10;
 do { 
    i->PrintLine();
    i := i - 1;
@@ -417,8 +417,8 @@ The \texttt{for} statement is another common looping construct.  The
 evaluation expression and an update statement.
 
 \begin{verbatim}
-name : Char[] := "John"->ToCharArray();
-for(i : Int := 0; i < name->Size(); i := i + 1;) {
+name := "John"->ToCharArray();
+for(i := 0; i < name->Size(); i := i + 1;) {
   name[i]->PrintLine();
 }
 \end{verbatim}
@@ -551,7 +551,7 @@ To determine if an object instance is of a certain class type it's
 instance type before casting it.
 
 \begin{verbatim}
-s := "aString";
+s := "FooBar";
 s->TypeOf(String)->PrintLine();
 \end{verbatim}
 
