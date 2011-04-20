@@ -1,5 +1,3 @@
-use Structure;
-
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
