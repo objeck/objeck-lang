@@ -47,6 +47,55 @@ IntermediateFactory* IntermediateFactory::Instance()
   return instance;
 }
 
+InlineMethodData* IntermediateMethod::RegisterInlined(IntermediateMethod* called) {
+  map<IntermediateMethod*, InlineMethodData*>::iterator found = registered_inlined_mthds.find(called);
+  // not found
+  InlineMethodData* data;
+  if(found == registered_inlined_mthds.end()) {
+    // TODO: delete items
+    data = new InlineMethodData;
+      
+    data->locl_offset = space / sizeof(INT_VALUE);
+    space += called->GetSpace() + sizeof(INT_VALUE);
+    
+    // add method data
+    registered_inlined_mthds.insert(pair<IntermediateMethod*, InlineMethodData*>(called, data));
+  }
+  else {
+    data = found->second;;
+  }
+  
+  InlineClassInstanceData* cls_inst_data;
+  if(klass->GetId() != called->GetClass()->GetId()) {
+    map<IntermediateClass*, InlineClassInstanceData*>::iterator cls_found = registered_inlined_clss.find(called->GetClass());
+    // not found
+    if(cls_found == registered_inlined_clss.end()) {
+      cls_inst_data = new InlineClassInstanceData;
+      // instance offset
+      int inst_offset = klass->GetInstanceSpace() / sizeof(INT_VALUE);
+      klass->SetInstanceSpace(klass->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
+      cls_inst_data->inst_offset = inst_offset;
+      // class offset
+      int cls_offset = klass->GetClassSpace() / sizeof(INT_VALUE);
+      klass->SetClassSpace(klass->GetClassSpace() + called->GetClass()->GetClassSpace());
+      cls_inst_data->cls_offset = cls_offset;      
+      // add instance & class data
+      registered_inlined_clss.insert(pair<IntermediateClass*, InlineClassInstanceData*>(called->GetClass(), cls_inst_data));
+    }
+    else {
+      cls_inst_data = cls_found->second;
+    }
+  }
+  else {
+    cls_inst_data = new InlineClassInstanceData;
+    cls_inst_data->inst_offset = 0;
+    cls_inst_data->cls_offset = 0;
+  }
+  data->cls_inst_data = cls_inst_data;
+  
+  return data;
+}
+
 /****************************
  * Writes target code to an
  * output file.

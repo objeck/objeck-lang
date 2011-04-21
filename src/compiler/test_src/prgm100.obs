@@ -1,24 +1,35 @@
-use Structure;
-
 bundle Default {
-	class Hello {
+	class Foo {
+		a : Int;
+		b : Int;
+
+		New() {
+			a := 7;
+			b := 13;
+		}
+
+		method : public : fA() ~ Int {
+			return a * 5;
+		}
+
+		method : public : fB() ~ Int {
+			return b - 5;
+		}
+	}
+	
+	class Test {
 		function : f1() ~ Int {
 			a := 5;
-			return 2 + 5;
+			return a * 2 + 5;
 		}
 	
 		function : Run() ~ Nil {
-#			(4 + f1())->PrintLine();
-			v := IntVector->New();
-			v->AddBack(12);
-			v->AddBack(13);
-			v->Size()->PrintLine();
-
-			
-			x := IntVector->New(v);
-			x->AddBack(12);
-			x->AddBack(13);
-			x->Size()->PrintLine();
+			f := Foo->New();
+			f->fA()->PrintLine();
+			f->fA()->PrintLine();
+			f->fB()->PrintLine();
+			a := f1() + f1();
+			a->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
