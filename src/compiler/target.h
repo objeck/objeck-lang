@@ -737,6 +737,16 @@ public:
 /****************************
  * IntermediateMethod class
  ****************************/
+struct InlineClassInstanceData {
+  int inst_offset;
+  int cls_offset;
+};
+ 
+struct InlineMethodData {
+  int locl_offset;
+  InlineClassInstanceData* cls_inst_data;
+};
+
 class IntermediateMethod : public Intermediate {
   int id;
   string name;
@@ -753,7 +763,9 @@ class IntermediateMethod : public Intermediate {
   vector<IntermediateBlock*> blocks;
   IntermediateDeclarations* entries;
   IntermediateClass* klass;
-
+  map<IntermediateClass*, InlineClassInstanceData*> registered_inlined_clss;
+  map<IntermediateMethod*, InlineMethodData*> registered_inlined_mthds;
+  
 public:
   IntermediateMethod(int i, const string &n, bool v, bool h, const string &r,
                      frontend::MethodType t, bool nt, bool f, int c, int p,
@@ -813,8 +825,24 @@ public:
       delete entries;
       entries = NULL;
     }
-  }
 
+    map<IntermediateClass*, InlineClassInstanceData*>::iterator citer;
+    for(citer = registered_inlined_clss.begin(); citer != registered_inlined_clss.end(); citer++) {
+      InlineClassInstanceData* tmp = citer->second;
+      delete tmp;
+      tmp = NULL;
+    }
+    registered_inlined_clss.clear();
+
+    map<IntermediateMethod*, InlineMethodData*>::iterator miter;
+    for(miter = registered_inlined_mthds.begin(); miter != registered_inlined_mthds.end(); miter++) {
+      InlineMethodData* tmp = miter->second;
+      delete tmp;
+      tmp = NULL;
+    }
+    registered_inlined_mthds.clear();
+  }
+  
   int GetId() {
     return id;
   }
@@ -860,6 +888,8 @@ public:
     blocks = b;
   }
 
+  InlineMethodData* RegisterInlined(IntermediateMethod* called);
+  
   void Write(bool is_debug, ofstream* file_out) {
     // write attributes
     WriteInt(id, file_out);

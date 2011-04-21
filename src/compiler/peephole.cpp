@@ -228,6 +228,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 	 !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
 	   current_method->GetId() == program->GetStartMethodId()) &&
 	 method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0) {
+	
 	InlineMethodCall(called, outputs);
       }
       else {
@@ -244,14 +245,22 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 
 void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs)
 {
+  InlineMethodData* data = current_method->RegisterInlined(called);
+  
+  /*
   const int locl_offset = current_method->GetSpace() / sizeof(INT_VALUE);
   current_method->SetSpace(current_method->GetSpace() + called->GetSpace() + sizeof(INT_VALUE));
+  */
+  const int locl_offset = data->locl_offset;
+  const int inst_offset = data->cls_inst_data->inst_offset;
   
+  /*
   int inst_offset = 0;
   if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
     inst_offset = current_method->GetClass()->GetInstanceSpace() / sizeof(INT_VALUE);
     current_method->GetClass()->SetInstanceSpace(current_method->GetClass()->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
   }
+  */
   
   int cls_offset = 0;
   if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
