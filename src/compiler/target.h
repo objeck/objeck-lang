@@ -763,8 +763,7 @@ class IntermediateMethod : public Intermediate {
   vector<IntermediateBlock*> blocks;
   IntermediateDeclarations* entries;
   IntermediateClass* klass;
-  map<IntermediateClass*, InlineClassInstanceData*> registered_inlined_clss;
-  map<IntermediateMethod*, InlineMethodData*> registered_inlined_mthds;
+  map<IntermediateMethod*, int> registered_inlined_mthds;
   
 public:
   IntermediateMethod(int i, const string &n, bool v, bool h, const string &r,
@@ -825,22 +824,6 @@ public:
       delete entries;
       entries = NULL;
     }
-
-    map<IntermediateClass*, InlineClassInstanceData*>::iterator citer;
-    for(citer = registered_inlined_clss.begin(); citer != registered_inlined_clss.end(); citer++) {
-      InlineClassInstanceData* tmp = citer->second;
-      delete tmp;
-      tmp = NULL;
-    }
-    registered_inlined_clss.clear();
-
-    map<IntermediateMethod*, InlineMethodData*>::iterator miter;
-    for(miter = registered_inlined_mthds.begin(); miter != registered_inlined_mthds.end(); miter++) {
-      InlineMethodData* tmp = miter->second;
-      delete tmp;
-      tmp = NULL;
-    }
-    registered_inlined_mthds.clear();
   }
   
   int GetId() {
@@ -887,8 +870,19 @@ public:
   void SetBlocks(vector<IntermediateBlock*> b) {
     blocks = b;
   }
-
-  InlineMethodData* RegisterInlined(IntermediateMethod* called);
+  
+  int GetInlineOffset(IntermediateMethod* called) {
+    map<IntermediateMethod*, int>::iterator found = registered_inlined_mthds.find(called);
+    if(found == registered_inlined_mthds.end()) {
+      int locl_offset = space / sizeof(INT_VALUE);
+      space += called->GetSpace() + sizeof(INT_VALUE);
+      registered_inlined_mthds.insert(pair<IntermediateMethod*, int>(called, locl_offset));
+      
+      return locl_offset;
+    }
+    
+    return found->second;
+  }
   
   void Write(bool is_debug, ofstream* file_out) {
     // write attributes

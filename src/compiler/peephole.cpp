@@ -245,32 +245,10 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 
 void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs)
 {
-  InlineMethodData* data = current_method->RegisterInlined(called);
-  
-  /*
-  const int locl_offset = current_method->GetSpace() / sizeof(INT_VALUE);
-  current_method->SetSpace(current_method->GetSpace() + called->GetSpace() + sizeof(INT_VALUE));
-  */
-  const int locl_offset = data->locl_offset;
-  const int inst_offset = data->cls_inst_data->inst_offset;
-  
-  /*
-  int inst_offset = 0;
-  if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
-    inst_offset = current_method->GetClass()->GetInstanceSpace() / sizeof(INT_VALUE);
-    current_method->GetClass()->SetInstanceSpace(current_method->GetClass()->GetInstanceSpace() + called->GetClass()->GetInstanceSpace());
-  }
-  */
-  
-  int cls_offset = 0;
-  if(current_method->GetClass()->GetId() != called->GetClass()->GetId()) {
-    cls_offset = current_method->GetClass()->GetClassSpace() / sizeof(INT_VALUE);
-    current_method->GetClass()->SetClassSpace(current_method->GetClass()->GetClassSpace() + called->GetClass()->GetClassSpace());
-  }
-  
   // manage LOAD_INST_MEM for callee
+  const int locl_offset = current_method->GetInlineOffset(called);
   outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, locl_offset, LOCL));
-
+  
   bool needs_jump = false;
   vector<IntermediateBlock*> blocks = called->GetBlocks();
   for(unsigned int i = 0; i < blocks.size(); i++) {
@@ -288,11 +266,8 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
         if(instr->GetOperand2() == LOCL) {
           outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + locl_offset + 1, instr->GetOperand2()));
         }
-	else if(instr->GetOperand2() == CLS) {
-	  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + cls_offset, instr->GetOperand2()));
-	}
 	else {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + inst_offset, instr->GetOperand2()));
+	  outputs->AddInstruction(instr);
         }
       }
 	break;
@@ -318,7 +293,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       }
     }
   }
-
+  
   if(needs_jump) {
     outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end--));
   }
