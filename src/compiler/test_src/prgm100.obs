@@ -9,7 +9,7 @@ bundle Default {
 		}
 
 		method : public : fA() ~ Int {
-			return a * 5;
+			return a * 5 - b;
 		}
 
 		method : public : fB() ~ Int {
@@ -30,6 +30,9 @@ bundle Default {
 			f->fB()->PrintLine();
 			a := f1() + f1();
 			a->PrintLine();
+
+			f1 := Foo->New();
+			f1->fA()->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
