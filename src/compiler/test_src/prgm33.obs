@@ -23,6 +23,7 @@ bundle Default {
 				list->Next();
 			};
 
+#~
 			list->Forward();
 			while(list->IsStart() <> true) {
 				list->Get()->PrintLine();
@@ -31,6 +32,7 @@ bundle Default {
 			
 			"size: "->Print();
 			list->Size()->PrintLine();
+~#
 		}		
 	}
 }
