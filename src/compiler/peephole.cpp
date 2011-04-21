@@ -141,8 +141,9 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     return strength_reduced_blocks;
   }
 
-  //  return instruction_replaced_blocks;
-
+  return instruction_replaced_blocks;
+  
+  /*
   vector<IntermediateBlock*> method_lnlined_blocks;
   if(optimization_level > 3 && CanInlineMethod()) {
     // instruction replacement
@@ -163,6 +164,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   }
   
   return method_lnlined_blocks;
+  */
 }
 
 IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
