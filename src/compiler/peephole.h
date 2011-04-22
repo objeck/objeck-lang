@@ -52,9 +52,11 @@ class ItermediateOptimizer {
   IntermediateProgram* program;
   int optimization_level;
   int inline_end;
+  int inline_end2;
   IntermediateMethod* current_method;
   bool merge_blocks;
   int cur_line_num;
+  map<int, int> inline_lbls;
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
 
@@ -110,6 +112,7 @@ public:
   ItermediateOptimizer(IntermediateProgram* p, string optimize) {
     program = p;
     inline_end = -1;
+    inline_end2 = -1000;
     cur_line_num = -1;
     merge_blocks = false;
 

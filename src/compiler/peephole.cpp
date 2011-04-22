@@ -50,6 +50,7 @@ void ItermediateOptimizer::Optimize()
 #ifdef _DEBUG
       cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
 #endif
+      
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
   }
@@ -236,6 +237,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 	 method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
 	 method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
 	 method_name.compare(0, intro_prefix.size(), intro_prefix) != 0) {
+
 	InlineMethodCall(called, outputs);
       }
       else {
@@ -286,7 +288,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       case RTRN:
         // note: code generates an extra empty block if there's more than 1 block
         if(!((blocks.size() == 1 || i == blocks.size() - 2) && j == instrs.size() - 1)) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end, -1));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end2, -1));
           needs_jump = true;
         } 
 	else {
@@ -295,10 +297,32 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
         break;
 
 	// TODO: ids unique per method
-      case JMP:
+      case JMP: {
+	int new_id;
+	map<int, int>::iterator found = inline_lbls.find(instr->GetOperand());
+	if(found == inline_lbls.end()) {
+	  new_id = inline_end--;
+	  inline_lbls.insert(pair<int, int>(instr->GetOperand(), new_id));
+	}
+	else {
+	  new_id = found->second;
+	}
+	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, new_id, instr->GetOperand2()));
+      }
 	break;
 
-      case LBL:
+      case LBL: {
+	int new_id;
+	map<int, int>::iterator found = inline_lbls.find(instr->GetOperand());
+	if(found == inline_lbls.end()) {
+	  new_id = inline_end--;
+	  inline_lbls.insert(pair<int, int>(instr->GetOperand(), new_id));
+	}
+	else {
+	  new_id = found->second;
+	}
+	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, new_id));
+      }
 	break;
 	
       default:
@@ -309,8 +333,10 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
   }
   
   if(needs_jump) {
-    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end--));
+    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end2--));
   }
+  
+  inline_lbls.clear();
 }
 
 IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBlock* inputs)

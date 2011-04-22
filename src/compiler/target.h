@@ -737,16 +737,6 @@ public:
 /****************************
  * IntermediateMethod class
  ****************************/
-struct InlineClassInstanceData {
-  int inst_offset;
-  int cls_offset;
-};
- 
-struct InlineMethodData {
-  int locl_offset;
-  InlineClassInstanceData* cls_inst_data;
-};
-
 class IntermediateMethod : public Intermediate {
   int id;
   string name;
@@ -883,7 +873,7 @@ public:
     
     return found->second;
   }
-  
+
   void Write(bool is_debug, ofstream* file_out) {
     // write attributes
     WriteInt(id, file_out);
