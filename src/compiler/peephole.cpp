@@ -258,7 +258,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       case STOR_FLOAT_VAR:
       case COPY_FLOAT_VAR: {
         if(instr->GetOperand2() == LOCL) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + locl_offset + 1, instr->GetOperand2()));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + locl_offset, instr->GetOperand2()));
         }
 	else {
 	  outputs->AddInstruction(instr);

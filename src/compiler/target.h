@@ -864,8 +864,8 @@ public:
   int GetInlineOffset(IntermediateMethod* called) {
     map<IntermediateMethod*, int>::iterator found = registered_inlined_mthds.find(called);
     if(found == registered_inlined_mthds.end()) {
-      int locl_offset = space / sizeof(INT_VALUE);
-      space += called->GetSpace() + sizeof(INT_VALUE);
+      int locl_offset = space / sizeof(INT_VALUE) + 2;
+      space += called->GetSpace() + sizeof(INT_VALUE) * 2;
       registered_inlined_mthds.insert(pair<IntermediateMethod*, int>(called, locl_offset));
       
       return locl_offset;
