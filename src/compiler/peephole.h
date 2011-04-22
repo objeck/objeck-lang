@@ -52,7 +52,6 @@ class ItermediateOptimizer {
   IntermediateProgram* program;
   int optimization_level;
   int inline_end;
-  int inline_end2;
   IntermediateMethod* current_method;
   bool merge_blocks;
   int cur_line_num;
@@ -94,10 +93,10 @@ class ItermediateOptimizer {
                               list<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
   
-  bool CanInlineMethod() {
+  inline bool CanInlineMethod() {
     const string &method_name = current_method->GetName();
-    std::string sys_prefix("System"); std::string io_prefix("IO");
-    std::string net_prefix("Net"); std::string intro_prefix("Introspection");
+    std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
+    std::string net_prefix("API."); std::string intro_prefix("Introspection.");
     if(!method_name.compare(0, sys_prefix.size(), sys_prefix) ||
        !method_name.compare(0, io_prefix.size(), io_prefix) ||
        !method_name.compare(0, net_prefix.size(), net_prefix) ||
@@ -107,12 +106,32 @@ class ItermediateOptimizer {
     
     return true;
   }
+
+  bool HasMultipleReturns(IntermediateMethod* called) {
+    int rtrn_count = 0;
+    vector<IntermediateBlock*> blocks = called->GetBlocks();
+    for(unsigned int i = 0; i < blocks.size(); i++) {
+      vector<IntermediateInstruction*> input_instrs = blocks[i]->GetInstructions();
+      for(unsigned int j = 0; j < input_instrs.size(); j++) {
+	IntermediateInstruction* instr = input_instrs[j];
+	switch(instr->GetType()) {
+	case RTRN:
+	  ++rtrn_count;
+	  if(rtrn_count > 1) {
+	    return false;
+	  }
+	  break;
+	}
+      }
+    }
+    
+    return true;
+  }
   
 public:
   ItermediateOptimizer(IntermediateProgram* p, string optimize) {
     program = p;
     inline_end = -1;
-    inline_end2 = -1000;
     cur_line_num = -1;
     merge_blocks = false;
 

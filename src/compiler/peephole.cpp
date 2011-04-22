@@ -226,13 +226,12 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
       const string &method_name = called->GetName();
       const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
 
-      std::string sys_prefix("System."); std::string io_prefix("IO.");
-      std::string net_prefix("Net."); std::string intro_prefix("Introspection.");
-
-      if(!called->IsVirtual() && called->GetInstructionCount() < 16 && 
+      std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
+      std::string net_prefix("API."); std::string intro_prefix("Introspection.");
+      if(!called->IsVirtual() && called->GetInstructionCount() < 16 && !HasMultipleReturns(called) &&
 	 !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
 	   current_method->GetId() == program->GetStartMethodId()) &&
-	 method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&     
+	 method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
 	 method_name.compare(0, sys_prefix.size(), sys_prefix) != 0 &&
 	 method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
 	 method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
@@ -288,7 +287,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       case RTRN:
         // note: code generates an extra empty block if there's more than 1 block
         if(!((blocks.size() == 1 || i == blocks.size() - 2) && j == instrs.size() - 1)) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end2, -1));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end, -1));
           needs_jump = true;
         } 
 	else {
@@ -333,9 +332,9 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
   }
   
   if(needs_jump) {
-    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end2--));
+    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end--));
   }
-  
+
   inline_lbls.clear();
 }
 
