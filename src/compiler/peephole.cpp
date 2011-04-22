@@ -145,7 +145,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   // return instruction_replaced_blocks;
   
   vector<IntermediateBlock*> method_lnlined_blocks;
-  if(optimization_level > 3 && CanInlineMethod()) {
+  if(optimization_level > 3 && AllowsInlining()) {
     // instruction replacement
 #ifdef _DEBUG
     cout << "  Method inlining..." << endl;
@@ -217,26 +217,12 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(unsigned int i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-      const string &method_name = called->GetName();
-      const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
-
-      std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
-      std::string net_prefix("API."); std::string intro_prefix("Introspection.");
-      if(!called->IsVirtual() && called->GetInstructionCount() < 16 && !HasMultipleReturns(called) &&
-	 !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
-	   current_method->GetId() == program->GetStartMethodId()) &&
-	 method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
-	 method_name.compare(0, sys_prefix.size(), sys_prefix) != 0 &&
-	 method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
-	 method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
-	 method_name.compare(0, intro_prefix.size(), intro_prefix) != 0) {
-
+      if(CanBeInlining(called)) {
 	InlineMethodCall(called, outputs);
       }
       else {
