@@ -495,6 +495,9 @@ void StackInterpreter::Execute()
       long* mem = (long*)PopInt();
       long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
 								     program->GetHierarchy());
+#ifdef _DEBUG
+      cout << "stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl; 
+#endif
       if(!result && mem) {
         StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);
         cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )
