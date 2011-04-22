@@ -9,8 +9,8 @@ bundle Default {
 			Run();
 		}
 	
-#		function : native : Run() ~ Nil {
-		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
 			list : IntList := IntList->New();
 
 			list->AddBack(12);
@@ -19,8 +19,8 @@ bundle Default {
 			list->AddFront(1);
 
 			while(list->IsEnd() <> true) {
-				list->Get()->PrintLine();
-#				list->Get();
+#				list->Get()->PrintLine();
+				list->Get();
 				list->Next();
 			};
 

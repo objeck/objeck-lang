@@ -1425,9 +1425,9 @@ environment.
   \begin{itemize}
   \item function : GetPlatform() \textasciitilde String
   \end{itemize}
-\item \texttt{GetTime} - returns the current time
+\item \texttt{GetDate} - returns the current time
   \begin{itemize}
-  \item method : public : GetTime() \textasciitilde Time
+  \item method : public : GetDate() \textasciitilde Date
   \end{itemize}
 \item \texttt{Exit} - exits the current running program
   \begin{itemize}
@@ -1459,7 +1459,7 @@ the system console.  The class supports the following operations:
 
 \subsubsection{Thread}
 The Thread class allows programmers to invoke a method in a separately
-running system thread.
+running system thread.  This class is in the `Concurrency' bundle.  
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1507,9 +1507,9 @@ and unlocking running threads.
   \end{itemize}
 \end{itemize}
 
-\subsubsection{Time}
-The Time class allows programmers gain access to the current system
-time.  The class supports the following operations:
+\subsubsection{Date}
+The Date class allows programmers gain access to the current system
+time.  This class is in the `Time' bundle.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1545,6 +1545,27 @@ time.  The class supports the following operations:
   false otherwise
   \begin{itemize}
   \item method : public : IsSavingsTime() \textasciitilde Bool
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Timer}
+The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Start} - Starts the timing
+  \begin{itemize}
+  \item method : public : Start() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Ends the timing
+  \begin{itemize}
+  \item method : public : End() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Returns the elapsed time in milliseconds
+  \begin{itemize}
+  \item  method : public : GetElapsedTime() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 

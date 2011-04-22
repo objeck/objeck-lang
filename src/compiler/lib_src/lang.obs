@@ -1074,7 +1074,24 @@ bundle System {
 	#~~
 	# Runtime system class
 	~~#	
-	class DllProxy {
+	class Runtime {
+		function : Exit(code : Int) ~ Nil {
+			EXIT;
+		}
+		
+		function : GetPlatform() ~ String {
+			PLTFRM;
+		}
+		
+		function : GetTime() ~ Time.Date {
+			return Time.Date->New();
+		}
+	}
+}
+
+#------------ API ------------
+bundle API {	
+  class DllProxy {
 		@name : String;
 		@ptr : Int;
 		
@@ -1095,28 +1112,14 @@ bundle System {
 			DLL_FUNC_CALL;
 		}
 	}
-	
-	#~~
-	# Runtime system class
+}
+
+#------------ Time ------------
+bundle Time {	
+  #~~
+	# Date class
 	~~#	
-	class Runtime {
-		function : Exit(code : Int) ~ Nil {
-			EXIT;
-		}
-		
-		function : GetPlatform() ~ String {
-			PLTFRM;
-		}
-		
-		function : GetTime() ~ System.Time {
-			return Time->New();
-		}
-	}
-	
-	#~~
-	# Time class
-	~~#	
-	class Time {
+	class Date {
 		@day : Int;
 		@month : Int;
 		@year : Int;
@@ -1167,11 +1170,11 @@ bundle System {
 		New() {
 		}
 		
-		method : public : Start() ~ Void {
+		method : public : Start() ~ Nil {
 			TIMER_START;
 		}
 		
-		method : public : End() ~ Void {
+		method : public : End() ~ Nil {
 			TIMER_END;
 		}
 		
@@ -1179,9 +1182,10 @@ bundle System {
 			return @elapsed;
 		}
 	}
-	
-	#------------ Threads ------------
-	
+}
+
+#------------ Concurrency ------------
+bundle Concurrency {	
 	#~~
 	# System thread class
 	~~#	
