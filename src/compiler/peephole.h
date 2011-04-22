@@ -93,7 +93,7 @@ class ItermediateOptimizer {
                               list<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
   
-  inline bool CanInlineMethod() {
+  inline bool AllowsInlining() {
     const string &method_name = current_method->GetName();
     std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
     std::string net_prefix("API."); std::string intro_prefix("Introspection.");
@@ -106,26 +106,50 @@ class ItermediateOptimizer {
     
     return true;
   }
-
-  bool HasMultipleReturns(IntermediateMethod* called) {
-    int rtrn_count = 0;
-    vector<IntermediateBlock*> blocks = called->GetBlocks();
-    for(unsigned int i = 0; i < blocks.size(); i++) {
-      vector<IntermediateInstruction*> input_instrs = blocks[i]->GetInstructions();
-      for(unsigned int j = 0; j < input_instrs.size(); j++) {
-	IntermediateInstruction* instr = input_instrs[j];
-	switch(instr->GetType()) {
-	case RTRN:
-	  ++rtrn_count;
-	  if(rtrn_count > 1) {
+  
+  inline bool CanBeInlining(IntermediateMethod* called) {
+    // TODO: could be speed up with a cache
+    const string &method_name = called->GetName();
+    const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
+    std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
+    std::string net_prefix("API."); std::string intro_prefix("Introspection.");
+    // check general properties
+    if(!called->IsVirtual() && called->GetInstructionCount() < 16 &&
+       !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
+	 current_method->GetId() == program->GetStartMethodId()) &&
+       current_method->GetSpace() <= 128 &&
+       // check bundles
+       method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
+       method_name.compare(0, sys_prefix.size(), sys_prefix) != 0 &&
+       method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
+       method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
+       method_name.compare(0, intro_prefix.size(), intro_prefix) != 0) {
+      // check instructions
+      int rtrn_count = 0;
+      vector<IntermediateBlock*> blocks = called->GetBlocks();
+      for(unsigned int i = 0; i < blocks.size(); i++) {
+	vector<IntermediateInstruction*> input_instrs = blocks[i]->GetInstructions();
+	for(unsigned int j = 0; j < input_instrs.size(); j++) {
+	  IntermediateInstruction* instr = input_instrs[j];
+	  switch(instr->GetType()) {
+	  case RTRN:
+	    ++rtrn_count;
+	    if(rtrn_count > 1) {
+	      return false;
+	    }
+	    break;
+	  
+	  case TRAP:
+	  case TRAP_RTRN:
 	    return false;
 	  }
-	  break;
 	}
       }
+      
+      return true;
     }
-    
-    return true;
+
+    return false;
   }
   
 public:
