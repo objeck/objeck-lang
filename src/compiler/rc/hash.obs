@@ -10,14 +10,13 @@ bundle Default {
 			keys := ["1", "2", "3"];
 			vals := ["a", "b", "c"];
 			hash := StringHash->New();
-			each(i : vals) {
+			each(i : vals) {			
 				hash->Insert(keys[i], vals[i]->As(Base));
 			};
-#~			
+			
 			each(i : vals) {
 				hash->Find(keys[i])->As(String)->PrintLine();
 			};
-~#			
 		}
 	}
 }
