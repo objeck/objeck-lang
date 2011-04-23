@@ -146,6 +146,7 @@ class ItermediateOptimizer {
 	  case TRAP:
 	  case TRAP_RTRN:
 	  case LOAD_CLS_MEM:
+	  case DYN_MTHD_CALL:
 	    return false;
 	  }
 	}
