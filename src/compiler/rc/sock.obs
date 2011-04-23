@@ -7,8 +7,7 @@ bundle Default {
     	if(socket->IsOpen()) {
 				socket->WriteString("hello socket world");
 				socket->Close();
-			}
-		};	
+			};
+		}	
     }
   }
-}
