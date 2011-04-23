@@ -9,6 +9,8 @@ bundle Default {
 		}
 
 		method : public : fA() ~ Int {
+			x := 99;
+			g -= x;
 			return a * 5 - b;
 		}
 
@@ -25,18 +27,18 @@ bundle Default {
 			return a * 2 + 5;
 		}
 	
-		function : Run() ~ Nil {
-#		function : native : Run() ~ Nil {
-#~
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
+			a := 9;
+			b := 13;
 			f := Foo->New();
 			f->fA()->PrintLine();
+#~
 			f->fA()->PrintLine();
 			f->fB()->PrintLine();
-~#
 			for(i := 0; i < 5; i += 1;) {
 				a := f1() + f1();
 			};
-#~
 			a->PrintLine();
 			f1 := Foo->New();
 			f1->fA()->PrintLine();

@@ -241,7 +241,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
 {
   // manage LOAD_INST_MEM for callee
   const int locl_offset = current_method->GetInlineOffset(called);
-  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, locl_offset, LOCL));
+  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, locl_offset - 1, LOCL));
   
   bool needs_jump = false;
   vector<IntermediateBlock*> blocks = called->GetBlocks();
@@ -267,7 +267,7 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
 	break;
       
       case LOAD_INST_MEM:
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, locl_offset, LOCL));
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, locl_offset- 1, LOCL));
         break;
 	
       case RTRN:
