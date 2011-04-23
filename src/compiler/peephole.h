@@ -95,9 +95,11 @@ class ItermediateOptimizer {
   
   inline bool AllowsInlining() {
     const string &method_name = current_method->GetName();
-    std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
+    std::string sys_prefix("System.$");   
+    std::string time_prefix("Time."); std::string io_prefix("Concurrency.");
     std::string net_prefix("API."); std::string intro_prefix("Introspection.");
     if(!method_name.compare(0, sys_prefix.size(), sys_prefix) ||
+       !method_name.compare(0, time_prefix.size(), time_prefix) ||
        !method_name.compare(0, io_prefix.size(), io_prefix) ||
        !method_name.compare(0, net_prefix.size(), net_prefix) ||
        !method_name.compare(0, intro_prefix.size(), intro_prefix)) {
@@ -111,7 +113,8 @@ class ItermediateOptimizer {
     // TODO: could be speed up with a cache
     const string &method_name = called->GetName();
     const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
-    std::string sys_prefix("Time."); std::string io_prefix("Concurrency.");
+    std::string sys_prefix("System.$");
+    std::string time_prefix("Time."); std::string io_prefix("Concurrency.");
     std::string net_prefix("API."); std::string intro_prefix("Introspection.");
     // check general properties
     if(!called->IsVirtual() && called->GetInstructionCount() < 16 &&
@@ -121,6 +124,7 @@ class ItermediateOptimizer {
        // check bundles
        method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
        method_name.compare(0, sys_prefix.size(), sys_prefix) != 0 &&
+       method_name.compare(0, time_prefix.size(), time_prefix) != 0 &&
        method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
        method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
        method_name.compare(0, intro_prefix.size(), intro_prefix) != 0) {
@@ -141,6 +145,7 @@ class ItermediateOptimizer {
 	  
 	  case TRAP:
 	  case TRAP_RTRN:
+	  case LOAD_CLS_MEM:
 	    return false;
 	  }
 	}
