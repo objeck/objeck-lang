@@ -1,4 +1,5 @@
 use IO;
+use Time;
 
 bundle Default {
 	class Hello {
@@ -16,7 +17,7 @@ bundle Default {
 
 		function : native : Time() ~ Nil {
 #		function : Time() ~ Nil {
-			t := Time->New();
+			t := Date->New();
 			Console->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
