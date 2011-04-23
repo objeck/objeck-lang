@@ -256,7 +256,10 @@ void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, Intermed
       case COPY_INT_VAR:
       case LOAD_FLOAT_VAR:
       case STOR_FLOAT_VAR:
-      case COPY_FLOAT_VAR: {
+      case COPY_FLOAT_VAR:
+      case LOAD_FUNC_VAR:
+      case STOR_FUNC_VAR:
+      case COPY_FUNC_VAR: {
         if(instr->GetOperand2() == LOCL) {
           outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + locl_offset, instr->GetOperand2()));
         }

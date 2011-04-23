@@ -1,3 +1,5 @@
+use Concurrency;
+
 bundle Default {
 	class Test {
 		function : Main(args : System.String[]) ~ Nil {

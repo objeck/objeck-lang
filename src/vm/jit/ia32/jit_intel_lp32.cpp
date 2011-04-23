@@ -728,14 +728,14 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
     }
-    // int value
+    // function value
     else if(instr->GetType() == LOAD_FUNC_VAR) {
-      move_mem_reg(instr->GetOperand3() + sizeof(int32_t), holder->GetRegister(), holder->GetRegister());
-      working_stack.push_front(new RegInstr(holder));
-      
       RegisterHolder* holder2 = GetRegister();
-      move_mem_reg(instr->GetOperand3(), holder2->GetRegister(), holder2->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(int32_t), holder->GetRegister(), holder2->GetRegister());
       working_stack.push_front(new RegInstr(holder2));
+      
+      move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));    
     }
     // float value
     else {
