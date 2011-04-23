@@ -1,5 +1,4 @@
-# simple parser of Objeck written in Objeck
-
+use IO;
 use Structure;
 
 # to compile: -lib struct.obl

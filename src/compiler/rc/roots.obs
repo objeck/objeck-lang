@@ -1,3 +1,5 @@
+use IO;
+
 bundle Default {
 	class Roots {
 		function : f(x : Float) ~ Float
