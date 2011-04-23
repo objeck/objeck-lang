@@ -1,3 +1,5 @@
+use Concurrency;
+
 bundle Default {
 	class MyThread from Thread {
 		New(name : String) {
