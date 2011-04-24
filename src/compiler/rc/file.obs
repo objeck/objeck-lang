@@ -6,13 +6,11 @@ bundle Default {
 			len := File->Size("in.txt");
 			buffer : Byte[] := Byte->New[len];
 
-len->PrintLine();
-
 			in := FileReader->New("in.txt");
-			if(in <> Nil) {
+			if(in->IsOpen()) {
 				in->ReadBuffer(0, len, buffer);
 				out := FileWriter->New("output.txt");
-				if(out <> Nil) {
+				if(out->IsOpen()) {
 					out->WriteBuffer(0, len, buffer);
 					out->Close();
 					"done!"->PrintLine();
