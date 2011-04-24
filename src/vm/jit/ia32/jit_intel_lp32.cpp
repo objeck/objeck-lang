@@ -718,11 +718,17 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
   else {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
-
-    RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    
+    RegisterHolder* holder;
+    if(left->GetType() == REG_32) {
+      holder = left->GetRegister();
+    }
+    else {
+      holder = GetRegister();
+      move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+    }
     CheckNilDereference(holder->GetRegister());
-
+    
     // int value
     if(instr->GetType() == LOAD_INT_VAR) {
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());

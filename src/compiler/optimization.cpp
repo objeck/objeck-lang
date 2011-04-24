@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "peephole.h"
+#include "optimization.h"
 
 using namespace backend;
 
@@ -75,16 +75,30 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
+    vector<IntermediateBlock*> method_lnlined_blocks;
+    // instruction replacement
+#ifdef _DEBUG
+    cout << "  Method inlining..." << endl;
+#endif
+    while(!jump_blocks.empty()) {
+      IntermediateBlock* tmp = jump_blocks.front();
+      method_lnlined_blocks.push_back(InlineMethodCall(tmp));
+      // delete old block
+      jump_blocks.erase(jump_blocks.begin());
+      delete tmp;
+      tmp = NULL;
+    }
+
     // fold integers
 #ifdef _DEBUG
     cout << "  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!jump_blocks.empty()) {
-      IntermediateBlock* tmp = jump_blocks.front();
+    while(!method_lnlined_blocks.empty()) {
+      IntermediateBlock* tmp = method_lnlined_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      jump_blocks.erase(jump_blocks.begin());
+      method_lnlined_blocks.erase(method_lnlined_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
@@ -101,7 +115,8 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = NULL;
     }
-  } else {
+  } 
+  else {
     return jump_blocks;
   }
 
@@ -119,7 +134,8 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = NULL;
     }
-  } else {
+  } 
+  else {
     return folded_float_blocks;
   }
 
@@ -141,29 +157,8 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   else {
     return strength_reduced_blocks;
   }
-
-  // return instruction_replaced_blocks;
   
-  vector<IntermediateBlock*> method_lnlined_blocks;
-  if(optimization_level > 3 && AllowsInlining()) {
-    // instruction replacement
-#ifdef _DEBUG
-    cout << "  Method inlining..." << endl;
-#endif
-    while(!instruction_replaced_blocks.empty()) {
-      IntermediateBlock* tmp = instruction_replaced_blocks.front();
-      method_lnlined_blocks.push_back(InlineMethodCall(tmp));
-      // delete old block
-      instruction_replaced_blocks.erase(instruction_replaced_blocks.begin());
-      delete tmp;
-      tmp = NULL;
-    }
-  } 
-  else {
-    return instruction_replaced_blocks;
-  }
-  
-  return method_lnlined_blocks;
+  return instruction_replaced_blocks;
 }
 
 IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
@@ -350,9 +345,19 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
 
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
-      calc_stack.push_front(instr);
+      if(!calc_stack.empty() && calc_stack.front()->GetType() == STOR_INT_VAR) {
+	// order matters...
+	while(!calc_stack.empty()) {
+	  outputs->AddInstruction(calc_stack.back());
+	  calc_stack.pop_back();
+	}
+	outputs->AddInstruction(instr);
+      }
+      else {
+	calc_stack.push_front(instr);
+      }
       break;
-
+      
     default:
       // order matters...
       while(!calc_stack.empty()) {
@@ -383,12 +388,14 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
         instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_INT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
       calc_stack.pop_front();
-    } else if(top_instr->GetType() == STOR_FLOAT_VAR && instr->GetType() == LOAD_FLOAT_VAR &&
+    } 
+    else if(top_instr->GetType() == STOR_FLOAT_VAR && instr->GetType() == LOAD_FLOAT_VAR &&
               instr->GetOperand() == top_instr->GetOperand() &&
               instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_FLOAT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
       calc_stack.pop_front();
-    } else {
+    } 
+    else {
       // order matters...
       while(!calc_stack.empty()) {
         outputs->AddInstruction(calc_stack.back());
@@ -396,7 +403,8 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
       }
       outputs->AddInstruction(instr);
     }
-  } else {
+  } 
+  else {
     outputs->AddInstruction(instr);
   }
 }
