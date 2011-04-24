@@ -231,8 +231,8 @@
     <ClCompile Include="..\context.cpp" />
     <ClCompile Include="..\intermediate.cpp" />
     <ClCompile Include="..\linker.cpp" />
+    <ClCompile Include="..\optimization.cpp" />
     <ClCompile Include="..\parser.cpp" />
-    <ClCompile Include="..\peephole.cpp" />
     <ClCompile Include="..\posix_main.cpp" />
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\target.cpp" />
@@ -245,9 +245,9 @@
     <ClInclude Include="..\frontend.h" />
     <ClInclude Include="..\intermediate.h" />
     <ClInclude Include="..\linker.h" />
+    <ClInclude Include="..\optimization.h" />
     <ClInclude Include="..\optimize.h" />
     <ClInclude Include="..\parser.h" />
-    <ClInclude Include="..\peephole.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\scanner.h" />
     <ClInclude Include="..\target.h" />

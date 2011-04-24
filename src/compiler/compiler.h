@@ -39,7 +39,6 @@
 #include "context.h"
 #include "intermediate.h"
 #include "optimization.h"
-#include "peephole.h"
 #include "target.h"
 
 extern "C"
