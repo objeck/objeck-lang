@@ -777,8 +777,14 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
 
-    RegisterHolder* holder = GetRegister();
-    move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    RegisterHolder* holder;
+    if(left->GetType() == REG_INT) {
+      holder = left->GetRegister();
+    }
+    else {
+      holder = GetRegister();
+      move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
+    }
     CheckNilDereference(holder->GetRegister());
 
     // long value
