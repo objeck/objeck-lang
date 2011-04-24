@@ -38,7 +38,7 @@ int main(int argc, const char* argv[])
   if(argc == 2) {
     string file_name(argv[1]);
     if(file_name.rfind(".obe") != string::npos) {
-      cout << "[Contains of Objeck executable file: '" << file_name << "']" << endl << endl;
+      cout << "[Contents of Objeck executable file: '" << file_name << "']" << endl << endl;
 
       // loader; when this goes out of scope program memory is released
       Loader loader(argc, argv);
