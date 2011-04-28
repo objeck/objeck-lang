@@ -68,7 +68,7 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
-#define PAGE_SIZE 4096
+#define OUR_PAGE_SIZE 4096
 
   // register type
   typedef enum _RegType { 
@@ -296,7 +296,7 @@ namespace Runtime {
 	}
 #else
 	BYTE_VALUE* tmp;	
-	if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
+	if(posix_memalign((void**)&tmp, OUR_PAGE_SIZE, code_buf_max * 2)) {
 	  cerr << "Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
@@ -2023,17 +2023,17 @@ namespace Runtime {
 	     << method->GetParamCount() << " ----------" << endl;
 #endif
 	
-	code_buf_max = PAGE_SIZE;
+	code_buf_max = OUR_PAGE_SIZE;
 #ifdef _WIN32
 	code = (BYTE_VALUE*)malloc(code_buf_max);
 	floats = new double[MAX_DBLS];
 #else
-	if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max)) {
+	if(posix_memalign((void**)&code, OUR_PAGE_SIZE, code_buf_max)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}
 	
-	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+	if(posix_memalign((void**)&floats, OUR_PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
 	  cerr << "Unable to allocate JIT memory!" << endl;
 	  exit(1);
 	}

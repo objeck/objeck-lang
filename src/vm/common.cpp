@@ -319,7 +319,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	}
 	else {
 	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	  if(found != mem_cache.end()) {
+	  if(found == mem_cache.end()) {
 	    return NULL;
 	  } 
 	  instance[instance_pos++] = (long)found->second;
@@ -357,7 +357,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	}
 	else {
 	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	  if(found != mem_cache.end()) {
+	  if(found == mem_cache.end()) {
 	    return NULL;
 	  } 
 	  instance[instance_pos++] = (long)found->second;
@@ -395,7 +395,7 @@ long* ObjectDeserializer::DeserializeObject() {
 	}
 	else {
 	  map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
-	  if(found != mem_cache.end()) {
+	  if(found == mem_cache.end()) {
 	    return NULL;
 	  } 
 	  instance[instance_pos++] = (long)found->second;
