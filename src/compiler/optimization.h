@@ -167,17 +167,18 @@ public:
 
     if(optimize == "s1") {
       optimization_level = 1;
-    } else if(optimize == "s2") {
+    } 
+    else if(optimize == "s2") {
       optimization_level = 2;
-    } else if(optimize == "s3") {
+    } 
+    else if(optimize == "s3") {
       optimization_level = 3;
-    } else if(optimize == "s4") {
-      optimization_level = 4;
-    } else {
+    } 
+    else {
       optimization_level = 0;
     }
   }
-
+  
   ~ItermediateOptimizer() {
   }
 

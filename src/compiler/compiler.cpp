@@ -83,8 +83,7 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
   result = arguments.find("opt");
   if(result != arguments.end()) {
     optimize = result->second;
-    if(optimize != "s0" && optimize != "s1" && optimize != "s2" && 
-       optimize != "s3" && optimize != "s4") {
+    if(optimize != "s0" && optimize != "s1" && optimize != "s2" && optimize != "s3") {
       cerr << usage << endl << endl;
       return COMMAND_ERROR;
     }

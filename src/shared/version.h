@@ -32,6 +32,6 @@
 #ifndef __VER_H__
 #define __VER_H__
 
-#define VERSION_STRING "v2.0.0_0"
+#define VERSION_STRING "v2.0.1_0"
 
 #endif
