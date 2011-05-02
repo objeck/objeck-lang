@@ -2597,6 +2597,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case NIL_TYPE:
+	ProcessError(expression, "Invalid operation");
         break;
 
       case BYTE_TYPE:
