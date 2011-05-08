@@ -58,10 +58,8 @@ void JitCompilerIA64::ProcessParameters(long count) {
 }
  
 void JitCompilerIA64::ProcessInstructions() {
-  {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
-    instr->SetOffset(code_index);
     
     switch(instr->GetType()) {
       // load literal
@@ -73,11 +71,11 @@ void JitCompilerIA64::ProcessInstructions() {
       break;
       
       // load self
-    case LOAD_INST_MEM: {
+    case LOAD_INST_MEM:
       break;
 
       // load self
-    case LOAD_CLS_MEM: {
+    case LOAD_CLS_MEM:
       break;
       
       // load variable
@@ -227,4 +225,3 @@ void JitCompilerIA64::ProcessInstructions() {
     }
   }
 }
- 
