@@ -47,7 +47,9 @@ namespace Runtime {
    ********************************/
   class JitCompilerIA64 {
     static StackProgram* program;
+    StackMethod* method;
     bool compile_success;
+    long instr_index;
     
     // setup and teardown
     void Prolog();
@@ -74,9 +76,9 @@ namespace Runtime {
     //
     bool Compile(StackMethod* cm) {
       compile_success = true;
+      instr_index = 0;
       
       if(!cm->GetNativeCode()) {
-	skip_jump = false;
 	method = cm;
 	long cls_id = method->GetClass()->GetId();
 	long mthd_id = method->GetId();
@@ -86,8 +88,6 @@ namespace Runtime {
 	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
 	     << method->GetParamCount() << " ----------" << endl;
 #endif	
-	// process offsets
-	ProcessIndices();
 	// setup
 	Prolog();
 	// method information
@@ -110,5 +110,6 @@ namespace Runtime {
       return compile_success;
     }
   };    
-  
-  
+}
+
+#endif  
