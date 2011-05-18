@@ -398,7 +398,7 @@ namespace Runtime {
     }
     
     /********************************
-     * Caculates the IA-32 MOD R/M
+     * Caculates the AMD64 MOD R/M
      * offset
      ********************************/
     inline BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
@@ -2080,7 +2080,7 @@ namespace Runtime {
     }
 
     //
-    // Compiles stack code into IA-32 machine code
+    // Compiles stack code into AMD64 machine code
     //
     bool Compile(StackMethod* cm) {
       compile_success = true;
@@ -2136,7 +2136,7 @@ namespace Runtime {
 	aval_xregs.push_back(new RegisterHolder(XMM11));
 	aval_xregs.push_back(new RegisterHolder(XMM10));   
 #ifdef _DEBUG
-	cout << "Compiling code for IA-32 architecture..." << endl;
+	cout << "Compiling code for AMD64 architecture..." << endl;
 #endif
 	
 	// process offsets
