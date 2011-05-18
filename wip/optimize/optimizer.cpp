@@ -73,7 +73,7 @@ void CodeBlock::Optimize(CodeSegment* s) {
 
 void Optimizer::LoadSegments() {
   root = new CodeBlock();
-
+  /*
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 0)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
@@ -101,8 +101,8 @@ void Optimizer::LoadSegments() {
 				   MakeCodeElement(INT_VAR, 20), 
 				   MakeCodeElement(ADD_OPER),
 				   MakeCodeElement(INT_VAR, 21)));
+  */
 
-  /*
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 0), 
 				   MakeCodeElement(INT_LIT, 13)));
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
@@ -145,6 +145,4 @@ void Optimizer::LoadSegments() {
 
   root->AddSegment(new CodeSegment(MakeCodeElement(INT_VAR, 1), 
 				   MakeCodeElement(INT_VAR, 0))); 
-  */
-  
 }
