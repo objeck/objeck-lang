@@ -126,10 +126,10 @@ void JitCompilerIA64::Epilog(long imm) {
 
 void JitCompilerIA64::RegisterRoot() {
   // caculate root address
-  RegisterHolder* holder = GetRegister();
   // note: the offset requried to 
   // get to the first local variale
   const long offset = org_local_space + RED_ZONE + TMP_REG_5;
+  RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
   
@@ -207,15 +207,15 @@ void JitCompilerIA64::ProcessParameters(long params) {
 
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-      
+    
     if(instr->GetType() == STOR_INT_VAR) {
-      RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister());
+      RegisterHolder* dest_holder = GetRegister();
       move_mem_reg(0, op_stack_holder->GetRegister(), 
 		   dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
@@ -223,13 +223,13 @@ void JitCompilerIA64::ProcessParameters(long params) {
       ProcessStore(instr);
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
-      RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister());
+      RegisterHolder* dest_holder = GetRegister();
       move_mem_reg(0, op_stack_holder->GetRegister(), 
 		   dest_holder->GetRegister());
       
@@ -901,8 +901,8 @@ void JitCompilerIA64::ProcessReturnParameters(MemoryType type) {
 }
 
 void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
-  RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
+  RegisterHolder* holder = GetRegister();
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
   move_mem8_reg(0, elem_holder->GetRegister(), holder->GetRegister());
   ReleaseRegister(elem_holder);
@@ -1632,9 +1632,9 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     }
       break;
     case MEM_INT: {
-      RegisterHolder* lhs = left->GetRegister();
       RegisterHolder* rhs = GetRegister();
       move_mem_reg(right->GetOperand(), RBP, rhs->GetRegister());
+      RegisterHolder* lhs = left->GetRegister();
       math_reg_reg(rhs->GetRegister(), lhs->GetRegister(), instruction->GetType());
       ReleaseRegister(rhs);
       working_stack.push_front(new RegInstr(lhs));
@@ -1655,9 +1655,9 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     }
       break;
     case REG_INT: {
-      RegisterHolder* lhs = right->GetRegister();
       RegisterHolder* rhs = GetRegister();
       move_mem_reg(left->GetOperand(), RBP, rhs->GetRegister());
+      RegisterHolder* lhs = right->GetRegister();
       math_reg_reg(lhs->GetRegister(), rhs->GetRegister(), instruction->GetType());
       ReleaseRegister(lhs);
       working_stack.push_front(new RegInstr(rhs));
@@ -1757,10 +1757,10 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   case REG_FLOAT:
     switch(right->GetType()) {
     case IMM_FLOAT: {
-      RegisterHolder* left_holder = left->GetRegister();
       RegisterHolder* right_holder = GetXmmRegister();
       move_imm_xreg(right, right_holder->GetRegister());
-      
+
+      RegisterHolder* left_holder = left->GetRegister();      
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
 	math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
 	ReleaseXmmRegister(left_holder);      
