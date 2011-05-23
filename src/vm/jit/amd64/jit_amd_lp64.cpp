@@ -742,7 +742,7 @@ void JitCompilerIA64::ProcessInstructions() {
       
     case LBL:
 #ifdef _DEBUG
-      cout << "LBL: id=" << instr->GetOperand() << endl;
+      cout << "______ LBL: id=" << instr->GetOperand() << " ______" << endl;
 #endif
       break;
       
