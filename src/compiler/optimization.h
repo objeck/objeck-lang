@@ -118,8 +118,8 @@ class ItermediateOptimizer {
     std::string net_prefix("API."); std::string intro_prefix("Introspection.");
     // check general properties
     if(!called->IsVirtual() && called->GetInstructionCount() < 16 &&
-    /* !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
-       current_method->GetId() == program->GetStartMethodId()) && */ 
+     !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
+       current_method->GetId() == program->GetStartMethodId()) &&  
        current_method->GetSpace() <= 128 &&
        // check bundles
        method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
