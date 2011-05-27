@@ -218,6 +218,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(CanBeInlining(called)) {
+	instr->SetOperand3(true);
 	InlineMethodCall(called, outputs);
       }
       else {

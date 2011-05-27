@@ -179,7 +179,11 @@ public:
   FLOAT_VALUE GetOperand4() {
     return operand4;
   }
-
+  
+  void SetOperand3(int o3) {
+    operand3 = o3;
+  }
+  
   void Write(bool is_debug, ofstream* file_out) {
     WriteByte((int)type, file_out);
     if(is_debug) {
