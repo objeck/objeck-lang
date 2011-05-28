@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{2.0.0}.  For
+  functionality that is included in release \textit{2.0.1}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -2433,7 +2433,8 @@ an inline assembler, which may be re-added in future releases.
     CRITICAL\_START & n/a & creates a mutex such that only one thread can execute in a given section \\ \hline
     CRITICAL\_END & n/a & releases a system mutex \\ \hline
     TRAP & integer value for trap id & calls runtime subroutine releasing control \\ \hline
-    TRAP\_RTRN & integer value for trap id and number of arguments & calls runtime subroutine releasing control and then process an integer return value \\ \hline
+    TRAP\_RTRN & integer value for trap id and number of arguments &
+    calls runtime subroutine releasing control and then processes an integer return value \\ \hline
     LIB\_NEW\_OBJ\_INST & n/a & symbolic library link for a new object instance  \\ \hline
     LIB\_MTHD\_CALL & n/a & symbolic library link for a method call  \\ \hline
     LIB\_OBJ\_INST\_CAST & n/a & symbolic library link for an object cast  \\ \hline
