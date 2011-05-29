@@ -1,0 +1,5 @@
+Objeck v1.5.0_0
+
+This release provides support for data serialization.  The virtual machine has been tuned for improved performance.  The functionality of the debugger has been enhanced and known bugs resolved.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
