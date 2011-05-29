@@ -1,0 +1,5 @@
+Objeck v2.0.1_0
+
+This release provides better support for method inlining.  In addition, minor bugs have been resolved.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
