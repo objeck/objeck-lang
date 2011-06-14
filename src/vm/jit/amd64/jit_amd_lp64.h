@@ -2185,8 +2185,10 @@ namespace Runtime {
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
 	compile_success = true;
 	
+#ifndef _JIT_SERIAL
 	// release our lock, native code has been compiled and set
 	pthread_mutex_unlock(&cm->jit_mutex);
+#endif
       }
       
       return compile_success;
