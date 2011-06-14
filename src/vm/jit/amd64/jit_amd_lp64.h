@@ -2086,6 +2086,9 @@ namespace Runtime {
       compile_success = true;
       
       if(!cm->GetNativeCode()) {
+#ifdef _TIMING
+	clock_t start = clock();
+#endif
 	skip_jump = false;
 	method = cm;
 	long cls_id = method->GetClass()->GetId();
@@ -2188,6 +2191,11 @@ namespace Runtime {
 #ifndef _JIT_SERIAL
 	// release our lock, native code has been compiled and set
 	pthread_mutex_unlock(&cm->jit_mutex);
+#endif
+
+#ifdef _TIMING
+	cout << "JIT compiling: method='" << method->GetName() << "', time=" 
+	     << (double)(clock() - start) / CLOCKS_PER_SEC << " second(s)." << endl;
 #endif
       }
       

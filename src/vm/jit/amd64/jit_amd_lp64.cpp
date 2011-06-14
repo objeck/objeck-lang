@@ -133,11 +133,13 @@ void JitCompilerIA64::RegisterRoot() {
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
   
+  /*
   // save registers
   push_reg(R15);
   push_reg(R14);
   push_reg(R13); 
   push_reg(R8);
+  */
 
   // copy values 
   move_imm_reg(offset, R8);
@@ -149,15 +151,15 @@ void JitCompilerIA64::RegisterRoot() {
   // call method
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
-  
   call_reg(call_holder->GetRegister());
 
+  /*
   // restore registers
   pop_reg(R8);
   pop_reg(R13);
   pop_reg(R14);
   pop_reg(R15);
-  
+  */
 
   // clean up
   ReleaseRegister(holder);
@@ -3568,6 +3570,15 @@ long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst,
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
   // execute
+#ifdef _TIMING
+  clock_t start = clock();
+  long result = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
+			inst, op_stack, stack_pos);
+  cout << "JIT execution: method='" << method->GetName() << "', time=" 
+       << (double)(clock() - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+#else
+  // execute
   return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
 		 inst, op_stack, stack_pos);
+#endif
 }
