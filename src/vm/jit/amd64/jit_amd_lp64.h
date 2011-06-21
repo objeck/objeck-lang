@@ -1816,8 +1816,7 @@ namespace Runtime {
     // Calculates array element offset. 
     // Note: this code must match up 
     // with the interpreter's 'ArrayIndex'
-    // method. Bounds checks are not done on
-    // JIT code.
+    // method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type) {
       RegInstr* holder = working_stack.front();
       working_stack.pop_front();
