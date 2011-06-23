@@ -1,7 +1,7 @@
-# ARGS=-g -Wunused -D_X64 -pthread
-ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -D_X64 -pthread
-# ARGS=-g -D_DEBUG -Wunused -pthread -D_X64
-# ARGS=-g -D_DEBUG -Wunused -D_JIT_SERIAL -pthread -D_X64
+# ARGS=-g -Wall -D_X64 -pthread
+ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -D_X64 -pthread
+# ARGS=-g -D_DEBUG -Wall -pthread -D_X64
+# ARGS=-g -D_DEBUG -Wall -D_JIT_SERIAL -pthread -D_X64
 # ARGS=-O3 -D_TIMING -D_JIT_SERIAL -pthread -D_X64
 
 CC=g++
