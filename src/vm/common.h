@@ -56,11 +56,11 @@
 using namespace stdext;
 #else
 #include <dlfcn.h>
-#include <ext/hash_map>
+#include <tr1/unordered_map>
 #include <pthread.h>
 #include <stdint.h>
-namespace std { 
-  using namespace __gnu_cxx; 
+namespace std {
+  using namespace tr1;
 }
 #endif
 
@@ -245,7 +245,7 @@ class StackMethod {
   bool is_virtual;
   bool has_and_or;
   vector<StackInstr*> instrs;
-  hash_map<long, long> jump_table;
+  unordered_map<long, long> jump_table;
   
   long param_count;
   long mem_size;
@@ -532,7 +532,7 @@ class StackMethod {
   }
   
   inline long GetLabelIndex(long label_id) {
-    hash_map<long, long>::iterator found = jump_table.find(label_id);
+    unordered_map<long, long>::iterator found = jump_table.find(label_id);
     if(found != jump_table.end()) {
       return found->second;
     }    
