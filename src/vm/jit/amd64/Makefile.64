@@ -1,6 +1,6 @@
-# ARGS=-g -Wno-deprecated -D_DEBUG -D_X64 -Wunused
+ARGS=-g -D_DEBUG -D_X64 -Wunused
 # ARGS=-g -D_X64 -Wunused
-ARGS=-O3 -Wno-deprecated -D_X64
+# ARGS=-O3 -D_TIMING -D_X64
 
 CC=g++
 AR=ar
