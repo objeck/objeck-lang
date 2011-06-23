@@ -299,6 +299,9 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   case FLOAT_TYPE:
     calc_size = size * sizeof(FLOAT_VALUE);
     break;
+
+  default:
+    break;
   }
   // collect memory
   if(allocation_size + calc_size > mem_max_size) {
@@ -610,6 +613,8 @@ void* MemoryManager::CheckStatic(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&static_mutex);
 #endif
+
+  return NULL;
 }
 
 void* MemoryManager::CheckStack(void* arg)
@@ -766,6 +771,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // update
         mem++;
         break;
+
+      default:
+	break;
       }
     }
 
@@ -931,6 +939,9 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       }
       // update
       mem++;
+      break;
+
+    default:
       break;
     }
   }

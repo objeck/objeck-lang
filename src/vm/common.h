@@ -1187,21 +1187,21 @@ class ObjectSerializer
   
   inline void SerializeByte(BYTE_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(long i = 0; i < sizeof(v); i++) {
+    for(unsigned long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
   inline void SerializeInt(INT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(long i = 0; i < sizeof(v); i++) {
+    for(unsigned long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
   inline void SerializeFloat(FLOAT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(long i = 0; i < sizeof(v); i++) {
+    for(unsigned long i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
