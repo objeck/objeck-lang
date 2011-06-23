@@ -231,6 +231,9 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
+      
+    default:
+      break;
     }
   }
 }
@@ -416,6 +419,9 @@ long* ObjectDeserializer::DeserializeObject() {
 	mem_cache = deserializer.GetMemoryCache();
       }
     }
+      break;
+      
+    default:
       break;
     }
   }

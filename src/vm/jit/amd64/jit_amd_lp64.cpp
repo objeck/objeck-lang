@@ -899,6 +899,9 @@ void JitCompilerIA64::ProcessReturnParameters(MemoryType type) {
   case FUNC_TYPE:
     ProcessFunctionCallParameter();
     break;
+
+  default:
+    break;
   }
 }
 
@@ -962,6 +965,9 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
     ReleaseRegister(elem_holder);
   }
     break;
+
+  default:
+    break;
   }
   
   delete left;
@@ -991,6 +997,9 @@ void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
   }
+    break;
+
+  default:
     break;
   }
   ReleaseRegister(elem_holder);
@@ -1023,6 +1032,9 @@ void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
     move_xreg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseXmmRegister(holder);
   }
+    break;
+
+  default:
     break;
   }
   ReleaseRegister(elem_holder);
@@ -1059,6 +1071,9 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
 		    left->GetRegister()->GetRegister(), true);
     working_stack.push_front(left);
     break;
+
+  default:
+    break;
   }
 }
 
@@ -1090,6 +1105,9 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
 		    left->GetRegister()->GetRegister(), false);
     working_stack.push_front(left);
     break;
+
+  default:
+    break;
   }
 }
 
@@ -1112,6 +1130,9 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
     cvt_xreg_reg(left->GetRegister()->GetRegister(), 
 		 holder->GetRegister());
     ReleaseXmmRegister(left->GetRegister());
+    break;
+
+  default:
     break;
   }
   working_stack.push_front(new RegInstr(holder));
@@ -1139,6 +1160,9 @@ void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
     cvt_reg_xreg(left->GetRegister()->GetRegister(), 
 		 holder->GetRegister());
     ReleaseRegister(left->GetRegister());
+    break;
+
+  default:
     break;
   }
   working_stack.push_front(new RegInstr(holder));
@@ -1399,6 +1423,9 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
 	xmms.push(left);
 	xmm_offset -= sizeof(double);
 	break;
+
+      default:
+	break;
       }
       // update
       i++;
@@ -1564,6 +1591,9 @@ void JitCompilerIA64::ProcessReturn(long params) {
       case REG_FLOAT:
 	ReleaseXmmRegister(left->GetRegister());
 	break;
+
+      default:
+	break;
       }
       // clean up
       delete left;
@@ -1613,6 +1643,9 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
       working_stack.push_front(new RegInstr(imm_holder));
     }
       break;
+
+    default:
+      break;
     }	    
     break; 
 
@@ -1641,6 +1674,9 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
       ReleaseRegister(rhs);
       working_stack.push_front(new RegInstr(lhs));
     }
+      break;
+
+    default:
       break;
     }
     break;
@@ -1672,10 +1708,16 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
       working_stack.push_front(new RegInstr(holder));
     }
       break;
+
+    default:
+      break;
     }
     break;
-  }
 
+  default:
+    break;
+  }
+  
   delete left;
   left = NULL;
     
@@ -1752,6 +1794,9 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       }
     }
       break;
+
+    default:
+      break;
     }	    
     break; 
 
@@ -1805,6 +1850,9 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
 	working_stack.push_front(new RegInstr(holder));
       }
     }
+      break;
+
+    default:
       break;
     }
     break;
@@ -1867,7 +1915,13 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       }
     }
       break;
+
+    default:
+      break;
     }
+    break;
+
+  default:
     break;
   }
 
@@ -2125,6 +2179,9 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
 #endif
         AddMachineCode(0x8d);
         break;
+
+      default:
+	break;
       }  
     }
     //
@@ -2173,6 +2230,9 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
 #endif
         AddMachineCode(0x8c);
         break;
+
+      default:
+	break;
       }  
     }    
     // store update index
@@ -2248,6 +2308,9 @@ void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
       cmov_reg(reg, type);
     }
     break;
+
+  default:
+    break;
   }
 }
 
@@ -2310,6 +2373,9 @@ void JitCompilerIA64::math_reg_reg(Register src, Register dest, InstructionType 
     if(!cond_jmp(type)) {
       cmov_reg(dest, type);
     }
+    break;
+
+  default:
     break;
   }
 }
@@ -2375,6 +2441,9 @@ void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType ty
       cmov_reg(reg, type);
     }
     break;
+
+  default:
+    break;
   }
 }
 
@@ -2403,6 +2472,9 @@ void JitCompilerIA64::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
     cmp_imm_xreg(instr, reg);
+    break;
+
+  default:
     break;
   }
 }
@@ -2439,6 +2511,9 @@ void JitCompilerIA64::math_xreg_xreg(Register src, Register dest, InstructionTyp
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
     cmp_xreg_xreg(src, dest);
+    break;
+
+  default:
     break;
   }
 }    

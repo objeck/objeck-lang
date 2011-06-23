@@ -325,7 +325,7 @@ namespace Runtime {
     inline void AddImm(int imm) {
       BYTE_VALUE buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
-      for(int i = 0; i < sizeof(int); i++) {
+      for(unsigned int i = 0; i < sizeof(int); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -337,7 +337,7 @@ namespace Runtime {
     inline void AddImm64(long imm) {
       BYTE_VALUE buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
-      for(long i = 0; i < sizeof(long); i++) {
+      for(unsigned long i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -628,6 +628,8 @@ namespace Runtime {
       case XMM15:
 	return "xmm15";
       }
+
+      return "?";
     }
 
     /********************************
@@ -806,7 +808,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(int i  = 0; i < aval_regs.size(); i++) {
+      for(unsigned int i  = 0; i < aval_regs.size(); i++) {
 	assert(h != aval_regs[i]);
       }
 #endif
@@ -851,7 +853,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(int i = 0; i < aval_xregs.size(); i++) {
+      for(unsigned int i = 0; i < aval_xregs.size(); i++) {
 	assert(h != aval_xregs[i]);
       }
 #endif
@@ -1836,6 +1838,9 @@ namespace Runtime {
 	array_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), RBP, array_holder->GetRegister());
 	break;
+	
+      default:
+	break;
       }
       
       CheckNilDereference(array_holder->GetRegister());
@@ -1873,6 +1878,9 @@ namespace Runtime {
 	index_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	break;
+
+      default:
+	break;
       }
 
       const long dim = instr->GetOperand();
@@ -1900,6 +1908,9 @@ namespace Runtime {
 	case MEM_INT:
 	  add_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	  break;
+
+	default:
+	  break;
         }
       }
       
@@ -1917,12 +1928,9 @@ namespace Runtime {
 	shl_imm_reg(3, index_holder->GetRegister());
 	shl_imm_reg(3, bounds_holder->GetRegister());
 	break;
-	/*
-	  case FLOAT_TYPE:
-	  shl_reg(index_holder->GetRegister(), 4);
-	  shl_reg(bounds_holder->GetRegister(), 4);
-	  break;
-	*/
+	
+      default:
+	break;
       }
       CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
       ReleaseRegister(bounds_holder);
@@ -1957,6 +1965,9 @@ namespace Runtime {
 	case STOR_FLOAT_VAR:
 	case COPY_FLOAT_VAR:
 	  values.insert(pair<long, StackInstr*>(instr->GetOperand(), instr));
+	  break;
+	  
+	default:
 	  break;
 	}
       }

@@ -291,7 +291,7 @@ namespace Runtime {
       
       // set method name
       const string &qual_mthd_name = mthd->GetName();
-      const long semi_qual_mthd_index = qual_mthd_name.find(':');
+      const unsigned long semi_qual_mthd_index = qual_mthd_name.find(':');
       if(semi_qual_mthd_index == string::npos) {
 	cerr << ">>> Internal error: invalid method name <<<" << endl;
 	StackErrorUnwind();
@@ -299,7 +299,7 @@ namespace Runtime {
       }
       
       const string &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
-      const long mthd_index = semi_qual_mthd_string.find(':');
+      const unsigned long mthd_index = semi_qual_mthd_string.find(':');
       if(mthd_index == string::npos) {
 	cerr << ">>> Internal error: invalid method name <<<" << endl;
 	StackErrorUnwind();
@@ -470,6 +470,9 @@ namespace Runtime {
 	case FLOAT_ARY_PARM:
 	  WriteBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
 	  break;
+
+	default:
+	  break;
 	}
       }
       else {
@@ -497,6 +500,9 @@ namespace Runtime {
 	  
 	case FLOAT_ARY_PARM:
 	  dest_array_size *= sizeof(FLOAT_VALUE);
+	  break;
+	  
+	default:
 	  break;
 	}
 
