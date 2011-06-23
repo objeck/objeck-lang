@@ -749,6 +749,9 @@ void StackInterpreter::Execute()
       // note: just for debugger
     case END_STMTS:
       break;
+
+    default:
+      break;
     }
   }
 }
@@ -1250,6 +1253,8 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   holder = NULL;
   
   program->RemoveThread(pthread_self());
+
+  return NULL;
 }
 #endif
 
