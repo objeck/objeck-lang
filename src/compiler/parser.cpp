@@ -1705,17 +1705,18 @@ Expression* Parser::ParseExpression(int depth)
 #endif
   
   Expression* expression = ParseLogic(depth + 1);
-  if(Match(TOKEN_QUESTION)) {    
+  if(Match(TOKEN_QUESTION)) {
+#ifdef _DEBUG
+  Show("Conditional", depth);
+#endif   
     NextToken();
     Expression* if_expression = ParseLogic(depth + 1);
     if(!Match(TOKEN_COLON)) {
       ProcessError(TOKEN_COLON);
     }
-    NextToken();       
-    Cond* cond_expr = TreeFactory::Instance()->MakeCond(file_name, line_num, if_expression, expression);
-    cond_expr->SetElseExpression(ParseExpression(depth + 1));
-    
-    return cond_expr;
+    NextToken();
+    return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
+					     if_expression, ParseExpression(depth + 1));    
   }
   
   return expression;
