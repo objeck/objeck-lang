@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-// #include "vld.h"
+#include "vld.h"
 #include "vm.h"
 
 #define SUCCESS 0
