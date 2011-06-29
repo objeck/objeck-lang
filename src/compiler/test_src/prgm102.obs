@@ -1,0 +1,13 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			Run();		
+		}
+
+		function : native : Run() ~ Nil {
+			a := 7;
+			b := 13;
+			(((a < 13) ? 10 : 20) <  100)->PrintLine();
+		}
+	}
+}
