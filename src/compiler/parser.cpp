@@ -1697,11 +1697,28 @@ ExpressionList* Parser::ParseIndices(int depth)
  ****************************/
 Expression* Parser::ParseExpression(int depth)
 {
+  const int line_num = GetLineNumber();
+  const string &file_name = GetFileName();
+  
 #ifdef _DEBUG
   Show("Expression", depth);
 #endif
-
-  return ParseLogic(depth + 1);
+  
+  Expression* expression = ParseLogic(depth + 1);
+  if(Match(TOKEN_QUESTION)) {    
+    NextToken();
+    Expression* cond_expression = ParseLogic(depth + 1);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();       
+    Cond* cond_expr = TreeFactory::Instance()->MakeCond(file_name, line_num, expression, cond_expression);
+    cond_expr->SetElseExpression(ParseExpression(depth + 1));
+    
+    return cond_expr;
+  }
+  
+  return expression;
 }
 
 /****************************
@@ -2423,16 +2440,18 @@ If* Parser::ParseIf(int depth)
     NextToken();
     If* next = ParseIf(depth + 1);
     if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, expression, if_statements, next);
-  } else if(Match(TOKEN_ELSE_ID)) {
+  } 
+  else if(Match(TOKEN_ELSE_ID)) {
     NextToken();
     if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, expression, if_statements);
     symbol_table->CurrentParseScope()->NewParseScope();
     if_stmt->SetElseStatements(ParseStatementList(depth + 1));
     symbol_table->CurrentParseScope()->PreviousParseScope();
-  } else {
+  } 
+  else {
     if_stmt = TreeFactory::Instance()->MakeIf(file_name, line_num, expression, if_statements);
   }
-
+  
   return if_stmt;
 }
 

@@ -406,6 +406,7 @@ namespace frontend {
    ****************************/
   typedef enum _ExpressionType {
     METHOD_CALL_EXPR,
+    COND_EXPR,
     VAR_EXPR,
     NIL_LIT_EXPR,
     CHAR_LIT_EXPR,
@@ -967,7 +968,53 @@ namespace frontend {
       return FLOAT_LIT_EXPR;
     }
   };
+  
+  /****************************
+   * Cond class
+   ****************************/
+  class Cond : public Expression {
+    friend class TreeFactory;
+    Expression* expression;
+    Expression* if_expression;
+    Expression* else_expression;
+    Cond* next;
+    
+    Cond(const string &f, const int l, Expression* e, Expression* s, Cond* n = NULL) : Expression(f, l) {
+      expression = e;
+      if_expression = s;
+      next = n;
+      else_expression = NULL;
+    }
+    
+    ~Cond() {
+    }
 
+  public:
+    const ExpressionType GetExpressionType() {
+      return COND_EXPR;
+    }
+    
+    Expression* GetExpression() {
+      return expression;
+    }
+
+    Expression* GetCondExpression() {
+      return if_expression;
+    }
+
+    void SetElseExpression(Expression* e) {
+      else_expression = e;
+    }
+
+    Expression* GetElseExpression() {
+      return else_expression;
+    }
+
+    Cond* GetNext() {
+      return next;
+    }
+  };
+  
   /****************************
    * Return class
    ****************************/
@@ -2330,6 +2377,12 @@ namespace frontend {
       return tmp;
     }
 
+    Cond* MakeCond(const string &f, const int l, Expression* e, Expression* s, Cond* n = NULL) {
+      Cond* tmp = new Cond(f, l, e, s, n);
+      expressions.push_back(tmp);
+      return tmp;
+    }
+    
     StaticArray* MakeStaticArray(const string &file_name, int line_num, ExpressionList* exprs) {
       StaticArray* tmp = new StaticArray(file_name, line_num, exprs);
       expressions.push_back(tmp);
