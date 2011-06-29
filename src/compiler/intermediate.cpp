@@ -914,6 +914,8 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   default:
+    cerr << "internal error" << endl;
+    exit(1);
     break;
   }
 }

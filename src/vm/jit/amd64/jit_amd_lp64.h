@@ -460,8 +460,13 @@ namespace Runtime {
       case XMM13:
 	byte = 0xa8;
 	break;
-      }
 
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
+	break;
+      }
+      
       switch(eff_adr) {
       case RAX:
       case XMM0:
@@ -522,8 +527,13 @@ namespace Runtime {
 	cerr << "invalid register reference" << endl;
 	exit(1);
 	break;
-      }
 
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
+	break;
+      }
+      
       return byte;
     }
 
@@ -713,6 +723,11 @@ namespace Runtime {
       case R13:
       case XMM13:
 	reg_id = 0x5;
+	break;
+	
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
 	break;
       }
 
@@ -1821,7 +1836,7 @@ namespace Runtime {
     // method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type) {
       RegInstr* holder = working_stack.front();
-      working_stack.3pop_front();
+      working_stack.pop_front();
 
       RegisterHolder* array_holder;
       switch(holder->GetType()) {
@@ -1840,6 +1855,8 @@ namespace Runtime {
 	break;
 	
       default:
+	cerr << "internal error" << endl;
+	exit(1);
 	break;
       }
       
@@ -1878,11 +1895,13 @@ namespace Runtime {
 	index_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), RBP, index_holder->GetRegister());
 	break;
-
+	
       default:
+	cerr << "internal error" << endl;
+	exit(1);
 	break;
       }
-
+      
       const long dim = instr->GetOperand();
       for(int i = 1; i < dim; i++) {
 	// index *= array[i];
