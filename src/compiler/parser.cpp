@@ -1716,7 +1716,7 @@ Expression* Parser::ParseExpression(int depth)
     }
     NextToken();
     return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
-					     if_expression, ParseExpression(depth + 1));    
+					     if_expression, ParseLogic(depth + 1));    
   }
   
   return expression;
