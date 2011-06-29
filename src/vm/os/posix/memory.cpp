@@ -301,6 +301,8 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
 
   default:
+    cerr << "internal error" << endl;
+    exit(1);
     break;
   }
   // collect memory
