@@ -52,7 +52,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <hash_map>
+#include <unordered_map>
 using namespace stdext;
 #else
 #include <dlfcn.h>
