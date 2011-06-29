@@ -255,6 +255,9 @@ class IntermediateEmitter {
 	  default:
 	    assert(false);
 	    break;
+#else
+	  default:
+	    break;
 #endif
           }
         }

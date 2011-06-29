@@ -2007,7 +2007,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
     if(sock >= 0) {
-      instance[0] = NULL;
+      instance[0] = 0;
       IPSocket::Close(sock);
     }
   }
@@ -2210,7 +2210,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << "# file close: addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
     if(file) {
-      instance[0] = NULL;
+      instance[0] = 0;
       fclose(file);
     }
   }
