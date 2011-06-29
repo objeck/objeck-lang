@@ -62,6 +62,9 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
 	}
       }
 	break;
+
+      default:
+	break;
       }
     }
   }
@@ -150,6 +153,9 @@ void Linker::ResloveExternalMethodCalls()
               exit(1);
             }
           }
+	    break;
+
+	  default:
 	    break;
           }
         }

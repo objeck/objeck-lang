@@ -619,6 +619,9 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 	case frontend::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, entry->GetId(), LOCL));
           break;
+
+	default:
+	  break;
         }
       }
     }
@@ -908,6 +911,9 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     
   case SYSTEM_STMT:
     EmitSystemDirective(static_cast<SystemStatement*>(statement));
+    break;
+
+  default:
     break;
   }
 }
@@ -1967,6 +1973,9 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
       break;
+
+    default:
+      break;
     }
   }
   else {
@@ -2103,6 +2112,9 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end));
   }
+    break;
+
+  default:
     break;
   }
 }
@@ -2293,6 +2305,9 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, BIT_XOR_INT));
     EmitCast(expression);
     break;
+
+  default:
+    break;
   }
 }
 
@@ -2332,6 +2347,9 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       if(cast_type->GetType() != frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, F2I));
       }
+      break;
+
+    default:
       break;
     }
   }
@@ -2410,6 +2428,9 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_ARY_ELM, dimension, mem_context));
       break;
+
+    default:
+      break;
     }
   }
   // scalar variable
@@ -2440,6 +2461,9 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       
     case frontend::FUNC_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, variable->GetId(), mem_context));
+      break;
+
+    default:
       break;
     }
   }
@@ -2509,6 +2533,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_ARY_ELM, dimension, mem_context));
+      break;
+
+    default:
       break;
     }
   }
@@ -2592,6 +2619,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
+
+    default:
+      break;
     }
 
     switch(variable->GetBaseType()->GetType()) {
@@ -2614,6 +2644,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 
     case frontend::FUNC_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, variable->GetId(), mem_context));
+      break;
+
+    default:
       break;
     }
   }
@@ -2728,6 +2761,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FLOAT_ARY,	(INT_VALUE)expressions.size()));
       break;
+
+    default:
+      break;
     }
   } 
   else {
@@ -2808,6 +2844,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           }
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
           break;
+
+	default:
+	  break;
         }
       } else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -2831,6 +2870,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  case frontend::FUNC_TYPE:
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
+	    
+	  default:
+	    break;
           }
 	  // enum check
 	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
@@ -2865,6 +2907,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  case frontend::FUNC_TYPE:
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
+
+	  default:
+	    break;
           }
 	  // enum check
 	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
@@ -3100,6 +3145,9 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           entry->SetId(index);
 	  index += 2;
 	  var_space += 2;
+	  break;
+
+	default:
 	  break;
 	}
       }
