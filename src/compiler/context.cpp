@@ -636,6 +636,10 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
     AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
     break;
     
+  case COND_EXPR:
+    AnalyzeConditional(static_cast<Cond*>(expression), depth);
+    break;
+    
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
     break;
@@ -709,6 +713,30 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
   
   // check cast
   AnalyzeCast(expression, depth + 1);
+}
+
+void ContextAnalyzer::AnalyzeConditional(Cond* conditional, int depth) {
+#ifdef _DEBUG
+  Show("conditional expression", conditional->GetLineNumber(), depth);
+#endif
+  
+  // check expressions
+  AnalyzeExpression(conditional->GetCondExpression(), depth + 1);  
+  Expression* if_conditional = conditional->GetExpression();
+  AnalyzeExpression(if_conditional, depth + 1);  
+  Expression* else_conditional = conditional->GetElseExpression();
+  AnalyzeExpression(else_conditional, depth + 1);
+  // validate types
+  if(if_conditional->GetEvalType()->GetType() == CLASS_TYPE && 
+     else_conditional->GetEvalType()->GetType() == CLASS_TYPE) {
+    AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);    
+  }
+  else if(if_conditional->GetEvalType()->GetType() != 
+	  else_conditional->GetEvalType()->GetType()) {
+    ProcessError(conditional, "'?' type mismatch");
+  }
+  // set eval type
+  conditional->SetEvalType(if_conditional->GetEvalType(), true);
 }
 
 void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int depth) {

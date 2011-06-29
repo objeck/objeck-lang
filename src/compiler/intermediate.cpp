@@ -1609,14 +1609,13 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
 
     // if-else
     int conditional = ++conditional_label;
-    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {
-
+    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, false));
-    } else {
+    }
+    else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, false));
     }
     
-
     // statements
     vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
     for(unsigned int i = 0; i < if_statements.size(); i++) {
@@ -1654,6 +1653,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   cur_line_num = expression->GetLineNumber();
   
   switch(expression->GetExpressionType()) {
+  case COND_EXPR:
+    EmitConditional(static_cast<Cond*>(expression));
+    break;
+    
   case CHAR_STR_EXPR:
     EmitCharacterString(static_cast<CharacterString*>(expression));
     break;
@@ -1982,6 +1985,28 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, (INT_VALUE)(all_elements.size() + 2)));
   }
+}
+
+/****************************
+ * Translates a '?' expression.
+ ****************************/
+void IntermediateEmitter::EmitConditional(Cond* conditional)
+{
+  cur_line_num = static_cast<Expression*>(conditional)->GetLineNumber();
+  
+  // conditional
+  int end_label = ++unconditional_label;
+  EmitExpression(conditional->GetCondExpression());
+  // if-expression
+  int cond = ++conditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, cond, false));
+  EmitExpression(conditional->GetExpression());
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
+  // else-expression
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, cond));
+  EmitExpression(conditional->GetElseExpression());
+  // expression end
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end_label));
 }
 
 /****************************

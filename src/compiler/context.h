@@ -586,6 +586,7 @@ class ContextAnalyzer {
   void AnalyzeExpression(Expression* expression, int depth);
   void AnalyzeVariable(Variable* variable, int depth);
   void AnalyzeCharacterString(CharacterString* char_str, int depth);
+  void AnalyzeConditional(Cond* conditional, int depth);
   void AnalyzeStaticArray(StaticArray* array, int depth);
   void AnalyzeCast(Expression* expression, int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, int depth);
