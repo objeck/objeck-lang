@@ -979,11 +979,10 @@ namespace frontend {
     Expression* else_expression;
     Cond* next;
     
-    Cond(const string &f, const int l, Expression* e, Expression* s, Cond* n = NULL) : Expression(f, l) {
-      expression = e;
+    Cond(const string &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
+      expression = c;
       if_expression = s;
-      next = n;
-      else_expression = NULL;
+      else_expression = e;
     }
     
     ~Cond() {
@@ -995,23 +994,19 @@ namespace frontend {
     }
     
     Expression* GetExpression() {
-      return expression;
-    }
-
-    Expression* GetCondExpression() {
       return if_expression;
     }
 
+    Expression* GetCondExpression() {
+      return expression;
+    }
+    
     void SetElseExpression(Expression* e) {
       else_expression = e;
     }
-
+    
     Expression* GetElseExpression() {
       return else_expression;
-    }
-
-    Cond* GetNext() {
-      return next;
     }
   };
   
@@ -2377,8 +2372,8 @@ namespace frontend {
       return tmp;
     }
 
-    Cond* MakeCond(const string &f, const int l, Expression* e, Expression* s, Cond* n = NULL) {
-      Cond* tmp = new Cond(f, l, e, s, n);
+    Cond* MakeCond(const string &f, const int l, Expression* c, Expression* s, Expression* e) {
+      Cond* tmp = new Cond(f, l, c, s, e);
       expressions.push_back(tmp);
       return tmp;
     }
