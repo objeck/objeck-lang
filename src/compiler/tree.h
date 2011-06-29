@@ -649,6 +649,9 @@ namespace frontend {
 
       case CHAR_STR_EXPR:
 	return CLASS_TYPE;
+
+      default:
+	break;
       }
 
       return VAR_TYPE;

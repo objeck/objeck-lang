@@ -669,6 +669,9 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
+
+    default:
+      break;
     }
   } else {
     outputs->AddInstruction(instr);
@@ -735,25 +738,28 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
       FLOAT_VALUE value = left->GetOperand4() + right->GetOperand4();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
-    break;
+      break;
 
     case SUB_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() - right->GetOperand4();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
-    break;
+      break;
 
     case MUL_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() * right->GetOperand4();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
-    break;
-
+      break;
+    
     case DIV_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() / right->GetOperand4();
       calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
-    break;
+      break;
+      
+    default:
+      break;
     }
   } else {
     outputs->AddInstruction(instr);

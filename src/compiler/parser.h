@@ -71,6 +71,9 @@ class Parser {
     case TOKEN_FLOAT_ID:
     case TOKEN_CHAR_ID:
       return true;
+
+    default:
+      break;
     }
 
     return false;

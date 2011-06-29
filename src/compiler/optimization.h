@@ -148,6 +148,9 @@ class ItermediateOptimizer {
 	  case LOAD_CLS_MEM:
 	  case DYN_MTHD_CALL:
 	    return false;
+
+	  default:
+	    break;
 	  }
 	}
       }
