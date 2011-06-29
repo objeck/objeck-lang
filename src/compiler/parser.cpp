@@ -1707,12 +1707,12 @@ Expression* Parser::ParseExpression(int depth)
   Expression* expression = ParseLogic(depth + 1);
   if(Match(TOKEN_QUESTION)) {    
     NextToken();
-    Expression* cond_expression = ParseLogic(depth + 1);
+    Expression* if_expression = ParseLogic(depth + 1);
     if(!Match(TOKEN_COLON)) {
       ProcessError(TOKEN_COLON);
     }
     NextToken();       
-    Cond* cond_expr = TreeFactory::Instance()->MakeCond(file_name, line_num, expression, cond_expression);
+    Cond* cond_expr = TreeFactory::Instance()->MakeCond(file_name, line_num, if_expression, expression);
     cond_expr->SetElseExpression(ParseExpression(depth + 1));
     
     return cond_expr;
