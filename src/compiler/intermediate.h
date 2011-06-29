@@ -366,6 +366,9 @@ class IntermediateEmitter {
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, variable->GetId(), mem_context));
       break;
+
+    default:
+      break;
     }
   }
   

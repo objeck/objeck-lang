@@ -362,6 +362,9 @@ namespace backend {
 	case instructions::OBJ_ARY_PARM:
 	  WriteInt(entry->GetId(), file_out);
 	  break;
+
+	default:
+	  break;
 	}
       }
     }

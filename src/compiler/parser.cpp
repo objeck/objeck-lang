@@ -1705,9 +1705,12 @@ Expression* Parser::ParseExpression(int depth)
 #endif
   
   Expression* expression = ParseLogic(depth + 1);
+  //
+  // parses a ternary conditional
+  //
   if(Match(TOKEN_QUESTION)) {
 #ifdef _DEBUG
-  Show("Conditional", depth);
+  Show("Ternary conditional", depth);
 #endif   
     NextToken();
     Expression* if_expression = ParseLogic(depth + 1);
@@ -1750,6 +1753,9 @@ Expression* Parser::ParseLogic(int depth)
       break;
     case TOKEN_OR:
       expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, OR_EXPR);
+      break;
+
+    default:
       break;
     }
     NextToken();
@@ -1807,6 +1813,9 @@ Expression* Parser::ParseMathLogic(int depth)
       break;
     case TOKEN_NEQL:
       expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, NEQL_EXPR);
+      break;
+
+    default:
       break;
     }
     NextToken();
@@ -2050,7 +2059,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   } 
   else if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
-    expression = ParseLogic(depth + 1);
+    expression = ParseExpression(depth + 1);
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(TOKEN_CLOSED_PAREN);
     }
@@ -2308,14 +2317,6 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
 	ProcessError(TOKEN_CLOSED_PAREN);
       }
       NextToken();
-      
-      /*
-      // subsequent method calls
-      if(Match(TOKEN_ASSESSOR)) {
-      method_call = ParseMethodCall(variable, depth + 1);
-      method_call->SetCastType(variable->GetCastType());
-      }
-      */
     }
     else {
       ProcessError("Expected identifier", TOKEN_SEMI_COLON);

@@ -248,6 +248,9 @@ public:
     case LBL:
       WriteInt(operand, file_out);
       break;
+
+    default:
+      break;
     }
   }
 
@@ -611,6 +614,9 @@ public:
 
     case TRAP_RTRN:
       cout << "TRAP_RTRN: args=" << operand << endl;
+      break;
+
+    default:
       break;
     }
   }

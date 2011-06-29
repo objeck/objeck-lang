@@ -171,7 +171,7 @@ void StaticArray::Validate(StaticArray* array) {
 	if(cur_length == -1) {
 	  cur_length = static_array.size();
 	}
-	if(cur_length != static_array.size()) {
+	if(cur_length != (int)static_array.size()) {
 	  matching_lengths = false;
 	}      
 	// check types

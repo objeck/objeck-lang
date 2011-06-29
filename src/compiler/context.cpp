@@ -715,6 +715,10 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
   AnalyzeCast(expression, depth + 1);
 }
 
+/****************************
+ * Analyzes a ternary 
+ * conditional
+ ****************************/
 void ContextAnalyzer::AnalyzeConditional(Cond* conditional, int depth) {
 #ifdef _DEBUG
   Show("conditional expression", conditional->GetLineNumber(), depth);
@@ -790,7 +794,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     
     // ensure that element sizes match dimensions
     vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();    
-    int total_size = array->GetSize(0);
+    unsigned int total_size = array->GetSize(0);
     for(int i = 1; i < array->GetDimension(); i++) {
       total_size *= array->GetSize(i);
     }
@@ -890,7 +894,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
     ExpressionList* indices = variable->GetIndices();
     if(indices) {
       // check dimensions
-      if(entry->GetType() && entry->GetType()->GetDimension() == indices->GetExpressions().size()) {
+      if(entry->GetType() && entry->GetType()->GetDimension() == (int)indices->GetExpressions().size()) {
         AnalyzeIndices(indices, depth + 1);
       } 
       else {
@@ -1511,7 +1515,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 	// TODO: hackish!
 	int start = dyn_func_params.find('(');
 	int end = dyn_func_params.find(')', start + 1);
-	if(start != string::npos && end != string::npos) {
+	if(start != (int)string::npos && end != (int)string::npos) {
 	  dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
 	}
       }
@@ -2074,6 +2078,9 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case BIT_XOR_EXPR:
     AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
     break;
+
+  default:
+    break;
   }
 
   Expression* right = expression->GetRight();
@@ -2097,6 +2104,9 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
     AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
+    break;
+
+  default:
     break;
   }
   AnalyzeExpression(left, depth + 1);
@@ -2171,6 +2181,9 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
+    break;
+
+  default:
     break;
   }
 }
@@ -2615,6 +2628,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case CLASS_TYPE:
       case BOOLEAN_TYPE:
         break;
+	
+      default:
+	break;
       }
       break;
 
@@ -2974,6 +2990,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
 	ProcessError(expression, "Invalid cast with classes: function reference and Bool");
         break;
       }
+      break;
+
+    default:
       break;
     }
   }
