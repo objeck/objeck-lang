@@ -314,7 +314,7 @@ namespace Runtime {
     void AddImm(int32_t imm) {
       BYTE_VALUE buffer[sizeof(int32_t)];
       ByteEncode32(buffer, imm);
-      for(int32_t i = 0; i < sizeof(int32_t); i++) {
+      for(int32_t i = 0; i < (int32_t)sizeof(int32_t); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -523,6 +523,11 @@ namespace Runtime {
       case EBP:
       case XMM5:
 	reg_id = 0x5;
+	break;
+
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
 	break;
       }
 
@@ -1130,7 +1135,7 @@ namespace Runtime {
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
 	  if(sock >= 0) {
-	    instance[0] = NULL;
+	    instance[0] = 0;
 	    IPSocket::Close(sock);
 	  }
 	}
@@ -1212,7 +1217,7 @@ namespace Runtime {
 	  FILE* file = (FILE*)instance[0];
 	
 	  if(file) {
-	    instance[0] = NULL;
+	    instance[0] = 0;
 	    fclose(file);
 	  }
 	}
@@ -1767,6 +1772,11 @@ namespace Runtime {
 	array_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), EBP, array_holder->GetRegister());
 	break;
+
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
+	break;
       }
       
       CheckNilDereference(array_holder->GetRegister());
@@ -1802,6 +1812,11 @@ namespace Runtime {
 	index_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
 	break;
+
+      default:
+	cerr << "internal error" << endl;
+	exit(1);
+	break;
       }
 
       const int32_t dim = instr->GetOperand();
@@ -1829,6 +1844,11 @@ namespace Runtime {
 	case MEM_32:
 	  add_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
 	  break;
+
+	default:
+	  cerr << "internal error" << endl;
+	  exit(1);
+	  break;
         }
       }
       
@@ -1849,6 +1869,9 @@ namespace Runtime {
       case FLOAT_TYPE:
 	shl_imm_reg(3, index_holder->GetRegister());
 	shl_imm_reg(3, bounds_holder->GetRegister());
+	break;
+
+      default:
 	break;
       }
       CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
@@ -1884,6 +1907,9 @@ namespace Runtime {
 	case STOR_FLOAT_VAR:
 	case COPY_FLOAT_VAR:
 	  values.insert(pair<int32_t, StackInstr*>(instr->GetOperand(), instr));
+	  break;
+
+	default:
 	  break;
 	}
       }

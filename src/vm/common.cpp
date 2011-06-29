@@ -53,13 +53,12 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
       SerializeInt(cls->GetId());
       
       if(!WasSerialized(mem)) {
+#ifdef _DEBUG
 	long mem_size = cls->GetInstanceMemorySize();
 	
 #ifdef _X64
 	mem_size *= 2;
 #endif
-	
-#ifdef _DEBUG
 	for(int i = 0; i < depth; i++) {
 	  cout << "\t";
 	}
