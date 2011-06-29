@@ -836,6 +836,13 @@ void Scanner::ParseToken(int index)
       NextChar();
       break;
 
+    case '?':
+      tokens[index]->SetType(TOKEN_QUESTION);
+      tokens[index]->SetLineNbr(line_nbr);
+      tokens[index]->SetFileName(filename);
+      NextChar();
+      break;
+
     case '=':
       tokens[index]->SetType(TOKEN_EQL);
       tokens[index]->SetLineNbr(line_nbr);

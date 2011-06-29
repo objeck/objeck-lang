@@ -1593,7 +1593,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
  ****************************/
 void IntermediateEmitter::EmitIf(If* if_stmt)
 {
-  cur_line_num = if_stmt->GetLineNumber();
+  cur_line_num = static_cast<Statement*>(if_stmt)->GetLineNumber();
   
   int end_label = ++unconditional_label;
   EmitIf(if_stmt, ++conditional_label, end_label);

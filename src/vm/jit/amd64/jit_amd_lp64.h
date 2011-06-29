@@ -1821,7 +1821,7 @@ namespace Runtime {
     // method.
     RegisterHolder* ArrayIndex(StackInstr* instr, MemoryType type) {
       RegInstr* holder = working_stack.front();
-      working_stack.pop_front();
+      working_stack.3pop_front();
 
       RegisterHolder* array_holder;
       switch(holder->GetType()) {
@@ -1850,8 +1850,8 @@ namespace Runtime {
 	 const long dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	 index *= array[i];
-	 index += PopInt();
+	   index *= array[i];
+	   index += PopInt();
 	 }
       */
 
