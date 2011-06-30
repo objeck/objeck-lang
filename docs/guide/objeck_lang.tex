@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{2.0.1}.  For
+  functionality that is included in release \textit{2.0.2}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -323,6 +323,16 @@ strings := ["Hello","World!"];
 strings->Size()->PrintLine();
 \end{verbatim}
 
+\subsubsection{Conditional Expressions}
+There's also support for ternary conditional expressions.  For example
+the following statement prints the value \texttt{false}. 
+
+\begin{verbatim}
+a := 7;
+b := 13;
+(((a < 13) ? 10 : 20) >  15)->PrintLine();
+\end{verbatim}
+
 \subsection{Statements}
 Besides providing support for declaration statements the language has
 support for conditional and control statements.  As with other
@@ -442,7 +452,7 @@ each(i : values) {
 };
 \end{verbatim}
 
-\section{Custom Types}
+\section{User Defined Types}
 
 \subsection{Enums}
 Enums are user defined enumerated types.  The main use of an
