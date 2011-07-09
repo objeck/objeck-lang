@@ -42,9 +42,6 @@
     <ClInclude Include="..\context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\frontend.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\intermediate.h">
       <Filter>Header Files</Filter>
     </ClInclude>

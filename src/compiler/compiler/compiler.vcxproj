@@ -242,7 +242,6 @@
   <ItemGroup>
     <ClInclude Include="..\compiler.h" />
     <ClInclude Include="..\context.h" />
-    <ClInclude Include="..\frontend.h" />
     <ClInclude Include="..\intermediate.h" />
     <ClInclude Include="..\linker.h" />
     <ClInclude Include="..\optimization.h" />
