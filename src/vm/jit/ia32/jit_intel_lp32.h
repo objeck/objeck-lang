@@ -139,13 +139,19 @@ namespace Runtime {
       holder = h;
       instr = NULL;
     }  
+    
     RegInstr(StackInstr* si, double* da) {
       type = IMM_64;
       operand = (long)da;
       holder = NULL;
       instr = NULL;
     }
-  
+
+    RegInstr(RegType t, long o) {
+      type = t;
+      operand = o;
+    }
+    
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
       case LOAD_INT_LIT:
@@ -263,6 +269,7 @@ namespace Runtime {
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
+    RegInstr* ProcessIntFold(long left_imm, long right_imm, InstructionType type);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
