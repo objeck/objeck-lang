@@ -1602,6 +1602,67 @@ void JitCompilerIA64::ProcessReturn(long params) {
   }
 }
 
+RegInstr* JitCompilerIA64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
+  switch(type) {
+  case AND_INT:
+    return new RegInstr(IMM_INT, left_imm && right_imm);
+    
+  case OR_INT:
+    return new RegInstr(IMM_INT, left_imm || right_imm);
+    
+  case ADD_INT:
+    return new RegInstr(IMM_INT, left_imm + right_imm);
+    
+  case SUB_INT:
+    return new RegInstr(IMM_INT, left_imm - right_imm);
+    
+  case MUL_INT:
+    return new RegInstr(IMM_INT, left_imm * right_imm);
+    
+  case DIV_INT:
+    return new RegInstr(IMM_INT, left_imm / right_imm);
+    
+  case MOD_INT:
+    return new RegInstr(IMM_INT, left_imm % right_imm);
+    
+  case SHL_INT:
+    return new RegInstr(IMM_INT, left_imm << right_imm);
+    
+  case SHR_INT:
+    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    
+  case BIT_AND_INT:
+    return new RegInstr(IMM_INT, left_imm & right_imm);
+    
+  case BIT_OR_INT:
+    return new RegInstr(IMM_INT, left_imm | right_imm);
+    
+  case BIT_XOR_INT:
+    return new RegInstr(IMM_INT, left_imm ^ right_imm);
+    
+  case LES_INT:	
+    return new RegInstr(IMM_INT, left_imm < right_imm);
+    
+  case GTR_INT:
+    return new RegInstr(IMM_INT, left_imm > right_imm);
+    
+  case EQL_INT:
+    return new RegInstr(IMM_INT, left_imm == right_imm);
+    
+  case NEQL_INT:
+    return new RegInstr(IMM_INT, left_imm != right_imm);
+    
+  case LES_EQL_INT:
+    return new RegInstr(IMM_INT, left_imm <= right_imm);
+    
+  case GTR_EQL_INT:
+    return new RegInstr(IMM_INT, left_imm >= right_imm);
+    
+  default:
+    break;
+  }
+}
+
 void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1613,13 +1674,10 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     // intermidate
   case IMM_INT:
     switch(right->GetType()) {
-    case IMM_INT: {
-      RegisterHolder* holder = GetRegister();
-      move_imm_reg(left->GetOperand(), holder->GetRegister());
-      math_imm_reg(right->GetOperand(), holder->GetRegister(), 
-		   instruction->GetType());
-      working_stack.push_front(new RegInstr(holder));
-    }
+    case IMM_INT:
+      working_stack.push_front(ProcessIntFold(left->GetOperand(), 
+					      right->GetOperand(), 
+					      instruction->GetType()));
       break;
 
     case REG_INT: {
