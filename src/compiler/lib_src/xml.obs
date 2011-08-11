@@ -248,7 +248,7 @@ bundle XML {
 				while(@buffer_pos < @buffer->Size() & (buffer_char->IsChar() | 
 					buffer_char->IsDigit() |
 					@buffer[@buffer_pos] = '-' | @buffer[@buffer_pos] = '_' | 
-					@buffer[@buffer_pos] = '.')) {
+					@buffer[@buffer_pos] = '.' | @buffer[@buffer_pos] = ':')) {
 					# update
 					@buffer_pos += 1;
 					buffer_char := @buffer[@buffer_pos]->As(Char);
@@ -585,7 +585,7 @@ bundle XML {
       	attribs := StringHash->New();
       	while(attrib_key <> Nil) {	
       	
-# Console->GetInstance()->Print("key: ")->PrintLine(attrib_key);    
+# Console->Print("key: ")->PrintLine(attrib_key);    
 				
 					IgnoreWhiteSpace();
 					if(Unmatch('=')) {
@@ -602,7 +602,7 @@ bundle XML {
 						return Nil;
 					};
 					
-# Console->GetInstance()->Print("value: ")->PrintLine(attrib_value);    
+# Console->Print("value: ")->PrintLine(attrib_value);    
 					
 					attribs->Insert(attrib_key, attrib_value->As(Base));
 					
