@@ -262,7 +262,7 @@ bundle XML {
 				
 				return name;
 			};
-			
+						
 			return Nil;
 		}
 		
@@ -461,7 +461,7 @@ bundle XML {
 						};
 					};
 					
-					# reset for comment
+					# rest for comment
 					IgnoreWhiteSpace();
 					if(@buffer_pos = @buffer->Size()) {
 						return Nil;
@@ -562,14 +562,19 @@ bundle XML {
 				};
 			};
 			
-			# looks for tag name
+			# looks for tag name or multpile comments
 			IgnoreWhiteSpace();
-			tag_name := ParseName();
-			if(tag_name = Nil) {
-				@error_msg := "Invalid tag name...";
-				return Nil;
-      };
-      
+			if(Match('!')) {
+				@buffer_pos -= 1;
+				return ParseElement();
+      		}
+      		else {
+      			tag_name := ParseName();
+				if(tag_name = Nil) {
+					@error_msg := "Invalid tag name...";
+					return Nil;
+      			};
+      		};
 # Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
       
       # look for attributes
