@@ -1669,7 +1669,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
 
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
-
+  
   switch(left->GetType()) {
     // intermidate
   case IMM_INT:
@@ -1679,7 +1679,7 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
 					      right->GetOperand(), 
 					      instruction->GetType()));
       break;
-
+      
     case REG_INT: {
       RegisterHolder* holder = right->GetRegister();
       math_imm_reg(left->GetOperand(), holder->GetRegister(), instruction->GetType());

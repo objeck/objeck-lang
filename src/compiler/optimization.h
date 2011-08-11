@@ -178,7 +178,7 @@ class ItermediateOptimizer {
       optimization_level = 3;
     } 
     else {
-      optimization_level = 0;
+      optimization_level = 1;
     }
   }
   
