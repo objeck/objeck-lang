@@ -247,8 +247,8 @@ bundle XML {
 				start_pos := @buffer_pos;
 				while(@buffer_pos < @buffer->Size() & (buffer_char->IsChar() | 
 					buffer_char->IsDigit() |
-					@buffer[@buffer_pos] = '-' | @buffer[@buffer_pos] = '_' | 
-					@buffer[@buffer_pos] = '.' | @buffer[@buffer_pos] = ':')) {
+					@buffer[@buffer_pos] = '-' | @buffer[@buffer_pos] = '.' | 
+					@buffer[@buffer_pos] = ':')) {
 					# update
 					@buffer_pos += 1;
 					buffer_char := @buffer[@buffer_pos]->As(Char);
@@ -425,21 +425,21 @@ bundle XML {
 			else if(Match('!')) {
 				@buffer_pos += 1;
 			
-      	# comment
-      	if(Match('-')) {
+				# comment
+				if(Match('-')) {
 					@buffer_pos += 1;
-					
+						
 					if(Unmatch('-')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
-      		};
-      		@buffer_pos += 1;
-      	
-      		# ignore commented chars
-      		state := 0;
+					};
+					@buffer_pos += 1;
+			
+					# ignore commented chars
+					state := 0;
 					while(@buffer_pos < @buffer->Size() & state < 3) {
 						@buffer_pos += 1;
-										
+											
 						# match comment end
 						if(Match('-')) {
 							if(state = 0) {
@@ -460,13 +460,13 @@ bundle XML {
 							state := 0;
 						};
 					};
-					
+						
 					# rest for comment
 					IgnoreWhiteSpace();
 					if(@buffer_pos = @buffer->Size()) {
 						return Nil;
 					};
-					
+						
 					# looks for '<'
 					if(Unmatch('<')) {
 						@error_msg := "Expected '<'...";
@@ -474,7 +474,7 @@ bundle XML {
 					};
 					@buffer_pos += 1;
 					IgnoreWhiteSpace();
-					
+						
 					# looks for '</'
 					is_end_tag := false;
 					if(Match('/')) {
@@ -485,46 +485,46 @@ bundle XML {
 				# cdata section
 				else if(Match('[')) {
 					@buffer_pos += 1;
-					
+						
 					if(Unmatch('C')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
-      		};
-      		@buffer_pos += 1;
-      		
-      		if(Unmatch('D')) {
-						@error_msg := "Unsupported tag...";
-						return Nil;
-      		};
-      		@buffer_pos += 1;
-      		
-      		if(Unmatch('A')) {
-						@error_msg := "Unsupported tag...";
-						return Nil;
-      		};
-      		@buffer_pos += 1;
-      		
-      		if(Unmatch('T')) {
-						@error_msg := "Unsupported tag...";
-						return Nil;
-      		};
-      		@buffer_pos += 1;
-      		
-      		if(Unmatch('A')) {
-						@error_msg := "Unsupported tag...";
-						return Nil;
-      		};
-      		@buffer_pos += 1;
-      		
-      		if(Unmatch('[')) {
-						@error_msg := "Unsupported tag...";
-						return Nil;
-      		};
-      		@buffer_pos += 1;
+					};
+					@buffer_pos += 1;
 				
+					if(Unmatch('D')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('A')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('T')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('A')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+				
+					if(Unmatch('[')) {
+						@error_msg := "Unsupported tag...";
+						return Nil;
+					};
+					@buffer_pos += 1;
+					
 					# ignore commented chars
-      		state := 0;
-      		start_pos := @buffer_pos;
+					state := 0;
+					start_pos := @buffer_pos;
 					while(@buffer_pos < @buffer->Size() & state < 3) {
 						@buffer_pos += 1;
 										
@@ -544,15 +544,15 @@ bundle XML {
 							state := 3;
 							@buffer_pos += 1;
 						};
-					};
-					
+					};				
 					# copy data
 					data := String->New();
 					for(i := start_pos; i < @buffer_pos - 3; i += 1;) {
 						data->Append(@buffer[i]);
 					};
-# Console->Instance()->Print("cdata: ")->PrintLine(data);					
 					
+# Console->Print("cdata: ")->PrintLine(data);					
+						
 					return XMLElement->New(XMLElementType->CDATA, Nil->As(String), 
 						Nil->As(StringHash), data);
 				}
@@ -561,62 +561,63 @@ bundle XML {
 					return Nil;
 				};
 			};
-			
+				
 			# looks for tag name or multpile comments
 			IgnoreWhiteSpace();
 			if(Match('!')) {
 				@buffer_pos -= 1;
 				return ParseElement();
-      		}
-      		else {
-      			tag_name := ParseName();
+			}
+			else {
+				tag_name := ParseName();
 				if(tag_name = Nil) {
 					@error_msg := "Invalid tag name...";
 					return Nil;
-      			};
-      		};
-# Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
-      
-      # look for attributes
-      IgnoreWhiteSpace();
-      attrib_key := ParseName();
-      if(attrib_key <> Nil & is_end_tag) {
-      	@error_msg := "End tags may not have attributes...";
-				return Nil;
-      };
-      
-      attribs : StringHash := Nil; 
-      if(attrib_key <> Nil) {
-      	attribs := StringHash->New();
-      	while(attrib_key <> Nil) {	
-      	
-# Console->Print("key: ")->PrintLine(attrib_key);    
-				
-					IgnoreWhiteSpace();
-					if(Unmatch('=')) {
-						@error_msg := "Expected '='...";
-						return Nil;
-					};
-					@buffer_pos += 1;
-					
-					# looks for tag value
-					IgnoreWhiteSpace();
-					attrib_value := ParseValue();
-					if(attrib_value = Nil) {
-						@error_msg := "Invalid tag name...";
-						return Nil;
-					};
-					
-# Console->Print("value: ")->PrintLine(attrib_value);    
-					
-					attribs->Insert(attrib_key, attrib_value->As(Base));
-					
-					# update
-					IgnoreWhiteSpace();
-					attrib_key := ParseName();
 				};
-      };
-      
+			};
+			
+# Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
+		  
+			# look for attributes
+			IgnoreWhiteSpace();
+			attrib_key := ParseName();
+			if(attrib_key <> Nil & is_end_tag) {
+				@error_msg := "End tags may not have attributes...";
+				return Nil;
+			};
+		  
+			attribs : StringHash := Nil; 
+			if(attrib_key <> Nil) {
+				attribs := StringHash->New();
+				while(attrib_key <> Nil) {	
+			
+# Console->Print("key: ")->PrintLine(attrib_key);    
+					
+				IgnoreWhiteSpace();
+				if(Unmatch('=')) {
+					@error_msg := "Expected '='...";
+					return Nil;
+				};
+				@buffer_pos += 1;
+				
+				# looks for tag value
+				IgnoreWhiteSpace();
+				attrib_value := ParseValue();
+				if(attrib_value = Nil) {
+					@error_msg := "Invalid tag name...";
+					return Nil;
+				};
+			
+# Console->Print("value: ")->PrintLine(attrib_value);    
+			
+				attribs->Insert(attrib_key, attrib_value->As(Base));
+			
+				# update
+				IgnoreWhiteSpace();
+				attrib_key := ParseName();
+				};
+			};
+		  
 			# unary
 			is_unary_tag := false;
 			if(Match('/')) {
@@ -629,7 +630,6 @@ bundle XML {
 			};
 			
 			if(Match('?')) {
-			
 				if(is_dclr_tag = false) {
 					@error_msg := "Invalid declaration tag...";
 					return Nil;
@@ -659,7 +659,7 @@ bundle XML {
 					tag_contents->Append(@buffer[i]);
 				};
 			};				
-
+	
 			type : XMLElementType;
 			if(is_unary_tag) {
 				type := XMLElementType->UNARY_ELEMENT;
@@ -676,7 +676,7 @@ bundle XML {
 			
 			return XMLElement->New(type, tag_name, attribs, tag_contents);
 		}
-		
+			
 		method : public : GetRoot() ~ XMLElement {
 			return @root;
 		}
