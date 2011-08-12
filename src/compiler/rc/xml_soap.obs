@@ -1,0 +1,27 @@
+use IO;
+use XML;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				parser := XmlParser->New(FileReader->ReadFile(args[0]));
+				if(parser->Parse()) {
+					results := parser->FindElements("//env:Envelope/env:Body/p:itinerary/p:departure");
+					if(results <> Nil) {
+						each(i : results) {
+							element := results->Get(i)->As(XMLElement);
+							for(j := 0; j < element->GetChildCount(); j += 1;) {
+								child_element := element->GetChild(j);
+								child_element->GetContent()->PrintLine();
+							};
+						};
+					};
+				}
+				else {
+					parser->GetError()->PrintLine();
+				};
+			};
+		}
+	}
+}
