@@ -1936,17 +1936,16 @@ bundle Net {
 			return @headers;
 		}
 		
-		method : public : Post(content : String) ~ Bool {
+		method : public : Post(data : String) ~ Vector {
+			content := Vector->New();
 			if(@url->StartsWith("http://")) {
-				@url := @url->SubString("http://"->Size(), 
-					@url->Size() - "http://"->Size());
+				@url := @url->SubString("http://"->Size(), @url->Size() - "http://"->Size());
 				index := @url->Find('/');
 				address := "";
 				location := "/";
 				if(index > -1) {
 					address := @url->SubString(index);
-					index->PrintLine();
-					location := @url->SubString(index + 1, @url->Size() - index - 1);
+					location->Append(@url->SubString(index + 1, @url->Size() - index - 1));
 				}
 				else {
 					address := @url;
@@ -1958,20 +1957,81 @@ bundle Net {
 					post->Append(location);
 					post->Append(" HTTP/1.1\r\nHost: ");
 					post->Append(address);
-					post->Append("\r\nContent-Length: ");
-					post->Append(content->Size()->ToString());
 					post->Append("\r\nContent-Type: ");
 					post->Append(@content_type);
-					post->Append("\r\n\r\n");
+					post->Append("\r\nContent-Length: ");
+					post->Append(data->Size()->ToString());
+					post->Append("\r\n\r\n");					
+					post->Append(data);
 					socket->WriteString(post);
-					post->Append(content);
+					
+# post->PrintLine();					
+					
+					status_code := 500;
+					status_line := socket->ReadString();
+					if(status_line->StartsWith("HTTP/1.1")) {
+						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
+							status_line->Size() - "HTTP/1.1"->Size() - 1);
+						index := status_line->Find(' ');
+						status_code := status_line->SubString(index)->ToInt();
+					};
+					
+# status_line->PrintLine();
+					
+					if(status_code <> 500) {
+					  # get headers
+						do {
+							line := socket->ReadString();
+							if(line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
+								@headers->Insert(name->As(Compare), value->As(Base));
+# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+							};
+						}
+						while(line->Size() > 0);
+
+						# look for chunked blocks
+						encoding : String := @headers->Find("Transfer-Encoding"->As(Compare))->As(String);
+						if(encoding <> Nil & encoding->Equals("chunked")) {
+							done := false;
+							do {
+								size_line := "0x";
+								size_line->Append(socket->ReadString());
+								chunk_size := size_line->ToInt();
+								line := "";
+								if(chunk_size > 0) {
+									for(i := 0; i < chunk_size; i += 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line->As(Base));
+								}
+								else {
+									done := true;
+								};
+							}
+							while(done <> true);
+						}
+						else {
+							length_header : String := @headers->Find("Content-Length"->As(Compare))->As(String);
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								buffer := Byte->New[length];
+								for(i := 0; i < length; i += 1;) {
+									buffer[i] := socket->ReadByte();
+								};
+								line := String->New(buffer);
+								content->AddBack(line->As(Base));
+							};						
+						};
+					};
+					socket->Close();
 				};
-			}
-			else {
-				return false;
 			};
 			
-			return true;
+			return content;
 		}
 		
 		method : public : native : Get() ~ Vector {
