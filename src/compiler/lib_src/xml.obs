@@ -410,7 +410,6 @@ bundle XML {
 			
 			is_end_tag := false;
 			is_dclr_tag := false;
-			is_comment := false;
 			
 			# looks for '</'
 			if(Match('/')) {
@@ -482,7 +481,6 @@ bundle XML {
 						is_end_tag := true;
 						@buffer_pos += 1;
 					};
-					is_comment := true;
 				}
 				# cdata section
 				else if(Match('[')) {
@@ -669,9 +667,6 @@ bundle XML {
 			else if(is_dclr_tag) {
 				type := XMLElementType->DECLARATION;
 			}
-			else if(is_comment) {
-				type := XMLElementType->COMMENT;
-			}
 			else if(is_end_tag) {
 				type := XMLElementType->CLOSING_ELEMENT;
 			}
@@ -694,7 +689,6 @@ bundle XML {
 		DECLARATION,
 		CDATA,
 		ELEMENT,
-		COMMENT,
 		CLOSING_ELEMENT, # control type not used for DOM creation
 		UNARY_ELEMENT
 	}
