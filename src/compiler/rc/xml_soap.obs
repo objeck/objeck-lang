@@ -7,15 +7,27 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(FileReader->ReadFile(args[0]));
 				if(parser->Parse()) {
-					results := parser->FindElements("//env:Envelope/env:Body/p:itinerary/p:departure");
+					results := parser->FindElements("//wsdl:definitions/wsdl:portType/wsdl:operation");
 					if(results <> Nil) {
 						each(i : results) {
 							element := results->Get(i)->As(XMLElement);
-							for(j := 0; j < element->GetChildCount(); j += 1;) {
-								child_element := element->GetChild(j);
-								child_element->GetContent()->PrintLine();
+							element->GetAttribute("name")->PrintLine();
+							
+							children := element->GetChildren();
+							each(j : children) {
+								input_element := children->Get(j)->As(XMLElement);
+								
+	# input_element->FindElements("//wsdl:input")->Size()->PrintLine();							
+								
+								IO.Console->Print("  ")->PrintLine(input_element->GetName());
+								IO.Console->Print("    ")->PrintLine(input_element->GetAttribute("name"));
 							};
 						};
+					};
+					
+					results := parser->FindElements("//wsdl:definitions/wsdl:message");
+					if(results <> Nil) {
+						results->Size()->PrintLine();
 					};
 				}
 				else {
