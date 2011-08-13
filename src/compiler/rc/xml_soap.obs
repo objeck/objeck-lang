@@ -4,35 +4,75 @@ use XML;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				parser := XmlParser->New(FileReader->ReadFile(args[0]));
-				if(parser->Parse()) {
-					results := parser->FindElements("//wsdl:definitions/wsdl:portType/wsdl:operation");
-					if(results <> Nil) {
-						each(i : results) {
-							element := results->Get(i)->As(XMLElement);
-							element->GetAttribute("name")->PrintLine();
-							
-							children := element->GetChildren();
-							each(j : children) {
-								input_element := children->Get(j)->As(XMLElement);
-								
-	# input_element->FindElements("//wsdl:input")->Size()->PrintLine();							
-								
-								IO.Console->Print("  ")->PrintLine(input_element->GetName());
-								IO.Console->Print("    ")->PrintLine(input_element->GetAttribute("name"));
+			if(args->Size() > 0) {
+				Run(args[0]);
+			};
+		}
+		
+		function : native : Run(name : String) ~ Nil {
+			parser := XmlParser->New(FileReader->ReadFile(name));
+			if(parser->Parse()) {
+				"-------- Operations --------"->PrintLine();
+			
+				results := parser->FindElements("//wsdl:definitions/wsdl:portType/wsdl:operation");
+				if(results <> Nil) {
+					results := parser->FindElements("//definitions/portType/operation");
+				};
+				
+				if(results <> Nil) {
+					each(i : results) {
+						element := results->Get(i)->As(XMLElement);
+						element->GetAttribute("name")->PrintLine();
+						
+						children := element->GetChildren();
+						each(j : children) {
+							input_element := children->Get(j)->As(XMLElement);			
+# input_element->FindElements("//wsdl:input")->Size()->PrintLine();
+							if(input_element->GetName()->EndsWith("input")) {
+								IO.Console->Print("  input='")->Print(input_element
+									->GetAttribute("message"))->PrintLine("'");
 							};
 						};
 					};
-					
-					results := parser->FindElements("//wsdl:definitions/wsdl:message");
-					if(results <> Nil) {
-						results->Size()->PrintLine();
-					};
-				}
-				else {
-					parser->GetError()->PrintLine();
 				};
+				
+				"-------- Messages --------"->PrintLine();
+				results := parser->FindElements("//wsdl:definitions/wsdl:message");
+				if(results <> Nil) {
+					results := parser->FindElements("//definitions/message");
+				};
+				if(results <> Nil) {
+					each(i : results) {
+						element := results->Get(i)->As(XMLElement);
+						element->GetAttribute("name")->PrintLine();
+						
+						children := element->GetChildren();
+						if(children <> Nil) {
+							each(j : children) {
+								input_element := children->Get(j)->As(XMLElement);
+								IO.Console->Print("  name='")->Print(input_element
+										->GetAttribute("name"))->PrintLine("'");
+								IO.Console->Print("  type='")->Print(input_element
+										->GetAttribute("type"))->PrintLine("'");		
+							};
+						};
+					};
+				};
+				
+				"-------- Binding --------"->PrintLine();
+				results := parser->FindElements("//wsdl:definitions/wsdl:binding/wsdl:operation");
+				if(results <> Nil) {
+					results := parser->FindElements("//definitions/binding/operation");
+				};
+				if(results <> Nil) {
+					each(i : results) {
+						element := results->Get(i)->As(XMLElement);
+						element->GetAttribute("name")->PrintLine();
+					};
+				};
+			}
+			else {
+				parser->GetError()->PrintLine();
 			};
 		}
 	}
