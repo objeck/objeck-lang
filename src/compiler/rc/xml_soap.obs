@@ -26,10 +26,10 @@ bundle Default {
 						
 						children := element->GetChildren();
 						each(j : children) {
-							input_element := children->Get(j)->As(XMLElement);			
-# input_element->FindElements("//wsdl:input")->Size()->PrintLine();
-							if(input_element->GetName()->EndsWith("input")) {
-								IO.Console->Print("  input='")->Print(input_element
+							sub_element := children->Get(j)->As(XMLElement);			
+# sub_element->FindElements("//wsdl:input")->Size()->PrintLine();
+							if(sub_element->GetName()->EndsWith("input")) {
+								IO.Console->Print("  input='")->Print(sub_element
 									->GetAttribute("message"))->PrintLine("'");
 							};
 						};
@@ -49,25 +49,40 @@ bundle Default {
 						children := element->GetChildren();
 						if(children <> Nil) {
 							each(j : children) {
-								input_element := children->Get(j)->As(XMLElement);
-								IO.Console->Print("  name='")->Print(input_element
+								sub_element := children->Get(j)->As(XMLElement);
+								IO.Console->Print("  name='")->Print(sub_element
 										->GetAttribute("name"))->PrintLine("'");
-								IO.Console->Print("  type='")->Print(input_element
+								IO.Console->Print("  type='")->Print(sub_element
 										->GetAttribute("type"))->PrintLine("'");		
 							};
 						};
 					};
 				};
 				
-				"-------- Binding --------"->PrintLine();
-				results := parser->FindElements("//wsdl:definitions/wsdl:binding/wsdl:operation");
+				"-------- Types --------"->PrintLine();
+				results := parser->FindElements("//definitions/wsdl:types/wsdl:schema/wsdl:complexType");
 				if(results <> Nil) {
-					results := parser->FindElements("//definitions/binding/operation");
+					results := parser->FindElements("//definitions/types/schema/complexType");
 				};
 				if(results <> Nil) {
 					each(i : results) {
 						element := results->Get(i)->As(XMLElement);
 						element->GetAttribute("name")->PrintLine();
+						children := element->GetChildren();
+						if(children <> Nil) {
+							sub_element := children->Get(0)->As(XMLElement);
+							if(sub_element->GetName()->Equals("all")) {
+								all_elements := sub_element->GetChildren();
+								each(j : all_elements) {
+									all_element := all_elements->Get(j)->As(XMLElement);
+									IO.Console->Print("  name='")->Print(all_element
+										->GetAttribute("name"))->PrintLine("'");
+									IO.Console->Print("  type='")->Print(all_element
+										->GetAttribute("type"))->PrintLine("'");
+									"  ---"->PrintLine();
+								};
+							};
+						};
 					};
 				};
 			}
