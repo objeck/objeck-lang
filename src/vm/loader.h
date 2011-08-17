@@ -53,6 +53,7 @@ class Loader {
   int buffer_pos;
   int start_class_id;
   int start_method_id;
+  map<const string, const int> params;
 
   int ReadInt() {
     int32_t value;
@@ -87,7 +88,7 @@ class Loader {
     char* buffer = NULL;
     // open file
     ifstream in(filename.c_str(), ifstream::binary);
-    if(in) {
+    if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
       buffer_size = in.tellg();
@@ -115,7 +116,8 @@ class Loader {
   void LoadMethods(StackClass* cls, bool is_debug);
   void LoadInitializationCode(StackMethod* mthd);
   void LoadStatements(StackMethod* mthd, bool is_debug);
-
+  void LoadConfiguration();
+  
 public:
   Loader(const char* arg) {
     filename = arg;
@@ -150,7 +152,16 @@ public:
   }
 
   static StackProgram* GetProgram();
+  
+  int GetConfigurationParameter(const string key) {
+    map<const string, const int>::iterator result = params.find(key);
+    if(result != params.end()) {
+      return result->second;
+    }
 
+    return 0;
+  }
+  
   void Load();
 };
 
