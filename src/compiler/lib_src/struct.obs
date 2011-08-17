@@ -1816,7 +1816,7 @@ bundle Structure {
 		}
 		
 		method : public : Insert(key : Compare, value : Base) ~ Nil {
-			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
+			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
 			if(list = Nil) {
 				list := List->New();
@@ -1827,7 +1827,7 @@ bundle Structure {
 		}
 
 		method : public : native : Find(key : Compare) ~ Base {
-			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
+			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
@@ -1851,7 +1851,7 @@ bundle Structure {
 		}
 		
 		method : public : native : Remove(key : Compare) ~ Bool {
-			hash := (2 xor key->HashID() % @buckets->Size())->Abs();
+			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
