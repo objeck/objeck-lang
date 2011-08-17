@@ -55,13 +55,10 @@ name->PrintLine();
 						if(children <> Nil) {
 							each(j : children) {
 								sub_element := children->Get(j)->As(XMLElement);
-
 								message_name := sub_element->GetAttribute("name");
 IO.Console->Print("  name='")->Print(message_name)->PrintLine("'");
-
 								message_type := sub_element->GetAttribute("type");
 IO.Console->Print("  type='")->Print(message_type)->PrintLine("'");		
-
 								messages->Insert(name, Message->New(message_name, message_type)->As(Base));
 							};
 						};
