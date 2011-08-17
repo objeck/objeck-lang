@@ -523,7 +523,8 @@ bundle System {
 			Append(str->ToCharArray());
 		}
 		
-		method : public : native : Append(array : Char[]) ~ Nil {
+#		method : public : native : Append(array : Char[]) ~ Nil {
+		method : public : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
 				@max := (@max + array->Size()) * 2;
@@ -1028,17 +1029,13 @@ bundle System {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
-		method : public : HashID() ~ Int {
+		method : public : native : HashID() ~ Int {
 			hash := 0;
 			for(i := 0; i < @pos; i += 1;) {
-				hash := hash * 17 + @string[i];
+				c := @string[i];
+				hash += c * (c + 1);
 			};
-			hash := hash->Abs();
 			
-			if(hash > Int->MaxSize()) {
-				hash := hash >> 31;
-			};
-
 			return hash;
 		}
 
