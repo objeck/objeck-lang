@@ -1,5 +1,6 @@
 use IO;
 use XML;
+use Structure;
 
 bundle Default {
 	class Test {
@@ -9,11 +10,11 @@ bundle Default {
 			};
 		}
 		
-		function : native : Run(name : String) ~ Nil {
+		function : Run(name : String) ~ Nil {
 			parser := XmlParser->New(FileReader->ReadFile(name));
 			if(parser->Parse()) {
 				"-------- Operations --------"->PrintLine();
-			
+				operations := StringHash->New();
 				results := parser->FindElements("//wsdl:definitions/wsdl:portType/wsdl:operation");
 				if(results <> Nil) {
 					results := parser->FindElements("//definitions/portType/operation");
@@ -22,21 +23,24 @@ bundle Default {
 				if(results <> Nil) {
 					each(i : results) {
 						element := results->Get(i)->As(XMLElement);
-						element->GetAttribute("name")->PrintLine();
+						name := element->GetAttribute("name");
+name->PrintLine();
 						
 						children := element->GetChildren();
 						each(j : children) {
 							sub_element := children->Get(j)->As(XMLElement);			
 # sub_element->FindElements("//wsdl:input")->Size()->PrintLine();
 							if(sub_element->GetName()->EndsWith("input")) {
-								IO.Console->Print("  input='")->Print(sub_element
-									->GetAttribute("message"))->PrintLine("'");
+								message := sub_element->GetAttribute("message");
+IO.Console->Print("  input='")->Print(message)->PrintLine("'");
+								operations->Insert(name, message->As(Base)); 
 							};
 						};
 					};
 				};
 				
 				"-------- Messages --------"->PrintLine();
+				messages := StringHash->New();
 				results := parser->FindElements("//wsdl:definitions/wsdl:message");
 				if(results <> Nil) {
 					results := parser->FindElements("//definitions/message");
@@ -44,16 +48,21 @@ bundle Default {
 				if(results <> Nil) {
 					each(i : results) {
 						element := results->Get(i)->As(XMLElement);
-						element->GetAttribute("name")->PrintLine();
+						name := element->GetAttribute("name");
+name->PrintLine();
 						
 						children := element->GetChildren();
 						if(children <> Nil) {
 							each(j : children) {
 								sub_element := children->Get(j)->As(XMLElement);
-								IO.Console->Print("  name='")->Print(sub_element
-										->GetAttribute("name"))->PrintLine("'");
-								IO.Console->Print("  type='")->Print(sub_element
-										->GetAttribute("type"))->PrintLine("'");		
+
+								message_name := sub_element->GetAttribute("name");
+IO.Console->Print("  name='")->Print(message_name)->PrintLine("'");
+
+								message_type := sub_element->GetAttribute("type");
+IO.Console->Print("  type='")->Print(message_type)->PrintLine("'");		
+
+								messages->Insert(name, Message->New(message_name, message_type)->As(Base));
 							};
 						};
 					};
@@ -67,7 +76,8 @@ bundle Default {
 				if(results <> Nil) {
 					each(i : results) {
 						element := results->Get(i)->As(XMLElement);
-						element->GetAttribute("name")->PrintLine();
+						name := element->GetAttribute("name");
+name->PrintLine();
 						children := element->GetChildren();
 						if(children <> Nil) {
 							sub_element := children->Get(0)->As(XMLElement);
@@ -75,20 +85,53 @@ bundle Default {
 								all_elements := sub_element->GetChildren();
 								each(j : all_elements) {
 									all_element := all_elements->Get(j)->As(XMLElement);
-									IO.Console->Print("  name='")->Print(all_element
-										->GetAttribute("name"))->PrintLine("'");
-									IO.Console->Print("  type='")->Print(all_element
-										->GetAttribute("type"))->PrintLine("'");
-									"  ---"->PrintLine();
+									message_name := all_element->GetAttribute("name");
+IO.Console->Print("  name='")->Print(message_name)->PrintLine("'");
+									message_type := all_element->GetAttribute("type");
+IO.Console->Print("  type='")->Print(message_type)->PrintLine("'");"  ---"->PrintLine();
 								};
 							};
 						};
 					};
 				};
+				
+				"---------"->PrintLine();
+				message := operations->Find("regionsInfoByIana")->As(String);
+				index := message->Find(":");
+				if(index > -1) {
+					index += 1;
+					message := message->SubString(index, message->Size() - index);
+				};
+				
+				if(message <> Nil) {
+					m := messages->Find(message)->As(Message);
+					if(m <> Nil) {
+						m->GetName()->PrintLine();
+						m->GetType()->PrintLine();
+					};
+				};	
 			}
 			else {
 				parser->GetError()->PrintLine();
 			};
+		}
+	}
+	
+	class Message {
+		@name : String;
+		@type : String;
+		
+		New(name : String, type : String) {
+			@name := name;
+			@type := type;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetType() ~ String {
+			return @type;
 		}
 	}
 }
