@@ -38,6 +38,25 @@ StackProgram* Loader::GetProgram() {
   return program;
 }
 
+void Loader::LoadConfiguration()
+{
+  ifstream in("obr.conf");
+  if(in.good()) {
+    string line;
+    do {
+      getline(in, line);
+      size_t pos = line.find('=');
+      if(pos != string::npos) {
+	string name = line.substr(0, pos);
+	string value = line.substr(pos + 1);
+	params.insert(pair<const string, int>(name, atoi(value.c_str())));
+      }
+    }
+    while(!in.eof());
+  }
+  in.close();
+}
+
 void Loader::Load()
 {
   int magic_num = ReadInt();
@@ -50,8 +69,9 @@ void Loader::Load()
     exit(1);
   }
 
-  int i;
+  LoadConfiguration();
 
+  int i;
   // read float strings
   num_float_strings = ReadInt();
   FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];

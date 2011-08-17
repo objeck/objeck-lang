@@ -360,7 +360,7 @@ private:
     char* buffer = NULL;
     // open file
     ifstream in(filename.c_str(), ifstream::binary);
-    if(in) {
+    if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
       buffer_size = in.tellg();
