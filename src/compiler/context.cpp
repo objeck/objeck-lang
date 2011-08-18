@@ -3027,7 +3027,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program enum
   //
-  if(SearchProgramEnums(left->GetClassName()) && right) {
+  if(left && right && SearchProgramEnums(left->GetClassName())) {
     Enum* left_enum = SearchProgramEnums(left->GetClassName());
     // program
     Enum* right_enum = SearchProgramEnums(right->GetClassName());
