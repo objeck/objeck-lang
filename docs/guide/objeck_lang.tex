@@ -44,17 +44,17 @@ use general purpose programming system.  The Objeck language allows
 programmers to quickly create solutions by leveraging packaged class
 libraries.  The syntax for the language was designed with symmetry in
 mind and enforces the notion that there should one intuitive way to do
-things. Features of the current release include:
+things. Features of the include:
 \begin{itemize}
 \item Support for object-oriented programming (all data types are
   treated as objects)
 \item Functional support (higher-order functions)
 \item Cross platform (support for OS X, Linux and Windows)
-\item Concurrent runtime JIT support for Intel processors
+\item Concurrent runtime JIT support for Intel processors (x86 and x64)
 \item Multi-threaded memory management (garbage collector)
-\item Peephole optimizations
+\item Local optimizations and method inlining
 \item Support for static libraries
-\item Command-line debugger
+\item Command line debugger
 \end{itemize}
 
 \section{Getting Started}
@@ -1074,7 +1074,7 @@ Base class for all objects.
 \end{itemize}
 
 \subsection{Introspection}
-Supports the ability to expose program information at runtime.
+Supports the ability to access program information at runtime.
 
 \subsubsection{Class}
 \begin{itemize}
@@ -2137,7 +2137,7 @@ bundle Default {
 }
 \end{verbatim}
 
-\subsection{XML Parsing and XPath Querying}
+\subsection{XML Parsing and Querying}
 \begin{verbatim}
 use IO;
 use XML;
