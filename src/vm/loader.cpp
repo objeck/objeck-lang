@@ -69,7 +69,7 @@ void Loader::Load()
     exit(1);
   }
 
-  LoadConfiguration();
+  // LoadConfiguration();
 
   int i;
   // read float strings

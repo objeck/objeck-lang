@@ -20,11 +20,11 @@
 \vspace{\baselineskip}
 
 \begin{abstract}
-  Provides an introduction to the Objeck programming language and it's
+  An introduction to the Objeck programming language and it's
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included in release \textit{2.0.2}.  For
+  functionality that is included as part of release \textit{2.0.3}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -59,10 +59,11 @@ things. Features of the current release include:
 
 \section{Getting Started}
 
-The Objeck computer language consist of a compiler and virtual
-machine.  The compiler binary is named \texttt{obc}, while the runtime
-virtual machine (VM) binary is named \texttt{obr}.  Here is the world
-famous ``Hello World" program written in the Objeck language:
+The Objeck distribution consists of a compiler, virtual machine,
+debugger and binary inspection tool.  The compiler binary is named
+\texttt{obc}, while the runtime virtual machine (VM) binary is named
+\texttt{obr}.  Here is the world famous ``Hello World" program written
+in the Objeck language:
 
 \begin{verbatim}
 bundle Default {
@@ -77,23 +78,22 @@ bundle Default {
 \subsection{Compiling Source}
 The example below compiles the source program \texttt{hello.obs} into
 the target binary file \texttt{hello.obe}.  The two output file types
-that the compilers supports are executables and shared libraries.
+that the compiler supports are executables and shared libraries.
 Shared libraries are binary files that contain all of the metadata
-needed by the compiler to relink them into programs.  Both executables
+needed by the compiler to relink them into executables.  Both executables
 and shared libraries contain enough metadata to support runtime
-introspection (a feature that will be added in a future release).  As
-a naming convention, executables must end in \texttt{*.obe} while
-shared libraries must end in \texttt{*.obl}.
+introspection.  As a naming convention, executables must end in
+\texttt{*.obe} while shared libraries must end in \texttt{*.obl}.
 
-Below is an example of compiling the ``Hello World" program
+Below is an example of compiling the ``Hello World" program:
 \begin{verbatim}
 obc -src tests\hello.obs -dest hello.obe
 \end{verbatim}
 
 Here's a more advanced example of linking in two required class
-libraries to compiler an executable.
+libraries to an executable.
 \begin{verbatim}
-obc -src examples/xml_parser.obs -lib struct.obl,xml.obl -dest a.obe
+obc -src examples\xml_parser.obs -lib struct.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
@@ -123,7 +123,7 @@ obr hello.obe
 \end{verbatim}
 
 \section{The Basics}
-Now lets introduce you the core features of the Objeck programming
+Now lets introduce the core features of the Objeck programming
 language.  \vspace{\baselineskip}
 
 Let's first start with a list of keywords that exist in language.
@@ -185,14 +185,14 @@ and for user defined objects. Variables can be declared anywhere in a
 program and are bound to traditional block scoping rules.  Variable
 assignments can be made during a declaration or at any other point in
 a program. Variables may be declared as local, instance or class
-variables.  Class level variables are declared using the
+level scope.  Class level variables are declared using the
 \texttt{static} keyword. A class that is derived from another class
 may access it's parents variables if the parent class is declared in
 one of the source programs.  \textit{If a class is derived from a
   class declared in a shared library then that class cannot access
   it's parents variables, unless an accessor method is provided.}
 Local variables can be declared without specifying their data type,
-such variables are bound to a type peceeding their first
+such variables are bound to the right-hand side of their first
 assignment. Three different declaration styles are shown below:
 
 \begin{verbatim}
@@ -221,9 +221,9 @@ with the following default values:
 
 \subsection{Expressions}
 The Objeck language supports various type of expressions.  Some of
-these expression include mathematical, logical, array and method call
-expressions.  The preceding sections describe some of the expressions
-that are supported in the Objeck.
+these expressions include mathematical, logical, arrays and method
+calls.  The preceding sections describes some of the expressions
+that are supported in Objeck.
 
 \subsubsection{Mathematical and Logical Expressions}
 The following code example demonstrates two ways to printing the
@@ -295,7 +295,7 @@ The following logical operators are supported in the Objeck language:
 \subsubsection{Arrays}
 Objeck supports single and multi-dimensional arrays.  Arrays are
 allocated dynamically from the system heap.  The memory that is
-allocated for arrays is managed automatically by the runtime garbage
+allocated for arrays is managed automatically by the garbage
 collector.  All of the basic types described above (as well as user
 defined types) can be allocated as arrays.  The code example below
 shows how a two-dimensional array of type \texttt{Int} is allocated
@@ -312,9 +312,8 @@ The size of an array can be obtained by calling the array's
 \texttt{Size()} method.  The \texttt{Size()} method will return the
 number of elements in a given array.  For a multi-dimensional array
 the size method returns the number of elements in the first dimension.
-Character array literals are allocated as \texttt{String} objects.  It
-should also be noted that language also \texttt{String} class that
-provides support for advanced string operations.
+Character array literals are allocated as \texttt{String} objects.
+The \texttt{String} class provides support for advanced string operations.
 
 \begin{verbatim}
 string := "Hello World!";
@@ -344,7 +343,7 @@ loops.  Note, all statements end with the `\texttt{;}' character.
 
 \subsubsection{If Statement}
 
-An \texttt{if} statement is a control statement that executes the
+An \texttt{if} statement is a control statement that executes an
 associated block of code if it evaluates to \texttt{true}.  If the
 evaluation statement does not evaluate to \texttt{true} than an
 \texttt{else if} statement may be evaluated (if it exists), otherwise
@@ -391,7 +390,7 @@ select(v) {
 \subsubsection{While Statement}
 
 A \texttt{while} statement is a control statement that will continue
-to execute its main body as long as its conditional expression
+to execute it's main body as long as it's conditional expression
 evaluates to \texttt{true}.  When its conditional expression evaluates
 to \texttt{false} than the loop body will cease to execute.
 
@@ -399,23 +398,23 @@ to \texttt{false} than the loop body will cease to execute.
 i := 10;
 while(i > 0) {
    i->PrintLine();
-   i := i - 1;
+   i -= 1;
 }
 \end{verbatim}
 
 \subsubsection{Do/While Statement}
 
 A \texttt{do/while} statement is a control statement that will execute
-its main body at least once and continue to execute its main body as
+it's main body at least once and continue to execute it's main body as
 long as its conditional expression evaluates to \texttt{true}.  When
-its conditional expression evaluates to \texttt{false} than the loop
+it's conditional expression evaluates to \texttt{false} than the loop
 body will cease to execute.
 
 \begin{verbatim}
 i := 10;
 do { 
    i->PrintLine();
-   i := i - 1;
+   i -= 1;
 } 
 while(i > 0);
 \end{verbatim}
@@ -427,9 +426,9 @@ The \texttt{for} statement is another common looping construct.  The
 evaluation expression and an update statement.
 
 \begin{verbatim}
-name := "John"->ToCharArray();
-for(i := 0; i < name->Size(); i := i + 1;) {
-  name[i]->PrintLine();
+location := "East Bay"->ToCharArray();
+for(i := 0; i < location->Size(); i += 1;) {
+  location[i]->PrintLine();
 }
 \end{verbatim}
 
@@ -443,9 +442,9 @@ the data structure.
 
 \begin{verbatim}
 values := Int->New[3];
-values[0] := 3;
-values[1] := 9;
-values[2] := 1;
+values[0] := 5;
+values[1] := 1;
+values[2] := 0;
 
 each(i : values) {
   values[i]->PrintLine();
@@ -457,7 +456,7 @@ each(i : values) {
 \subsection{Enums}
 Enums are user defined enumerated types.  The main use of an
 \texttt{enum} is to group a class of countable values, for example
-colors, into a distinct class.  Once \texttt{enum} values have been
+colors, into a distinct category.  Once \texttt{enum} values have been
 defined they may not be assigned or associated to a other
 \texttt{enum} groups or integer classes.  The valid operations for
 enums are as follows:
@@ -546,7 +545,7 @@ time error will be generated.
 method : public : Compare(right : Base) ~ Int {
   if(right <> Nil) {
     if(GetClassID() = right->GetClassID()) {
-      a : A := right->As(A);
+      a := right->As(A);
 
       if(@value = a->Get()) {
         return 0;
@@ -572,7 +571,7 @@ used to determine if two object instances are of the same or different
 classes.
 
 \subsubsection{Methods and Functions}
-The Objeck language support both methods and functions.  Functions are
+The Objeck language supports both methods and functions.  Functions are
 public static procedures that may be executed by any class.  Methods
 are operations that may be performed on an object instance.  Methods
 have \texttt{public} and \texttt{private} qualifiers.  Methods that
@@ -590,7 +589,7 @@ stack code an produces native machine code. Note, that there is
 initial overhead involved in the JIT compilation process since it
 occurs at runtime. In addition, some methods can not be compiled into
 native machine code but this is a rare case.  The keyword
-\texttt{native} is used to JIT compile methods and function at
+\texttt{native} is used to JIT compile methods and functions at
 runtime.
 
 A function or method may be defined as \texttt{virtual} meaning that
@@ -658,12 +657,14 @@ class Foo {
 }
 ....
 s1 : (String) ~ Int := Foo-> GetSize(String) ~ Int;
-s2 := Foo-> GetSize(String) ~ Int;
-size := EnvokeSize("Hello", s2);
+s2 := Foo->GetSize(String) ~ Int;
+size1 := EnvokeSize("Hello", s1);
+size2 := EnvokeSize("Hello", s2);
 \end{verbatim}
 
 \subsubsection{Envoking Functions}
-The following example shows how a function variable is envoked:
+The following example shows two ways that a function variable can be
+assigned and envoked:
 \begin{verbatim}
 ...
 method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
@@ -747,6 +748,8 @@ basic data structures like lists and vectors.  As new class libraries
 are added they will be documented in this section.
 
 \subsection{Core Libraries}
+Class support for basic datatypes.
+
 \subsubsection{Base}
 Base class for all objects.
 \begin{itemize}
@@ -1071,6 +1074,8 @@ Base class for all objects.
 \end{itemize}
 
 \subsection{Introspection}
+Supports the ability to expose program information at runtime.
+
 \subsubsection{Class}
 \begin{itemize}
 \item New(c : String)
@@ -1153,7 +1158,10 @@ Base class for all objects.
  \end{itemize}
  
 \subsection{Data Structures}
-Please note that these classes are in the `Structure' bundle.
+Provides support for basic data structures such as vectors, lists,
+hashes, maps, etc.  These classes are located in the `Structure'
+bundle.
+
 \subsubsection{Compare}
 Base class for all objects that use comparative algorithms.
 \begin{itemize}
@@ -1387,9 +1395,20 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
   \begin{itemize}
   \item method : public : Has(value : Compare) \textasciitilde Bool
   \end{itemize}
+
 \item \texttt{GetKeys} - returns a vector of keys
   \begin{itemize}
   \item method : public : GetKeys() \textasciitilde Vector
+  \end{itemize}
+
+\item \texttt{GetValues} - returns a vector of values
+  \begin{itemize}
+  \item method : public : GetValues() \textasciitilde Vector
+  \end{itemize}
+
+\item \texttt{Size} - returns the size of the map
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
@@ -1423,9 +1442,16 @@ for larger sets):
   \begin{itemize}
   \item method : public : GetValues() \textasciitilde Vector
   \end{itemize}
-\end{itemize}.
+
+\item \texttt{Size} - returns the size of the Hash
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
 
 \subsection{System Libraries}
+These classes provide access to system resources.
+
 \subsubsection{Runtime}
 The Runtime class provides information about the runtime VM
 environment.
@@ -1856,16 +1882,19 @@ This class in the `Net' bundle:
   \begin{itemize}
   \item New(url : String, content\_type: String, port : Int)
   \end{itemize}
+
 \item \texttt{Post} - Performs a HTTP POST to the connected website,
   returns true is successful
   \begin{itemize}
-  \item method : public : Post(content : String) \textasciitilde Bool
+  \item method : public : Post(content : String) \textasciitilde Vector
   \end{itemize}
+
 \item \texttt{Get} - Performs a HTTP GET from the connected website,
   returns a \texttt{Vector} of strings
   \begin{itemize}
   \item method : public : Get() \textasciitilde Vector
   \end{itemize}
+
 \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers
   information.  HTTP header information is populated after a HTTP GET
   request.
@@ -1911,6 +1940,9 @@ bundle:
   \item method : public : Parse() \textasciitilde Bool
   \end{itemize}
 \end{itemize}
+
+\subsection{XML Libraries}
+These classes provide support for XML parsing and document creation.
 
 \subsubsection{XMLBuilder}
 The XMLBuilder class allows a programmer to dynamically build an XML
