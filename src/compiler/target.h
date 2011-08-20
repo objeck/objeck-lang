@@ -912,6 +912,7 @@ public:
     cout << "Method: id=" << id << "; name='" << name << "'; return='" << rtrn_name
          << "';\n  blocks=" << blocks.size() << "; is_function=" << is_function << "; num_params="
          << params << "; mem_size=" << space << endl;
+    entries->Debug();
     cout << "---------------------------------------------------------" << endl;
     for(unsigned int i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
@@ -1089,6 +1090,7 @@ public:
          << "'; pid=" << pid << "; virtual=" << is_virtual << ";\n  num_methods="
          << methods.size() << "; class_mem_size=" << cls_space << "; instance_mem_size=" 
 	 << inst_space << "; is_debug=" << is_debug << endl;
+    entries->Debug();
     cout << "=========================================================" << endl;
     for(unsigned int i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
