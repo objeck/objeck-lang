@@ -345,7 +345,7 @@ void Library::LoadClasses()
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt(), "FIX"));
         break;
 
       default:
@@ -402,7 +402,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
       switch(type) {
       case instructions::OBJ_PARM:
       case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt(), "FIX"));
         break;
 
       default:

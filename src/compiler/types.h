@@ -283,6 +283,7 @@ namespace backend {
     instructions::ParamType type;
     int id;
     string name;
+    string cls_name;
 
   public:
     IntermediateDeclaration(const string &n, instructions::ParamType t) {
@@ -291,10 +292,11 @@ namespace backend {
       name = n;
     }
 
-    IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
+    IntermediateDeclaration(const string &n, instructions::ParamType t, int i, const string &c) {
       type = t;
       id = i;
       name = n;
+      cls_name = c;
     }
 
     instructions::ParamType GetType() {
@@ -304,7 +306,11 @@ namespace backend {
     const string GetName() {
       return name;
     }
-  
+
+    const string GetClassName() {
+      return cls_name;
+    }
+    
     int GetId() {
       return id;
     }
