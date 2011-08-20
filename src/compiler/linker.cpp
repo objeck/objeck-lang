@@ -34,7 +34,34 @@
 
 using namespace instructions;
 
-void Linker::ResloveExternalClass(LibraryClass* klass) 
+void Linker::ResolveEntries(backend::IntermediateDeclarations* entries) 
+{
+  vector<backend::IntermediateDeclaration*> entry_list = entries->GetParameters();
+  for(unsigned int i = 0; i < entry_list.size(); i++) {
+    backend::IntermediateDeclaration* entry = entry_list[i];
+
+    switch(entry->GetType()) {
+    case instructions::OBJ_PARM:
+    case instructions::OBJ_ARY_PARM: {
+      LibraryClass* lib_klass = SearchClassLibraries(entry->GetClassName());
+      if(lib_klass) {
+	entry->SetId(lib_klass->GetId());
+      }
+      else {
+	cerr << "Error: Unable to resolve external library class: '"
+	     << entry->GetClassName() << "'; check library path" << endl;
+	exit(1);
+      }
+    }
+      break;
+      
+    default:
+      break;
+    }
+  }
+}
+
+void Linker::ResolveExternalClass(LibraryClass* klass) 
 {
   map<const string, LibraryMethod*> methods = klass->GetMethods();
   map<const string, LibraryMethod*>::iterator mthd_iter;
@@ -52,7 +79,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
 	if(lib_klass) {
 	  if(!lib_klass->GetCalled()) {
 	    lib_klass->SetCalled(true);
-	    ResloveExternalClass(lib_klass);
+	    ResolveExternalClass(lib_klass);
 	  }
 	} 
 	else {
@@ -71,7 +98,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
   
 }
 
-void Linker::ResloveExternalClasses()
+void Linker::ResolveExternalClasses()
 {
   // all libraries
   map<const string, Library*>::iterator lib_iter;
@@ -81,13 +108,13 @@ void Linker::ResloveExternalClasses()
     for(unsigned int i = 0; i < classes.size(); i++) {
       // all methods
       if(classes[i]->GetCalled()) {
-        ResloveExternalClass(classes[i]);
+        ResolveExternalClass(classes[i]);
       }
     }
   }
 }
 
-void Linker::ResloveExternalMethodCalls()
+void Linker::ResolveExternalMethodCalls()
 {
   // all libraries
   map<const string, Library*>::iterator lib_iter;
@@ -95,10 +122,12 @@ void Linker::ResloveExternalMethodCalls()
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
     for(unsigned int i = 0; i < classes.size(); i++) {
+      ResolveEntries(classes[i]->GetEntries());
       // all methods
       map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
       map<const string, LibraryMethod*>::iterator mthd_iter;
       for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
+	ResolveEntries(mthd_iter->second->GetEntries());
         vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
         for(unsigned int j = 0; j < instrs.size(); j++) {
           LibraryInstr* instr = instrs[j];
@@ -344,8 +373,10 @@ void Library::LoadClasses()
       }
       switch(type) {
       case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt(), "FIX"));
+      case instructions::OBJ_ARY_PARM: {
+	const string &cls_name = ReadString();
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, -100, cls_name));
+      }
         break;
 
       default:
@@ -401,8 +432,10 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
       }
       switch(type) {
       case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt(), "FIX"));
+      case instructions::OBJ_ARY_PARM: {
+	const string &cls_name = ReadString();
+        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, -101, cls_name));
+      }
         break;
 
       default:
