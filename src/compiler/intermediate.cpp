@@ -196,8 +196,8 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
  ****************************/
 void IntermediateEmitter::Translate()
 {
-  parsed_program->GetLinker()->ResloveExternalClasses();
-  int class_id = 0;
+  parsed_program->GetLinker()->ResolveExternalClasses();
+  int class_id = 1;
   
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
@@ -246,7 +246,7 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
 {
   if(linker && !is_lib) {
     // resolve external libraries
-    linker->ResloveExternalMethodCalls();
+    linker->ResolveExternalMethodCalls();
     // write enums
     vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
     for(unsigned int i = 0; i < lib_enums.size(); i++) {
@@ -3068,8 +3068,9 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      const string &cls_name = entry->GetType()->GetClassName();
-	      int id = parsed_program->GetClass(cls_name)->GetId();
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, id, cls_name));
+	      Class* klass = parsed_program->GetClass(cls_name);
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, 
+								     klass->GetId(), klass->GetName()));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
@@ -3088,8 +3089,10 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      const string &cls_name = entry->GetType()->GetClassName();
-	      int id = parsed_program->GetLinker()->SearchClassLibraries(cls_name, parsed_program->GetUses())->GetId();
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, id, cls_name));
+	      LibraryClass* lib_klass = 
+		parsed_program->GetLinker()->SearchClassLibraries(cls_name, parsed_program->GetUses());
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, 
+								     lib_klass->GetId(), lib_klass->GetName()));
             }
           }
           // object
@@ -3099,8 +3102,9 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
 	      const string &cls_name = entry->GetType()->GetClassName();
-	      int id = SearchProgramClasses(cls_name)->GetId();
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, id, cls_name));
+	      Class* klass = SearchProgramClasses(cls_name);
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, 
+								     klass->GetId(), klass->GetName()));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
@@ -3119,8 +3123,10 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
 	      const string &cls_name = entry->GetType()->GetClassName();
-	      int id = parsed_program->GetLinker()->SearchClassLibraries(cls_name, parsed_program->GetUses())->GetId();
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, id, cls_name));
+	      LibraryClass* lib_klass = 
+		parsed_program->GetLinker()->SearchClassLibraries(cls_name, parsed_program->GetUses());
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, 
+								     lib_klass->GetId(), lib_klass->GetName()));
             }
           }
           entry->SetId(index++);

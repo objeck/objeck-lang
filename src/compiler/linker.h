@@ -799,24 +799,12 @@ class Linker {
   map<const string, Library*> libraries;
   string master_path;
   vector<string> paths;
-
+  
+  void ResolveExternalClass(LibraryClass* klass);
+  void ResolveEntries(backend::IntermediateDeclarations* entries);
+  
 public:
-  static void Show(const string &msg, const int line_num, int depth) {
-    cout << setw(4) << line_num << ": ";
-    for(int i = 0; i < depth; i++) {
-      cout << "  ";
-    }
-    cout << msg << endl;
-  }
-
-  static string ToString(int v) {
-    ostringstream str;
-    str << v;
-    return str.str();
-  }
-
-public:
-  Linker(const string& p) {
+  Linker(const string &p) {
     master_path = p;
   }
 
@@ -833,9 +821,22 @@ public:
     paths.clear();
   }
 
-  void ResloveExternalClass(LibraryClass* klass);
-  void ResloveExternalClasses();
-  void ResloveExternalMethodCalls();
+  void ResolveExternalClasses();
+  void ResolveExternalMethodCalls();
+
+  static void Show(const string &msg, const int line_num, int depth) {
+    cout << setw(4) << line_num << ": ";
+    for(int i = 0; i < depth; i++) {
+      cout << "  ";
+    }
+    cout << msg << endl;
+  }
+
+  static string ToString(int v) {
+    ostringstream str;
+    str << v;
+    return str.str();
+  }
 
   vector<string> GetLibraryPaths() {
     return paths;

@@ -311,6 +311,10 @@ namespace backend {
       return cls_name;
     }
     
+    void SetId(int i) {
+      id = i;
+    }    
+    
     int GetId() {
       return id;
     }
@@ -384,19 +388,19 @@ namespace backend {
 	  
 	  case instructions::OBJ_PARM:
 	    cout << "  " << i << ": OBJ_PARM id=" << entry->GetId() 
-		 << ", name='" << entry->GetName() << "'" << endl;
+		 << ", name='" << entry->GetClassName() << "'" << endl;
 	    break;
 	  
 	  case instructions::OBJ_ARY_PARM:
 	    cout << "  " << i << ": OBJ_ARY_PARM id=" << entry->GetId() 
-		 << ", name='" << entry->GetName() << "'" << endl;
+		 << ", name='" << entry->GetClassName() << "'" << endl;
 	    break;
 	  }
 	}
       }
     }
 
-    void Write(bool is_debug, ofstream* file_out) {
+    void Write(bool as_lib, bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
       for(unsigned int i = 0; i < declarations.size(); i++) {
 	IntermediateDeclaration* entry = declarations[i];	       
@@ -407,7 +411,12 @@ namespace backend {
 	switch(entry->GetType()) {
 	case instructions::OBJ_PARM:
 	case instructions::OBJ_ARY_PARM:
-	  WriteInt(entry->GetId(), file_out);
+	  if(as_lib) {
+	    WriteString(entry->GetClassName(), file_out);
+	  }
+	  else {
+	    WriteInt(entry->GetId(), file_out);
+	  }
 	  break;
 
 	default:

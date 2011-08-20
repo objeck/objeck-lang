@@ -58,13 +58,14 @@ void TargetEmitter::Emit()
   program->Debug();
 #endif
 
-  if(is_lib) {
+  if(as_lib) {
     // TODO: better error handling
     if(file_name.rfind(".obl") == string::npos) {
       cerr << "Error: Libraries must end in '.obl'" << endl;
       exit(1);
     }
-  } else {
+  } 
+  else {
     // TODO: better error handling
     if(file_name.rfind(".obe") == string::npos) {
       cerr << "Error: Executables must end in '.obe'" << endl;
@@ -74,7 +75,7 @@ void TargetEmitter::Emit()
   
   ofstream* file_out = new ofstream(file_name.c_str(), ofstream::binary);
   if(file_out && file_out->is_open()) {
-    program->Write(file_out, is_lib);
+    program->Write(file_out, as_lib);
     file_out->close();
     cout << "Wrote target file: '" << file_name << "'" << endl;
   }
