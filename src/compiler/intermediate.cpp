@@ -197,7 +197,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
 void IntermediateEmitter::Translate()
 {
   parsed_program->GetLinker()->ResolveExternalClasses();
-  int class_id = 1;
+  int class_id = 0;
   
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
