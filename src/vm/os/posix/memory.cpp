@@ -162,7 +162,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
   pthread_mutex_lock(&jit_mutex);
 #endif
   pda_roots.remove(frame);
-#ifndef _GC_SERIALi
+#ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
 }
@@ -176,12 +176,6 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #endif
 
   // zero out memory
-  /*
-  const long size = offset / sizeof(long);
-  for(int i = 0; i < size; i++) {
-    mem[i] = 0;
-  }
-  */
   memset(mem, 0, offset);
 
   ClassMethodId* mthd_info = new ClassMethodId;
@@ -658,7 +652,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
     cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->cls_id << "," 
-	 << id->mthd_id << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() 
+	 << id->mthd_id << "; addr=" << mthd << "; mem=" << mem << "; self=" << id->self 
+	 << "; num=" << mthd->GetNumberDeclarations() 
 	 << " =====" << endl;
 #endif
 

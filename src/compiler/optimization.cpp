@@ -75,30 +75,36 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
-    vector<IntermediateBlock*> method_lnlined_blocks;
+    /* # TODO: Fix me (rc/http.obs)
+       # suspect that the memory manager is not aware of the new
+       # inlined structure for a given function or method. Need
+       # to update the entries structure.
+       
+    vector<IntermediateBlock*> method_inlined_blocks;
     // instruction replacement
 #ifdef _DEBUG
     cout << "  Method inlining..." << endl;
 #endif
     while(!jump_blocks.empty()) {
       IntermediateBlock* tmp = jump_blocks.front();
-      method_lnlined_blocks.push_back(InlineMethodCall(tmp));
+      method_inlined_blocks.push_back(InlineMethodCall(tmp));
       // delete old block
       jump_blocks.erase(jump_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
+    */
 
     // fold integers
 #ifdef _DEBUG
     cout << "  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!method_lnlined_blocks.empty()) {
-      IntermediateBlock* tmp = method_lnlined_blocks.front();
+    while(!jump_blocks.empty()) {
+      IntermediateBlock* tmp = jump_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      method_lnlined_blocks.erase(method_lnlined_blocks.begin());
+      jump_blocks.erase(jump_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
