@@ -396,6 +396,9 @@ namespace backend {
 	    cout << "  " << i << ": OBJ_ARY_PARM id=" << entry->GetId() 
 		 << ", name='" << entry->GetClassName() << "'" << endl;
 	    break;
+
+	  default:
+	    break;
 	  }
 	}
       }

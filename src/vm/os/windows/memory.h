@@ -35,7 +35,7 @@
 #include "../../common.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 1024 * 512
+#define MEM_MAX 1024 * 12b
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
@@ -59,6 +59,7 @@ class MemoryManager {
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> static_memory;
   static map<long*, long> allocated_memory;
+  static map<long*, long> allocated_int_obj_array;
   static vector<long*> marked_memory;
   
   static CRITICAL_SECTION static_cs;
