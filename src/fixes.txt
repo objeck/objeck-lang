@@ -1,3 +1,7 @@
+8/21/1
+* fixed a major bug that caused programs to crash when compiled with method inlining.  method inlining became a default setting with version 2.0.x.  method inlining has been disabled a fix will be forthcoming
+* fixed the "Post" method in the HttpClient class
+* improved the string hashing algorithm
 9/21/10
 * fixed bug with += type operators working inconstantly with member variables
 9/23/10
