@@ -1529,58 +1529,58 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
 RegInstr* JitCompilerIA32::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
-    return new RegInstr(IMM_INT, left_imm && right_imm);
+    return new RegInstr(IMM_32, left_imm && right_imm);
     
   case OR_INT:
-    return new RegInstr(IMM_INT, left_imm || right_imm);
+    return new RegInstr(IMM_32, left_imm || right_imm);
     
   case ADD_INT:
-    return new RegInstr(IMM_INT, left_imm + right_imm);
+    return new RegInstr(IMM_32, left_imm + right_imm);
     
   case SUB_INT:
-    return new RegInstr(IMM_INT, left_imm - right_imm);
+    return new RegInstr(IMM_32, left_imm - right_imm);
     
   case MUL_INT:
-    return new RegInstr(IMM_INT, left_imm * right_imm);
+    return new RegInstr(IMM_32, left_imm * right_imm);
     
   case DIV_INT:
-    return new RegInstr(IMM_INT, left_imm / right_imm);
+    return new RegInstr(IMM_32, left_imm / right_imm);
     
   case MOD_INT:
-    return new RegInstr(IMM_INT, left_imm % right_imm);
+    return new RegInstr(IMM_32, left_imm % right_imm);
     
   case SHL_INT:
-    return new RegInstr(IMM_INT, left_imm << right_imm);
+    return new RegInstr(IMM_32, left_imm << right_imm);
     
   case SHR_INT:
-    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    return new RegInstr(IMM_32, left_imm >> right_imm);
     
   case BIT_AND_INT:
-    return new RegInstr(IMM_INT, left_imm & right_imm);
+    return new RegInstr(IMM_32, left_imm & right_imm);
     
   case BIT_OR_INT:
-    return new RegInstr(IMM_INT, left_imm | right_imm);
+    return new RegInstr(IMM_32, left_imm | right_imm);
     
   case BIT_XOR_INT:
-    return new RegInstr(IMM_INT, left_imm ^ right_imm);
+    return new RegInstr(IMM_32, left_imm ^ right_imm);
     
   case LES_INT:	
-    return new RegInstr(IMM_INT, left_imm < right_imm);
+    return new RegInstr(IMM_32, left_imm < right_imm);
     
   case GTR_INT:
-    return new RegInstr(IMM_INT, left_imm > right_imm);
+    return new RegInstr(IMM_32, left_imm > right_imm);
     
   case EQL_INT:
-    return new RegInstr(IMM_INT, left_imm == right_imm);
+    return new RegInstr(IMM_32, left_imm == right_imm);
     
   case NEQL_INT:
-    return new RegInstr(IMM_INT, left_imm != right_imm);
+    return new RegInstr(IMM_32, left_imm != right_imm);
     
   case LES_EQL_INT:
-    return new RegInstr(IMM_INT, left_imm <= right_imm);
+    return new RegInstr(IMM_32, left_imm <= right_imm);
     
   case GTR_EQL_INT:
-    return new RegInstr(IMM_INT, left_imm >= right_imm);
+    return new RegInstr(IMM_32, left_imm >= right_imm);
     
   default:
     break;
