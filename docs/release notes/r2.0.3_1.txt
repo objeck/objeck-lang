@@ -1,0 +1,10 @@
+Objeck v2.0.3_1
+
+This release fixes a critical bug that causes the VM to crash when the garbage collector was invoked on some inlined methods.  As of v2.0.x method inlining was automatically enabled.  This release also includes fixes and enhancements to the system class libraries.  Please read below for additional details.
+
+* Fixed a major bug that caused some programs to crash when compiled with method inlining.  Method inlining became a default setting with version 2.0.x.  Method inlining has been disabled a bug will be fixed in a forthcoming release.
+* Opening a file in write or read/write mode will delete an existing file with the same name.  All files are now opened in binary mode.
+* Fixed the "Post" method in the HttpClient class
+* Improved the String hashing algorithm.
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
