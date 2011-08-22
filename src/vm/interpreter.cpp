@@ -2179,7 +2179,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     array = (long*)array[0];
     long* instance = (long*)PopInt();
     const char* name = (char*)(array + 3);
-    FILE* file = File::FileOpen(name, "w");
+    FILE* file = File::FileOpen(name, "wb");
 #ifdef _DEBUG
     cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")" <<
       "; addr=" << file << "(" << (long)file << ") #" << endl;
@@ -2193,7 +2193,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     array = (long*)array[0];
     long* instance = (long*)PopInt();
     const char* name = (char*)(array + 3);
-    FILE* file = File::FileOpen(name, "w+");
+    FILE* file = File::FileOpen(name, "w+b");
 #ifdef _DEBUG
     cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")"
          << "; addr=" << file << "(" << (long)file << ") #" << endl;
