@@ -121,14 +121,13 @@ namespace frontend {
     
     Type(Type* t) {
       if(t) {
-		type = t->type;
-		dimension = t->dimension;
-		class_name = t->class_name;
-		func_rtrn = t->func_rtrn;
-		func_params = t->func_params;
-		func_param_count = -1;
+	type = t->type;
+	dimension = t->dimension;
+	class_name = t->class_name;
+	func_rtrn = t->func_rtrn;
+	func_params = t->func_params;
+	func_param_count = -1;
       }
-	  func_rtrn = NULL;
     }
     
     Type(EntryType t) {
@@ -284,7 +283,6 @@ namespace backend {
     instructions::ParamType type;
     int id;
     string name;
-    string cls_name;
 
   public:
     IntermediateDeclaration(const string &n, instructions::ParamType t) {
@@ -293,11 +291,10 @@ namespace backend {
       name = n;
     }
 
-    IntermediateDeclaration(const string &n, instructions::ParamType t, int i, const string &c) {
+    IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
       type = t;
       id = i;
       name = n;
-      cls_name = c;
     }
 
     instructions::ParamType GetType() {
@@ -307,15 +304,7 @@ namespace backend {
     const string GetName() {
       return name;
     }
-
-    const string GetClassName() {
-      return cls_name;
-    }
-    
-    void SetId(int i) {
-      id = i;
-    }    
-    
+  
     int GetId() {
       return id;
     }
@@ -360,54 +349,10 @@ namespace backend {
       return declarations;
     }
 
-    void Debug() {
-      if(declarations.size() > 0) {
-	cout << "scope types:" << endl;
-	for(unsigned int i = 0; i < declarations.size(); i++) {
-	  IntermediateDeclaration* entry = declarations[i];
-	
-	  switch(entry->GetType()) {
-	  case instructions::INT_PARM:
-	    cout << "  " << i << ": INT_PARM" << endl;
-	    break;
-
-	  case instructions::FLOAT_PARM:
-	    cout << "  " << i << ": FLOAT_PARM" << endl;
-	    break;	  
-
-	  case instructions::BYTE_ARY_PARM:
-	    cout << "  " << i << ": BYTE_ARY_PARM" << endl;
-	    break;
-
-	  case instructions::INT_ARY_PARM:
-	    cout << "  " << i << ": INT_ARY_PARM" << endl;
-	    break;
-
-	  case instructions::FLOAT_ARY_PARM:
-	    cout << "  " << i << ": FLOAT_ARY_PARM" << endl;
-	    break;
-	  
-	  case instructions::OBJ_PARM:
-	    cout << "  " << i << ": OBJ_PARM id=" << entry->GetId() 
-		 << ", name='" << entry->GetClassName() << "'" << endl;
-	    break;
-	  
-	  case instructions::OBJ_ARY_PARM:
-	    cout << "  " << i << ": OBJ_ARY_PARM id=" << entry->GetId() 
-		 << ", name='" << entry->GetClassName() << "'" << endl;
-	    break;
-
-	  default:
-	    break;
-	  }
-	}
-      }
-    }
-
-    void Write(bool as_lib, bool is_debug, ofstream* file_out) {
+    void Write(bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
       for(unsigned int i = 0; i < declarations.size(); i++) {
-	IntermediateDeclaration* entry = declarations[i];	       
+	IntermediateDeclaration* entry = declarations[i];
 	WriteInt(entry->GetType(), file_out);
 	if(is_debug) {
 	  WriteString(entry->GetName(), file_out);
@@ -415,12 +360,7 @@ namespace backend {
 	switch(entry->GetType()) {
 	case instructions::OBJ_PARM:
 	case instructions::OBJ_ARY_PARM:
-	  if(as_lib) {
-	    WriteString(entry->GetClassName(), file_out);
-	  }
-	  else {
-	    WriteInt(entry->GetId(), file_out);
-	  }
+	  WriteInt(entry->GetId(), file_out);
 	  break;
 
 	default:
