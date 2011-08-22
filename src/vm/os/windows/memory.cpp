@@ -37,6 +37,7 @@ StackProgram* MemoryManager::prgm;
 list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
+map<long*, long> MemoryManager::allocated_int_obj_array;
 map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
@@ -319,6 +320,9 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   allocation_size += calc_size;
   allocated_memory.insert(pair<long*, long>(mem, calc_size));
+  if(type == INT_TYPE) {
+    allocated_int_obj_array.insert(pair<long*, long>(mem, 1L));
+  }
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
@@ -546,6 +550,7 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   // remove references from allocated pool
   for(unsigned int i = 0; i < erased_memory.size(); i++) {
     allocated_memory.erase(erased_memory[i]);
+    allocated_int_obj_array.erase(erased_memory[i]);
   }
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
@@ -902,6 +907,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
+    // TODO: optimize so this is not a double call.. see below
     StackClass* cls = GetClass(mem);
     if(cls) {
 #ifdef _DEBUG
@@ -916,7 +922,8 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       if(MarkMemory(mem)) {
         CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
       }
-    } else {
+    } 
+    else {
       // NOTE: this happens when we are trying to mark unidentified memory
       // segments. these segments may be parts of that stack or temp for
       // register variables
@@ -929,7 +936,20 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         assert(cls);
       }
 #endif
-      MarkMemory(mem);
+      // primitive or object array
+      if(MarkMemory(mem)) {
+	// ensure we're only checking int and obj arrays
+	map<long*, long>::iterator result = allocated_int_obj_array.find(mem);
+      	if(result != allocated_int_obj_array.end()) {
+	  long* array = mem;
+	  const long size = array[0];
+	  const long dim = array[1];
+	  long* objects = (long*)(array + 2 + dim);
+	  for(long k = 0; k < size; k++) {
+	    CheckObject((long*)objects[k], false, 2);
+	  }
+	}
+      }
     }
   }
 }
