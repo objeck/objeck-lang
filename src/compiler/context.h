@@ -465,72 +465,74 @@ class ContextAnalyzer {
   inline const string EncodeType(Type* type) {
     string encoded_name;
     
-    switch(type->GetType()) {
-    case BOOLEAN_TYPE:
-      encoded_name += 'l';
-      break;
+    if(type) {
+      switch(type->GetType()) {
+      case BOOLEAN_TYPE:
+	encoded_name += 'l';
+	break;
 
-    case BYTE_TYPE:
-      encoded_name += 'b';
-      break;
+      case BYTE_TYPE:
+	encoded_name += 'b';
+	break;
 
-    case INT_TYPE:
-      encoded_name += 'i';
-      break;
+      case INT_TYPE:
+	encoded_name += 'i';
+	break;
 
-    case FLOAT_TYPE:
-      encoded_name += 'f';
-      break;
+      case FLOAT_TYPE:
+	encoded_name += 'f';
+	break;
 
-    case CHAR_TYPE:
-      encoded_name += 'c';
-      break;
+      case CHAR_TYPE:
+	encoded_name += 'c';
+	break;
 
-    case NIL_TYPE:
-      encoded_name += 'n';
-      break;
+      case NIL_TYPE:
+	encoded_name += 'n';
+	break;
 
-    case VAR_TYPE:
-      encoded_name += 'v';
-      break;
+      case VAR_TYPE:
+	encoded_name += 'v';
+	break;
 
-    case CLASS_TYPE: {
-      encoded_name += "o.";
+      case CLASS_TYPE: {
+	encoded_name += "o.";
 
-      // search program
-      string klass_name = type->GetClassName();
-      Class* klass = program->GetClass(klass_name);
-      if(!klass) {
-	vector<string> uses = program->GetUses();
-	for(unsigned int i = 0; !klass && i < uses.size(); i++) {
-	  klass = program->GetClass(uses[i] + "." + klass_name);
+	// search program
+	string klass_name = type->GetClassName();
+	Class* klass = program->GetClass(klass_name);
+	if(!klass) {
+	  vector<string> uses = program->GetUses();
+	  for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+	    klass = program->GetClass(uses[i] + "." + klass_name);
+	  }
 	}
-      }
-      if(klass) {
-	encoded_name += klass->GetName();
-      }
-      // search libaraires
-      else {
-	LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
-	if(lib_klass) {
-	  encoded_name += lib_klass->GetName();
-	} 
+	if(klass) {
+	  encoded_name += klass->GetName();
+	}
+	// search libaraires
 	else {
-	  encoded_name += type->GetClassName();
+	  LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
+	  if(lib_klass) {
+	    encoded_name += lib_klass->GetName();
+	  } 
+	  else {
+	    encoded_name += type->GetClassName();
+	  }
 	}
       }
-    }
-      break;
+	break;
       
-    case FUNC_TYPE: {
-      encoded_name += "m.";
-      if(type->GetClassName().size() == 0) {
-	type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), 
-					      type->GetFunctionReturn()));
+      case FUNC_TYPE: {
+	encoded_name += "m.";
+	if(type->GetClassName().size() == 0) {
+	  type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), 
+						type->GetFunctionReturn()));
+	}
+	encoded_name += type->GetClassName();
       }
-      encoded_name += type->GetClassName();
-    }
-      break;
+	break;
+      }
     }
     
     return encoded_name;
