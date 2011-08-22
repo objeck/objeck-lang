@@ -1,5 +1,6 @@
 8/21/1
 * fixed a major bug that caused programs to crash when compiled with method inlining.  method inlining became a default setting with version 2.0.x.  method inlining has been disabled a fix will be forthcoming
+* opening a file in write or read/write mode will clear an existing file of the same name.  All file operations are done in binary mode.
 * fixed the "Post" method in the HttpClient class
 * improved the string hashing algorithm
 9/21/10
