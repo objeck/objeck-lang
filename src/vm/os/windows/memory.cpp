@@ -182,12 +182,6 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #endif
 
   // zero out memory
-  /*
-  const long size = offset / sizeof(long);
-  for(int i = 0; i < size; i++) {
-    mem[i] = 0;
-  }
-  */
   memset(mem, 0, offset);
 
   ClassMethodId* mthd_info = new ClassMethodId;
@@ -305,6 +299,11 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 
   case FLOAT_TYPE:
     calc_size = size * sizeof(FLOAT_VALUE);
+    break;
+
+  default:
+    cerr << "internal error" << endl;
+    exit(1);
     break;
   }
   // collect memory
@@ -492,7 +491,9 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
       found = true;
     }
 
+	// not found, will be collected
     if(!found) {
+      // object or array	
       long mem_size;
       if(iter->second < 0) {
         StackClass* cls = prgm->GetClass(-iter->second);
@@ -501,6 +502,9 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
 #endif
         if(cls) {
           mem_size = cls->GetInstanceMemorySize();
+        }
+		else {
+         mem_size = iter->second;
         }
       } 
       else {
