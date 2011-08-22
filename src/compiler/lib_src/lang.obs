@@ -1312,7 +1312,7 @@ bundle IO {
 		}
 	
 		function : PrintLine(f : Float) ~ ConsoleIO {
-			return IO.ConsoleIO->Instance()->Print(f);
+			return IO.ConsoleIO->Instance()->PrintLine(f);
 		}
 	
 		function : Print(cc : Char[]) ~ ConsoleIO {
@@ -1328,7 +1328,7 @@ bundle IO {
 		}
 	
 		function : PrintLine(s : System.String) ~ ConsoleIO {
-			return IO.ConsoleIO->Instance()->Print(s);
+			return IO.ConsoleIO->Instance()->PrintLine(s);
 		}
 	
 		function : PrintLine() ~ ConsoleIO {

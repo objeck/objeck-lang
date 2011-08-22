@@ -1206,7 +1206,7 @@ namespace Runtime {
 	  array = (long*)array[0];
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  const char* name = (char*)(array + 3);
-	  instance[0] = (long)File::FileOpen(name, "a");
+	  instance[0] = (long)File::FileOpen(name, "w");
 	}
 	  break;
 	
@@ -1215,7 +1215,7 @@ namespace Runtime {
 	  array = (long*)array[0];
 	  long* instance = (long*)PopInt(op_stack, stack_pos);	
 	  const char* name = (char*)(array + 3);
-	  instance[0] = (long)File::FileOpen(name, "a+");
+	  instance[0] = (long)File::FileOpen(name, "w+");
 	}
 	  break;
 

@@ -17,7 +17,7 @@ bundle Default {
 			start := 1;
 			end := 70000;
       array := Int->New[end];
-Console->Print("-1");
+# Console->Print("-1");
 
 			sum := 0.0;
  
@@ -25,31 +25,34 @@ Console->Print("-1");
       array[x] := x;
 			};
 
-Console->Print("-2");
+array->Size()->PrintLine();
+			
+# Console->Print("-2");
 			s := IO.Serializer->New();
-Console->Print("1");
+# Console->Print("1");
 			s->Write(array->As(Int[]));
-Console->Print("2");
+# Console->Print("2");
 			writer := IO.FileWriter->New("objects.dat");			
-Console->Print("3");
+# Console->Print("3");
 
 			writer->WriteBuffer(s->Serialize());
-Console->Print("4");
+# Console->Print("4");
 			writer->Close();
-Console->Print("5");
+# Console->Print("5");
 
 			buffer := IO.FileReader->ReadBinaryFile("objects.dat");			
       array1 := Int->New[end];
-Console->Print("0");
+# Console->Print("0");
 			d := IO.Deserializer->New(buffer);
 
 			array1 := d->ReadIntArray()->As(Int[]);
-Console->Print("6");
+Console->PrintLine("62");
+# "6"->PrintLine();
 array1->Size()->PrintLine();
-Console->Print("7");
-array1[2222]->PrintLine();
+# Console->Print("7");
+# array1[2222]->PrintLine();
  
-			Console->Print("Sum of f(x) from ")->Print(start)->Print(" to ")->Print(end)->Print(" is ")->PrintLine(sum);
+			# Console->Print("Sum of f(x) from ")->Print(start)->Print(" to ")->Print(end)->Print(" is ")->PrintLine(sum);
 		}
 
 		function : native : f(x : Float) ~ Float {

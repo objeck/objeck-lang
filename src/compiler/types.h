@@ -121,13 +121,14 @@ namespace frontend {
     
     Type(Type* t) {
       if(t) {
-	type = t->type;
-	dimension = t->dimension;
-	class_name = t->class_name;
-	func_rtrn = t->func_rtrn;
-	func_params = t->func_params;
-	func_param_count = -1;
+		type = t->type;
+		dimension = t->dimension;
+		class_name = t->class_name;
+		func_rtrn = t->func_rtrn;
+		func_params = t->func_params;
+		func_param_count = -1;
       }
+	  func_rtrn = NULL;
     }
     
     Type(EntryType t) {
