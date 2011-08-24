@@ -1084,15 +1084,15 @@ bundle System {
 			return Time.Date->New();
 		}
 		
-		function : Copy(dest : Byte[], src : Byte[], offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Byte[], dest_len : Int, src : Byte[], src_len : Int, offset : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
-		function : Copy(dest : Int[], src : Int, offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Int[], dest_len : Int, src : Int[], src_len : Int, offset : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
-		function : Copy(dest : Float[], src : Float[], offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Float[], dest_len : Int, src : Float[], src_len : Int, offset : Int) ~ Bool {
 			CPY_FLOAT_ARY;
 		}
 	}
