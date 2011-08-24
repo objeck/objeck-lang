@@ -406,8 +406,8 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      const long src_array_len = src_array[0];
-      const long dest_array_len = dest_array[0];
+      const long src_array_len = src_array[2];
+      const long dest_array_len = dest_array[2];
       
       if(!src_array || !dest_array) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -415,8 +415,8 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-      if(length > 0 && src_offset + length < src_array_len && 
-	 dest_offset + length < dest_array_len) {
+      if(length > 0 && src_offset + length <= src_array_len && 
+	 dest_offset + length <= dest_array_len) {
 	char* src_array_ptr = (char*)(src_array + 3);
 	char* dest_array_ptr = (char*)(dest_array + 3);
 	memcpy(dest_array_ptr, src_array_ptr, length);
@@ -429,10 +429,58 @@ void StackInterpreter::Execute()
       break;
 
     case CPY_INT_ARY: {
+      long length = PopInt();
+      const long src_offset = PopInt();
+      long* src_array = (long*)PopInt();
+      const long dest_offset = PopInt();
+      long* dest_array = (long*)PopInt();      
+      const long src_array_len = src_array[0];
+      const long dest_array_len = dest_array[0];
+      
+      if(!src_array || !dest_array) {
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
+      if(length > 0 && src_offset + length <= src_array_len && 
+	 dest_offset + length <= dest_array_len) {
+	long* src_array_ptr = src_array + 3;
+	long* dest_array_ptr = dest_array + 3;
+	memcpy(dest_array_ptr, src_array_ptr, length * sizeof(long));
+	PushInt(1);
+      }
+      else {
+	PushInt(0);
+      }
     }
       break;
 
     case CPY_FLOAT_ARY: {
+      long length = PopInt();
+      const long src_offset = PopInt();
+      long* src_array = (long*)PopInt();
+      const long dest_offset = PopInt();
+      long* dest_array = (long*)PopInt();      
+      const long src_array_len = src_array[0];
+      const long dest_array_len = dest_array[0];
+      
+      if(!src_array || !dest_array) {
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
+      if(length > 0 && src_offset + length <= src_array_len && 
+	 dest_offset + length <= dest_array_len) {
+	long* src_array_ptr = src_array + 3;
+	long* dest_array_ptr = dest_array + 3;
+	memcpy(dest_array_ptr, src_array_ptr, length * sizeof(FLOAT_VALUE));
+	PushInt(1);
+      }
+      else {
+	PushInt(0);
+      }
     }
       break;
       
@@ -1866,9 +1914,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       StackErrorUnwind();
       exit(1);
     }
-    const long size = array[0];
+    const long size = array[2];
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-    for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+    for(long i = 0; i < size; i++) {
       str[i] = value_str[i];
     }
 #ifdef _DEBUG
