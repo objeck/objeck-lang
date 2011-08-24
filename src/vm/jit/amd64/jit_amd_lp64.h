@@ -1485,9 +1485,9 @@ namespace Runtime {
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
 	  // copy array
 	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long size = array[0];
+	  const long size = array[2];
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-	  for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+	  for(long i = 0; i < size; i++) {
 	    str[i] = value_str[i];
 	  }
 #ifdef _DEBUG
