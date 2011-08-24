@@ -402,16 +402,24 @@ void StackInterpreter::Execute()
 
     case CPY_BYTE_ARY: {
       long length = PopInt();
-      long src_offset = PopInt();
+      const long src_offset = PopInt();
       long* src_array = (long*)PopInt();
-      long dest_offset = PopInt();
-      long* dest_array = (long*)PopInt();
-      
+      const long dest_offset = PopInt();
+      long* dest_array = (long*)PopInt();      
       const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       
-      if(src_array && dest_array && src_offset < src_array_len && dest_offset < dest_array_len &&
-	 true) {
+      if(!src_array || !dest_array) {
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
+      }
+      
+      if(length > 0 && src_offset + length < src_array_len && 
+	 dest_offset + length < dest_array_len) {
+	char* src_array_ptr = (char*)(src_array + 3);
+	char* dest_array_ptr = (char*)(dest_array + 3);
+	memcpy(dest_array_ptr, src_array_ptr, length);
 	PushInt(1);
       }
       else {

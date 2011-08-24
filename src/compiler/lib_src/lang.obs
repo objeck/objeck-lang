@@ -1088,6 +1088,10 @@ bundle System {
 			CPY_BYTE_ARY;
 		}
 		
+		function : Copy(dest : Char[], dest_len : Int, src : Char[], src_len : Int, offset : Int) ~ Bool {
+			CPY_BYTE_ARY;
+		}
+		
 		function : Copy(dest : Int[], dest_len : Int, src : Int[], src_len : Int, offset : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
