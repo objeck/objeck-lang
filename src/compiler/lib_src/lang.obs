@@ -1083,6 +1083,18 @@ bundle System {
 		function : GetTime() ~ Time.Date {
 			return Time.Date->New();
 		}
+		
+		function : Copy(dest : Byte[], src : Byte[], offset : Int, len : Int) ~ Bool {
+			CPY_BYTE_ARY;
+		}
+		
+		function : Copy(dest : Int[], src : Int, offset : Int, len : Int) ~ Bool {
+			CPY_INT_ARY;
+		}
+		
+		function : Copy(dest : Float[], src : Float[], offset : Int, len : Int) ~ Bool {
+			CPY_FLOAT_ARY;
+		}
 	}
 }
 

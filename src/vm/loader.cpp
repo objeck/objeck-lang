@@ -635,6 +635,18 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, CEIL_FLOAT));
       break;
 
+    case CPY_BYTE_ARY:
+      method->AddInstruction(new StackInstr(line_num, CPY_BYTE_ARY));
+      break;
+      
+    case CPY_INT_ARY:
+      method->AddInstruction(new StackInstr(line_num, CPY_INT_ARY));
+      break;
+      
+    case CPY_FLOAT_ARY:
+      method->AddInstruction(new StackInstr(line_num, CPY_FLOAT_ARY));
+      break;
+      
     case FLOR_FLOAT:
       method->AddInstruction(new StackInstr(line_num, FLOR_FLOAT));
       break;
