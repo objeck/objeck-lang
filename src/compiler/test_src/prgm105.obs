@@ -1,9 +1,17 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			src := Byte->New[8];
-			dest := Byte->New[1024];
-			Runtime->Copy(dest, 0, src, 0, 6);	
+			src := Char->New[5];
+			src[0] := 'M';
+			src[1] := 'o';
+			src[2] := 'r';
+			src[3] := 'p';
+			src[4] := 'h';
+
+			dest := Char->New[5];
+			Runtime->Copy(dest, 0, src, 0, 5);	
+			dest[0]->PrintLine();
+			dest[4]->PrintLine();
 		}
 	}
 }
