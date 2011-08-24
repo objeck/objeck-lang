@@ -1313,9 +1313,9 @@ namespace Runtime {
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
 	  // copy array
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
-	  const int32_t size = array[0];
+	  const int32_t size = array[2];
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-	  for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+	  for(long i = 0; i < size; i++) {
 	    str[i] = value_str[i];
 	  }
 #ifdef _DEBUG
