@@ -705,6 +705,18 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, FLOR_FLOAT));
       break;
 
+    case CPY_BYTE_ARY:
+      instrs.push_back(new LibraryInstr(line_num, CPY_BYTE_ARY));
+      break;
+      
+    case CPY_INT_ARY:
+      instrs.push_back(new LibraryInstr(line_num, CPY_INT_ARY));
+      break;
+      
+    case CPY_FLOAT_ARY:
+      instrs.push_back(new LibraryInstr(line_num, CPY_FLOAT_ARY));
+      break;
+
     case CEIL_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, CEIL_FLOAT));
       break;

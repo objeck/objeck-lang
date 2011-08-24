@@ -509,6 +509,18 @@ public:
       cout << "FLOR_FLOAT" << endl;
       break;
 
+    case instructions::CPY_BYTE_ARY:
+      cout << "CPY_BYTE_ARY" << endl;
+      break;
+      
+    case instructions::CPY_INT_ARY:
+      cout << "CPY_INT_ARY" << endl;
+      break;
+      
+    case instructions::CPY_FLOAT_ARY:
+      cout << "CPY_FLOAT_ARY" << endl;
+      break;
+      
     case instructions::CEIL_FLOAT:
       cout << "CEIL_FLOAT" << endl;
       break;

@@ -128,6 +128,9 @@ void Scanner::LoadKeywords()
   ident_map["TypeOf"] = TOKEN_TYPE_OF_ID;
   ident_map["critical"] = TOKEN_CRITICAL_ID;
 #ifdef _SYSTEM
+  ident_map["CPY_BYTE_ARY"] = CPY_BYTE_ARY;
+  ident_map["CPY_INT_ARY"] = CPY_INT_ARY;
+  ident_map["CPY_FLOAT_ARY"] = CPY_FLOAT_ARY;
   ident_map["FLOR_FLOAT"] = FLOR_FLOAT;
   ident_map["CEIL_FLOAT"] = CEIL_FLOAT;
   ident_map["SIN_FLOAT"] = SIN_FLOAT;
@@ -266,6 +269,9 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_NEW_ID:
   case TOKEN_NIL_ID:
 #ifdef _SYSTEM
+  case CPY_BYTE_ARY:
+  case CPY_INT_ARY:
+  case CPY_FLOAT_ARY:
   case FLOR_FLOAT:
   case CEIL_FLOAT:
   case SIN_FLOAT:

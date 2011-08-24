@@ -943,7 +943,25 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::FLOR_FLOAT);
       NextToken();
       break;
-
+      
+    case CPY_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::CPY_BYTE_ARY);
+      NextToken();
+      break;
+      
+    case CPY_INT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::CPY_INT_ARY);
+      NextToken();
+      break;
+      
+    case CPY_FLOAT_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::CPY_FLOAT_ARY);
+      NextToken();
+      break;
+      
     case CEIL_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::CEIL_FLOAT);
