@@ -1,0 +1,9 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			src := Byte->New[8];
+			dest := Byte->New[1024];
+			Runtime->Copy(dest, 0, src, 0, 6);	
+		}
+	}
+}
