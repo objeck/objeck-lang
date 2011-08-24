@@ -106,11 +106,14 @@ namespace instructions {
     JMP,
     LBL,
     RTRN,
-    // memory allocation
+    // memory operations
     NEW_BYTE_ARY,
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
     NEW_OBJ_INST,
+    CPY_BYTE_ARY,
+    CPY_INT_ARY,
+    CPY_FLOAT_ARY,
     // casting & type check
     OBJ_INST_CAST,
     OBJ_TYPE_OF,

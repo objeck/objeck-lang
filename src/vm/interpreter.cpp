@@ -400,6 +400,34 @@ void StackInterpreter::Execute()
       PushInt(PopFloat() > PopFloat());
       break;
 
+    case CPY_BYTE_ARY: {
+      long length = PopInt();
+      long offset = PopInt();
+      long* src_array = (long*)PopInt();
+      long* dest_array = (long*)PopInt();
+      const long src_array_len = src_array[0];
+      const long dest_array_len = dest_array[0];
+      
+      if(src_array && dest_array && offset < src_array_len && offet < dest_array_len) {
+	char* src_array_ptr = (char*)(src_array + 3);
+	char* dest_array_ptr = (char*)(dest_array + 3);
+	memcpy(dest_array_ptr, src_array_ptr, length);
+	PushInt(1);
+      }
+      else {
+	PushInt(0);
+      }
+    }
+      break;
+
+    case CPY_INT_ARY: {
+    }
+      break;
+
+    case CPY_FLOAT_ARY: {
+    }
+      break;
+      
       // Note: not supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat()));
