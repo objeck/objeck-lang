@@ -410,7 +410,8 @@ void StackInterpreter::Execute()
       const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       
-      if(src_array && dest_array) {
+      if(src_array && dest_array && src_offset < src_array_len && dest_offset < dest_array_len &&
+	 true) {
 	PushInt(1);
       }
       else {
