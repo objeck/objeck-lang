@@ -42,9 +42,16 @@ bundle Structure {
 		}
 
 		method : public : AddBack(values : IntVector) ~ Nil {
-			each(i : values) {
-				AddBack(values->Get(i));
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : Int[] := Int->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
 			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
 		}
 
 		method : public : AddBack(value : Int) ~ Nil {
@@ -271,9 +278,16 @@ bundle Structure {
 		}
 
 		method : public : AddBack(values : FloatVector) ~ Nil {
-			each(i : values) {
-				AddBack(values->Get(i));
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : Float[] := Float->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
 			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
 		}
 
 		method : public : AddBack(value : Float) ~ Nil {
@@ -498,9 +512,16 @@ bundle Structure {
 		}
 
 		method : public : AddBack(values : CompareVector) ~ Nil {
-			each(i : values) {
-				AddBack(values->Get(i));
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : Compare[] := Compare->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
 			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
 		}
 
 		method : public : AddBack(value : Compare) ~ Nil {
@@ -663,9 +684,16 @@ bundle Structure {
 		}
 
 		method : public : AddBack(values : Vector) ~ Nil {
-			each(i : values) {
-				AddBack(values->Get(i));
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : Base[] := Base->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
 			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
 		}
 
 		method : public : AddBack(value : Base) ~ Nil {
