@@ -415,8 +415,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-      if(length > 0 && src_offset + length <= src_array_len && 
-	 dest_offset + length <= dest_array_len) {
+      if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	char* src_array_ptr = (char*)(src_array + 3);
 	char* dest_array_ptr = (char*)(dest_array + 3);
 	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
@@ -443,8 +442,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-      if(length > 0 && src_offset + length <= src_array_len && 
-	 dest_offset + length <= dest_array_len) {
+      if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
 	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
@@ -471,8 +469,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-      if(length > 0 && src_offset + length <= src_array_len && 
-	 dest_offset + length <= dest_array_len) {
+      if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
 	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));

@@ -24,24 +24,27 @@ bundle Default {
 			floats[4] := 49.76;
 
 			dest_chars := Char->New[5];
-			Runtime->Copy(dest_chars, 3, chars, 0, 2);	
+			Runtime->Copy(dest_chars, 3, chars, 0, 2)->PrintLine();
 			dest_chars[0]->PrintLine();
 			dest_chars[4]->PrintLine();
 			chars->Size()->PrintLine();
+			"----"->PrintLine();
 			
 			dest_ints := Int->New[5];
-			Runtime->Copy(dest_ints, 0, ints, 0, 5);	
+			Runtime->Copy(dest_ints, 0, ints, 4, 1)->PrintLine();	
 			dest_ints[0]->PrintLine();
 			dest_ints[4]->PrintLine();
 			ints->Size()->PrintLine();
+			"----"->PrintLine();
 			
 			dest_floats := Float->New[5];
-			Runtime->Copy(dest_floats, 0, floats, 0, 5);	
+			Runtime->Copy(dest_floats, 0, floats, 0, 5)->PrintLine();
 			dest_floats[0]->PrintLine();
 			dest_floats[4]->PrintLine();
 			floats->Size()->PrintLine();
-
-			"Hello World!"->PrintLine();
+			"----"->PrintLine();
+			
+			"Goodbye World!"->PrintLine();
 		}
 	}
 }

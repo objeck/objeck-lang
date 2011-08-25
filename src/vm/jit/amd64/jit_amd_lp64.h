@@ -1216,6 +1216,85 @@ namespace Runtime {
 	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
       }
 	break;
+
+	// ---------------- memory copy ----------------
+      case CPY_BYTE_ARY: {
+	long length = PopInt(op_stack, stack_pos);;
+	const long src_offset = PopInt(op_stack, stack_pos);;
+	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	const long dest_offset = PopInt(op_stack, stack_pos);;
+	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	const long src_array_len = src_array[2];
+	const long dest_array_len = dest_array[2];
+      
+	if(!src_array || !dest_array) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  exit(1);
+	}
+      
+	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+	  char* src_array_ptr = (char*)(src_array + 3);
+	  char* dest_array_ptr = (char*)(dest_array + 3);
+	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
+
+      case CPY_INT_ARY: {
+	long length = PopInt(op_stack, stack_pos);;
+	const long src_offset = PopInt(op_stack, stack_pos);;
+	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	const long dest_offset = PopInt(op_stack, stack_pos);;
+	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	const long src_array_len = src_array[0];
+	const long dest_array_len = dest_array[0];
+      
+	if(!src_array || !dest_array) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  exit(1);
+	}
+      
+	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+	  long* src_array_ptr = src_array + 3;
+	  long* dest_array_ptr = dest_array + 3;
+	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
+
+      case CPY_FLOAT_ARY: {
+	long length = PopInt(op_stack, stack_pos);;
+	const long src_offset = PopInt(op_stack, stack_pos);;
+	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	const long dest_offset = PopInt(op_stack, stack_pos);;
+	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	const long src_array_len = src_array[0];
+	const long dest_array_len = dest_array[0];
+      
+	if(!src_array || !dest_array) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  exit(1);
+	}
+      
+	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+	  long* src_array_ptr = src_array + 3;
+	  long* dest_array_ptr = dest_array + 3;
+	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
 	
 	////////////////////////
 	// trap
@@ -1871,8 +1950,8 @@ namespace Runtime {
 	 const long dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	   index *= array[i];
-	   index += PopInt();
+	 index *= array[i];
+	 index += PopInt();
 	 }
       */
 

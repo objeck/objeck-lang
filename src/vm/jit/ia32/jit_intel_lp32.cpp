@@ -530,6 +530,30 @@ void JitCompilerIA32::ProcessInstructions() {
       ProcessStackCallback(CRITICAL_END, instr, instr_index, 1);
     }
       break;
+      
+    case CPY_BYTE_ARY: {
+#ifdef _DEBUG
+      cout << "CPY_BYTE_ARY: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CPY_BYTE_ARY, instr, instr_index, 5);
+    }
+      break;
+      
+case CPY_INT_ARY: {
+#ifdef _DEBUG
+      cout << "CPY_INT_ARY: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CPY_INT_ARY, instr, instr_index, 5);
+    }
+      break;
+
+case CPY_FLOAT_ARY: {
+#ifdef _DEBUG
+      cout << "CPY_FLOAT_ARY: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
+#endif
+      ProcessStackCallback(CPY_FLOAT_ARY, instr, instr_index, 5);
+    }
+      break;
  
     case TRAP:
 #ifdef _DEBUG
