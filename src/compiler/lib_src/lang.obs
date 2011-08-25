@@ -1096,19 +1096,19 @@ bundle System {
 			return Time.Date->New();
 		}
 		
-		function : native : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, len : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
-		function : native : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
-		function : native : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
-		function : native : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
+		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
 			CPY_FLOAT_ARY;
 		}
 	}

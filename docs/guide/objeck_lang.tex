@@ -1463,11 +1463,17 @@ environment.
   \end{itemize}
 \item \texttt{GetDate} - returns the current time
   \begin{itemize}
-  \item method : public : GetDate() \textasciitilde Date
+  \item function : public : GetDate() \textasciitilde Date
   \end{itemize}
 \item \texttt{Exit} - exits the current running program
   \begin{itemize}
-  \item method : public : Exit() \textasciitilde Nil
+  \item function : public : Exit() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Copy} - copies a block of memory from one array to another
+  \begin{itemize}
+  \item function : Copy(dest : Char[], dest\_offset : Int, src : Char[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Float[], dest\_offset : Int, src : Float[], src\_offset : Int, len : Int) \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
