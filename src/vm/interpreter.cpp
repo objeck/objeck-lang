@@ -419,7 +419,7 @@ void StackInterpreter::Execute()
 	 dest_offset + length <= dest_array_len) {
 	char* src_array_ptr = (char*)(src_array + 3);
 	char* dest_array_ptr = (char*)(dest_array + 3);
-	memcpy(dest_array_ptr, src_array_ptr, length);
+	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
 	PushInt(1);
       }
       else {
@@ -447,7 +447,7 @@ void StackInterpreter::Execute()
 	 dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
-	memcpy(dest_array_ptr, src_array_ptr, length * sizeof(long));
+	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
 	PushInt(1);
       }
       else {
@@ -475,7 +475,7 @@ void StackInterpreter::Execute()
 	 dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
-	memcpy(dest_array_ptr, src_array_ptr, length * sizeof(FLOAT_VALUE));
+	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
 	PushInt(1);
       }
       else {
@@ -1916,9 +1916,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     }
     const long size = array[2];
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-    for(long i = 0; i < size; i++) {
-      str[i] = value_str[i];
-    }
+    memcpy(str, value_str, size);
 #ifdef _DEBUG
     cout << "stack oper: CPY_CHAR_STR_ARY: index=" << index << ", string='" << value_str << "'" << endl;
 #endif
