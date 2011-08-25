@@ -10,11 +10,11 @@ bundle System {
 	# Boolean class support
 	~~#	
 	class $Bool {
-		function : native : Print(b : Bool) ~ Nil {
+		function : Print(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 		}
 
-		function : native : PrintLine(b : Bool) ~ Nil {
+		function : PrintLine(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 			'\n'->Print();
 		}
@@ -65,11 +65,11 @@ bundle System {
 			return v;
 		}
 
-		function : native : Print(b : Byte) ~ Nil {
+		function : Print(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 		}
 
-		function : native : PrintLine(b : Byte) ~ Nil {
+		function : PrintLine(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 			'\n'->Print();
 		}
@@ -169,11 +169,11 @@ bundle System {
 			return r;
 		}
 
-		function : native : Print(c : Char) ~ Nil {
+		function : Print(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 		}
 
-		function : native : PrintLine(c : Char) ~ Nil {
+		function : PrintLine(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 			'\n'->Print();
 		}
@@ -259,11 +259,11 @@ bundle System {
 			return v;
 		}
 
-		function : native : Print(i : Int) ~ Nil {
+		function : Print(i : Int) ~ Nil {
 			STD_OUT_INT;
 		}
 
-		function : native : PrintLine(i : Int) ~ Nil {
+		function : PrintLine(i : Int) ~ Nil {
 			STD_OUT_INT;
 			'\n'->Print();
 		}
@@ -353,11 +353,11 @@ bundle System {
 			POW_FLOAT;
 		}
 
-		function : native : Print(f : Float) ~ Nil {
+		function : Print(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 		}
 
-		function : native : PrintLine(f : Float) ~ Nil {
+		function : PrintLine(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
