@@ -23,12 +23,8 @@ bundle Structure {
 		}
 
 		New(values : IntVector) {
-			@values := Int->New[16];
-			@size := 0;
-
-			each(i : values) {
-				AddBack(values->Get(i));
-			};
+			@values := values->ToArray();
+			@size := values->Size();
 		}
 
 		New(values : Int[]) {
@@ -256,12 +252,8 @@ bundle Structure {
 		}
 
 		New(values : FloatVector) {
-			@values := Float->New[16];
-			@size := 0;
-
-			each(i : values) {
-				AddBack(values->Get(i));
-			};
+			@values := values->ToArray();
+			@size := values->Size();
 		}
 
 		New(values : Float[]) {
@@ -493,12 +485,8 @@ bundle Structure {
  		}
 
 		New(values : CompareVector) {
-			@values := Compare->New[16];
-			@size := 0;
-
-			each(i : values) {
-				AddBack(values->Get(i));
-			};
+			@values := values->ToArray();
+			@size := values->Size();
 		}
 
 		method : native : Expand() ~ Nil {
@@ -662,12 +650,8 @@ bundle Structure {
 		}
 
 		New(values : Vector) {
-			@values := Base->New[16];
-			@size := 0;
-
-			each(i : values) {
-				AddBack(values->Get(i));
-			};
+			@values := values->ToArray();
+			@size := values->Size();
 		}
 
 		method : native : Expand() ~ Nil {
