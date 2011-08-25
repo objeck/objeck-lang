@@ -523,20 +523,23 @@ bundle System {
 			Append(str->ToCharArray());
 		}
 		
-#		method : public : native : Append(array : Char[]) ~ Nil {
-		method : public : Append(array : Char[]) ~ Nil {
+		method : public : native : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
 				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
-				# copy elements
+				# copy elements				
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+#~
 				for(i : Int := 0; i < @string->Size(); i += 1;) {
 					tmp[i] := @string[i];	
 				};
+~#				
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i += 1;) {
+			max := array->Size();
+			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos := @pos + 1;
 			};
@@ -548,9 +551,12 @@ bundle System {
 				@max := (@max + array->Size()) * 2;
 				tmp : Char[] := Char->New[@max];
 				# copy elements
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+#~				
 				for(i : Int := 0; i < @string->Size(); i += 1;) {
 					tmp[i] := @string[i];	
 				};
+~#				
 				@string := tmp;
 			};
 			
@@ -563,13 +569,16 @@ bundle System {
 		method : public : native : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-                		@max := @max * 2;
-                		tmp : Char[] := Char->New[@max];
-                		# copy elements
-                		for(i : Int := 0; i < @string->Size(); i += 1;) {
-                        		tmp[i] := @string[i];
-                		};
-                		@string := tmp;
+				@max := @max * 2;
+				tmp : Char[] := Char->New[@max];
+				# copy elements
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+#~				
+				for(i : Int := 0; i < @string->Size(); i += 1;) {
+					tmp[i] := @string[i];
+				};
+~#				
+				@string := tmp;
 			};
 
 			@string[@pos] := c;
@@ -579,13 +588,16 @@ bundle System {
 		method : public : native : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
-                		@max := @max * 2;
-                		tmp : Char[] := Char->New[@max];
-                		# copy elements
-                		for(i : Int := 0; i < @string->Size(); i += 1;) {
-                        		tmp[i] := @string[i];
-                		};
-                		@string := tmp;
+				@max := @max * 2;
+				tmp : Char[] := Char->New[@max];
+				# copy elements
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+#~				
+				for(i : Int := 0; i < @string->Size(); i += 1;) {
+					tmp[i] := @string[i];
+				};
+				@string := tmp;
+~#				
 			};
 
 			@string[@pos] := c;
@@ -1084,19 +1096,19 @@ bundle System {
 			return Time.Date->New();
 		}
 		
-		function : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, len : Int) ~ Bool {
+		function : native : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, len : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
-		function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
+		function : native : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
-		function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
+		function : native : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
-		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
+		function : native : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
 			CPY_FLOAT_ARY;
 		}
 	}
