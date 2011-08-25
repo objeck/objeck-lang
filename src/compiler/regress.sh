@@ -1,6 +1,6 @@
 #!/bin/bash 
 # i=90
-i=102
+i=104
 # i=73
 # i=70
 until [  $i -lt 1 ]; do
