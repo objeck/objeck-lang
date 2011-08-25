@@ -1474,6 +1474,8 @@ environment.
   \item function : Copy(dest : Char[], dest\_offset : Int, src : Char[], src\_offset : Int, len : Int) \textasciitilde Bool
   \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[], src\_offset : Int, len : Int) \textasciitilde Bool
   \item function : Copy(dest : Float[], dest\_offset : Int, src : Float[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Base[], dest\_offset : Int, src : Base[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Compare[], dest\_offset : Int, src : Compare[], src\_offset : Int, len : Int) \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
@@ -2449,7 +2451,7 @@ an inline assembler, which may be re-added in future releases.
   \vspace{\baselineskip}
   \begin{tabular}{| l | p{4 cm} | p{6 cm} |}
     \hline
-    \multicolumn{3}{|c|}{\textbf{Objects/Methods/Traps}} \\
+    \multicolumn{3}{|c|}{\textbf{Methods}} \\
     \hline
     \emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
     SWAP\_INT & n/a & swaps the top two integer values on the stack \\ \hline
@@ -2461,19 +2463,38 @@ an inline assembler, which may be re-added in future releases.
     ASYNC\_MTHD\_CALL & integer values for class id and method id; pushes new thread id & asynchronous call to given method \\ \hline
     ASYNC\_JOIN & thread id & waits for identified thread to end execution \\ \hline
     LBL & label id & identifies a jump label \\ \hline
+\end{tabular}
+
+\vspace{\baselineskip}
+  \begin{tabular}{| l | p{4 cm} | p{6 cm} |}
+    \hline
+    \multicolumn{3}{|c|}{\textbf{Objects and Memory Operations}} \\
+    \hline
+    \emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
     JMP & label id and conditional context (1=true, 0=unconditional, -1=false) & jump to label id \\ \hline
     NEW\_BYTE\_ARY & array dimension & pushes address of new byte array \\ \hline
     NEW\_INT\_ARY & array dimension & pushes address of new integer array \\ \hline
     NEW\_FLOAT\_ARY & array dimension & pushes address of new float array \\ \hline
     NEW\_OBJ\_INST & integer value for class id & pushes address of new class instance \\ \hline
     OBJ\_TYPE\_OF & integer value of ``check'' class & performs runtime object instance check \\ \hline
-    OBJ\_INST\_CAST & integer values for ``from'' class and ``to'' class & performs runtime class cast check (note: only required for up casting) \\ \hline
+    OBJ\_INST\_CAST & integer values for ``from'' class and ``to''
+    class & performs runtime class cast check (note: only required for
+    up casting) \\ \hline
+    CPY\_BYTE\_ARY & destination of source array, offset of destination array,
+    address of source array, offset of source array, number of
+    & copies elements from one array to another \\ \hline
+    CPY\_INT\_ARY & destination of source array, offset of destination array,
+    address of source array, offset of source array, number of
+    & copies elements from one array to another \\ \hline
+    CPY\_FLOAT\_ARY & destination of source array, offset of destination array,
+    address of source array, offset of source array, number of
+    & copies elements from one array to another \\ \hline
   \end{tabular}
 
   \vspace{\baselineskip}
   \begin{tabular}{| l | p{4 cm} | p{6 cm} |}
     \hline
-    \multicolumn{3}{|c|}{\textbf{Objects/Methods/Traps}} \\
+    \multicolumn{3}{|c|}{\textbf{Traps and Threads}} \\
     \hline
     \emph{Mnemonic}  &  \emph{Opcode(s)}  &  \emph{Description} \\ \hline \hline
     THREAD\_CREATE & n/a & creates an new thread instance (calculation stack and  stack pointer) \\ \hline
