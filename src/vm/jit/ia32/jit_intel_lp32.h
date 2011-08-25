@@ -1315,9 +1315,7 @@ namespace Runtime {
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
 	  const int32_t size = array[2];
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-	  for(long i = 0; i < size; i++) {
-	    str[i] = value_str[i];
-	  }
+	  memcpy(str, value_str, size);
 #ifdef _DEBUG
 	  cout << "  CPY_CHAR_STR_ARY: addr=" << array << "(" << long(array) 
 	       << "), from='" << value_str << "', to='" << str << "'" << endl;
