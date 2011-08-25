@@ -1,0 +1,15 @@
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			start := 0;
+			end := 10000000;
+			array := Int->New[end]; 
+			for(x : Int := start; x <= end-1; x += 1;) {
+				array[x] := x;
+			}; # this very fast !!!
+			array1 := IntVector->New(array);    # this is too slow 
+		}
+	}
+}
