@@ -43,9 +43,7 @@ bundle Structure {
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Int[] := Int->New[@size * 2];
-				for(i : Int := 0; i < @size; i += 1;) {
-					temp[i] := @values[i];
-				};
+				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
@@ -210,10 +208,7 @@ bundle Structure {
 		
 		method : public : native : ToArray() ~ Int[] {
 			array : Int[] := Int->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
-
+			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 		
@@ -241,9 +236,7 @@ bundle Structure {
 		
 		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
 			array : Int[] := Int->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
+			Runtime->Copy(array, 0, @values, 0, @size);
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 			  array[i] := f(array[i]);
@@ -284,9 +277,7 @@ bundle Structure {
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Float[] := Float->New[@size * 2];
-				for(i : Int := 0; i < @size; i += 1;) {
-					temp[i] := @values[i];
-				};
+				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
@@ -451,10 +442,7 @@ bundle Structure {
 
 		method : public : native : ToArray() ~ Float[] {
 			array : Float[] := Float->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
-
+			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 		
@@ -482,9 +470,7 @@ bundle Structure {
 
 		method : public : Apply(f : (Float) ~ Float) ~ FloatVector {
 			array : Float[] := Float->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
+			Runtime->Copy(array, 0, @values, 0, @size);
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 			  array[i] := f(array[i]);
@@ -525,9 +511,7 @@ bundle Structure {
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Compare[] := Compare->New[@size * 2];
-				for(i : Int := 0; i < @size; i += 1;) {
-					temp[i] := @values[i];
-				};
+				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
@@ -663,10 +647,7 @@ bundle Structure {
 		
 		method : public : native : ToArray() ~ Compare[] {
 			array : Compare[] := Compare->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
-
+			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 	}
@@ -702,9 +683,7 @@ bundle Structure {
 		method : native : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Base[] := Base->New[@size * 2];
-				for(i : Int := 0; i < @size; i += 1;) {
-					temp[i] := @values[i];
-				};
+				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
 		}
@@ -750,10 +729,7 @@ bundle Structure {
 
 		method : public : native : ToArray() ~ Base[] {
 			array : Base[] := Base->New[@size];
-			for(i : Int := 0; i < @size; i += 1;) {
-				array[i] := @values[i];
-			};
-
+			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 	}
@@ -1396,7 +1372,7 @@ bundle Structure {
 			return result <> Nil;
 		}
     
-    method : public : native : GetKeys() ~ IntVector {
+		method : public : native : GetKeys() ~ IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < keys->Size(); i += 1;) {
@@ -1407,7 +1383,7 @@ bundle Structure {
 			return keys;
 		}
     
-    method : public : GetValues() ~ Vector {
+		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
 		}
 
