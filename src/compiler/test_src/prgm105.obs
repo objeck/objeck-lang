@@ -1,6 +1,7 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
+#			chars : Char[];
 			chars := Char->New[5];
 			chars[0] := 'M';
 			chars[1] := 'o';
@@ -23,7 +24,7 @@ bundle Default {
 			floats[4] := 49.76;
 
 			dest_chars := Char->New[5];
-			Runtime->Copy(dest_chars, 0, chars, 0, 5);	
+			Runtime->Copy(dest_chars, 3, chars, 0, 2);	
 			dest_chars[0]->PrintLine();
 			dest_chars[4]->PrintLine();
 			chars->Size()->PrintLine();
