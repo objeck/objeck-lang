@@ -322,6 +322,25 @@ strings := ["Hello","World!"];
 strings->Size()->PrintLine();
 \end{verbatim}
 
+The following example allocates an array of \texttt{Widget} objects.  An object must
+implment it's \texttt{New} method if it's going to be instnatanced.
+
+\begin{verbatim}
+class Widget {
+  New() {
+  }
+}
+
+class MakeWidgets {
+  function : Main(args : String[]) ~ Nil {
+    widgets := Widget->New[1000];
+    each(i : widgets) {
+      widgets[i] := Widget->New();
+    };
+  }
+}
+\end{verbatim}
+
 \subsubsection{Conditional Expressions}
 There's also support for ternary conditional expressions.  For example
 the following statement prints the value \texttt{false}. 
