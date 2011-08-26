@@ -281,19 +281,11 @@ namespace backend {
    ****************************/
   class IntermediateDeclaration {
     instructions::ParamType type;
-    int id;
     string name;
 
   public:
     IntermediateDeclaration(const string &n, instructions::ParamType t) {
       type = t;
-      id = -1;
-      name = n;
-    }
-
-    IntermediateDeclaration(const string &n, instructions::ParamType t, int i) {
-      type = t;
-      id = i;
       name = n;
     }
 
@@ -303,10 +295,6 @@ namespace backend {
 
     const string GetName() {
       return name;
-    }
-  
-    int GetId() {
-      return id;
     }
   };
 
@@ -351,7 +339,7 @@ namespace backend {
     
     void Debug() {
       if(declarations.size() > 0) {	 
-	cout << "scope types:" << endl;	 
+	cout << "memory types:" << endl;	 
 	for(unsigned int i = 0; i < declarations.size(); i++) {	 
 	  IntermediateDeclaration* entry = declarations[i];	 
  	 
