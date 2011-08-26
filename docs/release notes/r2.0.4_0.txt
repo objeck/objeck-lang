@@ -1,0 +1,14 @@
+Objeck v2.0.4_0
+
+This minor release includes performance enhancements to the String and collection classes.  Please read below for additional details.
+
+* Added a “Copy” function to the “Runtime” class.  This function allows blocks of memory to be quickly copied from one array to another.
+
+* Optimized the “Vector” classes such that operations dealing with 1M+ elements are over 90% faster.
+
+* Optimized “String” class operations by levering the new memory copying APIs.
+
+* Additional performance improvements to the collection classes.
+
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
