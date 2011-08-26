@@ -246,7 +246,7 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
 {
   if(linker && !is_lib) {
     // resolve external libraries
-    linker->ResloveExternalMethodCalls();
+    linker->ResolveExternalMethodCalls();
     // write enums
     vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
     for(unsigned int i = 0; i < lib_enums.size(); i++) {

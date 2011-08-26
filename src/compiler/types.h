@@ -348,7 +348,49 @@ namespace backend {
     vector<IntermediateDeclaration*> GetParameters() {
       return declarations;
     }
-
+    
+    void Debug() {
+      if(declarations.size() > 0) {	 
+	cout << "scope types:" << endl;	 
+	for(unsigned int i = 0; i < declarations.size(); i++) {	 
+	  IntermediateDeclaration* entry = declarations[i];	 
+ 	 
+	  switch(entry->GetType()) {	 
+	  case instructions::INT_PARM:	 
+	    cout << "  " << i << ": INT_PARM" << endl;	 
+	    break;	 
+ 	 
+	  case instructions::FLOAT_PARM:	 
+	    cout << "  " << i << ": FLOAT_PARM" << endl;	 
+	    break;	 
+ 	 
+	  case instructions::BYTE_ARY_PARM:	 
+	    cout << "  " << i << ": BYTE_ARY_PARM" << endl;	 
+	    break;	 
+ 	 
+	  case instructions::INT_ARY_PARM:	 
+	    cout << "  " << i << ": INT_ARY_PARM" << endl;	 
+	    break;	 
+ 	 
+	  case instructions::FLOAT_ARY_PARM:	 
+	    cout << "  " << i << ": FLOAT_ARY_PARM" << endl;	 
+	    break;	 
+ 	 
+	  case instructions::OBJ_PARM:	 
+	    cout << "  " << i << ": OBJ_PARM" << endl;	 
+	    break;
+	     
+	  case instructions::OBJ_ARY_PARM:	 
+	    cout << "  " << i << ": OBJ_ARY_PARM" << endl;	 
+	    break;
+ 	 
+	  default:	 
+	    break;	 
+	  }	 
+	}	 
+      }	 
+    }
+    
     void Write(bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
       for(unsigned int i = 0; i < declarations.size(); i++) {
@@ -356,15 +398,6 @@ namespace backend {
 	WriteInt(entry->GetType(), file_out);
 	if(is_debug) {
 	  WriteString(entry->GetName(), file_out);
-	}
-	switch(entry->GetType()) {
-	case instructions::OBJ_PARM:
-	case instructions::OBJ_ARY_PARM:
-	  WriteInt(entry->GetId(), file_out);
-	  break;
-
-	default:
-	  break;
 	}
       }
     }

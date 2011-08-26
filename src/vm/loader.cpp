@@ -165,7 +165,6 @@ void Loader::Load()
   dclrs[0] = new StackDclr;
   dclrs[0]->name = "args";
   dclrs[0]->type = OBJ_ARY_PARM;
-  dclrs[0]->id = string_cls_id;
 
   init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
   LoadInitializationCode(init_method);
@@ -242,13 +241,6 @@ void Loader::LoadClasses()
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
-      // set id
-      switch(type) {
-      case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        dclrs[i]->id = ReadInt();
-        break;
-      }
     }
 
     cls_hierarchy[id] = pid;
@@ -323,13 +315,6 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
       dclrs[i]->type = (ParamType)type;
-      // set id
-      switch(type) {
-      case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        dclrs[i]->id = ReadInt();
-        break;
-      }
     }
 
     // parse return

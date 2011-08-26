@@ -87,7 +87,7 @@ void Linker::ResloveExternalClasses()
   }
 }
 
-void Linker::ResloveExternalMethodCalls()
+void Linker::ResolveExternalMethodCalls()
 {
   // all libraries
   map<const string, Library*>::iterator lib_iter;
@@ -342,16 +342,7 @@ void Library::LoadClasses()
       if(is_debug) {
 	var_name = ReadString();
       }
-      switch(type) {
-      case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
-        break;
-
-      default:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
-        break;
-      }
+      entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
     }
     hierarchies.insert(pair<const string, const string>(name, parent_name));
 
@@ -399,16 +390,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
       if(is_debug) {
 	var_name = ReadString();
       }
-      switch(type) {
-      case instructions::OBJ_PARM:
-      case instructions::OBJ_ARY_PARM:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type, ReadInt()));
-        break;
-
-      default:
-        entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
-        break;
-      }
+      entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
     }
 
 #ifdef _DEBUG

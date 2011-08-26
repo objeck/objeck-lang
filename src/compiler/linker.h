@@ -835,7 +835,7 @@ public:
 
   void ResloveExternalClass(LibraryClass* klass);
   void ResloveExternalClasses();
-  void ResloveExternalMethodCalls();
+  void ResolveExternalMethodCalls();
 
   vector<string> GetLibraryPaths() {
     return paths;
