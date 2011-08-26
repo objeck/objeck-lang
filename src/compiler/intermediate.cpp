@@ -3094,7 +3094,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, parsed_program->GetClass(entry->GetType()->GetClassName())->GetId()));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
@@ -3112,7 +3112,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM, parsed_program->GetLinker()->SearchClassLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())->GetId()));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
           }
           // object
@@ -3121,7 +3121,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, SearchProgramClasses(entry->GetType()->GetClassName())->GetId()));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
@@ -3139,7 +3139,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM, parsed_program->GetLinker()->SearchClassLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())->GetId()));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
           }
           entry->SetId(index++);
