@@ -1,0 +1,18 @@
+bundle Default {
+	class cl1 {
+      r1:Int;
+      r2:Int;
+
+		New() {
+		}
+   }
+
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			ar1 := cl1->New[1000]; 
+			each(i : ar1) {
+				ar1[i] := cl1->New();
+			};
+		}
+	}
+}

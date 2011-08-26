@@ -1,0 +1,24 @@
+use Structure;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			v0 := IntVector->New();
+			v0->AddBack(100);
+			v0->AddBack(101);
+			v0->AddBack(102);
+
+			v1 := IntVector->New();
+			v1->AddBack(103);
+			v1->AddBack(104);
+			v1->AddBack(105);
+
+			v0->AddBack(v1);
+			v0->AddBack(106);
+			
+			each(i : v0) {
+				v0->Get(i)->PrintLine();
+			};
+		}
+	}
+}
