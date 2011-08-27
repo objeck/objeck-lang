@@ -93,10 +93,11 @@ class ItermediateOptimizer {
                               IntermediateBlock* outputs);
   
   // checks to see if a 'getter' method can be inlined
-  inline int IsGetter(IntermediateMethod* mthd_called) {
+  inline int CanInline(IntermediateMethod* mthd_called) {
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+#ifdef _DEBUG
     assert(blocks.size() == 1);
-    
+#endif
     //
     // getter inline patterns
     //
@@ -137,15 +138,14 @@ class ItermediateOptimizer {
 	   instrs[4]->GetType() == RTRN) {
 	  return 2;
 	}
-	// pattern for basic type 'Print'
+	// pattern for simple system directives
 	else if((instrs[0]->GetType() == STOR_INT_VAR || 
 		 instrs[0]->GetType() == STOR_FLOAT_VAR) && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
 		(instrs[1]->GetType() == LOAD_INT_VAR ||
 		 instrs[1]->GetType() == LOAD_FLOAT_VAR) && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
 		instrs[2]->GetType() == LOAD_INT_LIT &&
-		instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
+		(instrs[3]->GetType() == TRAP || instrs[3]->GetType() == TRAP_RTRN)  && instrs[3]->GetOperand() == 2  &&
 		instrs[4]->GetType() == RTRN) {
-	  cout << "########" << endl;
 	  return 3;
 	}
 	return -1;
