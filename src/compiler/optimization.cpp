@@ -207,7 +207,6 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
   return outputs;
 }
 
-// Note: this code collapses basic block... refractor so optimizations can be re-ordered 
 IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
@@ -218,27 +217,21 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       int status = CanInline(mthd_called);
-      // instance getter pattern
+      //  getter instance pattern
       if(status == 0) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[1]);
       }
-      // literal getter pattern
+      // getter instance pattern
       else if(status == 1) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	outputs->AddInstruction(instrs[0]);
       }
-      // setter pattern
+      // character print pattern
       else if(status == 2) {
-	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-	outputs->AddInstruction(instrs[3]);
-      }
-      // simple system directive pattern
-      else if(status == 3) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
