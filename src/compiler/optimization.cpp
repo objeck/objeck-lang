@@ -50,7 +50,6 @@ void ItermediateOptimizer::Optimize()
 #ifdef _DEBUG
       cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
 #endif
-      
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
   }
@@ -75,11 +74,6 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
-    /* # TODO: Fix me (rc/http.obs)
-       # suspect that the memory manager is not aware of the new
-       # inlined structure for a given function or method. Need
-       # to update the entries structure.
-       
     vector<IntermediateBlock*> method_inlined_blocks;
     // instruction replacement
 #ifdef _DEBUG
@@ -93,18 +87,17 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       delete tmp;
       tmp = NULL;
     }
-    */
-
+    
     // fold integers
 #ifdef _DEBUG
     cout << "  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!jump_blocks.empty()) {
-      IntermediateBlock* tmp = jump_blocks.front();
+    while(!method_inlined_blocks.empty()) {
+      IntermediateBlock* tmp = method_inlined_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      jump_blocks.erase(jump_blocks.begin());
+      method_inlined_blocks.erase(method_inlined_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
@@ -218,116 +211,38 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
+  
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(unsigned int i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-      if(CanBeInlining(called)) {
-	instr->SetOperand3(true);
-	InlineMethodCall(called, outputs);
+      IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      int status = IsGetter(mthd_called);
+      // instance
+      if(status == 0) {
+	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+	outputs->AddInstruction(instrs[1]);
+      }
+      // literal
+      else if(status == 1) {
+	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	outputs->AddInstruction(instrs[0]);
       }
       else {
 	outputs->AddInstruction(instr);
       }
-    } 
+    }
     else {
       outputs->AddInstruction(instr);
     }
   }
-
+  
   return outputs;
 }
 
-void ItermediateOptimizer::InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs)
-{
-  // manage LOAD_INST_MEM for callee
-  const int locl_offset = current_method->GetInlineOffset(called);
-  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, locl_offset - 1, LOCL));
-  
-  bool needs_jump = false;
-  vector<IntermediateBlock*> blocks = called->GetBlocks();
-  for(unsigned int i = 0; i < blocks.size(); i++) {
-    IntermediateBlock* block = blocks[i];
-    vector<IntermediateInstruction*> instrs = block->GetInstructions();
-    for(unsigned int j = 0; j < instrs.size(); j++) {
-      IntermediateInstruction* instr = instrs[j];
-      switch(instr->GetType()) {        
-      case LOAD_INT_VAR:
-      case STOR_INT_VAR:
-      case COPY_INT_VAR:
-      case LOAD_FLOAT_VAR:
-      case STOR_FLOAT_VAR:
-      case COPY_FLOAT_VAR:
-      case LOAD_FUNC_VAR:
-      case STOR_FUNC_VAR:
-      case COPY_FUNC_VAR: {
-        if(instr->GetOperand2() == LOCL) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, instr->GetType(), instr->GetOperand() + locl_offset, instr->GetOperand2()));
-        }
-	else {
-	  outputs->AddInstruction(instr);
-        }
-      }
-	break;
-      
-      case LOAD_INST_MEM:
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, locl_offset- 1, LOCL));
-        break;
-	
-      case RTRN:
-        // note: code generates an extra empty block if there's more than 1 block
-        if(!((blocks.size() == 1 || i == blocks.size() - 2) && j == instrs.size() - 1)) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, inline_end, -1));
-          needs_jump = true;
-        } 
-	else {
-          merge_blocks = true;
-        }
-        break;
-
-	// TODO: ids unique per method
-      case JMP: {
-	int new_id;
-	map<int, int>::iterator found = inline_lbls.find(instr->GetOperand());
-	if(found == inline_lbls.end()) {
-	  new_id = inline_end--;
-	  inline_lbls.insert(pair<int, int>(instr->GetOperand(), new_id));
-	}
-	else {
-	  new_id = found->second;
-	}
-	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, new_id, instr->GetOperand2()));
-      }
-	break;
-
-      case LBL: {
-	int new_id;
-	map<int, int>::iterator found = inline_lbls.find(instr->GetOperand());
-	if(found == inline_lbls.end()) {
-	  new_id = inline_end--;
-	  inline_lbls.insert(pair<int, int>(instr->GetOperand(), new_id));
-	}
-	else {
-	  new_id = found->second;
-	}
-	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, new_id));
-      }
-	break;
-	
-      default:
-        outputs->AddInstruction(instr);
-        break;
-      }
-    }
-  }
-  
-  if(needs_jump) {
-    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, inline_end--));
-  }
-
-  inline_lbls.clear();
-}
 
 IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBlock* inputs)
 {
