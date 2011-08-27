@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "../../../../utilities/dll_tools.h"
+#include "../../../../vm/lib_api.h"
 
 using namespace std;
 
@@ -9,7 +9,7 @@ extern "C" {
   void unload_lib() {}
   
   void foo(long* data_array, long* op_stack, long *stack_pos, 
-	   DLLTools_MethodCall_Ptr callback) {
+  	Callbacks& callbacks) {
     int size = DLLTools_GetArraySize(data_array);
     cout << size << endl;
     cout << DLLTools_GetIntValue(data_array, 1) << endl;
@@ -21,7 +21,7 @@ extern "C" {
     
 //    DLLTools_PushInt(op_stack, stack_pos, 13);
     DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-    DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
+    DLLTools_CallMethod(callbacks.method_call, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
     
     cout << "---1---" << endl;
   }
