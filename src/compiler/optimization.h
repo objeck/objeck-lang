@@ -95,32 +95,50 @@ class ItermediateOptimizer {
   // checks to see if a 'getter' method can be inlined
   inline int IsGetter(IntermediateMethod* mthd_called) {
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-    if(blocks.size() == 1 && mthd_called->GetNumParams() == 0) {
+    assert(blocks.size() == 1);
+    
+    //
+    // getter inline patterns
+    //
+    if(mthd_called->GetNumParams() == 0) {
       vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-      // instance variable
+      // instance getter pattern
       if(instrs.size() == 3) {
-	bool is_getter = 
-	  instrs[0]->GetType() == LOAD_INST_MEM &&
-	  instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
-					       instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
-	  instrs[2]->GetType() == RTRN;
-	if(is_getter) {
+	if(instrs[0]->GetType() == LOAD_INST_MEM &&
+	   instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
+						instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
+	   instrs[2]->GetType() == RTRN) {
 	  return 0;
-	}
+	}	
 	return -1;
       }
-      // literal
+      // literal getter pattern
       else if(instrs.size() == 2) {
-	bool is_getter = 
-	  (instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
-	  instrs[1]->GetType() == RTRN;	
-	if(is_getter) {
+	if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
+	   instrs[1]->GetType() == RTRN) {
 	  return 1;
-	}
+	}	
 	return -1;
       }
-
-      return -1;
+    }
+    //
+    // setter inline pattern
+    //
+    else if(mthd_called->GetNumParams() == 1) {
+      vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+      if(instrs.size() == 5) {
+	if((instrs[0]->GetType() == STOR_INT_VAR || 
+	    instrs[0]->GetType() == STOR_FLOAT_VAR) && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+	   (instrs[1]->GetType() == LOAD_INT_VAR ||
+	    instrs[1]->GetType() == LOAD_FLOAT_VAR) && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+	   instrs[2]->GetType() == LOAD_INST_MEM &&
+	   (instrs[3]->GetType() == STOR_INT_VAR ||
+	    instrs[3]->GetType() == STOR_FLOAT_VAR) && instrs[3]->GetOperand2() == INST &&
+	   instrs[4]->GetType() == RTRN) {
+	  return 2;
+	}	
+	return -1;
+      }
     }
     
     return -1;
