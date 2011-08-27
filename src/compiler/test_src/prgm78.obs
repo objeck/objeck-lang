@@ -21,7 +21,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			dll_proxy := DllProxy->New("lib/windows/test"); 
+			dll_proxy := DllProxy->New("lib/osx/test/test_dll.1"); 
 
 			dll_args := Base->New[4];
 			dll_args[0] := IntHolder->New(0);
