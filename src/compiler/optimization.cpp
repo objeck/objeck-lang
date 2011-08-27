@@ -218,25 +218,32 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       int status = IsGetter(mthd_called);
-      // instance getter
+      // instance getter pattern
       if(status == 0) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[1]);
       }
-      // literal getter
+      // literal getter pattern
       else if(status == 1) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	outputs->AddInstruction(instrs[0]);
       }
-      // setter
+      // setter pattern
       else if(status == 2) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[3]);
-	// outputs->AddInstruction(instr);
+      }
+      // basic type print pattern
+      else if(status == 3) {
+	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	outputs->AddInstruction(instrs[2]);
+	outputs->AddInstruction(instrs[3]);
       }
       else {
 	outputs->AddInstruction(instr);
