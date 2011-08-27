@@ -875,6 +875,10 @@ public:
     return instr_count;
   }
 
+  int GetNumParams() {
+    return params;
+  }
+
   vector<IntermediateBlock*> GetBlocks() {
     return blocks;
   }

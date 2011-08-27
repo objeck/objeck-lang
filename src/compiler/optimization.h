@@ -61,7 +61,6 @@ class ItermediateOptimizer {
 
   // inline method calls
   IntermediateBlock* InlineMethodCall(IntermediateBlock* inputs);
-  void InlineMethodCall(IntermediateMethod* called, IntermediateBlock* outputs);
   // cleans up jumps
   IntermediateBlock* CleanJumps(IntermediateBlock* inputs);
   // integer constant folding
@@ -93,72 +92,38 @@ class ItermediateOptimizer {
                               list<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
   
-  inline bool AllowsInlining() {
-    const string &method_name = current_method->GetName();
-    std::string sys_prefix("System.$");   
-    std::string time_prefix("Time."); std::string io_prefix("Concurrency.");
-    std::string net_prefix("API."); std::string intro_prefix("Introspection.");
-    if(!method_name.compare(0, sys_prefix.size(), sys_prefix) ||
-       !method_name.compare(0, time_prefix.size(), time_prefix) ||
-       !method_name.compare(0, io_prefix.size(), io_prefix) ||
-       !method_name.compare(0, net_prefix.size(), net_prefix) ||
-       !method_name.compare(0, intro_prefix.size(), intro_prefix)) {
-      return false;
+  // checks to see if a 'getter' method can be inlined
+  inline int IsGetter(IntermediateMethod* mthd_called) {
+    vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+    if(blocks.size() == 1 && mthd_called->GetNumParams() == 0) {
+      vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+      // instance variable
+      if(instrs.size() == 3) {
+	bool is_getter = 
+	  instrs[0]->GetType() == LOAD_INST_MEM &&
+	  instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
+					       instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
+	  instrs[2]->GetType() == RTRN;
+	if(is_getter) {
+	  return 0;
+	}
+	return -1;
+      }
+      // literal
+      else if(instrs.size() == 2) {
+	bool is_getter = 
+	  (instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
+	  instrs[1]->GetType() == RTRN;	
+	if(is_getter) {
+	  return 1;
+	}
+	return -1;
+      }
+
+      return -1;
     }
     
-    return true;
-  }
-  
-  inline bool CanBeInlining(IntermediateMethod* called) {
-    // TODO: could be speed up with a cache
-    const string &method_name = called->GetName();
-    const string &new_cls_prefix = called->GetClass()->GetName() + ":New";
-    std::string sys_prefix("System.$");
-    std::string time_prefix("Time."); std::string io_prefix("Concurrency.");
-    std::string net_prefix("API."); std::string intro_prefix("Introspection.");
-    // check general properties
-    if(!called->IsVirtual() && called->GetInstructionCount() < 16 &&
-       !(current_method->GetClass()->GetId() == program->GetStartClassId() && 
-	 current_method->GetId() == program->GetStartMethodId()) &&  
-       current_method->GetSpace() <= 128 &&
-       // check bundles
-       method_name.compare(0, new_cls_prefix.size(), new_cls_prefix) != 0 &&
-       method_name.compare(0, sys_prefix.size(), sys_prefix) != 0 &&
-       method_name.compare(0, time_prefix.size(), time_prefix) != 0 &&
-       method_name.compare(0, io_prefix.size(), io_prefix)  != 0 &&
-       method_name.compare(0, net_prefix.size(), net_prefix)  != 0 &&
-       method_name.compare(0, intro_prefix.size(), intro_prefix) != 0) {
-      // check instructions
-      int rtrn_count = 0;
-      vector<IntermediateBlock*> blocks = called->GetBlocks();
-      for(unsigned int i = 0; i < blocks.size(); i++) {
-	vector<IntermediateInstruction*> input_instrs = blocks[i]->GetInstructions();
-	for(unsigned int j = 0; j < input_instrs.size(); j++) {
-	  IntermediateInstruction* instr = input_instrs[j];
-	  switch(instr->GetType()) {
-	  case RTRN:
-	    ++rtrn_count;
-	    if(rtrn_count > 1) {
-	      return false;
-	    }
-	    break;
-	  
-	  case TRAP:
-	  case TRAP_RTRN:
-	  case LOAD_CLS_MEM:
-	  case DYN_MTHD_CALL:
-	    return false;
-
-	  default:
-	    break;
-	  }
-	}
-      }
-      
-      return true;
-    }
-
-    return false;
+    return -1;
   }
   
  public:
@@ -178,7 +143,7 @@ class ItermediateOptimizer {
       optimization_level = 3;
     } 
     else {
-      optimization_level = 1;
+      optimization_level = 0;
     }
   }
   
