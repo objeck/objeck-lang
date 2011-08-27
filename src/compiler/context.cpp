@@ -152,7 +152,7 @@ bool ContextAnalyzer::Analyze()
   }
 
   if(!is_lib_target && bundles.size() > 1) {
-    ProcessError("Only one bundle may be defined in a program, consider putting code for additional bundels in libraries");
+    ProcessError("Only one bundle may be defined in a program, consider putting code for additional bundles in libraries");
   }
 
   if(!main_found && !is_lib_target) {
