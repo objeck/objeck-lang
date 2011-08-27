@@ -91,19 +91,19 @@ class ItermediateOptimizer {
   void ReplacementInstruction(IntermediateInstruction* instr,
                               list<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
-  //
-  // checks to see if a method can be inlined
-  //
+  
+  // checks to see if a 'getter' method can be inlined
   inline int CanInline(IntermediateMethod* mthd_called) {
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 #ifdef _DEBUG
     assert(blocks.size() == 1);
 #endif
+    //
+    // getter inline patterns
+    //
     if(mthd_called->GetNumParams() == 0) {
       vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-      //
       // instance getter pattern
-      //
       if(instrs.size() == 3) {
 	if(instrs[0]->GetType() == LOAD_INST_MEM &&
 	   instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
@@ -113,9 +113,7 @@ class ItermediateOptimizer {
 	}	
 	return -1;
       }
-      //
       // literal getter pattern
-      //
       else if(instrs.size() == 2) {
 	if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
 	   instrs[1]->GetType() == RTRN) {
@@ -124,23 +122,31 @@ class ItermediateOptimizer {
 	return -1;
       }
     }
+    //
+    // setter inline pattern
+    //
     else if(mthd_called->GetNumParams() == 1) {
       vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-      //
-      // character print pattern
-      //
       if(instrs.size() == 5) {
-	if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-	   instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-	   instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
-	   instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
+      	if((instrs[0]->GetType() == STOR_INT_VAR) && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+	   (instrs[1]->GetType() == LOAD_INT_VAR) && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+	   instrs[2]->GetType() == LOAD_INST_MEM &&
+	   (instrs[3]->GetType() == STOR_INT_VAR) && instrs[3]->GetOperand2() == INST &&
 	   instrs[4]->GetType() == RTRN) {
 	  return 2;
+	}
+	// pattern for simple system directives
+	else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+		instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+		instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
+		instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
+		instrs[4]->GetType() == RTRN) {
+	  return 3;
 	}
 	return -1;
       }
     }
-       
+    
     return -1;
   }
   

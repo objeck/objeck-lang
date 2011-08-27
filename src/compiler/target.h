@@ -775,7 +775,7 @@ class IntermediateMethod : public Intermediate {
   vector<IntermediateBlock*> blocks;
   IntermediateDeclarations* entries;
   IntermediateClass* klass;
-  map<IntermediateMethod*, int> registered_inlined_mthds;
+  map<IntermediateMethod*, int> registered_inlined_mthds; // TODO: remove
   
 public:
   IntermediateMethod(int i, const string &n, bool v, bool h, const string &r,
