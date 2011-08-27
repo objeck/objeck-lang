@@ -218,18 +218,25 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       int status = IsGetter(mthd_called);
-      // instance
+      // instance getter
       if(status == 0) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[1]);
       }
-      // literal
+      // literal getter
       else if(status == 1) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
 	outputs->AddInstruction(instrs[0]);
+      }
+      // setter
+      else if(status == 2) {
+	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+	outputs->AddInstruction(instrs[3]);
+	// outputs->AddInstruction(instr);
       }
       else {
 	outputs->AddInstruction(instr);
