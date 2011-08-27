@@ -217,7 +217,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-      int status = IsGetter(mthd_called);
+      int status = CanInline(mthd_called);
       // instance getter pattern
       if(status == 0) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
@@ -237,7 +237,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[3]);
       }
-      // basic type print pattern
+      // simple system directive pattern
       else if(status == 3) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
