@@ -1305,7 +1305,7 @@ class ObjectDeserializer
 };
 
 // call back for DLL method calls
-void DLLTools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
+void APITools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
 			 const char* cls_id, const char* mthd_id);
 
 #endif
