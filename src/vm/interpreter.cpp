@@ -1790,7 +1790,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #endif
 }
 
-typedef void (*lib_func_def) (long* data, long* op_stack, long *stack_pos, Callbacks& callbacks);
+typedef void (*lib_func_def) (VMContext& callbacks);
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1814,11 +1814,14 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-    Callbacks callbacks;
-    callbacks.method_call = DLLTools_MethodCall;
-    callbacks.alloc_array = MemoryManager::AllocateArray;
-    callbacks.alloc_obj = MemoryManager::AllocateObject;    
-    (*ext_func)(args, op_stack, stack_pos, callbacks);
+    VMContext context;
+    context.data_array = args;
+    context.op_stack = op_stack;
+    context.stack_pos = stack_pos;
+    context.method_call = APITools_MethodCall;
+    context.alloc_array = MemoryManager::AllocateArray;
+    context.alloc_obj = MemoryManager::AllocateObject;    
+    (*ext_func)(context);
   }
 #else
   // load function
@@ -1831,11 +1834,14 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
       exit(1);
     }
     // call function
-    Callbacks callbacks;
-    callbacks.method_call = DLLTools_MethodCall;
-    callbacks.alloc_array = MemoryManager::AllocateArray;
-    callbacks.alloc_obj = MemoryManager::AllocateObject;
-    (*ext_func)(args, op_stack, stack_pos, callbacks);
+    VMContext context;
+    context.data_array = args;
+    context.op_stack = op_stack;
+    context.stack_pos = stack_pos;
+    context.method_call = APITools_MethodCall;
+    context.alloc_array = MemoryManager::AllocateArray;
+    context.alloc_obj = MemoryManager::AllocateObject;
+    (*ext_func)(context);
   }  
 #endif
 }

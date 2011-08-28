@@ -31,13 +31,11 @@ bundle Default {
 			dll_proxy->CallFunction("foo", dll_args);
 			dll_proxy->Unload();
 
-#~
 			int_holder := dll_args[0]->As(IntHolder);
 			int_holder->Get()->PrintLine();
 
 			float_holder := dll_args[2]->As(FloatHolder);
 			float_holder->Get()->PrintLine();
-~#
 		}
 	}
 }

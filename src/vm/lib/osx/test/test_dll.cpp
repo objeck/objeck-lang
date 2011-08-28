@@ -8,20 +8,19 @@ extern "C" {
   void load_lib() {}
   void unload_lib() {}
   
-  void foo(long* data_array, long* op_stack, long *stack_pos, 
-  	Callbacks& callbacks) {
-    int size = DLLTools_GetArraySize(data_array);
+  void foo(VMContext& context) {
+    int size = APITools_GetArgumentCount(context);
     cout << size << endl;
-    cout << DLLTools_GetIntValue(data_array, 1) << endl;
-    cout << DLLTools_GetFloatValue(data_array, 2) << endl;
-    DLLTools_SetFloatValue(data_array, 2, 13.5);
-    DLLTools_SetIntValue(data_array, 0, 20);
+    cout << APITools_GetIntValue(context, 1) << endl;
+    cout << APITools_GetFloatValue(context, 2) << endl;
+    APITools_SetFloatValue(context, 2, 13.5);
+    APITools_SetIntValue(context, 0, 20);
     
     cout << "---0---" << endl;
     
-//    DLLTools_PushInt(op_stack, stack_pos, 13);
-    DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-    DLLTools_CallMethod(callbacks.method_call, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
+//    APITools_PushInt(context, 13);
+    APITools_PushFloat(context, 1112.11);
+    APITools_CallMethod(context, NULL, "System.$Float:PrintLine:f,");
     
     cout << "---1---" << endl;
   }
