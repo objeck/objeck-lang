@@ -19,6 +19,9 @@ bundle Default {
 		function : native : Main(args : System.String[]) ~ Nil {
 			x := Bar->New();
 			Run(x);
+			r := x->TypeOf(String)->PrintLine();
+			r := x->TypeOf(Inf2)->PrintLine();
+			r := x->TypeOf(Inf)->PrintLine();
 		}
 
 		function : Run(x : Bar) ~ Nil {
