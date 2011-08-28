@@ -43,16 +43,19 @@ using namespace std;
 #define ARRAY_HEADER_OFFSET 3
 
 // function declaration for native C callbacks
-typedef void(*DLLTools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
+typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const char* cls_id, const char* mthd_id);
-typedef long*(*DLLTools_AllocateObject_Ptr) (const long obj_id, long* op_stack, long stack_pos);
-typedef long*(*DLLTools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
+typedef long*(*APITools_AllocateObject_Ptr) (const long obj_id, long* op_stack, long stack_pos);
+typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos);
 
-struct Callbacks {
-  DLLTools_MethodCall_Ptr method_call;
-  DLLTools_AllocateObject_Ptr alloc_obj;
-  DLLTools_AllocateArray_Ptr alloc_array;
+struct VMContext {
+  long* data_array;
+  long* op_stack;
+  long* stack_pos;
+  APITools_MethodCall_Ptr method_call;
+  APITools_AllocateObject_Ptr alloc_obj;
+  APITools_AllocateArray_Ptr alloc_array;
 };
 
 // function identifiers consist of two integer IDs
@@ -62,19 +65,20 @@ enum FunctionId {
 };
 
 // gets the size of an Object[] array
-int DLLTools_GetArraySize(long* array) {
-  if(array) {
-    return array[0];
+int APITools_GetArgumentCount(VMContext &context) {
+  if(context.data_array) {
+    return context.data_array[0];
   }
 
   return 0;
 }
 
 // gets the requested function ID from an Object[]
-int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)array[index];
+int APITools_GetFunctionValue(VMContext &context, int index, FunctionId id) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)data_array[index];
     
     if(id == CLS_ID) {
       return int_holder[0];
@@ -89,11 +93,11 @@ int DLLTools_GetFunctionValue(long* array, int index, FunctionId id) {
 
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void DLLTools_SetFunctionValue(long* array, int index, 
-			       FunctionId id, int value) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)array[index];
+void APITools_SetFunctionValue(VMContext &context, int index, FunctionId id, int value) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)data_array[index];
     
     if(id == CLS_ID) {
       int_holder[0] = value;
@@ -105,10 +109,11 @@ void DLLTools_SetFunctionValue(long* array, int index,
 }
 
 // get the requested integer value from an Object[].
-long DLLTools_GetIntValue(long* array, int index) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)array[index];
+long APITools_GetIntValue(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)data_array[index];
 #ifdef _DEBUG
     assert(int_holder);
 #endif
@@ -119,11 +124,12 @@ long DLLTools_GetIntValue(long* array, int index) {
 }
 
 // sets the requested function ID from an Object[].  Please note, that 
-// memory should be allocated for this element prior to array access.
-void DLLTools_SetIntValue(long* array, int index, long value) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)array[index];
+// memory should be allocated for this element prior to context.data_array access.
+void APITools_SetIntValue(VMContext &context, int index, long value) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)data_array[index];
 #ifdef _DEBUG
     assert(int_holder);
 #endif
@@ -132,10 +138,11 @@ void DLLTools_SetIntValue(long* array, int index, long value) {
 }
 
 // get the requested double value from an Object[].
-double DLLTools_GetFloatValue(long* array, int index) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* float_holder = (long*)array[index];
+double APITools_GetFloatValue(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* float_holder = (long*)data_array[index];
 
 #ifdef _DEBUG
     assert(float_holder);
@@ -150,10 +157,11 @@ double DLLTools_GetFloatValue(long* array, int index) {
 
 // sets the requested float value for an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void DLLTools_SetFloatValue(long* array, int index, double value) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* float_holder = (long*)array[index];
+void APITools_SetFloatValue(VMContext &context, int index, double value) {
+ long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* float_holder = (long*)data_array[index];
 
 #ifdef _DEBUG
     assert(float_holder);
@@ -163,10 +171,11 @@ void DLLTools_SetFloatValue(long* array, int index, double value) {
 }
 
 // get the requested string value from an Object[].
-char* DLLTools_GetStringValue(long* array, int index) {
-  if(array && index < array[0]) {
-    array += ARRAY_HEADER_OFFSET;
-    long* string_holder = (long*)array[index];
+char* APITools_GetStringValue(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* string_holder = (long*)data_array[index];
 
 #ifdef _DEBUG
     assert(string_holder);
@@ -180,16 +189,15 @@ char* DLLTools_GetStringValue(long* array, int index) {
 }
 
 // invokes a runtime Objeck method
-void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack, 
-			 long* stack_pos, long* inst, const char* mthd_id) {
+void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_id) {
   string qualified_method_name(mthd_id);
   size_t delim = qualified_method_name.find(':');
   if(delim != string::npos) {
     string cls_name = qualified_method_name.substr(0, delim);
-    (*callback)(op_stack, stack_pos, inst, cls_name.c_str(), mthd_id);
+    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_id);
     
 #ifdef _DEBUG
-    assert(*stack_pos == 0);
+    assert(*context.stack_pos == 0);
 #endif
   }
   else {
@@ -199,20 +207,19 @@ void DLLTools_CallMethod(DLLTools_MethodCall_Ptr callback, long* op_stack,
 }
 
 // invokes a runtime Objeck method that returns a value, which may be a point to memory
-long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_stack, 
-				   long* stack_pos, long* inst, const char* mthd_id) {
+long APITools_CallMethodWithReturn(VMContext &context, long* instance, const char* mthd_id) {
   string qualified_method_name(mthd_id);
   size_t delim = qualified_method_name.find(':');
   if(delim != string::npos) {
     string cls_name = qualified_method_name.substr(0, delim);
-    (*callback)(op_stack, stack_pos, inst, cls_name.c_str(), mthd_id);
+    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_id);
     
 #ifdef _DEBUG
-    assert(*stack_pos > 0);
+    assert(*context.stack_pos > 0);
 #endif
-    long rtrn_value = op_stack[--(*stack_pos)];
+    long rtrn_value = context.op_stack[--(*context.stack_pos)];
 #ifdef _DEBUG
-    assert(*stack_pos == 0);
+    assert(*context.stack_pos == 0);
 #endif
     
     return rtrn_value;
@@ -224,17 +231,17 @@ long DLLTools_CallMethodWithReturn(DLLTools_MethodCall_Ptr callback, long* op_st
 }
 
 // pushes an integer value onto the runtime stack
-void DLLTools_PushInt(long* op_stack, long *stack_pos, long value) {
-  op_stack[(*stack_pos)++] = value;
+void APITools_PushInt(VMContext &context, long value) {
+  context.op_stack[(*context.stack_pos)++] = value;
 }
 
 // pushes an double value onto the runtime stack
-void DLLTools_PushFloat(long* op_stack, long *stack_pos, double v) {
-  memcpy(&op_stack[(*stack_pos)], &v, sizeof(double));
+void APITools_PushFloat(VMContext &context, double v) {
+  memcpy(&context.op_stack[(*context.stack_pos)], &v, sizeof(double));
 #ifdef _X64
-  (*stack_pos)++;
+  (*context.stack_pos)++;
 #else
-  (*stack_pos) += 2;
+  (*context.stack_pos) += 2;
 #endif
 }
 

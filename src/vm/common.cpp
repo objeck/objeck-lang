@@ -432,7 +432,7 @@ long* ObjectDeserializer::DeserializeObject() {
  * SDK functions
  ********************************/
 #ifndef _UTILS
-void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
+void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
 			 int cls_id, int mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
   if(cls) {
@@ -452,7 +452,7 @@ void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance,
   }
 }
 
-void DLLTools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
+void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
 			 const char* cls_id, const char* mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
   if(cls) {
