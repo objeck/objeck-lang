@@ -580,7 +580,8 @@ instance type before casting it.
 
 \begin{verbatim}
 s := "FooBar";
-s->TypeOf(String)->PrintLine();
+t := s->TypeOf(String);
+t->PrintLine();
 \end{verbatim}
 
 The class that a given object instance belongs to can found by calling
