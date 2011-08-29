@@ -80,8 +80,8 @@ namespace odbc {
       
       SQLLEN is_null;
       long value;
-      SQLRETURN status = SQLGetData(stmt, i, SQL_C_SLONG, &value, 
-				    VARCHAR_MAX, &is_null);
+      SQLRETURN status = SQLGetData(stmt, i, SQL_C_SLONG, 
+				    &value, 0, &is_null);
       if(SQL_OK) {
 	return value;
       }
