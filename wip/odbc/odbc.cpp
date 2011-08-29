@@ -9,8 +9,11 @@ int main() {
   SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
   SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
   
-  
-  
+  ODBCClient client(env, "test", "root", "");
+  string sql = "select * from test.student";
+  ResultSet result = client.ExecuteSelect(sql);
+  cout << result.IsGood() << endl;
+
   // clean up
   SQLFreeHandle(SQL_HANDLE_ENV, env);
 
