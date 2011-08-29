@@ -11,28 +11,28 @@
 
 #define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
 #define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO
-#define NAME_LEN 256
+#define COL_NAME_MAX 64
+#define VARCHAR_MAX 1024
 
 namespace odbc {
   using namespace std;
   
   typedef struct _ColumnDescription {
-    SQLCHAR column_name[NAME_LEN];
+    SQLCHAR column_name[COL_NAME_MAX];
     SQLSMALLINT column_name_size;
     SQLSMALLINT type;
     SQLULEN column_size;
     SQLSMALLINT decimal_length;
     SQLSMALLINT nullable;
-  } 
-  ColumnDescription;
-
+  } ColumnDescription;
+  
   class Parameter {
   };
   
   class ResultSet {
     SQLHSTMT stmt;
     vector<ColumnDescription> descriptions;
-    map<const string, unsigned int> column_name_ids;
+    map<const char*, unsigned int> column_name_ids;
     
   public:
     ResultSet() {
@@ -46,7 +46,7 @@ namespace odbc {
     void SetColumnDescriptions(vector<ColumnDescription> &d) {
       descriptions = d;
       for(unsigned int i = 0; i < descriptions.size(); i++) {
-	column_name_ids.insert(pair<const string, unsigned int>((const char*)descriptions[i].column_name, i));
+	column_name_ids.insert(pair<const char*, unsigned int>((const char*)descriptions[i].column_name, i));
       }
     }
 
@@ -63,8 +63,52 @@ namespace odbc {
       if(SQL_OK) {
 	return true;
       }
-      
+
       return false;
+    }
+    
+    // TODO: pass status code, use for NULL
+    long GetLong(int i) {
+      if(i < 1 || i > descriptions.size()) {
+	return 0;
+      }
+
+      SQLSMALLINT type = descriptions[i - 1].type;
+      if(type != SQL_INTEGER) {
+	return 0;
+      }
+      
+      SQLLEN is_null;
+      long value;
+      SQLRETURN status = SQLGetData(stmt, i, SQL_C_SLONG, &value, 
+				    VARCHAR_MAX, &is_null);
+      if(SQL_OK) {
+	return value;
+      }
+
+      return 0;
+    }
+
+    // TODO: pass status code, use for NULL
+    string GetString(int i) {
+      if(i < 1 || i > descriptions.size()) {
+	return "";
+      }
+
+      SQLSMALLINT type = descriptions[i - 1].type;
+      if(type != SQL_VARCHAR) {
+	return "";
+      }
+      
+      SQLLEN is_null;
+      char value[VARCHAR_MAX];
+      SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
+				    VARCHAR_MAX, &is_null);
+      if(SQL_OK) {
+	return value;
+      }
+
+      return "";
     }
     
     ~ResultSet() {
@@ -144,7 +188,7 @@ namespace odbc {
 	    if(columns > 0) {
 	      for(SQLSMALLINT i = 1; i <= columns; i++) {
 		ColumnDescription description;
-		status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, NAME_LEN, 
+		status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
 					&description.column_name_size, &description.type, 
 					&description.column_size, &description.decimal_length, 
 					&description.nullable);
@@ -152,7 +196,7 @@ namespace odbc {
 		  SQLFreeStmt(stmt, SQL_CLOSE);
 		  return result;
 		}
-cout << "name=" << description.column_name << endl;
+cout << "name=" << description.column_name << ", type=" << description.type << endl;
 		descriptions.push_back(description);
 	      }
 	    }
@@ -161,6 +205,7 @@ cout << "name=" << description.column_name << endl;
 	    if(SQL_OK) {
 	      result.SetStatement(stmt);
 	      result.SetColumnDescriptions(descriptions);
+	      return result;
 	    }
 	  } 
 	}
