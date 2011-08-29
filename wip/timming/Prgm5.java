@@ -1,13 +1,7 @@
 public class Prgm5 {
     public static void main(String[] args) {
 	long start = System.currentTimeMillis();
-	
 	run(1000000);
-	  
-	System.out.println("---------------------------");
-	System.out.println("Time: " + ((float)(System.currentTimeMillis() - start) / 1000.0) + 
-			   " second(s).");
-
     }
     
     static void run(int topCandidate) {
