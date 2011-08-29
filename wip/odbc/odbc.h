@@ -11,21 +11,74 @@
 
 #define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
 #define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO
+#define NAME_LEN 256
 
 namespace odbc {
   using namespace std;
   
+  typedef struct _ColumnDescription {
+    SQLCHAR column_name[NAME_LEN];
+    SQLSMALLINT column_name_size;
+    SQLSMALLINT type;
+    SQLULEN column_size;
+    SQLSMALLINT decimal_length;
+    SQLSMALLINT nullable;
+  } 
+  ColumnDescription;
+
   class Parameter {
   };
   
   class ResultSet {
+    SQLHSTMT stmt;
+    vector<ColumnDescription> descriptions;
+    map<const string, unsigned int> column_name_ids;
+    
+  public:
+    ResultSet() {
+      stmt = NULL;
+    }
+
+    void SetStatement(SQLHSTMT s) {
+      stmt = s;
+    }
+    
+    void SetColumnDescriptions(vector<ColumnDescription> &d) {
+      descriptions = d;
+      for(unsigned int i = 0; i < descriptions.size(); i++) {
+	column_name_ids.insert(pair<const string, unsigned int>((const char*)descriptions[i].column_name, i));
+      }
+    }
+
+    bool IsGood() {
+      return stmt != NULL;
+    }
+    
+    bool Next() {
+      if(!stmt) {
+	return false;
+      }
+      
+      SQLRETURN status = SQLFetch(stmt);
+      if(SQL_OK) {
+	return true;
+      }
+      
+      return false;
+    }
+    
+    ~ResultSet() {
+      if(stmt) {
+	SQLFreeStmt(stmt, SQL_CLOSE);
+      }     	
+    }
   };
   
   class ODBCClient {
     SQLHDBC conn;
   
   public:
-    ODBCClient(SQLHENV env, string &ds, string &username, string &password) {
+    ODBCClient(SQLHENV env, string ds, string username, string password) {
       SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
       if(SQL_OK) {
 	status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, 
@@ -46,12 +99,12 @@ namespace odbc {
 	SQLFreeHandle(SQL_HANDLE_DBC, conn);
       }
     }
-  
-    int ExecuteUpdate(string &sql) {
+    
+    int ExecuteUpdate(string sql) {
       if(!conn) {
 	return -1;
       }
-    
+      
       SQLHSTMT stmt = NULL;
       SQLRETURN status = SQLAllocStmt(conn, &stmt);
       if(SQL_OK) {
@@ -60,16 +113,63 @@ namespace odbc {
 	  SQLLEN count;
 	  status = SQLRowCount(stmt, &count);
 	  if(SQL_OK) {
+	    SQLFreeStmt(stmt, SQL_CLOSE);
 	    return count;
 	  }
 	}
       }
-    
+      
+      if(stmt) {
+	SQLFreeStmt(stmt, SQL_CLOSE);
+      }
       return -1;
     }
-  
-    ResultSet* ExecuteSelect(string &sql) {
-      return NULL;
+    
+    ResultSet ExecuteSelect(string &sql) {
+      ResultSet result;
+      if(!conn) {
+	return result;
+      }
+      
+      SQLHSTMT stmt = NULL;
+      SQLRETURN status = SQLAllocStmt(conn, &stmt);
+      if(SQL_OK) {
+	status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+	if(SQL_OK) {
+	  SQLSMALLINT columns;
+	  status = SQLNumResultCols(stmt, &columns);
+	  if(SQL_OK) {
+	    vector<ColumnDescription> descriptions;
+	    // get column information
+	    if(columns > 0) {
+	      for(SQLSMALLINT i = 1; i <= columns; i++) {
+		ColumnDescription description;
+		status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, NAME_LEN, 
+					&description.column_name_size, &description.type, 
+					&description.column_size, &description.decimal_length, 
+					&description.nullable);
+		if(SQL_FAIL) {
+		  SQLFreeStmt(stmt, SQL_CLOSE);
+		  return result;
+		}
+cout << "name=" << description.column_name << endl;
+		descriptions.push_back(description);
+	      }
+	    }
+	    // execute query
+	    status = SQLExecute(stmt); 
+	    if(SQL_OK) {
+	      result.SetStatement(stmt);
+	      result.SetColumnDescriptions(descriptions);
+	    }
+	  } 
+	}
+      }
+      
+      if(stmt) {
+	SQLFreeStmt(stmt, SQL_CLOSE);
+      }      
+      return result;
     }
   
     ResultSet* ExecuteSelect(string &sql, vector<Parameter*> &params) {
