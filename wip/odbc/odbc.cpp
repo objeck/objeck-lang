@@ -12,10 +12,14 @@ int main() {
   ODBCClient client(env, "test", "root", "");
   string sql = "select * from test.student";
   ResultSet result = client.ExecuteSelect(sql);
-  cout << result.IsGood() << endl;
-
+  if(result.IsGood()) {
+    while(result.Next()) {
+      cout << "value=" << result.GetLong(1) << endl;
+      cout << "value=" << result.GetString(2) << endl;
+    }
+  }
+  
   // clean up
   SQLFreeHandle(SQL_HANDLE_ENV, env);
-
   return 0;
 }
