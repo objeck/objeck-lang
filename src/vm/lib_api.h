@@ -32,10 +32,7 @@
 #ifndef __LIB_API_H__
 #define __LIB_API_H__
 
-#include <assert.h>
-#include <stdlib.h>
-#include <string>
-#include "../shared/sys.h"
+#include "common.h"
 
 using namespace std;
 
@@ -45,7 +42,7 @@ using namespace std;
 // function declaration for native C callbacks
 typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const char* cls_id, const char* mthd_id);
-typedef long*(*APITools_AllocateObject_Ptr) (const long obj_id, long* op_stack, long stack_pos);
+typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos);
 
