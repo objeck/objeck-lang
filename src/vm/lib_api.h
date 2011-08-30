@@ -39,7 +39,7 @@ using namespace std;
 // offset for Objeck arrays
 #define ARRAY_HEADER_OFFSET 3
 
-// function declaration for native C callbacks
+// function declaration for native C++ callbacks
 typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const char* cls_id, const char* mthd_id);
 typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos);
