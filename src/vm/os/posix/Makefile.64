@@ -1,6 +1,6 @@
-ARGS=-g -D_DEBUG -D_X64 -Wall
-# ARGS=-g -Wunused -D_X64
-# ARGS=-O3 -D_X64
+# ARGS=-g -Wall -D_X64 -D_DEBUG
+# ARGS=-g -Wall -D_X64 -D_DEBUG -D_GC_SERIAL
+ARGS=-O3 -Wall -D_X64 
 
 CC=g++
 AR=ar
