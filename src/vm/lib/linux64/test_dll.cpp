@@ -1,27 +1,30 @@
 #include <iostream>
 #include <string>
-#include "../../../shared/dll_tools.h"
+#include "../../../vm/lib_api.h"
 
 using namespace std;
 
 extern "C" {
   void load_lib() {}
   void unload_lib() {}
+  
+  void foo(VMContext& context) {
+    int size = APITools_GetArgumentCount(context);
+    cout << size << endl;
+    cout << APITools_GetIntValue(context, 1) << endl;
+    cout << APITools_GetFloatValue(context, 2) << endl;
+    APITools_SetFloatValue(context, 2, 13.5);
+    APITools_SetIntValue(context, 0, 20);
+    
+    cout << "---0---" << endl;
+    
+//    APITools_PushInt(context, 13);
+    APITools_PushFloat(context, 1112.11);
+    APITools_CallMethod(context, NULL, "System.$Float:PrintLine:f,");
 
-	void foo(long* data_array, long* op_stack, long *stack_pos, 
-            DLLTools_MethodCall_Ptr callback) {
-		int size = DLLTools_GetArraySize(data_array);
-		cout << size << endl;
-		cout << DLLTools_GetIntValue(data_array, 1) << endl;
-		cout << DLLTools_GetFloatValue(data_array, 2) << endl;
-		DLLTools_SetFloatValue(data_array, 2, 13.5);
-		DLLTools_SetIntValue(data_array, 0, 20);
-
-		cout << "---0---" << endl;
-
-		DLLTools_PushFloat(op_stack, stack_pos, 1112.11);
-		DLLTools_CallMethod(callback, op_stack, stack_pos, NULL, "System.$Float:PrintLine:f,");
-
-		cout << "---1---" << endl;
-	}
+    long* str_obj = context.alloc_obj("System.String", context.op_stack, *context.stack_pos);
+    cout << "### " << str_obj << " ###" << endl;
+    
+    cout << "---1---" << endl;
+  }
 }

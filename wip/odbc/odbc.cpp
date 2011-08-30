@@ -11,12 +11,13 @@ int main() {
   
   ODBCClient client(env, "test", "root", "");
   string sql = "select * from test.student";
-  ResultSet result = client.ExecuteSelect(sql);
-  if(result.IsGood()) {
-    while(result.Next()) {
-      cout << "value=" << result.GetLong(1) << endl;
-      cout << "value=" << result.GetString(2) << endl;
+  ResultSet* result = client.ExecuteSelect(sql);
+  if(result->IsGood()) {
+    while(result->Next()) {
+      cout << "value=" << result->GetLong(1) << endl;
+      cout << "value=" << result->GetString(2) << endl;
     }
+    client.ReleaseResult();
   }
   
   // clean up

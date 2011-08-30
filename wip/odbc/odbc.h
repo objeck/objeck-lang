@@ -35,21 +35,22 @@ namespace odbc {
     map<const char*, unsigned int> column_name_ids;
     
   public:
-    ResultSet() {
-      stmt = NULL;
-    }
-
-    void SetStatement(SQLHSTMT s) {
+    ResultSet(SQLHSTMT s, vector<ColumnDescription> &d) {
       stmt = s;
-    }
-    
-    void SetColumnDescriptions(vector<ColumnDescription> &d) {
+      stmt = NULL;
       descriptions = d;
+      
       for(unsigned int i = 0; i < descriptions.size(); i++) {
 	column_name_ids.insert(pair<const char*, unsigned int>((const char*)descriptions[i].column_name, i));
       }
     }
-
+    
+    ~ResultSet() {
+      if(stmt) {
+	SQLFreeStmt(stmt, SQL_CLOSE);
+      }     	
+    }
+    
     bool IsGood() {
       return stmt != NULL;
     }
@@ -110,17 +111,12 @@ namespace odbc {
 
       return "";
     }
-    
-    ~ResultSet() {
-      if(stmt) {
-	SQLFreeStmt(stmt, SQL_CLOSE);
-      }     	
-    }
   };
   
   class ODBCClient {
     SQLHDBC conn;
-  
+    ResultSet* result;
+    
   public:
     ODBCClient(SQLHENV env, string ds, string username, string password) {
       SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
@@ -135,6 +131,8 @@ namespace odbc {
       else {
 	conn = NULL;
       }
+
+      result = NULL;
     }
   
     ~ODBCClient() {
@@ -142,10 +140,15 @@ namespace odbc {
 	SQLDisconnect(conn);
 	SQLFreeHandle(SQL_HANDLE_DBC, conn);
       }
+
+      if(result) {
+	delete result;
+	result = NULL;
+      }
     }
     
     int ExecuteUpdate(string sql) {
-      if(!conn) {
+      if(!conn || result) {
 	return -1;
       }
       
@@ -169,10 +172,14 @@ namespace odbc {
       return -1;
     }
     
-    ResultSet ExecuteSelect(string &sql) {
-      ResultSet result;
-      if(!conn) {
-	return result;
+    void ReleaseResult() {
+      delete result;
+      result = NULL;
+    }
+    
+    ResultSet* ExecuteSelect(string &sql) {
+      if(!conn || result) {
+	return NULL;
       }
       
       SQLHSTMT stmt = NULL;
@@ -194,7 +201,7 @@ namespace odbc {
 					&description.nullable);
 		if(SQL_FAIL) {
 		  SQLFreeStmt(stmt, SQL_CLOSE);
-		  return result;
+		  return NULL;
 		}
 cout << "name=" << description.column_name << ", type=" << description.type << endl;
 		descriptions.push_back(description);
@@ -203,8 +210,7 @@ cout << "name=" << description.column_name << ", type=" << description.type << e
 	    // execute query
 	    status = SQLExecute(stmt); 
 	    if(SQL_OK) {
-	      result.SetStatement(stmt);
-	      result.SetColumnDescriptions(descriptions);
+	      result = new ResultSet(stmt, descriptions);
 	      return result;
 	    }
 	  } 
@@ -214,7 +220,7 @@ cout << "name=" << description.column_name << ", type=" << description.type << e
       if(stmt) {
 	SQLFreeStmt(stmt, SQL_CLOSE);
       }      
-      return result;
+      return NULL;
     }
   
     ResultSet* ExecuteSelect(string &sql, vector<Parameter*> &params) {

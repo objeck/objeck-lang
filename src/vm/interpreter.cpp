@@ -1820,7 +1820,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
     context.stack_pos = stack_pos;
     context.method_call = APITools_MethodCall;
     context.alloc_array = MemoryManager::AllocateArray;
-    context.alloc_obj = MemoryManager::AllocateObject;    
+    context.alloc_obj = MemoryManager::AllocateObject(const string, long*, long);    
     (*ext_func)(context);
   }
 #else
