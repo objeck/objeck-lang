@@ -4,6 +4,9 @@ using namespace std;
 
 extern "C" {
   // initialize odbc environment
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void load_lib() {
     if(!env) {
       SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
@@ -12,12 +15,18 @@ extern "C" {
   }
   
   // free odbc environment
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void unload_lib() {
     if(env) {
       SQLFreeHandle(SQL_HANDLE_ENV, env);
     }
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_connect(VMContext& context) {
     SQLHDBC conn;
 
@@ -46,6 +55,9 @@ extern "C" {
     APITools_SetIntValue(context, 0, (long)conn);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_disconnect(VMContext& context) {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);    
     if(conn) {
@@ -53,17 +65,20 @@ extern "C" {
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       
 #ifdef _DEBUG
-      cout << "## disconnect ###" << endl;
+      cout << "### disconnect ###" << endl;
 #endif
     }
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_update_statement(VMContext& context) {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
     const char* sql = APITools_GetStringValue(context, 2);
 
 #ifdef _DEBUG
-    cout << "## update: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
+    cout << "### update: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
 #endif    
     
     if(!conn || !sql) {
@@ -92,12 +107,15 @@ extern "C" {
     APITools_SetIntValue(context, 0, -1);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_select_statement(VMContext& context) {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 2);
     const char* sql = APITools_GetStringValue(context, 3);
     
 #ifdef _DEBUG
-    cout << "## select: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
+    cout << "### select: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
 #endif    
     
     if(!conn || !sql) {
@@ -140,7 +158,7 @@ extern "C" {
 	    APITools_SetIntValue(context, 0, (long)stmt);
 	    APITools_SetIntValue(context, 1, (long)column_names);
 #ifdef _DEBUG
-	    cout << "## select OK: stmt=" << stmt << " ###" << endl;
+	    cout << "### select OK: stmt=" << stmt << " ###" << endl;
 #endif  
 	    return;
 	  }
@@ -154,6 +172,9 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_result_next(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
     if(!stmt) {
@@ -170,13 +191,16 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_result_get_int(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "## get_int: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_int: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -201,13 +225,16 @@ extern "C" {
     APITools_SetIntValue(context, 1, 0);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_result_get_varchar(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "## get_string: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_string: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -233,13 +260,16 @@ extern "C" {
     APITools_SetObjectValue(context, 1, NULL);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_result_get_timestamp(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "## get_timestamp: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_timestamp: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -283,6 +313,9 @@ extern "C" {
     APITools_SetObjectValue(context, 1, NULL);
   }
   
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_result_close(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
@@ -296,7 +329,7 @@ extern "C" {
     }
     
 #ifdef _DEBUG
-    cout << "## closed statement ###" << endl;
+    cout << "### closed statement ###" << endl;
 #endif
   }
 }
