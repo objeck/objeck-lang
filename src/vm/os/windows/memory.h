@@ -135,8 +135,15 @@ public:
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
 
-  // TODO: change to static
   // memory allocation
+  static long* AllocateObject(const char* obj_name, long* op_stack, long stack_pos) {
+    StackClass* cls = prgm->GetClass(obj_name);
+    if(cls) {
+      return AllocateObject(cls->GetId(), op_stack, stack_pos);
+    }
+    
+    return NULL;
+  }
   static long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
 
