@@ -21,9 +21,14 @@ extern "C" {
   void odbc_connect(VMContext& context) {
     SQLHDBC conn;
 
-    char* ds = APITools_GetStringValue(context, 1);
-    char* username = APITools_GetStringValue(context, 2);
-    char* password = APITools_GetStringValue(context, 3);
+    const char* ds = APITools_GetStringValue(context, 1);
+    const char* username = APITools_GetStringValue(context, 2);
+    const char* password = APITools_GetStringValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### connect: " << "ds=" << ds << ", username=" 
+	 << username << ", password=" << password << " ###" << endl;
+#endif
 
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_OK) {
@@ -37,6 +42,8 @@ extern "C" {
     else {
       conn = NULL;
     }
+    
+    APITools_SetIntValue(context, 0, (long)conn);
     
     /*
     int size = APITools_GetArgumentCount(context);
@@ -54,6 +61,18 @@ extern "C" {
     
     cout << "---1---" << endl;
     */
+  }
+
+  void odbc_disconnect(VMContext& context) {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);    
+    if(conn) {
+      SQLDisconnect(conn);
+      SQLFreeHandle(SQL_HANDLE_DBC, conn);
+
+#ifdef _DEBUG
+      cout << "## disconnect ###" << endl;
+#endif
+    }
   }
   
   void odbc_update_statement(VMContext& context) {
