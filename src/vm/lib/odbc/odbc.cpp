@@ -129,7 +129,9 @@ extern "C" {
 		return;
 	      }
 	      column_names->push_back((const char*)description.column_name);
+#ifdef _DEBUG
 	      cout << "  name=" << description.column_name << ", type=" << description.type << endl;
+#endif
 	    }
 	  }
 	  // execute query
@@ -138,7 +140,7 @@ extern "C" {
 	    APITools_SetIntValue(context, 0, (long)stmt);
 	    APITools_SetIntValue(context, 1, (long)column_names);
 #ifdef _DEBUG
-    cout << "## select: OK ###" << endl;
+	    cout << "## select OK: stmt=" << stmt << " ###" << endl;
 #endif  
 	    return;
 	  }
@@ -168,6 +170,69 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
   }
 
+  void odbc_result_get_int(VMContext& context) {
+    long i = APITools_GetIntValue(context, 3);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 5);
+    
+#ifdef _DEBUG
+    cout << "## get_int: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+    
+    SQLLEN is_null;
+    int value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SLONG, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, value);
+#ifdef _DEBUG
+      cout << "  " << value << endl;
+#endif
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetIntValue(context, 1, 0);
+  }
+  
+  void odbc_result_get_varchar(VMContext& context) {
+    long i = APITools_GetIntValue(context, 3);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 5);
+    
+#ifdef _DEBUG
+    cout << "## get_string: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 1, "");
+      return;
+    }
+
+    SQLLEN is_null;
+    char value[VARCHAR_MAX];
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
+				  VARCHAR_MAX, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetStringValue(context, 1, value);
+#ifdef _DEBUG
+      cout << "  " << value << endl;
+#endif
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetStringValue(context, 1, "");
+  }
+  
   void odbc_result_close(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
