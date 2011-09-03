@@ -1,0 +1,13 @@
+use ODBC;
+use Structure;
+
+
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			conn := Connection->New("test", "root", "");	
+			conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
+			conn->Close();
+		}
+	}
+}
