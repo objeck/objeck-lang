@@ -233,6 +233,56 @@ extern "C" {
     APITools_SetStringValue(context, 1, "");
   }
   
+  void odbc_result_get_timestamp(VMContext& context) {
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    
+#ifdef _DEBUG
+    cout << "## get_timestamp: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    TIMESTAMP_STRUCT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
+				  sizeof(TIMESTAMP_STRUCT), &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      long* ts_obj = context.alloc_obj("ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos);
+      ts_obj[0] = value.year;
+      ts_obj[1] = value.month;
+      ts_obj[2] = value.day;
+      ts_obj[3] = value.hour;
+      ts_obj[4] = value.minute;
+      ts_obj[5] = value.second;
+      ts_obj[6] = value.fraction;
+      
+#ifdef _DEBUG
+      cout << "  " << value.year << endl;
+      cout << "  " << value.month << endl;
+      cout << "  " << value.day << endl;
+      cout << "  " << value.hour << endl;
+      cout << "  " << value.minute << endl;
+       cout << "  " << value.second << endl;
+      cout << "  " << value.fraction << endl;
+#endif
+      
+      // set values
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, ts_obj);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetIntValue(context, 1, 0);
+  }
+  
   void odbc_result_close(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {

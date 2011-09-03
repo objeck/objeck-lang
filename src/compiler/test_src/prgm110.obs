@@ -17,6 +17,8 @@ bundle Default {
 					while(result->Next()) {
 						result->GetInt(1)->PrintLine();
 						result->GetString(3)->PrintLine();
+						ts := result->GetTimestamp(5);
+						ts->GetYear()->PrintLine();
 						i += 1;
 					};
 					i->PrintLine();	

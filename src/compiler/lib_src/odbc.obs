@@ -80,6 +80,65 @@ bundle ODBC {
 		# TODO: commit
 	}
 	
+	class ParameterStatement {
+		@connection : Connection;
+		
+		New(connection : Connection) {
+			@connection := connection;
+		}
+		
+		method : public : SetInt(pos : Int, value : Int) ~ Nil {
+		}
+		
+		method : public : SetString(pos : Int, value : String) ~ Nil {
+		}
+		
+		method : public : Update(sql : String) ~ Int {
+			return -1;
+		}
+		
+		method : public : Select(sql : String) ~ ResultSet {
+			return Nil;
+		}
+	}
+	
+	class Timestamp {
+		year : Int;
+		month : Int;
+		day : Int;
+		hour : Int;
+		minute : Int;
+		second : Int;
+		fraction : Int;
+		
+		New() {
+		}
+		
+		method : public : GetYear() ~ Int {
+			return year;
+		}
+		
+		method : public : GetMonth() ~ Int {
+			return month;
+		}
+		
+		method : public : GetDay() ~ Int {
+			return day;
+		}
+		
+		method : public : GetMinute() ~ Int {
+			return minute;
+		}
+		
+		method : public : GetSecond() ~ Int {
+			return second;
+		}
+		
+		method : public : GetFraction() ~ Int {
+			return fraction;
+		}
+	}
+	
 	class ResultSet {
 		@native_stmt : Int;
 		@native_names : Int;
@@ -147,6 +206,27 @@ bundle ODBC {
       		};
       		
       		return "";
+		}
+		
+		method : public : GetTimestamp(column : Int) ~ Timestamp {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New();
+				array_args[2] := IntHolder->New(column);
+				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@native_names);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_get_timestamp", array_args);
+				
+				is_null := array_args[0]->As(IntHolder);
+				@is_null := is_null->Get() = 1;
+				
+				value := array_args[1]->As(Timestamp);
+				return value;
+      		};
+      		
+      		return Nil;
 		}
 		
 		# TODO: GetString
