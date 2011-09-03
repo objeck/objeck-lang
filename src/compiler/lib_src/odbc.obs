@@ -33,6 +33,15 @@ bundle ODBC {
 			value := array_args[0]->As(IntHolder);
 			@native_connection := value->Get();
       	}
+      	
+      	method : public : Close() ~ Nil {
+      		if(@native_connection <> 0) {
+      			array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_connection);
+				@lib_proxy := GetDllProxy();
+				@lib_proxy->CallFunction("odbc_disconnect", array_args);
+      		};
+      	}
 		
 		method : public : CreateUpdateStatement() ~ UpdateStatement {
 			return Nil;

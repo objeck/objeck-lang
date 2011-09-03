@@ -168,7 +168,7 @@ void APITools_SetFloatValue(VMContext &context, int index, double value) {
 }
 
 // get the requested string value from an Object[].
-char* APITools_GetStringValue(VMContext &context, int index) {
+const char* APITools_GetStringValue(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
