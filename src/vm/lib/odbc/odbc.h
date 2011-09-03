@@ -1,6 +1,9 @@
 #ifndef __ODBC_H__
 #define __ODBC_H__
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <sql.h>
 #include <sqlext.h>
 #include "../../../vm/lib_api.h"
