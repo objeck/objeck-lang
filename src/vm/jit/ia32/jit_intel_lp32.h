@@ -72,12 +72,12 @@ namespace Runtime {
 
   // register type
   typedef enum _RegType { 
-    IMM_32 = -4000,
-    REG_32,
-    MEM_32,
-    IMM_64,
-    REG_64,
-    MEM_64,
+    IMM_INT = -4000,
+    REG_INT,
+    MEM_INT,
+    IMM_FLOAT,
+    REG_FLOAT,
+    MEM_FLOAT,
   } RegType;
   
   // general and SSE (x86) registers
@@ -131,17 +131,17 @@ namespace Runtime {
   public:    
     RegInstr(RegisterHolder* h) {
       if(h->GetRegister() < XMM0) {
-	type = REG_32;
+	type = REG_INT;
       }
       else {
-	type = REG_64;
+	type = REG_FLOAT;
       }
       holder = h;
       instr = NULL;
     }  
     
     RegInstr(StackInstr* si, double* da) {
-      type = IMM_64;
+      type = IMM_FLOAT;
       operand = (long)da;
       holder = NULL;
       instr = NULL;
@@ -155,17 +155,17 @@ namespace Runtime {
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
       case LOAD_INT_LIT:
-	type = IMM_32;
+	type = IMM_INT;
 	operand = si->GetOperand();
 	break;
 
       case LOAD_CLS_MEM:
-	type = MEM_32;
+	type = MEM_INT;
 	operand = CLASS_MEM;
 	break;
 	
       case LOAD_INST_MEM:
-	type = MEM_32;
+	type = MEM_INT;
 	operand = INSTANCE_MEM;
 	break;
 
@@ -174,14 +174,14 @@ namespace Runtime {
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
       case COPY_INT_VAR:
-	type = MEM_32;
+	type = MEM_INT;
 	operand = si->GetOperand3();
 	break;
 
       case LOAD_FLOAT_VAR:
       case STOR_FLOAT_VAR:
       case COPY_FLOAT_VAR:
-	type = MEM_64;
+	type = MEM_FLOAT;
 	operand = si->GetOperand3();
 	break;
 
@@ -929,7 +929,7 @@ namespace Runtime {
 	cout << "jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
 	int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(), 
-									   (long*)op_stack, *stack_pos);
+							       (long*)op_stack, *stack_pos);
 	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
@@ -969,10 +969,10 @@ namespace Runtime {
       
       case THREAD_JOIN: {
         int32_t* instance = inst;
-	      if(!instance) {
-	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	        exit(1);
-	      }
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
 #ifdef _WIN32
         HANDLE vm_thread = (HANDLE)instance[0];
         if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
@@ -980,12 +980,12 @@ namespace Runtime {
           exit(-1);
         }
 #else
-	      void* status;
-	      pthread_t vm_thread = (pthread_t)instance[0];      
-	      if(pthread_join(vm_thread, &status)) {
-	        cerr << "Unable to join thread!" << endl;
-	        exit(-1);
-	      }
+	void* status;
+	pthread_t vm_thread = (pthread_t)instance[0];      
+	if(pthread_join(vm_thread, &status)) {
+	  cerr << "Unable to join thread!" << endl;
+	  exit(-1);
+	}
 #endif
       }
 	break;
@@ -994,48 +994,48 @@ namespace Runtime {
 #ifdef _WIN32
         Sleep(PopInt(op_stack, stack_pos));
 #else
-	      sleep(PopInt(op_stack, stack_pos));
+	sleep(PopInt(op_stack, stack_pos));
 #endif
-	      break;
+	break;
       
       case THREAD_MUTEX: {
         int32_t* instance = inst;
-	      if(!instance) {
-	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	        exit(1);
-	      }
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
 #ifdef _WIN32
         InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
-	      pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
 #endif
       }
 	break;
 	
       case CRITICAL_START: {
         int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
-	      if(!instance) {
-	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	        exit(1);
-	      }
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
 #ifdef _WIN32
         EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else     
-	      pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
 #endif
       }
 	break;
 
       case CRITICAL_END: {
         int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
-	      if(!instance) {
-	        cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	        exit(1);
-	      }
+	if(!instance) {
+	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	  exit(1);
+	}
 #ifdef _WIN32
         LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else     
-	      pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
 #endif
       }
 	break;
@@ -1754,9 +1754,9 @@ namespace Runtime {
 	  const long str_obj_array_size = files.size();
 	  const long str_obj_array_dim = 1;  
 	  long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + 
-										str_obj_array_dim + 2, 
-										INT_TYPE, (long*)op_stack, 
-										*stack_pos);
+								    str_obj_array_dim + 2, 
+								    INT_TYPE, (long*)op_stack, 
+								    *stack_pos);
 	  str_obj_array[0] = str_obj_array_size;
 	  str_obj_array[1] = str_obj_array_dim;
 	  str_obj_array[2] = str_obj_array_size;
@@ -1771,10 +1771,10 @@ namespace Runtime {
 	    const long char_array_size = value_str.size();
 	    const long char_array_dim = 1;
 	    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + 
-									       ((char_array_dim + 2) * 
-										sizeof(long)),  
-									       BYTE_ARY_TYPE, 
-									       (long*)op_stack, *stack_pos);
+								   ((char_array_dim + 2) * 
+								    sizeof(long)),  
+								   BYTE_ARY_TYPE, 
+								   (long*)op_stack, *stack_pos);
 	    char_array[0] = char_array_size;
 	    char_array[1] = char_array_dim;
 	    char_array[2] = char_array_size;
@@ -1785,7 +1785,7 @@ namespace Runtime {
       
 	    // create 'System.String' object instance
 	    long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), 
-								      (long*)op_stack, *stack_pos);
+							  (long*)op_stack, *stack_pos);
 	    str_obj[0] = (long)char_array;
 	    str_obj[1] = char_array_size;
 
@@ -1843,16 +1843,16 @@ namespace Runtime {
 
       RegisterHolder* array_holder;
       switch(holder->GetType()) {
-      case IMM_32:
+      case IMM_INT:
 	cerr << ">>> trying to index a constant! <<<" << endl;
 	exit(1);
 	break;
 
-      case REG_32:
+      case REG_INT:
 	array_holder = holder->GetRegister();
 	break;
 
-      case MEM_32:
+      case MEM_INT:
 	array_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), EBP, array_holder->GetRegister());
 	break;
@@ -1883,16 +1883,16 @@ namespace Runtime {
       holder = working_stack.front();
       working_stack.pop_front();
       switch(holder->GetType()) {
-      case IMM_32:
+      case IMM_INT:
 	index_holder = GetRegister();
 	move_imm_reg(holder->GetOperand(), index_holder->GetRegister());
 	break;
 
-      case REG_32:
+      case REG_INT:
 	index_holder = holder->GetRegister();
 	break;
 
-      case MEM_32:
+      case MEM_INT:
 	index_holder = GetRegister();
 	move_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
 	break;
@@ -1916,16 +1916,16 @@ namespace Runtime {
         holder = working_stack.front();
         working_stack.pop_front();
         switch(holder->GetType()) {
-	case IMM_32:
+	case IMM_INT:
 	  add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
 	  break;
 
-	case REG_32:
+	case REG_INT:
 	  add_reg_reg(holder->GetRegister()->GetRegister(), 
 		      index_holder->GetRegister());
 	  break;
 
-	case MEM_32:
+	case MEM_INT:
 	  add_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
 	  break;
 

@@ -171,9 +171,9 @@ extern "C" {
   }
 
   void odbc_result_get_int(VMContext& context) {
-    long i = APITools_GetIntValue(context, 3);
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 5);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
     cout << "## get_int: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
@@ -202,9 +202,9 @@ extern "C" {
   }
   
   void odbc_result_get_varchar(VMContext& context) {
-    long i = APITools_GetIntValue(context, 3);
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 5);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
     cout << "## get_string: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;

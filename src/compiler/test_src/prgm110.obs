@@ -4,6 +4,10 @@ use Structure;
 bundle Default {
 	class SqlTest {
 		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
 				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();

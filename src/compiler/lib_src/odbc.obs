@@ -109,12 +109,12 @@ bundle ODBC {
 		
 		method : public : GetInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[6];
+      			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New();
-				array_args[3] := IntHolder->New(column);
-				array_args[4] := IntHolder->New(@native_stmt);
-				array_args[5] := IntHolder->New(@native_names);
+				array_args[2] := IntHolder->New(column);
+				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_int", array_args);
 				
@@ -130,12 +130,12 @@ bundle ODBC {
 		
 		method : public : GetString(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[6];
+      			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New();
-				array_args[3] := IntHolder->New(column);
-				array_args[4] := IntHolder->New(@native_stmt);
-				array_args[5] := IntHolder->New(@native_names);
+				array_args[2] := IntHolder->New(column);
+				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_get_varchar", array_args);
 				
