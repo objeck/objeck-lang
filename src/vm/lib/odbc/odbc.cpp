@@ -212,7 +212,7 @@ extern "C" {
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetStringValue(context, 1, "");
+      APITools_SetObjectValue(context, 1, NULL);
       return;
     }
 
@@ -230,7 +230,7 @@ extern "C" {
     }
     
     APITools_SetIntValue(context, 0, 0);
-    APITools_SetStringValue(context, 1, "");
+    APITools_SetObjectValue(context, 1, NULL);
   }
   
   void odbc_result_get_timestamp(VMContext& context) {
@@ -244,7 +244,7 @@ extern "C" {
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetIntValue(context, 1, 0);
+      APITools_SetObjectValue(context, 1, NULL);
       return;
     }
 
@@ -269,7 +269,7 @@ extern "C" {
       cout << "  " << value.day << endl;
       cout << "  " << value.hour << endl;
       cout << "  " << value.minute << endl;
-       cout << "  " << value.second << endl;
+      cout << "  " << value.second << endl;
       cout << "  " << value.fraction << endl;
 #endif
       
@@ -280,7 +280,7 @@ extern "C" {
     }
     
     APITools_SetIntValue(context, 0, 0);
-    APITools_SetIntValue(context, 1, 0);
+    APITools_SetObjectValue(context, 1, NULL);
   }
   
   void odbc_result_close(VMContext& context) {
@@ -296,7 +296,7 @@ extern "C" {
     }
     
 #ifdef _DEBUG
-      cout << "## closed statement ###" << endl;
+    cout << "## closed statement ###" << endl;
 #endif
   }
 }
