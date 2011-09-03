@@ -1,12 +1,44 @@
-#include "../../../vm/lib_api.h"
+#include "odbc.h"
 
 using namespace std;
 
 extern "C" {
-  void load_lib() {}
-  void unload_lib() {}
+  // initialize odbc environment
+  void load_lib() {
+    if(!env) {
+      SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
+      SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
+    }
+  }
   
-  void foo(VMContext& context) {
+  // free odbc environment
+  void unload_lib() {
+    if(env) {
+      SQLFreeHandle(SQL_HANDLE_ENV, env);
+    }
+  }
+  
+  void odbc_connect(VMContext& context) {
+    SQLHDBC conn;
+
+    char* ds = APITools_GetStringValue(context, 1);
+    char* username = APITools_GetStringValue(context, 2);
+    char* password = APITools_GetStringValue(context, 3);
+
+    SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
+    if(SQL_OK) {
+      status = SQLConnect(conn, (SQLCHAR*)ds, SQL_NTS, 
+			  (SQLCHAR*)username, SQL_NTS, 
+			  (SQLCHAR*)password, SQL_NTS);      
+      if(SQL_FAIL) {	
+	conn = NULL;
+      }
+    }
+    else {
+      conn = NULL;
+    }
+    
+    /*
     int size = APITools_GetArgumentCount(context);
     cout << size << endl;
     cout << APITools_GetIntValue(context, 1) << endl;
@@ -21,5 +53,9 @@ extern "C" {
     APITools_CallMethod(context, NULL, "System.$Float:PrintLine:f,");
     
     cout << "---1---" << endl;
+    */
+  }
+  
+  void odbc_update_statement(VMContext& context) {
   }
 }
