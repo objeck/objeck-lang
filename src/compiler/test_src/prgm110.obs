@@ -1,13 +1,23 @@
 use ODBC;
 use Structure;
 
-
 bundle Default {
-	class Hello {
+	class SqlTest {
 		function : Main(args : String[]) ~ Nil {
 			conn := Connection->New("test", "root", "");	
-			conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
-			conn->Close();
+			if(conn <> Nil) {
+				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
+				result := conn->Select("select * from test.student");
+				if(result <> Nil) {
+					i := 0;	
+					while(result->Next()) {
+						i += 1;
+					};
+					i->PrintLine();	
+					result->Close();
+				};
+				conn->Close();
+			};
 		}
 	}
 }

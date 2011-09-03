@@ -58,6 +58,65 @@ bundle ODBC {
 			
 			return -1;
 		}
+		
+		method : public : Select(sql : String) ~ ResultSet {
+			if(@native_connection <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New();
+				array_args[2] := IntHolder->New(@native_connection);
+				array_args[3] := sql;
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_select_statement", array_args);
+				
+				native_stmt := array_args[0]->As(IntHolder);
+				native_names := array_args[1]->As(IntHolder);
+				return ResultSet->New(native_stmt->Get(), native_names->Get());
+			};
+			
+			return Nil;
+		}
+		
+		# TODO: commit
+	}
+	
+	class ResultSet {
+		@native_stmt : Int;
+		@native_names : Int;
+		
+		New(native_stmt : Int, native_names : Int) {
+			@native_stmt := native_stmt;
+			@native_names := native_names;
+		}
+		
+		method : public : Next() ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_next", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return value->Get() = 1;
+      		};
+      		
+      		return false;
+		}
+		
+		# TODO: IsNull
+		# TODO: GetInt
+		# TODO: GetString
+		
+		method : public : Close() ~ Nil {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_stmt);
+				array_args[1] := IntHolder->New(@native_names);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_close", array_args);
+      		};
+      	}
 	}
 }
 
