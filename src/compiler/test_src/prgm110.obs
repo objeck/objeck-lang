@@ -11,6 +11,8 @@ bundle Default {
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
+						result->GetInt(1)->PrintLine();
+						result->GetString(3)->PrintLine();
 						i += 1;
 					};
 					i->PrintLine();	
