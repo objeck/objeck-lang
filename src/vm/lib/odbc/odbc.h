@@ -12,6 +12,15 @@
 
 extern "C" {
   static SQLHENV env;
+
+  typedef struct _ColumnDescription {
+    SQLCHAR column_name[COL_NAME_MAX];
+    SQLSMALLINT column_name_size;
+    SQLSMALLINT type;
+    SQLULEN column_size;
+    SQLSMALLINT decimal_length;
+    SQLSMALLINT nullable;
+  } ColumnDescription;
 }
 
 #endif
