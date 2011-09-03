@@ -167,6 +167,8 @@ void APITools_SetFloatValue(VMContext &context, int index, double value) {
   }
 }
 
+// sets the requested String value for an Object[].  Please note, that 
+// memory should be allocated for this element prior to array access.
 void APITools_SetStringValue(VMContext &context, int index, const char* value) {
   // create character array
   const long char_array_size = strlen(value);
@@ -190,7 +192,12 @@ void APITools_SetStringValue(VMContext &context, int index, const char* value) {
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
   
-  APITools_SetIntValue(context, index, (long)str_obj);
+  // set string
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    data_array[index] = (long)str_obj;
+  }
 }
 
 // get the requested string value from an Object[].

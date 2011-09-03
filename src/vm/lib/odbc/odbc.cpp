@@ -68,7 +68,7 @@ extern "C" {
     if(conn) {
       SQLDisconnect(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
-
+      
 #ifdef _DEBUG
       cout << "## disconnect ###" << endl;
 #endif
@@ -76,5 +76,36 @@ extern "C" {
   }
   
   void odbc_update_statement(VMContext& context) {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
+    const char* sql = APITools_GetStringValue(context, 2);
+
+#ifdef _DEBUG
+    cout << "## update: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
+#endif    
+    
+    if(!conn || !sql) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+    
+    SQLHSTMT stmt = NULL;
+    SQLRETURN status = SQLAllocStmt(conn, &stmt);
+    if(SQL_OK) {
+      status = SQLExecDirect(stmt, (SQLCHAR*)sql, SQL_NTS);
+      if(SQL_OK) {
+	SQLLEN count;
+	status = SQLRowCount(stmt, &count);
+	if(SQL_OK) {
+	  SQLFreeStmt(stmt, SQL_CLOSE);
+	  APITools_SetIntValue(context, 0, count);
+	  return;
+	}
+      }
+    }
+    
+    if(stmt) {
+      SQLFreeStmt(stmt, SQL_CLOSE);
+    }
+    APITools_SetIntValue(context, 0, -1);
   }
 }

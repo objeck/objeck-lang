@@ -2,7 +2,7 @@ use API;
 use Structure;
 
 bundle ODBC {
-	class ODBC {
+	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		New() {
@@ -17,7 +17,7 @@ bundle ODBC {
 		}
 	}
 	
-	class Connection from ODBC {
+	class Connection {
 		@native_connection : Int;
 		
 		New(ds : String, username : String, password : String) {
@@ -27,7 +27,7 @@ bundle ODBC {
 			array_args[1] := ds;
 			array_args[2] := username;
 			array_args[3] := password;
-			@lib_proxy := GetDllProxy();
+			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("odbc_connect", array_args);
 			
 			value := array_args[0]->As(IntHolder);
@@ -38,34 +38,25 @@ bundle ODBC {
       		if(@native_connection <> 0) {
       			array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@native_connection);
-				@lib_proxy := GetDllProxy();
+				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_disconnect", array_args);
       		};
       	}
 		
-		method : public : CreateUpdateStatement() ~ UpdateStatement {
-			return Nil;
-		}
-	}
-	
-	class UpdateStatement from ODBC {
-		@connection : Connection;
-		
-		New(connection : Connection) {
-			Parent();
-			@connection := connection;
-		}
-		
 		method : public : Update(sql : String) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := @connection;
-			array_args[2] := sql;
-			@lib_proxy := GetDllProxy();
-			@lib_proxy->CallFunction("odbc_update_statement", array_args);
+			if(@native_connection <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@native_connection);
+				array_args[2] := sql;
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_update_statement", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
 			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+			return -1;
 		}
 	}
 }
