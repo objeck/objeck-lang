@@ -8,8 +8,10 @@
 #define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
 #define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO
 #define COL_NAME_MAX 64
-#define VARCHAR_MAX 1024
+#define VARCHAR_MAX 256
 
-static SQLHENV env;
+extern "C" {
+  static SQLHENV env;
+}
 
 #endif
