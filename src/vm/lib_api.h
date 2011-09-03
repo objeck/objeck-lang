@@ -167,13 +167,39 @@ void APITools_SetFloatValue(VMContext &context, int index, double value) {
   }
 }
 
+void APITools_SetStringValue(VMContext &context, int index, const char* value) {
+  // create character array
+  const long char_array_size = strlen(value);
+  const long char_array_dim = 1;
+  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+						((char_array_dim + 2) *
+						 sizeof(long)),
+						BYTE_ARY_TYPE,
+						context.op_stack, *context.stack_pos);
+  char_array[0] = char_array_size + 1;
+  char_array[1] = char_array_dim;
+  char_array[2] = char_array_size;
+  
+  // copy string
+  char* char_array_ptr = (char*)(char_array + 3);
+  strcpy(char_array_ptr, value);
+  
+  // create 'System.String' object instance
+  long* str_obj = context.alloc_obj("System.String", (long*)context.op_stack, *context.stack_pos);
+  str_obj[0] = (long)char_array;
+  str_obj[1] = char_array_size;
+  str_obj[2] = char_array_size;
+  
+  APITools_SetIntValue(context, index, (long)str_obj);
+}
+
 // get the requested string value from an Object[].
 const char* APITools_GetStringValue(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
     long* string_holder = (long*)data_array[index];
-
+    
 #ifdef _DEBUG
     assert(string_holder);
 #endif
@@ -181,7 +207,7 @@ const char* APITools_GetStringValue(VMContext &context, int index) {
     char* str = (char*)(char_array + 3);
     return str;
   }
-
+  
   return NULL;
 }
 
