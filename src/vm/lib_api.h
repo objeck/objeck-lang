@@ -206,7 +206,7 @@ void APITools_SetStringValue(VMContext &context, int index, const char* value) {
 }
 
 // get the requested string value from an Object[].
-const char* APITools_GetStringValue(VMContext &context, int index) {
+char* APITools_GetStringValue(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
