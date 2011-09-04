@@ -5,9 +5,6 @@ bundle ODBC {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
-		New() {
-		}
-		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
 				@lib_proxy := DllProxy->New("lib/odbc/odbc");
@@ -78,28 +75,79 @@ bundle ODBC {
 		}
 		
 		# TODO: commit
+		
+		method : public : CreateParameterStatement(sql : String) ~ ParameterStatement {
+			if(@native_connection <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New();
+				array_args[2] := IntHolder->New(@native_connection);
+				array_args[3] := sql;
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_pepare_statement", array_args);
+				
+				native_stmt := array_args[0]->As(IntHolder);
+				native_names := array_args[1]->As(IntHolder);
+				return ParameterStatement->New(native_stmt->Get(), native_names->Get());
+			};
+			
+			return Nil;
+		}
 	}
 	
 	class ParameterStatement {
-		@connection : Connection;
-		
-		New(connection : Connection) {
-			@connection := connection;
+		@native_stmt : Int;
+		@native_names : Int;
+				
+		New(native_stmt : Int, native_names : Int) {
+			@native_stmt := native_stmt;
+			@native_names := native_names;
 		}
 		
 		method : public : SetInt(pos : Int, value : Int) ~ Nil {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(value);
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@native_names);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_int", array_args);
+			};
 		}
 		
 		method : public : SetString(pos : Int, value : String) ~ Nil {
 		}
 		
-		method : public : Update(sql : String) ~ Int {
-			return -1;
+		method : public : Update() ~ Int {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_update", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+      		};
+      		
+      		return -1;
 		}
 		
-		method : public : Select(sql : String) ~ ResultSet {
+		method : public : Select() ~ ResultSet {
 			return Nil;
 		}
+		
+		method : public : Close() ~ Nil {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_stmt);
+				array_args[1] := IntHolder->New(@native_names);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_close", array_args);
+      		};
+      	}
 	}
 	
 	class Timestamp {
