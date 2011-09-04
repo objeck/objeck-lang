@@ -3,7 +3,9 @@
 using namespace std;
 
 extern "C" {
+  //
   // initialize odbc environment
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -14,7 +16,9 @@ extern "C" {
     }
   }
   
-  // free odbc environment
+  //
+  // release odbc resources
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -24,6 +28,9 @@ extern "C" {
     }
   }
   
+  //
+  // connects to an ODBC data source
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -55,6 +62,9 @@ extern "C" {
     APITools_SetIntValue(context, 0, (long)conn);
   }
   
+  //
+  // disconnects from an ODBC data source
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -70,6 +80,9 @@ extern "C" {
     }
   }
   
+  //
+  // executes and update statement
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -106,7 +119,10 @@ extern "C" {
     }
     APITools_SetIntValue(context, 0, -1);
   }
-  
+
+  //
+  // executes a select statement
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -171,7 +187,72 @@ extern "C" {
     }      
     APITools_SetIntValue(context, 0, 0);
   }
+
+  //
+  // executes a select statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_pepare_statement(VMContext& context) {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 2);
+    const char* sql = APITools_GetStringValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### select: conn=" << conn << ", stmt=" << sql << "  ###" << endl;
+#endif    
+    
+    if(!conn || !sql) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+    
+    SQLHSTMT stmt = NULL;
+    SQLRETURN status = SQLAllocStmt(conn, &stmt);
+    if(SQL_OK) {
+      status = SQLPrepare(stmt, (SQLCHAR*)sql, SQL_NTS);
+      if(SQL_OK) {
+	SQLSMALLINT columns;
+	status = SQLNumResultCols(stmt, &columns);
+	if(SQL_OK) {
+	  vector<ColumnDescription> descriptions;
+	  // get column information
+	  vector<const char*>* column_names = new vector<const char*>;
+	  if(columns > 0) {
+	    for(SQLSMALLINT i = 1; i <= columns; i++) {
+	      ColumnDescription description;
+	      status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
+				      &description.column_name_size, &description.type, 
+				      &description.column_size, &description.decimal_length, 
+				      &description.nullable);
+	      if(SQL_FAIL) {
+		SQLFreeStmt(stmt, SQL_CLOSE);
+		APITools_SetIntValue(context, 0, 0);
+		return;
+	      }
+	      column_names->push_back((const char*)description.column_name);
+#ifdef _DEBUG
+	      cout << "  name=" << description.column_name << ", type=" << description.type << endl;
+#endif
+	    }
+	  }
+	  // return statement
+	  APITools_SetIntValue(context, 0, (long)stmt);
+	  APITools_SetIntValue(context, 1, (long)column_names);
+	  return;
+	} 
+      }
+    }
+      
+    if(stmt) {
+      SQLFreeStmt(stmt, SQL_CLOSE);
+    }      
+    APITools_SetIntValue(context, 0, 0);
+  }
   
+  //
+  // fetches the next row in a resultset
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -191,6 +272,59 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
   }
 
+  //
+  // updates a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_update(VMContext& context) {
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+    
+    SQLRETURN status = SQLExecute(stmt);
+    if(SQL_OK) {
+      SQLLEN count;
+      status = SQLRowCount(stmt, &count);
+      if(SQL_OK) {
+	APITools_SetIntValue(context, 0, count);
+	return;
+      }
+    }
+    
+    APITools_SetIntValue(context, 0, -1);
+  }
+  
+  //
+  // set an int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_int(VMContext& context) {
+    int value = APITools_GetIntValue(context, 1);
+    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    
+#ifdef _DEBUG
+    cout << "### set_int: stmt=" << stmt << ", column=" << i << ", value=" << value 
+	 << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    SQLLEN len;
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SLONG, 
+					SQL_INTEGER, 0, 0, &value, 0, &len);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+  
+  //
+  // gets an int from a result set
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -225,6 +359,9 @@ extern "C" {
     APITools_SetIntValue(context, 1, 0);
   }
   
+  //
+  // gets a string from a result set
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -259,7 +396,10 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
     APITools_SetObjectValue(context, 1, NULL);
   }
-  
+
+  //
+  // gets a timestampe from a result set
+  //  
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
@@ -313,6 +453,9 @@ extern "C" {
     APITools_SetObjectValue(context, 1, NULL);
   }
   
+  //
+  // closes a result set
+  //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
