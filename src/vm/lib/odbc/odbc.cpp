@@ -280,6 +280,10 @@ extern "C" {
 #endif
   void odbc_stmt_update(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+
+#ifdef _DEBUG
+    cout << "### stmt_update: stmt=" << stmt << "  ###" << endl;
+#endif
     
     SQLRETURN status = SQLExecute(stmt);
     if(SQL_OK) {
@@ -302,18 +306,17 @@ extern "C" {
 #endif
   void odbc_stmt_set_int(VMContext& context) {
     int value = APITools_GetIntValue(context, 1);
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### set_int: stmt=" << stmt << ", column=" << i << ", value=" << value 
-	 << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### set_int: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << value << " ###" << endl;
 #endif  
     
     SQLLEN len;
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SLONG, 
-					SQL_INTEGER, 0, 0, &value, 0, &len);
+					SQL_INTEGER, 0, 0, &value, sizeof(value), &len);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
       return;
@@ -329,7 +332,7 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void odbc_result_get_int(VMContext& context) {
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
@@ -357,6 +360,34 @@ extern "C" {
     
     APITools_SetIntValue(context, 0, 0);
     APITools_SetIntValue(context, 1, 0);
+  }
+  
+  //
+  // set a string for a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_varchar(VMContext& context) {
+    char* value = APITools_GetStringValue(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_varchar: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << value << " ###" << endl;
+#endif  
+    
+    SQLLEN len;
+    SQLLEN input_len = strlen(value);
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 
+					input_len, 0, value, input_len, &len);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
   }
   
   //
