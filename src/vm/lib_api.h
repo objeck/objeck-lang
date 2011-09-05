@@ -120,6 +120,21 @@ long APITools_GetIntValue(VMContext &context, int index) {
   return 0;
 }
 
+// get the requested integer value from an Object[].
+long* APITools_GetIntAddress(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* int_holder = (long*)data_array[index];
+#ifdef _DEBUG
+    assert(int_holder);
+#endif
+    return int_holder;
+  }
+
+  return NULL;
+}
+
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to context.data_array access.
 void APITools_SetIntValue(VMContext &context, int index, long value) {
@@ -150,6 +165,22 @@ double APITools_GetFloatValue(VMContext &context, int index) {
   }
 
   return 0.0;
+} 
+
+// get the requested double value from an Object[].
+long* APITools_GetFloatAddress(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* float_holder = (long*)data_array[index];
+
+#ifdef _DEBUG
+    assert(float_holder);
+#endif		
+    return float_holder;
+  }
+
+  return NULL;
 } 
 
 // sets the requested float value for an Object[].  Please note, that 

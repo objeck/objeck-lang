@@ -10,10 +10,10 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
-				pstmt := conn->CreateParameterStatement("UPDATE test.student SET credits=? WHERE id=?");
-#				pstmt->SetString(1, "Andrews");
-				pstmt->SetInt(1, 10);
-				pstmt->SetInt(2, 1);
+				pstmt := conn->CreateParameterStatement("UPDATE test.student SET first_name=?, credits=? WHERE id=?");
+				pstmt->SetString(1, "fooBar");
+				pstmt->SetInt(2, 458);
+				pstmt->SetInt(3, 1);
 				pstmt->Update()->PrintLine();
 				pstmt->Close();
 #~
