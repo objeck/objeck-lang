@@ -295,8 +295,6 @@ bundle ODBC {
       		return Nil;
 		}
 		
-		# TODO: GetString
-		
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
