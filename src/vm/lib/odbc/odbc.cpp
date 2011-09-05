@@ -282,7 +282,7 @@ extern "C" {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
 
 #ifdef _DEBUG
-    cout << "### stmt_update: stmt=" << stmt << "  ###" << endl;
+    cout << "### stmt_update: stmt=" << stmt << " ###" << endl;
 #endif
     
     SQLRETURN status = SQLExecute(stmt);
