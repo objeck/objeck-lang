@@ -45,7 +45,7 @@ typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *i
 typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos);
-
+// context structure
 struct VMContext {
   long* data_array;
   long* op_stack;
@@ -136,7 +136,7 @@ long* APITools_GetIntAddress(VMContext &context, int index) {
 }
 
 // sets the requested function ID from an Object[].  Please note, that 
-// memory should be allocated for this element prior to context.data_array access.
+// memory should be allocated for this element prior to array access.
 void APITools_SetIntValue(VMContext &context, int index, long value) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
