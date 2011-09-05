@@ -311,7 +311,7 @@ extern "C" {
     
 #ifdef _DEBUG
     cout << "### set_int: stmt=" << stmt << ", column=" << i 
-	 << ", value=" << value << " ###" << endl;
+	 << ", value=" << *value << " ###" << endl;
 #endif  
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
@@ -367,13 +367,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_stmt_set_varchar(VMContext& context) {
+  void odbc_stmt_set_string(VMContext& context) {
     char* value = APITools_GetStringValue(context, 1);
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     
 #ifdef _DEBUG
-    cout << "### set_varchar: stmt=" << stmt << ", column=" << i 
+    cout << "### set_string: stmt=" << stmt << ", column=" << i 
 	 << ", value=" << value << " ###" << endl;
 #endif  
     
@@ -393,13 +393,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_varchar(VMContext& context) {
+  void odbc_result_get_string(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_string: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_string: stmt=" << stmt << ", column=" << i 
+	 << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
