@@ -120,7 +120,7 @@ long APITools_GetIntValue(VMContext &context, int index) {
   return 0;
 }
 
-// get the requested integer value from an Object[].
+// get the requested integer address from an Object[].
 long* APITools_GetIntAddress(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
@@ -167,7 +167,7 @@ double APITools_GetFloatValue(VMContext &context, int index) {
   return 0.0;
 } 
 
-// get the requested double value from an Object[].
+// get the requested double address from an Object[].
 long* APITools_GetFloatAddress(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
