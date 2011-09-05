@@ -305,7 +305,7 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void odbc_stmt_set_int(VMContext& context) {
-    int value = APITools_GetIntValue(context, 1);
+    long* value = APITools_GetIntAddress(context, 1);
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     
@@ -314,9 +314,8 @@ extern "C" {
 	 << ", value=" << value << " ###" << endl;
 #endif  
     
-    SQLLEN len;
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SLONG, 
-					SQL_INTEGER, 0, 0, &value, sizeof(value), &len);
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
+					SQL_INTEGER, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
       return;
@@ -348,7 +347,7 @@ extern "C" {
     
     SQLLEN is_null;
     int value;
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SLONG, &value, 0, &is_null);
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_LONG, &value, 0, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetIntValue(context, 1, value);
@@ -378,10 +377,8 @@ extern "C" {
 	 << ", value=" << value << " ###" << endl;
 #endif  
     
-    SQLLEN len;
-    SQLLEN input_len = strlen(value);
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 
-					input_len, 0, value, input_len, &len);
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
+					SQL_CHAR, 0, 0, value, strlen(value), NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
       return;
