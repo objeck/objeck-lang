@@ -13,7 +13,7 @@ bundle Default {
 				pstmt := conn->CreateParameterStatement("UPDATE test.student SET first_name=?, credits=? WHERE id=?");
 				pstmt->SetString(1, "fooBar");
 				pstmt->SetInt(2, 458);
-				pstmt->SetInt(3, 1);
+				pstmt->SetInt(3, 2);
 				pstmt->Update()->PrintLine();
 				pstmt->Close();
 #~
