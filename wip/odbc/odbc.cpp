@@ -4,6 +4,7 @@ using namespace std;
 using namespace odbc;
 
 int main() {
+/*
   // setup environment
   SQLHENV env;
   SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
@@ -45,13 +46,6 @@ int main() {
 	    }
 	  }
 
-
-	  /*
-	  int int_value = 12;
-	  status = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_SLONG, 
-					      SQL_INTEGER, 0, 0, &int_value, sizeof(int_value), &len);
-	  */
-	  
 	  char str_value[] = "ralph";
 	  SQLRETURN status = SQLBindParameter(stmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, 
 					      0, 0, str_value, strlen(str_value), NULL);
@@ -95,5 +89,10 @@ int main() {
   
   // clean up
   SQLFreeHandle(SQL_HANDLE_ENV, env);
+*/
+
+	cout << sizeof(SQLSMALLINT) << endl;
+	cout << sizeof(SQLUINTEGER) << endl;
+
   return 0;
 }
