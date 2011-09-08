@@ -27,7 +27,8 @@ bundle Default {
 						result->GetString(3)->PrintLine();
 						ts := result->GetTimestamp(5);
 						ts->GetYear()->PrintLine();
-						result->GetNumeric(6)->PrintLine();
+						result->GetFloat(6)->PrintLine();
+						result->GetBit(7)->PrintLine();
 						i += 1;
 					};
 					i->PrintLine();	
