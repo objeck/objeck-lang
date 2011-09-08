@@ -10,15 +10,16 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
+#~
 				pstmt := conn->CreateParameterStatement("UPDATE test.student SET first_name=?, credits=? WHERE id=?");
-				pstmt->SetString(1, "fooBar");
-				pstmt->SetInt(2, 458);
-				pstmt->SetInt(3, 2);
+				pstmt->SetString(1, "randy");
+				pstmt->SetInt(2, 512);
+				pstmt->SetInt(3, 3);
 				pstmt->Update()->PrintLine();
 				pstmt->Close();
-#~
-				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
-				result := conn->Select("select * from test.student");
+#				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
+~#
+				result := conn->Select("select * from test.student where id=2");
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
@@ -26,12 +27,12 @@ bundle Default {
 						result->GetString(3)->PrintLine();
 						ts := result->GetTimestamp(5);
 						ts->GetYear()->PrintLine();
+						result->GetNumeric(6)->PrintLine();
 						i += 1;
 					};
 					i->PrintLine();	
 					result->Close();
 				};
-~#
 				conn->Close();
 			};
 		}
