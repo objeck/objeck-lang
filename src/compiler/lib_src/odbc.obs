@@ -230,7 +230,9 @@ bundle ODBC {
       		return false;
 		}
 		
-		# TODO: IsNull
+		method : public : IsNull() ~ Bool {
+			return @is_null;
+		}
 		
 		method : public : GetInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -337,7 +339,7 @@ bundle ODBC {
       		return 0.0;
 		}
 		
-		method : public : GetVarChar(column : Int) ~ String {
+		method : public : GetVarchar(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
