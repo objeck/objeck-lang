@@ -465,7 +465,45 @@ extern "C" {
     
     SQLLEN is_null;
     double value;
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_DOUBLE, &value, 100, &is_null);
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_DOUBLE, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetFloatValue(context, 1, value);
+#ifdef _DEBUG
+      cout << "  " << value << endl;
+#endif
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetFloatValue(context, 1, 0.0);
+  }
+
+  //
+  // gets an double from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport)  
+#endif
+  void odbc_result_get_real(VMContext& context) {
+    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    
+#ifdef _DEBUG
+    cout << "### get_real: stmt=" << stmt << ", column=" << i << ", max=" 
+	 << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
+      return;
+    }
+    
+    SQLLEN is_null;
+    float value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_FLOAT, &value, 0, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       APITools_SetFloatValue(context, 1, value);
