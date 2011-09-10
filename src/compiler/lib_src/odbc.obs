@@ -253,6 +253,27 @@ bundle ODBC {
       		return 0;
 		}
 		
+		method : public : GetSmallInt(column : Int) ~ Int {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+      			array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New();
+				array_args[2] := IntHolder->New(column);
+				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@native_names);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_result_get_smallint", array_args);
+				
+				is_null := array_args[0]->As(IntHolder);
+				@is_null := is_null->Get() = 1;
+				
+				value := array_args[1]->As(IntHolder);
+				return value->Get();
+      		};
+      		
+      		return 0;
+		}
+		
 		method : public : GetBit(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -274,7 +295,7 @@ bundle ODBC {
       		return 0;
 		}
 		
-		method : public : GetFloat(column : Int) ~ Float {
+		method : public : GetDouble(column : Int) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -295,7 +316,7 @@ bundle ODBC {
       		return 0.0;
 		}
 		
-		method : public : GetString(column : Int) ~ String {
+		method : public : GetVarChar(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -304,7 +325,7 @@ bundle ODBC {
 				array_args[3] := IntHolder->New(@native_stmt);
 				array_args[4] := IntHolder->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_string", array_args);
+				@lib_proxy->CallFunction("odbc_result_get_varchar", array_args);
 				
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;

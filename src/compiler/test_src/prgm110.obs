@@ -19,16 +19,11 @@ bundle Default {
 				pstmt->Close();
 #				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
 ~#
-				result := conn->Select("select * from test.student where id=2");
+				result := conn->Select("select * from test.enrolled ");
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
-						result->GetInt(1)->PrintLine();
-						result->GetString(3)->PrintLine();
-						ts := result->GetTimestamp(5);
-						ts->GetYear()->PrintLine();
-						result->GetFloat(6)->PrintLine();
-						result->GetBit(7)->PrintLine();
+						result->GetSmallInt(4)->PrintLine();
 						i += 1;
 					};
 					i->PrintLine();	

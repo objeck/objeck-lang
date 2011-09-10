@@ -361,6 +361,48 @@ extern "C" {
     APITools_SetIntValue(context, 1, 0);
   }
 
+
+
+ //
+  // gets an int from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_smallint(VMContext& context) {
+    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    
+#ifdef _DEBUG
+    cout << "### get_smallint: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+    
+    SQLLEN is_null;
+    short value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SSHORT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, value);
+#ifdef _DEBUG
+      cout << "  " << value << endl;
+#endif
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetIntValue(context, 1, 0);
+  }
+
+
+
+
   //
   // gets a bit from a result set
   //
@@ -469,13 +511,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_string(VMContext& context) {
+  void odbc_result_get_varchar(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_string: stmt=" << stmt << ", column=" << i 
+    cout << "### get_varchar: stmt=" << stmt << ", column=" << i 
 	 << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
