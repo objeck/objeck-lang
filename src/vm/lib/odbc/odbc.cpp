@@ -147,9 +147,8 @@ extern "C" {
 	SQLSMALLINT columns;
 	status = SQLNumResultCols(stmt, &columns);
 	if(SQL_OK) {
-	  vector<ColumnDescription> descriptions;
 	  // get column information
-	  vector<const char*>* column_names = new vector<const char*>;
+	  map<const string, int>* column_names = new map<const string, int>;
 	  if(columns > 0) {
 	    for(SQLSMALLINT i = 1; i <= columns; i++) {
 	      ColumnDescription description;
@@ -162,7 +161,7 @@ extern "C" {
 		APITools_SetIntValue(context, 0, 0);
 		return;
 	      }
-	      column_names->push_back((const char*)description.column_name);
+	      column_names->insert(pair<string, int>((const char*)description.column_name, i));
 #ifdef _DEBUG
 	      cout << "  name=" << description.column_name << ", type=" << description.type << endl;
 #endif
@@ -215,9 +214,8 @@ extern "C" {
 	SQLSMALLINT columns;
 	status = SQLNumResultCols(stmt, &columns);
 	if(SQL_OK) {
-	  vector<ColumnDescription> descriptions;
 	  // get column information
-	  vector<const char*>* column_names = new vector<const char*>;
+	  map<const string, int>* column_names = new map<const string, int>;
 	  if(columns > 0) {
 	    for(SQLSMALLINT i = 1; i <= columns; i++) {
 	      ColumnDescription description;
@@ -230,7 +228,7 @@ extern "C" {
 		APITools_SetIntValue(context, 0, 0);
 		return;
 	      }
-	      column_names->push_back((const char*)description.column_name);
+	      column_names->insert(pair<string, int>((const char*)description.column_name, i));
 #ifdef _DEBUG
 	      cout << "  name=" << description.column_name << ", type=" << description.type << endl;
 #endif
@@ -330,13 +328,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_int(VMContext& context) {
+  void odbc_result_get_int_by_id(VMContext& context) {
     SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_int: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_int_by_id: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -369,13 +367,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_smallint(VMContext& context) {
+  void odbc_result_get_smallint_by_id(VMContext& context) {
     SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_smallint: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_smallint_by_id: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -409,13 +407,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_bit(VMContext& context) {
+  void odbc_result_get_bit_by_id(VMContext& context) {
     SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_bit: stmt=" << stmt << ", column=" << i 
+    cout << "### get_bit_by_id: stmt=" << stmt << ", column=" << i 
 	 << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
@@ -447,13 +445,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)  
 #endif
-  void odbc_result_get_double(VMContext& context) {
+  void odbc_result_get_double_by_id(VMContext& context) {
     SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_double: stmt=" << stmt << ", column=" << i << ", max=" 
+    cout << "### get_double_by_id: stmt=" << stmt << ", column=" << i << ", max=" 
 	 << (long)names->size() << " ###" << endl;
 #endif  
     
@@ -485,13 +483,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)  
 #endif
-  void odbc_result_get_real(VMContext& context) {
+  void odbc_result_get_real_by_id(VMContext& context) {
     SQLUSMALLINT i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_real: stmt=" << stmt << ", column=" << i << ", max=" 
+    cout << "### get_real_by_id: stmt=" << stmt << ", column=" << i << ", max=" 
 	 << (long)names->size() << " ###" << endl;
 #endif  
     
@@ -549,13 +547,60 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_varchar(VMContext& context) {
+  void odbc_result_get_varchar_by_id(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_varchar: stmt=" << stmt << ", column=" << i 
+    cout << "### get_varchar_by_id: stmt=" << stmt << ", column=" << i 
+	 << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, NULL);
+      return;
+    }
+
+    SQLLEN is_null;
+    char value[VARCHAR_MAX];
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
+				  VARCHAR_MAX, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetStringValue(context, 1, value);
+#ifdef _DEBUG
+      cout << "  " << value << endl;
+#endif
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetObjectValue(context, 1, NULL);
+  }
+
+//
+  // gets a string from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_varchar_by_name(VMContext& context) {
+    const char* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
+
+    map<const string, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, NULL);
+      return;
+    }
+    long i = result->second;
+    
+#ifdef _DEBUG
+    cout << "### get_varchar_by_id: stmt=" << stmt << ", column=" << i 
 	 << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
@@ -588,13 +633,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_timestamp(VMContext& context) {
+  void odbc_result_get_timestamp_by_id(VMContext& context) {
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 4);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_timestamp: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_timestamp_by_id: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -650,7 +695,7 @@ extern "C" {
       SQLFreeStmt(stmt, SQL_CLOSE);
     }
     
-    vector<const char*>* names = (vector<const char*>*)APITools_GetIntValue(context, 1);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 1);
     if(names) {
       delete names;
       names = NULL;

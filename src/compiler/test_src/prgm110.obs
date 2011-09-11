@@ -23,7 +23,8 @@ bundle Default {
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
-						value := result->GetVarchar(5);
+#						value := result->GetVarchar(5);
+						value := result->GetVarchar("grad_code");
 						if(result->IsNull() = false) {
 							value->PrintLine();	
 						};
