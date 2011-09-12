@@ -334,7 +334,8 @@ extern "C" {
     map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_int_by_id: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_int_by_id: stmt=" << stmt << ", column=" << i 
+	 << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -361,7 +362,7 @@ extern "C" {
 
 
 
- //
+  //
   // gets an int from a result set
   //
 #ifdef _WIN32
@@ -580,7 +581,7 @@ extern "C" {
     APITools_SetObjectValue(context, 1, NULL);
   }
 
-//
+  //
   // gets a string from a result set
   //
 #ifdef _WIN32
@@ -628,7 +629,7 @@ extern "C" {
   }
 
   //
-  // gets a timestampe from a result set
+  // gets a timestamp from a result set
   //  
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -639,7 +640,8 @@ extern "C" {
     map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
     
 #ifdef _DEBUG
-    cout << "### get_timestamp_by_id: stmt=" << stmt << ", column=" << i << ", max=" << (long)names->size() << " ###" << endl;
+    cout << "### get_timestamp_by_id: stmt=" << stmt << ", column=" 
+	 << i << ", max=" << (long)names->size() << " ###" << endl;
 #endif  
     
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -671,6 +673,55 @@ extern "C" {
       cout << "  " << value.minute << endl;
       cout << "  " << value.second << endl;
       cout << "  " << value.fraction << endl;
+#endif
+      
+      // set values
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, ts_obj);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetObjectValue(context, 1, NULL);
+  }
+
+  //
+  // gets a date from a result set
+  //  
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_date_by_id(VMContext& context) {
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
+    
+#ifdef _DEBUG
+    cout << "### get_date_by_id: stmt=" << stmt << ", column=" << i 
+	 << ", max=" << (long)names->size() << " ###" << endl;
+#endif  
+    
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, NULL);
+      return;
+    }
+
+    SQLLEN is_null;
+    DATE_STRUCT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, 
+				  sizeof(DATE_STRUCT), &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      long* ts_obj = context.alloc_obj("ODBC.Date", (long*)context.op_stack, *context.stack_pos);
+      ts_obj[0] = value.year;
+      ts_obj[1] = value.month;
+      ts_obj[2] = value.day;
+      
+#ifdef _DEBUG
+      cout << "  " << value.year << endl;
+      cout << "  " << value.month << endl;
+      cout << "  " << value.day << endl;
 #endif
       
       // set values
