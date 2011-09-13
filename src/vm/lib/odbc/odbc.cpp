@@ -297,6 +297,58 @@ extern "C" {
   }
   
   //
+  // set a small int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_smallint(VMContext& context) {
+    long* value = APITools_GetIntAddress(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_smallint: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << *value << " ###" << endl;
+#endif  
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
+					SQL_SMALLINT, 0, 0, value, 0, NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+
+  //
+  // set an int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_bit(VMContext& context) {
+    long* value = APITools_GetIntAddress(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_bit: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << *value << " ###" << endl;
+#endif  
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
+					SQL_BIT, 0, 0, value, 0, NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+  
+  //
   // set an int from a prepared statement
   //
 #ifdef _WIN32
@@ -314,6 +366,58 @@ extern "C" {
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
 					SQL_INTEGER, 0, 0, value, 0, NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+
+  //
+  // set an double from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_double(VMContext& context) {
+    long* value = APITools_GetFloatAddress(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_double: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << *value << " ###" << endl;
+#endif  
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_DOUBLE, 
+					SQL_DOUBLE, 0, 0, value, 0, NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+
+  //
+  // set an double from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_real(VMContext& context) {
+    long* value = APITools_GetFloatAddress(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_real: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << *value << " ###" << endl;
+#endif  
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_FLOAT,
+					SQL_REAL, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
       return;
@@ -398,10 +502,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, 0);
     APITools_SetIntValue(context, 1, 0);
   }
-
-
-
-
+  
   //
   // gets a bit from a result set
   //
@@ -522,13 +623,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_stmt_set_string(VMContext& context) {
+  void odbc_stmt_set_varchar(VMContext& context) {
     char* value = APITools_GetStringValue(context, 1);
     long i = APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     
 #ifdef _DEBUG
-    cout << "### set_string: stmt=" << stmt << ", column=" << i 
+    cout << "### set_varchar: stmt=" << stmt << ", column=" << i 
 	 << ", value=" << value << " ###" << endl;
 #endif  
     
