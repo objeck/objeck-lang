@@ -14,6 +14,9 @@ bundle ODBC {
 		}
 	}
 	
+	#~
+	# ODBC connection
+	~#
 	class Connection {
 		@native_connection : Int;
 		
@@ -95,6 +98,9 @@ bundle ODBC {
 		}
 	}
 	
+	#~
+	# ODBC Prepared Statement
+	~#
 	class ParameterStatement {
 		@native_stmt : Int;
 		@native_names : Int;
@@ -102,6 +108,40 @@ bundle ODBC {
 		New(native_stmt : Int, native_names : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
+		}
+		
+		method : public : SetBit(pos : Int, value : Bool) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(value ? 1 : 0);
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_bit", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+		
+		method : public : SetSmallInt(pos : Int, value : Int) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(value);
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_smallint", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
 		}
 		
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
@@ -120,8 +160,42 @@ bundle ODBC {
 			
 			return false;
 		}
+		
+		method : public : SetDouble(pos : Int, value : Float) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := FloatHolder->New(value);
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_double", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+		
+		method : public : SetReal(pos : Int, value : Float) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := FloatHolder->New(value);
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_real", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
 
-		method : public : SetString(pos : Int, value : String) ~ Bool {		
+		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
@@ -129,7 +203,7 @@ bundle ODBC {
 				array_args[2] := IntHolder->New(pos);
 				array_args[3] := IntHolder->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_string", array_args);
+				@lib_proxy->CallFunction("odbc_stmt_set_varchar", array_args);
 				
 				status := array_args[0]->As(IntHolder);
 				return status->Get() = 1;
@@ -153,6 +227,7 @@ bundle ODBC {
       		return -1;
 		}
 		
+		# TODO:
 		method : public : Select() ~ ResultSet {
 			return Nil;
 		}
@@ -168,64 +243,9 @@ bundle ODBC {
       	}
 	}
 	
-	class Date {
-		year : Int;
-		month : Int;
-		day : Int;
-		
-		New() {
-		}
-		
-		method : public : GetYear() ~ Int {
-			return year;
-		}
-		
-		method : public : GetMonth() ~ Int {
-			return month;
-		}
-		
-		method : public : GetDay() ~ Int {
-			return day;
-		}
-	}
-	
-	class Timestamp {
-		year : Int;
-		month : Int;
-		day : Int;
-		hour : Int;
-		minute : Int;
-		second : Int;
-		fraction : Int;
-		
-		New() {
-		}
-		
-		method : public : GetYear() ~ Int {
-			return year;
-		}
-		
-		method : public : GetMonth() ~ Int {
-			return month;
-		}
-		
-		method : public : GetDay() ~ Int {
-			return day;
-		}
-		
-		method : public : GetMinute() ~ Int {
-			return minute;
-		}
-		
-		method : public : GetSecond() ~ Int {
-			return second;
-		}
-		
-		method : public : GetFraction() ~ Int {
-			return fraction;
-		}
-	}
-	
+	#~
+	# ODBC Resultset
+	~#
 	class ResultSet {
 		@native_stmt : Int;
 		@native_names : Int;
@@ -297,7 +317,7 @@ bundle ODBC {
       		return 0;
 		}
 		
-		method : public : GetBit(column : Int) ~ Int {
+		method : public : GetBit(column : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -312,10 +332,10 @@ bundle ODBC {
 				@is_null := is_null->Get() = 1;
 				
 				value := array_args[1]->As(IntHolder);
-				return value->Get();
+				return value->Get() = 1;
       		};
       		
-      		return 0;
+      		return false;
 		}
 		
 		method : public : GetDouble(column : Int) ~ Float {
@@ -453,6 +473,70 @@ bundle ODBC {
 				@lib_proxy->CallFunction("odbc_result_close", array_args);
       		};
       	}
+	}
+	
+	#~
+	# ODBC Date holder
+	~#
+	class Date {
+		year : Int;
+		month : Int;
+		day : Int;
+		
+		New() {
+		}
+		
+		method : public : GetYear() ~ Int {
+			return year;
+		}
+		
+		method : public : GetMonth() ~ Int {
+			return month;
+		}
+		
+		method : public : GetDay() ~ Int {
+			return day;
+		}
+	}
+	
+	#~
+	# ODBC Timestamp holder
+	~#
+	class Timestamp {
+		year : Int;
+		month : Int;
+		day : Int;
+		hour : Int;
+		minute : Int;
+		second : Int;
+		fraction : Int;
+		
+		New() {
+		}
+		
+		method : public : GetYear() ~ Int {
+			return year;
+		}
+		
+		method : public : GetMonth() ~ Int {
+			return month;
+		}
+		
+		method : public : GetDay() ~ Int {
+			return day;
+		}
+		
+		method : public : GetMinute() ~ Int {
+			return minute;
+		}
+		
+		method : public : GetSecond() ~ Int {
+			return second;
+		}
+		
+		method : public : GetFraction() ~ Int {
+			return fraction;
+		}
 	}
 }
 
