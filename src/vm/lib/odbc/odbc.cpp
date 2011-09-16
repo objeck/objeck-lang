@@ -121,6 +121,16 @@ extern "C" {
   }
 
   //
+  // executes a prepared select statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_select_statement(VMContext& context) {
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+  }
+  
+  //
   // executes a select statement
   //
 #ifdef _WIN32

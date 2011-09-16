@@ -227,8 +227,20 @@ bundle ODBC {
       		return -1;
 		}
 		
-		# TODO:
 		method : public : Select() ~ ResultSet {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New();
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_select_statement", array_args);
+				
+				native_stmt := array_args[0]->As(IntHolder);
+				native_names := array_args[1]->As(IntHolder);
+				return ResultSet->New(native_stmt->Get(), native_names->Get());
+			};
+			
 			return Nil;
 		}
 		
