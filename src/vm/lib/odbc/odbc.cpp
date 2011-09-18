@@ -127,7 +127,13 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void odbc_stmt_select_statement(VMContext& context) {
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
+
+#ifdef _DEBUG
+    cout << "### stmt_select_update: stmt=" << stmt << " ###" << endl;
+#endif
+    
+    SQLExecute(stmt);
   }
   
   //
