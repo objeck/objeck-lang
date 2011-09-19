@@ -1,5 +1,5 @@
+use IO;
 use ODBC;
-use Structure;
 
 bundle Default {
 	class SqlTest {
@@ -10,6 +10,16 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
+				pstmt := conn->CreateParameterStatement("select * from test.student WHERE id=?");
+				pstmt->SetInt(1, Console->ReadString()->ToInt());
+				result := pstmt->Select();
+				if(result <> Nil) {
+					i := 0;	
+					while(result->Next()) {
+						result->GetVarchar(2)->PrintLine();
+					};
+					result->Close();
+				};
 #~
 				pstmt := conn->CreateParameterStatement("UPDATE test.student SET first_name=?, credits=? WHERE id=?");
 				pstmt->SetString(1, "randy");
@@ -17,13 +27,12 @@ bundle Default {
 				pstmt->SetInt(3, 3);
 				pstmt->Update()->PrintLine();
 				pstmt->Close();
-#				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
-~#
+				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
 				result := conn->Select("select * from test.class ");
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
-#						value := result->GetVarchar(5);
+						value := result->GetVarchar(5);
 						value := result->GetVarchar("grad_code");
 						if(result->IsNull() = false) {
 							value->PrintLine();	
@@ -33,6 +42,7 @@ bundle Default {
 					i->PrintLine();	
 					result->Close();
 				};
+~#
 				conn->Close();
 			};
 		}
