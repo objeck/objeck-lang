@@ -653,6 +653,10 @@ bundle System {
 			return -1;
 		}
 		
+		method : public : native : IsEmpty() ~ Bool {
+			return @pos = 0 ? true : false; 			
+		}
+
 		method : public : native : Size() ~ Int {
 			return @pos;			
 		}
