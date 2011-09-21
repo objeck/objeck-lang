@@ -1,7 +1,10 @@
+10/21/1
+* fixed string 'trim' and validation bug
 10/19/1
 * add back support for method inlining
 * beta support for ODBC/SQL 
 	- TODO: Prepared SetTimestamp
+-----
 8/21/1
 * fixed a major bug that caused programs to crash when compiled with method inlining.  method inlining became a default setting with version 2.0.x.  method inlining has been disabled a fix will be forthcoming
 * fixed a major bug that caused programs to crash when compiled with method inlining.  method inlining became a default setting with version 2.0.x.  method inlining has been disabled a fix will be forthcoming
