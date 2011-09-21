@@ -2800,8 +2800,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
     
-    if(!is_str_array && new_char_str_count >= 2 && method_call->GetCallingParameters() && 
-       method_call->GetCallingParameters()->GetExpressions().size() > 1) {
+    if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
+       method_call->GetCallingParameters()->GetExpressions().size() > 0) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
     }
     
