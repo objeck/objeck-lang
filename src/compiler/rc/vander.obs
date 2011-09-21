@@ -1,0 +1,8 @@
+bundle Default {
+	class Vander {
+		function : Main(args : String[]) ~ Nil {
+			values := IO.Console->ReadString()->Split(" ");
+			(values[0]->Trim()->ToInt() + values[1]->Trim()->ToInt())->PrintLine();
+		}
+	}
+}
