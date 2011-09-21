@@ -360,7 +360,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
 		       parent->GetName());
 	} 
 	else if(impl_return->GetType() == CLASS_TYPE &&
-		  impl_return->GetClassName() != virtual_return->GetClassName()) {
+		impl_return->GetClassName() != virtual_return->GetClassName()) {
 	  Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
 	  Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
 	  if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
@@ -2143,6 +2143,10 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) && IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
+      ProcessError(expression, "Invalid mathematical operation");
+    }
     else if(left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE || 
 	    right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, "Invalid mathematical operation");
@@ -2155,6 +2159,10 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
       ProcessError(expression, "Invalid mathematical operation");
     } 
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
+      ProcessError(expression, "Invalid mathematical operation");
+    }
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     
@@ -2179,6 +2187,10 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
       ProcessError(expression, "Invalid mathematical operation");
     } 
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
+      ProcessError(expression, "Invalid mathematical operation");
+    }
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     break;
@@ -2948,7 +2960,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
 
 	if(right->GetClassName().size() == 0) {
 	  right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(), 
-						right->GetFunctionReturn()));
+						 right->GetFunctionReturn()));
 	}
 	
 	if(left->GetClassName() != right->GetClassName()) {
@@ -3196,7 +3208,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
       // resolve function name
       Type* type = entry->GetType();      
       const string encoded_name = EncodeFunctionType(type->GetFunctionParameters(), 
-							 type->GetFunctionReturn());      
+						     type->GetFunctionReturn());      
 #ifdef _DEBUG
       cout << "Encoded function declaration: |" << encoded_name << "|" << endl;
 #endif      

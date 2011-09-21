@@ -898,22 +898,20 @@ bundle System {
 				c := @string[i];
 			};
 
-			j := @string->Size() - 1;
+			j := @pos - 1;
 			c := @string[j];
 			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & j > -1) {
-				j := j - 1;
+				j -= 1;
 				c := @string[j];
 			};	
 		
-			k := 0;		
-			tmp : Char[] := Char->New[@max];
-			while(i < j) {
-				tmp[k] := @string[i];
+			tmp := "";
+			while(i <= j) {
+				tmp->Append(@string[i]);
 				i += 1;
-				k := k + 1;
 			};
             
-			return String->New(tmp);
+			return tmp;
 		}
 		
 		method : public : native : Split(delim : String) ~ String[] {
