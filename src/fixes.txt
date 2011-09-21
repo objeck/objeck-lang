@@ -1,6 +1,7 @@
 10/21/1
-* fixed bug related to call methods on static strings with 1 or more parameters 
-* fixed string 'trim' and validation bug
+* fixed bug related to calling methods on static strings with 1 or more parameters 
+* fixed string 'trim' 
+* fixed context validation bug related to operations on objects
 10/19/1
 * add back support for method inlining
 * beta support for ODBC/SQL 
