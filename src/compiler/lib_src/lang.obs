@@ -668,6 +668,17 @@ bundle System {
 
 			return '\0';
 		}
+
+		method : public : native : Pop() ~ Char {
+			if(@pos > 0) {
+				@pos -= 1;
+				c := @string[@pos];
+				@string[@pos] := '\0';
+				return c;
+			};
+
+			return '\0';
+		}
 		
 		method : public : native : ToInt() ~ Int {
 			if(@pos > 1 & @string[0] = '0' & @string[1] = 'x') {
