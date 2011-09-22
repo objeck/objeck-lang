@@ -1930,9 +1930,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
     // method call
     MethodCall* method_call = expression->GetMethodCall();
-
-    // note: this is not clean (drinking bordeaux)... literals are
-    // considered expressions and turned into instances of 'System.String'
+    
+    // note: this is not clean. literals are considered 
+    // expressions and turned into instances of 'System.String' 
     // objects are considered nested if a method call is present
     bool is_nested = false || expression->GetExpressionType() == CHAR_STR_EXPR;
     while(method_call) {
@@ -1940,7 +1940,14 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(unsigned int i = 0; i < expressions.size(); i++) {
         EmitExpression(expressions[i]);
+	// need to swap values
+	if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
+	   method_call->GetCallingParameters()->GetExpressions().size() > 0) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
+	}
       }
+      new_char_str_count = 0;
+      
       // emit call
       EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
       // next call
@@ -2801,12 +2808,14 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     Variable* variable = method_call->GetVariable();
     SymbolEntry* entry = method_call->GetEntry();
     
+    /*
     if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
        method_call->GetCallingParameters()->GetExpressions().size() > 0) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
       new_char_str_count = 0;
     }
-    
+    */
+
     if(variable && method_call->GetCallType() == METHOD_CALL) {
       EmitVariable(variable);
     }
