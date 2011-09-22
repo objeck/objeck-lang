@@ -155,15 +155,15 @@ namespace Runtime {
     inline void SwapInt() {
       long v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
-		op_stack[(*stack_pos) - 1] = v;
-
-/*
+      op_stack[(*stack_pos) - 1] = v;
+      
+ /*
       long left = PopInt();
       long right = PopInt();
 
       PushInt(left);     
       PushInt(right);
-*/
+ */
     }
 
     inline long PopInt() {
