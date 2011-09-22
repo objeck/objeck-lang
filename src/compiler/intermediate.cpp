@@ -2096,6 +2096,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   new_char_str_count++;
   if(!is_str_array && new_char_str_count >= 2) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
+    new_char_str_count = 0;
   }
 }
 
@@ -2803,6 +2804,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
        method_call->GetCallingParameters()->GetExpressions().size() > 0) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
+      new_char_str_count = 0;
     }
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
