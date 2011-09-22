@@ -7,12 +7,10 @@ bundle Default {
 		}
 
 		function : Main(args : System.String[]) ~ Nil {
-#~
-			h := "Hello World!";
-			h->SubString(3, 3)->PrintLine();
-			h->SubString(0, 3)->PrintLine();
-~#
-			Time();
+			"Hello World!" ->SubString(3, 3)->PrintLine();
+#			"Hello World!"->SubString(0, 3)->PrintLine();
+
+#			Time();
 		}
 
 		function : native : Time() ~ Nil {
