@@ -9,8 +9,28 @@ bundle Default {
 
 #		function : Run(args : System.String[]) ~ Nil {
 		function : Run(args : String[]) ~ Nil {
+			testString := "test";
+			testString->SubString(1, testString->Size() - 1)->PrintLine();
+			testString->SubString(testString->Size() - 1)->PrintLine();
+			testString->SubString(1, testString->Size() - 2)->PrintLine();
+		
+			((Float->Random() * 100)->As(Int) % 3)->PrintLine();
+			((Float->Random() * 100)->As(Int) % 3)->PrintLine();
+			((Float->Random() * 100)->As(Int) % 3)->PrintLine();
+
+#			Console.WriteLine(testString.Substring(0, testString.Length - 1));
+#			Console.WriteLine(testString.Substring(1, testString.Length - 2));
+#~
 			"\"Hello\""->PrintLine();
 			(3*7)->PrintLine();
+
+			x := "";
+			names := ["Randy", "Jason", "Hollines"];
+			x->Append(names[0]);
+			x->Append(' ');
+			x->Append(names[2]);
+			x->PrintLine();
+~#
 		}
 	}
 }
