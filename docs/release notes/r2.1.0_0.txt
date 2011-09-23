@@ -1,0 +1,9 @@
+Objeck v2.1.0_0
+
+This release includes a refactored C++ API that supports shared libraries.  An add-on module is now available that provides initial database support.  In addition, method inlining has been refactored and simplified.  The following bugs have been resolved:
+
+* Fixed a bug related to calling methods on static strings with 1 or more parameters
+* Resolved a validation bug that allowed some invalid operations to be used with objects
+* Fixed a bug in the String "Trim" method
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
