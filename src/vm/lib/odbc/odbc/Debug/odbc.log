@@ -1,4 +1,4 @@
-﻿Build started 9/3/2011 5:23:02 PM.
+﻿Build started 9/24/2011 9:36:03 AM.
      1>Project "C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\odbc\odbc.vcxproj" on node 2 (rebuild target(s)).
      1>_PrepareForClean:
          Deleting file "Debug\odbc.lastbuildstate".
@@ -7,11 +7,23 @@
        ClCompile:
          c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D _WINDLL /D _WINDLL /D _MBCS /D _DEBUG /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt ..\odbc.cpp
          odbc.cpp
-     1>c:\users\randy hollines\documents\code\src\vm\lib_api.h(197): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>c:\users\randy hollines\documents\code\src\vm\lib_api.h(228): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(105) : see declaration of 'strcpy'
-     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(214): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
-     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(249): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
-     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(284): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(332): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(358): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(384): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(410): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(436): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(452): warning C4244: 'initializing' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(492): warning C4244: 'initializing' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(529): warning C4244: 'initializing' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(567): warning C4244: 'initializing' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(605): warning C4244: 'initializing' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(653): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(687): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(734): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(773): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
+     1>c:\users\randy hollines\documents\code\src\vm\lib\odbc\odbc.cpp(830): warning C4244: 'argument' : conversion from 'long' to 'SQLUSMALLINT', possible loss of data
        Link:
          c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\Debug\odbc.dll" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Debug\odbc.dll.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\Debug\odbc.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\Debug\odbc.lib" /MACHINE:X86 /DLL Debug\odbc.obj
             Creating library C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\Debug\odbc.lib and object C:\Users\Randy Hollines\Documents\Code\src\vm\lib\odbc\Debug\odbc.exp
@@ -25,4 +37,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.91
+Time Elapsed 00:00:02.48
