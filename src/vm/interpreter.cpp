@@ -1951,7 +1951,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
   case CPY_INT_STR_ARY: {
     long index = PopInt();
-    int* value_str = program->GetIntStrings()[index];
+    long* value_str = program->GetIntStrings()[index];
     // copy array
     long* array = (long*)PopInt();
     if(!array) {
