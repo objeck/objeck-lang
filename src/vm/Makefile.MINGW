@@ -1,0 +1,41 @@
+##############
+# For OSX only
+##############
+# ARGS=-pthread -mstackrealign -O3
+# ARGS=-pthread -D_TIMING -mstackrealign -O3
+# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
+# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
+
+##############
+# For Linux
+##############
+ARGS=-O3 -Wall
+# ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wno-deprecated
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-O3 -pthread
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o win_main.o 
+OBJ_LIBS= jit_intel_lp32.a memory.a
+MEM_PATH=os/windows
+JIT_PATH=jit/ia32
+EXE= obr
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -static  -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) -lws2_32
+
+memory.a:
+	cd $(MEM_PATH); make	
+	
+jit_intel_lp32.a:
+	cd $(JIT_PATH); make	
+	
+%.o: %.cpp
+	$(CC) -m32 -static -static-libstdc++ $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean
+	cd $(JIT_PATH); make clean
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+

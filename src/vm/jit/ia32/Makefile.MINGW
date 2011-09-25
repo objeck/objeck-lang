@@ -1,0 +1,27 @@
+###############
+# For OSX only
+###############
+# ARGS=-mstackrealign -O3
+# ARGS=-D_TIMING -mstackrealign -O3
+# ARGS=-mstackrealign -g -D_DEBUG -Wunused
+
+###############
+# For Linux
+###############
+# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
+# ARGS=-g -Wunused
+ARGS=-O3 -Wall
+
+CC=g++
+AR=ar
+SRC=jit_intel_lp32.o
+LIB=../../jit_intel_lp32.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m32 -static -static-libstdc++ $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
