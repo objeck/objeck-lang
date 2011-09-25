@@ -37,7 +37,7 @@
 #include "../../common.h"
 #include <windows.h>
 #include <tchar.h>
-// #include <strsafe.h>
+#include <strsafe.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
@@ -79,8 +79,8 @@ class File {
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
-    FILE* file = fopen(name, mode);
-    if(!file) {
+    FILE* file;
+    if(fopen_s(&file, name, mode) != 0) {
       return NULL;
     }
 
@@ -219,7 +219,6 @@ class System {
 
   static BOOL GetOSDisplayString( LPTSTR pszOS)
   {
-  /*
      OSVERSIONINFOEX osvi;
      SYSTEM_INFO si;
      PGNSI pGNSI;
@@ -437,7 +436,6 @@ class System {
         printf( "This sample does not support this version of Windows.\n");
         return FALSE;
      }
-*/	 
   }
 };
 
