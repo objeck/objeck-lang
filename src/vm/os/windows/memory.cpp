@@ -736,6 +736,9 @@ DWORD WINAPI MemoryManager::CheckJitRoots(void* arg)
         // update
         mem++;
         break;
+		
+		default:
+			break;
       }
     }
 
@@ -904,6 +907,9 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       // update
       mem++;
       break;
+	  
+	  default:
+		break;
     }
   }
 }

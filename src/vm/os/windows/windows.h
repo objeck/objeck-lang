@@ -37,7 +37,10 @@
 #include "../../common.h"
 #include <windows.h>
 #include <tchar.h>
+
+#ifndef _MINGW
 #include <strsafe.h>
+#endif
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
@@ -80,10 +83,15 @@ class File {
 
   static FILE* FileOpen(const char* name, const char* mode) {
     FILE* file;
+	
+#ifdef _MINGW	
+	file = fopen(name, mode);
+#else	
     if(fopen_s(&file, name, mode) != 0) {
       return NULL;
     }
-
+#endif
+	
     return file;
   }
 
@@ -217,6 +225,53 @@ class System {
     return platform;
   }
 
+#ifdef _MINGW
+  static BOOL GetOSDisplayString(LPTSTR version)
+  {
+	const int MAX = 80;
+	OSVERSIONINFO OSversion;	
+	OSversion.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	GetVersionEx(&OSversion);
+	
+	switch(OSversion.dwPlatformId)
+	{
+	   case VER_PLATFORM_WIN32s: 
+			   sprintf(version, "Windows %d.%d",OSversion.dwMajorVersion,OSversion.dwMinorVersion);
+		   break;
+	   case VER_PLATFORM_WIN32_WINDOWS:
+		  if(OSversion.dwMinorVersion==0)
+			  strncpy(version, "Windows 95", MAX - 1);
+		  else
+			  if(OSversion.dwMinorVersion==10)  
+			  strncpy(version, "Windows 98", MAX - 1);
+			  else
+			  if(OSversion.dwMinorVersion==90)  
+			  strncpy(version, "Windows Me", MAX - 1);
+			  break;
+	   case VER_PLATFORM_WIN32_NT:
+		 if(OSversion.dwMajorVersion==5 && OSversion.dwMinorVersion==0)
+				 sprintf(version, "Windows 2000 With %s", OSversion.szCSDVersion);
+			 else	
+			 if(OSversion.dwMajorVersion==5 &&   OSversion.dwMinorVersion==1)
+				 sprintf(version, "Windows XP %s",OSversion.szCSDVersion);
+			 else	
+		 if(OSversion.dwMajorVersion<=4)
+			sprintf(version, "Windows NT %d.%d with %s",
+							   OSversion.dwMajorVersion,
+							   OSversion.dwMinorVersion,
+							   OSversion.szCSDVersion);			
+			 else	
+				 //for unknown windows/newest windows version
+
+			sprintf(version, "Windows %d.%d ",
+							   OSversion.dwMajorVersion,
+							   OSversion.dwMinorVersion);
+			 break;
+	}
+	
+	return TRUE;
+  }
+#else
   static BOOL GetOSDisplayString( LPTSTR pszOS)
   {
      OSVERSIONINFOEX osvi;
@@ -437,6 +492,7 @@ class System {
         return FALSE;
      }
   }
+#endif  
 };
 
 #endif

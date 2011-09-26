@@ -329,7 +329,7 @@ namespace Runtime {
     // Caculates the IA-32 MOD R/M
     // offset
     BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
-      BYTE_VALUE byte;
+      BYTE_VALUE byte = 0;
 
       switch(mod_rm) {
       case ESP:
@@ -1422,7 +1422,11 @@ namespace Runtime {
     
 	case CPY_INT_STR_ARY: {
 	  long index = PopInt(op_stack, stack_pos);
-	  int32_t* value_str = program->GetIntStrings()[index];
+#ifdef _MINGW	  
+      int* value_str = program->GetIntStrings()[index];
+#else
+      int32_t* value_str = program->GetIntStrings()[index];
+#endif	  
 	  // copy array
 	  long* array = (long*)PopInt(op_stack, stack_pos);    
 	  const long size = array[0];
