@@ -1,4 +1,5 @@
 use Structure;
+use API;
 
 bundle Gtk2 {
 	# signals
@@ -32,7 +33,7 @@ bundle Gtk2 {
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
 #				@lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
-				@lib_proxy := DllProxy->New("lib/gtk2/ojk_gtk.1.dylib");
+				@lib_proxy := DllProxy->New("lib/gtk2/ojk_gtk");
 			};
 
 			return @lib_proxy;
