@@ -50,18 +50,20 @@
 #include "../shared/sys.h"
 #include "../shared/traps.h"
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_MINGW)
 #include <windows.h>
 #include <unordered_map>
 using namespace stdext;
 #else
-#include <dlfcn.h>
 #include <tr1/unordered_map>
 #include <pthread.h>
 #include <stdint.h>
 namespace std {
   using namespace tr1;
 }
+#ifndef _MINGW
+#include <dlfcn.h>
+#endif
 #endif
 
 using namespace std;
