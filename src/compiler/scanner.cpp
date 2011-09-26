@@ -663,20 +663,21 @@ void Scanner::ParseToken(int index)
     start_pos = buffer_pos - 1;
     
     // test hex state
-    if(cur_char == '0') {
+    if(cur_char == '0' && nxt_char == 'x') {
       hex_state = 1;
+      NextChar();
     }
-    while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || 
+    while(isdigit(cur_char) || cur_char == '.' || 
 	  // hex format
-	  cur_char == 'x' ||(cur_char >= 'a' && cur_char <= 'f') || 
-	  (cur_char >= 'A' && cur_char <= 'F') ||
+	  cur_char == 'x' || (cur_char >= 'a' && cur_char <= 'f') || 
+	      (cur_char >= 'A' && cur_char <= 'F') ||
 	  // scientific format
 	  cur_char == 'e' || cur_char == 'E' || 
-	  ((cur_char == '+' || cur_char == '-') && isdigit(nxt_char)))  {
+	  (double_state == 2 && (cur_char == '+' || cur_char == '-') && isdigit(nxt_char)))  {
       // decimal double
       if(cur_char == '.') {
         // error
-        if(double_state) {
+        if(double_state || hex_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
@@ -685,10 +686,9 @@ void Scanner::ParseToken(int index)
         }
         double_state = 1;
       }
-      
-      if(cur_char == 'e' || cur_char == 'E') {
+      else if(cur_char == 'e' || cur_char == 'E') {
         // error
-        if(double_state) {
+        if((double_state && double_state) != 1 || hex_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
@@ -696,28 +696,29 @@ void Scanner::ParseToken(int index)
           break;
         }
         double_state = 2;
-
-	cout << "@@@" << endl;
       }
-      
-      if(double_state == 2 && (cur_char == '+' || cur_char == '-')) {
+      else if(double_state == 2 && (cur_char == '+' || cur_char == '-')) {
         double_state++;
-      }
-
-      
-
+      }      
       // hex integer
-      if(cur_char == 'x') {
-        if(hex_state == 1) {
+      else if(cur_char == 'x') {
+	// error
+        if(double_state) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+          break;
+        }
+	
+	if(hex_state == 1) {
 	  hex_state = 2;
 	}
 	else {
 	  hex_state = 1;
 	}
       }
-      else {
-	hex_state = 0;
-      }
+      
       // next character
       NextChar();
     }
