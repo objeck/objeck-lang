@@ -258,7 +258,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 
     // collect memory
     if(allocation_size + size > mem_max_size) {
-      CollectMemory(op_stack, stack_pos);
+      CollectAllMemory(op_stack, stack_pos);
     }
     // allocate memory
     mem = (long*)calloc(size * 2 + sizeof(long), sizeof(BYTE_VALUE));
@@ -308,7 +308,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   }
   // collect memory
   if(allocation_size + calc_size > mem_max_size) {
-    CollectMemory(op_stack, stack_pos);
+    CollectAllMemory(op_stack, stack_pos);
   }
   // allocate memory
   mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
@@ -371,7 +371,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   return NULL;
 }
 
-void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
+void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
 {
 #ifndef _SERIAL
   // only one thread at a time can invoke the gargabe collector
@@ -385,7 +385,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   info->stack_pos = stack_pos;
   
 #ifndef _SERIAL
-  HANDLE collect_thread_id = CreateThread(NULL, 0, CollectMemory, info, 0, NULL);
+  HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread_id) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -404,7 +404,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 #endif
 }
 
-DWORD WINAPI MemoryManager::CollectMemory(void* arg)
+uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
   
@@ -420,25 +420,25 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   const int num_threads = 4;
   HANDLE thread_ids[num_threads];
 
-  thread_ids[0] = CreateThread(NULL, 0, CheckStatic, info, 0, NULL);
+  thread_ids[0] = (HANDLE)_beginthreadex(NULL, 0, CheckStatic, info, 0, NULL);
   if(!thread_ids[0]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
-  thread_ids[1] = CreateThread(NULL, 0, CheckStack, info, 0, NULL);
+  thread_ids[1] = (HANDLE)_beginthreadex(NULL, 0, CheckStack, info, 0, NULL);
   if(!thread_ids[0]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   
-  thread_ids[2] = CreateThread(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
+  thread_ids[2] = (HANDLE)_beginthreadex(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
   if(!thread_ids[1]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
-  thread_ids[3] = CreateThread(NULL, 0, CheckJitRoots, NULL, 0, NULL);
+  thread_ids[3] = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
   if(!thread_ids[2]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -572,7 +572,7 @@ DWORD WINAPI MemoryManager::CollectMemory(void* arg)
   return 0;
 }
 
-DWORD WINAPI MemoryManager::CheckStatic(void* arg)
+unsigned int WINAPI MemoryManager::CheckStatic(void* arg)
 {
   // check static memory
 #ifndef _GC_SERIAL
@@ -589,7 +589,7 @@ DWORD WINAPI MemoryManager::CheckStatic(void* arg)
   return 0;
 }
 
-DWORD WINAPI MemoryManager::CheckStack(void* arg)
+uintptr_t WINAPI MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
@@ -605,7 +605,7 @@ DWORD WINAPI MemoryManager::CheckStack(void* arg)
   return 0;
 }
 
-DWORD WINAPI MemoryManager::CheckJitRoots(void* arg)
+uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 {
 #ifndef _SERIAL
   EnterCriticalSection(&jit_cs);
@@ -756,7 +756,7 @@ DWORD WINAPI MemoryManager::CheckJitRoots(void* arg)
   return 0;
 }
 
-DWORD WINAPI MemoryManager::CheckPdaRoots(void* arg)
+uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifndef _SERIAL
   EnterCriticalSection(&jit_cs);

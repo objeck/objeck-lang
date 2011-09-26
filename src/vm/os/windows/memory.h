@@ -33,6 +33,7 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
+#include <process.h>
 
 // basic vm tuning parameters
 #define MEM_MAX 1024 * 128
@@ -86,12 +87,12 @@ public:
   static MemoryManager* Instance();
 
   // recover memory
-  static void CollectMemory(long* op_stack, long stack_pos);
-  static DWORD WINAPI CollectMemory(LPVOID arg);
-  static DWORD WINAPI CheckStatic(LPVOID arg);
-  static DWORD WINAPI CheckStack(LPVOID arg);
-  static DWORD WINAPI CheckJitRoots(LPVOID arg);
-  static DWORD WINAPI CheckPdaRoots(LPVOID arg);
+  static void CollectAllMemory(long* op_stack, long stack_pos);
+  static uintptr_t WINAPI CollectMemory(LPVOID arg);
+  static uintptr_t WINAPI CheckStatic(LPVOID arg);
+  static uintptr_t WINAPI CheckStack(LPVOID arg);
+  static uintptr_t WINAPI CheckJitRoots(LPVOID arg);
+  static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
 
   static void Clear() {
     while(!jit_roots.empty()) {
