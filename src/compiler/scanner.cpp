@@ -657,7 +657,7 @@ void Scanner::ParseToken(int index)
   }
   // number
   else if(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char))) {
-    bool is_double = false;
+    int double_state = 0;
     int hex_state = 0;
     // mark
     start_pos = buffer_pos - 1;
@@ -666,21 +666,46 @@ void Scanner::ParseToken(int index)
     if(cur_char == '0') {
       hex_state = 1;
     }
-    while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || cur_char == 'x' ||
-          (cur_char >= 'a' && cur_char <= 'f') ||
-          (cur_char >= 'A' && cur_char <= 'F')) {
+    while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || 
+	  // hex format
+	  cur_char == 'x' ||(cur_char >= 'a' && cur_char <= 'f') || 
+	  (cur_char >= 'A' && cur_char <= 'F') ||
+	  // scientific format
+	  cur_char == 'e' || cur_char == 'E' || 
+	  ((cur_char == '+' || cur_char == '-') && isdigit(nxt_char)))  {
       // decimal double
       if(cur_char == '.') {
         // error
-        if(is_double) {
+        if(double_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();
           break;
         }
-        is_double = true;
+        double_state = 1;
       }
+      
+      if(cur_char == 'e' || cur_char == 'E') {
+        // error
+        if(double_state) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+          break;
+        }
+        double_state = 2;
+
+	cout << "@@@" << endl;
+      }
+      
+      if(double_state == 2 && (cur_char == '+' || cur_char == '-')) {
+        double_state++;
+      }
+
+      
+
       // hex integer
       if(cur_char == 'x') {
         if(hex_state == 1) {
@@ -698,13 +723,13 @@ void Scanner::ParseToken(int index)
     }
     // mark
     end_pos = buffer_pos - 1;
-    if(is_double) {
+    if(double_state == 1 || double_state == 3) {
       ParseDouble(index);
     } 
     else if(hex_state == 2) {
       ParseInteger(index, 16);
     }
-    else if(hex_state) {
+    else if(hex_state || double_state) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
       tokens[index]->SetLineNbr(line_nbr);
       tokens[index]->SetFileName(filename);

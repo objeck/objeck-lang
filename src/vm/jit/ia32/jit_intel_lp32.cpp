@@ -1607,7 +1607,7 @@ RegInstr* JitCompilerIA32::ProcessIntFold(long left_imm, long right_imm, Instruc
     return new RegInstr(IMM_INT, left_imm >= right_imm);
     
   default:
-    break;
+    return NULL;
   }
 }
 
