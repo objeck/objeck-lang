@@ -41,7 +41,9 @@ using namespace std;
 
 // function declaration for native C++ callbacks
 typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
-					const char* cls_id, const char* mthd_id);
+					const char* cls_name, const char* mthd_name);
+typedef void(*APITools_MethodCallId_Ptr) (long* op_stack, long *stack_pos, long *instance, 
+					const int cls_id, const int mthd_id);
 typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos);
@@ -51,6 +53,7 @@ struct VMContext {
   long* op_stack;
   long* stack_pos;
   APITools_MethodCall_Ptr method_call;
+  APITools_MethodCallId_Ptr method_call_id;
   APITools_AllocateObject_Ptr alloc_obj;
   APITools_AllocateArray_Ptr alloc_array;
 };
@@ -255,30 +258,39 @@ char* APITools_GetStringValue(VMContext &context, int index) {
 }
 
 // invokes a runtime Objeck method
-void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_id) {
-  string qualified_method_name(mthd_id);
+void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_name) {
+  string qualified_method_name(mthd_name);
   size_t delim = qualified_method_name.find(':');
   if(delim != string::npos) {
     string cls_name = qualified_method_name.substr(0, delim);
-    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_id);
+    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
     
 #ifdef _DEBUG
     assert(*context.stack_pos == 0);
 #endif
   }
   else {
-    cerr << ">>> DLL call: Invalid method name: '" << mthd_id << "'" << endl;
+    cerr << ">>> DLL call: Invalid method name: '" << mthd_name << "'" << endl;
     exit(1);
   }
 }
 
+// invokes a runtime Objeck method
+void APITools_CallMethod(VMContext &context, long* instance, const int cls_id, const int mthd_id) {
+  (*context.method_call_id)(context.op_stack, context.stack_pos, instance, cls_id, mthd_id);
+    
+#ifdef _DEBUG
+    assert(*context.stack_pos == 0);
+#endif
+}
+
 // invokes a runtime Objeck method that returns a value, which may be a point to memory
-long APITools_CallMethodWithReturn(VMContext &context, long* instance, const char* mthd_id) {
-  string qualified_method_name(mthd_id);
+long APITools_CallMethodWithReturn(VMContext &context, long* instance, const char* mthd_name) {
+  string qualified_method_name(mthd_name);
   size_t delim = qualified_method_name.find(':');
   if(delim != string::npos) {
     string cls_name = qualified_method_name.substr(0, delim);
-    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_id);
+    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
     
 #ifdef _DEBUG
     assert(*context.stack_pos > 0);
@@ -291,7 +303,7 @@ long APITools_CallMethodWithReturn(VMContext &context, long* instance, const cha
     return rtrn_value;
   }
   else {
-    cerr << ">>> DLL call: Invalid method name: '" << mthd_id << "'" << endl;
+    cerr << ">>> DLL call: Invalid method name: '" << mthd_name << "'" << endl;
     exit(1);
   }
 }
