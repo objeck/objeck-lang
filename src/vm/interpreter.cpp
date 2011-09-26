@@ -58,7 +58,7 @@ StackProgram* StackInterpreter::program;
  * JIT compiler thread
  ********************************/
 #ifdef _WIN32
-DWORD WINAPI StackInterpreter::CompileMethod(LPVOID arg)
+uintptr_t WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 {
   StackMethod* method = (StackMethod*)arg;
   JitCompilerIA32 jit_compiler;
@@ -1229,7 +1229,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   holder->param = param;
 
 #ifdef _WIN32
-  HANDLE vm_thread = CreateThread(NULL, 0, AsyncMethodCall, holder, 0, NULL);
+  HANDLE vm_thread = (HANDLE)_beginthreadex(NULL, 0, AsyncMethodCall, holder, 0, NULL);
   if(!vm_thread) {
     cerr << ">>> Unable to create garbage collection thread! <<<" << endl;
     exit(-1);
@@ -1257,7 +1257,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 
 #ifdef _WIN32
 // windows thread callback
-DWORD WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
+uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
 
@@ -1501,7 +1501,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
       ProcessInterpretedMethodCall(called, instance);
     }
     else { 
-      HANDLE thread_id = CreateThread(NULL, 0, CompileMethod, called, 0, NULL);
+      HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CompileMethod, called, 0, NULL);
       if(!thread_id) {
 	cerr << ">>> Unable to create thread to compile method! <<<" << endl;
 	exit(-1);

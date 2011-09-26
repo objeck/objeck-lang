@@ -79,7 +79,7 @@ namespace Runtime {
   
     // JIT compiler thread handles
 #ifdef _WIN32
-    static DWORD WINAPI CompileMethod(LPVOID arg);
+    static uintptr_t WINAPI CompileMethod(LPVOID arg);
 #else
     static void* CompileMethod(void* arg);
 #endif
@@ -732,7 +732,7 @@ namespace Runtime {
     static void Initialize(StackProgram* p);
 
 #ifdef _WIN32
-    static DWORD WINAPI AsyncMethodCall(LPVOID arg);
+    static uintptr_t WINAPI AsyncMethodCall(LPVOID arg);
 #else
     static void* AsyncMethodCall(void* arg);
 #endif
