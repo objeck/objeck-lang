@@ -101,7 +101,7 @@ class StackInstr
   long native_offset;
   int line_num;
   
-public:
+ public:
   StackInstr(int l, InstructionType t) {
     line_num = l;
     type = t;
@@ -200,7 +200,7 @@ class NativeCode
   long size;
   FLOAT_VALUE* floats;
 
-public:
+ public:
   NativeCode(BYTE_VALUE* c, long s, FLOAT_VALUE* f) {
     code = c;
     size = s;
@@ -588,11 +588,11 @@ class StackMethod {
  * ByteBuffer class
  ********************************/
 class ByteBuffer {
-	BYTE_VALUE* buffer;
+  BYTE_VALUE* buffer;
   int pos;
   int max;
 
-public:
+ public:
   ByteBuffer() {
     pos = 0;
     max = 4;
@@ -655,7 +655,7 @@ class StackClass {
     return size;
   }
   
-public:
+ public:
   StackClass(long i, const string &ne, const string &fn, long p, 
 	     bool v, StackDclr** d, long n, long cs, long is, bool b) {
     id = i;
@@ -851,7 +851,7 @@ class StackProgram {
   static pthread_mutex_t program_mutex;
 #endif
 
-public:
+ public:
   StackProgram() {
     cls_hierarchy = NULL;
     classes = NULL;
@@ -1118,7 +1118,7 @@ class StackFrame {
   long ip;
   bool jit_called;
   
-public:
+ public:
   StackFrame(StackMethod* md, long* inst) {
     method = md;
     mem = md->NewMemory();

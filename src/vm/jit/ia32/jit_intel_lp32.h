@@ -1423,9 +1423,9 @@ namespace Runtime {
 	case CPY_INT_STR_ARY: {
 	  long index = PopInt(op_stack, stack_pos);
 #ifdef _MINGW	  
-      int* value_str = program->GetIntStrings()[index];
+	  int* value_str = program->GetIntStrings()[index];
 #else
-      int32_t* value_str = program->GetIntStrings()[index];
+	  int32_t* value_str = program->GetIntStrings()[index];
 #endif	  
 	  // copy array
 	  long* array = (long*)PopInt(op_stack, stack_pos);    
