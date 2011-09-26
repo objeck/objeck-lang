@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 #include <iostream>
-#include "../../../utilities/dll_tools.h"
+#include "../../lib_api.h"
 
 using namespace std;
 
@@ -17,7 +17,7 @@ extern "C" {
     long* op_stack;
     long* stack_pos;
     long* self;
-    DLLTools_MethodCall_Ptr callback;
+    APITools_MethodCall_Ptr callback;
   } callback_data;
   
   //
@@ -40,65 +40,58 @@ extern "C" {
   //
   // button functions
   //
-  void og_button_new_with_label(long* data_array, long* op_stack, long* stack_pos, 
-				DLLTools_MethodCall_Ptr callback) {
-    char* name = DLLTools_GetStringValue(data_array, 1);
+  void og_button_new_with_label(VMContext& context) {
+    char* name = APITools_GetStringValue(context, 1);
     GtkWidget* button = gtk_button_new_with_label(name);
-    DLLTools_SetIntValue(data_array, 0, (long)button);
+    APITools_SetIntValue(context, 0, (long)button);
   }
   
   //
   // window functions
   //
-  void og_window_set_title(long* data_array, long* op_stack, long* stack_pos, 
-			   DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* window = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-    char* name = DLLTools_GetStringValue(data_array, 1);    
+  void og_window_set_title(VMContext& context) {
+    GtkWidget* window = (GtkWidget*)APITools_GetIntValue(context, 0);
+    char* name = APITools_GetStringValue(context, 1);    
     gtk_window_set_title(GTK_WINDOW(window), name);
   }
 
-  void og_window_new(long* data_array, long* op_stack, long* stack_pos, 
-		     DLLTools_MethodCall_Ptr callback) {
+  void og_window_new(VMContext& context) {
     GtkWidget* window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-    DLLTools_SetIntValue(data_array, 0, (long)window);
+    APITools_SetIntValue(context, 0, (long)window);
   }
   
   //
   // widget functions
   //
-  void og_widget_show(long* data_array, long* op_stack, long* stack_pos, 
-		      DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+  void og_widget_show(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_show(widget);
   }
 
-  void og_widget_hide(long* data_array, long* op_stack, long* stack_pos, 
-		      DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+  void og_widget_hide(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_hide(widget);
   }
   
-  void og_signal_handler_disconnect(long* data_array, long* op_stack, long* stack_pos, 
-				    DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-    glong id = DLLTools_GetIntValue(data_array, 1);
+  void og_signal_handler_disconnect(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    glong id = APITools_GetIntValue(context, 1);
     g_signal_handler_disconnect(widget, id);
   }
 
-  void og_signal_connect(long* data_array, long* op_stack, long* stack_pos, 
-			 DLLTools_MethodCall_Ptr callback) {
-    long* self = (long*)DLLTools_GetIntValue(data_array, 1);
-    int signal = DLLTools_GetIntValue(data_array, 2);
-    int cls_id = DLLTools_GetFunctionValue(data_array, 3, CLS_ID);
-    int mthd_id = DLLTools_GetFunctionValue(data_array, 3, MTHD_ID);
+  void og_signal_connect(VMContext& context) {
+    long* self = (long*)APITools_GetIntValue(context, 1);
+    int signal = APITools_GetIntValue(context, 2);
+    int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID);
+    int mthd_id = APITools_GetFunctionValue(context, 3, MTHD_ID);
     
     callback_data* data = new callback_data;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
-    data->op_stack = op_stack;
-    data->stack_pos = stack_pos;
-    data->self = (long*)data_array[ARRAY_HEADER_OFFSET];
-    data->callback = callback;
+    data->op_stack = context.op_stack;
+    data->stack_pos = context.stack_pos;
+    data->self = (long*)context.data_array[ARRAY_HEADER_OFFSET];
+    data->callback = context.method_call;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
@@ -124,24 +117,23 @@ extern "C" {
       break;
     }
     // set return
-    DLLTools_SetIntValue(data_array, 0, id);
+    APITools_SetIntValue(context, 0, id);
   }
   
-  void og_signal_connect_swapped(long* data_array, long* op_stack, long* stack_pos, 
-			 DLLTools_MethodCall_Ptr callback) {
-    long* self = (long*)DLLTools_GetIntValue(data_array, 0);
-    long* widget = (long*)DLLTools_GetIntValue(data_array, 1);
-    int signal = DLLTools_GetIntValue(data_array, 2);
-    int cls_id = DLLTools_GetIntValue(data_array, 3);
-    int mthd_id = DLLTools_GetIntValue(data_array, 4);
+  void og_signal_connect_swapped(VMContext& context) {
+    long* self = (long*)APITools_GetIntValue(context, 0);
+    long* widget = (long*)APITools_GetIntValue(context, 1);
+    int signal = APITools_GetIntValue(context, 2);
+    int cls_id = APITools_GetIntValue(context, 3);
+    int mthd_id = APITools_GetIntValue(context, 4);
     
     callback_data* data = new callback_data;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
-    data->op_stack = op_stack;
-    data->stack_pos = stack_pos;
-    data->self = (long*)data_array[ARRAY_HEADER_OFFSET + 1];
-    data->callback = callback;
+    data->op_stack = context.op_stack;
+    data->stack_pos = context.stack_pos;
+    data->self = (long*)context.data_array[ARRAY_HEADER_OFFSET + 1];
+    data->callback = context.method_call;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
@@ -165,50 +157,43 @@ extern "C" {
   //
   // container functions
   //
-  void og_container_set_border_width(long* data_array, long* op_stack, long* stack_pos, 
-				     DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-    int width = DLLTools_GetIntValue(data_array, 1);
+  void og_container_set_border_width(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    int width = APITools_GetIntValue(context, 1);
     gtk_container_set_border_width(GTK_CONTAINER (widget), width);
   }
 
-  void og_container_get_border_width(long* data_array, long* op_stack, long* stack_pos, 
-				     DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+  void og_container_get_border_width(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gint width =gtk_container_get_border_width(GTK_CONTAINER (widget));
-    DLLTools_SetIntValue(data_array, 1, width);
+    APITools_SetIntValue(context, 1, width);
   }
 
-  void og_container_add(long* data_array, long* op_stack, long* stack_pos, 
-			DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* container = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 1);
+  void og_container_add(VMContext& context) {
+    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
     gtk_container_add(GTK_CONTAINER (container), widget);
   }
 
-  void og_container_remove(long* data_array, long* op_stack, long* stack_pos, 
-			DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* container = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 1);
+  void og_container_remove(VMContext& context) {
+    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
     gtk_container_remove(GTK_CONTAINER (container), widget);
   }
   
   //
   // application functions
   //
-  void og_main(long* data_array, long* op_stack, long* stack_pos, 
-	       DLLTools_MethodCall_Ptr callback) {
+  void og_main(VMContext& context) {
     gtk_main();
   }
   
-  void og_main_quit(long* data_array, long* op_stack, long* stack_pos, 
-		    DLLTools_MethodCall_Ptr callback) {
+  void og_main_quit(VMContext& context) {
     gtk_main_quit();
   }  
 
-  void og_widget_destroy(long* data_array, long* op_stack, long* stack_pos, 
-			 DLLTools_MethodCall_Ptr callback) {
-    GtkWidget* widget = (GtkWidget*)DLLTools_GetIntValue(data_array, 0);
+  void og_widget_destroy(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_destroy(widget);
   }
   
@@ -217,30 +202,30 @@ extern "C" {
   //
   gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
     callback_data* data = (callback_data*)args;
-    DLLTools_MethodCall_Ptr callback = data->callback;
+    APITools_MethodCall_Ptr callback = data->callback;
 
 #ifdef _DEBUG
     cout << "@@@ Delete callback: cls_id=" << data->cls_id << ", mthd_id=" 
 	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
 #endif
     
-    DLLTools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
-    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
+//	APITools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
+//    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
     
     return TRUE;
   }
 
   void callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
-    DLLTools_MethodCall_Ptr callback = data->callback;
+    APITools_MethodCall_Ptr callback = data->callback;
 
 #ifdef _DEBUG
     cout << "@@@ Callback: cls_id=" << data->cls_id << ", mthd_id=" 
 	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
 #endif
     
-    DLLTools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
-    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
+//    APITools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
+//    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
     
     // TODO: "data" memory is freed when the application exits 
     // and need to stay allocated for the live of the appliction
