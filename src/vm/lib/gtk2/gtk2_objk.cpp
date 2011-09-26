@@ -12,12 +12,11 @@ extern "C" {
   // callback holder
   //
   typedef struct _callback_data {
-    int cls_id;
-    int mthd_id;
-    long* op_stack;
-    long* stack_pos;
-    long* self;
-    APITools_MethodCall_Ptr callback;
+    VMContext context;
+	int cls_id;
+	int mthd_id;
+	long* self;
+    APITools_MethodCallId_Ptr callback;
   } callback_data;
   
   //
@@ -86,12 +85,11 @@ extern "C" {
     int mthd_id = APITools_GetFunctionValue(context, 3, MTHD_ID);
     
     callback_data* data = new callback_data;
-    data->cls_id = cls_id;
-    data->mthd_id = mthd_id;
-    data->op_stack = context.op_stack;
-    data->stack_pos = context.stack_pos;
-    data->self = (long*)context.data_array[ARRAY_HEADER_OFFSET];
-    data->callback = context.method_call;
+    data->context = context;
+	data->self = self;
+	data->cls_id = cls_id;
+	data->mthd_id = mthd_id;
+    data->callback = context.method_call_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
@@ -128,12 +126,11 @@ extern "C" {
     int mthd_id = APITools_GetIntValue(context, 4);
     
     callback_data* data = new callback_data;
-    data->cls_id = cls_id;
-    data->mthd_id = mthd_id;
-    data->op_stack = context.op_stack;
-    data->stack_pos = context.stack_pos;
-    data->self = (long*)context.data_array[ARRAY_HEADER_OFFSET + 1];
-    data->callback = context.method_call;
+    data->context = context;
+	data->self = self;
+	data->cls_id = cls_id;
+	data->mthd_id = mthd_id;
+    data->callback = context.method_call_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
@@ -202,30 +199,30 @@ extern "C" {
   //
   gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
     callback_data* data = (callback_data*)args;
-    APITools_MethodCall_Ptr callback = data->callback;
+    APITools_MethodCallId_Ptr callback = data->callback;
 
 #ifdef _DEBUG
     cout << "@@@ Delete callback: cls_id=" << data->cls_id << ", mthd_id=" 
 	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
 #endif
     
-//	APITools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
-//    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
+	APITools_PushInt(data->context, (long)data->self);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     return TRUE;
   }
 
   void callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
-    APITools_MethodCall_Ptr callback = data->callback;
+    APITools_MethodCallId_Ptr callback = data->callback;
 
 #ifdef _DEBUG
     cout << "@@@ Callback: cls_id=" << data->cls_id << ", mthd_id=" 
 	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
 #endif
     
-//    APITools_PushInt(data->op_stack, data->stack_pos, (long)data->self);
-//    (*callback)(data->op_stack, data->stack_pos, NULL, data->cls_id, data->mthd_id);
+    APITools_PushInt(data->context, (long)data->self);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     // TODO: "data" memory is freed when the application exits 
     // and need to stay allocated for the live of the appliction

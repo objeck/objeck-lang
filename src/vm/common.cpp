@@ -453,7 +453,8 @@ void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance,
 }
 
 void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
-			 const char* cls_id, const char* mthd_id) {
+			 const char* cls_id, const char* mthd_id) 
+{
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
@@ -471,4 +472,26 @@ void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance,
     exit(1);
   }
 }
+
+void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance, 
+			 const int cls_id, const int mthd_id) 
+{
+  StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+  if(cls) {
+    StackMethod* mthd = cls->GetMethod(mthd_id);
+    if(mthd) {
+      Runtime::StackInterpreter intpr;
+      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, instance, false);
+    }
+    else {
+      cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
+      exit(1);
+    }
+  }
+  else {
+    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
+    exit(1);
+  }
+}
+
 #endif
