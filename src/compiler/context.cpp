@@ -2056,6 +2056,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int depth)
 {
+  Type* tmp = NULL;
   Expression* left = expression->GetLeft();
   switch(left->GetExpressionType()) {
   case AND_EXPR:
@@ -2144,7 +2145,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
       ProcessError(expression, "Invalid mathematical operation");
     }
     else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
-	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
+	    ((tmp = GetExpressionType(right, depth + 1)) && tmp->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     else if(left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE || 
@@ -2162,7 +2163,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
       ProcessError(expression, "Invalid mathematical operation");
     }
     else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
-	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
+	    ((tmp = GetExpressionType(right, depth + 1)) && tmp->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     
@@ -2190,7 +2191,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
       ProcessError(expression, "Invalid mathematical operation");
     }
     else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
-	    GetExpressionType(right, depth + 1)->GetType() == CLASS_TYPE) {
+	    ((tmp = GetExpressionType(right, depth + 1)) && tmp->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     break;
