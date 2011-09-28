@@ -686,6 +686,15 @@ void* MemoryManager::CheckJitRoots(void* arg)
       
       // update address based upon type
       switch(dclrs[j]->type) {
+      case FUNC_PARM:
+#ifdef _DEBUG
+        cout << "\t" << j << ": FUNC_PARM: value=" << (*mem) 
+	     << "," << *(mem + 1) << endl;
+#endif
+        // update
+        mem += 2;
+        break;
+	
       case INT_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": INT_PARM: value=" << (*mem) << endl;
@@ -861,6 +870,15 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     // update address based upon type
     switch(dclrs[i]->type) {
+    case FUNC_PARM:
+#ifdef _DEBUG
+      cout << "\t" << i << ": FUNC_PARM: value=" << (*mem) 
+	   << "," << *(mem + 1)<< endl;
+#endif
+      // update
+      mem += 2;
+      break;
+
     case INT_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
