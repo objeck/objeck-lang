@@ -930,6 +930,30 @@ bundle Structure {
 		}
 	}
 
+	class IntArrayHolder {
+		@values : Int[];
+
+		New(values : Int[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Int[] {
+			return @values;
+		}
+	}
+	
+	class FloatArrayHolder {
+		@values : Float[];
+
+		New(values : Float[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Float[] {
+			return @values;
+		}
+	}
+	
 	class IntHolder from Compare {
 		@value : Int;
 

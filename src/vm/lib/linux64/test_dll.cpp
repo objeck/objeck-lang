@@ -8,6 +8,12 @@ extern "C" {
   void load_lib() {}
   void unload_lib() {}
   
+  void bar(VMContext& context) {
+    long* array = (long*)APITools_GetIntValue(context, 0);
+    cout << APITools_GetFloatArrayElement(array, 0) << endl;	
+		
+  }
+
   void foo(VMContext& context) {
     int size = APITools_GetArgumentCount(context);
     cout << size << endl;
