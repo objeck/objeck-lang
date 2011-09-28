@@ -371,6 +371,10 @@ namespace backend {
 	  case instructions::OBJ_ARY_PARM:	 
 	    cout << "  " << i << ": OBJ_ARY_PARM" << endl;	 
 	    break;
+	    
+	  case instructions::FUNC_PARM:	 
+	    cout << "  " << i << ": FUNC_PARM" << endl;	 
+	    break;
  	 
 	  default:	 
 	    break;	 
