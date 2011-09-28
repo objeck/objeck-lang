@@ -1,3 +1,7 @@
+10/28/11
+* fixed memory manager bug related to the scanning of methods with higher-order functions and statically
+* fixed memory manager bug related attempted scanning of static objects
+-----
 10/21/1
 * fixed bug related to calling methods on static strings with 1 or more parameters 
 * fixed string 'trim' 
