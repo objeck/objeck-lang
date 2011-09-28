@@ -52,10 +52,10 @@ struct VMContext {
   long* data_array;
   long* op_stack;
   long* stack_pos;
-  APITools_MethodCall_Ptr method_call;
-  APITools_MethodCallId_Ptr method_call_id;
-  APITools_AllocateObject_Ptr alloc_obj;
   APITools_AllocateArray_Ptr alloc_array;
+  APITools_AllocateObject_Ptr alloc_obj;
+  APITools_MethodCall_Ptr call_method_by_name;
+  APITools_MethodCallId_Ptr call_method_by_id;
 };
 
 // function identifiers consist of two integer IDs
@@ -71,6 +71,58 @@ int APITools_GetArgumentCount(VMContext &context) {
   }
 
   return 0;
+}
+
+// TODO: pop return values
+// TODO: array support
+
+long APITools_GetArraySize(long* array, int index) {
+  return array[0];
+}
+
+long APITools_GetIntArrayElement(long* array, int index) {
+  const long src_array_len = array[0];
+  if(index < src_array_len) {
+    long* src_array_ptr = array + 3;
+    return src_array_ptr[index];
+  }
+  return 0;
+}
+
+void APITools_SetIntArrayElement(long* array, int index, long value) {
+  const long src_array_len = array[0];
+  if(index < src_array_len) {
+    long* src_array_ptr = array + 3;
+    src_array_ptr[index] = value;
+  }
+}
+
+double APITools_GetFloatArrayElement(long* array, int index) {
+  const long src_array_len = array[0];
+  if(index < src_array_len) {
+    long* src_array_ptr = array + 3;
+    double value;
+#ifdef _X64
+    memcpy(&value, &src_array_ptr[index], sizeof(value));
+#else
+    memcpy(&value, &src_array_ptr[index * 2], sizeof(value));
+#endif
+    return value;
+  }
+  
+  return 0.0;
+}
+
+void APITools_SetFloatArrayElement(long* array, int index, double value) {
+  const long src_array_len = array[0];
+  if(index < src_array_len) {
+    long* src_array_ptr = array + 3;
+#ifdef _X64
+    memcpy(&src_array_ptr[index], &value, sizeof(value));
+#else
+    memcpy(&src_array_ptr[index * 2], &value, sizeof(value));
+#endif
+  }
 }
 
 // gets the requested function ID from an Object[]
@@ -263,7 +315,7 @@ void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_na
   size_t delim = qualified_method_name.find(':');
   if(delim != string::npos) {
     string cls_name = qualified_method_name.substr(0, delim);
-    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
+    (*context.call_method_by_name)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
     
 #ifdef _DEBUG
     assert(*context.stack_pos == 0);
@@ -277,35 +329,11 @@ void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_na
 
 // invokes a runtime Objeck method
 void APITools_CallMethod(VMContext &context, long* instance, const int cls_id, const int mthd_id) {
-  (*context.method_call_id)(context.op_stack, context.stack_pos, instance, cls_id, mthd_id);
+  (*context.call_method_by_id)(context.op_stack, context.stack_pos, instance, cls_id, mthd_id);
     
 #ifdef _DEBUG
     assert(*context.stack_pos == 0);
 #endif
-}
-
-// invokes a runtime Objeck method that returns a value, which may be a point to memory
-long APITools_CallMethodWithReturn(VMContext &context, long* instance, const char* mthd_name) {
-  string qualified_method_name(mthd_name);
-  size_t delim = qualified_method_name.find(':');
-  if(delim != string::npos) {
-    string cls_name = qualified_method_name.substr(0, delim);
-    (*context.method_call)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
-    
-#ifdef _DEBUG
-    assert(*context.stack_pos > 0);
-#endif
-    long rtrn_value = context.op_stack[--(*context.stack_pos)];
-#ifdef _DEBUG
-    assert(*context.stack_pos == 0);
-#endif
-    
-    return rtrn_value;
-  }
-  else {
-    cerr << ">>> DLL call: Invalid method name: '" << mthd_name << "'" << endl;
-    exit(1);
-  }
 }
 
 // pushes an integer value onto the runtime stack
