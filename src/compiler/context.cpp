@@ -256,29 +256,29 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
   for(unsigned int i = 0; i < methods.size(); i++) {
     AnalyzeMethod(methods[i], i, depth + 1);
   }
-  
+
   // look for parent virutal methods
   if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
     if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
-      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " + 
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " +
 		   current_class->GetParent()->GetName());
     }
   }
   else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
     if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
-      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " + 
+      ProcessError(current_class, "Not all virtual methods have been implemented for the class/interface: " +
 		   current_class->GetLibraryParent()->GetName());
     }
   }
-  
+
   AnalyzeInterfaces(klass, depth);
 }
 
 /****************************
- * Checks for interface 
+ * Checks for interface
  * implementations
  ****************************/
-void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth) 
+void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 {
   vector<string> interface_names = current_class->GetInterfaceNames();
   for(unsigned int i = 0; i < interface_names.size(); i++) {
@@ -294,7 +294,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
       }
       // ensure implementation
       if(!AnalyzeVirtualMethods(current_class, inf_klass, depth)) {
-	ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
+	ProcessError(current_class, "Not all methods have been implemented for the interface: " +
 		     inf_klass->GetName());
       }
     }
@@ -309,10 +309,10 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	  if(!lib_method->IsVirtual()) {
 	    ProcessError(current_class, "Interface method must be defined as 'virtual'");
 	  }
-	}	
+	}
 	// ensure implementation
 	if(!AnalyzeVirtualMethods(current_class, inf_lib_klass, depth)) {
-	  ProcessError(current_class, "Not all methods have been implemented for the interface: " + 
+	  ProcessError(current_class, "Not all methods have been implemented for the interface: " +
 		       inf_lib_klass->GetName());
 	}
       }
@@ -327,7 +327,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
  * Checks for virutal method
  * implementations
  ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, int depth) 
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, int depth)
 {
   bool virtual_methods_defined = true;
   // virutal methods
@@ -337,7 +337,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
       // validate that methods have been implemented
       Method* virtual_method = parent_methods[i];
       string virtual_method_name = virtual_method->GetEncodedName();
-	
+
       Method* impl_method = NULL;
       // check method
       int offset = (int)virtual_method_name.find_first_of(':');
@@ -345,7 +345,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
 	const string encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
 	impl_method = impl_class->GetMethod(encoded_name);
       }
-	
+
       if(impl_method) {
 	// check method types
 	if(impl_method->GetMethodType() != virtual_method->GetMethodType()) {
@@ -358,15 +358,15 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
 	if(impl_return->GetType() != virtual_return->GetType()) {
 	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       parent->GetName());
-	} 
+	}
 	else if(impl_return->GetType() == CLASS_TYPE &&
 		impl_return->GetClassName() != virtual_return->GetClassName()) {
 	  Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
 	  Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
 	  if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(), 
+	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
 								      program->GetUses());
-	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(), 
+	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
 									 program->GetUses());
 	    if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
 	      ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
@@ -383,17 +383,17 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
 	if(impl_method->IsVirtual()) {
 	  ProcessError(impl_class, "Implementation method cannot be virtual");
 	}
-      } 
+      }
       else {
 	virtual_methods_defined = false;
       }
     }
   }
-  
+
   return virtual_methods_defined;
 }
 
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth) 
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth)
 {
   bool virtual_methods_defined = true;
 
@@ -423,14 +423,14 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
 	if(impl_return->GetType() != virtual_return->GetType()) {
 	  ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
 		       lib_parent->GetName());
-	} 
+	}
 	else if(impl_return->GetType() == CLASS_TYPE) {
 	  Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
 	  Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
 	  if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(), 
+	    LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
 								      program->GetUses());
-	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(), 
+	    LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
 									 program->GetUses());
 	    if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
 	      ProcessError(impl_class, "Not all virtual methods have been defined for class/interface: " +
@@ -452,7 +452,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       }
     }
   }
-    
+
   return virtual_methods_defined;
 }
 
@@ -477,7 +477,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
   for(unsigned int i = 0; i < declarations.size(); i++) {
     AnalyzeDeclaration(declarations[i], depth + 1);
   }
-  
+
   // process statements if function/method is not virtual
   if(!current_method->IsVirtual()) {
     // statements
@@ -487,12 +487,12 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
     }
     // check for parent call
     if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-        current_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
-       (current_class->GetParent() || (current_class->GetLibraryParent() && 
+        current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       (current_class->GetParent() || (current_class->GetLibraryParent() &&
 				       current_class->GetLibraryParent()->GetName() != "System.Base"))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
         ProcessError(current_method, "Parent call required");
-      } 
+      }
       else {
         MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
         if(mthd_call->GetCallType() != PARENT_CALL) {
@@ -500,7 +500,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
         }
       }
     }
-    
+
 #ifndef _SYSTEM
     // check for return
     if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
@@ -573,11 +573,11 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
     }
   }
     break;
-    
+
   case ASSIGN_STMT:
     AnalyzeAssignment(static_cast<Assignment*>(statement), depth);
     break;
-    
+
   case SIMPLE_STMT:
     AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
     break;
@@ -589,7 +589,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case IF_STMT:
     AnalyzeIf(static_cast<If*>(statement), depth);
     break;
-    
+
   case DO_WHILE_STMT:
     AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
     break;
@@ -601,7 +601,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case FOR_STMT:
     AnalyzeFor(static_cast<For*>(statement), depth);
     break;
-    
+
   case BREAK_STMT:
     if(!in_loop) {
       ProcessError(statement, "Breaks are only allowed in loops.");
@@ -611,7 +611,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
   case SELECT_STMT:
     AnalyzeSelect(static_cast<Select*>(statement), depth);
     break;
-    
+
   case CRITICAL_STMT:
     AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
     break;
@@ -631,19 +631,19 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
   case STAT_ARY_EXPR:
     AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
     break;
-    
+
   case CHAR_STR_EXPR:
     AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
     break;
-    
+
   case COND_EXPR:
     AnalyzeConditional(static_cast<Cond*>(expression), depth);
     break;
-    
+
   case METHOD_CALL_EXPR:
     AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
     break;
-    
+
   case NIL_LIT_EXPR:
 #ifdef _DEBUG
     Show("nil literal", expression->GetLineNumber(), depth);
@@ -710,36 +710,36 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
 
   // check expression method call
   AnalyzeExpressionMethodCall(expression, depth + 1);
-  
+
   // check cast
   AnalyzeCast(expression, depth + 1);
 }
 
 /****************************
- * Analyzes a ternary 
+ * Analyzes a ternary
  * conditional
  ****************************/
 void ContextAnalyzer::AnalyzeConditional(Cond* conditional, int depth) {
 #ifdef _DEBUG
   Show("conditional expression", conditional->GetLineNumber(), depth);
 #endif
-  
+
   // check expressions
-  AnalyzeExpression(conditional->GetCondExpression(), depth + 1);  
+  AnalyzeExpression(conditional->GetCondExpression(), depth + 1);
   Expression* if_conditional = conditional->GetExpression();
-  AnalyzeExpression(if_conditional, depth + 1);  
+  AnalyzeExpression(if_conditional, depth + 1);
   Expression* else_conditional = conditional->GetElseExpression();
   AnalyzeExpression(else_conditional, depth + 1);
-  
+
   Type* if_type = GetExpressionType(if_conditional, depth + 1);
   Type* else_type = GetExpressionType(else_conditional, depth + 1);
-  
+
   // validate types
   if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
-    AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);    
+    AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
   }
-  else if(if_type->GetType() != else_type->GetType() || 
-	  if_type->GetType() == NIL_TYPE || 
+  else if(if_type->GetType() != else_type->GetType() ||
+	  if_type->GetType() == NIL_TYPE ||
 	  else_type->GetType() == NIL_TYPE) {
     ProcessError(conditional, "'?' invalid type mismatch");
   }
@@ -756,13 +756,13 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int dept
   int id = program->GetCharStringId(str);
   if(id > -1) {
     char_str->SetId(id);
-  } 
+  }
   else {
     char_str->SetId(char_str_index);
     program->AddCharString(str, char_str_index);
     char_str_index++;
   }
-  
+
 #ifndef _SYSTEM
   LibraryClass* lib_klass = linker->SearchClassLibraries("System.String", program->GetUses());
   if(lib_klass) {
@@ -770,20 +770,20 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int dept
   }
   else {
     ProcessError(char_str, "Internal compiler error.");
-  } 
+  }
 #endif
 }
 
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
   if(array->GetDimension() < 0) {
     ProcessError(array, "Invalid static array definition.");
-  }  
+  }
   else if(!array->IsMatchingTypes()) {
     ProcessError(array, "Array element types do not match.");
-  }  
+  }
   else if(!array->IsMatchingLenghts()) {
     ProcessError(array, "Array dimension lenghts do not match.");
-  }  
+  }
   else {
     Type* type = TypeFactory::Instance()->MakeType(array->GetType());
     type->SetDimension(array->GetDimension());
@@ -791,14 +791,14 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       type->SetClassName("System.String");
     }
     array->SetEvalType(type, false);
-    
+
     // ensure that element sizes match dimensions
-    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();    
+    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
     unsigned int total_size = array->GetSize(0);
     for(int i = 1; i < array->GetDimension(); i++) {
       total_size *= array->GetSize(i);
     }
-    
+
     if(all_elements.size() != total_size) {
       ProcessError(array, "Element counts do not match dimension sizes");
     }
@@ -808,7 +808,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       int id = program->GetIntStringId(all_elements);
       if(id > -1) {
 	array->SetId(id);
-      } 
+      }
       else {
 	array->SetId(int_str_index);
 	program->AddIntString(all_elements, int_str_index);
@@ -816,12 +816,12 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       }
     }
       break;
-      
+
     case FLOAT_TYPE: {
       int id = program->GetFloatStringId(all_elements);
       if(id > -1) {
 	array->SetId(id);
-      } 
+      }
       else {
 	array->SetId(float_str_index);
 	program->AddFloatString(all_elements, float_str_index);
@@ -829,7 +829,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       }
     }
       break;
-      
+
     case CHAR_TYPE: {
       // copy string elements
       string str;
@@ -840,7 +840,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       int id = program->GetCharStringId(str);
       if(id > -1) {
 	array->SetId(id);
-      } 
+      }
       else {
 	array->SetId(char_str_index);
 	program->AddCharString(str, char_str_index);
@@ -848,9 +848,9 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       }
     }
       break;
-      
+
     case CLASS_TYPE:
-      for(unsigned int i = 0; i < all_elements.size(); i++) {	
+      for(unsigned int i = 0; i < all_elements.size(); i++) {
 	AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
       }
       break;
@@ -896,7 +896,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
       // check dimensions
       if(entry->GetType() && entry->GetType()->GetDimension() == (int)indices->GetExpressions().size()) {
         AnalyzeIndices(indices, depth + 1);
-      } 
+      }
       else {
         ProcessError(variable, "Dimension size mismatch or uninitialized type");
       }
@@ -1023,11 +1023,11 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
       } else if(lib_klass) {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       } else {
-        ProcessError(static_cast<Expression*>(method_call), 
+        ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined class: '" + variable_name + "'");
       }
     } else {
-      ProcessError(static_cast<Expression*>(method_call), 
+      ProcessError(static_cast<Expression*>(method_call),
 		   "Undefined class: '" + variable_name + "'");
     }
   }
@@ -1038,14 +1038,14 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
  * method call
  ****************************/
 bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
-						  Class* &klass, LibraryClass* &lib_klass, 
+						  Class* &klass, LibraryClass* &lib_klass,
 						  bool &is_enum_call)
 {
   // data type call
   Type* type;
   if(expression->GetCastType()) {
     type = expression->GetCastType();
-  } 
+  }
   else {
     type = expression->GetEvalType();
   }
@@ -1059,7 +1059,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, string
     const int dimension = IsScalar(expression) ? 0 : type->GetDimension();
     return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
   }
-  
+
   return false;
 }
 
@@ -1228,13 +1228,13 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int de
     string encoding;
     Class* klass = NULL;
     LibraryClass* lib_klass = NULL;
-    
+
     // TODO: fix need to change intermediate emit code so that element value
     // is loaded instead of instance
     if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {
       ProcessError(expression, "Method call from element cast not allowed");
     }
-    
+
     // check expression class
     bool is_enum_call = false;
     if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
@@ -1347,13 +1347,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
         // update
         parent = SearchProgramClasses(parent->GetParentName());
       }
-    } 
+    }
     else if(klass->GetLibraryParent()) {
       // check parent library class for method
       LibraryClass* lib_parent = klass->GetLibraryParent();
       method_call->SetOriginalClass(klass);
       string encoding;
-      AnalyzeMethodCall(lib_parent, method_call, is_expr, 
+      AnalyzeMethodCall(lib_parent, method_call, is_expr,
 			encoding, true, depth + 1);
       return;
     }
@@ -1403,7 +1403,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     }
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
-  } 
+  }
   else {
     const string &mthd_name = method_call->GetMethodName();
     const string &var_name = method_call->GetVariableName();
@@ -1411,7 +1411,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-    } 
+    }
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
@@ -1492,7 +1492,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
     // next call
     AnalyzeExpressionMethodCall(method_call, depth + 1);
-  } 
+  }
   else {
     // dynamic function call that is not bound to a class/function until runtime
     SymbolEntry* entry = GetEntry(method_call->GetMethodName());
@@ -1509,7 +1509,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 	    dyn_func_params += '*';
 	  }
 	  dyn_func_params += ',';
-	}      
+	}
       }
       else {
 	// TODO: hackish!
@@ -1521,8 +1521,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       }
       type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
 
-      const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);      
-      
+      const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
+
       // check parameters again dynamic definition
       if(dyn_func_params != call_params) {
 	ProcessError(static_cast<Expression*>(method_call),
@@ -1530,14 +1530,14 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 		     "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
 
       }
-      
+
       //  set entry reference and return type
       method_call->SetDynamicFunctionCall(entry);
       method_call->SetEvalType(type->GetFunctionReturn(), true);
       if(method_call->GetMethodCall()) {
 	method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
       }
-      
+
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
@@ -1547,9 +1547,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
       if(mthd_name.size() > 0) {
 	ProcessError(static_cast<Expression*>(method_call),
-		     "Undefined function/method call: '" + mthd_name + 
+		     "Undefined function/method call: '" + mthd_name +
 		     "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      } 
+      }
       else {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined function/method call: '" + var_name +
@@ -1565,9 +1565,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
   const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
-  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + 
+  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() +
     ":" + encoding + func_encoding;
-  
+
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
     const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();
@@ -1575,17 +1575,17 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
     method_call->SetEvalType(type, true);
-    
+
     if(!method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
     }
-    
+
     if(method->IsVirtual()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods cannot be virtual");
     }
-    
+
     // check return type
-    Type* rtrn_type = method_call->GetFunctionReturn();    
+    Type* rtrn_type = method_call->GetFunctionReturn();
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
       ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
     }
@@ -1597,11 +1597,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 	}
       }
       else {
-	ProcessError(static_cast<Expression*>(method_call), 
+	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
-      }	
+      }
     }
-    
+
     method->GetClass()->SetCalled(true);
     method_call->SetOriginalClass(klass);
     method_call->SetMethod(method, false);
@@ -1610,11 +1610,11 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   else {
     const string &mthd_name = method_call->GetMethodName();
     const string &var_name = method_call->GetVariableName();
-    
+
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-    } 
+    }
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
@@ -1625,17 +1625,17 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
 					       string &encoding, int depth) {
   const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
-  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + 
+  const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() +
     ":" + encoding + func_encoding;
-  
+
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
-    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();    
+    const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();
     Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
     type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
     method_call->SetEvalType(type, true);
-    
+
     if(!method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods are not allowed, only functions");
     }
@@ -1643,9 +1643,9 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     if(method->IsVirtual()) {
       ProcessError(static_cast<Expression*>(method_call), "References to methods cannot be virtual");
     }
-    
+
     // check return type
-    Type* rtrn_type = method_call->GetFunctionReturn();    
+    Type* rtrn_type = method_call->GetFunctionReturn();
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
       ProcessError(static_cast<Expression*>(method_call), "Mismatch function return types");
     }
@@ -1657,22 +1657,22 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
 	}
       }
       else {
-	ProcessError(static_cast<Expression*>(method_call), 
+	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
-      }	
+      }
     }
     method->GetLibraryClass()->SetCalled(true);
     method_call->SetOriginalLibraryClass(klass);
-    method_call->SetLibraryMethod(method, false);    
+    method_call->SetLibraryMethod(method, false);
   }
   else {
     const string &mthd_name = method_call->GetMethodName();
     const string &var_name = method_call->GetVariableName();
-    
+
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-    } 
+    }
     else {
       ProcessError(static_cast<Expression*>(method_call), "Undefined function/method call: '" +
                    var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
@@ -1687,21 +1687,21 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
 {
   // cast
   if(expression->GetCastType()) {
-    Type* cast_type = expression->GetCastType();    
+    Type* cast_type = expression->GetCastType();
     // cannot cast across different dimensions
     if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() &&
        cast_type->GetDimension() != expression->GetBaseType()->GetDimension()) {
       ProcessError(expression, "Dimension size mismatch");
-    }    
+    }
     AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
   }
   // typeof
   else if(expression->GetTypeOf()) {
-    if(expression->GetTypeOf()->GetType() != CLASS_TYPE || 
+    if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
        expression->GetEvalType()->GetType() != CLASS_TYPE) {
       ProcessError(expression, "Invalid 'TypeOf' check, only complex classes are supported");
     }
-    
+
     Type* type_of = expression->GetTypeOf();
     if(SearchProgramClasses(type_of->GetClassName())) {
       Class* klass = SearchProgramClasses(type_of->GetClassName());
@@ -1755,7 +1755,7 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, int depth)
   Expression* expression = simple->GetExpression();
   AnalyzeExpression(expression, depth + 1);
   AnalyzeExpressionMethodCall(expression, depth);
-  
+
   // ensure it's a valid statement
   if(!expression->GetMethodCall()) {
     ProcessError(expression, "Invalid statement");
@@ -1848,13 +1848,13 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, "Duplicate select value");
           }
-        } 
+        }
 	else if(mthd_call->GetLibraryEnumItem()) {
           value = mthd_call->GetLibraryEnumItem()->GetId();
           if(DuplicateCaseItem(label_statements, value)) {
             ProcessError(expression, "Duplicate select value");
           }
-        } 
+        }
 	else {
           ProcessError(expression, "Expected integer literal or enum item");
         }
@@ -1927,7 +1927,7 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, int depth)
 #ifdef _DEBUG
   Show("do/while", do_while_stmt->GetLineNumber(), depth);
 #endif
-  
+
   // 'do/while' statements
   in_loop = true;
   AnalyzeStatements(do_while_stmt->GetStatements(), depth + 1);
@@ -2009,7 +2009,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
     AnalyzeExpressionMethodCall(expression, depth + 1);
     expression = expression->GetMethodCall();
   }
-  
+
   // if variable, bind it and update the instance and entry
   if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
     SymbolEntry* entry = variable->GetEntry();
@@ -2027,13 +2027,13 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
 	Variable* expr_variable = static_cast<Variable*>(expression);
 	if(entry->GetType() && expr_variable->GetIndices()) {
 	  variable->GetBaseType()->SetDimension(0);
-	  variable->GetEvalType()->SetDimension(0);	 
+	  variable->GetEvalType()->SetDimension(0);
 	  entry->GetType()->SetDimension(0);
 	}
       }
     }
   }
-  
+
   Type* eval_type = variable->GetEvalType();
   AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
 
@@ -2127,7 +2127,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case NEQL_EXPR:
     if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } 
+    }
     else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
@@ -2140,41 +2140,41 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case GTR_EQL_EXPR:
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } 
+    }
     else if(IsEnumExpression(left) && IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE || 
-	    right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE) {
+    else if((left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE) ||
+	    (right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
     break;
-    
-  case MOD_EXPR: 
+
+  case MOD_EXPR:
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } 
+    }
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    
+
     if((left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE && left->GetCastType() && left->GetCastType()->GetType() != INT_TYPE) ||
-       (right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE && right->GetCastType() && right->GetCastType()->GetType() != INT_TYPE) || 
+       (right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE && right->GetCastType() && right->GetCastType()->GetType() != INT_TYPE) ||
        (left->GetCastType() && left->GetCastType()->GetType() == FLOAT_TYPE) ||
        (right->GetCastType() && right->GetCastType()->GetType() == FLOAT_TYPE)) {
       ProcessError(expression, "Expected Byte, Char or Int class");
-    } 
+    }
     break;
-    
+
   case ADD_EXPR:
   case SUB_EXPR:
   case MUL_EXPR:
@@ -2186,11 +2186,11 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
   case BIT_XOR_EXPR:
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
-    } 
+    }
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE || 
+    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
@@ -2222,7 +2222,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
     if(right->GetType() != NIL_TYPE) {
       ProcessError(left_expr, "Invalid array calculation");
     }
-  } 
+  }
   else {
     switch(left->GetType()) {
     case VAR_TYPE:
@@ -2231,7 +2231,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
       case FUNC_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Var and Function");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Var and Var");
         break;
@@ -2271,7 +2271,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
       case FUNC_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Nil and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Nil and Var");
         break;
@@ -2421,7 +2421,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
       case FUNC_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Float and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Float and Var");
         break;
@@ -2459,7 +2459,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
         ProcessError(left_expr, "Invalid operation using classes: " +
                      left->GetClassName() + " and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: " +
                      left->GetClassName() + " and Var");
@@ -2506,7 +2506,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
       case FUNC_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Bool and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: Bool and Var");
         break;
@@ -2541,28 +2541,28 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, i
         break;
       }
       break;
-      
+
     case FUNC_TYPE:
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE: {
 	if(left->GetClassName().size() == 0) {
-	  left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(), 
+	  left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(),
 						left->GetFunctionReturn()));
 	}
 
 	if(right->GetClassName().size() == 0) {
-	  right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(), 
+	  right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(),
 						 right->GetFunctionReturn()));
 	}
-	
+
 	if(left->GetClassName() != right->GetClassName()) {
-	  ProcessError(expression, "Invalid operation using functions: " + 
+	  ProcessError(expression, "Invalid operation using functions: " +
 		       left->GetClassName() + " and " + right->GetClassName());
 	}
       }
         break;
-	
+
       case VAR_TYPE:
         ProcessError(left_expr, "Invalid operation using classes: function reference and Var");
         break;
@@ -2618,7 +2618,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
     return;
   }
 
-  if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+  if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
      expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
     ProcessError(expression, "Invalid operation method does not return a value");
     return;
@@ -2641,7 +2641,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case CLASS_TYPE:
       case BOOLEAN_TYPE:
         break;
-	
+
       default:
 	break;
       }
@@ -2719,7 +2719,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-	if(!SearchProgramEnums(right->GetClassName()) && 
+	if(!SearchProgramEnums(right->GetClassName()) &&
 	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
 	  ProcessError(expression, "Invalid cast with classes: Byte and " + right->GetClassName());
 	}
@@ -2762,7 +2762,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-	if(!SearchProgramEnums(right->GetClassName()) && 
+	if(!SearchProgramEnums(right->GetClassName()) &&
 	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
 	  ProcessError(expression, "Invalid cast with classes: Char and " + right->GetClassName());
 	}
@@ -2780,7 +2780,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case FUNC_TYPE:
         ProcessError(expression, "Invalid operation using classes: Int and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid operation using classes: Var and Int");
         break;
@@ -2805,9 +2805,9 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case CLASS_TYPE:
-	if(!SearchProgramEnums(right->GetClassName()) && 
+	if(!SearchProgramEnums(right->GetClassName()) &&
 	   !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
-	  ProcessError(expression, "Invalid cast with classes: Int and " + 
+	  ProcessError(expression, "Invalid cast with classes: Int and " +
 		       right->GetClassName());
 	}
         break;
@@ -2864,7 +2864,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       case FUNC_TYPE:
 	ProcessError(expression, "Invalid operation using classes: " + left->GetClassName() + " and function reference");
         break;
-	
+
       case VAR_TYPE:
         ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Var");
         break;
@@ -2873,21 +2873,21 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
         break;
 
       case BYTE_TYPE:
-	if(!SearchProgramEnums(left->GetClassName()) && 
+	if(!SearchProgramEnums(left->GetClassName()) &&
 	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
 	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Byte");
 	}
         break;
 
       case CHAR_TYPE:
-	if(!SearchProgramEnums(left->GetClassName()) && 
+	if(!SearchProgramEnums(left->GetClassName()) &&
 	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
 	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Char");
 	}
         break;
 
       case INT_TYPE:
-	if(!SearchProgramEnums(left->GetClassName()) && 
+	if(!SearchProgramEnums(left->GetClassName()) &&
 	   !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
 	  ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Int");
 	}
@@ -2955,17 +2955,17 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
       switch(right->GetType()) {
       case FUNC_TYPE: {
 	if(left->GetClassName().size() == 0) {
-	  left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(), 
+	  left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(),
 						left->GetFunctionReturn()));
 	}
 
 	if(right->GetClassName().size() == 0) {
-	  right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(), 
+	  right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(),
 						 right->GetFunctionReturn()));
 	}
-	
+
 	if(left->GetClassName() != right->GetClassName()) {
-	  ProcessError(expression, "Invalid operation using mismatch functions: " + 
+	  ProcessError(expression, "Invalid operation using mismatch functions: " +
 		       left->GetClassName() + " and " + right->GetClassName());
 	}
       }
@@ -3059,7 +3059,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
                      left->GetClassName() + "' and '" +
                      right->GetClassName() + "'");
       }
-    } 
+    }
     else {
       ProcessError(expression, "Invalid cast between enum and class");
     }
@@ -3178,7 +3178,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
       else {
         // TODO: workaround for class cast issue
         // expression->SetToLibraryClass(left_lib_class);
-	
+
 	ProcessError(expression, "Invalid cast between classes: '" +
                      left_lib_class->GetName() + "' and '" +
                      right_lib_class->GetName() + "'");        return;
@@ -3186,7 +3186,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
     } else {
       ProcessError(expression, "Invalid cast between class and enum");
     }
-  } 
+  }
   else {
     ProcessError(expression, "Invalid class or enum");
   }
@@ -3207,15 +3207,15 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
-      Type* type = entry->GetType();      
-      const string encoded_name = EncodeFunctionType(type->GetFunctionParameters(), 
-						     type->GetFunctionReturn());      
+      Type* type = entry->GetType();
+      const string encoded_name = EncodeFunctionType(type->GetFunctionParameters(),
+						     type->GetFunctionReturn());
 #ifdef _DEBUG
       cout << "Encoded function declaration: |" << encoded_name << "|" << endl;
-#endif      
+#endif
       type->SetClassName(encoded_name);
     }
-    
+
     Statement* statement = declaration->GetAssignment();
     if(statement) {
       AnalyzeStatement(statement, depth);
@@ -3223,7 +3223,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
   }
   else {
     ProcessError(declaration, "Undefined variable entry");
-  }  
+  }
 }
 
 /****************************
@@ -3244,7 +3244,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
 {
   // TODO: return direct types vs. string literals
   string encoded_name;
-  
+
   vector<Expression*> expressions = calling_params->GetExpressions();
   for(unsigned int i = 0; i < expressions.size(); i++) {
     if(expressions[i]->GetExpressionType() == VAR_EXPR) {
@@ -3298,14 +3298,14 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
           if(lib_klass) {
             encoded_name += lib_klass->GetName();
 	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
-          } 
+          }
 	  else {
             encoded_name += variable->GetName();
 	    variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, variable->GetName()), true);
           }
         }
       }
-      
+
       // dimension
       if(variable->GetIndices()) {
 	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
@@ -3314,7 +3314,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
 	  encoded_name += '*';
 	}
       }
-      
+
       encoded_name += ',';
     }
     else {
@@ -3322,26 +3322,26 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
       encoded_name += '#';
     }
   }
-  
+
   return encoded_name;
 }
 
 /****************************
  * Encodes a function type
  ****************************/
-string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {  
+string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {
   string encoded_name = "(";
   for(unsigned int i = 0; i < func_params.size(); i++) {
     // encode params
     encoded_name += EncodeType(func_params[i]);
-    
-    // encode dimension   
+
+    // encode dimension
     for(int i = 0; i < func_params[i]->GetDimension(); i++) {
       encoded_name += '*';
-    }    
+    }
     encoded_name += ',';
   }
-  
+
   // encode return
   encoded_name += ")~";
   encoded_name += EncodeType(func_rtrn);
@@ -3349,7 +3349,7 @@ string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func
   for(int i = 0; i < func_rtrn->GetDimension(); i++) {
     encoded_name += '*';
   }
-  
+
   return encoded_name;
 }
 
@@ -3367,7 +3367,7 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
-    
+
     Type* type;
     if(expression->GetCastType()) {
       type = expression->GetCastType();
@@ -3375,11 +3375,11 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
     else {
       type = expression->GetEvalType();
     }
-    
+
     if(type) {
       // encode params
       encoded_name += EncodeType(type);
-      
+
       // encode dimension
       for(int i = 0; !IsScalar(expression) && i < type->GetDimension(); i++) {
         encoded_name += '*';
@@ -3387,7 +3387,7 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
       encoded_name += ',';
     }
   }
-  
+
   return encoded_name;
 }
 
