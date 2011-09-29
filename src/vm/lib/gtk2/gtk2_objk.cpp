@@ -13,9 +13,9 @@ extern "C" {
   //
   typedef struct _callback_data {
     VMContext context;
-	int cls_id;
-	int mthd_id;
-	long* self;
+    int cls_id;
+    int mthd_id;
+    long* self;
     APITools_MethodCallId_Ptr callback;
   } callback_data;
   
@@ -86,9 +86,9 @@ extern "C" {
     
     callback_data* data = new callback_data;
     data->context = context;
-	data->self = self;
-	data->cls_id = cls_id;
-	data->mthd_id = mthd_id;
+    data->self = self;
+    data->cls_id = cls_id;
+    data->mthd_id = mthd_id;
     data->callback = context.method_call_id;
     
 #ifdef _DEBUG
@@ -127,9 +127,9 @@ extern "C" {
     
     callback_data* data = new callback_data;
     data->context = context;
-	data->self = self;
-	data->cls_id = cls_id;
-	data->mthd_id = mthd_id;
+    data->self = self;
+    data->cls_id = cls_id;
+    data->mthd_id = mthd_id;
     data->callback = context.method_call_id;
     
 #ifdef _DEBUG
@@ -206,7 +206,7 @@ extern "C" {
 	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
 #endif
     
-	APITools_PushInt(data->context, (long)data->self);
+    APITools_PushInt(data->context, (long)data->self);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     return TRUE;

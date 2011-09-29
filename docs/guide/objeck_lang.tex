@@ -721,9 +721,10 @@ struct VMContext {
   long* data_array;
   long* op_stack;
   long* stack_pos;
-  APITools_MethodCall_Ptr method_call;
-  APITools_AllocateObject_Ptr alloc_obj;
   APITools_AllocateArray_Ptr alloc_array;
+  APITools_AllocateObject_Ptr alloc_obj;
+  APITools_MethodCall_Ptr call_method_by_name;
+  APITools_MethodCallId_Ptr call_method_by_id;
 };
 \end{verbatim}
 
@@ -744,6 +745,10 @@ native C function.  The following functions are available:
 \item \begin{verbatim}APITools_CallMethod\end{verbatim}
 \item \begin{verbatim}APITools_PushInt\end{verbatim}
 \item \begin{verbatim}APITools_PushFloat\end{verbatim}
+\item \begin{verbatim}APITools_GetArraySize\end{verbatim}
+\item \begin{verbatim}APITools_SetIntArrayElement\end{verbatim}
+\item \begin{verbatim}APITools_GetFloatArrayElement\end{verbatim}
+\item \begin{verbatim}APITools_SetFloatArrayElement\end{verbatim}
 \end{itemize}
 
 \section{Debugger}
