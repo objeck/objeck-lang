@@ -89,7 +89,7 @@ extern "C" {
     data->self = self;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
-    data->callback = context.method_call_id;
+    data->callback = context.call_method_by_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
@@ -130,7 +130,7 @@ extern "C" {
     data->self = self;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
-    data->callback = context.method_call_id;
+    data->callback = context.call_method_by_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
