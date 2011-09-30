@@ -448,7 +448,6 @@ void Scanner::NextChar()
 void Scanner::Whitespace()
 {
   while(WHITE_SPACE && cur_char != EOB) {
-
     NextChar();
   }
 }

@@ -901,7 +901,7 @@ class StackProgram {
     if(char_strings) {
       for(int i = 0; i < num_char_strings; i++) {
         BYTE_VALUE* tmp = char_strings[i];
-	free(tmp);
+	delete[] tmp;
         tmp = NULL;
       }
       delete[] char_strings;
