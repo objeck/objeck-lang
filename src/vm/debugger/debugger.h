@@ -61,7 +61,7 @@ namespace Runtime {
     string file_name;
     vector<string> lines;
     int cur_line_num;
-    
+
   public:
     SourceFile(const string &fn, int l) {
       file_name = fn;
@@ -82,16 +82,16 @@ namespace Runtime {
     bool IsLoaded() {
       return lines.size() > 0;
     }
-    
+
     bool Print(int start) {
       const int window = 5;
       int end = start + window * 2;
       start--;
-      
+
       if(start >= end || start >= (int)lines.size()) {
 	return false;
       }
-      
+
       if(start - window > 0) {
         start -= window;
         end -= window;
@@ -100,7 +100,7 @@ namespace Runtime {
         start = 0;
 	end = window * 2;
       }
-      
+
       for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
 	if(i + 1 == cur_line_num) {
 	  cout << right << "=>" << setw(window) << (i + 1) << ": " << lines[i] << endl;
@@ -109,7 +109,7 @@ namespace Runtime {
 	  cout << right << setw(window + 2) << (i + 1) << ": " << lines[i] << endl;
 	}
       }
-      
+
       return true;
     }
 
@@ -117,7 +117,7 @@ namespace Runtime {
       return file_name;
     }
   };
-  
+
   /********************************
    * Interactive command line
    * debugger
@@ -130,7 +130,7 @@ namespace Runtime {
     list<UserBreak*> breaks;
     int cur_line_num;
     string cur_file_name;
-    StackFrame** cur_call_stack;    
+    StackFrame** cur_call_stack;
     long cur_call_stack_pos;
     bool is_error;
     bool is_next;
@@ -145,30 +145,30 @@ namespace Runtime {
     StackFrame* cur_frame;
     long* op_stack;
     long* stack_pos;
-    
-    
+
+
     bool FileExists(const string &file_name, bool is_exe = false) {
       ifstream touch(file_name.c_str(), ios::binary);
-      if(touch.is_open()) {	
+      if(touch.is_open()) {
 	if(is_exe) {
 	  int magic_num;
 	  touch.read((char*)&magic_num, sizeof(int));
-	  touch.close();	  	  
+	  touch.close();
 	  return magic_num == 0xdddd;
 	}
-	touch.close();	
+	touch.close();
 	return true;
       }
-      
+
       return false;
     }
 
     bool DirectoryExists(const string &dir_name) {
 #ifdef _WIN32
-      HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ, 
-			       FILE_SHARE_READ, NULL, OPEN_EXISTING, 
-			       FILE_FLAG_BACKUP_SEMANTICS, NULL);    
-    
+      HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
+			       FILE_SHARE_READ, NULL, OPEN_EXISTING,
+			       FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
       if(file == INVALID_HANDLE_VALUE) {
 	return false;
       }
@@ -185,8 +185,8 @@ namespace Runtime {
       return false;
 #endif
     }
-    
-    bool DeleteBreak(int line_num, const string &file_name) {      
+
+    bool DeleteBreak(int line_num, const string &file_name) {
       UserBreak* user_break = FindBreak(line_num, file_name);
       if(user_break) {
 	breaks.remove(user_break);
@@ -195,15 +195,15 @@ namespace Runtime {
 
       return false;
     }
-    
-    UserBreak* FindBreak(int line_num, const string &file_name) {      
+
+    UserBreak* FindBreak(int line_num, const string &file_name) {
       for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
 	UserBreak* user_break = (*iter);
 	if(user_break->line_num == line_num && user_break->file_name == file_name) {
 	  return *iter;
 	}
       }
-      
+
       return NULL;
     }
 
@@ -226,7 +226,7 @@ namespace Runtime {
 	cout << "  break: file='" << (*iter)->file_name << ":" << (*iter)->line_num << "'" << endl;
       }
     }
-    
+
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num) {
       for(int i = 0; i < dclrs_num; i++) {
 	StackDclr* dclr = dclrs[i];
@@ -235,17 +235,17 @@ namespace Runtime {
 	int param_name_index = dclrs[i]->name.find_last_of(':');
 	const string &param_name = dclrs[i]->name.substr(param_name_index + 1);
 	cout << "    parameter: name='" << param_name << "', ";
-	
+
 	// parse type
 	switch(dclr->type) {
 	case INT_PARM:
 	  cout << "type=Int" << endl;
 	  break;
-	
+
 	case FLOAT_PARM:
 	  cout << "type=Float" << endl;
 	  break;
-	  
+
 	case BYTE_ARY_PARM:
 	  cout << "type=Byte[]" << endl;
 	  break;
@@ -261,14 +261,18 @@ namespace Runtime {
 	case OBJ_PARM:
 	  cout << "type=" << cur_program->GetClass(dclr->id)->GetName() << endl;
 	  break;
-	  
+
 	case OBJ_ARY_PARM:
 	  cout << "type=Object[]" << endl;
+	  break;
+
+    case FUNC_PARM:
+	  cout << "type=Function" << endl;
 	  break;
 	}
       }
     }
-    
+
     Command* ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessExe(Load* load);
@@ -288,7 +292,7 @@ namespace Runtime {
     void EvaluateObjectReference(Reference* reference, int index, int id);
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);
     void EvaluateCalculation(CalculatedExpression* expression);
-  
+
   public:
     Debugger(const string &fn, const string &bp) {
       program_file = fn;
@@ -308,15 +312,15 @@ namespace Runtime {
       ref_mem = NULL;
       is_jmp_out = false;
     }
-    
+
     ~Debugger() {
       ClearProgram();
       ClearBreaks();
     }
-    
+
     // start debugger
     void Debug();
-  
+
     // runtime callback
     void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
 			    long call_stack_pos, StackFrame* frame);
