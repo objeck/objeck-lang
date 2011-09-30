@@ -126,7 +126,35 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_container_remove", array_args);
 		}
 	}
+	
+	# GtkHBox class
+	class GtkBox from GtkContainer {
+		method : public : PackStart(child : GtkWidget, expand : Bool, fill : Bool, padding : Int) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[3];
+			array_args[0] := child;
+			array_args[1] := IntHolder->New(expand ? 1 : 0);
+			array_args[2] := IntHolder->New(fill ? 1 : 0);
+			array_args[2] := IntHolder->New(padding);
+			lib_proxy->CallFunction("og_gtk_hbox_new", array_args);
+		}
+	}
 
+	# GtkHBox class
+	class GtkHBox from GtkBox {
+		New(homo : Bool, spacing : Int) {
+			Parent();
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(homo ? 1 : 0);
+			array_args[2] := IntHolder->New(spacing);
+			lib_proxy->CallFunction("og_gtk_hbox_new", array_args);
+			ptr_holder := array_args[0]->As(IntHolder);
+			@native_ptr := ptr_holder->Get();
+		}		
+	}
+	
 	# GtkButton class
 	class GtkButton from GtkContainer {
 		New(name : String) {
