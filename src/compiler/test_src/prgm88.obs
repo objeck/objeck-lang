@@ -20,8 +20,8 @@ bundle Default {
 			button_callback(Nil->As(GtkWidget));
 	
 			# create 
-			button := GtkButton->New("Hello World!");
-			button2 := GtkButton->New("Hello World!");
+			button := GtkButton->New("button 1");
+			button2 := GtkButton->New("button 2");
 
 			hbox := GtkHBox->New(false, 0);
 			hbox->PackStart(button->As(GtkWidget), true, true, 0);
