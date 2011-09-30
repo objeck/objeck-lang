@@ -106,7 +106,7 @@ extern "C" {
       
     case -99:
       id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)self), "destroy", 
-				GTK_SIGNAL_FUNC(gtk_main_quit), NULL);
+				G_CALLBACK(gtk_main_quit), NULL);
       break;
       
     case -98:
