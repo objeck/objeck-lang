@@ -1,0 +1,118 @@
+# depslib dependency file v1.0
+1314037272 source:c:\documents and settings\owner\my documents\code\src\compiler\types.cpp
+	"types.h"
+
+1317198702 c:\documents and settings\owner\my documents\code\src\compiler\types.h
+	<string>
+	<vector>
+	<iostream>
+	<fstream>
+	<stdint.h>
+	"../shared/instrs.h"
+	"../shared/sys.h"
+	"../shared/traps.h"
+
+1314326315 c:\documents and settings\owner\my documents\code\src\shared\instrs.h
+
+1314037259 c:\documents and settings\owner\my documents\code\src\shared\sys.h
+
+1314037259 c:\documents and settings\owner\my documents\code\src\shared\traps.h
+
+1314037273 source:c:\documents and settings\owner\my documents\code\src\utilities\symbols.cpp
+	"../shared/version.h"
+	"../compiler/linker.h"
+	"../vm/vm.h"
+
+1317399253 c:\documents and settings\owner\my documents\code\src\shared\version.h
+
+1316807709 c:\documents and settings\owner\my documents\code\src\compiler\linker.h
+	<algorithm>
+	<string>
+	<vector>
+	<map>
+	<iostream>
+	<iomanip>
+	<sstream>
+	<fstream>
+	<stdlib.h>
+	<string.h>
+	"types.h"
+	"../shared/instrs.h"
+
+1314037259 c:\documents and settings\owner\my documents\code\src\vm\vm.h
+	"common.h"
+	"loader.h"
+	"interpreter.h"
+
+1317399253 c:\documents and settings\owner\my documents\code\src\vm\common.h
+	<algorithm>
+	<iostream>
+	<sstream>
+	<fstream>
+	<stack>
+	<vector>
+	<list>
+	<map>
+	<string>
+	<string.h>
+	<stdlib.h>
+	<string.h>
+	<assert.h>
+	<time.h>
+	"../shared/instrs.h"
+	"../shared/sys.h"
+	"../shared/traps.h"
+	<windows.h>
+	<unordered_map>
+	<tr1/unordered_map>
+	<pthread.h>
+	<stdint.h>
+	<dlfcn.h>
+
+1314037259 c:\documents and settings\owner\my documents\code\src\vm\loader.h
+	"common.h"
+	<string.h>
+
+1317091657 c:\documents and settings\owner\my documents\code\src\vm\interpreter.h
+	"common.h"
+	<string.h>
+	"os/windows/memory.h"
+	"os/posix/memory.h"
+	"debugger/debugger.h"
+
+1317091657 c:\documents and settings\owner\my documents\code\src\vm\os\windows\memory.h
+	"../../common.h"
+	<process.h>
+
+1317358172 c:\documents and settings\owner\my documents\code\src\vm\os\posix\memory.h
+	"../../common.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\debugger.h
+	"../common.h"
+	"../loader.h"
+	"../interpreter.h"
+	"tree.h"
+	"parser.h"
+	<iomanip>
+	"windows.h"
+	<dirent.h>
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\tree.h
+	"../common.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\parser.h
+	"scanner.h"
+	"tree.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\scanner.h
+	"../common.h"
+	"../../shared/sys.h"
+
+1316807708 source:c:\documents and settings\owner\my documents\code\src\vm\loader.cpp
+	"loader.h"
+	"common.h"
+
+1316930876 source:c:\documents and settings\owner\my documents\code\src\compiler\linker.cpp
+	"linker.h"
+	"../shared/instrs.h"
+
