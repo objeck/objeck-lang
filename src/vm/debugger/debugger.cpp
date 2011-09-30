@@ -40,18 +40,18 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 					   long call_stack_pos, StackFrame* frame)
 {
   if(frame->GetMethod()->GetClass()) {
-    const int line_num = instr->GetLineNumber();  
+    const int line_num = instr->GetLineNumber();
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
 #ifdef _DEBUG
     cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
 
-    if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  && 
+    if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  &&
        // step command
-       (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) || 
+       (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) ||
 	// next line
-	(is_next_line && (cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName()) || 
+	(is_next_line && (cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName()) ||
 	 (call_stack_pos < cur_call_stack_pos)) ||
 	// break command
 	FindBreak(line_num, file_name))) {
@@ -62,7 +62,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       cur_call_stack = call_stack;
       cur_call_stack_pos = call_stack_pos;
       is_jmp_out = is_next_line = false;
-      
+
       // prompt for input
       const string &long_name = cur_frame->GetMethod()->GetName();
       int end_index = long_name.find_last_of(':');
@@ -71,10 +71,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       // show break info
       int mid_index = cls_mthd_name.find_last_of(':');
       const string &cls_name = cls_mthd_name.substr(0, mid_index);
-      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);      
-      cout << "break: file='" << file_name << ":" << line_num << "', method='" 
+      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);
+      cout << "break: file='" << file_name << ":" << line_num << "', method='"
 	   << cls_name << "->" << mthd_name << "(..)'" << endl;
-      
+
       // prompt for break command
       Command* command;
       do {
@@ -83,7 +83,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 	getline(cin, line);
 	command = ProcessCommand(line);
       }
-      while(!command || (command->GetCommandType() != CONT_COMMAND && 
+      while(!command || (command->GetCommandType() != CONT_COMMAND &&
 			 command->GetCommandType() != NEXT_COMMAND &&
 			 command->GetCommandType() != NEXT_LINE_COMMAND &&
 			 command->GetCommandType() != JUMP_OUT_COMMAND));
@@ -96,7 +96,7 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
     cout << "unable to modify source path while program is running." << endl;
     return;
   }
-  
+
   if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
     ClearProgram();
     base_path = load->GetFileName();
@@ -168,12 +168,12 @@ void Runtime::Debugger::ProcessRun() {
     for(int i = 0; i < argc; i++) {
       argv[i] = arguments[i].c_str();
     }
-    
+
     // envoke loader
-    Loader loader(argc, argv); 
+    Loader loader(argc, argv);
     loader.Load();
     cur_program = loader.GetProgram();
-    
+
     // execute
     op_stack = new long[STACK_SIZE];
     stack_pos = new long;
@@ -190,11 +190,11 @@ void Runtime::Debugger::ProcessRun() {
     cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
 	 << " second(s)." << endl;
 #endif
-  
+
 #ifdef _DEBUG
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
-#endif  
-    
+#endif
+
     // clear old program
     delete[] argv;
     argv = NULL;
@@ -211,9 +211,9 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
-  
-  const string &path = base_path + file_name;  
-  if(file_name.size() != 0 && FileExists(path)) {  
+
+  const string &path = base_path + file_name;
+  if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
       cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
     }
@@ -240,8 +240,8 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
   const string &file_name = delete_command->GetFileName();
   const string &path = base_path + file_name;
-  
-  if(FileExists(path)) {  
+
+  if(FileExists(path)) {
     if(DeleteBreak(line_num, file_name)) {
       cout << "deleted breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
     }
@@ -258,16 +258,16 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
 void Runtime::Debugger::ProcessPrint(Print* print) {
   Expression* expression = print->GetExpression();
   EvaluateExpression(expression);
-  
+
   if(!is_error) {
     switch(expression->GetExpressionType()) {
-    case REF_EXPR: 
-      if(interpreter) {      
+    case REF_EXPR:
+      if(interpreter) {
 	Reference* reference = static_cast<Reference*>(expression);
 	while(reference->GetReference()) {
 	  reference = reference->GetReference();
 	}
-      
+
 	const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
 	switch(dclr_value.type) {
 	case INT_PARM:
@@ -277,13 +277,13 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	case FUNC_PARM:
 	  cout << "print: type=Function, value=" << reference->GetIntValue() <<"," << reference->GetIntValue2() << endl;
 	  break;
-	
+
 	case FLOAT_PARM:
 	  cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
 	  break;
-	  
+
 	case BYTE_ARY_PARM:
-    cout << "print: type=Byte[], value=" << (char)reference->GetIntValue() 
+    cout << "print: type=Byte[], value=" << (char)reference->GetIntValue()
 	        << "(" << (void*)reference->GetIntValue() << ")";
 	  if(reference->GetArrayDimension()) {
 	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
@@ -297,7 +297,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
     }
     else {
-	    cout << "print: type=Int[], value=" << reference->GetIntValue() 
+	    cout << "print: type=Int[], value=" << reference->GetIntValue()
 	         << "(" << (void*)reference->GetIntValue() << ")";
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
@@ -312,7 +312,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
     }
     else {
-	    cout << "print: type=Float[], value=" << reference->GetFloatValue() 
+	    cout << "print: type=Float[], value=" << reference->GetFloatValue()
 	         << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
@@ -321,27 +321,27 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	    cout << endl;
     }
 	  break;
-	  
-	case OBJ_PARM: 
+
+	case OBJ_PARM:
 	  if(reference->GetClassName() == "System.String") {
 	    long* instance = (long*)reference->GetIntValue();
 	    if(instance) {
 	      long* string_instance = (long*)instance[0];
 	      const char* char_string = (char*)(string_instance + 3);
-	      cout << "print: type=" << reference->GetClassName() << ", value=\"" 
+	      cout << "print: type=" << reference->GetClassName() << ", value=\""
 		   << char_string << "\"" << endl;
 	    }
 	    else {
-	      cout << "print: type=" << reference->GetClassName() << ", value=" 
+	      cout << "print: type=" << reference->GetClassName() << ", value="
 		   << (void*)reference->GetIntValue() << endl;
 	    }
 	  }
 	  else {
-	    cout << "print: type=" << reference->GetClassName() << ", value=" 
+	    cout << "print: type=" << reference->GetClassName() << ", value="
 		 << (void*)reference->GetIntValue() << endl;
 	  }
 	  break;
-	  
+
 	case OBJ_ARY_PARM:
     if(reference->GetIndices()) {
       if(reference->GetClassName() == "System.String") {
@@ -349,21 +349,21 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	      if(instance) {
 	        long* string_instance = (long*)instance[0];
 	        const char* char_string = (char*)(string_instance + 3);
-	        cout << "print: type=" << reference->GetClassName() << ", value=\"" 
+	        cout << "print: type=" << reference->GetClassName() << ", value=\""
 		     << char_string << "\"" << endl;
 	      }
 	      else {
-	        cout << "print: type=" << reference->GetClassName() << ", value=" 
+	        cout << "print: type=" << reference->GetClassName() << ", value="
 		     << (void*)reference->GetIntValue() << endl;
 	      }
 	    }
 	    else {
-	      cout << "print: type=" << reference->GetClassName() << ", value=" 
+	      cout << "print: type=" << reference->GetClassName() << ", value="
 		   << (void*)reference->GetIntValue() << endl;
 	    }
     }
     else {
-	    cout << "print: type=" << reference->GetClassName() << "[], value=" 
+	    cout << "print: type=" << reference->GetClassName() << "[], value="
 	         << (void*)reference->GetIntValue();
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
@@ -379,27 +379,27 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	is_error = true;
       }
       break;
-      
+
     case NIL_LIT_EXPR:
       cout << "print: type=Nil, value=Nil" << endl;
       break;
-      
+
     case CHAR_LIT_EXPR:
       cout << "print: type=Char, value=" << (char)expression->GetIntValue() << endl;
       break;
-      
+
     case INT_LIT_EXPR:
       cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
       break;
-      
+
     case FLOAT_LIT_EXPR:
       cout << "print: type=Float, value=" << expression->GetFloatValue() << endl;
       break;
-      
+
     case BOOLEAN_LIT_EXPR:
       cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
-      
+
     case AND_EXPR:
     case OR_EXPR:
     case EQL_EXPR:
@@ -410,7 +410,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case GTR_EXPR:
       cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
-      
+
     case ADD_EXPR:
     case SUB_EXPR:
     case MUL_EXPR:
@@ -423,9 +423,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
       }
       break;
-      
+
     case CHAR_STR_EXPR:
-      break;    
+      break;
     }
   }
 }
@@ -437,27 +437,27 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
       EvaluateReference(static_cast<Reference*>(expression), false);
     }
     break;
-    
+
   case NIL_LIT_EXPR:
     expression->SetIntValue(0);
     break;
-      
+
   case CHAR_LIT_EXPR:
     expression->SetIntValue(static_cast<CharacterLiteral*>(expression)->GetValue());
     break;
-      
+
   case INT_LIT_EXPR:
     expression->SetIntValue(static_cast<IntegerLiteral*>(expression)->GetValue());
     break;
-      
+
   case FLOAT_LIT_EXPR:
     expression->SetFloatValue(static_cast<FloatLiteral*>(expression)->GetValue());
     break;
-      
+
   case BOOLEAN_LIT_EXPR:
     expression->SetFloatValue(static_cast<FloatLiteral*>(expression)->GetValue());
     break;
-      
+
   case AND_EXPR:
   case OR_EXPR:
   case EQL_EXPR:
@@ -473,9 +473,9 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   case MOD_EXPR:
     EvaluateCalculation(static_cast<CalculatedExpression*>(expression));
     break;
-      
+
   case CHAR_STR_EXPR:
-    break;      
+    break;
   }
 }
 
@@ -485,7 +485,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
 
   Expression* left = expression->GetLeft();
   Expression* right = expression->GetRight();
-  
+
   switch(expression->GetExpressionType()) {
   case AND_EXPR:
     if(left->GetFloatEval() && right->GetFloatEval()) {
@@ -636,7 +636,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetIntValue(left->GetIntValue() - right->GetIntValue());
     }
     break;
-    
+
   case MUL_EXPR:
     if(left->GetFloatEval() && right->GetFloatEval()) {
       expression->SetFloatValue(left->GetFloatValue() * right->GetFloatValue());
@@ -666,7 +666,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetIntValue(left->GetIntValue() / right->GetIntValue());
     }
     break;
-    
+
   case MOD_EXPR:
     if(left->GetIntValue() && right->GetIntValue()) {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
@@ -676,13 +676,16 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       is_error = true;
     }
     break;
+
+    default:
+      break;
   }
 }
 
 void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance) {
   StackMethod* method = cur_frame->GetMethod();
   //
-  // instance reference  
+  // instance reference
   //
   if(is_instance) {
     if(ref_mem && ref_klass) {
@@ -690,10 +693,10 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
       StackDclr dclr_value;
       int index = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
       reference->SetDeclaration(dclr_value);
-      
+
       // check reference name
       if(index > -1) {
-	switch(dclr_value.type) {	  
+	switch(dclr_value.type) {
 	case INT_PARM:
 	  reference->SetIntValue(ref_mem[index]);
 	  break;
@@ -713,7 +716,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	case OBJ_PARM:
 	  EvaluateObjectReference(reference, index, dclr_value.id);
 	  break;
-	  
+
 	case BYTE_ARY_PARM:
 	case INT_ARY_PARM:
 	  EvaluateIntFloatReference(reference, index, false);
@@ -723,10 +726,10 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
 	  EvaluateIntFloatReference(reference, index, false);
 	  break;
-	  
+
 	case FLOAT_ARY_PARM:
 	  EvaluateIntFloatReference(reference, index, true);
-	  break;	
+	  break;
 	}
       }
       else {
@@ -746,7 +749,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
     ref_mem = cur_frame->GetMemory();
     if(ref_mem) {
       StackDclr dclr_value;
-      
+
       // process check self
       if(reference->IsSelf()) {
 	dclr_value.name = "@self";
@@ -760,10 +763,10 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	// set declaration
 	int index = method->GetDeclaration(reference->GetVariableName(), dclr_value);
 	reference->SetDeclaration(dclr_value);
-	
+
 	// check reference name
 	if(index > -1) {
-	  switch(dclr_value.type) {	  
+	  switch(dclr_value.type) {
 	  case INT_PARM:
 	    reference->SetIntValue(ref_mem[index + 1]);
 		break;
@@ -783,7 +786,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  case OBJ_PARM:
 	    EvaluateObjectReference(reference, index + 1, dclr_value.id);
 	    break;
-	  
+
 	  case BYTE_ARY_PARM:
 	  case INT_ARY_PARM:
 	    EvaluateIntFloatReference(reference, index + 1, false);
@@ -793,10 +796,10 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	    reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
 	    EvaluateIntFloatReference(reference, index + 1, false);
 	    break;
-	  
+
 	  case FLOAT_ARY_PARM:
 	    EvaluateIntFloatReference(reference, index + 1, true);
-	    break;	
+	    break;
 	  }
 	}
 	else {
@@ -833,12 +836,12 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
   if(array) {
     const int max = array[0];
     const int dim = array[1];
-    
+
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
-      vector<Expression*> expressions = indices->GetExpressions();	    
+      vector<Expression*> expressions = indices->GetExpressions();
       vector<int> values;
       for(unsigned int i = 0; i < expressions.size(); i++) {
 	EvaluateExpression(expressions[i]);
@@ -851,7 +854,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
 	}
       }
       // match the dimensions
-      if(expressions.size() == dim) {
+      if(expressions.size() == (unsigned int)dim) {
 	// calculate indices
 	array += 2;
 	int j = dim - 1;
@@ -859,9 +862,9 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
 	for(long i = 1; i < dim; i++) {
 	  array_index *= array[i];
 	  array_index += values[j--];
-	}	      
+	}
 	array += dim;
-      
+
 	// check float array bounds
 	if(is_float) {
 	  array_index *= 2;
@@ -917,7 +920,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 
   // parser input
   is_next = is_next_line = false;
-  Parser parser;  
+  Parser parser;
   Command* command = parser.Parse("?" + line);
   if(command) {
     switch(command->GetCommandType()) {
@@ -928,11 +931,11 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case SRC_COMMAND:
       ProcessSrc(static_cast<Load*>(command));
       break;
-      
+
     case ARGS_COMMAND:
       ProcessArgs(static_cast<Load*>(command));
       break;
-      
+
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
@@ -942,7 +945,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 
     case LIST_COMMAND: {
       FilePostion* file_pos = static_cast<FilePostion*>(command);
-      
+
       string file_name;
       if(file_pos->GetFileName().size() > 0) {
 	file_name = file_pos->GetFileName();
@@ -950,7 +953,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       else {
 	file_name = cur_file_name;
       }
-      
+
       int line_num;
       if(file_pos->GetLineNumber() > 0) {
 	line_num = file_pos->GetLineNumber();
@@ -959,7 +962,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	line_num = cur_line_num;
       }
 
-      const string &path = base_path + file_name;  
+      const string &path = base_path + file_name;
       if(FileExists(path) && line_num > 0) {
 	SourceFile src_file(path, cur_line_num);
 	if(!src_file.Print(line_num)) {
@@ -981,7 +984,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case BREAKS_COMMAND:
       ProcessBreaks();
       break;
-      
+
     case PRINT_COMMAND:
       ProcessPrint(static_cast<Print*>(command));
       break;
@@ -989,11 +992,11 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case RUN_COMMAND:
       ProcessRun();
       break;
-      
+
     case CLEAR_COMMAND: {
       cout << "  are sure you want to clear all breakpoints? [y/n] ";
       string line;
-      getline(cin, line);      
+      getline(cin, line);
       if(line == "y" || line == "yes") {
 	ClearBreaks();
       }
@@ -1021,7 +1024,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	cout << "program is not running." << endl;
       }
       break;
-      
+
     case JUMP_OUT_COMMAND:
       if(interpreter) {
 	is_jmp_out = true;
@@ -1030,17 +1033,17 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	cout << "program is not running." << endl;
       }
       break;
-      
+
     case CONT_COMMAND:
       if(!interpreter) {
 	cout << "program is not running." << endl;
       }
       break;
-      
+
     case INFO_COMMAND:
       ProcessInfo(static_cast<Info*>(command));
       break;
-      
+
     case STACK_COMMAND:
       if(interpreter) {
 	long pos = cur_call_stack_pos;
@@ -1056,29 +1059,32 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	cout << "program is not running." << endl;
       }
       break;
-    }  
-    
+
+      default:
+        break;
+    }
+
     is_error = false;
-    ref_mem = NULL; 
+    ref_mem = NULL;
     return command;
   }
   else {
     cout << "unable to process command." << endl;
   }
-  
+
   is_error = false;
-  ref_mem = NULL;  
+  ref_mem = NULL;
   return NULL;
 }
 
 void Runtime::Debugger::ProcessInfo(Info* info) {
   const string &cls_name = info->GetClassName();
   const string &mthd_name = info->GetMethodName();
-  
+
 #ifdef _DEBUG
   cout << "--- info class=" << cls_name << ", method=" << mthd_name << " ---" << endl;
 #endif
-  
+
   if(interpreter) {
     // method info
     if(cls_name.size() > 0 && mthd_name.size() > 0) {
@@ -1091,8 +1097,8 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 	    // parse method name
 	    int long_name_end = method->GetName().find_last_of(':');
 	    const string &long_name = method->GetName().substr(0, long_name_end);
-	    // print 
-	    cout << "  class: type=" << klass->GetName() << ", method=" 
+	    // print
+	    cout << "  class: type=" << klass->GetName() << ", method="
 		 << long_name << "(..)" << endl;
 	    cout << "  parameters:" << endl;
 	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
@@ -1126,27 +1132,27 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     else {
       cout << "general info:" << endl;
       cout << "  program executable: file='" << program_file << "'" << endl;
-      
+
       // parse method and class names
       const string &long_name = cur_frame->GetMethod()->GetName();
       int end_index = long_name.find_last_of(':');
       const string &cls_mthd_name = long_name.substr(0, end_index);
-      
+
       int mid_index = cls_mthd_name.find_last_of(':');
       const string &cls_name = cls_mthd_name.substr(0, mid_index);
       const string &mthd_name = cls_mthd_name.substr(mid_index + 1);
 
       // print
-      cout << "  current file='" << cur_file_name << ":" << cur_line_num << "', method='" 
+      cout << "  current file='" << cur_file_name << ":" << cur_line_num << "', method='"
 	   << cls_name << "->" << mthd_name << "(..)'" << endl;
-    }    
+    }
   }
   else {
     cout << "program is not running." << endl;
   }
 }
 
-void Runtime::Debugger::ClearBreaks() {  
+void Runtime::Debugger::ClearBreaks() {
   cout << "breakpoints cleared." << endl;
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
@@ -1162,12 +1168,12 @@ void Runtime::Debugger::ClearProgram() {
     delete interpreter;
     interpreter = NULL;
   }
-  
+
   if(op_stack) {
     delete[] op_stack;
     op_stack = NULL;
   }
-  
+
   if(stack_pos) {
     delete stack_pos;
     stack_pos = NULL;
@@ -1182,8 +1188,8 @@ void Runtime::Debugger::ClearProgram() {
   cur_call_stack = NULL;
   */
 
-  MemoryManager::Instance()->Clear(); 
-  
+  MemoryManager::Instance()->Clear();
+
   cur_line_num = -2;
   cur_frame = NULL;
   cur_program = NULL;
@@ -1210,21 +1216,21 @@ void Runtime::Debugger::Debug() {
     cout << "unable to load executable or locate base path." << endl;
     exit(1);
   }
-  
+
   // enter feedback loop
   Command* command;
   while(true) {
     cout << "> ";
     string line;
     getline(cin, line);
-    command = ProcessCommand(line);    
+    command = ProcessCommand(line);
   }
 }
 
 /********************************
  * Debugger main
  ********************************/
-int main(int argc, char** argv) 
+int main(int argc, char** argv)
 {
   string usage;
   usage += "Copyright (c) 2010-2011, Randy Hollines. All rights reserved.\n";
@@ -1238,7 +1244,7 @@ int main(int argc, char** argv)
   usage += "options:\n";
   usage += "  -exe: executable file\n";
   usage += "  -src: source directory path";
-  
+
   if(argc >= 3) {
     // reconstruct path
     string path;
@@ -1295,7 +1301,7 @@ int main(int argc, char** argv)
 	  value = path.substr(start, pos - start);
 	}
 	arguments.insert(pair<string, string>(key, value));
-      } 
+      }
       else {
 	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
 	  pos++;
@@ -1315,7 +1321,7 @@ int main(int argc, char** argv)
       return 1;
     }
     const string &file_name = arguments["exe"];
-    
+
     string base_path = ".";
     result = arguments.find("src");
     if(result != arguments.end()) {
@@ -1335,13 +1341,13 @@ int main(int argc, char** argv)
     // go debugger
     Runtime::Debugger debugger(file_name, base_path);
     debugger.Debug();
-    
+
     return 0;
-  } 
+  }
   else {
     cerr << usage << endl << endl;
     return 1;
   }
-  
+
   return 1;
 }
