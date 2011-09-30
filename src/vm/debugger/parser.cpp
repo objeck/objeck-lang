@@ -60,7 +60,7 @@ void Parser::ProcessError(enum TokenType type)
   cout << "\tError: "
        << msg << endl;
 #endif
-  
+
   errors.push_back(msg);
 }
 
@@ -72,7 +72,7 @@ void Parser::ProcessError(const string &msg)
 #ifdef _DEBUG
   cout << "\tError: " << msg << endl;
 #endif
-  
+
   errors.push_back(msg);
 }
 
@@ -85,8 +85,8 @@ bool Parser::CheckErrors()
   if(errors.size()) {
     for(unsigned int i = 0; i < errors.size(); i++) {
       cerr << errors[i] << endl;
-    }    
-    // clean up    
+    }
+    // clean up
     return false;
   }
 
@@ -103,15 +103,15 @@ Command* Parser::Parse(const string &line)
 #endif
   scanner = new Scanner(line);
   NextToken();
-  
+
   // parse input
   Command* command = ParseLine(line);
-  
+
 
   if(CheckErrors()) {
     return command;
   }
-  
+
   return NULL;
 }
 
@@ -124,7 +124,7 @@ Command* Parser::ParseLine(const string &line)
   if(!Match(TOKEN_END_OF_STREAM)) {
     ProcessError("Expected statement end");
   }
-  
+
   // clean up
   delete scanner;
   scanner = NULL;
@@ -150,11 +150,11 @@ Command* Parser::ParseStatement(int depth)
   case TOKEN_ARGS_ID:
     command = ParseLoad(ARGS_COMMAND, depth + 1);
     break;
-    
+
   case TOKEN_LIST_ID:
     command = ParseList(depth + 1);
     break;
-    
+
   case TOKEN_QUIT_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
@@ -164,7 +164,7 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(BREAKS_COMMAND);
     break;
-    
+
   case TOKEN_RUN_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(RUN_COMMAND);
@@ -179,7 +179,7 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(NEXT_LINE_COMMAND);
     break;
-    
+
   case TOKEN_OUT_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(JUMP_OUT_COMMAND);
@@ -189,16 +189,16 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(STACK_COMMAND);
     break;
-    
+
   case TOKEN_CONT_ID:
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
     break;
-    
+
   case TOKEN_BREAK_ID:
     command = ParseBreak(depth + 1);
     break;
-    
+
   case TOKEN_PRINT_ID:
     command = ParsePrint(depth + 1);
     break;
@@ -206,7 +206,7 @@ Command* Parser::ParseStatement(int depth)
   case TOKEN_INFO_ID:
     command = ParseInfo(depth + 1);
     break;
-    
+
   case TOKEN_FRAME_ID:
     command = ParseFrame(depth + 1);
     break;
@@ -215,11 +215,11 @@ Command* Parser::ParseStatement(int depth)
     NextToken();
     command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
     break;
-    
+
   case TOKEN_DELETE_ID:
-    command = ParseDelete(depth + 1);    
+    command = ParseDelete(depth + 1);
     break;
-    
+
   default:
     command = NULL;
     break;
@@ -233,7 +233,7 @@ Command* Parser::ParseList(int depth) {
   Show("List", depth);
 #endif
   NextToken();
-  
+
   string file_name;
   int line_num = -1;
   if(Match(TOKEN_IDENT)) {
@@ -253,10 +253,10 @@ Command* Parser::ParseList(int depth) {
     }
   }
   else if(Match(TOKEN_CHAR_STRING_LIT)) {
-    CharacterString* char_string = 
+    CharacterString* char_string =
       TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
     file_name = char_string->GetString();
-    NextToken();    
+    NextToken();
     // colon
     if(!Match(TOKEN_COLON)) {
       ProcessError(TOKEN_COLON);
@@ -286,7 +286,7 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
     file_name = scanner->GetToken()->GetIdentifier();
   }
   else if(Match(TOKEN_CHAR_STRING_LIT)) {
-    CharacterString* char_string = 
+    CharacterString* char_string =
       TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
     file_name = char_string->GetString();
   }
@@ -294,7 +294,7 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
     ProcessError("Expected filename");
   }
   NextToken();
-  
+
   return TreeFactory::Instance()->MakeLoad(type, file_name);
 }
 
@@ -309,14 +309,14 @@ Command* Parser::ParseDelete(int depth) {
     ProcessError(TOKEN_IDENT);
     NextToken();
   }
-    
+
   const string &file_name = scanner->GetToken()->GetIdentifier();
   NextToken();
   if(!Match(TOKEN_COLON)) {
     ProcessError(TOKEN_COLON);
   }
   NextToken();
-  
+
   // line number
   int line_num = -1;
   if(Match(TOKEN_INT_LIT)) {
@@ -327,7 +327,7 @@ Command* Parser::ParseDelete(int depth) {
     ProcessError("Expected line number");
     NextToken();
   }
-  
+
   return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);
 }
 
@@ -336,7 +336,7 @@ Command* Parser::ParseBreak(int depth) {
   Show("Break", depth);
 #endif
   NextToken();
-  
+
   // file name
   string file_name;
   if(Match(TOKEN_IDENT)) {
@@ -358,12 +358,12 @@ Command* Parser::ParseBreak(int depth) {
     ProcessError("Expected line number");
     NextToken();
   }
-  
+
   return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num);
 }
 
 Command* Parser::ParsePrint(int depth) {
-  NextToken();  
+  NextToken();
   return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
 }
 
@@ -372,7 +372,7 @@ Command* Parser::ParseInfo(int depth) {
   string mthd_name;
 
   NextToken();
-  
+
   // class name
   if(Match(TOKEN_CLASS_ID)) {
     NextToken();
@@ -385,7 +385,7 @@ Command* Parser::ParseInfo(int depth) {
       cls_name = scanner->GetToken()->GetIdentifier();
     }
     else if(Match(TOKEN_CHAR_STRING_LIT)) {
-      CharacterString* char_string = 
+      CharacterString* char_string =
 	TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
       cls_name = char_string->GetString();
     }
@@ -406,7 +406,7 @@ Command* Parser::ParseInfo(int depth) {
 	mthd_name = scanner->GetToken()->GetIdentifier();
       }
       else if(Match(TOKEN_CHAR_STRING_LIT)) {
-	CharacterString* char_string = 
+	CharacterString* char_string =
 	  TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
 	cls_name = char_string->GetString();
       }
@@ -416,7 +416,7 @@ Command* Parser::ParseInfo(int depth) {
       NextToken();
     }
   }
-  
+
   return TreeFactory::Instance()->MakeInfo(cls_name, mthd_name);
 }
 
@@ -441,13 +441,13 @@ ExpressionList* Parser::ParseIndices(int depth)
 
       if(Match(TOKEN_COMMA)) {
         NextToken();
-      } 
+      }
       else if(!Match(TOKEN_CLOSED_BRACKET)) {
         ProcessError("Expected comma or semi-colon");
         NextToken();
       }
     }
-    
+
     if(!Match(TOKEN_CLOSED_BRACKET)) {
       ProcessError(TOKEN_CLOSED_BRACKET);
     }
@@ -479,9 +479,9 @@ Expression* Parser::ParseLogic(int depth)
 #ifdef _DEBUG
   Show("Boolean logic", depth);
 #endif
-  
+
   Expression* left = ParseMathLogic(depth + 1);
-  
+
   CalculatedExpression* expression = NULL;
   while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
@@ -495,6 +495,9 @@ Expression* Parser::ParseLogic(int depth)
     case TOKEN_OR:
       expression = TreeFactory::Instance()->MakeCalculatedExpression(OR_EXPR);
       break;
+
+    default:
+        break;
     }
     NextToken();
 
@@ -520,7 +523,7 @@ Expression* Parser::ParseLogic(int depth)
  ****************************/
 Expression* Parser::ParseMathLogic(int depth)
 {
-  
+
 #ifdef _DEBUG
   Show("Boolean math", depth);
 #endif
@@ -550,6 +553,9 @@ Expression* Parser::ParseMathLogic(int depth)
     case TOKEN_NEQL:
       expression = TreeFactory::Instance()->MakeCalculatedExpression(NEQL_EXPR);
       break;
+
+    default:
+        break;
     }
     NextToken();
 
@@ -573,7 +579,7 @@ Expression* Parser::ParseMathLogic(int depth)
  ****************************/
 Expression* Parser::ParseTerm(int depth)
 {
-  
+
 #ifdef _DEBUG
   Show("Term", depth);
 #endif
@@ -632,7 +638,7 @@ Expression* Parser::ParseTerm(int depth)
  ****************************/
 Expression* Parser::ParseFactor(int depth)
 {
-  
+
 #ifdef _DEBUG
   Show("Factor", depth);
 #endif
@@ -692,7 +698,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Show("Simple expression", depth);
 #endif
   Expression* expression = NULL;
-  
+
   if(Match(TOKEN_IDENT)) {
     const string &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
@@ -721,7 +727,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       break;
     }
-  } 
+  }
   else if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
     expression = ParseLogic(depth + 1);
@@ -729,7 +735,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       ProcessError(TOKEN_CLOSED_PAREN);
     }
     NextToken();
-  } 
+  }
   else {
     switch(GetToken()) {
     case TOKEN_CHAR_LIT:
@@ -760,7 +766,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
     }
   }
-  
+
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
     if(expression->GetExpressionType() == REF_EXPR) {
@@ -771,7 +777,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
     }
   }
-  
+
   return expression;
 }
 
@@ -783,15 +789,15 @@ Reference* Parser::ParseReference(int depth)
 #ifdef _DEBUG
   Show("Instance reference", depth);
 #endif
-  
+
   // self reference
-  Reference* inst_ref = TreeFactory::Instance()->MakeReference();  
-  
+  Reference* inst_ref = TreeFactory::Instance()->MakeReference();
+
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
     ParseReference(inst_ref, depth + 1);
   }
-  
+
   return inst_ref;
 }
 
@@ -803,29 +809,29 @@ Reference* Parser::ParseReference(const string &ident, int depth)
 #ifdef _DEBUG
   Show("Instance reference", depth);
 #endif
-  
+
   Reference* inst_ref = TreeFactory::Instance()->MakeReference(ident);
   if(Match(TOKEN_OPEN_BRACKET)) {
-    inst_ref->SetIndices(ParseIndices(depth + 1));      
+    inst_ref->SetIndices(ParseIndices(depth + 1));
   }
-  
+
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
     ParseReference(inst_ref, depth + 1);
   }
-  
+
   return inst_ref;
 }
 
 /****************************
- * Parses an instance reference. 
+ * Parses an instance reference.
  ****************************/
 void Parser::ParseReference(Reference* reference, int depth)
 {
 #ifdef _DEBUG
   Show("Instance reference", depth);
 #endif
-  
+
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
