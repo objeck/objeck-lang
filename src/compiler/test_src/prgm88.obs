@@ -20,16 +20,24 @@ bundle Default {
 			button_callback(Nil->As(GtkWidget));
 	
 			# create 
-			button := GtkButton->New("Hello World!");			
+			button := GtkButton->New("Hello World!");
+			button2 := GtkButton->New("Hello World!");
+
+			hbox := GtkHBox->New(false, 0);
+			hbox->PackStart(button->As(GtkWidget), true, true, 0);
+			hbox->PackStart(button2->As(GtkWidget), true, true, 0);
+
 			window := GtkWindow->New();
 			window->SignalConnect(Signal->Destroy, test_callback);
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
 			button->SignalConnect(Signal->Clicked, button_callback);
-			window->Add(button->As(GtkWidget));
+			window->Add(hbox->As(GtkWidget));
 			
 			# show
-			button->Show();			
+			button->Show();
+			button2->Show();
+			hbox->Show();			
 			window->Show();
 			Appliction->Main();
 		}
