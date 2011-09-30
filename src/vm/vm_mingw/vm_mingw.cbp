@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="vm_mingw" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin\Debug\obr" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj\Debug\" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-D_MINGW -D_JIT_SERIAL" />
+				</Compiler>
+				<Linker>
+					<Add library="ws2_32" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="bin\Release\obr" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj\Release\" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-D_MINGW -D_JIT_SERIAL" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="ws2_32" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="..\common.cpp" />
+		<Unit filename="..\common.h" />
+		<Unit filename="..\interpreter.cpp" />
+		<Unit filename="..\interpreter.h" />
+		<Unit filename="..\jit\ia32\jit_intel_lp32.cpp" />
+		<Unit filename="..\jit\ia32\jit_intel_lp32.h" />
+		<Unit filename="..\lib_api.h" />
+		<Unit filename="..\loader.cpp" />
+		<Unit filename="..\loader.h" />
+		<Unit filename="..\os\windows\memory.cpp" />
+		<Unit filename="..\os\windows\memory.h" />
+		<Unit filename="..\os\windows\windows.h" />
+		<Unit filename="..\vm.cpp" />
+		<Unit filename="..\vm.h" />
+		<Unit filename="..\vm\objeck.rc">
+			<Option compilerVar="WINDRES" />
+		</Unit>
+		<Unit filename="..\win_main.cpp" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
