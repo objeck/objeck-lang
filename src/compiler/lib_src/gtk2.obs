@@ -131,11 +131,12 @@ bundle Gtk2 {
 	class GtkBox from GtkContainer {
 		method : public : PackStart(child : GtkWidget, expand : Bool, fill : Bool, padding : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[4];
-			array_args[0] := child;
-			array_args[1] := IntHolder->New(expand ? 1 : 0);
-			array_args[2] := IntHolder->New(fill ? 1 : 0);
-			array_args[3] := IntHolder->New(padding);
+			array_args := Base->New[5];
+			array_args[0] := @self;
+			array_args[1] := child;
+			array_args[2] := IntHolder->New(expand ? 1 : 0);
+			array_args[3] := IntHolder->New(fill ? 1 : 0);
+			array_args[4] := IntHolder->New(padding);
 			lib_proxy->CallFunction("og_gtk_box_pack_start", array_args);
 		}
 	}
