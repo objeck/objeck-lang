@@ -35,6 +35,26 @@ extern "C" {
     cout << "@@@ Unloading shared library @@@" << endl;
 #endif
   }
+
+  //
+  // hbox functions
+  //
+  void og_gtk_hbox_new(VMContext& context) {
+    gboolean homo = APITools_GetIntValue(context, 1);
+    gint spacing = APITools_GetIntValue(context, 2);
+    GtkWidget* hbox = gtk_hbox_new(homo, spacing);
+    APITools_SetIntValue(context, 0, (long)hbox);
+  }
+
+  void og_gtk_box_pack_start(VMContext& context) {
+    GtkBox *box = (GtkBox*)APITools_GetIntValue(context, 0);
+    GtkWidget *child = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gboolean expand = APITools_GetIntValue(context, 2);
+    gboolean fill = APITools_GetIntValue(context, 3);
+    guint padding  = APITools_GetIntValue(context, 4);
+    
+    gtk_box_pack_start(box, child, expand, fill,padding);
+  }
   
   //
   // button functions
@@ -106,7 +126,7 @@ extern "C" {
       
     case -99:
       id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)self), "destroy", 
-				G_CALLBACK(gtk_main_quit), NULL);
+			      G_CALLBACK(gtk_main_quit), NULL);
       break;
       
     case -98:
