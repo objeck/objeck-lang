@@ -4,7 +4,10 @@
 	<File name="..\symbols.cpp" open="1" top="0" tabpos="1">
 		<Cursor position="2294" topLine="38" />
 	</File>
-	<File name="..\..\vm\common.cpp" open="1" top="1" tabpos="2">
+	<File name="..\utilities\objeck.rc" open="1" top="1" tabpos="3">
+		<Cursor position="2138" topLine="75" />
+	</File>
+	<File name="..\..\vm\common.cpp" open="1" top="0" tabpos="2">
 		<Cursor position="2167" topLine="40" />
 	</File>
 </CodeBlocks_layout_file>
