@@ -1,0 +1,171 @@
+# depslib dependency file v1.0
+1317023737 source:c:\documents and settings\owner\my documents\code\src\vm\common.cpp
+	"common.h"
+	"loader.h"
+	"interpreter.h"
+
+1317399253 c:\documents and settings\owner\my documents\code\src\vm\common.h
+	<algorithm>
+	<iostream>
+	<sstream>
+	<fstream>
+	<stack>
+	<vector>
+	<list>
+	<map>
+	<string>
+	<string.h>
+	<stdlib.h>
+	<string.h>
+	<assert.h>
+	<time.h>
+	"../shared/instrs.h"
+	"../shared/sys.h"
+	"../shared/traps.h"
+	<windows.h>
+	<unordered_map>
+	<tr1/unordered_map>
+	<pthread.h>
+	<stdint.h>
+	<dlfcn.h>
+
+1314326315 c:\documents and settings\owner\my documents\code\src\shared\instrs.h
+
+1314037259 c:\documents and settings\owner\my documents\code\src\shared\sys.h
+
+1314037259 c:\documents and settings\owner\my documents\code\src\shared\traps.h
+
+1314037259 c:\documents and settings\owner\my documents\code\src\vm\loader.h
+	"common.h"
+	<string.h>
+
+1317091657 c:\documents and settings\owner\my documents\code\src\vm\interpreter.h
+	"common.h"
+	<string.h>
+	"os/windows/memory.h"
+	"os/posix/memory.h"
+	"debugger/debugger.h"
+
+1317091657 c:\documents and settings\owner\my documents\code\src\vm\os\windows\memory.h
+	"../../common.h"
+	<process.h>
+
+1317358172 c:\documents and settings\owner\my documents\code\src\vm\os\posix\memory.h
+	"../../common.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\debugger.h
+	"../common.h"
+	"../loader.h"
+	"../interpreter.h"
+	"tree.h"
+	"parser.h"
+	<iomanip>
+	"windows.h"
+	<dirent.h>
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\tree.h
+	"../common.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\parser.h
+	"scanner.h"
+	"tree.h"
+
+1314037255 c:\documents and settings\owner\my documents\code\src\vm\debugger\scanner.h
+	"../common.h"
+	"../../shared/sys.h"
+
+1314037255 source:c:\documents and settings\owner\my documents\code\src\vm\debugger\debugger.cpp
+	"debugger.h"
+	"../../shared/version.h"
+
+1317399253 c:\documents and settings\owner\my documents\code\src\shared\version.h
+
+1314037255 source:c:\documents and settings\owner\my documents\code\src\vm\debugger\parser.cpp
+	"parser.h"
+
+1314037255 source:c:\documents and settings\owner\my documents\code\src\vm\debugger\scanner.cpp
+	"scanner.h"
+
+1314037255 source:c:\documents and settings\owner\my documents\code\src\vm\debugger\tree.cpp
+	"tree.h"
+
+1317328464 source:c:\documents and settings\owner\my documents\code\src\vm\interpreter.cpp
+	"interpreter.h"
+	"lib_api.h"
+	"jit/amd64/jit_amd_lp64.h"
+	"jit/ia32/jit_intel_lp32.h"
+	"os/windows/windows.h"
+	"os/posix/posix.h"
+	"debugger/debugger.h"
+	<math.h>
+
+1317328464 c:\documents and settings\owner\my documents\code\src\vm\lib_api.h
+	"common.h"
+
+1314326315 c:\documents and settings\owner\my documents\code\src\vm\jit\amd64\jit_amd_lp64.h
+	"../../os/posix/memory.h"
+	"../../os/posix/posix.h"
+	<sys/mman.h>
+	<errno.h>
+	"../../common.h"
+	"../../interpreter.h"
+
+1314037254 c:\documents and settings\owner\my documents\code\src\vm\os\posix\posix.h
+	"../../common.h"
+	<sys/utsname.h>
+	<stdint.h>
+	<sys/stat.h>
+	<dirent.h>
+	<sys/types.h>
+	<fcntl.h>
+	<sys/socket.h>
+	<netinet/in.h>
+	<netdb.h>
+
+1317006676 c:\documents and settings\owner\my documents\code\src\vm\jit\ia32\jit_intel_lp32.h
+	"../../os/posix/memory.h"
+	"../../os/posix/posix.h"
+	<sys/mman.h>
+	<errno.h>
+	"../../os/windows/windows.h"
+	"../../common.h"
+	"../../interpreter.h"
+
+1317400637 c:\documents and settings\owner\my documents\code\src\vm\os\windows\windows.h
+	"../../common.h"
+	<windows.h>
+	<tchar.h>
+	<strsafe.h>
+
+1317006676 source:c:\documents and settings\owner\my documents\code\src\vm\jit\ia32\jit_intel_lp32.cpp
+	"jit_intel_lp32.h"
+	<string>
+
+1316807708 source:c:\documents and settings\owner\my documents\code\src\vm\loader.cpp
+	"loader.h"
+	"common.h"
+
+1317198701 source:c:\documents and settings\owner\my documents\code\src\vm\os\windows\memory.cpp
+	"memory.h"
+	<iomanip>
+
+1314037259 source:c:\documents and settings\owner\my documents\code\src\vm\posix_main.cpp
+	"vm.h"
+	"../shared/version.h"
+	<iostream>
+	<string>
+
+1314037259 c:\documents and settings\owner\my documents\code\src\vm\vm.h
+	"common.h"
+	"loader.h"
+	"interpreter.h"
+
+1314037259 source:c:\documents and settings\owner\my documents\code\src\vm\vm.cpp
+	"vm.h"
+
+1317400629 source:c:\documents and settings\owner\my documents\code\src\vm\win_main.cpp
+	"vm.h"
+	"windows.h"
+	"../shared/version.h"
+	<iostream>
+

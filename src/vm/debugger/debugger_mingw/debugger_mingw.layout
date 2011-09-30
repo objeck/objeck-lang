@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_layout_file>
+	<ActiveTarget name="Release" />
+	<File name="..\..\common.h" open="1" top="0" tabpos="5">
+		<Cursor position="2729" topLine="70" />
+	</File>
+	<File name="..\debugger.cpp" open="1" top="0" tabpos="3">
+		<Cursor position="2608" topLine="41" />
+	</File>
+	<File name="..\debugger.h" open="1" top="0" tabpos="2">
+		<Cursor position="2806" topLine="302" />
+	</File>
+	<File name="..\debugger\objeck.rc" open="1" top="1" tabpos="7">
+		<Cursor position="1845" topLine="55" />
+	</File>
+	<File name="..\parser.cpp" open="1" top="0" tabpos="1">
+		<Cursor position="13704" topLine="541" />
+	</File>
+	<File name="..\tree.h" open="1" top="0" tabpos="4">
+		<Cursor position="11548" topLine="574" />
+	</File>
+</CodeBlocks_layout_file>
