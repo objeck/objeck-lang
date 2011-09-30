@@ -42,8 +42,10 @@
 #include <strsafe.h>
 #endif
 
+#ifndef _MINGW
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
+#endif
 
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -51,28 +53,28 @@ typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 class File {
  public:
   static long FileSize(const char* name) {
-    HANDLE file = CreateFile(name, GENERIC_READ, 
-			     FILE_SHARE_READ, NULL, OPEN_EXISTING, 
+    HANDLE file = CreateFile(name, GENERIC_READ,
+			     FILE_SHARE_READ, NULL, OPEN_EXISTING,
 			     FILE_ATTRIBUTE_NORMAL, NULL);
-    
+
     if(file == INVALID_HANDLE_VALUE) {
       return -1;
     }
-    
+
     long size = GetFileSize(file, NULL);
     CloseHandle(file);
     if(size < 0) {
       return -1;
     }
-    
-    return size;  
+
+    return size;
   }
 
   static bool FileExists(const char* name) {
-    HANDLE file = CreateFile(name, GENERIC_READ, 
-			     FILE_SHARE_READ, NULL, OPEN_EXISTING, 
-			     FILE_ATTRIBUTE_NORMAL, NULL);    
-    
+    HANDLE file = CreateFile(name, GENERIC_READ,
+			     FILE_SHARE_READ, NULL, OPEN_EXISTING,
+			     FILE_ATTRIBUTE_NORMAL, NULL);
+
     if(file == INVALID_HANDLE_VALUE) {
       return false;
     }
@@ -83,15 +85,15 @@ class File {
 
   static FILE* FileOpen(const char* name, const char* mode) {
     FILE* file;
-	
-#ifdef _MINGW	
+
+#ifdef _MINGW
     file = fopen(name, mode);
-#else	
+#else
     if(fopen_s(&file, name, mode) != 0) {
       return NULL;
     }
 #endif
-	
+
     return file;
   }
 
@@ -110,13 +112,13 @@ class File {
       return false;
     }
     FindClose(find);
-    
+
     return true;
   }
 
   static vector<string> ListDir(char* p) {
     vector<string> files;
-    
+
     string path = p;
     if(path.size() > 0 && path[path.size() - 1] == '\\') {
       path += "*";
@@ -129,7 +131,7 @@ class File {
     HANDLE find = FindFirstFile(path.c_str(), &file_data);
     if(find == INVALID_HANDLE_VALUE) {
       return files;
-    } 
+    }
     else {
       files.push_back(file_data.cFileName);
 
@@ -159,19 +161,19 @@ class IPSocket {
     if(!host_info) {
       return -1;
     }
-    
+
     long host_addr;
     memcpy(&host_addr, host_info->h_addr, host_info->h_length);
-    
+
     struct sockaddr_in ip_addr;
     ip_addr.sin_addr.s_addr = host_addr;;
     ip_addr.sin_port=htons(port);
     ip_addr.sin_family = AF_INET;
-    
+
     if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
       return sock;
     }
-    
+
     return -1;
   }
 
@@ -196,11 +198,11 @@ class IPSocket {
 
     return value;
   }
-  
+
   static int ReadBytes(char* values, int len, SOCKET sock) {
     return recv(sock, values, len, 0);
   }
-  
+
   static void Close(SOCKET sock) {
     closesocket(sock);
   }
@@ -221,7 +223,7 @@ class System {
     else {
       platform = "Unknown";
     }
-    
+
     return platform;
   }
 
@@ -229,46 +231,46 @@ class System {
   static BOOL GetOSDisplayString(LPTSTR version)
   {
     const int MAX = 80;
-    OSVERSIONINFO OSversion;	
+    OSVERSIONINFO OSversion;
     OSversion.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
     GetVersionEx(&OSversion);
-	
+
     switch(OSversion.dwPlatformId)
       {
-      case VER_PLATFORM_WIN32s: 
-	sprintf(version, "Windows %d.%d",OSversion.dwMajorVersion,OSversion.dwMinorVersion);
+      case VER_PLATFORM_WIN32s:
+	sprintf(version, "Windows %lu.%lu",OSversion.dwMajorVersion,OSversion.dwMinorVersion);
 	break;
       case VER_PLATFORM_WIN32_WINDOWS:
 	if(OSversion.dwMinorVersion==0)
 	  strncpy(version, "Windows 95", MAX - 1);
 	else
-	  if(OSversion.dwMinorVersion==10)  
+	  if(OSversion.dwMinorVersion==10)
 	    strncpy(version, "Windows 98", MAX - 1);
 	  else
-	    if(OSversion.dwMinorVersion==90)  
+	    if(OSversion.dwMinorVersion==90)
 	      strncpy(version, "Windows Me", MAX - 1);
 	break;
       case VER_PLATFORM_WIN32_NT:
 	if(OSversion.dwMajorVersion==5 && OSversion.dwMinorVersion==0)
 	  sprintf(version, "Windows 2000 With %s", OSversion.szCSDVersion);
-	else	
+	else
 	  if(OSversion.dwMajorVersion==5 &&   OSversion.dwMinorVersion==1)
 	    sprintf(version, "Windows XP %s",OSversion.szCSDVersion);
-	  else	
+	  else
 	    if(OSversion.dwMajorVersion<=4)
-	      sprintf(version, "Windows NT %d.%d with %s",
+	      sprintf(version, "Windows NT %lu.%lu with %s",
 		      OSversion.dwMajorVersion,
 		      OSversion.dwMinorVersion,
-		      OSversion.szCSDVersion);			
-	    else	
+		      OSversion.szCSDVersion);
+	    else
 	      //for unknown windows/newest windows version
 
-	      sprintf(version, "Windows %d.%d ",
+	      sprintf(version, "Windows %lu.%lu ",
 		      OSversion.dwMajorVersion,
 		      OSversion.dwMinorVersion);
 	break;
       }
-	
+
     return TRUE;
   }
 #else
@@ -292,13 +294,13 @@ class System {
     // Call GetNativeSystemInfo if supported or GetSystemInfo otherwise.
 
     pGNSI = (PGNSI) GetProcAddress(
-				   GetModuleHandle(TEXT("kernel32.dll")), 
+				   GetModuleHandle(TEXT("kernel32.dll")),
 				   "GetNativeSystemInfo");
     if(NULL != pGNSI)
       pGNSI(&si);
     else GetSystemInfo(&si);
 
-    if ( VER_PLATFORM_WIN32_NT==osvi.dwPlatformId && 
+    if ( VER_PLATFORM_WIN32_NT==osvi.dwPlatformId &&
 	 osvi.dwMajorVersion > 4 )
       {
         StringCchCopy(pszOS, BUFSIZE, TEXT("Microsoft "));
@@ -320,9 +322,9 @@ class System {
                   StringCchCat(pszOS, BUFSIZE, TEXT("Windows 7 "));
 		else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2008 R2 " ));
 	      }
-         
+
 	    pGPI = (PGPI) GetProcAddress(
-					 GetModuleHandle(TEXT("kernel32.dll")), 
+					 GetModuleHandle(TEXT("kernel32.dll")),
 					 "GetProductInfo");
 
 	    pGPI( osvi.dwMajorVersion, osvi.dwMinorVersion, 0, 0, &dwType);
@@ -452,7 +454,7 @@ class System {
 	      {
 		StringCchCat(pszOS, BUFSIZE, TEXT( "Professional" ));
 	      }
-	    else 
+	    else
 	      {
 		if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
 		  StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter Server" ));
@@ -482,17 +484,17 @@ class System {
 	    else if (si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_INTEL )
               StringCchCat(pszOS, BUFSIZE, TEXT(", 32-bit"));
 	  }
-      
-        return TRUE; 
+
+        return TRUE;
       }
 
     else
-      {  
+      {
         printf( "This sample does not support this version of Windows.\n");
         return FALSE;
       }
   }
-#endif  
+#endif
 };
 
 #endif
