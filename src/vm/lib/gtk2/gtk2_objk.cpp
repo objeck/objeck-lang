@@ -43,17 +43,27 @@ extern "C" {
     gboolean homo = APITools_GetIntValue(context, 1);
     gint spacing = APITools_GetIntValue(context, 2);
     GtkWidget* hbox = gtk_hbox_new(homo, spacing);
+
+#ifdef _DEBUG
+    cout << "@@@ hbox_new: new=" << hbox << " @@@" << endl;
+#endif
+
     APITools_SetIntValue(context, 0, (long)hbox);
   }
 
   void og_gtk_box_pack_start(VMContext& context) {
-    GtkBox *box = (GtkBox*)APITools_GetIntValue(context, 0);
-    GtkWidget *child = (GtkWidget*)APITools_GetIntValue(context, 1);
+    GtkBox* box = (GtkBox*)APITools_GetIntValue(context, 0);
+    GtkWidget* child = (GtkWidget*)APITools_GetIntValue(context, 1);
     gboolean expand = APITools_GetIntValue(context, 2);
     gboolean fill = APITools_GetIntValue(context, 3);
     guint padding  = APITools_GetIntValue(context, 4);
     
-    gtk_box_pack_start(box, child, expand, fill,padding);
+#ifdef _DEBUG
+    cout << "@@@ hbox_pack_start box=" << box 
+	 << ", child=" << child << " @@@" << endl;
+#endif
+    
+    gtk_box_pack_start(box, child, expand, fill, padding);
   }
   
   //
