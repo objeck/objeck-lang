@@ -39,7 +39,6 @@
 #include "windows.h"
 #include "../shared/version.h"
 #include <iostream>
-#pragma comment(lib, "Ws2_32.lib")
 
 int main(const int argc, const char* argv[])
 {
@@ -60,7 +59,7 @@ int main(const int argc, const char* argv[])
     WSACleanup();
 
     return status;
-  } 
+  }
   else {
     string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
