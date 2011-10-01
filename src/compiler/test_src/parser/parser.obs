@@ -11,6 +11,7 @@ bundle CodeGen {
 		CHAR_ID,
 		INT_ID,
 		FLOAT_ID,
+		NEW_ID,
 		NUMBER
 	}
 	
@@ -44,6 +45,7 @@ bundle CodeGen {
 			reserved->Insert("Float", Token->New(Type->FLOAT_ID)->As(Base));
 			reserved->Insert("Char", Token->New(Type->CHAR_ID)->As(Base));
 			reserved->Insert("class", Token->New(Type->CLASS_ID)->As(Base));
+			reserved->Insert("new", Token->New(Type->NEW_ID)->As(Base));
 			
 			reader := FileReader->New(filename);
 			line_num := 0;
@@ -86,6 +88,10 @@ bundle CodeGen {
 									
 									label Type->CLASS_ID: {
 										"class"->PrintLine();
+									}
+									
+									label Type->NEW_ID: {
+										"new"->PrintLine();
 									}
 									
 									label Type->INT_ID: {
@@ -153,7 +159,11 @@ bundle CodeGen {
 								}
 								
 								label ';': {
-									"semi"->PrintLine();
+									"semi_colon"->PrintLine();
+								}
+								
+								label ':': {
+									"colon"->PrintLine();
 								}
 								
 								other: {

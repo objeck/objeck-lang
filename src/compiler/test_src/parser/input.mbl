@@ -6,5 +6,5 @@ float => Float
 == CLASSES ==
 
 class {
-
+	new: 
 }
