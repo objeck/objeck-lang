@@ -12,32 +12,47 @@ bundle CodeGen {
 		INT_ID,
 		FLOAT_ID,
 		NEW_ID,
+		OPRN,
+		CPRN,
+		OBR,
+		CBR,
+		OCBR,
+		CCBR,
+		SCOLON,
+		COLON,
+		MAP,
+		UNKWN,
 		NUMBER
 	}
-	
+
 	class Token {
 		@type : Type;
-		
+
 		New(type : Type) {
 			@type := type;
 		}
-		
+
 		method : public : GetType() ~ Type {
 			return @type;
 		}
 	}
-	
+
 	class Scanner {
-		New() {
+		@filename : String;
+		@tokens : Vector;
+
+		New(filename : String) {
+			@filename := filename;
+			@tokens := Vector->New();
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
-				Run(args[0]);
+				Scanner->New(args[0])->Scan();
 			};
 		}
-		
-		function : native : Run(filename : String) ~ Nil {
+
+		method : Scan() ~ Nil {
 			reserved := StringMap->New();
 			reserved->Insert("TYPES", Token->New(Type->TYPES_ID)->As(Base));
 			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID)->As(Base));
@@ -46,22 +61,22 @@ bundle CodeGen {
 			reserved->Insert("Char", Token->New(Type->CHAR_ID)->As(Base));
 			reserved->Insert("class", Token->New(Type->CLASS_ID)->As(Base));
 			reserved->Insert("new", Token->New(Type->NEW_ID)->As(Base));
-			
-			reader := FileReader->New(filename);
+
+			reader := FileReader->New(@filename);
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
 				line := reader->ReadString();
 				line_num := line_num + 1;
-									
-				i := 0;	
-				while(i < line->Size()) {		
+
+				i := 0;
+				while(i < line->Size()) {
 					# skip whitespace
 					c := line->Get(i);
 					while((c = ' ' | c = '\t' | c = '\r'| c = '\n') & i < line->Size()) {
 						i += 1;
 						c := line->Get(i);
 					};
-					
+
 					# parse
 					if(i < line->Size()) {
 						# keyword
@@ -73,31 +88,32 @@ bundle CodeGen {
 								i += 1;
 								c := line->Get(i);
 							};
-							
+
 							result := reserved->Find(ident)->As(Token);
 							if(result <> Nil) {
-								
+								@tokens->AddBack(result->As(Base));
+
 								select(result->GetType()) {
 									label Type->TYPES_ID: {
 										"TYPES"->PrintLine();
 									}
-									
+
 									label Type->CLASSES_ID: {
 										"CLASSES"->PrintLine();
 									}
-									
+
 									label Type->CLASS_ID: {
 										"class"->PrintLine();
 									}
-									
+
 									label Type->NEW_ID: {
 										"new"->PrintLine();
 									}
-									
+
 									label Type->INT_ID: {
 										"INT"->PrintLine();
 									}
-									
+
 									label Type->FLOAT_ID: {
 										"FLOAT"->PrintLine();
 									}
@@ -116,64 +132,61 @@ bundle CodeGen {
 								i += 1;
 								c := line->Get(i);
 							};
-							
+
 							Console->Print("integer '")->Print(number)->PrintLine("'");
 						}
 						# other
 						else {
 							select(line->Get(i)) {
 								label '(': {
-									"opren"->PrintLine();
-								}
-								
-								label '=': {
-									"="->PrintLine();
+									@tokens->AddBack(Token->New(Type->OPRN)->As(Base));
 								}
 
-								label '>': {
-									">"->PrintLine();
-								}
-																
 								label ')': {
-									"cpren"->PrintLine();
+									@tokens->AddBack(Token->New(Type->CPRN)->As(Base));
 								}
-		
+
 								label '[': {
-									"obrace"->PrintLine();
+									@tokens->AddBack(Token->New(Type->OBR)->As(Base));
 								}
-								
+
 								label ']': {
-									"cbrace"->PrintLine();
-								}			
-								
+									@tokens->AddBack(Token->New(Type->CBR)->As(Base));
+								}
+
+								label '=': {
+									if(i + 1 < line->Size() & line->Get(i + 1) = '>') {
+										@tokens->AddBack(Token->New(Type->MAP)->As(Base));
+										i += 1;
+									}	else {
+										@tokens->AddBack(Token->New(Type->UNKWN)->As(Base));
+									};
+								}
+
 								label '{': {
-									"ocprn"->PrintLine();
+									@tokens->AddBack(Token->New(Type->OCBR)->As(Base));
 								}
-				
+
 								label '}': {
-									"cprn"->PrintLine();
+									@tokens->AddBack(Token->New(Type->CCBR)->As(Base));
 								}
-								
-								label '#': {
-									"pound"->PrintLine();
-								}
-								
+
 								label ';': {
-									"semi_colon"->PrintLine();
+									@tokens->AddBack(Token->New(Type->SCOLON)->As(Base));
 								}
-								
+
 								label ':': {
-									"colon"->PrintLine();
+									@tokens->AddBack(Token->New(Type->COLON)->As(Base));
 								}
 								
 								other: {
-									Console->Print("???='")->Print(line->Get(i))->PrintLine("'");
+									@tokens->AddBack(Token->New(Type->UNKWN)->As(Base));
 								}
 							};
-							
+							# update
 							i += 1;
 						};
-					};			
+					};
 				};
 			};
 			reader->Close();
