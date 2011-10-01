@@ -1482,8 +1482,8 @@ bundle Structure {
 			@map->Remove(key->As(Compare));
 		}
     
-		method : public : Find(key : String) ~ String {
-			return @map->Find(key->As(Compare))->As(String);
+		method : public : Find(key : String) ~ Base {
+			return @map->Find(key->As(Compare));
 		}
 		
 		method : public : Has(key : String) ~ Bool {
