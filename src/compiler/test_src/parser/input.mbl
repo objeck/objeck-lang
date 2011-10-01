@@ -1,0 +1,10 @@
+== TYPES ==
+int => Int
+double => Float
+float => Float
+
+== CLASSES ==
+
+class {
+
+}
