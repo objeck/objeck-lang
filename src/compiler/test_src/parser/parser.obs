@@ -1,0 +1,172 @@
+use IO;
+use Structure;
+
+# to compile: -lib struct.obl
+
+bundle CodeGen {
+	enum Type := -100 {
+		TYPES_ID,
+		CLASSES_ID,
+		CLASS_ID,
+		CHAR_ID,
+		INT_ID,
+		FLOAT_ID,
+		NUMBER
+	}
+	
+	class Token {
+		@type : Type;
+		
+		New(type : Type) {
+			@type := type;
+		}
+		
+		method : public : GetType() ~ Type {
+			return @type;
+		}
+	}
+	
+	class Scanner {
+		New() {
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				Run(args[0]);
+			};
+		}
+		
+		function : native : Run(filename : String) ~ Nil {
+			reserved := StringMap->New();
+			reserved->Insert("TYPES", Token->New(Type->TYPES_ID)->As(Base));
+			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID)->As(Base));
+			reserved->Insert("Int", Token->New(Type->INT_ID)->As(Base));
+			reserved->Insert("Float", Token->New(Type->FLOAT_ID)->As(Base));
+			reserved->Insert("Char", Token->New(Type->CHAR_ID)->As(Base));
+			reserved->Insert("class", Token->New(Type->CLASS_ID)->As(Base));
+			
+			reader := FileReader->New(filename);
+			line_num := 0;
+			while(reader->IsEOF() <> true) {
+				line := reader->ReadString();
+				line_num := line_num + 1;
+									
+				i := 0;	
+				while(i < line->Size()) {		
+					# skip whitespace
+					c := line->Get(i);
+					while((c = ' ' | c = '\t' | c = '\r'| c = '\n') & i < line->Size()) {
+						i += 1;
+						c := line->Get(i);
+					};
+					
+					# parse
+					if(i < line->Size()) {
+						# keyword
+						if(line->Get(i)->IsChar() = true) {
+							ident := "";
+							c := line->Get(i);
+							while(c->IsChar() | c->IsDigit() | c = '.' | c = '_') {
+								ident->Append(line->Get(i));
+								i += 1;
+								c := line->Get(i);
+							};
+							
+							result := reserved->Find(ident)->As(Token);
+							if(result <> Nil) {
+								
+								select(result->GetType()) {
+									label Type->TYPES_ID: {
+										"TYPES"->PrintLine();
+									}
+									
+									label Type->CLASSES_ID: {
+										"CLASSES"->PrintLine();
+									}
+									
+									label Type->CLASS_ID: {
+										"class"->PrintLine();
+									}
+									
+									label Type->INT_ID: {
+										"INT"->PrintLine();
+									}
+									
+									label Type->FLOAT_ID: {
+										"FLOAT"->PrintLine();
+									}
+								};
+							}
+							else {
+								Console->Print("ident '")->Print(ident)->PrintLine("'");
+							};
+						}
+						# number
+						else if(line->Get(i)->IsDigit()) {
+							number := "";
+							c := line->Get(i);
+							while(c->IsDigit()) {
+								number->Append(line->Get(i));
+								i += 1;
+								c := line->Get(i);
+							};
+							
+							Console->Print("integer '")->Print(number)->PrintLine("'");
+						}
+						# other
+						else {
+							select(line->Get(i)) {
+								label '(': {
+									"opren"->PrintLine();
+								}
+								
+								label '=': {
+									"="->PrintLine();
+								}
+
+								label '>': {
+									">"->PrintLine();
+								}
+																
+								label ')': {
+									"cpren"->PrintLine();
+								}
+		
+								label '[': {
+									"obrace"->PrintLine();
+								}
+								
+								label ']': {
+									"cbrace"->PrintLine();
+								}			
+								
+								label '{': {
+									"ocprn"->PrintLine();
+								}
+				
+								label '}': {
+									"cprn"->PrintLine();
+								}
+								
+								label '#': {
+									"pound"->PrintLine();
+								}
+								
+								label ';': {
+									"semi"->PrintLine();
+								}
+								
+								other: {
+									Console->Print("???='")->Print(line->Get(i))->PrintLine("'");
+								}
+							};
+							
+							i += 1;
+						};
+					};			
+				};
+			};
+			reader->Close();
+		}
+	}
+}
