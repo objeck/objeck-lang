@@ -68,6 +68,21 @@ bundle Default {
 				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
 			};
 			"---------------------"->PrintLine();
+
+
+			ss := StringMap->New();
+			ss->Insert("Trend", "Trend"->As(Base));
+			ss->Insert("Anderson", "Anderson"->As(Base));
+			ss->Insert("Zen", "Zen"->As(Base));
+			ss->Insert("Morph", "Morph"->As(Base));
+			ss->Insert("Boxer", "Boxer"->As(Base));
+			ss->Insert("And", "And"->As(Base));
+
+			x := ss->GetValues();
+			each(i : x) {
+				y := x->Get(i)->As(String);
+				y->PrintLine();
+			};
 #~
 			vv := tree->GetValues();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
