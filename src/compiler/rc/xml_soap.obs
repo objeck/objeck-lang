@@ -1,6 +1,6 @@
 use IO;
 use XML;
-use Structure;
+use Struct;
 
 bundle Default {
 	class Test {

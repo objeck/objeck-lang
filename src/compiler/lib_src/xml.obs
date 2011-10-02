@@ -4,7 +4,7 @@
 ~~#
 
 use IO;
-use Structure;
+use Struct;
 
 bundle XML {
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

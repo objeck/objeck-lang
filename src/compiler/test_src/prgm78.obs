@@ -1,5 +1,5 @@
 use API;
-use Structure;
+use Struct;
 
 bundle Default {
 	class FuncHolder {

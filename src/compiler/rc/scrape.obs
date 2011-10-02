@@ -1,5 +1,5 @@
 use Net;
-use Structure;
+use Struct;
 
 bundle Default {
 	class Scrape {

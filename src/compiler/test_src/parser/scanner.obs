@@ -1,5 +1,5 @@
 use IO;
-use Structure;
+use Struct;
 
 # to compile: -lib struct.obl
 
@@ -38,6 +38,7 @@ bundle CodeGen {
 		DOUBLE_ID,
 		NEW_ID,
 		IDENT,
+		EQL,
 		OPRN,
 		CPRN,
 		OBR,
@@ -48,7 +49,7 @@ bundle CodeGen {
 		COLON,
 		MAP,
 		UNKWN,
-		NUMBER
+		NUM
 	}
 
 	# Scanner class
@@ -63,19 +64,20 @@ bundle CodeGen {
 
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
-				Scanner->New(args[0])->Scan();
+				tokens := Scanner->New(args[0])->Scan();
+				Parser->New(tokens)->Parse();
 			};
 		}
 
 		method : Scan() ~ Vector {
 			reserved := StringMap->New();
-			reserved->Insert("TYPES", Token->New(Type->TYPES_ID)->As(Base));
-			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID)->As(Base));
-			reserved->Insert("Int", Token->New(Type->INT_ID)->As(Base));
-			reserved->Insert("Float", Token->New(Type->FLOAT_ID)->As(Base));
-			reserved->Insert("Char", Token->New(Type->CHAR_ID)->As(Base));
-			reserved->Insert("class", Token->New(Type->CLASS_ID)->As(Base));
-			reserved->Insert("new", Token->New(Type->NEW_ID)->As(Base));
+			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES")->As(Base));
+			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES")->As(Base));
+			reserved->Insert("Int", Token->New(Type->INT_ID, "Int")->As(Base));
+			reserved->Insert("Float", Token->New(Type->FLOAT_ID, "Float")->As(Base));
+			reserved->Insert("Char", Token->New(Type->CHAR_ID, "Char")->As(Base));
+			reserved->Insert("class", Token->New(Type->CLASS_ID, "class")->As(Base));
+			reserved->Insert("new", Token->New(Type->NEW_ID, "new")->As(Base));
 
 			reader := FileReader->New(@filename);
 			line_num := 0;
@@ -107,36 +109,6 @@ bundle CodeGen {
 							result := reserved->Find(ident)->As(Token);
 							if(result <> Nil) {
 								@tokens->AddBack(result->As(Base));
-
-								select(result->GetType()) {
-									label Type->TYPES_ID: {
-										@tokens->AddBack(Token->New(Type->TYPES_ID)->As(Base));
-									}
-
-									label Type->CLASSES_ID: {
-										@tokens->AddBack(Token->New(Type->CLASSES_ID)->As(Base));
-									}
-
-									label Type->CLASS_ID: {
-										@tokens->AddBack(Token->New(Type->CLASS_ID)->As(Base));
-									}
-
-									label Type->NEW_ID: {
-										@tokens->AddBack(Token->New(Type->NEW_ID)->As(Base));
-									}
-
-									label Type->INT_ID: {
-										@tokens->AddBack(Token->New(Type->INT_ID)->As(Base));
-									}
-									
-									label Type->FLOAT_ID: {
-										@tokens->AddBack(Token->New(Type->FLOAT_ID)->As(Base));
-									}
-									
-									label Type->DOUBLE_ID: {
-										@tokens->AddBack(Token->New(Type->DOUBLE_ID)->As(Base));
-									}
-								};
 							}
 							else {
 								@tokens->AddBack(Token->New(Type->IDENT, ident)->As(Base));
@@ -151,55 +123,54 @@ bundle CodeGen {
 								i += 1;
 								c := line->Get(i);
 							};
-
-							Console->Print("integer '")->Print(number)->PrintLine("'");
+							@tokens->AddBack(Token->New(Type->NUM, number)->As(Base));
 						}
 						# other
 						else {
 							select(line->Get(i)) {
 								label '(': {
-									@tokens->AddBack(Token->New(Type->OPRN)->As(Base));
+									@tokens->AddBack(Token->New(Type->OPRN, "(")->As(Base));
 								}
-
+								
 								label ')': {
-									@tokens->AddBack(Token->New(Type->CPRN)->As(Base));
+									@tokens->AddBack(Token->New(Type->CPRN, ")")->As(Base));
 								}
 
 								label '[': {
-									@tokens->AddBack(Token->New(Type->OBR)->As(Base));
+									@tokens->AddBack(Token->New(Type->OBR, "[")->As(Base));
 								}
 
 								label ']': {
-									@tokens->AddBack(Token->New(Type->CBR)->As(Base));
+									@tokens->AddBack(Token->New(Type->CBR, "]")->As(Base));
 								}
 
 								label '=': {
 									if(i + 1 < line->Size() & line->Get(i + 1) = '>') {
-										@tokens->AddBack(Token->New(Type->MAP)->As(Base));
+										@tokens->AddBack(Token->New(Type->MAP, "=>")->As(Base));
 										i += 1;
 									}	else {
-										@tokens->AddBack(Token->New(Type->UNKWN)->As(Base));
+										@tokens->AddBack(Token->New(Type->EQL, "=")->As(Base));
 									};
 								}
 
 								label '{': {
-									@tokens->AddBack(Token->New(Type->OCBR)->As(Base));
+									@tokens->AddBack(Token->New(Type->OCBR, "{")->As(Base));
 								}
 
 								label '}': {
-									@tokens->AddBack(Token->New(Type->CCBR)->As(Base));
+									@tokens->AddBack(Token->New(Type->CCBR, "}")->As(Base));
 								}
 
 								label ';': {
-									@tokens->AddBack(Token->New(Type->SCOLON)->As(Base));
+									@tokens->AddBack(Token->New(Type->SCOLON, ";")->As(Base));
 								}
 
 								label ':': {
-									@tokens->AddBack(Token->New(Type->COLON)->As(Base));
+									@tokens->AddBack(Token->New(Type->COLON, ":")->As(Base));
 								}
 								
 								other: {
-									@tokens->AddBack(Token->New(Type->UNKWN)->As(Base));
+									@tokens->AddBack(Token->New(Type->UNKWN, "?")->As(Base));
 								}
 							};
 							# update
@@ -209,6 +180,8 @@ bundle CodeGen {
 				};
 			};
 			reader->Close();
+			
+			return @tokens;
 		}
 	}
 }

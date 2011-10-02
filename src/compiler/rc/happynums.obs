@@ -1,5 +1,5 @@
 use IO;
-use Structure;
+use Struct;
 
 bundle Default {
 	class HappyNumbers {
