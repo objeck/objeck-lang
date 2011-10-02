@@ -33,12 +33,17 @@ bundle CodeGen {
 		CLASSES_ID,
 		CLASS_ID,
 		CHAR_ID,
+		BYTE_ID,
 		INT_ID,
 		FLOAT_ID,
-		DOUBLE_ID,
+		BOOL_ID,
 		NEW_ID,
 		METHOD_ID,
 		FUNCTION_ID,
+		CONST_ID,
+		VOID_ID,
+		SELF_ID,
+		FROM_ID,
 		IDENT,
 		HBAR,
 		DELIM,
@@ -52,6 +57,7 @@ bundle CodeGen {
 		COMMA,
 		COLON,
 		TILDE,
+		STAR,
 		MAP,
 		UNKWN,
 		NUM
@@ -76,15 +82,24 @@ bundle CodeGen {
 
 		method : Scan() ~ Vector {
 			reserved := StringMap->New();
+			# framework keywords
 			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES_ID")->As(Base));
 			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES_ID")->As(Base));
-			reserved->Insert("Int", Token->New(Type->INT_ID, "Int")->As(Base));
-			reserved->Insert("Float", Token->New(Type->FLOAT_ID, "Float")->As(Base));
-			reserved->Insert("Char", Token->New(Type->CHAR_ID, "Char")->As(Base));
 			reserved->Insert("@class", Token->New(Type->CLASS_ID, "CLASS_ID")->As(Base));
 			reserved->Insert("@method", Token->New(Type->CLASSES_ID, "METHOD_ID")->As(Base));
 			reserved->Insert("@function", Token->New(Type->FUNCTION_ID, "FUNCTION_ID")->As(Base));
 			reserved->Insert("@new", Token->New(Type->NEW_ID, "NEW_ID")->As(Base));
+			# objeck keywords
+			reserved->Insert("Int", Token->New(Type->INT_ID, "Int")->As(Base));
+			reserved->Insert("Byte", Token->New(Type->BYTE_ID, "Byte")->As(Base));
+			reserved->Insert("Float", Token->New(Type->FLOAT_ID, "Float")->As(Base));
+			reserved->Insert("Char", Token->New(Type->CHAR_ID, "Char")->As(Base));
+			reserved->Insert("Bool", Token->New(Type->BOOL_ID, "Bool")->As(Base));
+			reserved->Insert("@self", Token->New(Type->SELF_ID, "@self")->As(Base));
+			reserved->Insert("from", Token->New(Type->FROM_ID, "from")->As(Base));
+			# c keywords
+			reserved->Insert("const", Token->New(Type->CONST_ID, "const")->As(Base));
+			reserved->Insert("void", Token->New(Type->VOID_ID, "void")->As(Base));
 			
 			reader := FileReader->New(@filename);
 			line_num := 0;
@@ -191,6 +206,10 @@ bundle CodeGen {
 								
 								label '~': {
 									@tokens->AddBack(Token->New(Type->TILDE, "~")->As(Base));
+								}
+								
+								label '*': {
+									@tokens->AddBack(Token->New(Type->STAR, "*")->As(Base));
 								}
 								
 								other: {
