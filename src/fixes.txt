@@ -1,3 +1,7 @@
+11/1/11
+* changed the return value of the StingMap Find method to Base
+* allowing more than one bundle to be defined in an *.obe
+-----
 10/28/11
 * fixed memory manager bug related to the scanning of methods with higher-order functions and statically
 * fixed memory manager bug related attempted scanning of static objects

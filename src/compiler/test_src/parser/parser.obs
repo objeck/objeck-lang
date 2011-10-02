@@ -1,0 +1,19 @@
+use IO;
+use Struct;
+
+bundle CodeGen {
+	class Parser {
+		@tokens : Vector;
+		
+		New(tokens : Vector) {
+			@tokens := tokens;
+		}
+		
+		method : public : Parse() ~ Nil {
+			each(i : @tokens) {
+				token := @tokens->Get(i)->As(Token);
+				Console->Print(i)->Print(": ")->PrintLine(token->GetValue());
+			};
+		}
+	}
+}	

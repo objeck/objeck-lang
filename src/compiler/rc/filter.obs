@@ -1,4 +1,4 @@
-use Structure;
+use Struct;
 
 bundle Default {
 	class Evens {
