@@ -2,7 +2,7 @@
 # AA binary balanced use tree
 
 use System;
-use Structure;
+use Struct;
 
 bundle Default {
 	class Test {
@@ -65,13 +65,13 @@ bundle Default {
 
 			vv : Vector := tree->GetKeys();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
-				vv->Get(i)->As(Structure.IntHolder)->Get()->PrintLine();
+				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
 			};
 			"---------------------"->PrintLine();
 #~
 			vv := tree->GetValues();
 			for(i : Int := 0; i < vv->Size(); i := i + 1;) {
-				vv->Get(i)->As(Structure.IntHolder)->Get()->PrintLine();
+				vv->Get(i)->As( Struct.IntHolder)->Get()->PrintLine();
 			};		
 			vv->Size()->PrintLine();
 ~#

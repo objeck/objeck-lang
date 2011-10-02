@@ -1,6 +1,6 @@
 use Net;
 use XML;
-use Structure;
+use Struct;
 
 bundle Default {
   class HttpTest {
