@@ -1,12 +1,13 @@
 ==TYPES==
-int => Int
+gchar => Char
+gboolean => Bool
 double => Float
 float => Float
 
 ==CLASSES==
-@class {
-	@new:	int foo(float f, Dog d) | 
-				1=>0 2=>1 3=>2 | 
-				New(f : Float, d : Dog) ~ Int
-	@method: 
+@class Button {
+	@new: GtkWidget* gtk_button_new(void)
+	@new: GtkWidget*  gtk_button_new_with_label(const gchar *label) | New
+	@method: void gtk_button_pressed(GtkButton *button) | 1=>@self | Pressed
+	@method: void gtk_button_set_focus_on_click(GtkButton *button, gboolean focus_on_click) | SetFocusOnClick
 }
