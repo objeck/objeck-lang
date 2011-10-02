@@ -1,7 +1,7 @@
 # Linked list class for Objeck language
 # R.Hollines
 
-use Structure;
+use Struct;
 
 bundle Default {
 	class Test {
