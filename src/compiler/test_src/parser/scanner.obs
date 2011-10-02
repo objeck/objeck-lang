@@ -37,8 +37,11 @@ bundle CodeGen {
 		FLOAT_ID,
 		DOUBLE_ID,
 		NEW_ID,
+		METHOD_ID,
+		FUNCTION_ID,
 		IDENT,
-		EQL,
+		HBAR,
+		DELIM,
 		OPRN,
 		CPRN,
 		OBR,
@@ -46,6 +49,7 @@ bundle CodeGen {
 		OCBR,
 		CCBR,
 		SCOLON,
+		COMMA,
 		COLON,
 		MAP,
 		UNKWN,
@@ -73,12 +77,15 @@ bundle CodeGen {
 			reserved := StringMap->New();
 			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES")->As(Base));
 			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES")->As(Base));
+			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES")->As(Base));
 			reserved->Insert("Int", Token->New(Type->INT_ID, "Int")->As(Base));
 			reserved->Insert("Float", Token->New(Type->FLOAT_ID, "Float")->As(Base));
 			reserved->Insert("Char", Token->New(Type->CHAR_ID, "Char")->As(Base));
 			reserved->Insert("class", Token->New(Type->CLASS_ID, "class")->As(Base));
+			reserved->Insert("method", Token->New(Type->CLASSES_ID, "METHOD_ID")->As(Base));
+			reserved->Insert("function", Token->New(Type->FUNCTION_ID, "FUNCTION_ID")->As(Base));
 			reserved->Insert("new", Token->New(Type->NEW_ID, "new")->As(Base));
-
+			
 			reader := FileReader->New(@filename);
 			line_num := 0;
 			while(reader->IsEOF() <> true) {
@@ -148,8 +155,13 @@ bundle CodeGen {
 									if(i + 1 < line->Size() & line->Get(i + 1) = '>') {
 										@tokens->AddBack(Token->New(Type->MAP, "=>")->As(Base));
 										i += 1;
-									}	else {
-										@tokens->AddBack(Token->New(Type->EQL, "=")->As(Base));
+									} 
+									else if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
+										@tokens->AddBack(Token->New(Type->HBAR, "==")->As(Base));
+										i += 1;
+									}	
+									else {
+										@tokens->AddBack(Token->New(Type->UNKWN, "?")->As(Base));
 									};
 								}
 
@@ -161,12 +173,20 @@ bundle CodeGen {
 									@tokens->AddBack(Token->New(Type->CCBR, "}")->As(Base));
 								}
 
+								label ',': {
+									@tokens->AddBack(Token->New(Type->COMMA, ",")->As(Base));
+								}
+								
 								label ';': {
 									@tokens->AddBack(Token->New(Type->SCOLON, ";")->As(Base));
 								}
 
 								label ':': {
 									@tokens->AddBack(Token->New(Type->COLON, ":")->As(Base));
+								}
+								
+								label '|': {
+									@tokens->AddBack(Token->New(Type->DELIM, "|")->As(Base));
 								}
 								
 								other: {

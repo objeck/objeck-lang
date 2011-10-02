@@ -1,4 +1,5 @@
 11/1/11
+* fixed bug in the String Compare method
 * changed the return value of the StingMap Find method to Base
 * allowing more than one bundle to be defined in an *.obe
 -----

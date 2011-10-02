@@ -1065,8 +1065,20 @@ bundle System {
 		}
 
 		method : public : Compare(rhs : System.Compare) ~ Int {
+			# check class type
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
+				
+				# check length
+				if(@pos > right_string->Size()) {
+					return 1;
+				};
+				
+				if(@pos < right_string->Size()) {
+					return -1;
+				};
+				
+				# check each character
 				for(i : Int := 0; i < @pos; i += 1;) {
 					left : Char := @string[i];
 					right : Char := right_string->Get(i);
@@ -1077,10 +1089,11 @@ bundle System {
 						return -1;
 					};
 				};
-
+				
+				# equal
 				return 0;
 			};
-
+			
 			return -1;
 		}
 
