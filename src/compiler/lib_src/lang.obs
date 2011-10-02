@@ -1069,15 +1069,6 @@ bundle System {
 			if(GetClassID() = rhs->GetClassID()) {
 				right_string : String := rhs->As(String);
 				
-				# check length
-				if(@pos > right_string->Size()) {
-					return 1;
-				};
-				
-				if(@pos < right_string->Size()) {
-					return -1;
-				};
-				
 				# check each character
 				for(i : Int := 0; i < @pos; i += 1;) {
 					left : Char := @string[i];
@@ -1088,6 +1079,15 @@ bundle System {
 					else if(left < right) {
 						return -1;
 					};
+				};
+				
+				# check length
+				if(@pos > right_string->Size()) {
+					return 1;
+				};
+				
+				if(@pos < right_string->Size()) {
+					return -1;
 				};
 				
 				# equal
