@@ -4,6 +4,30 @@ use Structure;
 # to compile: -lib struct.obl
 
 bundle CodeGen {
+	# Token class
+	class Token {
+		@type : Type;
+		@value : String;
+
+		New(type : Type) {
+			@type := type;
+		}
+		
+		New(type : Type, value : String) {
+			@type := type;
+			@value := value;
+		}
+
+		method : public : GetType() ~ Type {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			return @value;
+		}
+	}
+	
+	# token type
 	enum Type := -100 {
 		TYPES_ID,
 		CLASSES_ID,
@@ -11,7 +35,9 @@ bundle CodeGen {
 		CHAR_ID,
 		INT_ID,
 		FLOAT_ID,
+		DOUBLE_ID,
 		NEW_ID,
+		IDENT,
 		OPRN,
 		CPRN,
 		OBR,
@@ -25,18 +51,7 @@ bundle CodeGen {
 		NUMBER
 	}
 
-	class Token {
-		@type : Type;
-
-		New(type : Type) {
-			@type := type;
-		}
-
-		method : public : GetType() ~ Type {
-			return @type;
-		}
-	}
-
+	# Scanner class
 	class Scanner {
 		@filename : String;
 		@tokens : Vector;
@@ -52,7 +67,7 @@ bundle CodeGen {
 			};
 		}
 
-		method : Scan() ~ Nil {
+		method : Scan() ~ Vector {
 			reserved := StringMap->New();
 			reserved->Insert("TYPES", Token->New(Type->TYPES_ID)->As(Base));
 			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID)->As(Base));
@@ -95,32 +110,36 @@ bundle CodeGen {
 
 								select(result->GetType()) {
 									label Type->TYPES_ID: {
-										"TYPES"->PrintLine();
+										@tokens->AddBack(Token->New(Type->TYPES_ID)->As(Base));
 									}
 
 									label Type->CLASSES_ID: {
-										"CLASSES"->PrintLine();
+										@tokens->AddBack(Token->New(Type->CLASSES_ID)->As(Base));
 									}
 
 									label Type->CLASS_ID: {
-										"class"->PrintLine();
+										@tokens->AddBack(Token->New(Type->CLASS_ID)->As(Base));
 									}
 
 									label Type->NEW_ID: {
-										"new"->PrintLine();
+										@tokens->AddBack(Token->New(Type->NEW_ID)->As(Base));
 									}
 
 									label Type->INT_ID: {
-										"INT"->PrintLine();
+										@tokens->AddBack(Token->New(Type->INT_ID)->As(Base));
 									}
-
+									
 									label Type->FLOAT_ID: {
-										"FLOAT"->PrintLine();
+										@tokens->AddBack(Token->New(Type->FLOAT_ID)->As(Base));
+									}
+									
+									label Type->DOUBLE_ID: {
+										@tokens->AddBack(Token->New(Type->DOUBLE_ID)->As(Base));
 									}
 								};
 							}
 							else {
-								Console->Print("ident '")->Print(ident)->PrintLine("'");
+								@tokens->AddBack(Token->New(Type->IDENT, ident)->As(Base));
 							};
 						}
 						# number

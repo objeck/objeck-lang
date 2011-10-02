@@ -1,0 +1,11 @@
+use IO;
+use Structure;
+
+bundle CodeGen {
+	class Parser {
+		@tokens : Vector
+		New(tokens : Vector) {
+			@tokens := tokens;
+		}
+	}
+}
