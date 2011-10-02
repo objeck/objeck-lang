@@ -9,10 +9,17 @@ bundle CodeGen {
 			@tokens := tokens;
 		}
 		
+		# TODO: IN/OUT i.e. float* f
+		
 		method : public : Parse() ~ Nil {
 			each(i : @tokens) {
 				token := @tokens->Get(i)->As(Token);
-				Console->Print(i)->Print(": ")->PrintLine(token->GetValue());
+				if(token->GetType() = Type->IDENT) {
+					Console->Print(i)->Print(": IDENT '")->Print(token->GetValue())->PrintLine("'");
+				}
+				else {
+					Console->Print(i)->Print(": ")->PrintLine(token->GetValue());
+				};
 			};
 		}
 	}
