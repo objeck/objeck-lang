@@ -51,6 +51,7 @@ bundle CodeGen {
 		SCOLON,
 		COMMA,
 		COLON,
+		TILDE,
 		MAP,
 		UNKWN,
 		NUM
@@ -75,9 +76,8 @@ bundle CodeGen {
 
 		method : Scan() ~ Vector {
 			reserved := StringMap->New();
-			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES")->As(Base));
-			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES")->As(Base));
-			reserved->Insert("CLASS", Token->New(Type->CLASSES_ID, "CLASS")->As(Base));
+			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES_ID")->As(Base));
+			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES_ID")->As(Base));
 			reserved->Insert("Int", Token->New(Type->INT_ID, "Int")->As(Base));
 			reserved->Insert("Float", Token->New(Type->FLOAT_ID, "Float")->As(Base));
 			reserved->Insert("Char", Token->New(Type->CHAR_ID, "Char")->As(Base));
@@ -187,6 +187,10 @@ bundle CodeGen {
 								
 								label '|': {
 									@tokens->AddBack(Token->New(Type->DELIM, "|")->As(Base));
+								}
+								
+								label '~': {
+									@tokens->AddBack(Token->New(Type->TILDE, "~")->As(Base));
 								}
 								
 								other: {
