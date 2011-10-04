@@ -1,6 +1,5 @@
-ARGS=-g -D_DEBUG -D_X64 -Wall
-# ARGS=-g -D_X64 -Wunused
-# ARGS=-O3 -D_X64
+# ARGS=-g -D_DEBUG -D_X64 -Wall
+ARGS=-O3 -D_X64 -Wall
 # ARGS=-O3 -D_TIMING -D_X64
 
 CC=g++
