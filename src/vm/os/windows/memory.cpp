@@ -427,19 +427,19 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   }
 
   thread_ids[1] = (HANDLE)_beginthreadex(NULL, 0, CheckStack, info, 0, NULL);
-  if(!thread_ids[0]) {
+  if(!thread_ids[1]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   
   thread_ids[2] = (HANDLE)_beginthreadex(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
-  if(!thread_ids[1]) {
+  if(!thread_ids[2]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
   thread_ids[3] = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
-  if(!thread_ids[2]) {
+  if(!thread_ids[3]) {
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
