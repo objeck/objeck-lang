@@ -406,8 +406,7 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      const long src_array_len = src_array[2];
-      const long dest_array_len = dest_array[2];
+      
       
       if(!src_array || !dest_array) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -415,6 +414,9 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
+	  const long src_array_len = src_array[2];
+      const long dest_array_len = dest_array[2];
+
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	char* src_array_ptr = (char*)(src_array + 3);
 	char* dest_array_ptr = (char*)(dest_array + 3);
@@ -433,15 +435,15 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      const long src_array_len = src_array[0];
-      const long dest_array_len = dest_array[0];
       
       if(!src_array || !dest_array) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
 	exit(1);
       }
-      
+
+	  const long src_array_len = src_array[0];
+      const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
@@ -460,8 +462,6 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      const long src_array_len = src_array[0];
-      const long dest_array_len = dest_array[0];
       
       if(!src_array || !dest_array) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -469,6 +469,8 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
+	  const long src_array_len = src_array[0];
+      const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
 	long* dest_array_ptr = dest_array + 3;
