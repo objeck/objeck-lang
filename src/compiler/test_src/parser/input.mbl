@@ -6,8 +6,5 @@ float => Float
 
 ==CLASSES==
 @class Button {
-	@new: GtkWidget* gtk_button_new(void)
-	@new: GtkWidget*  gtk_button_new_with_label(const gchar *label) | New
-	@method: void gtk_button_pressed(GtkButton *button) | 1=>@self | Pressed
-	@method: void gtk_button_set_focus_on_click(GtkButton *button, gboolean focus_on_click) | SetFocusOnClick
+	@method: void gtk_button_pressed(GtkButton *button) | 0=>@self | Pressed
 }
