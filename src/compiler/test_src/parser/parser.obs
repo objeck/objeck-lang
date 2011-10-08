@@ -4,14 +4,122 @@ use Struct;
 bundle CodeGen {
 	class Parser {
 		@tokens : Vector;
+		@pos : Int;
 		
 		New(tokens : Vector) {
 			@tokens := tokens;
+			@pos := 0;
 		}
 		
 		# TODO: IN/OUT i.e. float* f
 		
+		method : Match(type : Type) ~ Bool {
+			token := @tokens->Get(@pos)->As(Token);
+			return token->GetType() = type;
+		}
+		
+		method : Next() ~ Nil {
+			if(@pos < @tokens->Size()) {
+				@pos += 1;
+			};
+		}
+		
+		method : Token() ~ Token {
+			if(@pos < @tokens->Size()) {
+				return @tokens->Get(@pos);
+			};
+			
+			return Nil;
+		}
+		
 		method : public : Parse() ~ Nil {
+			if(Match(Type->HBAR) = false) {
+				"expected bar"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->TYPES_ID) = false) {
+				"'TYPES'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->HBAR) = false) {
+				"expected bar"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			# parse types
+			while(Match(Type->HBAR) = false) {
+				if(Match(Type->IDENT) = false) {
+					"expected ident"->PrintLine();
+					Runtime->Exit(1);
+				};
+				name := Token()->GetValue();
+				Next();
+				
+				if(Match(Type->MAP) = false) {
+					"expected map"->PrintLine();
+					Runtime->Exit(1);
+				};
+				Next();
+							
+				select(Token()->GetType()) {
+					label Type->CHAR_ID:
+					label Type->INT_ID: 
+					label Type->FLOAT_ID:
+					label Type->BOOL_ID: {
+						Next();
+					}
+					
+					other: {
+						"expected type"->PrintLine();
+						Runtime->Exit(1);
+					}	
+				};
+				
+				IO.Console->Print("name: ")->PrintLine(name);
+			};
+			
+			Next();
+			
+			if(Match(Type->CLASSES_ID) = false) {
+				"'CLASSES'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->HBAR) = false) {
+				"expected bar"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->CLASS_ID) = false) {
+				"@class"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->IDENT) = false) {
+				"expected ident"->PrintLine();
+				Runtime->Exit(1);
+			};
+			class_name := Token()->GetValue();
+			Next();
+			
+			IO.Console->Print("class: ")->PrintLine(class_name);
+			
+			if(Match(Type->OCBR) = false) {
+				"{"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+						
+#~		
 			each(i : @tokens) {
 				token := @tokens->Get(i)->As(Token);
 				if(token->GetType() = Type->IDENT) {
@@ -21,6 +129,7 @@ bundle CodeGen {
 					Console->Print(i)->Print(": ")->PrintLine(token->GetValue());
 				};
 			};
+~#
 		}
 	}
 }	
