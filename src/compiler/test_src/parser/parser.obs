@@ -84,7 +84,7 @@ bundle CodeGen {
 					}	
 				};
 				
-				IO.Console->Print("name: ")->PrintLine(name);
+				IO.Console->Print("mapping: name=")->PrintLine(name);
 			};
 			
 			Next();
@@ -114,7 +114,7 @@ bundle CodeGen {
 			class_name := Token()->GetValue();
 			Next();
 			
-			IO.Console->Print("class: ")->PrintLine(class_name);
+			IO.Console->Print("class=")->PrintLine(class_name);
 			
 			if(Match(Type->OCBR) = false) {
 				"expected '{'"->PrintLine();
@@ -153,9 +153,6 @@ bundle CodeGen {
 
 		method : public : ParseMethod() ~ Nil {
 			Next();
-						
-			"== 0 =="->PrintLine();
-			
 			if(Match(Type->COLON) = false) {
 				"expected ':'"->PrintLine();
 				Runtime->Exit(1);
@@ -182,7 +179,7 @@ bundle CodeGen {
 			method_name := Token()->GetValue();
 			Next();
 			
-			IO.Console->Print("\tmethod: ")->PrintLine(method_name);
+			IO.Console->Print("method: name=")->PrintLine(method_name);
 			
 			if(Match(Type->OPRN) = false) {
 				"expected '('"->PrintLine();
@@ -191,7 +188,7 @@ bundle CodeGen {
 			Next();
 			
 			#TODO: void
-			count := 0;
+			dclr_count := 0;
 			while(Match(Type->EOS) = false & Match(Type->CPRN) = false) {
 				if(Match(Type->IDENT) = false) {
 					"expected ident"->PrintLine();
@@ -213,11 +210,15 @@ bundle CodeGen {
 				};
 				dclr_name := Token()->GetValue();
 				Next();
+				
+				if(Match(Type->COMMA)) {
+					Next();
+				};
 			
 				IO.Console->Print("\tdecleartion type=")->Print(dclr_type)
 					->Print(", name=")->PrintLine(dclr_name);
 					
-				count += 1;
+				dclr_count += 1;
 			};
 			
 			if(Match(Type->CPRN) = false) {
@@ -225,6 +226,59 @@ bundle CodeGen {
 				Runtime->Exit(1);
 			};
 			Next();
+			
+			IO.Console->Print("\tdecleartion count=")->PrintLine(dclr_count);
+			
+			if(Match(Type->DELIM) = false) {
+				"expected '|'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			# parse types
+			while(Match(Type->EOS) = false & Match(Type->DELIM) = false) {
+				if(Match(Type->NUM) = false) {
+					"expected number"->PrintLine();
+					Runtime->Exit(1);
+				};
+				from_num := Token()->GetValue();
+				Next();
+				
+				if(Match(Type->MAP) = false) {
+					"expected '=>'"->PrintLine();
+					Runtime->Exit(1);
+				};
+				Next();
+							
+				if(Match(Type->NUM) = false) {
+					"expected number"->PrintLine();
+					Runtime->Exit(1);
+				};
+				to_num := Token()->GetValue();
+				Next();
+				
+				if(Match(Type->COMMA)) {
+					Next();
+				};
+				
+				IO.Console->Print("\tmapping: from=")->Print(from_num)
+					->Print(", to=")->PrintLine(to_num);
+			};
+			
+			if(Match(Type->DELIM) = false) {
+				"expected '|'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->IDENT) = false) {
+				"expected ident"->PrintLine();
+				Runtime->Exit(1);
+			};
+			to_name := Token()->GetValue();
+			Next();
+			
+			IO.Console->Print("\tto: name=")->PrintLine(to_name);
 		}
 	}
 }	

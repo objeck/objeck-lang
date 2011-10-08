@@ -1,4 +1,7 @@
-11/1/11
+10/8/11
+* fixed bug related to escaped string literals
+-----
+10/1/11
 * fixed bug in the String Compare method
 * changed the return value of the StingMap Find method to Base
 * allowing more than one bundle to be defined in an *.obe

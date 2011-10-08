@@ -6,5 +6,6 @@ float => Float
 
 ==CLASSES==
 @class Button {
-	@method: void gtk_button_pressed(GtkButton *button) | 0=>@self | Pressed
+	@method: void gtk_button_pressed(GtkButton *button) | 1=>0 | Pressed
+	@method: void gtk_button_pressed(GtkButton *button) | 1=>0 | Pressed
 }
