@@ -124,17 +124,7 @@ bundle CodeGen {
 			
 			while(Match(Type->EOS) = false & Match(Type->CCBR) = false) {
 				if(Match(Type->METHOD_ID)) {
-					Next();
-					
-					"== 0 =="->PrintLine();
-					
-					if(Match(Type->COLON) = false) {
-						"expected ':'"->PrintLine();
-						Runtime->Exit(1);
-					};
-					Next();
-					
-					"== 1 =="->PrintLine();
+					ParseMethod();
 				}
 				else if(Match(Type->FUNCTION_ID)) {
 					Next();
@@ -159,6 +149,82 @@ bundle CodeGen {
 				};
 			};
 ~#
+		}
+
+		method : public : ParseMethod() ~ Nil {
+			Next();
+						
+			"== 0 =="->PrintLine();
+			
+			if(Match(Type->COLON) = false) {
+				"expected ':'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->VOID_ID)) {
+				"\treturn: void"->PrintLine();
+			}
+			else if(Match(Type->IDENT)) {
+				return_name := Token()->GetValue();
+				IO.Console->Print("\t")->PrintLine(return_name);	
+			}
+			else {
+				"expected c type"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			if(Match(Type->IDENT) = false) {
+				"expected ident"->PrintLine();
+				Runtime->Exit(1);
+			};
+			method_name := Token()->GetValue();
+			Next();
+			
+			IO.Console->Print("\tmethod: ")->PrintLine(method_name);
+			
+			if(Match(Type->OPRN) = false) {
+				"expected '('"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+			
+			#TODO: void
+			count := 0;
+			while(Match(Type->EOS) = false & Match(Type->CPRN) = false) {
+				if(Match(Type->IDENT) = false) {
+					"expected ident"->PrintLine();
+					Runtime->Exit(1);
+				};
+				dclr_type := Token()->GetValue();
+				Next();
+				
+				if(Match(Type->STAR)) {
+					Next();
+				}
+				else if(Match(Type->AND)) {
+					Next();
+				};
+				
+				if(Match(Type->IDENT) = false) {
+					"expected ident"->PrintLine();
+					Runtime->Exit(1);
+				};
+				dclr_name := Token()->GetValue();
+				Next();
+			
+				IO.Console->Print("\tdecleartion type=")->Print(dclr_type)
+					->Print(", name=")->PrintLine(dclr_name);
+					
+				count += 1;
+			};
+			
+			if(Match(Type->CPRN) = false) {
+				"expected ')'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
 		}
 	}
 }	
