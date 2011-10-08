@@ -14,8 +14,12 @@ bundle CodeGen {
 		# TODO: IN/OUT i.e. float* f
 		
 		method : Match(type : Type) ~ Bool {
-			token := @tokens->Get(@pos)->As(Token);
-			return token->GetType() = type;
+			if(@pos < @tokens->Size()) {
+				token := @tokens->Get(@pos)->As(Token);
+				return token->GetType() = type;
+			};
+			
+			return false;
 		}
 		
 		method : Next() ~ Nil {
@@ -29,30 +33,30 @@ bundle CodeGen {
 				return @tokens->Get(@pos);
 			};
 			
-			return Nil;
+			return Token->New(Type->EOS);
 		}
 		
 		method : public : Parse() ~ Nil {
 			if(Match(Type->HBAR) = false) {
-				"expected bar"->PrintLine();
+				"expected '|'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
 			if(Match(Type->TYPES_ID) = false) {
-				"'TYPES'"->PrintLine();
+				"expected 'TYPES'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
 			if(Match(Type->HBAR) = false) {
-				"expected bar"->PrintLine();
+				"expected '|'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
 			# parse types
-			while(Match(Type->HBAR) = false) {
+			while(Match(Type->EOS) = false & Match(Type->HBAR) = false) {
 				if(Match(Type->IDENT) = false) {
 					"expected ident"->PrintLine();
 					Runtime->Exit(1);
@@ -61,7 +65,7 @@ bundle CodeGen {
 				Next();
 				
 				if(Match(Type->MAP) = false) {
-					"expected map"->PrintLine();
+					"expected '=>'"->PrintLine();
 					Runtime->Exit(1);
 				};
 				Next();
@@ -86,19 +90,19 @@ bundle CodeGen {
 			Next();
 			
 			if(Match(Type->CLASSES_ID) = false) {
-				"'CLASSES'"->PrintLine();
+				"expected ''CLASSES'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
 			if(Match(Type->HBAR) = false) {
-				"expected bar"->PrintLine();
+				"expected '|'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
 			if(Match(Type->CLASS_ID) = false) {
-				"@class"->PrintLine();
+				"expected '@class'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
@@ -113,12 +117,37 @@ bundle CodeGen {
 			IO.Console->Print("class: ")->PrintLine(class_name);
 			
 			if(Match(Type->OCBR) = false) {
-				"{"->PrintLine();
+				"expected '{'"->PrintLine();
 				Runtime->Exit(1);
 			};
 			Next();
 			
-						
+			while(Match(Type->EOS) = false & Match(Type->CCBR) = false) {
+				if(Match(Type->METHOD_ID)) {
+					Next();
+					
+					"== 0 =="->PrintLine();
+					
+					if(Match(Type->COLON) = false) {
+						"expected ':'"->PrintLine();
+						Runtime->Exit(1);
+					};
+					Next();
+					
+					"== 1 =="->PrintLine();
+				}
+				else if(Match(Type->FUNCTION_ID)) {
+					Next();
+				}
+				else if(Match(Type->NEW_ID)) {
+					Next();
+				}
+				else {
+					"expected method, function or new"->PrintLine();
+					Runtime->Exit(1);
+				};
+			};
+					
 #~		
 			each(i : @tokens) {
 				token := @tokens->Get(i)->As(Token);

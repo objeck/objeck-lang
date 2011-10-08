@@ -59,8 +59,9 @@ bundle CodeGen {
 		TILDE,
 		STAR,
 		MAP,
+		NUM,
 		UNKWN,
-		NUM
+		EOS
 	}
 
 	# Scanner class
@@ -86,7 +87,7 @@ bundle CodeGen {
 			reserved->Insert("TYPES", Token->New(Type->TYPES_ID, "TYPES_ID")->As(Base));
 			reserved->Insert("CLASSES", Token->New(Type->CLASSES_ID, "CLASSES_ID")->As(Base));
 			reserved->Insert("@class", Token->New(Type->CLASS_ID, "CLASS_ID")->As(Base));
-			reserved->Insert("@method", Token->New(Type->CLASSES_ID, "METHOD_ID")->As(Base));
+			reserved->Insert("@method", Token->New(Type->METHOD_ID, "METHOD_ID")->As(Base));
 			reserved->Insert("@function", Token->New(Type->FUNCTION_ID, "FUNCTION_ID")->As(Base));
 			reserved->Insert("@new", Token->New(Type->NEW_ID, "NEW_ID")->As(Base));
 			# objeck keywords
