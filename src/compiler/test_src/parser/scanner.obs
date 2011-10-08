@@ -45,6 +45,7 @@ bundle CodeGen {
 		SELF_ID,
 		FROM_ID,
 		IDENT,
+		AND,
 		HBAR,
 		DELIM,
 		OPRN,
@@ -211,6 +212,10 @@ bundle CodeGen {
 								
 								label '*': {
 									@tokens->AddBack(Token->New(Type->STAR, "*")->As(Base));
+								}
+								
+								label '&': {
+									@tokens->AddBack(Token->New(Type->AND, "*")->As(Base));
 								}
 								
 								other: {
