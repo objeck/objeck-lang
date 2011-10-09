@@ -1,0 +1,11 @@
+Objeck v2.1.1_2
+
+This release includes a refactored C++ API.  Current and upcoming releases will leverage the native API to provide database (ODBC) and GUI (GTK+) support.  This interim release fixes critical bugs that were found during GTK+ integration.  The following bugs have been resolved:
+* Fixed a memory manager bug related to the scanning of methods with higher-order functions 
+* Fixed a compiler bug that was assigning the same type ID to certain static and instance memory blocks
+* Fixed a compiler bug that caused some character escaped strings to be represented incorrectly
+* Resolved a recently introduced compiler bug that caused the compiler to crash if certain shared library references couldn’t be resolved
+* Changed the return value of the StringMap class’s Find method to return a Base class
+* Now allow more than one bundle to be defined in an .obe file
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
