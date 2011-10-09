@@ -1,0 +1,22 @@
+<mapping>
+	<types>
+		<type from="gint" to="Int"/>
+		<type from="gchar" to="Char"/>
+		<type from="gfloat" to="Float"/>
+	</types>
+	<rules>
+		<rule name="gtk-cast" value="GTK_CAST()"/>
+	</rules>
+	<classes>
+		<class name="Foo">
+			<methods>
+				<method name="Pressed">
+					<c-func offset="1">void gtk_button_pressed(GtkButton* button, gint type)</c-func>
+					<param-rules>
+						<param-rule id="0" rule="gtk-cast"/>
+					</param-rules>
+				</method>
+			</methods>
+		</class>
+	</classes>
+</mapping>
