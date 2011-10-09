@@ -1,0 +1,28 @@
+##############
+# For OSX only
+##############
+# ARGS=-g -Wall -pthread -D_DEBUG -D_UTILS
+ARGS=-O3 -Wall -D_MINGW -D_UTILS
+
+##############
+# For Linux
+##############
+# ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_DEBUGGER -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+# ARGS=-O3 -pthread
+
+CC=g++
+SRC=../compiler/types.o ../compiler/linker.o ../vm/common.o ../vm/jit/ia32/jit_intel_lp32.o ../vm/interpreter.o ../vm/os/windows/memory.o ../vm/loader.o symbols.o
+COMPILER_PATH=..
+EXE=obu
+
+$(EXE): $(SRC) 
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lws2_32 
+
+%.o: %.cpp
+	$(CC) -m32 $(ARGS) -c $< 
+
+clean:
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
