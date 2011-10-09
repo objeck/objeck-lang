@@ -2146,7 +2146,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) && IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
+    else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
@@ -2164,13 +2164,15 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
+    else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-
-    if((left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE && left->GetCastType() && left->GetCastType()->GetType() != INT_TYPE) ||
-       (right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE && right->GetCastType() && right->GetCastType()->GetType() != INT_TYPE) ||
+    
+    if((left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE && left->GetCastType() && 
+	left->GetCastType()->GetType() != INT_TYPE) ||
+       (right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE && right->GetCastType() && 
+	right->GetCastType()->GetType() != INT_TYPE) ||
        (left->GetCastType() && left->GetCastType()->GetType() == FLOAT_TYPE) ||
        (right->GetCastType() && right->GetCastType()->GetType() == FLOAT_TYPE)) {
       ProcessError(expression, "Expected Byte, Char or Int class");
@@ -2192,7 +2194,7 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int d
     else if(IsEnumExpression(left) || IsEnumExpression(right)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
-    else if(GetExpressionType(left, depth + 1)->GetType() == CLASS_TYPE ||
+    else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
 	    ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
       ProcessError(expression, "Invalid mathematical operation");
     }
