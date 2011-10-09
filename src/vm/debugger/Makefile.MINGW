@@ -23,9 +23,10 @@ COMPILER_PATH=..
 MEM_PATH=../os/posix
 JIT_PATH=../jit/ia32
 EXE=obd
+RES=debugger/objeck.res
 
-$(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lws2_32
+$(EXE): $(SRC) $(OBJ_LIBS) $(RES)
+	$(CC) -m32 -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) $(RES) -lws2_32
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
@@ -35,10 +36,13 @@ compiler.a:
 
 ../jit_intel_lp32.a:
 	cd $(JIT_PATH); make
+
+$(RES):
+	windres debugger/objeck.rc -O coff -o $(RES)
 	
 %.o: %.cpp
-	$(CC) -m32 $(ARGS) -c $< 
+	$(CC) -m32 -static -static-libstdc++ $(ARGS) -c $< 
 
 clean:
 	cd $(COMPILER_PATH); make clean
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f $(EXE).exe $(RES) $(EXE) *.exe *.o *~
