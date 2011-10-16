@@ -981,8 +981,8 @@ bundle XML {
 			children := Vector->New();
 						
 			# tokenize path into filters
-			filters := Vector->New();
 			start := 0;
+			filters := Vector->New();
 			each(i : path) {
 				if(path->Get(i) = '/') {
 					if(i - start > 0) {
@@ -998,7 +998,7 @@ bundle XML {
 			};
 			
 			# process query
-			if(filters->Size() > 0) {
+			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@self->GetName())) {
 				if(filters->Size() = 1) {
 					children->AddBack(@self->As(Base));
 				}
