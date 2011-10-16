@@ -18,7 +18,7 @@ bundle Default {
 
 		parser := XmlParser->New(xml);
      	if(parser->Parse()) {
-      	results := parser->FindElements("//SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:countryInfoByIanaResponse/return/countryname");
+      	results := parser->FindElements("/SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:countryInfoByIanaResponse/return/countryname");
 			if(results->Size() > 0) {
 				element := results->Get(0)->As(XMLElement);
 				element->GetContent()->PrintLine();

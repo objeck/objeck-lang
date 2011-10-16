@@ -131,11 +131,7 @@ bundle XML {
 		}
 		
 		method : public : FindElements(path : String) ~ Vector {
-			if(@root <> Nil & path->StartsWith("//")) {
-				return @root->FindElements(path);
-			};
-			
-			return Nil;
+			return @root->FindElements(path);
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -983,8 +979,7 @@ bundle XML {
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : public : FindElements(path : String) ~ Vector {
 			children := Vector->New();
-			path := path->SubString(2, path->Size() - 2);
-			
+						
 			# tokenize path into filters
 			filters := Vector->New();
 			start := 0;
@@ -1003,7 +998,7 @@ bundle XML {
 			};
 			
 			# process query
-			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@self->GetName())) {
+			if(filters->Size() > 0) {
 				if(filters->Size() = 1) {
 					children->AddBack(@self->As(Base));
 				}

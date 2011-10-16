@@ -15,9 +15,9 @@ bundle Default {
 			if(parser->Parse()) {
 				"-------- Operations --------"->PrintLine();
 				operations := StringHash->New();
-				results := parser->FindElements("//wsdl:definitions/wsdl:portType/wsdl:operation");
+				results := parser->FindElements("/wsdl:definitions/wsdl:portType/wsdl:operation");
 				if(results <> Nil) {
-					results := parser->FindElements("//definitions/portType/operation");
+					results := parser->FindElements("/definitions/portType/operation");
 				};
 				
 				if(results <> Nil) {
@@ -29,7 +29,7 @@ name->PrintLine();
 						children := element->GetChildren();
 						each(j : children) {
 							sub_element := children->Get(j)->As(XMLElement);			
-# sub_element->FindElements("//wsdl:input")->Size()->PrintLine();
+# sub_element->FindElements("/wsdl:input")->Size()->PrintLine();
 							if(sub_element->GetName()->EndsWith("input")) {
 								message := sub_element->GetAttribute("message");
 IO.Console->Print("  input='")->Print(message)->PrintLine("'");
@@ -41,9 +41,9 @@ IO.Console->Print("  input='")->Print(message)->PrintLine("'");
 				
 				"-------- Messages --------"->PrintLine();
 				messages := StringHash->New();
-				results := parser->FindElements("//wsdl:definitions/wsdl:message");
+				results := parser->FindElements("/wsdl:definitions/wsdl:message");
 				if(results <> Nil) {
-					results := parser->FindElements("//definitions/message");
+					results := parser->FindElements("/definitions/message");
 				};
 				if(results <> Nil) {
 					each(i : results) {
@@ -66,9 +66,9 @@ IO.Console->Print("  type='")->Print(message_type)->PrintLine("'");
 				};
 				
 				"-------- Types --------"->PrintLine();
-				results := parser->FindElements("//definitions/wsdl:types/wsdl:schema/wsdl:complexType");
+				results := parser->FindElements("/definitions/wsdl:types/wsdl:schema/wsdl:complexType");
 				if(results <> Nil) {
-					results := parser->FindElements("//definitions/types/schema/complexType");
+					results := parser->FindElements("/definitions/types/schema/complexType");
 				};
 				if(results <> Nil) {
 					each(i : results) {
