@@ -7,7 +7,7 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(FileReader->ReadFile(args[0]));
 				if(parser->Parse()) {
-					results := parser->FindElements("//nutrition/food[last()]/calories[fat]");
+					results := parser->FindElements("/nutrition/food[last()]/calories[fat]");
 					if(results <> Nil) {
 						each(i : results) {					
 							element := results->Get(i)->As(XMLElement);
