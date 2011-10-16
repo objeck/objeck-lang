@@ -1979,6 +1979,9 @@ This class in the `Net' bundle:
   \end{itemize}
 \end{itemize}
 
+\subsection{XML Libraries}
+These classes provide support for XML parsing and document creation.
+
 \subsubsection{XMLParser}
 The XMLParser class allows programmers to parse and search XML
 documents using a simplified DOM structure.  This class in the `XML'
@@ -2010,15 +2013,18 @@ bundle:
   \begin{itemize}
   \item method : public : GetRoot() \textasciitilde XMLElement
   \end{itemize}
+\item \texttt{FindElements} - returns all elements that match the
+  given query string.  The following XPath expressions are supported
+  num, attrib\_name\, first() and last().
+  \begin{itemize}
+  \item method : public : FindElements(path : String) \textasciitilde Vector
+  \end{itemize}
 \item \texttt{GetError} - Returns the last parsing error; if one
   occurred.
   \begin{itemize}
   \item method : public : Parse() \textasciitilde Bool
   \end{itemize}
 \end{itemize}
-
-\subsection{XML Libraries}
-These classes provide support for XML parsing and document creation.
 
 \subsubsection{XMLBuilder}
 The XMLBuilder class allows a programmer to dynamically build an XML
@@ -2110,7 +2116,8 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{FindElements} - returns all elements that match the
   given query string.  The following XPath expressions are supported
-  <num>, <attrib\_name>, first() and last().
+  num, attrib\_name, first() and last().  Note: current node name
+  must be part of the query.
   \begin{itemize}
   \item method : public : FindElements(path : String) \textasciitilde Vector
   \end{itemize}
