@@ -35,12 +35,12 @@ bundle Default {
 			parser := XmlParser->New(in);
 			if(parser->Parse()) {
 				# get first item
-				results := parser->FindElements("//inventory/section[1]/item[1]");
+				results := parser->FindElements("/inventory/section[1]/item[1]");
 				if(results <> Nil) {
 					Console->Print("items: ")->PrintLine(results->Size());
 				};
 				# get all prices
-				results := parser->FindElements("//inventory/section/item/price");
+				results := parser->FindElements("/inventory/section/item/price");
 				if(results <> Nil) {
 					each(i : results) {					
 						element := results->Get(i)->As(XMLElement);
@@ -48,7 +48,7 @@ bundle Default {
 					};
 				};
 				# get names
-				results := parser->FindElements("//inventory/section/item/name");
+				results := parser->FindElements("/inventory/section/item/name");
 				if(results <> Nil) {
 					Console->Print("names: ")->PrintLine(results->Size());
 				};
