@@ -1,5 +1,6 @@
 use IO;
 use XML;
+use Struct;
 
 bundle Default {
 	class Test {
@@ -7,6 +8,7 @@ bundle Default {
 			if(args->Size() = 1) {
 				parser := XmlParser->New(FileReader->ReadFile(args[0]));
 				if(parser->Parse()) {
+					type_mapping := StringHash->New();
 					types := parser->FindElements("mapping/types/type");
 					if(types <> Nil) {
 						each(i : types) {
@@ -14,7 +16,8 @@ bundle Default {
 							from_attrib := type_element->GetAttribute("from");
 							to_attrib := type_element->GetAttribute("to");
 							if(from_attrib <> Nil & to_attrib <> Nil) {
-								Console->Print("mapping: ")->Print(from_attrib)->Print(" => ")->PrintLine(to_attrib);
+								type_mapping->Insert(from_attrib, to_attrib->As(Base));
+#								Console->Print("mapping: ")->Print(from_attrib)->Print(" => ")->PrintLine(to_attrib);
 							};
 						};
 					};
@@ -38,8 +41,12 @@ bundle Default {
 								};
 								c_funcs := method_element->FindElements("method/c-func");
 								if(c_funcs <> Nil & c_funcs->Size() = 1) {
-									c_func := c_funcs->Get(0)->As(XMLElement);
-									Console->Print("\t\tc-fun: content=")->PrintLine(c_func->GetContent());
+									c_func_element := c_funcs->Get(0)->As(XMLElement);
+									offset := c_func_element->GetAttribute("offset");
+									if(offset <> Nil) {
+										Console->Print("\t\tc-fun: offset=")->Print(offset)
+											->Print(" content=")->PrintLine(c_func_element->GetContent());
+									};
 								};
 							};
 						};
