@@ -3044,7 +3044,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program enum
   //
-  if(SearchProgramEnums(left->GetClassName()) && right) {
+  if(left && right && SearchProgramEnums(left->GetClassName())) {
     Enum* left_enum = SearchProgramEnums(left->GetClassName());
     // program
     Enum* right_enum = SearchProgramEnums(right->GetClassName());
@@ -3071,7 +3071,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program class
   //
-  else if(left && right && SearchProgramClasses(left->GetClassName())) {
+  else if(left && right &&  && SearchProgramClasses(left->GetClassName())) {
     Class* left_class = SearchProgramClasses(left->GetClassName());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
@@ -3119,7 +3119,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // enum libary
   //
-  else if(linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
+  else if(left && right && linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
     LibraryEnum* left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses());
     // program
     Enum* right_enum = SearchProgramEnums(right->GetClassName());
@@ -3145,7 +3145,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // class libary
   //
-  else if(linker->SearchClassLibraries(left->GetClassName(), program->GetUses()) && right) {
+  else if(left && right && linker->SearchClassLibraries(left->GetClassName(), program->GetUses())) {
     LibraryClass* left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
