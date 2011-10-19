@@ -3071,7 +3071,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int d
   //
   // program class
   //
-  else if(left && right &&  && SearchProgramClasses(left->GetClassName())) {
+  else if(left && right && SearchProgramClasses(left->GetClassName())) {
     Class* left_class = SearchProgramClasses(left->GetClassName());
     // program
     Class* right_class = SearchProgramClasses(right->GetClassName());
