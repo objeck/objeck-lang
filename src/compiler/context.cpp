@@ -122,12 +122,38 @@ bool ContextAnalyzer::Analyze()
 
   // associate re-encoded method signatures with methods
   for(unsigned int i = 0; i < bundles.size(); i++) {
-    vector<Class*> classes = bundles[i]->GetClasses();
+    bundle = bundles[i];
+    vector<Class*> classes = bundle->GetClasses();
+    
     for(unsigned int j = 0; j < classes.size(); j++) {
+      Class* klass = classes[j];
+      string parent_name = klass->GetParentName();
+#ifndef _SYSTEM
+      if(parent_name.size() == 0) {
+	parent_name = "System.Base";
+	klass->SetParentName("System.Base");
+      }
+#endif
+      if(parent_name.size()) {
+	Class* parent = SearchProgramClasses(parent_name);
+	if(parent) {
+	  klass->SetParent(parent);
+	  parent->AddChild(klass);
+	} else {
+	  LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses());
+	  if(lib_parent) {
+	    klass->SetLibraryParent(lib_parent);
+	    lib_parent->AddChild(klass);
+	  } else {
+	    ProcessError(klass, "Attempting to inherent from an undefined class type");
+	  }
+	}
+      }
+      // associate methods
       classes[j]->AssociateMethods();
     }
   }
-
+  
   // process bundles
   bundles = program->GetBundles();
   for(unsigned int i = 0; i < bundles.size(); i++) {
@@ -211,28 +237,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
                  "' defined in program and shared libraries");
   }
 
-  string parent_name = klass->GetParentName();
-#ifndef _SYSTEM
-  if(parent_name.size() == 0) {
-    parent_name = "System.Base";
-    klass->SetParentName("System.Base");
-  }
-#endif
-  if(parent_name.size()) {
-    Class* parent = SearchProgramClasses(parent_name);
-    if(parent) {
-      klass->SetParent(parent);
-      parent->AddChild(klass);
-    } else {
-      LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses());
-      if(lib_parent) {
-        klass->SetLibraryParent(lib_parent);
-        lib_parent->AddChild(klass);
-      } else {
-        ProcessError(klass, "Attempting to inherent from an undefined class type");
-      }
-    }
-  }
+ 
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(unsigned int i = 0; i < statements.size(); i++) {
