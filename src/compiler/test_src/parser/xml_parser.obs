@@ -31,7 +31,8 @@ bundle Default {
 							if(name_attrib <> Nil) {
 								Console->Print("class: name=")->PrintLine(name_attrib);
 							};
-							
+
+							gen_methods := Vector->New();							
 							methods := class_element->FindElements("class/methods/method");
 							each(j : methods) {
 								method_element := methods->Get(i)->As(XMLElement);
@@ -44,8 +45,11 @@ bundle Default {
 									c_func_element := c_funcs->Get(0)->As(XMLElement);
 									offset := c_func_element->GetAttribute("offset");
 									if(offset <> Nil) {
-										Console->Print("\t\tc-fun: offset=")->Print(offset)
-											->Print(" content=")->PrintLine(c_func_element->GetContent());
+#										Console->Print("\t\tc-fun: offset=")->Print(offset)->Print(" content=")->PrintLine(c_func_element->GetContent());
+										gen_method := GenMethod->New(name_attrib, 
+											c_func_element->GetContent(), 
+											offset->ToInt());
+										gen_methods->AddBack(gen_method->As(Base));
 									};
 								};
 							};
