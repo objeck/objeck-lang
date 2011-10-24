@@ -73,13 +73,6 @@ int APITools_GetArgumentCount(VMContext &context) {
   return 0;
 }
 
-// TODO: pop return values
-// TODO: array support
-
-long APITools_GetArraySize(long* array, int index) {
-  return array[0];
-}
-
 long APITools_GetIntArrayElement(long* array, int index) {
   const long src_array_len = array[0];
   if(index < src_array_len) {
@@ -111,6 +104,14 @@ double APITools_GetFloatArrayElement(long* array, int index) {
   }
   
   return 0.0;
+}
+
+char* APITools_GetCharArray(long* array) {
+  if(array) {
+  	return (char*)(array + 3);
+  }
+	
+  return NULL;
 }
 
 void APITools_SetFloatArrayElement(long* array, int index, double value) {
@@ -308,6 +309,22 @@ char* APITools_GetStringValue(VMContext &context, int index) {
   
   return NULL;
 }
+
+long* APITools_GetObjectValue(VMContext &context, int index) {
+  long* data_array = context.data_array;
+  if(data_array && index < data_array[0]) {
+    data_array += ARRAY_HEADER_OFFSET;
+    long* object_holder = (long*)data_array[index];
+    
+#ifdef _DEBUG
+    assert(object_holder);
+#endif
+    return (long*)object_holder[0];
+  }
+  
+  return NULL;
+}
+
 
 // invokes a runtime Objeck method
 void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_name) {

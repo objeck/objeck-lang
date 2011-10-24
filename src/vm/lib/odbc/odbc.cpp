@@ -660,6 +660,45 @@ extern "C" {
   }
   
   //
+  // set a timestamp for a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_timestamp(VMContext& context) {
+    long* value = APITools_GetObjectValue(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_timestamp: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << value << " ###" << endl;
+#endif
+    
+    SQL_TIMESTAMP_STRUCT time_stamp;    
+    time_stamp.year = value[1];
+    time_stamp.month = value[12];
+    time_stamp.day = value[3];
+    time_stamp.hour = value[4];
+    time_stamp.minute = value[5];
+    time_stamp.second = value[6];
+    time_stamp.fraction = value[7];
+    
+    long* data = (long*)value[0];
+    data += 3;
+    memcpy(data, &time_stamp, sizeof(time_stamp));
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, 
+					SQL_TYPE_TIMESTAMP, 0, 0, data, sizeof(time_stamp), NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
+    
+  //
   // gets a string from a result set
   //
 #ifdef _WIN32
