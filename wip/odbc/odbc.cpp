@@ -93,6 +93,8 @@ int main() {
 
 	cout << sizeof(SQLSMALLINT) << endl;
 	cout << sizeof(SQLUINTEGER) << endl;
+	cout << sizeof(SQL_TIMESTAMP_STRUCT) << endl;
+	cout << sizeof(SQL_TIME_STRUCT) << endl;
 
   return 0;
 }
