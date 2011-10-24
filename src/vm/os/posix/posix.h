@@ -59,6 +59,7 @@ class File {
 	  
     struct stat info;
     if(fstat(fd, &info) < 0) {
+	  close(fd);
       return -1;
     }
 	  
@@ -130,11 +131,12 @@ class IPSocket {
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(socket < 0) {
-      return -1;
+	  return -1;
     }
 
     struct hostent* host_info = gethostbyname(address);
     if(!host_info) {
+	  close(sock);
       return -1;
     }
     
@@ -149,7 +151,8 @@ class IPSocket {
     if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
       return sock;
     }
-    
+     
+	close(sock);
     return -1;
   }
 
