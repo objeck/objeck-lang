@@ -212,6 +212,23 @@ bundle ODBC {
 			return false;
 		}
 		
+		method : public : SetDate(pos : Int, value : Date) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := value;
+				array_args[2] := IntHolder->New(pos);
+				array_args[3] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_date", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+		
 		method : public : SetTimestamp(pos : Int, value : Timestamp) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
