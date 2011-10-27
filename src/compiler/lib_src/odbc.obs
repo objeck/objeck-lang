@@ -511,7 +511,7 @@ bundle ODBC {
 		
 		New() {
 			# size of c struct
-			buffer := Byte->New(6);
+			buffer := Byte->New[6];
 		}
 		
 		method : public : GetYear() ~ Int {
@@ -531,42 +531,70 @@ bundle ODBC {
 	# ODBC Timestamp holder
 	~#
 	class Timestamp {
-		buffer : Byte[];
-		year : Int;
-		month : Int;
-		day : Int;
-		hour : Int;
-		minute : Int;
-		second : Int;
-		fraction : Int;
+		@buffer : Byte[];
+		@year : Int;
+		@month : Int;
+		@day : Int;
+		@hours : Int;
+		@minute : Int;
+		@second : Int;
+		@fraction : Int;
 		
 		New() {
 			# size of c struct
-			buffer := Byte->New(16);
+			@buffer := Byte->New[16];
 		}
 		
 		method : public : GetYear() ~ Int {
-			return year;
+			return @year;
+		}
+
+		method : public : SetYear(year : Int) ~ Nil {
+			@year := year;
 		}
 		
 		method : public : GetMonth() ~ Int {
-			return month;
+			return @month;
+		}
+
+		method : public : SetMonth(month : Int) ~ Nil {
+			@month := month;
 		}
 		
 		method : public : GetDay() ~ Int {
-			return day;
+			return @day;
 		}
 		
+		method : public : SetDay(day : Int) ~ Nil {
+			@day := day;
+		}
+
+		method : public : GetHours() ~ Int {
+			return @hours;
+		}
+		
+		method : public : SetHours(hours : Int) ~ Nil {
+			@hours := hours;
+		}
+
 		method : public : GetMinute() ~ Int {
-			return minute;
+			return @minute;
 		}
 		
-		method : public : GetSecond() ~ Int {
-			return second;
+		method : public : SetMinute(minute : Int) ~ Nil {
+			@minute := minute;
+		}
+
+		method : public : GetSeconds() ~ Int {
+			return @second;
 		}
 		
+		method : public : SetSeconds(second : Int) ~ Nil {
+			@second := second;
+		}
+
 		method : public : GetFraction() ~ Int {
-			return fraction;
+			return @fraction;
 		}
 	}
 }
