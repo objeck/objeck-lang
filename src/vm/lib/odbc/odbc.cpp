@@ -677,7 +677,7 @@ extern "C" {
     
     SQL_TIMESTAMP_STRUCT time_stamp;    
     time_stamp.year = value[1];
-    time_stamp.month = value[12];
+    time_stamp.month = value[2];
     time_stamp.day = value[3];
     time_stamp.hour = value[4];
     time_stamp.minute = value[5];

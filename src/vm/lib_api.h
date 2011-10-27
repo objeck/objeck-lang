@@ -319,7 +319,7 @@ long* APITools_GetObjectValue(VMContext &context, int index) {
 #ifdef _DEBUG
     assert(object_holder);
 #endif
-    return (long*)object_holder[0];
+    return object_holder;
   }
   
   return NULL;
