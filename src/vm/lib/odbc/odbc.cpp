@@ -697,6 +697,41 @@ extern "C" {
     
     APITools_SetIntValue(context, 0, 0);
   }
+  
+  //
+  // set a date for a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_date(VMContext& context) {
+    long* value = APITools_GetObjectValue(context, 1);
+    long i = APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    
+#ifdef _DEBUG
+    cout << "### set_date: stmt=" << stmt << ", column=" << i 
+	 << ", value=" << value << " ###" << endl;
+#endif
+    
+    SQL_DATE_STRUCT time_stamp;    
+    time_stamp.year = value[1];
+    time_stamp.month = value[2];
+    time_stamp.day = value[3];
+    
+    long* data = (long*)value[0];
+    data += 3;
+    memcpy(data, &time_stamp, sizeof(time_stamp));
+    
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_DATE, 
+					SQL_TYPE_DATE, 0, 0, data, sizeof(time_stamp), NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+    
+    APITools_SetIntValue(context, 0, 0);
+  }
     
   //
   // gets a string from a result set
