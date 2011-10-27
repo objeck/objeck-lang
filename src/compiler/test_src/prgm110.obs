@@ -10,13 +10,20 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
-				pstmt := conn->CreateParameterStatement("select * from test.student WHERE id=?");
-				pstmt->SetInt(1, Console->ReadString()->ToInt());
+				pstmt := conn->CreateParameterStatement("select * from test.new_table WHERE some_data=?");
+				ts := Timestamp->New();
+				ts->SetYear(2011);
+				ts->SetMonth(10);
+				ts->SetDay(26);
+				ts->SetHours(20);
+				ts->SetMinute(19);
+				ts->SetSeconds(53);
+				pstmt->SetTimestamp(1, ts);
 				result := pstmt->Select();
 				if(result <> Nil) {
 					i := 0;	
 					while(result->Next()) {
-						result->GetVarchar(2)->PrintLine();
+						result->GetInt(1)->PrintLine();
 					};
 					result->Close();
 				};
