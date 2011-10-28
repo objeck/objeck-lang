@@ -32,16 +32,16 @@ bundle ODBC {
 			
 			value := array_args[0]->As(IntHolder);
 			@native_connection := value->Get();
-      	}
+		}
       	
-      	method : public : Close() ~ Nil {
-      		if(@native_connection <> 0) {
-      			array_args := Base->New[1];
+		method : public : Close() ~ Nil {
+			if(@native_connection <> 0) {
+     		array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_disconnect", array_args);
-      		};
-      	}
+			};
+		}
 		
 		method : public : Update(sql : String) ~ Int {
 			if(@native_connection <> 0) {
@@ -521,26 +521,38 @@ bundle ODBC {
 	# ODBC Date holder
 	~#
 	class Date {
-		buffer : Byte[];
-		year : Int;
-		month : Int;
-		day : Int;
+		@buffer : Byte[];
+		@year : Int;
+		@month : Int;
+		@day : Int;
 		
 		New() {
 			# size of c struct
-			buffer := Byte->New[6];
+			@buffer := Byte->New[6];
 		}
 		
 		method : public : GetYear() ~ Int {
-			return year;
+			return @year;
+		}
+
+		method : public : SetYear(year : Int) ~ Nil {
+			@year := year;
 		}
 		
 		method : public : GetMonth() ~ Int {
-			return month;
+			return @month;
+		}
+
+		method : public : SetMonth(month : Int) ~ Nil {
+			@month := month;
 		}
 		
 		method : public : GetDay() ~ Int {
-			return day;
+			return @day;
+		}
+		
+		method : public : SetDay(day : Int) ~ Nil {
+			@day := day;
 		}
 	}
 	
