@@ -1223,7 +1223,7 @@ namespace Runtime {
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
 	  if(sock >= 0) {
-	    instance[0] = 0;
+	    instance[0] = (long)NULL;
 	    IPSocket::Close(sock);
 	  }
 	}
@@ -1305,7 +1305,7 @@ namespace Runtime {
 	  FILE* file = (FILE*)instance[0];
 	
 	  if(file) {
-	    instance[0] = 0;
+	    instance[0] = (long)NULL;
 	    fclose(file);
 	  }
 	}
@@ -2130,10 +2130,10 @@ namespace Runtime {
       if(!cm->GetNativeCode()) {
 	skip_jump = false;
 	method = cm;
-	int32_t cls_id = method->GetClass()->GetId();
-	int32_t mthd_id = method->GetId();
 	
 #ifdef _DEBUG
+	int32_t cls_id = method->GetClass()->GetId();
+	int32_t mthd_id = method->GetId();
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
 	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
 	     << method->GetParamCount() << " ----------" << endl;
