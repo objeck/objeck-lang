@@ -2131,9 +2131,9 @@ namespace Runtime {
 	skip_jump = false;
 	method = cm;
 	
-#ifdef _DEBUG
-	int32_t cls_id = method->GetClass()->GetId();
+  int32_t cls_id = method->GetClass()->GetId();
 	int32_t mthd_id = method->GetId();
+#ifdef _DEBUG
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
 	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
 	     << method->GetParamCount() << " ----------" << endl;

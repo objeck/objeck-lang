@@ -15,7 +15,7 @@
  * - Neither the name of the Objeck Team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- *%
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -159,7 +159,7 @@ class IPSocket {
 
     struct hostent* host_info = gethostbyname(address);
     if(!host_info) {
-	  close(sock);
+	  closesocket(sock);
       return -1;
     }
 
@@ -175,7 +175,7 @@ class IPSocket {
       return sock;
     }
 
-	close(sock);
+	closesocket(sock);
     return -1;
   }
 
