@@ -1,0 +1,8 @@
+Objeck v2.1.2_0
+
+This release includes a refactored C++ API.  Current and upcoming releases will leverage the native API to provide database (ODBC) and GUI (GTK+) support.  This interim release fixes critical bugs that were found during GTK+ integration.  The following bugs have been resolved:
+* Syntax tweaks to the XML parsing libraries; namely the 'XMLElement->FindElements(..)' method
+* The ODBC ParameterStatement class now supports Timestamps and Dates  
+* Ability to use more than one source bundle for a compiled .obe file
+
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
