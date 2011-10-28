@@ -10,14 +10,14 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "");	
 			if(conn <> Nil) {
-				pstmt := conn->CreateParameterStatement("select * from test.new_table WHERE some_data=?");
+				pstmt := conn->CreateParameterStatement("select * from test.student WHERE enrolled_date=?");
 				ts := Timestamp->New();
-				ts->SetYear(2011);
-				ts->SetMonth(10);
-				ts->SetDay(26);
-				ts->SetHours(20);
-				ts->SetMinute(19);
-				ts->SetSeconds(53);
+				ts->SetYear(2008);
+				ts->SetMonth(9);
+				ts->SetDay(20);
+				ts->SetHours(10);
+				ts->SetMinute(13);
+				ts->SetSeconds(10);
 				pstmt->SetTimestamp(1, ts);
 				result := pstmt->Select();
 				if(result <> Nil) {
