@@ -78,7 +78,6 @@ void* StackInterpreter::CompileMethod(void* arg)
   jit_compiler.Compile(method);
   // clean up
   program->RemoveThread(pthread_self());
-  pthread_mutex_unlock(&method->jit_mutex);
   pthread_exit(NULL);
 }
 #endif
@@ -1530,7 +1529,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
       }
       program->AddThread(jit_thread);
       pthread_attr_destroy(&attrs);
-      
+      //      pthread_detach(jit_thread);
+
       // execute code in parallel
       ProcessInterpretedMethodCall(called, instance);
     }
