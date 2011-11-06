@@ -6,12 +6,13 @@ bundle Default {
 		i : Int;
 
 		New(t : Int) {
-			f := 1001.45 * t;
+			f := 1000.33 * t;
 			i := t;
 		}
 
 		method : public : GetF() ~ Float {
-			return f;
+			return 678.74;
+#			return f;
 		}
 
 		method : public : GetI() ~ Int {
@@ -142,12 +143,15 @@ bundle Default {
 				};
 
 				o := g->GetFoo();
+"----"->PrintLine();
 				o->GetF()->PrintLine();
 
 				w := g->GetBar();
 				if(w <> Nil) {
 					w->GetI()->PrintLine();
 				};
+
+				(678223.74 + 0.23)->PrintLine();
 			};
 		}
 	}
