@@ -195,6 +195,7 @@ public:
     case NEW_INT_ARY:
     case NEW_BYTE_ARY:
     case NEW_OBJ_INST:
+    case REMOTE_OBJ_INST:
     case OBJ_INST_CAST:
     case OBJ_TYPE_OF:
     case TRAP:
@@ -210,6 +211,7 @@ public:
       break;
 
     case LIB_NEW_OBJ_INST:
+    case LIB_REMOTE_OBJ_INST:
     case LIB_OBJ_INST_CAST:
       WriteString(operand5, file_out);
       break;
@@ -574,6 +576,10 @@ public:
       cout << "LIB_NEW_OBJ_INST: class='" << operand5 << "'" << endl;
       break;
 
+    case LIB_REMOTE_OBJ_INST:
+      cout << "LIB_REMOTE_OBJ_INST: class='" << operand5 << "'" << endl;
+      break;
+      
     case LIB_OBJ_INST_CAST:
       cout << "LIB_OBJ_INST_CAST: to_class='" << operand5 << "'" << endl;
       break;
@@ -620,6 +626,10 @@ public:
       cout << "NEW_OBJ_INST: class=" << operand << endl;
       break;
 
+    case REMOTE_OBJ_INST:
+      cout << "REMOTE_OBJ_INST: class=" << operand << endl;
+      break;
+      
     case TRAP:
       cout << "TRAP: args=" << operand << endl;
       break;

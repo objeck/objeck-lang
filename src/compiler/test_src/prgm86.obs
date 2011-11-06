@@ -18,10 +18,24 @@ bundle Default {
 
 		function : native : Main(args : System.String[]) ~ Nil {
 			x := Bar->New();
+#~
 			Run(x);
-			r := x->TypeOf(String)->PrintLine();
-			r := x->TypeOf(Inf2)->PrintLine();
-			r := x->TypeOf(Inf)->PrintLine();
+
+			r := x->TypeOf(String);
+			r->PrintLine();
+
+			r := x->TypeOf(Inf2);
+			r->PrintLine();
+
+			r := x->TypeOf(Inf);
+			r->PrintLine();
+
+			r := x->TypeOf(Bar);
+			r->PrintLine();
+~#
+	
+			y : Inf := Bar->New();
+			y->B1("gg", 1.1);
 		}
 
 		function : Run(x : Bar) ~ Nil {

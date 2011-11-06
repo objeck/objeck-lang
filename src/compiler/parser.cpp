@@ -425,7 +425,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
         ProcessError("Method or function already defined '" + method->GetName() + "'",
                      TOKEN_CLOSED_PAREN);
       }
-    } else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
+    } else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID) || Match(TOKEN_REMOTE_ID)) {
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
@@ -556,12 +556,18 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       }
       NextToken();
       method_type = NEW_PRIVATE_METHOD;
-    } else {
+    } 
+    else {
       method_type = NEW_PUBLIC_METHOD;
     }
 
     method_name = current_class->GetName() + ":New";
   } 
+  else if(Match(TOKEN_REMOTE_ID)) {
+    NextToken();
+    method_type = REMOTE_PUBLIC_METHOD;
+    method_name = current_class->GetName() + ":Remote";
+  }
   else {
     NextToken();
 
@@ -635,7 +641,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // return type
   Type* return_type;
-  if(method_type != NEW_PUBLIC_METHOD && method_type != NEW_PRIVATE_METHOD) {
+  if(method_type != NEW_PUBLIC_METHOD && method_type != REMOTE_PUBLIC_METHOD && method_type != NEW_PRIVATE_METHOD) {
     if(!Match(TOKEN_TILDE)) {
       ProcessError(TOKEN_TILDE);
     }
@@ -2293,6 +2299,12 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
 							      ParseExpressionList(depth + 1));
       }
+    }
+    // remote call
+    else if(Match(TOKEN_REMOTE_ID)) {
+      NextToken();
+      method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, REMOTE_INST_CALL, ident,
+							      ParseExpressionList(depth + 1));
     }
     else if(Match(TOKEN_AS_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);

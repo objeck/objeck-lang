@@ -123,6 +123,7 @@ void Scanner::LoadKeywords()
   ident_map["true"] = TOKEN_TRUE_ID;
   ident_map["false"] = TOKEN_FALSE_ID;
   ident_map["New"] = TOKEN_NEW_ID;
+  ident_map["Remote"] = TOKEN_REMOTE_ID;
   ident_map["Nil"] = TOKEN_NIL_ID;
   ident_map["As"] = TOKEN_AS_ID;
   ident_map["TypeOf"] = TOKEN_TYPE_OF_ID;
@@ -266,6 +267,7 @@ void Scanner::CheckIdentifier(int index)
   case TOKEN_RETURN_ID:
   case TOKEN_FLOAT_ID:
   case TOKEN_CHAR_ID:
+  case TOKEN_REMOTE_ID:
   case TOKEN_NEW_ID:
   case TOKEN_NIL_ID:
 #ifdef _SYSTEM

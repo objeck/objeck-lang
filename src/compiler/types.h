@@ -91,9 +91,10 @@ namespace frontend {
    ****************************/
   enum MethodType {
     NEW_PUBLIC_METHOD = -5000,
+    REMOTE_PUBLIC_METHOD,
     NEW_PRIVATE_METHOD,
     PUBLIC_METHOD,
-    PRIVATE_METHOD
+    PRIVATE_METHOD,
   };
 
   /****************************
@@ -102,6 +103,7 @@ namespace frontend {
   enum MethodCallType {
     ENUM_CALL = -6000,
     NEW_INST_CALL,
+    REMOTE_INST_CALL,
     NEW_ARRAY_CALL,
     METHOD_CALL,
     PARENT_CALL
