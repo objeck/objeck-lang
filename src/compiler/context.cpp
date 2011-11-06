@@ -487,7 +487,8 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
       AnalyzeStatement(statements[i], depth + 1);
     }
     // check for parent call
-    if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+    if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || 
+	current_method->GetMethodType() == REMOTE_PUBLIC_METHOD ||
         current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        (current_class->GetParent() || (current_class->GetLibraryParent() &&
 				       current_class->GetLibraryParent()->GetName() != "System.Base"))) {
@@ -505,6 +506,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
 #ifndef _SYSTEM
     // check for return
     if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
+       current_method->GetMethodType() != REMOTE_PUBLIC_METHOD &&
        current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
        current_method->GetReturn()->GetType() != NIL_TYPE) {
       if(statements.size() == 0 || statements.back()->GetStatementType() != RETURN_STMT) {
@@ -1390,6 +1392,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     }
     // cannot create an instance of a virutal class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
+	method->GetMethodType() == REMOTE_PUBLIC_METHOD ||
         method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
       ProcessError(static_cast<Expression*>(method_call),
@@ -1481,6 +1484,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     }
     // cannot create an instance of a virutal class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+	lib_method->GetMethodType() == REMOTE_PUBLIC_METHOD ||
         lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
       ProcessError(static_cast<Expression*>(method_call),
                    "Cannot create an instance of a virutal class");
@@ -1986,6 +1990,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, int depth)
   }
 
   if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+     current_method->GetMethodType() == REMOTE_PUBLIC_METHOD ||
      current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, "Cannot return vaule from constructor");
   }
