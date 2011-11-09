@@ -277,6 +277,11 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
   return mem;
 }
 
+long* MemoryManager::AllocateRemoteObject(const long obj_id, long* op_stack, long stack_pos)
+{
+
+}
+
 long* MemoryManager::AllocateArray(const long size, const MemoryType type,
                                    long* op_stack, long stack_pos)
 {
