@@ -695,6 +695,7 @@ namespace Runtime {
     inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr);
     inline void ProcessNewObjectInstance(StackInstr* instr);
+    inline void ProcessRemoteObjectInstance(StackInstr* instr);
     inline void ProcessReturn();
 
     inline void ProcessMethodCall(StackInstr* instr);

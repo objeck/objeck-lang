@@ -142,6 +142,7 @@ public:
     return NULL;
   }
   static long* AllocateObject(const long obj_id, long* op_stack, long stack_pos);
+  static long* AllocateRemoteObject(const long obj_id, long* op_stack, long stack_pos);
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
 
   // object verification
