@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <iostream>
+#include <string>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,37 +18,7 @@
 #include <signal.h>
 #include <pthread.h>
 
-#define PORT "3490"  // the port users will be connecting to
-
-#define BACKLOG 10	 // how many pending connections queue will hold
-
-void* talker( void *d) {
-  int i = 0;
-  char buf[1024];
-  long fd;
-  
-  fd = (long)d;
-  while(1) {
-    sprintf(buf, "%d\n", i++);
-    write(fd, buf, strlen(buf) + 1);
-    sleep(4);
-  }
-}
-
-void sigchld_handler(int s) 
-{
-  while(waitpid(-1, NULL, WNOHANG) > 0);
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
+using namespace std;
 
 void error(const char *msg)
 {
@@ -56,44 +28,48 @@ void error(const char *msg)
 
 int main(int argc, char **argv)
 {
-  int sockfd, newsockfd, portno;
-  socklen_t clilen;
-  struct sockaddr_in serv_addr, cli_addr;
-  int n;
   if (argc < 2) {
     fprintf(stderr,"ERROR, no port provided\n");
     exit(1);
   }
-  sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (sockfd < 0) 
+  
+  int server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (server_sock < 0) {
     error("ERROR opening socket");
+  }
+  
+  int port = atoi(argv[1]);
+  struct sockaddr_in serv_addr;
   bzero((char *) &serv_addr, sizeof(serv_addr));
-  portno = atoi(argv[1]);
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(portno);
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+  serv_addr.sin_port = htons(port);
+  
+  if(bind(server_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
     error("ERROR on binding");
-  listen(sockfd,5);
-  clilen = sizeof(cli_addr);
-  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-  if (newsockfd < 0) 
-    error("ERROR on accept");
+  }
   
-  int value;
-  n = read(newsockfd,&value,255);
-  if (n < 0) error("ERROR reading from socket");
+  listen(server_sock, SOMAXCONN);
   
-  printf("Here is the message: %d\n",value);
+  struct sockaddr_in cli_addr;
+  socklen_t cli_len = sizeof(cli_addr);  
+  while(true) {
+    int client_sock = accept(server_sock, (struct sockaddr*) &cli_addr, &cli_len);
+    if(client_sock < 0) {
+      error("ERROR on accept");
+    }
+    
+    int value;
+    int n = read(client_sock, &value, sizeof(value));
+    if (n < 0) {
+      error("ERROR reading from socket");
+    }
+    cout << "value=" << value << endl;
+    
+    close(client_sock);
+  }
   
-  /*
-    n = write(newsockfd,"I got your message",18);
-    if (n < 0) error("ERROR writing to socket");
-  */
-  
-  close(newsockfd);
-  close(sockfd);
-  
+  close(server_sock);  
   return 0; 
   
   /*
