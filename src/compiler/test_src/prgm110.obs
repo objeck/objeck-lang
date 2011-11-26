@@ -16,7 +16,7 @@ bundle Default {
 			Run();
 		}
 
-		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
 #			ff := Foo->New();
 			ff := Foo->Remote();
 			ff->Bar(13);
