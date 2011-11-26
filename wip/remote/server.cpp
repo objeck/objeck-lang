@@ -29,13 +29,15 @@ void error(const char* msg)
 void* request_handler(void* data) 
 {
   long client_sock = (long)data;
-
-  int value;  
-  if(read(client_sock, &value, sizeof(value)) < 0) {
-    error("ERROR reading from socket");
-  }
-  cout << "value=" << value << endl;  
   
+  int value = -42;
+  #ifdef _WIN32
+  unsigned long send_num = send(client_sock, &value, sizeof(value), 0);
+#else
+  unsigned long send_num = write(client_sock, &value, sizeof(value));
+#endif
+  
+
   close(client_sock);  
   return NULL;
 }
