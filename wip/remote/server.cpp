@@ -15,8 +15,10 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <pthread.h>
+#include "../../src/shared/instrs.h"
 
 using namespace std;
+using namespace instructions;
 
 long server_sock = 0;
 
@@ -28,17 +30,37 @@ void error(const char* msg)
 
 void* request_handler(void* data) 
 {
-  long client_sock = (long)data;
-  
-  int value = -42;
-  #ifdef _WIN32
-  unsigned long send_num = send(client_sock, &value, sizeof(value), 0);
+  long sock = (long)data;
+
+  int command;
+#ifdef _WIN32
+  unsigned long read_num = recv(sock, &command, sizeof(command), 0);
 #else
-  unsigned long send_num = write(client_sock, &value, sizeof(value));
+  unsigned long read_num = read(sock, &command, sizeof(command));
 #endif
   
-
-  close(client_sock);  
+  long write_num;
+  int value = -42;
+  switch(command) {
+  case REMOTE_OBJ_INST:
+#ifdef _WIN32
+    write_num = send(sock, &value, sizeof(value), 0);
+#else
+    write_num = write(sock, &value, sizeof(value));
+#endif
+    break;
+    
+  default:
+    value = -1;
+#ifdef _WIN32
+    write_num = send(sock, &value, sizeof(value), 0);
+#else
+    write_num = write(sock, &value, sizeof(value));
+#endif
+    break;
+  }
+  
+  close(sock);  
   return NULL;
 }
 
