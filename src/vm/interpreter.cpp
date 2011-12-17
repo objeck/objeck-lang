@@ -656,10 +656,6 @@ void StackInterpreter::Execute()
       ProcessNewObjectInstance(instr);
       break;
 
-    case REMOTE_OBJ_INST:
-      ProcessRemoteObjectInstance(instr);
-      break;
-
     case STOR_BYTE_ARY_ELM:
       ProcessStoreByteArrayElement(instr);
       break;
@@ -1119,21 +1115,6 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
 
   long inst_mem = (long)MemoryManager::AllocateObject(instr->GetOperand(),
 						      op_stack, *stack_pos);
-  PushInt(inst_mem);
-}
-
-/********************************
- * Processes a new object instance
- * request.
- ********************************/
-void StackInterpreter::ProcessRemoteObjectInstance(StackInstr* instr)
-{
-#ifdef _DEBUG
-  cout << "stack oper: REMOTE_OBJ_INST: id=" << instr->GetOperand() << endl;
-#endif
-  
-  long inst_mem = (long)MemoryManager::AllocateRemoteObject(instr->GetOperand(),
-							    op_stack, *stack_pos);
   PushInt(inst_mem);
 }
 

@@ -111,7 +111,6 @@ namespace instructions {
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
     NEW_OBJ_INST,
-    REMOTE_OBJ_INST,
     CPY_BYTE_ARY,
     CPY_INT_ARY,
     CPY_FLOAT_ARY,
@@ -138,7 +137,6 @@ namespace instructions {
     CRITICAL_END,
     // library directives
     LIB_NEW_OBJ_INST,
-    LIB_REMOTE_OBJ_INST,
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
     // system directives
