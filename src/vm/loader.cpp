@@ -542,12 +542,6 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
-
-    case REMOTE_OBJ_INST: {
-      long obj_id = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, REMOTE_OBJ_INST, obj_id));
-    }
-      break;
       
     case DYN_MTHD_CALL: {
       long num_params = ReadInt();

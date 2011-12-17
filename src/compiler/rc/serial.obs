@@ -1,3 +1,5 @@
+use Struct;
+
 bundle Default {
 	class Thingy {
 		@id : Int;
@@ -13,15 +15,25 @@ bundle Default {
 
 	class Person from Thingy {
 		@name : String;
+		@values : StringMap;
 
 		New(id : Int, name : String) {
 			Parent(id);
 			@name := name;
+			@values := StringMap->New();
+			v := IntHolder->New(101);
+			@values->Insert("Jason", v->As(Base));
+			v := IntHolder->New(9);
+			@values->Insert("Mark", v->As(Base));
 		}
 
 		method : public : Print() ~ Nil {
 			@id->PrintLine();
 			@name->PrintLine();
+			v := @values->Find("Jason")->As(IntHolder);
+			v->Get()->PrintLine();	
+			v := @values->Find("Mark")->As(IntHolder);
+			v->Get()->PrintLine();	
 		}
 	}
 
