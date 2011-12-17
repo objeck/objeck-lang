@@ -642,7 +642,6 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
     // return instance if this is constructor call
     if(method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       method->GetMethodType() == REMOTE_PUBLIC_METHOD ||
        method->GetMethodType() == NEW_PRIVATE_METHOD) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
@@ -2746,8 +2745,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       } else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, method->GetClass()->GetId()));
       }
-    } 
-    else {
+    } else {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
 
       if(is_lib) {
@@ -2760,47 +2758,6 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     }
     is_new_inst = true;
   }
-
-
-
-
-
-  // instance
-  else if(method_call->GetCallType() == REMOTE_INST_CALL) {
-    // declarations
-    vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(unsigned int i = 0; i < expressions.size(); i++) {
-      EmitExpression(expressions[i]);
-      new_char_str_count = 0;
-    }
-
-    // new object instance
-    Method* method = method_call->GetMethod();
-    if(method) {
-      if(is_lib) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_REMOTE_OBJ_INST, method->GetClass()->GetName()));
-      } else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, REMOTE_OBJ_INST, method->GetClass()->GetId()));
-      }
-    } 
-    else {
-      LibraryMethod* lib_method = method_call->GetLibraryMethod();
-
-      if(is_lib) {
-        const string& klass_name = lib_method->GetLibraryClass()->GetName();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_REMOTE_OBJ_INST, klass_name));
-      } else {
-        int klass_id = lib_method->GetLibraryClass()->GetId();
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, REMOTE_OBJ_INST, klass_id));
-      }
-    }
-    is_new_inst = true;
-  }
-
-
-
-
-
   // method call
   else {
     // declarations
@@ -2941,7 +2898,6 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       Method* method = method_call->GetMethod();
       if(method_call->GetCallType() == PARENT_CALL ||
 	 (method->GetMethodType() != NEW_PUBLIC_METHOD &&
-	  method->GetMethodType() != REMOTE_PUBLIC_METHOD &&
 	  method->GetMethodType() != NEW_PRIVATE_METHOD) ||
 	 current_method == method) {
         if(entry) {
@@ -2972,7 +2928,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
 	}
       } 
-      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == REMOTE_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == REMOTE_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }
@@ -2980,7 +2936,6 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     else if(method_call->GetLibraryMethod()) {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(lib_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-	 lib_method->GetMethodType() != REMOTE_PUBLIC_METHOD &&
 	 lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
         if(entry) {
           switch(entry->GetType()->GetType()) {
@@ -3011,7 +2966,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
 	}
       } 
-      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == REMOTE_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == REMOTE_PUBLIC_METHOD ||lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       }
     }    

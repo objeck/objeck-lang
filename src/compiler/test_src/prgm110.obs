@@ -1,25 +1,57 @@
+use IO;
+use ODBC;
+
 bundle Default {
-	class Foo {
-		New() {
-		}
-
-		Remote() {
-		}
-
-		method : public : Bar(a : Int) ~ Nil {
-			a->PrintLine();
-		}
-	}
-
-	class Test {
+	class SqlTest {
 		function : Main(args : String[]) ~ Nil {
 			Run();
 		}
 
-		function : Run() ~ Nil {
-#			ff := Foo->New();
-			ff := Foo->Remote();
-			ff->Bar(13);
+		function : native : Run() ~ Nil {
+			conn := Connection->New("test", "root", "");	
+			if(conn <> Nil) {
+				pstmt := conn->CreateParameterStatement("select * from test.student WHERE enrolled_date=?");
+				ts := Timestamp->New();
+				ts->SetYear(2008);
+				ts->SetMonth(9);
+				ts->SetDay(20);
+				ts->SetHours(10);
+				ts->SetMinute(13);
+				ts->SetSeconds(10);
+				pstmt->SetTimestamp(1, ts);
+				result := pstmt->Select();
+				if(result <> Nil) {
+					i := 0;	
+					while(result->Next()) {
+						result->GetInt(1)->PrintLine();
+					};
+					result->Close();
+				};
+#~
+				pstmt := conn->CreateParameterStatement("UPDATE test.student SET first_name=?, credits=? WHERE id=?");
+				pstmt->SetString(1, "randy");
+				pstmt->SetInt(2, 512);
+				pstmt->SetInt(3, 3);
+				pstmt->Update()->PrintLine();
+				pstmt->Close();
+				conn->Update("UPDATE test.student SET last_name='dog' WHERE id=2")->PrintLine();
+				result := conn->Select("select * from test.class ");
+				if(result <> Nil) {
+					i := 0;	
+					while(result->Next()) {
+						value := result->GetVarchar(5);
+						value := result->GetVarchar("grad_code");
+						if(result->IsNull() = false) {
+							value->PrintLine();	
+						};
+						i += 1;
+					};
+					i->PrintLine();	
+					result->Close();
+				};
+~#
+				conn->Close();
+			};
 		}
 	}
 }

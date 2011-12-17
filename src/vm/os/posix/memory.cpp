@@ -277,15 +277,6 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
   return mem;
 }
 
-long* MemoryManager::AllocateRemoteObject(const long obj_id, long* op_stack, long stack_pos)
-{
-  RemoteClient* client = remote_manager.GetClient();
-  client->Send(REMOTE_OBJ_INST);
-  long* id = (long*)client->ReadInt();
-  
-  return id;
-}
-
 long* MemoryManager::AllocateArray(const long size, const MemoryType type,
                                    long* op_stack, long stack_pos)
 {
