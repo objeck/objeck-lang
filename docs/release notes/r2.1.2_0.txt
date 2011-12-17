@@ -1,6 +1,6 @@
 Objeck v2.1.2_0
 
-This release includes bug fixes for the XML and ODBC libraries. The ODBC library add-on is a separately download.  The following bugs have been addressed:
+This release includes a refactored C++ API.  Current and upcoming releases will leverage the native API to provide database (ODBC) and GUI (GTK+) support.  This interim release fixes critical bugs that were found during GTK+ integration.  The following bugs have been resolved:
 * Syntax tweaks to the XML parsing libraries; namely the 'XMLElement->FindElements(..)' method
 * The ODBC ParameterStatement class now supports Timestamps and Dates  
 * Ability to use more than one source bundle for a compiled .obe file
