@@ -55,14 +55,14 @@ int main(int argc, char* argv[])
   usage += "FOR MORE INFORMATION.\n\n";
   usage += VERSION_STRING;
   usage += "\n\n";
-  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -out <output>\n";
+  usage += "usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|lib)] -dest <output>\n";
   usage += "example: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\n";
   usage += "options:\n";
   usage += "  -src: input source files (separated by ',')\n";
-  usage += "  -opt: source optimizations (s3 being the most aggressive) default is s0\n";
+  usage += "  -opt: source optimizations (s0-s3 being the most aggressive) default is s0\n";
   usage += "  -lib: input linked libraries (separated by ',')\n";
   usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
-  usage += "  -out: output file name";
+  usage += "  -dest: output file name";
 
   int status;
   if(argc >= 3) {
