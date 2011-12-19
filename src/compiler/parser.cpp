@@ -208,7 +208,7 @@ void Parser::ParseBundle(int depth)
 
   // name space
   if(!Match(TOKEN_BUNDLE_ID)) {
-    ProcessError("Expected 'bundle'");
+    ProcessError("Expected 'bundle' or 'use'");
   } else {
     while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
       NextToken();

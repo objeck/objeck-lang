@@ -1,0 +1,28 @@
+use IO;
+use XML;
+use Struct;
+
+bundle Default {
+   class Test {
+      function : Main(args : String[]) ~ Nil {
+         if(args->Size() > 0) {
+            Run(args[0]);
+         };
+      }
+		
+      function : Run(name : String) ~ Nil {
+         parser := XmlParser->New(FileReader->ReadFile(name));
+         if(parser->Parse()) {
+				location := "/wsdl:definitions/wsdl:types";
+            results := parser->FindElements(location);
+				if(results->Size() > 0) {
+					types := results->Get(0)->As(XMLElement);
+name := types->GetName();
+name->Append("/xsd:schema/xsd:element");
+					results := types->FindElements(name);
+					results->Size()->PrintLine();
+				};
+			};
+		}
+	}
+}
