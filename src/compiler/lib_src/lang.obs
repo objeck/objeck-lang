@@ -596,8 +596,8 @@ bundle System {
 				for(i : Int := 0; i < @string->Size(); i += 1;) {
 					tmp[i] := @string[i];
 				};
-				@string := tmp;
 ~#				
+				@string := tmp;
 			};
 
 			@string[@pos] := c;
