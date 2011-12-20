@@ -39,6 +39,22 @@ bundle Default {
 					};
 				};
 				
+				"===== MESSAGES ====="->PrintLine();
+				messages := parser->FindElements("/wsdl:definitions/wsdl:message");
+				each(i : messages) {
+					message := messages->Get(i)->As(XMLElement);
+					message_name := message->GetAttribute("name");
+					Console->Print("message: name=")->PrintLine(message_name);
+					parts := message->GetChildren();
+					each(j : parts) {
+						part := parts->Get(j)->As(XMLElement);
+						part_name := part->GetAttribute("name");
+						part_elem := part->GetAttribute("element");
+						Console->Print("\tpart: name=")->Print(part_name)->Print(", element=")
+							->PrintLine(part_elem);
+					};
+				};
+				
 				results := parser->FindElements("/wsdl:definitions/wsdl:portType");
 				if(results->Size() > 0) {
 					"===== PORTS ====="->PrintLine();
