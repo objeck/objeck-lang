@@ -344,13 +344,13 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  
 	case OBJ_ARY_PARM:
 	  if(reference->GetIndices()) {
-	    ref_klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
-	    if(ref_klass) {	      
+	    StackClass* klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
+	    if(klass) {	      
 	      long* instance = (long*)reference->GetIntValue();
 	      if(instance) {
 		long* string_instance = (long*)instance[0];
 		const char* char_string = (char*)(string_instance + 3);
-		cout << "print: type=" << ref_klass->GetName() << ", value=\""
+		cout << "print: type=" << klass->GetName() << ", value=\""
 		     << char_string << "\"" << endl;
 	      }
 	      else {
