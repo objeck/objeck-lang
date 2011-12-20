@@ -4,9 +4,8 @@ use Struct;
 bundle Default {
   class HttpTest {
     function : Main(args : String[]) ~ Nil {
-      client := HttpClient->New("http://www.mscd.edu", 80);
+      client := HttpClient->New("http://www.oracle.com/us/sun/index.htm", 80);
       lines := client->Get();
-      
       for(i := 0; i < lines->Size(); i += 1;) {
         lines->Get(i)->As(String)->PrintLine();
       };
