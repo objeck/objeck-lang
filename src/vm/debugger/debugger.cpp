@@ -759,6 +759,10 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
 	reference->SetDeclaration(dclr_value);
 	if(found) {
+	  if(method->HasAndOr()) {
+	    dclr_value.id++;
+	  }
+	  
 	  switch(dclr_value.type) {
 	  case INT_PARM:
 	    reference->SetIntValue(ref_mem[dclr_value.id + 1]);
