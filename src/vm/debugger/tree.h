@@ -96,9 +96,9 @@ namespace frontend {
   class Expression : public ParseNode {
     friend class TreeFactory;
     bool is_float_eval;
-    INT_VALUE int_value;
-	INT_VALUE int_value2;
-    FLOAT_VALUE float_value;
+    long int_value;
+    long int_value2;
+    double float_value;
     
   protected:    
     Expression() : ParseNode() {
@@ -115,28 +115,28 @@ namespace frontend {
       return is_float_eval;
     }
 
-    void SetIntValue(INT_VALUE i) {
+    void SetIntValue(long i) {
       int_value = i;
     }
 
-    INT_VALUE GetIntValue() {
+    long GetIntValue() {
       return int_value;
     }
 
-	void SetIntValue2(INT_VALUE i) {
+	void SetIntValue2(long i) {
       int_value2 = i;
     }
 
-    INT_VALUE GetIntValue2() {
+    long GetIntValue2() {
       return int_value2;
     }
 
-    void SetFloatValue(FLOAT_VALUE f) {
+    void SetFloatValue(double f) {
       float_value = f;
       is_float_eval = true;
     }
 
-    FLOAT_VALUE GetFloatValue() {
+    double GetFloatValue() {
       return float_value;
     }
 
@@ -533,9 +533,9 @@ namespace frontend {
    ****************************/
   class IntegerLiteral : public Expression {
     friend class TreeFactory;
-    INT_VALUE value;
+    long value;
 
-  IntegerLiteral(INT_VALUE v) : Expression() {
+  IntegerLiteral(long v) : Expression() {
       value = v;
     }
 
@@ -543,7 +543,7 @@ namespace frontend {
     }
 
   public:
-    INT_VALUE GetValue() {
+    long GetValue() {
       return value;
     }
 
@@ -557,9 +557,9 @@ namespace frontend {
    ****************************/
   class FloatLiteral : public Expression {
     friend class TreeFactory;
-    FLOAT_VALUE value;
+    double value;
 
-  FloatLiteral(FLOAT_VALUE v) : Expression() {
+  FloatLiteral(double v) : Expression() {
       value = v;
     }
 
@@ -567,7 +567,7 @@ namespace frontend {
     }
 
   public:
-    FLOAT_VALUE GetValue() {
+    double GetValue() {
       return value;
     }
 
@@ -588,7 +588,6 @@ namespace frontend {
     bool is_self;
     int array_size;
     int array_dim;
-    string cls_name;
 
     Reference() : Expression() {
       variable_name = "@self";
@@ -660,14 +659,6 @@ namespace frontend {
 
     int GetArrayDimension() {
       return array_dim;
-    }
-
-    void SetClassName(const string &n) {
-      cls_name = n;
-    }
-
-    const string& GetClassName() {
-      return cls_name;
     }
   };
 
@@ -770,13 +761,13 @@ namespace frontend {
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(long value) {
       IntegerLiteral* tmp = new IntegerLiteral(value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(FLOAT_VALUE value) {
+    FloatLiteral* MakeFloatLiteral(double value) {
       FloatLiteral* tmp = new FloatLiteral(value);
       expressions.push_back(tmp);
       return tmp;

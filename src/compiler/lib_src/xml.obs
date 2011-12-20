@@ -719,7 +719,7 @@ bundle XML {
 		}
 		
 		method : public : GetName() ~ String {
-			return @name;
+			return String->New(@name);
 		}
 		
 		method : public : SetName(name : String) ~ Nil {
@@ -735,7 +735,7 @@ bundle XML {
 		}
 		
 		method : public : GetContent() ~ String {
-			return @content;
+			return String->New(@content);
 		}
 		
 		method : public : SetContent(content : String) ~ Nil {
@@ -751,7 +751,7 @@ bundle XML {
 		
 		method : public : GetAttribute(key : String) ~ String {
 			if(@attribs <> Nil) {
-				return @attribs->Find(key)->As(String);
+				return String->New(@attribs->Find(key)->As(String));
 			};
 			
 			return Nil;
@@ -791,7 +791,6 @@ bundle XML {
 		method : public : ToString() ~ String {
 			in := String->New();
 			ToString(in);
-			
 			return in;
 		}
 		

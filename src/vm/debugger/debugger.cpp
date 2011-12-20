@@ -44,7 +44,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
 #ifdef _DEBUG
-    cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
+    // cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
 
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  &&
@@ -283,35 +283,35 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  break;
 
 	case BYTE_ARY_PARM:
-    cout << "print: type=Byte[], value=" << (char)reference->GetIntValue()
-	        << "(" << (void*)reference->GetIntValue() << ")";
+	  cout << "print: type=Byte[], value=" << (char)reference->GetIntValue()
+	       << "(" << (void*)reference->GetIntValue() << ")";
 	  if(reference->GetArrayDimension()) {
 	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		  << reference->GetArraySize();
+		 << reference->GetArraySize();
 	  }
 	  cout << endl;
-  break;
+	  break;
 
 	case INT_ARY_PARM:
-    if(reference->GetIndices()) {
-      cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
-    }
-    else {
+	  if(reference->GetIndices()) {
+	    cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
+	  }
+	  else {
 	    cout << "print: type=Int[], value=" << reference->GetIntValue()
 	         << "(" << (void*)reference->GetIntValue() << ")";
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
 		   << reference->GetArraySize();
 	    }
-      cout << endl;
-    }
+	    cout << endl;
+	  }
 	  break;
 
 	case FLOAT_ARY_PARM:
-    if(reference->GetIndices()) {
-      cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
-    }
-    else {
+	  if(reference->GetIndices()) {
+	    cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
+	  }
+	  else {
 	    cout << "print: type=Float[], value=" << reference->GetFloatValue()
 	         << "(" << (void*)reference->GetIntValue() << ")" << endl;
 	    if(reference->GetArrayDimension()) {
@@ -319,58 +319,56 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 		   << reference->GetArraySize();
 	    }
 	    cout << endl;
-    }
+	  }
 	  break;
 
 	case OBJ_PARM:
-	  if(reference->GetClassName() == "System.String") {
+	  if(ref_klass && ref_klass->GetName() == "System.String") {
 	    long* instance = (long*)reference->GetIntValue();
 	    if(instance) {
 	      long* string_instance = (long*)instance[0];
 	      const char* char_string = (char*)(string_instance + 3);
-	      cout << "print: type=" << reference->GetClassName() << ", value=\""
+	      cout << "print: type=" << ref_klass->GetName() << ", value=\""
 		   << char_string << "\"" << endl;
 	    }
 	    else {
-	      cout << "print: type=" << reference->GetClassName() << ", value="
+	      cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "Base") << ", value="
 		   << (void*)reference->GetIntValue() << endl;
 	    }
 	  }
 	  else {
-	    cout << "print: type=" << reference->GetClassName() << ", value="
+	    cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "Base") << ", value="
 		 << (void*)reference->GetIntValue() << endl;
 	  }
 	  break;
-
+	  
 	case OBJ_ARY_PARM:
-    if(reference->GetIndices()) {
-      if(reference->GetClassName() == "System.String") {
+	  if(reference->GetIndices()) {
+	    ref_klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
+	    if(ref_klass) {	      
 	      long* instance = (long*)reference->GetIntValue();
 	      if(instance) {
-	        long* string_instance = (long*)instance[0];
-	        const char* char_string = (char*)(string_instance + 3);
-	        cout << "print: type=" << reference->GetClassName() << ", value=\""
+		long* string_instance = (long*)instance[0];
+		const char* char_string = (char*)(string_instance + 3);
+		cout << "print: type=" << ref_klass->GetName() << ", value=\""
 		     << char_string << "\"" << endl;
 	      }
 	      else {
-	        cout << "print: type=" << reference->GetClassName() << ", value="
-		     << (void*)reference->GetIntValue() << endl;
+		cout << "print: type=Base, value=" << (void*)reference->GetIntValue() << endl;
 	      }
 	    }
 	    else {
-	      cout << "print: type=" << reference->GetClassName() << ", value="
-		   << (void*)reference->GetIntValue() << endl;
+	      cout << "print: type=Base, value=" << (void*)reference->GetIntValue() << endl;
 	    }
-    }
-    else {
-	    cout << "print: type=" << reference->GetClassName() << "[], value="
-	         << (void*)reference->GetIntValue();
+	  }
+	  else {
+	    cout << "print: type=Base[], value=" << (void*)reference->GetIntValue();
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
 		   << reference->GetArraySize();
 	    }
 	    cout << endl;
-    }
+	  }
 	  break;
 	}
       }
@@ -676,9 +674,9 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       is_error = true;
     }
     break;
-
-    default:
-      break;
+      
+  default:
+    break;
   }
 }
 
@@ -689,46 +687,44 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
   //
   if(is_instance) {
     if(ref_mem && ref_klass) {
-      // set declaration
-      StackDclr dclr_value;
-      int index = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
-      reference->SetDeclaration(dclr_value);
-
       // check reference name
-      if(index > -1) {
+      StackDclr dclr_value;
+      bool found = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
+      if(found) {
+	reference->SetDeclaration(dclr_value);
+	
 	switch(dclr_value.type) {
 	case INT_PARM:
-	  reference->SetIntValue(ref_mem[index]);
+	  reference->SetIntValue(ref_mem[dclr_value.id]);
 	  break;
 
 	case FUNC_PARM:
-	  reference->SetIntValue(ref_mem[index]);
-	  reference->SetIntValue2(ref_mem[index + 1]);
+	  reference->SetIntValue(ref_mem[dclr_value.id]);
+	  reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
 	  break;
 
 	case FLOAT_PARM: {
 	  FLOAT_VALUE value;
-	  memcpy(&value, &ref_mem[index], sizeof(FLOAT_VALUE));
+	  memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
 	  reference->SetFloatValue(value);
 	}
 	  break;
 
 	case OBJ_PARM:
-	  EvaluateObjectReference(reference, index, dclr_value.id);
+	  EvaluateObjectReference(reference, dclr_value.id);
 	  break;
 
 	case BYTE_ARY_PARM:
 	case INT_ARY_PARM:
-	  EvaluateIntFloatReference(reference, index, false);
+	  EvaluateIntFloatReference(reference, dclr_value.id, false);
 	  break;
 
 	case OBJ_ARY_PARM:
-	  reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
-	  EvaluateIntFloatReference(reference, index, false);
+	  EvaluateIntFloatReference(reference, dclr_value.id, false);
 	  break;
 
 	case FLOAT_ARY_PARM:
-	  EvaluateIntFloatReference(reference, index, true);
+	  EvaluateIntFloatReference(reference, dclr_value.id, true);
 	  break;
 	}
       }
@@ -754,51 +750,47 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
       if(reference->IsSelf()) {
 	dclr_value.name = "@self";
 	dclr_value.type = OBJ_PARM;
-	dclr_value.id = method->GetClass()->GetId();
 	reference->SetDeclaration(dclr_value);
-	EvaluateObjectReference(reference, 0, method->GetClass()->GetId());
+	EvaluateObjectReference(reference, 0);
       }
       // process method reference
       else {
-	// set declaration
-	int index = method->GetDeclaration(reference->GetVariableName(), dclr_value);
-	reference->SetDeclaration(dclr_value);
-
 	// check reference name
-	if(index > -1) {
+	bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
+	reference->SetDeclaration(dclr_value);
+	if(found) {
 	  switch(dclr_value.type) {
 	  case INT_PARM:
-	    reference->SetIntValue(ref_mem[index + 1]);
-		break;
+	    reference->SetIntValue(ref_mem[dclr_value.id + 1]);
+	    break;
 
 	  case FUNC_PARM:
-	    reference->SetIntValue(ref_mem[index + 1]);
-		reference->SetIntValue2(ref_mem[index + 2]);
+	    reference->SetIntValue(ref_mem[dclr_value.id + 1]);
+	    reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
 	    break;
 
 	  case FLOAT_PARM: {
 	    FLOAT_VALUE value;
-	    memcpy(&value, &ref_mem[index + 1], sizeof(FLOAT_VALUE));
+	    memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
 	    reference->SetFloatValue(value);
 	  }
 	    break;
 
 	  case OBJ_PARM:
-	    EvaluateObjectReference(reference, index + 1, dclr_value.id);
+	    EvaluateObjectReference(reference, dclr_value.id + 1);
 	    break;
 
 	  case BYTE_ARY_PARM:
 	  case INT_ARY_PARM:
-	    EvaluateIntFloatReference(reference, index + 1, false);
+	    EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
 	    break;
 
 	  case OBJ_ARY_PARM:
-	    reference->SetClassName(cur_program->GetClass(dclr_value.id)->GetName());
-	    EvaluateIntFloatReference(reference, index + 1, false);
+	    EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
 	    break;
 
 	  case FLOAT_ARY_PARM:
-	    EvaluateIntFloatReference(reference, index + 1, true);
+	    EvaluateIntFloatReference(reference, dclr_value.id + 1, true);
 	    break;
 	  }
 	}
@@ -815,12 +807,11 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
   }
 }
 
-void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index, int id) {
+void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index) {
   if(ref_mem) {
     reference->SetIntValue(ref_mem[index]);
     ref_mem = (long*)ref_mem[index];
-    ref_klass = cur_program->GetClass(id);
-    reference->SetClassName(ref_klass->GetName());
+    ref_klass = MemoryManager::Instance()->GetClass(ref_mem);
     if(reference->GetReference()) {
       EvaluateReference(reference->GetReference(), true);
     }
@@ -1059,9 +1050,9 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 	cout << "program is not running." << endl;
       }
       break;
-
-      default:
-        break;
+	
+    default:
+      break;
     }
 
     is_error = false;
@@ -1180,12 +1171,12 @@ void Runtime::Debugger::ClearProgram() {
   }
 
   /* TODO: fix
-  while(cur_call_stack_pos) {
-    StackFrame* frame = cur_call_stack[--cur_call_stack_pos];
-    delete frame;
-    frame = NULL;
-  }
-  cur_call_stack = NULL;
+     while(cur_call_stack_pos) {
+     StackFrame* frame = cur_call_stack[--cur_call_stack_pos];
+     delete frame;
+     frame = NULL;
+     }
+     cur_call_stack = NULL;
   */
 
   MemoryManager::Instance()->Clear();
