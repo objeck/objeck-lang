@@ -17,10 +17,22 @@ bundle Default {
             results := parser->FindElements(location);
 				if(results->Size() > 0) {
 					types := results->Get(0)->As(XMLElement);
-name := types->GetName();
-name->Append("/xsd:schema/xsd:element");
-					results := types->FindElements(name);
-					results->Size()->PrintLine();
+					elem_name := types->GetName();
+					elem_name->Append("/xsd:schema/xsd:element");
+					results := types->FindElements(elem_name);
+					each(i : results) {	
+						elem := results->Get(i)->As(XMLElement);
+						elem->GetAttribute("name")->PrintLine();
+						elem_type := elem->GetChild(0)->GetChild(0);
+						elem_type->GetName()->PrintLine();
+						elems := elem_type->GetChildren("xsd:element");
+						each(j : elems) {	
+							elem := elems->Get(j)->As(XMLElement);
+							Console->Print("name=")->Print(elem->GetAttribute("name"))
+								->Print(", type=")->PrintLine(elem->GetAttribute("type"));
+						};
+						"----"->PrintLine();
+					};
 				};
 			};
 		}
