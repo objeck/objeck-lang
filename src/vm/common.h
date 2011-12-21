@@ -787,31 +787,27 @@ class StackClass {
   }
 
 #ifdef _DEBUGGER
-  int GetDeclaration(const string& name, StackDclr& found) {
+  bool GetDeclaration(const string& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
-      for(int i = 0; i < num_dclrs; i++) {
+      for(int i = 0; i < num_dclrs; i++, index++) {
 	StackDclr* dclr = dclrs[i];
 	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
 	if(dclr_name == name) {
 	  found.name = dclr->name;
 	  found.type = dclr->type;
-	  found.id = dclr->id;
-	  
-	  return index;
+	  found.id = index;
+	  return true;
 	}
 	// update
 	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
-	  index += 2;
-	}
-	else {
 	  index++;
 	}
       }
     }
     
-    return -1;
+    return false;
   }
 #endif
 };
