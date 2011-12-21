@@ -715,6 +715,9 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  break;
 
 	case BYTE_ARY_PARM:
+	  EvaluateByteReference(reference, dclr_value.id);
+	  break;
+	  
 	case INT_ARY_PARM:
 	  EvaluateIntFloatReference(reference, dclr_value.id, false);
 	  break;
@@ -785,6 +788,9 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	    break;
 
 	  case BYTE_ARY_PARM:
+	    EvaluateByteReference(reference, dclr_value.id + 1);
+	    break;
+	    
 	  case INT_ARY_PARM:
 	    EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
 	    break;
@@ -822,6 +828,72 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index)
   }
   else {
     cout << "current object reference is Nil" << endl;
+    is_error = true;
+  }
+}
+
+void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
+  long* array = (long*)ref_mem[index];
+  if(array) {
+    const int max = array[0];
+    const int dim = array[1];
+
+    // de-reference array value
+    ExpressionList* indices = reference->GetIndices();
+    if(indices) {
+      // calculate indices values
+      vector<Expression*> expressions = indices->GetExpressions();
+      vector<int> values;
+      for(unsigned int i = 0; i < expressions.size(); i++) {
+	EvaluateExpression(expressions[i]);
+	// update values
+	if(expressions[i]->GetFloatEval()) {
+	  values.push_back((int)expressions[i]->GetFloatValue());
+	}
+	else {
+	  values.push_back(expressions[i]->GetIntValue());
+	}
+      }
+      // match the dimensions
+      if(expressions.size() == (unsigned int)dim) {
+	// calculate indices
+	array += 2;
+	int j = dim - 1;
+	long array_index = values[j--];
+	for(long i = 1; i < dim; i++) {
+	  array_index *= array[i];
+	  array_index += values[j--];
+	}
+	array += dim;
+	
+	if(array_index > -1 && array_index < max) {
+	  reference->SetIntValue(((char*)array)[array_index]);
+	}
+	else {
+	  cout << "array index out of bounds." << endl;
+	  is_error = true;
+	}
+      }
+      else {
+	cout << "array dimension mismatch." << endl;
+	is_error = true;
+      }
+    }
+    // set array address
+    else {
+      if(ref_mem) {
+	reference->SetArrayDimension(dim);
+	reference->SetArraySize(max);
+	reference->SetIntValue(ref_mem[index]);
+      }
+      else {
+	cout << "current reference is Nil" << endl;
+	is_error = true;
+      }
+    }
+  }
+  else {
+    cout << "current array value is Nil" << endl;
     is_error = true;
   }
 }
@@ -1096,7 +1168,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 	    cout << "  class: type=" << klass->GetName() << ", method="
 		 << long_name << "(..)" << endl;
 	    cout << "  parameters:" << endl;
-	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations(), "");
 	  }
 	}
 	else {
@@ -1116,7 +1188,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 	cout << "  class: type=" << klass->GetName() << endl;
 	// print
 	cout << "  parameters:" << endl;
-	PrintDeclarations(klass->GetDeclarations(), klass->GetNumberDeclarations());
+	PrintDeclarations(klass->GetDeclarations(), klass->GetNumberDeclarations(), klass->GetName());
       }
       else {
 	cout << "unable to find class." << endl;

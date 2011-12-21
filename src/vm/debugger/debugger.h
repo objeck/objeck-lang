@@ -227,7 +227,7 @@ namespace Runtime {
       }
     }
 
-    void PrintDeclarations(StackDclr** dclrs, int dclrs_num) {
+    void PrintDeclarations(StackDclr** dclrs, int dclrs_num, const string& cls_name) {
       for(int i = 0; i < dclrs_num; i++) {
 	StackDclr* dclr = dclrs[i];
 
@@ -259,7 +259,7 @@ namespace Runtime {
 	  break;
 
 	case OBJ_PARM:
-	  cout << "type=" << cur_program->GetClass(dclr->id)->GetName() << endl;
+	  cout << "type=" << cur_program->GetClass(cls_name)->GetName() << endl;
 	  break;
 
 	case OBJ_ARY_PARM:
@@ -290,6 +290,7 @@ namespace Runtime {
     void EvaluateExpression(Expression* expression);
     void EvaluateReference(Reference* reference, bool is_instance);
     void EvaluateObjectReference(Reference* reference, int index);
+    void EvaluateByteReference(Reference* reference, int index);
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);
     void EvaluateCalculation(CalculatedExpression* expression);
 
