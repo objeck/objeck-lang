@@ -280,11 +280,15 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
 	  break;
 
-	case FUNC_PARM:
-	  cout << "print: type=Function, value=" << reference->GetIntValue() <<"," 
-	       << reference->GetIntValue2() << endl;
+	case FUNC_PARM: {
+	  StackClass* klass = cur_program->GetClass(reference->GetIntValue());
+	  if(klass) {
+	    cout << "print: type=Functon, class=" << klass->GetName() 
+		 << ", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+	  }
+	}
 	  break;
-
+	  
 	case FLOAT_PARM:
 	  cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
 	  break;
