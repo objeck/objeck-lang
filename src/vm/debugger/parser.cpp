@@ -355,7 +355,7 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
   }
   else {
-    ProcessError("Expected line number");
+    line_num = -1;
     NextToken();
   }
 
@@ -402,7 +402,7 @@ Command* Parser::ParseInfo(int depth) {
       }
       NextToken();
       // name
-      if(!Match(TOKEN_IDENT)) {
+      if(Match(TOKEN_IDENT)) {
 	mthd_name = scanner->GetToken()->GetIdentifier();
       }
       else if(Match(TOKEN_CHAR_STRING_LIT)) {

@@ -777,10 +777,10 @@ instance level variables the path must start with
 
 \subsection{Debugging Commands}
 \begin{center}
-  \begin{tabular}{| l |p{4 cm} |p{6 cm} |}
+  \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
     \hline
     \emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
-    \texttt{[b]reak} &  sets a breakpoint & \texttt{b hello.obs:10} \\ \hline
+    \texttt{[b]reak} &  sets a breakpoint & \texttt{b \newline b hello.obs:10} \\ \hline
     \texttt{breaks} &  shows all breakpoints &  \\ \hline
     \texttt{[d]elete} &  deletes a breakpoint & \texttt{d hello.obs:10} \\ \hline
     \texttt{clear} &  clears all breakpoints &  \\ \hline
@@ -792,8 +792,10 @@ instance level variables the path must start with
     \texttt{[r]un} &  runs a loaded program &  \\ \hline
     \texttt{[p]rint} &  prints the value of an expression, along with
     metadata & \texttt{p locl\_value \newline p @self$\rightarrow$inst\_value} \\ \hline
-    \texttt{[l]ist} &  lists a range of lines in a source file or the lines near the current breakpoint & \texttt{l hello.obs:10} \\ \hline
-    \texttt{[i]nfo} &  displays the variables for a class & \texttt{i class=Foo} \\ \hline
+    \texttt{[l]ist} &  lists a range of lines in a source file or the
+    lines near the current breakpoint & \texttt{l \newline l hello.obs:10} \\ \hline
+    \texttt{[i]nfo} &  displays the variables for a class & \texttt{i
+      \newline i class=Foo} \\ \hline
     \texttt{stack} &  displays the method/function call stack &  \\ \hline
     \texttt{exe} &  loads a new executable & \texttt{exe "./../test.obe"} \\ \hline
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
