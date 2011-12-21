@@ -43,9 +43,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const int line_num = instr->GetLineNumber();
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
+    /*
 #ifdef _DEBUG
-    // cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
+    cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
 #endif
+    */
 
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  &&
        // step command
@@ -207,11 +209,15 @@ void Runtime::Debugger::ProcessRun() {
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   int line_num = break_command->GetLineNumber();
+  if(line_num < 0) {
+    line_num = cur_line_num;
+  }
+  
   string file_name = break_command->GetFileName();
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
-
+  
   const string &path = base_path + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
@@ -275,7 +281,8 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	  break;
 
 	case FUNC_PARM:
-	  cout << "print: type=Function, value=" << reference->GetIntValue() <<"," << reference->GetIntValue2() << endl;
+	  cout << "print: type=Function, value=" << reference->GetIntValue() <<"," 
+	       << reference->GetIntValue2() << endl;
 	  break;
 
 	case FLOAT_PARM:
@@ -1115,12 +1122,20 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       if(interpreter) {
 	long pos = cur_call_stack_pos;
 	cout << "stack:" << endl;
-	cout << "  pos=" << pos << ", system name=\""
-	     << cur_frame->GetMethod()->GetName() << "\"" << endl;
-	while(pos--) {
-	  cout << "  pos=" << pos << ", system name=\""
-	       << cur_call_stack[pos]->GetMethod()->GetName() << "\"" << endl;
+	do {
+	  StackMethod* method = cur_call_stack[pos]->GetMethod();
+	  cerr << "  frame: pos=" << pos << ", class=" << method->GetClass()->GetName() 
+	       << ", method=" << PrintMethod(method);
+	  const long ip = cur_call_stack[pos]->GetIp();
+	  if(ip > 0) {
+	    StackInstr* instr = cur_call_stack[pos]->GetMethod()->GetInstruction(ip);
+	    cerr << ", file=" << method->GetClass()->GetFileName() << ":" << instr->GetLineNumber() << endl;
+	  }
+	  else {
+	    cerr << endl;
+	  }
 	}
+	while(--pos);
       }
       else {
 	cout << "program is not running." << endl;
@@ -1161,14 +1176,10 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 	if(methods.size() > 0) {
 	  for(unsigned int i = 0; i < methods.size(); i++) {
 	    StackMethod* method = methods[i];
-	    // parse method name
-	    int long_name_end = method->GetName().find_last_of(':');
-	    const string &long_name = method->GetName().substr(0, long_name_end);
-	    // print
 	    cout << "  class: type=" << klass->GetName() << ", method="
-		 << long_name << "(..)" << endl;
+		 << PrintMethod(method) << endl;
 	    cout << "  parameters:" << endl;
-	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations(), "");
+	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations(), cls_name);
 	  }
 	}
 	else {
