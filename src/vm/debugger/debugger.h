@@ -146,7 +146,6 @@ namespace Runtime {
     long* op_stack;
     long* stack_pos;
 
-
     bool FileExists(const string &file_name, bool is_exe = false) {
       ifstream touch(file_name.c_str(), ios::binary);
       if(touch.is_open()) {
@@ -163,6 +162,27 @@ namespace Runtime {
       return false;
     }
 
+    string PrintMethod(StackMethod* method) {
+      string mthd_name = method->GetName();
+      unsigned long index = mthd_name.find_last_of(':');
+      if(index != string::npos) {
+	mthd_name.replace(index, 1, 1, '(');
+	if(mthd_name[mthd_name.size() - 1] == ',') {
+	  mthd_name.replace(mthd_name.size() - 1, 1, 1, ')');
+	}
+	else {
+	  mthd_name += ')';
+	}
+      }
+
+      index = mthd_name.find_last_of(':');
+      if(index != string::npos) {
+	mthd_name = mthd_name.substr(index + 1);
+      }
+      
+      return mthd_name;
+    }
+    
     bool DirectoryExists(const string &dir_name) {
 #ifdef _WIN32
       HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
