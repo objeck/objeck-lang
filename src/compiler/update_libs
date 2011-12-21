@@ -1,4 +1,4 @@
 #!/bin/sh
-./obc -src lib_src/struct.obs -tar lib -opt s3 -dest struct.obl -debug
-./obc -src lib_src/xml.obs -lib struct.obl -tar lib -opt s3 -dest xml.obl -debug
-./obc -src lib_src/odbc.obs -lib struct.obl -tar lib -opt s3 -dest odbc.obl -debug
+./obc -src lib_src/struct.obs -tar lib -opt s3 -dest struct.obl
+./obc -src lib_src/xml.obs -lib struct.obl -tar lib -opt s3 -dest xml.obl
+./obc -src lib_src/odbc.obs -lib struct.obl -tar lib -opt s3 -dest odbc.obl

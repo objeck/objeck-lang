@@ -1821,7 +1821,7 @@ bundle Introspection {
 		@name : String;
 		@methods : Method[];
 		
-		New(name : String) {
+		New : private (name : String) {
 			LOAD_CLS_BY_NAME;
 		}
 		

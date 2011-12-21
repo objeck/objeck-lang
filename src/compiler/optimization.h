@@ -43,10 +43,11 @@ using namespace backend;
  * intermediate code.
  *
  * Order of 4 optimizations:
- * 1 - constant folding
- * 2 - strength reduction
- * 3 - replace store/load with copy instruction
- * 4 - method inlining
+ * 0 - clean up jumps (always happens)
+ * 1 - method inlining
+ * 2 - constant folding
+ * 3 - strength reduction
+ * 4 - replace store/load with copy instruction
  ****************************/
 class ItermediateOptimizer {
   IntermediateProgram* program;
