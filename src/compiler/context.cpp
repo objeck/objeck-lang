@@ -1470,7 +1470,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 {
   if(lib_method) {
     // public/private check
-    if(lib_method->GetMethodType() == PRIVATE_METHOD && !lib_method->IsStatic()) {
+    if((lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       !lib_method->IsStatic()) {
       ProcessError(static_cast<Expression*>(method_call),
                    "Cannot reference a private method from this context");
     }
