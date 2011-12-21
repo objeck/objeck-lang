@@ -5,7 +5,7 @@
 }
 \date{\today}
 
-\documentclass[12pt]{article}
+\documentclass[10pt]{article}
 
 \usepackage{aliascnt}
 \usepackage{hyperref}
@@ -1952,30 +1952,42 @@ This class in the `Net' bundle:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
-  \item New(url : String, port : Int)
+  \item New();
   \end{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(url : String, content\_type: String, port : Int)
-  \end{itemize}
-
+  
 \item \texttt{Post} - Performs a HTTP POST to the connected website,
   returns true is successful
   \begin{itemize}
-  \item method : public : Post(content : String) \textasciitilde Vector
+  \item method : public : Post(url : String, port : Int, content : String) \textasciitilde Vector
+  \item method : public : Post(url : String, content\_type: String,
+    port : Int, content : String) \textasciitilde Vector
   \end{itemize}
 
 \item \texttt{Get} - Performs a HTTP GET from the connected website,
   returns a \texttt{Vector} of strings
   \begin{itemize}
-  \item method : public : Get() \textasciitilde Vector
+  \item method : public : Get(url : String, port : Int) \textasciitilde Vector
+  \item method : public : Get(url : String, content\_type: String, port : Int) \textasciitilde Vector
   \end{itemize}
 
 \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers
-  information.  HTTP header information is populated after a HTTP GET
-  request.
+  information.  HTTP header information is populated after a GET and POST
+  requests.
   \begin{itemize}
   \item method : GetHeaders() \textasciitilde Map
+  \end{itemize}
+\item \texttt{GetCookies} - Gets a list of cookies.  The cookie list
+  can be cleared using this method.
+  \begin{itemize}
+  \item method : GetCookies() \textasciitilde List
+  \end{itemize}
+\item \texttt{CookiesEnabled} - Enables or disables cookie support.
+  \begin{itemize}
+  \item method : CookiesEnabled(state : Bool) \textasciitilde List
+  \end{itemize}
+\item \texttt{SetCookie} - Sets a cookie.
+  \begin{itemize}
+  \item method : SetCookie(cookie : String) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -2208,9 +2220,8 @@ bundle Default {
   class HttpTest {
     function : Main(args : String[]) ~ Nil {
       if(args->Size() = 1) {
-        client := HttpClient->New(args[0], 80);
-        lines := client->Get();
-
+        client := HttpClient->New();
+        lines := client->Get(args[0], 80);
         for(i := 0; i < lines->Size(); i := i + 1;) {
           lines->Get(i)->As(String)->PrintLine();
         };

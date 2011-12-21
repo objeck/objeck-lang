@@ -4,9 +4,17 @@ use Struct;
 bundle Default {
   class HttpTest {
     function : Main(args : String[]) ~ Nil {
-      client := HttpClient->New("http://www.oracle.com/us/sun/index.htm", 80);
-      lines := client->Get();
-      for(i := 0; i < lines->Size(); i += 1;) {
+      client := HttpClient->New();
+		client->CookiesEnabled(true);
+#     lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create", 80);
+      lines := client->Get("http://www.google.com", 80);
+      each(i : lines) {
+        lines->Get(i)->As(String)->PrintLine();
+      };
+
+#     lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
+      lines := client->Get("http://www.google.com/search?q=objeck", 80);
+      each(i : lines) {
         lines->Get(i)->As(String)->PrintLine();
       };
     }
