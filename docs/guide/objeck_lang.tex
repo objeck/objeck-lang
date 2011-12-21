@@ -790,9 +790,10 @@ instance level variables the path must start with
     \texttt{[j]ump} &  jumps out of an existing method/function and moves to the next line with debug information &  \\ \hline
     \texttt{args} &  specifies program arguments & \texttt{args "Hello World"} \\ \hline
     \texttt{[r]un} &  runs a loaded program &  \\ \hline
-    \texttt{[p]rint} &  prints the value of an expression, along with metadata & \texttt{p @self$\rightarrow$value} \\ \hline
+    \texttt{[p]rint} &  prints the value of an expression, along with
+    metadata & \texttt{p locl\_value \newline p @self$\rightarrow$inst\_value} \\ \hline
     \texttt{[l]ist} &  lists a range of lines in a source file or the lines near the current breakpoint & \texttt{l hello.obs:10} \\ \hline
-    \texttt{[i]nfo} &  displays the variables for a class or method/function & \texttt{i class=Foo method=New} \\ \hline
+    \texttt{[i]nfo} &  displays the variables for a class & \texttt{i class=Foo} \\ \hline
     \texttt{stack} &  displays the method/function call stack &  \\ \hline
     \texttt{exe} &  loads a new executable & \texttt{exe "./../test.obe"} \\ \hline
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
