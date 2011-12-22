@@ -58,7 +58,7 @@ class MemoryManager {
   static list<ClassMethodId*> jit_roots;
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> allocated_memory;
-  static map<long*, long> allocated_int_obj_array;
+  static set<long*> allocated_int_obj_array;
   static map<long*, long> static_memory;
   static vector<long*> marked_memory;
   
