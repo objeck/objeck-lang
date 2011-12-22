@@ -19,8 +19,8 @@ bundle Default {
       reserved->Insert("bundle", "keyword: bundle"->As(Base));
       reserved->Insert("native", "keyword: native"->As(Base));
 
-      reader := FileReader->New(file);
       line_num := 0;
+      reader := FileReader->New(file);
       while(reader->IsEOF() <> true) {
         line := reader->ReadString();
         line_num := line_num + 1;
@@ -32,85 +32,84 @@ bundle Default {
             i += 1;
           };
           
-          # parse
+          # parse the line
           if(i < line->Size()) {
             # word
             if(line->Get(i)->IsChar() = true) {
               string := "";
               while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
-              string->Append(line->Get(i));
-              i += 1;
-            };
-  
-            result : String := reserved->Find(string);
-            if(result <> Nil) {
-              Console->PrintLine(result);
-            }
-            else {
-              Console->Print("string/var:'")->Print(string)->PrintLine("'");
-            };
-          }
-          # number
-          else if(line->Get(i)->IsDigit() = true) {
-            number := "";
-            is_dec := false;
-            while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
-              if(line->Get(i) = '.') {
-              is_dec := true;
+                string->Append(line->Get(i));
+                i += 1;
               };
-              
-              number->Append(line->Get(i));
-              i += 1;
-            };
-  
-            if(is_dec) {
-              Console->Print("decimal '")->Print(number)->PrintLine("'");
+            
+              result := reserved->Find(string)->As(String);
+              if(result <> Nil) {
+                Console->PrintLine(result);
+              }
+              else {
+                Console->Print("string/var:'")->Print(string)->PrintLine("'");
+              };
             }
-            else {
-              Console->Print("integer '")->Print(number)->PrintLine("'");
-            };
-          }
-          # other
-          else {
-            select(line->Get(i)) {
-              label '(': {
-              	"opren"->PrintLine();
-              }
-              
-              label ')': {
-              	"cpren"->PrintLine();
-              }
-
-              label '{': {
-              	"ocbrace"->PrintLine();
-              }
-      
-              label '}': {
-              "ccbrace"->PrintLine();
-              }
-              
-              label '/': {
-              	"div"->PrintLine();
-              }
-  
-              label '*': {
-              	"mul"->PrintLine();
-              }
-  
-              label '+': {
-              "add"->PrintLine();
-              }
-  
-              label '-': {
-              	"sub"->PrintLine();
-              }
+						# number
+						else if(line->Get(i)->IsDigit() = true) {
+							number := "";
+							is_dec := false;
+							while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
+								if(line->Get(i) = '.') {
+									is_dec := true;
+								};
+								number->Append(line->Get(i));
+								i += 1;
+							};
+		
+							if(is_dec) {
+								Console->Print("decimal '")->Print(number)->PrintLine("'");
+							}
+							else {
+								Console->Print("integer '")->Print(number)->PrintLine("'");
+							};
+						}
+						# other
+						else {
+							select(line->Get(i)) {
+								label '(': {
+									"opren"->PrintLine();
+								}
+								
+								label ')': {
+									"cpren"->PrintLine();
+								}
+	
+								label '{': {
+									"ocbrace"->PrintLine();
+								}
+				
+								label '}': {
+								"ccbrace"->PrintLine();
+								}
+								
+								label '/': {
+									"div"->PrintLine();
+								}
+		
+								label '*': {
+									"mul"->PrintLine();
+								}
+		
+								label '+': {
+								"add"->PrintLine();
+								}
+		
+								label '-': {
+									"sub"->PrintLine();
+								}
 #~              
-              other: {
-              	Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
-              }
+								other: {
+									Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
+								}
 ~#
-            };
-            i += 1;
+							};
+							i += 1;
             };  
           };
         };
