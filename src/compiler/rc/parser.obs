@@ -1,19 +1,17 @@
 use IO;
 use Struct;
 
-# to compile: -lib struct.obl
-
 bundle Default {  
-  class Hello {
-    New() {
-    }
-
+  class Parser {
     function : Main(args : String[]) ~ Nil {
-      Run();
+      if(args->Size() = 1) {
+        Parse(args[0]);
+      };
     }
     
-    function : native : Run() ~ Nil {
+    function : native : Parse(file : String) ~ Nil {
       reserved := StringMap->New();
+      reserved->Insert("method", "keyword: method"->As(Base));
       reserved->Insert("function", "keyword: function"->As(Base));
       reserved->Insert("Int", "keyword: Int"->As(Base));
       reserved->Insert("Float", "keyword: Float"->As(Base));
@@ -21,7 +19,7 @@ bundle Default {
       reserved->Insert("bundle", "keyword: bundle"->As(Base));
       reserved->Insert("native", "keyword: native"->As(Base));
 
-      reader := FileReader->New("..\examples\hello.obs");
+      reader := FileReader->New(file);
       line_num := 0;
       while(reader->IsEOF() <> true) {
         line := reader->ReadString();
@@ -49,7 +47,7 @@ bundle Default {
               Console->PrintLine(result);
             }
             else {
-              Console->Print("string '")->Print(string)->PrintLine("'");
+              Console->Print("string/var:'")->Print(string)->PrintLine("'");
             };
           }
           # number
@@ -76,40 +74,27 @@ bundle Default {
           else {
             select(line->Get(i)) {
               label '(': {
-              "opren"->PrintLine();
+              	"opren"->PrintLine();
               }
               
               label ')': {
-              "cpren"->PrintLine();
+              	"cpren"->PrintLine();
               }
-  
-              label '[': {
-              "obrace"->PrintLine();
-              }
-              
-              label ']': {
-              "cbrace"->PrintLine();
-              }      
-  
-              
+
               label '{': {
-              "ocbrace"->PrintLine();
+              	"ocbrace"->PrintLine();
               }
       
               label '}': {
               "ccbrace"->PrintLine();
               }
               
-              label '#': {
-              "pound"->PrintLine();
-              }
-  
               label '/': {
-              "div"->PrintLine();
+              	"div"->PrintLine();
               }
   
               label '*': {
-              "mul"->PrintLine();
+              	"mul"->PrintLine();
               }
   
               label '+': {
@@ -117,15 +102,11 @@ bundle Default {
               }
   
               label '-': {
-              "sub"->PrintLine();
-              }
-  
-              label '%': {
-              "mod"->PrintLine();
+              	"sub"->PrintLine();
               }
 #~              
               other: {
-              Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
+              	Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
               }
 ~#
             };
