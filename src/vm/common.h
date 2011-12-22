@@ -39,6 +39,7 @@
 #include <stack>
 #include <vector>
 #include <list>
+#include <set>
 #include <map>
 #include <string>
 #include <string.h>
