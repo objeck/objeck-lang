@@ -320,7 +320,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   allocation_size += calc_size;
   allocated_memory.insert(pair<long*, long>(mem, calc_size));
   if(type == INT_TYPE) {
-    allocated_int_obj_array.insert(pair<long*, long>(mem, 1L));
+    allocated_int_obj_array.insert(mem, 1L);
   }
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
@@ -967,7 +967,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkMemory(mem)) {
 	// ensure we're only checking int and obj arrays
-	map<long*, long>::iterator result = allocated_int_obj_array.find(mem);
+	set<long*>::iterator result = allocated_int_obj_array.find(mem);
       	if(result != allocated_int_obj_array.end()) {
 	  long* array = mem;
 	  const long size = array[0];
