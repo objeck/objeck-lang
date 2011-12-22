@@ -60,7 +60,7 @@ class MemoryManager {
   static list<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> static_memory;
   static map<long*, long> allocated_memory;
-  static map<long*, long> allocated_int_obj_array;
+  static set<long*> allocated_int_obj_array;
   static vector<long*> marked_memory;
   
   static CRITICAL_SECTION static_cs;
