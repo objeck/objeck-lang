@@ -36,6 +36,8 @@
 #include "types.h"
 #include "tree.h"
 
+#define SYSTEM_BASE_NAME "System.Base" 
+
 using namespace frontend;
 
 /****************************
