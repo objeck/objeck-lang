@@ -22,12 +22,33 @@ bundle Default {
 		}
 		
 		method : public : GetColor() ~ String {
-			return "green";
+			return "champagne";
 		}
 	}
 	
-	class Test {
+	class UfoTest {
 		function : Main(args : System.String[]) ~ Nil {
+			ufo := Ufo->New();
+
+			v := ufo->As(Vehicle);
+			v->GetWheels()->PrintLine();
+
+			c := ufo->As(Color);
+			paint := c->GetColor();
+			paint->PrintLine();
+
+			b := ufo->TypeOf(Vehicle);
+			b->PrintLine();
+
+			b := ufo->TypeOf(Color);
+			b->PrintLine();
+
+			b := ufo->TypeOf(String);
+			b->PrintLine();
+
+			if(paint->Equals("brandy") | paint->Equals("champagne") | paint->Equals("vodka")) {
+				"confirmed setting!"->PrintLine();
+			};
 		}			
 	}
 }
