@@ -271,7 +271,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
 		   current_class->GetLibraryParent()->GetName());
     }
   }
-
+  
   AnalyzeInterfaces(klass, depth);
 }
 
@@ -281,10 +281,13 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 {
-  vector<string> interface_names = current_class->GetInterfaceNames();
+  vector<string> interface_names = klass->GetInterfaceNames();
+  vector<Class*> interfaces;
+  vector<LibraryClass*> lib_interfaces;
   for(unsigned int i = 0; i < interface_names.size(); i++) {
     const string& interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
+    
     if(inf_klass) {
       // ensure interface methods are virtual
       vector<Method*> methods = inf_klass->GetMethods();
@@ -294,10 +297,12 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	}
       }
       // ensure implementation
-      if(!AnalyzeVirtualMethods(current_class, inf_klass, depth)) {
-	ProcessError(current_class, "Not all methods have been implemented for the interface: " +
+      if(!AnalyzeVirtualMethods(klass, inf_klass, depth)) {
+	ProcessError(klass, "Not all methods have been implemented for the interface: " +
 		     inf_klass->GetName());
       }
+      // add interface
+      interfaces.push_back(inf_klass);
     }
     else {
       LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
@@ -308,20 +313,25 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	for(iter = lib_methods.begin(); iter != lib_methods.end(); iter++) {
 	  LibraryMethod* lib_method = iter->second;
 	  if(!lib_method->IsVirtual()) {
-	    ProcessError(current_class, "Interface method must be defined as 'virtual'");
+	    ProcessError(klass, "Interface method must be defined as 'virtual'");
 	  }
 	}
 	// ensure implementation
-	if(!AnalyzeVirtualMethods(current_class, inf_lib_klass, depth)) {
-	  ProcessError(current_class, "Not all methods have been implemented for the interface: " +
+	if(!AnalyzeVirtualMethods(klass, inf_lib_klass, depth)) {
+	  ProcessError(klass, "Not all methods have been implemented for the interface: " +
 		       inf_lib_klass->GetName());
 	}
+	// add interface
+	lib_interfaces.push_back(inf_lib_klass);
       }
       else {
 	ProcessError(klass, "Undefined interface: '" + interface_name + "'");
       }
     }
   }
+  // save interfaces
+  klass->SetInterfaces(interfaces);
+  klass->SetLibraryInterfaces(lib_interfaces);
 }
 
 /****************************
