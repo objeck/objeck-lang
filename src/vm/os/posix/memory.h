@@ -145,7 +145,7 @@ public:
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos);
 
   // object verification
-  long* ValidObjectCast(long* mem, const long to_id, int* cls_hierarchy);
+  long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   inline long GetObjectID(long* mem) {
 #ifndef _GC_SERIAL

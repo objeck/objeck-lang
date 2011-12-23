@@ -530,7 +530,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   }
   vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
   for(unsigned int i = 0; i < lib_interfaces.size(); i++) {
-    interface_ids.push_back(interfaces[i]->GetId());
+    interface_ids.push_back(lib_interfaces[i]->GetId());
   }
 
   // get short file name
