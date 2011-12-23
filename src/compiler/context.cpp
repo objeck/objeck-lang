@@ -230,8 +230,9 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
     ProcessError(klass, "Class '" + klass->GetName() +
                  "' defined in program and shared libraries");
   }
-
- 
+  
+  AnalyzeInterfaces(klass, depth);
+  
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(unsigned int i = 0; i < statements.size(); i++) {
@@ -271,8 +272,6 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
 		   current_class->GetLibraryParent()->GetName());
     }
   }
-  
-  AnalyzeInterfaces(klass, depth);
 }
 
 /****************************
@@ -303,6 +302,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
       }
       // add interface
       inf_klass->SetCalled(true);
+      inf_klass->AddChild(klass);
       interfaces.push_back(inf_klass);
     }
     else {
@@ -324,6 +324,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	}
 	// add interface
 	inf_lib_klass->SetCalled(true);
+	inf_lib_klass->AddChild(klass);
 	lib_interfaces.push_back(inf_lib_klass);
       }
       else {
