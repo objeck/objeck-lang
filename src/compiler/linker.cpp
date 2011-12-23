@@ -1,7 +1,7 @@
 /***************************************************************************
  * Links pre-compiled code into existing program
  *
- * Copyright (c) 2008-2011, Randy Hollines
+ * Copyright (c) 2008-2012, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

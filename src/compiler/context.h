@@ -1,7 +1,7 @@
 /***************************************************************************
  * Performs contextual analysis.
  *
- * Copyright (c) 2008-2011, Randy Hollines
+ * Copyright (c) 2008-2012, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -404,7 +404,7 @@ class ContextAnalyzer {
     if(from_klass->GetName() == "System.Base") {
       return true;
     }
-
+    
     vector<string> interface_names = from_klass->GetInterfaceNames();
     vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
     if(result != interface_names.end() || to == from_klass->GetName()) {
