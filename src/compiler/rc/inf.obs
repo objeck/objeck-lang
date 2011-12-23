@@ -24,6 +24,11 @@ bundle Default {
 		method : public : GetColor() ~ String {
 			return "champagne";
 		}
+
+		
+		method : public : IsHoax() ~ Bool {
+			return true;
+		}
 	}
 	
 	class UfoTest {
@@ -49,6 +54,9 @@ bundle Default {
 			if(paint->Equals("brandy") | paint->Equals("champagne") | paint->Equals("vodka")) {
 				"confirmed setting!"->PrintLine();
 			};
+
+			u := v->As(Ufo);
+			u->IsHoax()->PrintLine();
 		}			
 	}
 }
