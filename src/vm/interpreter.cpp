@@ -76,9 +76,12 @@ void* StackInterpreter::CompileMethod(void* arg)
   JitCompilerIA32 jit_compiler;
 #endif
   jit_compiler.Compile(method);
+  
   // clean up
-  program->RemoveThread(pthread_self());
-  pthread_exit(NULL);
+  const pthread_t tid = pthread_self();
+  program->RemoveThread(tid);
+  pthread_detach(tid);
+  return NULL;
 }
 #endif
 
