@@ -173,7 +173,7 @@ public:
     return NULL;
   }
 
-  inline long GetObjectID(long* mem) {
+  static inline long GetObjectID(long* mem) {
     StackClass* klass = GetClass(mem);
     if(klass) {
       return klass->GetId();

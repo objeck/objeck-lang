@@ -1158,7 +1158,7 @@ namespace Runtime {
 								       program->GetHierarchy(),
 								       program->GetInterfaces());
 	if(!result && mem) {
-	  StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);	  
+	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
 	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
 	       << "' to '" << program->GetClass(to_id)->GetName() << "' <<<" << endl;
 	  exit(1);
@@ -1543,7 +1543,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  LOAD_CLS_INST_ID" << endl;
 #endif
-	  long value = (long)MemoryManager::Instance()->GetObjectID((long*)PopInt(op_stack, stack_pos));
+	  long value = (long)MemoryManager::GetObjectID((long*)PopInt(op_stack, stack_pos));
 	  PushInt(op_stack, stack_pos, value);
 	}
 	  break;

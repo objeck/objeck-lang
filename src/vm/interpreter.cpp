@@ -625,7 +625,7 @@ void StackInterpreter::Execute()
       long* instance = (long*)frame->GetMemory()[0];
       long* param = (long*)frame->GetMemory()[1];
       
-      StackClass* impl_class = MemoryManager::Instance()->GetClass(instance);
+      StackClass* impl_class = MemoryManager::GetClass(instance);
 #ifdef _DEBUG
       assert(impl_class);
 #endif
@@ -1398,7 +1398,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
   // dynamically bind class for virutal method
   if(called->IsVirtual()) {
-    StackClass* impl_class = MemoryManager::Instance()->GetClass((long*)instance);
+    StackClass* impl_class = MemoryManager::GetClass((long*)instance);
     if(!impl_class) {
       cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
       StackErrorUnwind();
@@ -1862,7 +1862,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 {
   switch(PopInt()) {
   case LOAD_CLS_INST_ID:
-    PushInt(MemoryManager::Instance()->GetObjectID((long*)PopInt()));
+    PushInt(MemoryManager::GetObjectID((long*)PopInt()));
     break;
 
   case LOAD_CLS_BY_NAME: {
