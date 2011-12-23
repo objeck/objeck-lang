@@ -821,6 +821,7 @@ class StackProgram {
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
+  int** cls_interfaces;
   int string_cls_id;
   int cls_cls_id;
   int mthd_cls_id;
@@ -847,6 +848,7 @@ class StackProgram {
  public:
   StackProgram() {
     cls_hierarchy = NULL;
+    cls_interfaces = NULL;
     classes = NULL;
     char_strings = NULL;
     string_cls_id = cls_cls_id = mthd_cls_id = data_type_cls_id = -1;
@@ -871,6 +873,15 @@ class StackProgram {
       cls_hierarchy = NULL;
     }
 
+    if(cls_interfaces) {
+      for(int i = 0; i < class_num; i++) {
+	delete[] cls_interfaces[i];
+	cls_interfaces[i] = NULL;
+      }
+      delete[] cls_interfaces;
+      cls_interfaces = NULL;
+    }
+    
     if(float_strings) {
       for(int i = 0; i < num_float_strings; i++) {
         FLOAT_VALUE* tmp = float_strings[i];
@@ -1080,6 +1091,14 @@ class StackProgram {
   inline int* GetHierarchy() const {
     return cls_hierarchy;
   }
+
+  void SetInterfaces(int** i) {
+    cls_interfaces = i;
+  }
+
+  inline int** GetInterfaces() const {
+    return cls_interfaces;
+  }  
 
   inline StackClass* GetClass(long id) const {
     if(id > -1 && id < class_num) {

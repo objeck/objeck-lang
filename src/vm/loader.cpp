@@ -199,6 +199,7 @@ void Loader::LoadClasses()
 {
   const int number = ReadInt();
   int* cls_hierarchy = new int[number];
+  int** cls_interfaces = new int*[number];
   StackClass** classes = new StackClass*[number];
 
 #ifdef _DEBUG
@@ -214,8 +215,17 @@ void Loader::LoadClasses()
     
     // read interface ids
     const int interface_size = ReadInt();
-    for(int i = 0; i < interface_size; i++) {
-      ReadInt();
+    if(interface_size > 0) {
+      int* interfaces = new int[interface_size + 1];
+      int i = 0;
+      while(i < interface_size) {
+	interfaces[i++] = ReadInt();
+      }
+      interfaces[i] = -1;
+      cls_interfaces[id] = interfaces;
+    }
+    else {
+      cls_interfaces[id] = NULL;
     }
 
     // read interface names
@@ -273,9 +283,11 @@ void Loader::LoadClasses()
 #endif
     classes[id] = cls;
   }
-  // set class hierarchy
+  
+  // set class hierarchy and interfaces
   program->SetClasses(classes, number);
   program->SetHierarchy(cls_hierarchy);
+  program->SetInterfaces(cls_interfaces);
 }
 
 void Loader::LoadMethods(StackClass* cls, bool is_debug)

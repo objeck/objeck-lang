@@ -302,6 +302,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 		     inf_klass->GetName());
       }
       // add interface
+      inf_klass->SetCalled(true);
       interfaces.push_back(inf_klass);
     }
     else {
@@ -322,6 +323,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 		       inf_lib_klass->GetName());
 	}
 	// add interface
+	inf_lib_klass->SetCalled(true);
 	lib_interfaces.push_back(inf_lib_klass);
       }
       else {

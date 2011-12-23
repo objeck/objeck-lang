@@ -328,7 +328,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   return mem;
 }
 
-long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
+long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
@@ -355,17 +355,35 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   }
   
   // upcast
-  while(id != -1) {
-    if(id == to_id) {
+  int tmp_id = id;
+  while(tmp_id != -1) {
+    if(tmp_id == to_id) {
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
 #endif
       return mem;
     }
     // update
-    id = cls_hierarchy[id];
+    tmp_id = cls_hierarchy[tmp_id];
   }
 
+  // check interfaces
+  tmp_id = id;
+  int* interfaces = cls_interfaces[tmp_id];
+  if(interfaces) {
+    int i = 0;
+    tmp_id = interfaces[i];
+    while(tmp_id > -1) {
+      if(tmp_id == to_id) {
+#ifndef _GC_SERIAL
+	pthread_mutex_unlock(&allocated_mutex);
+#endif
+	return mem;
+      }
+      tmp_id = interfaces[++i];
+    }
+  }
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif
