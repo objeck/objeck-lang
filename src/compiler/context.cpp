@@ -128,12 +128,16 @@ bool ContextAnalyzer::Analyze()
     for(unsigned int j = 0; j < classes.size(); j++) {
       Class* klass = classes[j];
       string parent_name = klass->GetParentName();
-#ifndef _SYSTEM
+      // TODO: fix ulgy hack!!!
+#ifdef _SYSTEM
+      if(parent_name.size() == 0 && klass->GetName() != SYSTEM_BASE_NAME) {
+#else
       if(parent_name.size() == 0) {
-	parent_name = "System.Base";
-	klass->SetParentName("System.Base");
-      }
 #endif
+	parent_name = SYSTEM_BASE_NAME;
+	klass->SetParentName(SYSTEM_BASE_NAME);
+      }
+      
       if(parent_name.size()) {
 	Class* parent = SearchProgramClasses(parent_name);
 	if(parent) {
@@ -503,7 +507,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
     if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
         current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        (current_class->GetParent() || (current_class->GetLibraryParent() &&
-				       current_class->GetLibraryParent()->GetName() != "System.Base"))) {
+				       current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
         ProcessError(current_method, "Parent call required");
       }

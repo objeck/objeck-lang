@@ -415,13 +415,9 @@ bundle System {
 	}
 	
 	#~~
-	# Provides useful base class functionality
+	# Compare interface
 	~~#	
-	class Compare from System.Base {
-		New() {
-			Parent();
-		}
-
+	interface Compare {
 		#~~
 		# Compares two objects.
 		# @return 1 if greater, -1 if less, otherwise 0
@@ -436,18 +432,9 @@ bundle System {
 	}
 	
 	#~~
-	# Provides useful base class functionality
-	
-	class Hash from Compare {
-		method : virtual : public : Compare(rhs : Compare) ~ Int;
-		method : virtual : public : Hash() ~ Int;
-	}
-	~~#	
-	
-	#~~
 	# Character string class
 	~~#	
-	class String from Compare {
+	class String implements System.Compare {
 		@string : Char[];
 		@max : Int;
 		@pos : Int;
@@ -472,7 +459,7 @@ bundle System {
 					
 		New(array : Char[]) {
 			Parent();
-			
+
 			if(array->Size() < 8) {
 				@max := 8;
 			}
@@ -488,7 +475,7 @@ bundle System {
 		
 		New(array : Byte[]) {
 			Parent();
-			
+
 			if(array->Size() < 8) {
 				@max := 8;
 			}
@@ -1155,6 +1142,8 @@ bundle API {
 		@ptr : Int;
 		
 		New(name : String) {
+			Parent();
+
 			@name := name;
 			DLL_LOAD;
 		}
@@ -1188,6 +1177,8 @@ bundle Time {
 		@is_savings : Bool;
 		
 		New() {
+			Parent();
+
 			SYS_TIME;
 		}
 		
@@ -1227,6 +1218,7 @@ bundle Time {
 		@elapsed : Int;
 		
 		New() {
+			Parent();
 		}
 		
 		method : public : Start() ~ Nil {
@@ -1254,6 +1246,7 @@ bundle Concurrency {
 		@param : System.Base;
 		
 		New(name : String) {
+			Parent();
 			@name := name;
 		}
 		
@@ -1313,6 +1306,7 @@ bundle Concurrency {
 		@m7 : Int;
 		
 		New(name : String) {
+			Parent();
 			@name := name;
 			THREAD_MUTEX;
 		}
@@ -1405,6 +1399,7 @@ bundle IO {
 		@console : static : ConsoleIO;
 
 		New : private () {
+			Parent();
 		}
 
 		function : Instance() ~ ConsoleIO {
@@ -1506,6 +1501,7 @@ bundle IO {
 		@name : System.String;
 		
 		New(name : System.String) {
+			Parent();
 			@name := name;
 		}
 		
@@ -1653,6 +1649,7 @@ bundle IO {
 		@pos : Int;
 
 		New() {
+			Parent();
 			@buffer := Byte->New[16];
 			@pos := 0;
 		}
@@ -1708,6 +1705,7 @@ bundle IO {
 		@pos : Int;
 		
 		New(buffer : Byte[]) {
+			Parent();
 			@buffer := buffer;
 			@pos := 0;
 		}
@@ -1758,6 +1756,7 @@ bundle Net {
 		@port : Int;
 		
 		New(address : System.String, port : Int) {
+			Parent();
 			@address := address;
 			@port := port;
 			SOCK_TCP_CONNECT;
@@ -1822,6 +1821,7 @@ bundle Introspection {
 		@methods : Method[];
 		
 		New : private (name : String) {
+			Parent();
 			LOAD_CLS_BY_NAME;
 		}
 		
