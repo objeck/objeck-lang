@@ -93,6 +93,25 @@ class MemoryManager {
   static void CollectMemory(long* op_stack, long stack_pos);
   static void* CollectMemory(void* arg);
 
+  static inline StackClass* GetClassMapping(long* mem) {
+    if(mem) {
+#ifndef _GC_SERIAL
+      pthread_mutex_lock(&allocated_mutex);
+#endif
+      map<long*, long>::iterator result = allocated_memory.find(mem);
+      if(result != allocated_memory.end()) {
+#ifndef _GC_SERIAL
+	pthread_mutex_unlock(&allocated_mutex);
+#endif
+        return prgm->GetClass(-result->second);
+      }
+    }
+#ifndef _GC_SERIAL
+    pthread_mutex_unlock(&allocated_mutex);
+#endif
+    return NULL;
+  }
+
 public:
   static void Initialize(StackProgram* p);
   static MemoryManager* Instance();
@@ -109,8 +128,8 @@ public:
     map<long*, long>::iterator iter;
     for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
       long* temp = iter->first;
-
-      --temp;
+      
+      temp -= 2;
       free(temp);
       temp = NULL;
     }
@@ -132,7 +151,7 @@ public:
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
-
+  
   static long* AllocateObject(const char* obj_name, long* op_stack, long stack_pos) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
@@ -147,42 +166,20 @@ public:
   // object verification
   long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
-  inline long GetObjectID(long* mem) {
-#ifndef _GC_SERIAL
-    pthread_mutex_lock(&allocated_mutex);
-#endif
-    map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
-#ifndef _GC_SERIAL
-      pthread_mutex_unlock(&allocated_mutex);
-#endif
-      return -result->second;
-    } 
-    else {
-#ifndef _GC_SERIAL
-      pthread_mutex_unlock(&allocated_mutex);
-#endif
-      return -1;
-    }
-  }
-
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
-#ifndef _GC_SERIAL
-      pthread_mutex_lock(&allocated_mutex);
-#endif
-      map<long*, long>::iterator result = allocated_memory.find(mem);
-      if(result != allocated_memory.end()) {
-#ifndef _GC_SERIAL
-	pthread_mutex_unlock(&allocated_mutex);
-#endif
-        return prgm->GetClass(-result->second);
-      }
+      return (StackClass*)*(mem - 2);
     }
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&allocated_mutex);
-#endif
     return NULL;
+  }
+
+  inline long GetObjectID(long* mem) {
+    StackClass* klass = GetClass(mem);
+    if(klass) {
+      return klass->GetId();
+    }
+    
+    return -1;
   }
 
   ~MemoryManager() {
