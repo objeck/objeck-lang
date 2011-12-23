@@ -563,7 +563,8 @@ void StackInterpreter::Execute()
     case OBJ_TYPE_OF: {
       long* mem = (long*)PopInt();
       long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
-								program->GetHierarchy());
+								program->GetHierarchy(),
+								program->GetInterfaces());
       if(result) {
 	PushInt(1);
       }
@@ -576,7 +577,8 @@ void StackInterpreter::Execute()
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt();
       long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
-								     program->GetHierarchy());
+								     program->GetHierarchy(),
+								     program->GetInterfaces());
 #ifdef _DEBUG
       cout << "stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl; 
 #endif

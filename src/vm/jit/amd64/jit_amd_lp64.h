@@ -1137,7 +1137,8 @@ namespace Runtime {
       case OBJ_TYPE_OF: {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
 	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
-								  program->GetHierarchy());
+								  program->GetHierarchy(),
+								  program->GetInterfaces());
 	if(result) {
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1154,7 +1155,8 @@ namespace Runtime {
 	cout << "jit oper: OBJ_INST_CAST: from=" << mem << ", to=" << to_id << endl; 
 #endif	
 	long result = (long)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
-								       program->GetHierarchy());
+								       program->GetHierarchy(),
+								       program->GetInterfaces());
 	if(!result && mem) {
 	  StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);	  
 	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  

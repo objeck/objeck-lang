@@ -1,5 +1,8 @@
 bundle Default {
 	class Dog implements Inf {
+		New() {
+		}
+
 		function : G() ~ Nil {
 		}
 
@@ -16,6 +19,20 @@ bundle Default {
 		function : native : Main(args : System.String[]) ~ Nil {
 			x := Bar->New();
 			y := x->Foo();
+#~
+			r := x->TypeOf(Bar);
+			r->PrintLine();
+			r := x->TypeOf(Inf);
+			r->PrintLine();
+~#
+
+			d := Dog->New();
+			r := d->TypeOf(Inf2);
+			r->PrintLine();
+			r := d->TypeOf(Inf);
+			r->PrintLine();
+
+
 #			y->GetClass()->GetName();
 #			y->B1("xxx", 3.41);
 		}
