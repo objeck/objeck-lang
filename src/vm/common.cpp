@@ -47,7 +47,7 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   if(mem) {
     SerializeByte(1);
-    StackClass* cls = MemoryManager::Instance()->GetClass(mem);
+    StackClass* cls = MemoryManager::GetClass(mem);
     if(cls) {
       // write id
       SerializeInt(cls->GetId());
