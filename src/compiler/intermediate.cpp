@@ -522,6 +522,17 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     }
   }
 
+  // process interfaces
+  vector<int> interface_ids;
+  vector<Class*> interfaces = current_class->GetInterfaces();
+  for(unsigned int i = 0; i < interfaces.size(); i++) {
+    interface_ids.push_back(interfaces[i]->GetId());
+  }
+  vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
+  for(unsigned int i = 0; i < lib_interfaces.size(); i++) {
+    interface_ids.push_back(interfaces[i]->GetId());
+  }
+
   // get short file name
   const string &file_name = current_class->GetFileName();
   int offset = file_name.find_last_of("/\\");
@@ -534,7 +545,8 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   }
   
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
-                                    pid, parent_name, current_class->GetInterfaceNames(), 
+                                    pid, parent_name, 
+				    interface_ids, current_class->GetInterfaceNames(), 				   
 				    current_class->IsVirtual(), cls_space, inst_space, 
 				    entries, short_file_name, is_debug);
   // block
