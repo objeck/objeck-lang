@@ -261,8 +261,9 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
       CollectAllMemory(op_stack, stack_pos);
     }
     // allocate memory
-    mem = (long*)calloc(size * 2 + sizeof(long), sizeof(BYTE_VALUE));
-    mem++;
+    mem = (long*)calloc(size * 2 + sizeof(long) * 2, sizeof(BYTE_VALUE));
+    mem[0] = (long)cls;
+    mem += 2;
 
     // record
 #ifndef _SERIAL
@@ -311,8 +312,8 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     CollectAllMemory(op_stack, stack_pos);
   }
   // allocate memory
-  mem = (long*)calloc(calc_size + sizeof(long), sizeof(BYTE_VALUE));
-  mem++;
+  mem = (long*)calloc(calc_size + sizeof(long) * 2, sizeof(BYTE_VALUE));
+  mem += 2;
 
 #ifndef _SERIAL
   EnterCriticalSection(&allocated_cs);
@@ -540,7 +541,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       long* tmp = iter->first;
       erased_memory.push_back(tmp);
 
-      --tmp;
+      tmp -= 2;
       free(tmp);
       tmp = NULL;
     }
@@ -954,7 +955,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
     // TODO: optimize so this is not a double call.. see below
-    StackClass* cls = GetClass(mem);
+    StackClass* cls = GetClassMapping(mem);
     if(cls) {
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
