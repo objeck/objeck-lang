@@ -376,9 +376,8 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 	ProcessError(TOKEN_IDENT);
       }
       // identifier
-      const string& ident = scanner->GetToken()->GetIdentifier();
+      const string& ident = ParseBundleName();
       interface_names.push_back(ident);
-      NextToken();
       if(Match(TOKEN_COMMA)) {
 	NextToken();
 	if(!Match(TOKEN_IDENT)) {

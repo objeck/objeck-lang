@@ -1789,6 +1789,8 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* parent;
     LibraryClass* lib_parent;
+    vector<Class*> interfaces;
+    vector<LibraryClass*> lib_interfaces;
     vector<Class*> children;
     bool is_virtual;
     bool was_called;
@@ -1911,6 +1913,14 @@ namespace frontend {
 
     LibraryClass* GetLibraryParent() {
       return lib_parent;
+    }
+    
+    void SetInterfaces(vector<Class*>& i) {
+      interfaces = i;
+    }
+
+    void SetLibraryInterfaces(vector<LibraryClass*>& i) {
+      lib_interfaces = i;
     }
 
     void AddChild(Class* c) {
