@@ -82,7 +82,29 @@ class MemoryManager {
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(long* mem);
 
+  static inline StackClass* GetClassMapping(long* mem) {
+    #ifndef _SERIAL
+    EnterCriticalSection(&allocated_cs);
+#endif
+    if(mem) {
+      map<long*, long>::iterator result = allocated_memory.find(mem);
+      if(result != allocated_memory.end()) {
+#ifndef _SERIAL
+	      LeaveCriticalSection(&allocated_cs);
+#endif
+        return prgm->GetClass(-result->second);
+      }
+    }
+#ifndef _SERIAL
+    LeaveCriticalSection(&allocated_cs);
+#endif
+    return NULL;
+  }
+
 public:
+  ~MemoryManager() {
+  }
+
   static void Initialize(StackProgram* p);
   static MemoryManager* Instance();
 
@@ -93,7 +115,7 @@ public:
   static uintptr_t WINAPI CheckStack(LPVOID arg);
   static uintptr_t WINAPI CheckJitRoots(LPVOID arg);
   static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
-
+  
   static void Clear() {
     while(!jit_roots.empty()) {
       ClassMethodId* tmp = jit_roots.front();
@@ -107,7 +129,7 @@ public:
     for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
       long* temp = iter->first;
 
-      --temp;
+      temp -= 2;
       free(temp);
       temp = NULL;
     }
@@ -151,45 +173,20 @@ public:
   // object verification
   long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
-  inline long GetObjectID(long* mem) {
-#ifndef _SERIAL
-    EnterCriticalSection(&allocated_cs);
-#endif
-    map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
-#ifndef _SERIAL
-      LeaveCriticalSection(&allocated_cs);
-#endif
-      return -result->second;
-    } 
-    else {
-#ifndef _SERIAL
-      LeaveCriticalSection(&allocated_cs);
-#endif
-      return -1;
-    }
-  }
-
   static inline StackClass* GetClass(long* mem) {
-#ifndef _SERIAL
-    EnterCriticalSection(&allocated_cs);
-#endif
     if(mem) {
-      map<long*, long>::iterator result = allocated_memory.find(mem);
-      if(result != allocated_memory.end()) {
-#ifndef _SERIAL
-	      LeaveCriticalSection(&allocated_cs);
-#endif
-        return prgm->GetClass(-result->second);
-      }
+      return (StackClass*)*(mem - 2);
     }
-#ifndef _SERIAL
-    LeaveCriticalSection(&allocated_cs);
-#endif
     return NULL;
   }
 
-  ~MemoryManager() {
+  inline long GetObjectID(long* mem) {
+    StackClass* klass = GetClass(mem);
+    if(klass) {
+      return klass->GetId();
+    }
+    
+    return -1;
   }
 };
 
