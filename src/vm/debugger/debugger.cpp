@@ -832,7 +832,7 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index)
   if(ref_mem) {
     reference->SetIntValue(ref_mem[index]);
     ref_mem = (long*)ref_mem[index];
-    ref_klass = MemoryManager::Instance()->GetClass(ref_mem);
+    ref_klass = MemoryManager::GetClass(ref_mem);
     if(reference->GetReference()) {
       EvaluateReference(reference->GetReference(), true);
     }
