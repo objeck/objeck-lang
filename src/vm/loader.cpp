@@ -206,10 +206,17 @@ void Loader::LoadClasses()
 #endif
 
   for(int i = 0; i < number; i++) {
+    // read id and pid
     const int id = ReadInt();
     string name = ReadString();
     const int pid = ReadInt();
     string parent_name = ReadString();
+    
+    // read interface ids
+    const int interface_size = ReadInt();
+    for(int i = 0; i < interface_size; i++) {
+      ReadInt();
+    }
 
     // read interface names
     const int interface_names_size = ReadInt();

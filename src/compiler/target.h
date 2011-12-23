@@ -931,6 +931,7 @@ class IntermediateClass : public Intermediate {
   int id;
   string name;
   int pid;
+  vector<int> interface_ids;
   string parent_name;
   vector<string> interface_names;
   int cls_space;
@@ -945,12 +946,13 @@ class IntermediateClass : public Intermediate {
   string file_name;
   
 public:
-  IntermediateClass(int i, const string &n, int pi, const string &p, vector<string> in, bool v, 
+  IntermediateClass(int i, const string &n, int pi, const string &p, vector<int> infs, vector<string> in, bool v, 
 		    int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
     id = i;
     name = n;
     pid = pi;
     parent_name = p;
+    interface_ids = infs;
     interface_names = in;
     is_virtual = v;
     cls_space = cs;
@@ -1065,6 +1067,12 @@ public:
     WriteInt(pid, file_out);
     WriteString(parent_name, file_out);
     
+    // interface ids
+    WriteInt(interface_ids.size(), file_out);
+    for(unsigned int i = 0; i < interface_ids.size(); i++) {
+      WriteInt(interface_ids[i], file_out);
+    }
+
     // interface names
     WriteInt(interface_names.size(), file_out);
     for(unsigned int i = 0; i < interface_names.size(); i++) {

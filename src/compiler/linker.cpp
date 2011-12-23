@@ -307,15 +307,22 @@ void Library::LoadEnums()
  ****************************/
 void Library::LoadClasses()
 {
+  // we ignore all class ids
   const int number = ReadInt();
-
   for(int i = 0; i < number; i++) {
     // id
     ReadInt();
     const string &name = ReadString();
+    
     // pid
     ReadInt();
     const string &parent_name = ReadString();
+    
+    // read interface ids
+    const int interface_size = ReadInt();
+    for(int i = 0; i < interface_size; i++) {
+      ReadInt();
+    }
     
     // read interface names
     vector<string> interface_names;

@@ -1919,8 +1919,16 @@ namespace frontend {
       interfaces = i;
     }
 
+    vector<Class*> GetInterfaces() {
+      return interfaces;
+    }
+
     void SetLibraryInterfaces(vector<LibraryClass*>& i) {
       lib_interfaces = i;
+    }
+    
+    vector<LibraryClass*> GetLibraryInterfaces() {
+      return lib_interfaces;
     }
 
     void AddChild(Class* c) {
