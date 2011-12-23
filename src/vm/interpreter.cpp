@@ -78,9 +78,7 @@ void* StackInterpreter::CompileMethod(void* arg)
   jit_compiler.Compile(method);
   
   // clean up
-  const pthread_t tid = pthread_self();
-  program->RemoveThread(tid);
-  pthread_detach(tid);
+  program->RemoveThread(pthread_self());
   return NULL;
 }
 #endif
