@@ -37,7 +37,7 @@ StackProgram* MemoryManager::prgm;
 list<ClassMethodId*> MemoryManager::jit_roots;
 list<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
-map<long*, long> MemoryManager::allocated_int_obj_array;
+set<long*> MemoryManager::allocated_int_obj_array;
 map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
@@ -320,7 +320,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   allocation_size += calc_size;
   allocated_memory.insert(pair<long*, long>(mem, calc_size));
   if(type == INT_TYPE) {
-    allocated_int_obj_array.insert(mem, 1L);
+    allocated_int_obj_array.insert(mem);
   }
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
@@ -334,7 +334,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   return mem;
 }
 
-long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
+long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
 #ifndef _SERIAL
   EnterCriticalSection(&allocated_cs);
@@ -353,17 +353,35 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy)
   }
   
   // upcast
-  while(id != -1) {
-    if(id == to_id) {
+  int tmp_id = id;
+  while(tmp_id != -1) {
+    if(tmp_id == to_id) {
 #ifndef _SERIAL
       LeaveCriticalSection(&allocated_cs);
 #endif
       return mem;
     }
     // update
-    id = cls_hierarchy[id];
+    tmp_id = cls_hierarchy[tmp_id];
   }
 
+  // check interfaces
+  tmp_id = id;
+  int* interfaces = cls_interfaces[tmp_id];
+  if(interfaces) {
+    int i = 0;
+    tmp_id = interfaces[i];
+    while(tmp_id > -1) {
+      if(tmp_id == to_id) {
+#ifndef _GC_SERIAL
+        LeaveCriticalSection(&allocated_cs);
+#endif
+        return mem;
+      }
+      tmp_id = interfaces[++i];
+    }
+  }
+  
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
@@ -656,7 +674,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
-	cout << "\t" << i << ": FUNC_PARM: value=" << (*mem) 
+	cout << "\t" << j << ": FUNC_PARM: value=" << (*mem) 
 	     << "," << *(mem + 1)<< endl;
 #endif
 	// update
