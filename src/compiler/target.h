@@ -741,14 +741,14 @@ public:
   }
 
   void Write(bool is_debug, ofstream* file_out) {
-    for(unsigned int i = 0; i < instructions.size(); i++) {
+    for(size_t i = 0; i < instructions.size(); i++) {
       instructions[i]->Write(is_debug, file_out);
     }
   }
 
   void Debug() {
     if(instructions.size() > 0) {
-      for(unsigned int i = 0; i < instructions.size(); i++) {
+      for(size_t i = 0; i < instructions.size(); i++) {
         instructions[i]->Debug();
       }
       cout << "--" << endl;
@@ -816,7 +816,7 @@ public:
     // process instructions
     IntermediateBlock* block = new IntermediateBlock;
     vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
-    for(unsigned int i = 0; i < lib_instructions.size(); i++) {
+    for(size_t i = 0; i < lib_instructions.size(); i++) {
       block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(lib_instructions[i]));
     }
     AddBlock(block);
@@ -904,7 +904,7 @@ public:
     entries->Write(is_debug, file_out);
 
     // write statements
-    for(unsigned int i = 0; i < blocks.size(); i++) {
+    for(size_t i = 0; i < blocks.size(); i++) {
       blocks[i]->Write(is_debug, file_out);
     }
     WriteByte(END_STMTS, file_out);
@@ -918,7 +918,7 @@ public:
     cout << "---------------------------------------------------------" << endl;
     entries->Debug();
     cout << "---------------------------------------------------------" << endl;
-    for(unsigned int i = 0; i < blocks.size(); i++) {
+    for(size_t i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
     }
   }
@@ -1069,13 +1069,13 @@ public:
     
     // interface ids
     WriteInt(interface_ids.size(), file_out);
-    for(unsigned int i = 0; i < interface_ids.size(); i++) {
+    for(size_t i = 0; i < interface_ids.size(); i++) {
       WriteInt(interface_ids[i], file_out);
     }
 
     // interface names
     WriteInt(interface_names.size(), file_out);
-    for(unsigned int i = 0; i < interface_names.size(); i++) {
+    for(size_t i = 0; i < interface_names.size(); i++) {
       WriteString(interface_names[i], file_out);
     }
     
@@ -1091,7 +1091,7 @@ public:
 
     // write methods
     WriteInt((int)methods.size(), file_out);
-    for(unsigned int i = 0; i < methods.size(); i++) {
+    for(size_t i = 0; i < methods.size(); i++) {
       methods[i]->Write(is_debug, file_out);
     }
   }
@@ -1105,11 +1105,11 @@ public:
     cout << "=========================================================" << endl;
     entries->Debug();
     cout << "=========================================================" << endl;
-    for(unsigned int i = 0; i < blocks.size(); i++) {
+    for(size_t i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
     }
 
-    for(unsigned int i = 0; i < methods.size(); i++) {
+    for(size_t i = 0; i < methods.size(); i++) {
       methods[i]->Debug();
     }
   }
@@ -1179,7 +1179,7 @@ public:
     WriteInt(offset, file_out);
     // write items
     WriteInt((int)items.size(), file_out);
-    for(unsigned int i = 0; i < items.size(); i++) {
+    for(size_t i = 0; i < items.size(); i++) {
       items[i]->Write(file_out);
     }
   }
@@ -1189,7 +1189,7 @@ public:
     cout << "Enum: name='" << name << "'; items=" << items.size() << endl;
     cout << "=========================================================" << endl;
 
-    for(unsigned int i = 0; i < items.size(); i++) {
+    for(size_t i = 0; i < items.size(); i++) {
       items[i]->Debug();
     }
   }
@@ -1318,7 +1318,7 @@ public:
     
     // write float strings
     WriteInt((int)float_strings.size(), file_out);
-    for(unsigned int i = 0; i < float_strings.size(); i++) {
+    for(size_t i = 0; i < float_strings.size(); i++) {
       frontend::FloatStringHolder* holder = float_strings[i];
       WriteInt(holder->length, file_out);
       for(int j = 0; j < holder->length; j++) {
@@ -1327,7 +1327,7 @@ public:
     }
     // write int strings
     WriteInt((int)int_strings.size(), file_out);
-    for(unsigned int i = 0; i < int_strings.size(); i++) {
+    for(size_t i = 0; i < int_strings.size(); i++) {
       frontend::IntStringHolder* holder = int_strings[i];
       WriteInt(holder->length, file_out);
       for(int j = 0; j < holder->length; j++) {
@@ -1336,14 +1336,14 @@ public:
     }
     // write char strings
     WriteInt((int)char_strings.size(), file_out);
-    for(unsigned int i = 0; i < char_strings.size(); i++) {
+    for(size_t i = 0; i < char_strings.size(); i++) {
       WriteString(char_strings[i], file_out);
     }
     
     // write bundle names
     if(is_lib) {
       WriteInt((int)bundle_names.size(), file_out);
-      for(unsigned int i = 0; i < bundle_names.size(); i++) {
+      for(size_t i = 0; i < bundle_names.size(); i++) {
         WriteString(bundle_names[i], file_out);
       }
     }
@@ -1355,12 +1355,12 @@ public:
     }
     // program enums
     WriteInt((int)enums.size(), file_out);
-    for(unsigned int i = 0; i < enums.size(); i++) {
+    for(size_t i = 0; i < enums.size(); i++) {
       enums[i]->Write(file_out);
     }
     // program classes
     WriteInt((int)classes.size(), file_out);
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       if(classes[i]->IsLibrary()) {
         num_lib_classes++;
       } else {
@@ -1378,7 +1378,7 @@ public:
 
   void Debug() {
     cout << "Strings:" << endl;
-    for(unsigned int i = 0; i < char_strings.size(); i++) {
+    for(size_t i = 0; i < char_strings.size(); i++) {
       cout << "string id=" << i << ", value='" << char_strings[i] << "'" << endl;
     }
     cout << endl;
@@ -1386,11 +1386,11 @@ public:
     cout << "Program: enums=" << enums.size() << ", classes="
          << classes.size() << "; start=" << class_id << "," << method_id << endl;
     // enums
-    for(unsigned int i = 0; i < enums.size(); i++) {
+    for(size_t i = 0; i < enums.size(); i++) {
       enums[i]->Debug();
     }
     // classes
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       classes[i]->Debug();
     }
   }

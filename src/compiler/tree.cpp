@@ -65,7 +65,7 @@ TreeFactory* TreeFactory::Instance()
 void SymbolEntry::SetId(int i)
 {
   id = i;
-  for(unsigned int j = 0; j < variables.size(); j++) {
+  for(size_t j = 0; j < variables.size(); j++) {
     variables[j]->SetId(i);
   }
 }
@@ -115,7 +115,7 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
       Class* klass = program->GetClass(klass_name);
       if(!klass) {
         vector<string> uses = program->GetUses();
-        for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+        for(size_t i = 0; !klass && i < uses.size(); i++) {
           klass = program->GetClass(uses[i] + "." + klass_name);
         }
       }
@@ -160,7 +160,7 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(unsigned int i = 0; i < static_array.size(); i++) { 
+  for(size_t i = 0; i < static_array.size(); i++) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	dim = static_array.size();  
