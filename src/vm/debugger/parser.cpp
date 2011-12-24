@@ -83,7 +83,7 @@ bool Parser::CheckErrors()
 {
   // check and process errors
   if(errors.size()) {
-    for(unsigned int i = 0; i < errors.size(); i++) {
+    for(size_t i = 0; i < errors.size(); i++) {
       cerr << errors[i] << endl;
     }
     // clean up

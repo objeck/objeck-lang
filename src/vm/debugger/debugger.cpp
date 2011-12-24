@@ -44,9 +44,9 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
     /*
-#ifdef _DEBUG
-    cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
-#endif
+      #ifdef _DEBUG
+      cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
+      #endif
     */
 
     if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  &&
@@ -181,7 +181,7 @@ void Runtime::Debugger::ProcessRun() {
     stack_pos = new long;
     (*stack_pos) = 0;
 
-#ifdef _TIMING9
+#ifdef _TIMING
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
@@ -256,7 +256,7 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
     }
   }
   else {
-    cout << "file doesn't exit." << endl;
+    cout << "file doesn't exist." << endl;
     is_error = true;
   }
 }
@@ -855,7 +855,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
       // calculate indices values
       vector<Expression*> expressions = indices->GetExpressions();
       vector<int> values;
-      for(unsigned int i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); i++) {
 	EvaluateExpression(expressions[i]);
 	// update values
 	if(expressions[i]->GetFloatEval()) {
@@ -866,7 +866,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
 	}
       }
       // match the dimensions
-      if(expressions.size() == (unsigned int)dim) {
+      if(expressions.size() == (size_t)dim) {
 	// calculate indices
 	array += 2;
 	int j = dim - 1;
@@ -921,7 +921,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
       // calculate indices values
       vector<Expression*> expressions = indices->GetExpressions();
       vector<int> values;
-      for(unsigned int i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); i++) {
 	EvaluateExpression(expressions[i]);
 	// update values
 	if(expressions[i]->GetFloatEval()) {
@@ -932,7 +932,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
 	}
       }
       // match the dimensions
-      if(expressions.size() == (unsigned int)dim) {
+      if(expressions.size() == (size_t)dim) {
 	// calculate indices
 	array += 2;
 	int j = dim - 1;
@@ -1178,7 +1178,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
       if(klass && klass->IsDebug()) {
 	vector<StackMethod*> methods = klass->GetMethods(mthd_name);
 	if(methods.size() > 0) {
-	  for(unsigned int i = 0; i < methods.size(); i++) {
+	  for(size_t i = 0; i < methods.size(); i++) {
 	    StackMethod* method = methods[i];
 	    cout << "  class: type=" << klass->GetName() << ", method="
 		 << PrintMethod(method) << endl;
@@ -1295,7 +1295,7 @@ void Runtime::Debugger::Debug() {
     arguments.push_back(program_file);
   }
   else {
-    cout << "unable to load executable or locate base path." << endl;
+    cerr << "unable to load executable or locate base path." << endl;
     exit(1);
   }
 
