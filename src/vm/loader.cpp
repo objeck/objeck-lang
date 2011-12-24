@@ -235,6 +235,7 @@ void Loader::LoadClasses()
     }
     
     // is virtual
+    const bool is_interface = ReadInt();
     const bool is_virtual = ReadInt();
     const bool is_debug = ReadInt();
     string file_name;

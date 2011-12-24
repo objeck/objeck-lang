@@ -331,6 +331,7 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
     
+    bool is_interface = (bool)ReadInt();
     bool is_virtual = (bool)ReadInt();
     bool is_debug = (bool)ReadInt();
     string file_name;
@@ -354,15 +355,17 @@ void Library::LoadClasses()
     hierarchies.insert(pair<const string, const string>(name, parent_name));
 
 #ifdef _DEBUG
-    const string& msg = "[class: name=" + name + "; parent=" + parent_name + "; virtual=" +
-      Linker::ToString(is_virtual) + "; class_mem_size=" + Linker::ToString(cls_space) +
+    const string& msg = "[class: name=" + name + "; parent=" + parent_name + 
+      "; interface=" + Linker::ToString(is_interface) +       
+      "; virtual=" + Linker::ToString(is_virtual) + 
+      "; class_mem_size=" + Linker::ToString(cls_space) +
       "; instance_mem_size=" + Linker::ToString(inst_space) + 
       "; is_debug=" + Linker::ToString(is_debug) + "]";
     Linker::Show(msg, 0, 0);
 #endif
     
-    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_virtual, cls_space, 
-					 inst_space, entries, this, file_name, is_debug);
+    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
+					 cls_space, inst_space, entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
