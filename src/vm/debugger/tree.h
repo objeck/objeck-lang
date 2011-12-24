@@ -347,7 +347,7 @@ namespace frontend {
 
   CharacterString(const string &orig) : Expression() {
       int skip = 2;
-      for(unsigned int i = 0; i < orig.size(); i++) {
+      for(size_t i = 0; i < orig.size(); i++) {
 	char c = orig[i];
 	if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
 	  char cc = orig[i + 1];
