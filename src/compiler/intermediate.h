@@ -273,7 +273,7 @@ class IntermediateEmitter {
       klass = parsed_program->GetClass(parsed_bundle->GetName() + "." + klass_name);
       if(!klass) {
         vector<string> uses = parsed_program->GetUses();
-        for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+        for(size_t i = 0; !klass && i < uses.size(); i++) {
           klass = parsed_program->GetClass(uses[i] + "." + klass_name);
         }
       }
@@ -288,7 +288,7 @@ class IntermediateEmitter {
       eenum = parsed_program->GetEnum(parsed_bundle->GetName() + "." + eenum_name);
       if(!eenum) {
         vector<string> uses = parsed_program->GetUses();
-        for(unsigned int i = 0; !eenum && i < uses.size(); i++) {
+        for(size_t i = 0; !eenum && i < uses.size(); i++) {
           eenum = parsed_program->GetEnum(uses[i] + "." + eenum_name);
         }
       }
@@ -380,7 +380,7 @@ class IntermediateEmitter {
     parsed_program = p;
     is_lib = l;
     is_debug = d;
-    // TODO: use an unsigned integer
+    // TODO: use an size_teger
     // note: negative numbers are used
     // for method inlining in VM
     imm_program = new IntermediateProgram;

@@ -589,7 +589,7 @@ namespace frontend {
 
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
-      for(unsigned int i = 0; i < static_array.size(); i++) { 
+      for(size_t i = 0; i < static_array.size(); i++) { 
 	if(static_array[i]) {
 	  if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	    GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
@@ -685,7 +685,7 @@ namespace frontend {
   CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
       int skip = 2;
-      for(unsigned int i = 0; i < orig.size(); i++) {
+      for(size_t i = 0; i < orig.size(); i++) {
 	char c = orig[i];
 	if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
 	  char cc = orig[i + 1];
@@ -1573,7 +1573,7 @@ namespace frontend {
     string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
 			      ParsedProgram* program, Linker* linker) {  
       string encoded_name = "(";
-      for(unsigned int i = 0; i < func_params.size(); i++) {
+      for(size_t i = 0; i < func_params.size(); i++) {
 	// encode params
 	encoded_name += EncodeType(func_params[i], program, linker);
     
@@ -1667,7 +1667,7 @@ namespace frontend {
       parsed_name = name + ':';
       // params
       vector<Declaration*> declaration_list = declarations->GetDeclarations();
-      for(unsigned int i = 0; i < declaration_list.size(); i++) {
+      for(size_t i = 0; i < declaration_list.size(); i++) {
 	SymbolEntry* entry = declaration_list[i]->GetEntry();
 	if(entry) {
 	  parsed_name += EncodeType(entry->GetType());
@@ -1682,7 +1682,7 @@ namespace frontend {
       encoded_name = name + ':';
       // params
       vector<Declaration*> declaration_list = declarations->GetDeclarations();
-      for(unsigned int i = 0; i < declaration_list.size(); i++) {
+      for(size_t i = 0; i < declaration_list.size(); i++) {
 	SymbolEntry* entry = declaration_list[i]->GetEntry();
 	if(entry) {
 	  encoded_name += EncodeType(entry->GetType(), program, linker) + ',';
@@ -1856,7 +1856,7 @@ namespace frontend {
 
     bool AddMethod(Method* m) {
       const string &parsed_name = m->GetParsedName();
-      for(unsigned int i = 0; i < method_list.size(); i++) {
+      for(size_t i = 0; i < method_list.size(); i++) {
 	if(method_list[i]->GetParsedName() == parsed_name) {
 	  return false;
 	}
@@ -1940,7 +1940,7 @@ namespace frontend {
     }
 
     void AssociateMethods() {
-      for(unsigned int i = 0; i < method_list.size(); i++) {
+      for(size_t i = 0; i < method_list.size(); i++) {
 	Method* method = method_list[i];
 	methods.insert(pair<string, Method*>(method->GetEncodedName(), method));
       }
@@ -2747,7 +2747,7 @@ namespace frontend {
   
     void AddIntString(vector<Expression*> &int_elements, int id) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
-      for(unsigned int i = 0; i < int_elements.size(); i++) {
+      for(size_t i = 0; i < int_elements.size(); i++) {
 	int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
 
@@ -2761,7 +2761,7 @@ namespace frontend {
   
     int GetIntStringId(vector<Expression*> &int_elements) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
-      for(unsigned int i = 0; i < int_elements.size(); i++) {
+      for(size_t i = 0; i < int_elements.size(); i++) {
 	int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
       }
 
@@ -2793,7 +2793,7 @@ namespace frontend {
   
     void AddFloatString(vector<Expression*> &float_elements, int id) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
-      for(unsigned int i = 0; i < float_elements.size(); i++) {
+      for(size_t i = 0; i < float_elements.size(); i++) {
 	float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
       }
     
@@ -2807,7 +2807,7 @@ namespace frontend {
   
     int GetFloatStringId(vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
-      for(unsigned int i = 0; i < float_elements.size(); i++) {
+      for(size_t i = 0; i < float_elements.size(); i++) {
 	float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
       }
     
@@ -2857,7 +2857,7 @@ namespace frontend {
     }
 
     Class* GetClass(const string &n) {
-      for(unsigned int i = 0; i < bundles.size(); i++) {
+      for(size_t i = 0; i < bundles.size(); i++) {
 	Class* klass = bundles[i]->GetClass(n);
 	if(klass) {
 	  return klass;
@@ -2868,7 +2868,7 @@ namespace frontend {
     }
 
     Enum* GetEnum(const string &n) {
-      for(unsigned int i = 0; i < bundles.size(); i++) {
+      for(size_t i = 0; i < bundles.size(); i++) {
 	Enum* e = bundles[i]->GetEnum(n);
 	if(e) {
 	  return e;

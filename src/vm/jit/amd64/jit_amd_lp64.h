@@ -331,7 +331,7 @@ namespace Runtime {
     inline void AddImm(int imm) {
       BYTE_VALUE buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
-      for(unsigned int i = 0; i < sizeof(int); i++) {
+      for(size_t i = 0; i < sizeof(int); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -343,7 +343,7 @@ namespace Runtime {
     inline void AddImm64(long imm) {
       BYTE_VALUE buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
-      for(unsigned long i = 0; i < sizeof(long); i++) {
+      for(size_t i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
       }
     }
@@ -829,7 +829,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(unsigned int i  = 0; i < aval_regs.size(); i++) {
+      for(size_t i  = 0; i < aval_regs.size(); i++) {
 	assert(h != aval_regs[i]);
       }
 #endif
@@ -874,7 +874,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(unsigned int i = 0; i < aval_xregs.size(); i++) {
+      for(size_t i = 0; i < aval_xregs.size(); i++) {
 	assert(h != aval_xregs[i]);
       }
 #endif
@@ -1848,7 +1848,7 @@ namespace Runtime {
 	  long* str_obj_array_ptr = str_obj_array + 3;
     
 	  // create and assign 'System.String' instances to array
-	  for(unsigned int i = 0; i < files.size(); i++) {
+	  for(size_t i = 0; i < files.size(); i++) {
 	    // get value string
 	    string &value_str = files[i];
       

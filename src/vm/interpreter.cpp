@@ -2629,7 +2629,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* str_obj_array_ptr = str_obj_array + 3;
 
     // create and assign 'System.String' instances to array
-    for(unsigned long i = 0; i < files.size(); i++) {
+    for(size_t i = 0; i < files.size(); i++) {
       str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
     }
 

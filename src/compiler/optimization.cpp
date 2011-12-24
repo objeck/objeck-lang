@@ -41,10 +41,10 @@ void ItermediateOptimizer::Optimize()
 
   // classes...
   vector<IntermediateClass*> klasses = program->GetClasses();
-  for(unsigned int i = 0; i < klasses.size(); i++) {
+  for(size_t i = 0; i < klasses.size(); i++) {
     // methods...
     vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
-    for(unsigned int j = 0; j < methods.size(); j++) {
+    for(size_t j = 0; j < methods.size(); j++) {
       current_method = methods[j];
 #ifdef _DEBUG
       cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
@@ -165,7 +165,7 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
   list<IntermediateInstruction*> calc_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+  for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
@@ -211,7 +211,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
   IntermediateBlock* outputs = new IntermediateBlock;
   
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+  for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
@@ -255,7 +255,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
   IntermediateBlock* outputs = new IntermediateBlock;
   list<IntermediateInstruction*> calc_stack;
 
-  unsigned int i = 0;
+  size_t i = 0;
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   while(i < input_instrs.size() && (input_instrs[i]->GetType() == STOR_INT_VAR ||
                                     input_instrs[i]->GetType() == STOR_FLOAT_VAR)) {
@@ -343,7 +343,7 @@ IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* in
   list<IntermediateInstruction*> calc_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+  for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
@@ -495,7 +495,7 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
   list<IntermediateInstruction*> calc_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+  for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
@@ -611,7 +611,7 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
   list<IntermediateInstruction*> calc_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
-  for(unsigned int i = 0; i < input_instrs.size(); i++) {
+  for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
 
     switch(instr->GetType()) {
