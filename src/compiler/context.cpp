@@ -386,14 +386,22 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       int offset = (int)virtual_method_name.find_first_of(':');
       if(offset > -1) {
 	string encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-	impl_method = impl_class->GetMethod(encoded_name);
-	
+	impl_method = impl_class->GetMethod(encoded_name);	
 	if(!impl_method && impl_class->GetParent()) {
 	  Class* parent_class = impl_class->GetParent();
-	  while(!impl_method && parent_class) {
+	  while(!impl_method && !lib_impl_method && parent_class) {
 	    encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
 	    impl_method = parent_class->GetMethod(encoded_name);
-	    parent_class = parent_class->GetParent();
+	    
+	    // update	    
+	    if(!impl_method && parent_class->GetLibraryParent()) {
+	      LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
+	      encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+	      lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+	    }
+	    else {
+	      parent_class = parent_class->GetParent();
+	    }
 	  }
 	}
 	else if(impl_class->GetLibraryParent()) {
@@ -479,14 +487,22 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       int offset = (int)virtual_method_name.find_first_of(':');
       if(offset > -1) {
 	string encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-	impl_method = impl_class->GetMethod(encoded_name);
-	
+	impl_method = impl_class->GetMethod(encoded_name);	
 	if(!impl_method && impl_class->GetParent()) {
 	  Class* parent_class = impl_class->GetParent();
-	  while(!impl_method && parent_class) {
+	  while(!impl_method && !lib_impl_method && parent_class) {
 	    encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
 	    impl_method = parent_class->GetMethod(encoded_name);
-	    parent_class = parent_class->GetParent();
+	    
+	    // update	    
+	    if(!impl_method && parent_class->GetLibraryParent()) {
+	      LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
+	      encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+	      lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+	    }
+	    else {
+	      parent_class = parent_class->GetParent();
+	    }
 	  }
 	}
 	else if(impl_class->GetLibraryParent()) {
