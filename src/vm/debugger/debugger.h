@@ -146,25 +146,10 @@ namespace Runtime {
     long* op_stack;
     long* stack_pos;
 
-    bool FileExists(const string &file_name, bool is_exe = false) {
-      ifstream touch(file_name.c_str(), ios::binary);
-      if(touch.is_open()) {
-	if(is_exe) {
-	  int magic_num;
-	  touch.read((char*)&magic_num, sizeof(int));
-	  touch.close();
-	  return magic_num == 0xdddd;
-	}
-	touch.close();
-	return true;
-      }
-
-      return false;
-    }
-
+    // pretty prints a method
     string PrintMethod(StackMethod* method) {
       string mthd_name = method->GetName();
-      unsigned long index = mthd_name.find_last_of(':');
+      size_t index = mthd_name.find_last_of(':');
       if(index != string::npos) {
 	mthd_name.replace(index, 1, 1, '(');
 	if(mthd_name[mthd_name.size() - 1] == ',') {
@@ -182,7 +167,25 @@ namespace Runtime {
       
       return mthd_name;
     }
+
+    // checks to see if a file exists
+    bool FileExists(const string &file_name, bool is_exe = false) {
+      ifstream touch(file_name.c_str(), ios::binary);
+      if(touch.is_open()) {
+	if(is_exe) {
+	  int magic_num;
+	  touch.read((char*)&magic_num, sizeof(int));
+	  touch.close();
+	  return magic_num == 0xdddd;
+	}
+	touch.close();
+	return true;
+      }
+
+      return false;
+    }
     
+    // checks to see if a directory exists
     bool DirectoryExists(const string &dir_name) {
 #ifdef _WIN32
       HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
@@ -206,6 +209,7 @@ namespace Runtime {
 #endif
     }
 
+    // deletes a break point
     bool DeleteBreak(int line_num, const string &file_name) {
       UserBreak* user_break = FindBreak(line_num, file_name);
       if(user_break) {
@@ -216,6 +220,7 @@ namespace Runtime {
       return false;
     }
 
+    // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num, const string &file_name) {
       for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
 	UserBreak* user_break = (*iter);
@@ -227,6 +232,7 @@ namespace Runtime {
       return NULL;
     }
 
+    // adds a break
     bool AddBreak(int line_num, const string &file_name) {
       if(!FindBreak(line_num, file_name)) {
 	UserBreak* user_break = new UserBreak;
@@ -238,7 +244,8 @@ namespace Runtime {
 
       return false;
     }
-
+    
+    // lists all breaks
     void ListBreaks() {
       cout << "breaks:" << endl;
       list<UserBreak*>::iterator iter;
@@ -247,6 +254,7 @@ namespace Runtime {
       }
     }
 
+    // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num, const string& cls_name) {
       for(int i = 0; i < dclrs_num; i++) {
 	StackDclr* dclr = dclrs[i];
@@ -285,14 +293,14 @@ namespace Runtime {
 	case OBJ_ARY_PARM:
 	  cout << "type=Object[]" << endl;
 	  break;
-
-    case FUNC_PARM:
+	  
+	case FUNC_PARM:
 	  cout << "type=Function" << endl;
 	  break;
 	}
       }
     }
-
+    
     Command* ProcessCommand(const string &line);
     void ProcessRun();
     void ProcessExe(Load* load);
