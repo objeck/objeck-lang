@@ -166,6 +166,7 @@ public:
   // object verification
   long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
+  // returns the class reference for an object instance
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
       return (StackClass*)*(mem - 2);
@@ -173,6 +174,7 @@ public:
     return NULL;
   }
 
+  // returns a unique object id for an instance
   static inline long GetObjectID(long* mem) {
     StackClass* klass = GetClass(mem);
     if(klass) {
