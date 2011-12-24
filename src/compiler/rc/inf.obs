@@ -1,62 +1,60 @@
 bundle Default {
-	interface Color {
+	interface Registration {
 		method : virtual : public : GetColor() ~ String;
+		method : virtual : public : GetMake() ~ String;
+		method : virtual : public : GetModel() ~ String;
+	}
+
+	enum EngineType {
+		Gas,
+		Hybrid,
+		Electric,
+		Warp
 	}
 	
-	interface Vehicle {
-		method : virtual : SetName(name : String) ~ Nil;
-		method : virtual : public : GetWheels() ~ Int;
-	}
-		
-	class Ufo implements Vehicle, Color {
-		New() {
-			SetName("UFO");
+	class Vehicle {
+		@wheels : Int;
+		@color : String;
+		@engine_type : EngineType;
+	
+		New(wheels : Int, color : String, engine_type : EngineType) {
+			@wheels := wheels;	
+			@color := color;	
+			@engine_type := engine_type;
 		}
-		
-		method : SetName(name : String) ~ Nil {
-			@name := name;
-		}
-		
-		method : public : GetWheels() ~ Int {
-			return 5;
-		}
-		
+
 		method : public : GetColor() ~ String {
-			return "champagne";
+			return @color;
 		}
 
-		
-		method : public : IsHoax() ~ Bool {
-			return true;
+		method : public : GetEngine() ~ EngineType {
+			return @engine_type;
 		}
 	}
+		
+	class StarShip from Vehicle implements Registration {
+		New() {
+			Parent(13, "Metal Fuschia", EngineType->Warp); 
+		}
+
+		method : public : GetMake() ~ String {
+			return "Excelsior";
+		}
+
+		method : public : GetModel() ~ String {
+			return "NX-2000";
+		}
+		
+		method : public : EchoDescription() ~ Nil {
+			"Partying with Borg, they brought beeer!"->PrintLine();
+		}
+	}
+
+	class Pinto from Vehicle implements Registration {
+	}
 	
-	class UfoTest {
+	class VehicleTest {
 		function : Main(args : System.String[]) ~ Nil {
-			ufo := Ufo->New();
-
-			v := ufo->As(Vehicle);
-			v->GetWheels()->PrintLine();
-
-			c := ufo->As(Color);
-			paint := c->GetColor();
-			paint->PrintLine();
-
-			b := ufo->TypeOf(Vehicle);
-			b->PrintLine();
-
-			b := ufo->TypeOf(Color);
-			b->PrintLine();
-
-			b := ufo->TypeOf(String);
-			b->PrintLine();
-
-			if(paint->Equals("brandy") | paint->Equals("champagne") | paint->Equals("vodka")) {
-				"confirmed setting!"->PrintLine();
-			};
-
-			u := v->As(Ufo);
-			u->IsHoax()->PrintLine();
 		}			
 	}
 }
