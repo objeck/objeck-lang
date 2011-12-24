@@ -235,6 +235,18 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
                  "' defined in program and shared libraries");
   }
   
+  // check parent class
+  Class* parent_klass = klass->GetParent();
+  if(parent_klass && parent_klass->IsInterface()) {
+    ProcessError(klass, "Classes cannot be derived from interfaces, however classes may implement interfaces");
+  }
+  else {
+    LibraryClass* parent_lib_klass = klass->GetLibraryParent();
+    if(parent_lib_klass && parent_lib_klass->IsInterface()) {
+      ProcessError(klass, "Classes cannot be derived from interfaces, however classes may implement interfaces");
+    }
+  }
+  // check interfaces
   AnalyzeInterfaces(klass, depth);
   
   // declarations
@@ -304,10 +316,16 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	ProcessError(klass, "Not all methods have been implemented for the interface: " +
 		     inf_klass->GetName());
       }
-      // add interface
-      inf_klass->SetCalled(true);
-      inf_klass->AddChild(klass);
-      interfaces.push_back(inf_klass);
+
+      if(!inf_klass->IsInterface()) {
+	ProcessError(klass, "Classes cannot be implemented, however classes may be derived from other classes");
+      }
+      else {
+	// add interface
+	inf_klass->SetCalled(true);
+	inf_klass->AddChild(klass);
+	interfaces.push_back(inf_klass);
+      }
     }
     else {
       LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
@@ -326,10 +344,16 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
 	  ProcessError(klass, "Not all methods have been implemented for the interface: " +
 		       inf_lib_klass->GetName());
 	}
-	// add interface
-	inf_lib_klass->SetCalled(true);
-	inf_lib_klass->AddChild(klass);
-	lib_interfaces.push_back(inf_lib_klass);
+
+	if(!inf_lib_klass->IsInterface()) {
+	  ProcessError(klass, "Classes cannot be implemented, however classes may be derived from other classes");
+	}
+	else {
+	  // add interface
+	  inf_lib_klass->SetCalled(true);
+	  inf_lib_klass->AddChild(klass);
+	  lib_interfaces.push_back(inf_lib_klass);
+	}
       }
       else {
 	ProcessError(klass, "Undefined interface: '" + interface_name + "'");

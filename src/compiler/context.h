@@ -351,13 +351,26 @@ class ContextAnalyzer {
 	interface_names = lib_class_tmp->GetInterfaceNames();
       }
       
-      // check names
-      vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), cls_name);
-      if(result != interface_names.end() || cls_name == cast_name) {
-        return true;
+      // parent cast
+      if(cls_name == cast_name) {
+	return true;
       }
-
-      // upate
+      
+      // interface cast
+      for(size_t i = 0; i < interface_names.size(); i++) {
+	Class* klass = SearchProgramClasses(interface_names[i]);
+	if(klass && klass->GetName() == cls_name) {
+	  return true;
+	}
+	else {
+	  LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+	  if(lib_klass && lib_klass->GetName() == cls_name) {
+	    return true;
+	  }
+	}
+      }
+      
+      // update
       if(class_tmp) {
         if(class_tmp->GetParent()) {
           class_tmp = class_tmp->GetParent();
@@ -384,10 +397,24 @@ class ContextAnalyzer {
       return true;
     }
 
-    vector<string> interface_names = from_klass->GetInterfaceNames();
-    vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
-    if(result != interface_names.end() || to == from_klass->GetName()) {
+    // parent cast
+    if(to == from_klass->GetName()) {
       return true;
+    }
+    
+    // interface cast
+    vector<string> interface_names = from_klass->GetInterfaceNames();
+    for(size_t i = 0; i < interface_names.size(); i++) {
+      Class* klass = SearchProgramClasses(interface_names[i]);
+      if(klass && klass->GetName() == to) {
+	return true;
+      }
+      else {
+	LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+	if(lib_klass && lib_klass->GetName() == to) {
+	  return true;
+	}
+      }
     }
     
     // updates
@@ -406,11 +433,25 @@ class ContextAnalyzer {
     if(from_klass->GetName() == "System.Base") {
       return true;
     }
-    
-    vector<string> interface_names = from_klass->GetInterfaceNames();
-    vector<string>::iterator result = find(interface_names.begin(), interface_names.end(), to);    
-    if(result != interface_names.end() || to == from_klass->GetName()) {
+
+    // parent cast
+    if(to == from_klass->GetName()) {
       return true;
+    }
+    
+    // interface cast
+    vector<string> interface_names = from_klass->GetInterfaceNames();
+    for(size_t i = 0; i < interface_names.size(); i++) {
+      Class* klass = SearchProgramClasses(interface_names[i]);
+      if(klass && klass->GetName() == to) {
+	return true;
+      }
+      else {
+	LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
+	if(lib_klass && lib_klass->GetName() == to) {
+	  return true;
+	}
+      }
     }
 
     // program updates
@@ -428,9 +469,6 @@ class ContextAnalyzer {
         return true;
       }
     }
-    
-    // TODO
-    //...
     
     return false;
   }
