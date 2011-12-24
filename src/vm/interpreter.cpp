@@ -1413,6 +1413,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
          << "'; to: '" << method_name << "' ===" << endl;
 #endif
     called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+    while(!called) {
+      // TOODO: look up parent based upon ID
+    }
   }
   
 #ifndef _NO_JIT
