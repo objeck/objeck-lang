@@ -598,7 +598,7 @@ void* MemoryManager::CollectMemory(void* arg)
   }
   
   // remove references from allocated pool
-  for(unsigned int i = 0; i < erased_memory.size(); i++) {
+  for(size_t i = 0; i < erased_memory.size(); i++) {
     allocated_memory.erase(erased_memory[i]);
     allocated_int_obj_array.erase(erased_memory[i]);
   }

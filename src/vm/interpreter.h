@@ -297,7 +297,7 @@ namespace Runtime {
       
       // set method name
       const string &qual_mthd_name = mthd->GetName();
-      const unsigned long semi_qual_mthd_index = qual_mthd_name.find(':');
+      const size_t semi_qual_mthd_index = qual_mthd_name.find(':');
       if(semi_qual_mthd_index == string::npos) {
 	cerr << ">>> Internal error: invalid method name <<<" << endl;
 	StackErrorUnwind();
@@ -305,7 +305,7 @@ namespace Runtime {
       }
       
       const string &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
-      const unsigned long mthd_index = semi_qual_mthd_string.find(':');
+      const size_t mthd_index = semi_qual_mthd_string.find(':');
       if(mthd_index == string::npos) {
 	cerr << ">>> Internal error: invalid method name <<<" << endl;
 	StackErrorUnwind();

@@ -125,7 +125,7 @@ void Loader::Load()
     string value = ReadString();
     BYTE_VALUE* char_string = new BYTE_VALUE[value.size() + 1];
     // copy string
-    unsigned int j = 0;
+    size_t j = 0;
     for(; j < value.size(); j++) {
       char_string[j] = value[j];
     }
@@ -137,7 +137,7 @@ void Loader::Load()
   }
   
   // copy command line params
-  for(unsigned int j = 0; j < arguments.size(); i++, j++) {
+  for(size_t j = 0; j < arguments.size(); i++, j++) {
     char_strings[i] = (BYTE_VALUE*)std::string(arguments[j]).c_str();
 #ifdef _DEBUG
     cout << "Loaded static string: '" << char_strings[i] << "'" << endl;
@@ -395,7 +395,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
   method->AddInstruction(new StackInstr(-1, NEW_INT_ARY, (long)1));
   method->AddInstruction(new StackInstr(-1, STOR_INT_VAR, 0L, LOCL));
 
-  for(unsigned int i = 0; i < arguments.size(); i++) {
+  for(size_t i = 0; i < arguments.size(); i++) {
     method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
     method->AddInstruction(new StackInstr(-1, NEW_BYTE_ARY, 1L));
     method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));

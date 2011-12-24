@@ -392,7 +392,7 @@ class ContextAnalyzer {
     
     // updates
     vector<Class*> children = from_klass->GetChildren();
-    for(unsigned int i = 0; i < children.size(); i++) {
+    for(size_t i = 0; i < children.size(); i++) {
       if(ValidUpCast(to, children[i])) {
         return true;
       }
@@ -415,7 +415,7 @@ class ContextAnalyzer {
 
     // program updates
     vector<LibraryClass*> children = from_klass->GetLibraryChildren();
-    for(unsigned int i = 0; i < children.size(); i++) {
+    for(size_t i = 0; i < children.size(); i++) {
       if(ValidUpCast(to, children[i])) {
         return true;
       }
@@ -423,7 +423,7 @@ class ContextAnalyzer {
 
     // library updates
     vector<frontend::ParseNode*> lib_children = from_klass->GetChildren();
-    for(unsigned int i = 0; i < lib_children.size(); i++) {
+    for(size_t i = 0; i < lib_children.size(); i++) {
       if(ValidUpCast(to, static_cast<Class*>(lib_children[i]))) {
         return true;
       }
@@ -442,7 +442,7 @@ class ContextAnalyzer {
       klass = program->GetClass(bundle->GetName() + "." + klass_name);
       if(!klass) {
         vector<string> uses = program->GetUses();
-        for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+        for(size_t i = 0; !klass && i < uses.size(); i++) {
           klass = program->GetClass(uses[i] + "." + klass_name);
         }
       }
@@ -458,7 +458,7 @@ class ContextAnalyzer {
       eenum = program->GetEnum(bundle->GetName() + "." + eenum_name);
       if(!eenum) {
         vector<string> uses = program->GetUses();
-        for(unsigned int i = 0; !eenum && i < uses.size(); i++) {
+        for(size_t i = 0; !eenum && i < uses.size(); i++) {
           eenum = program->GetEnum(uses[i] + "." + eenum_name);
         }
       }
@@ -508,7 +508,7 @@ class ContextAnalyzer {
 	Class* klass = program->GetClass(klass_name);
 	if(!klass) {
 	  vector<string> uses = program->GetUses();
-	  for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+	  for(size_t i = 0; !klass && i < uses.size(); i++) {
 	    klass = program->GetClass(uses[i] + "." + klass_name);
 	  }
 	}

@@ -101,7 +101,7 @@ bool ContextAnalyzer::Analyze()
 
   // check uses
   vector<string> program_uses = program->GetUses();
-  for(unsigned int i = 0; i < program_uses.size(); i++) {
+  for(size_t i = 0; i < program_uses.size(); i++) {
     const string& name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
       ProcessError("Bundle name '" + name + "' not defined in program or linked libraries");
@@ -110,22 +110,22 @@ bool ContextAnalyzer::Analyze()
 
   // re-encode method signatures; i.e. fully expand class names
   vector<ParsedBundle*> bundles = program->GetBundles();
-  for(unsigned int i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); i++) {
     vector<Class*> classes = bundles[i]->GetClasses();
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       vector<Method*> methods = classes[j]->GetMethods();
-      for(unsigned int k = 0; k < methods.size(); k++) {
+      for(size_t k = 0; k < methods.size(); k++) {
         methods[k]->EncodeSignature(program, linker);
       }
     }
   }
 
   // associate re-encoded method signatures with methods
-  for(unsigned int i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); i++) {
     bundle = bundles[i];
     vector<Class*> classes = bundle->GetClasses();
     
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       Class* klass = classes[j];
       string parent_name = klass->GetParentName();
       // TODO: fix ulgy hack!!!
@@ -160,23 +160,23 @@ bool ContextAnalyzer::Analyze()
   
   // process bundles
   bundles = program->GetBundles();
-  for(unsigned int i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); i++) {
     bundle = bundles[i];
     symbol_table = bundle->GetSymbolTableManager();
 
     // process enums
     vector<Enum*> enums = bundle->GetEnums();
-    for(unsigned int j = 0; j < enums.size(); j++) {
+    for(size_t j = 0; j < enums.size(); j++) {
       AnalyzeEnum(enums[j], 0);
     }
     // process classes
     vector<Class*> classes = bundle->GetClasses();
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       AnalyzeClass(classes[j], class_id++, 0);
     }
     // process class methods
     classes = bundle->GetClasses();
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       AnalyzeMethods(classes[j], 0);
     }
   }
@@ -239,7 +239,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
   
   // declarations
   vector<Statement*> statements = klass->GetStatements();
-  for(unsigned int i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); i++) {
     AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), depth + 1);
   }
 }
@@ -259,7 +259,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
 
   // methods
   vector<Method*> methods = klass->GetMethods();
-  for(unsigned int i = 0; i < methods.size(); i++) {
+  for(size_t i = 0; i < methods.size(); i++) {
     AnalyzeMethod(methods[i], i, depth + 1);
   }
 
@@ -287,14 +287,14 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
   vector<string> interface_names = klass->GetInterfaceNames();
   vector<Class*> interfaces;
   vector<LibraryClass*> lib_interfaces;
-  for(unsigned int i = 0; i < interface_names.size(); i++) {
+  for(size_t i = 0; i < interface_names.size(); i++) {
     const string& interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
     
     if(inf_klass) {
       // ensure interface methods are virtual
       vector<Method*> methods = inf_klass->GetMethods();
-      for(unsigned int i = 0; i < methods.size(); i++) {
+      for(size_t i = 0; i < methods.size(); i++) {
 	if(!methods[i]->IsVirtual()) {
 	  ProcessError(methods[i], "Interface method must be defined as 'virtual'");
 	}
@@ -350,7 +350,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* parent, in
   bool virtual_methods_defined = true;
   // virutal methods
   vector<Method*> parent_methods = parent->GetMethods();
-  for(unsigned int i = 0; i < parent_methods.size(); i++) {
+  for(size_t i = 0; i < parent_methods.size(); i++) {
     if(parent_methods[i]->IsVirtual()) {
       // validate that methods have been implemented
       Method* virtual_method = parent_methods[i];
@@ -492,7 +492,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
 
   // declarations
   vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
-  for(unsigned int i = 0; i < declarations.size(); i++) {
+  for(size_t i = 0; i < declarations.size(); i++) {
     AnalyzeDeclaration(declarations[i], depth + 1);
   }
 
@@ -500,7 +500,7 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
   if(!current_method->IsVirtual()) {
     // statements
     vector<Statement*> statements = current_method->GetStatements()->GetStatements();
-    for(unsigned int i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); i++) {
       AnalyzeStatement(statements[i], depth + 1);
     }
     // check for parent call
@@ -554,7 +554,7 @@ void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, int depth
 {
   current_table->NewScope();
   vector<Statement*> statements = statement_list->GetStatements();
-  for(unsigned int i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); i++) {
     AnalyzeStatement(statements[i], depth + 1);
   }
   current_table->PreviousScope();
@@ -812,7 +812,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
 
     // ensure that element sizes match dimensions
     vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
-    unsigned int total_size = array->GetSize(0);
+    size_t total_size = array->GetSize(0);
     for(int i = 1; i < array->GetDimension(); i++) {
       total_size *= array->GetSize(i);
     }
@@ -851,7 +851,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
     case CHAR_TYPE: {
       // copy string elements
       string str;
-      for(unsigned int i = 0; i < all_elements.size(); i++) {
+      for(size_t i = 0; i < all_elements.size(); i++) {
 	str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
       }
       // associate char string
@@ -868,7 +868,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
       break;
 
     case CLASS_TYPE:
-      for(unsigned int i = 0; i < all_elements.size(); i++) {
+      for(size_t i = 0; i < all_elements.size(); i++) {
 	AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
       }
       break;
@@ -1195,7 +1195,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, int depth)
                  "Empty array index");
   }
   // validate array parameters
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     Type* eval_type = expressions[i]->GetEvalType();
     if(eval_type) {
       switch(eval_type->GetType()) {
@@ -1521,7 +1521,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       string dyn_func_params = type->GetClassName();
       if(dyn_func_params.size() == 0) {
 	vector<Type*>& func_params = type->GetFunctionParameters();
-	for(unsigned int i = 0; i < func_params.size(); i++) {
+	for(size_t i = 0; i < func_params.size(); i++) {
 	  dyn_func_params += EncodeType(func_params[i]);
 	  // encode dimension
 	  for(int i = 0; i < type->GetDimension(); i++) {
@@ -1747,7 +1747,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, int depth)
   AnalyzeExpressions(indices, depth + 1);
 
   vector<Expression*> expressions = indices->GetExpressions();
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     Expression* expression = expressions[i];
     AnalyzeExpression(expression, depth + 1);
     Type* eval_type = expression->GetEvalType();
@@ -1838,7 +1838,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
     AnalyzeExpressions(expressions, depth + 1);
     // check expression type
     vector<Expression*> expression_list = expressions->GetExpressions();
-    for(unsigned int i = 0; i < expression_list.size(); i++) {
+    for(size_t i = 0; i < expression_list.size(); i++) {
       Expression* expression = expression_list[i];
       switch(expression->GetExpressionType()) {
       case CHAR_LIT_EXPR:
@@ -3253,7 +3253,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
 void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
 {
   vector<Expression*> expressions = parameters->GetExpressions();
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     AnalyzeExpression(expressions[i], depth);
   }
 }
@@ -3267,7 +3267,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
   string encoded_name;
 
   vector<Expression*> expressions = calling_params->GetExpressions();
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     if(expressions[i]->GetExpressionType() == VAR_EXPR) {
       Variable* variable = static_cast<Variable*>(expressions[i]);
       if(variable->GetName() == BOOL_CLASS_ID) {
@@ -3305,7 +3305,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
         Class* klass = program->GetClass(klass_name);
         if(!klass) {
           vector<string> uses = program->GetUses();
-          for(unsigned int i = 0; !klass && i < uses.size(); i++) {
+          for(size_t i = 0; !klass && i < uses.size(); i++) {
             klass = program->GetClass(uses[i] + "." + klass_name);
           }
         }
@@ -3331,7 +3331,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
       if(variable->GetIndices()) {
 	vector<Expression*> indices = variable->GetIndices()->GetExpressions();
 	variable->GetEvalType()->SetDimension(indices.size());
-	for(unsigned int i = 0; i < indices.size(); i++) {
+	for(size_t i = 0; i < indices.size(); i++) {
 	  encoded_name += '*';
 	}
       }
@@ -3352,7 +3352,7 @@ string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, 
  ****************************/
 string ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {
   string encoded_name = "(";
-  for(unsigned int i = 0; i < func_params.size(); i++) {
+  for(size_t i = 0; i < func_params.size(); i++) {
     // encode params
     encoded_name += EncodeType(func_params[i]);
 
@@ -3383,7 +3383,7 @@ string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int dep
 
   string encoded_name;
   vector<Expression*> expressions = calling_params->GetExpressions();
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     Expression* expression = expressions[i];
     while(expression->GetMethodCall()) {
       expression = expression->GetMethodCall();

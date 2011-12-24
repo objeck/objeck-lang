@@ -340,7 +340,7 @@ namespace backend {
     void Debug() {
       if(declarations.size() > 0) {	 
 	cout << "memory types:" << endl;	 
-	for(unsigned int i = 0; i < declarations.size(); i++) {	 
+	for(size_t i = 0; i < declarations.size(); i++) {	 
 	  IntermediateDeclaration* entry = declarations[i];	 
  	 
 	  switch(entry->GetType()) {	 
@@ -385,7 +385,7 @@ namespace backend {
     
     void Write(bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
-      for(unsigned int i = 0; i < declarations.size(); i++) {
+      for(size_t i = 0; i < declarations.size(); i++) {
 	IntermediateDeclaration* entry = declarations[i];
 	WriteInt(entry->GetType(), file_out);
 	if(is_debug) {

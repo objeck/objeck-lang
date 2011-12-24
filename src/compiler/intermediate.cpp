@@ -115,7 +115,7 @@ void SelectArrayTree::Emit()
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     vector<Statement*> statements = statement_list->GetStatements();
-    for(unsigned int i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); i++) {
       emitter->EmitStatement(statements[i]);
     }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
@@ -125,7 +125,7 @@ void SelectArrayTree::Emit()
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, other_label));
     StatementList* statement_list = select->GetOther();
     vector<Statement*> statements = statement_list->GetStatements();
-    for(unsigned int i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); i++) {
       emitter->EmitStatement(statements[i]);
     }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
@@ -201,7 +201,7 @@ void IntermediateEmitter::Translate()
   
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
-  for(unsigned int i = 0; i < lib_classes.size(); i++) {
+  for(size_t i = 0; i < lib_classes.size(); i++) {
     if(is_lib || lib_classes[i]->GetCalled()) {
       lib_classes[i]->SetId(class_id++);
     }
@@ -210,9 +210,9 @@ void IntermediateEmitter::Translate()
   
   // process bundles
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
-  for(unsigned int i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); i++) {
     vector<Class*> classes = bundles[i]->GetClasses();
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       if(is_lib || classes[i]->GetCalled()) {
         classes[j]->SetId(class_id++);
       }
@@ -249,12 +249,12 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
     linker->ResolveExternalMethodCalls();
     // write enums
     vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
-    for(unsigned int i = 0; i < lib_enums.size(); i++) {
+    for(size_t i = 0; i < lib_enums.size(); i++) {
       imm_program->AddEnum(new IntermediateEnum(lib_enums[i]));
     }
     // write classes
     vector<LibraryClass*> lib_classes = linker->GetAllClasses();
-    for(unsigned int i = 0; i < lib_classes.size(); i++) {
+    for(size_t i = 0; i < lib_classes.size(); i++) {
       if(is_lib || lib_classes[i]->GetCalled()) {
         imm_program->AddClass(new IntermediateClass(lib_classes[i]));
       }
@@ -283,10 +283,10 @@ void IntermediateEmitter::EmitStrings()
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
       // char string processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
-      for(unsigned int i = 0; i < char_str_insts.size(); i++) {
+      for(size_t i = 0; i < char_str_insts.size(); i++) {
 	// check for dups
 	bool found = false;
-	for(unsigned int j = 0; !found && j < lib_char_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < lib_char_string_values.size(); j++) {
 	  if(char_str_insts[i]->value == lib_char_string_values[j]) {
 	    found = true;
 	  }
@@ -298,10 +298,10 @@ void IntermediateEmitter::EmitStrings()
       }      
       // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
-      for(unsigned int i = 0; i < int_str_insts.size(); i++) {
+      for(size_t i = 0; i < int_str_insts.size(); i++) {
 	// check for dups
 	bool found = false;
-	for(unsigned int j = 0; !found && j < lib_int_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < lib_int_string_values.size(); j++) {
 	  if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
 	    found = true;
 	  }
@@ -313,10 +313,10 @@ void IntermediateEmitter::EmitStrings()
       }
       // float string processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
-      for(unsigned int i = 0; i < float_str_insts.size(); i++) {
+      for(size_t i = 0; i < float_str_insts.size(); i++) {
 	// check for dups
 	bool found = false;
-	for(unsigned int j = 0; !found && j < lib_float_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < lib_float_string_values.size(); j++) {
 	  if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
 	    found = true;
 	  }
@@ -329,10 +329,10 @@ void IntermediateEmitter::EmitStrings()
     }
 
     // merge in library strings
-    for(unsigned int i = 0; i < lib_char_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_char_string_values.size(); i++) {
       // check for dups
       bool found = false;
-      for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < char_string_values.size(); j++) {
 	if(lib_char_string_values[i] == char_string_values[j]) {
 	  found = true;
 	}
@@ -342,10 +342,10 @@ void IntermediateEmitter::EmitStrings()
 	char_string_values.push_back(lib_char_string_values[i]);
       }
     }
-    for(unsigned int i = 0; i < lib_int_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_int_string_values.size(); i++) {
       // check for dups
       bool found = false;
-      for(unsigned int j = 0; !found && j < int_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < int_string_values.size(); j++) {
 	if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
 	  found = true;
 	}
@@ -355,10 +355,10 @@ void IntermediateEmitter::EmitStrings()
 	int_string_values.push_back(lib_int_string_values[i]);
       }
     }
-    for(unsigned int i = 0; i < lib_float_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_float_string_values.size(); i++) {
       // check for dups
       bool found = false;
-      for(unsigned int j = 0; !found && j < float_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < float_string_values.size(); j++) {
 	if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
 	  found = true;
 	}
@@ -373,12 +373,12 @@ void IntermediateEmitter::EmitStrings()
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
       // char string processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
-      for(unsigned int i = 0; i < char_str_insts.size(); i++) {
+      for(size_t i = 0; i < char_str_insts.size(); i++) {
 	bool found = false;
-	for(unsigned int j = 0; !found && j < char_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < char_string_values.size(); j++) {
 	  if(char_str_insts[i]->value == char_string_values[j]) {
 	    vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
-	    for(unsigned int k = 0; k < instrs.size(); k++) {
+	    for(size_t k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;
@@ -390,12 +390,12 @@ void IntermediateEmitter::EmitStrings()
       }
       // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
-      for(unsigned int i = 0; i < int_str_insts.size(); i++) {
+      for(size_t i = 0; i < int_str_insts.size(); i++) {
 	bool found = false;
-	for(unsigned int j = 0; !found && j < int_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < int_string_values.size(); j++) {
 	  if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
 	    vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
-	    for(unsigned int k = 0; k < instrs.size(); k++) {
+	    for(size_t k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;
@@ -407,12 +407,12 @@ void IntermediateEmitter::EmitStrings()
       }
       // float string processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
-      for(unsigned int i = 0; i < float_str_insts.size(); i++) {
+      for(size_t i = 0; i < float_str_insts.size(); i++) {
 	bool found = false;
-	for(unsigned int j = 0; !found && j < float_string_values.size(); j++) {
+	for(size_t j = 0; !found && j < float_string_values.size(); j++) {
 	  if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
 	    vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
-	    for(unsigned int k = 0; k < instrs.size(); k++) {
+	    for(size_t k = 0; k < instrs.size(); k++) {
 	      instrs[k]->SetOperand(j);
 	    }
 	    found = true;
@@ -438,12 +438,12 @@ void IntermediateEmitter::EmitBundles()
   // translate program into intermediate form process bundles
   vector<string> bundle_names;
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
-  for(unsigned int i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); i++) {
     parsed_bundle = bundles[i];
     bundle_names.push_back(parsed_bundle->GetName());
     // emit enums
     vector<Enum*> enums = parsed_bundle->GetEnums();
-    for(unsigned int j = 0; j < enums.size(); j++) {
+    for(size_t j = 0; j < enums.size(); j++) {
       IntermediateEnum* eenum = EmitEnum(enums[j]);
       if(eenum) {
         imm_program->AddEnum(eenum);
@@ -451,7 +451,7 @@ void IntermediateEmitter::EmitBundles()
     }
     // emit classes
     vector<Class*> classes = parsed_bundle->GetClasses();
-    for(unsigned int j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); j++) {
       if(is_lib || classes[j]->GetCalled()) {
         IntermediateClass* klass = EmitClass(classes[j]);
         if(klass) {
@@ -525,11 +525,11 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   // process interfaces
   vector<int> interface_ids;
   vector<Class*> interfaces = current_class->GetInterfaces();
-  for(unsigned int i = 0; i < interfaces.size(); i++) {
+  for(size_t i = 0; i < interfaces.size(); i++) {
     interface_ids.push_back(interfaces[i]->GetId());
   }
   vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
-  for(unsigned int i = 0; i < lib_interfaces.size(); i++) {
+  for(size_t i = 0; i < lib_interfaces.size(); i++) {
     interface_ids.push_back(lib_interfaces[i]->GetId());
   }
 
@@ -554,13 +554,13 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   // declarations
   vector<Statement*> statements = klass->GetStatements();
-  for(unsigned int i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); i++) {
     EmitDeclaration(static_cast<Declaration*>(statements[i]));
   }
 
   // methods
   vector<Method*> methods = klass->GetMethods();
-  for(unsigned int i = 0; i < methods.size(); i++) {
+  for(size_t i = 0; i < methods.size(); i++) {
     imm_klass->AddMethod(EmitMethod(methods[i]));
   }
 
@@ -588,7 +588,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   int space = CalculateEntrySpace(entries, false);
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
-  for(unsigned int i = 0; i < declarations.size(); i++) {
+  for(size_t i = 0; i < declarations.size(); i++) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
       num_params += 2;
     }
@@ -643,7 +643,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     StatementList* statement_list = method->GetStatements();
     if(statement_list) {
       vector<Statement*> statements = statement_list->GetStatements();
-      for(unsigned int i = 0; i < statements.size(); i++) {
+      for(size_t i = 0; i < statements.size(); i++) {
         EmitStatement(statements[i]);
       }
       // check to see if the last statement was a return statement
@@ -1498,7 +1498,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
 
     // label statements
     vector<Statement*> statements = statement_list->GetStatements();
-    for(unsigned int i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); i++) {
       EmitStatement(statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
@@ -1509,7 +1509,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, other_label));
       StatementList* statement_list = select_stmt->GetOther();
       vector<Statement*> statements = statement_list->GetStatements();
-      for(unsigned int i = 0; i < statements.size(); i++) {
+      for(size_t i = 0; i < statements.size(); i++) {
         EmitStatement(statements[i]);
       }
     }
@@ -1534,7 +1534,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 
   // statements
   vector<Statement*> do_while_statements = do_while_stmt->GetStatements()->GetStatements();
-  for(unsigned int i = 0; i < do_while_statements.size(); i++) {
+  for(size_t i = 0; i < do_while_statements.size(); i++) {
     EmitStatement(do_while_statements[i]);
   }
   
@@ -1566,7 +1566,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
 
   // statements
   vector<Statement*> while_statements = while_stmt->GetStatements()->GetStatements();
-  for(unsigned int i = 0; i < while_statements.size(); i++) {
+  for(size_t i = 0; i < while_statements.size(); i++) {
     EmitStatement(while_statements[i]);
   }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
@@ -1590,7 +1590,7 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_START));
   
-  for(unsigned int i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); i++) {
     EmitStatement(statements[i]);
   }
 
@@ -1619,7 +1619,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
 
   // statements
   vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
-  for(unsigned int i = 0; i < for_statements.size(); i++) {
+  for(size_t i = 0; i < for_statements.size(); i++) {
     EmitStatement(for_statements[i]);
   }
 
@@ -1665,7 +1665,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     
     // statements
     vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
-    for(unsigned int i = 0; i < if_statements.size(); i++) {
+    for(size_t i = 0; i < if_statements.size(); i++) {
       EmitStatement(if_statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
@@ -1685,7 +1685,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
       // statements
       vector<Statement*> else_statements = if_stmt->GetElseStatements()->GetStatements();
-      for(unsigned int i = 0; i < else_statements.size(); i++) {
+      for(size_t i = 0; i < else_statements.size(); i++) {
         EmitStatement(else_statements[i]);
       }
     }
@@ -1950,7 +1950,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     while(method_call) {
       // declarations
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(unsigned int i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); i++) {
         EmitExpression(expressions[i]);
 	// need to swap values
 	if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
@@ -2724,7 +2724,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(unsigned int i = 0; i < expressions.size(); i++) {
+    for(size_t i = 0; i < expressions.size(); i++) {
       EmitExpression(expressions[i]);
     }
     is_new_inst = false;
@@ -2744,7 +2744,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   else if(method_call->GetCallType() == NEW_INST_CALL) {
     // declarations
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(unsigned int i = 0; i < expressions.size(); i++) {
+    for(size_t i = 0; i < expressions.size(); i++) {
       EmitExpression(expressions[i]);
       new_char_str_count = 0;
     }
@@ -2775,7 +2775,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     // declarations
     if(method_call->GetCallingParameters()) {
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(unsigned int i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); i++) {
         EmitExpression(expressions[i]);
 	new_char_str_count = 0;
       }
@@ -3021,7 +3021,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
 {
   vector<Expression*> expressions = declarations->GetExpressions();
-  for(unsigned int i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); i++) {
     EmitExpression(expressions[i]);
   }
 }
@@ -3037,7 +3037,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
   if(table) {
     int var_space = 0;
     vector<SymbolEntry*> entries = table->GetEntries();
-    for(unsigned int i = 0; i < entries.size(); i++) {
+    for(size_t i = 0; i < entries.size(); i++) {
       SymbolEntry* entry = entries[i];
       if(!entry->IsSelf() && entry->IsStatic() == is_static) {
         switch(entry->GetType()->GetType()) {

@@ -631,7 +631,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(unsigned int i  = 0; i < aval_regs.size(); i++) {
+      for(size_t i  = 0; i < aval_regs.size(); i++) {
 	assert(h != aval_regs[i]);
       }
 #endif
@@ -676,7 +676,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(unsigned int i = 0; i < aval_xregs.size(); i++) {
+      for(size_t i = 0; i < aval_xregs.size(); i++) {
 	assert(h != aval_xregs[i]);
       }
 #endif
@@ -1770,7 +1770,7 @@ namespace Runtime {
 	  long* str_obj_array_ptr = str_obj_array + 3;
     
 	  // create and assign 'System.String' instances to array
-	  for(unsigned int i = 0; i < files.size(); i++) {
+	  for(size_t i = 0; i < files.size(); i++) {
 	    // get value string
 	    string &value_str = files[i];
       

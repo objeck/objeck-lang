@@ -260,7 +260,7 @@ class StackMethod {
   
   const string& ParseName(const string &name) const {
     int state;
-    unsigned int index = name.find_last_of(':');
+    size_t index = name.find_last_of(':');
     if(index > 0) {
       string params_name = name.substr(index + 1);
 
@@ -1196,21 +1196,21 @@ class ObjectSerializer
   
   inline void SerializeByte(BYTE_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(unsigned long i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
   inline void SerializeInt(INT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(unsigned long i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
   
   inline void SerializeFloat(FLOAT_VALUE v) {
     BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(unsigned long i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
