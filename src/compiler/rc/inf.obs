@@ -51,6 +51,13 @@ bundle Default {
 	}
 
 	class Pinto from Vehicle implements Registration {
+		method : public : GetMake() ~ String {
+			return "";
+		}
+
+		method : public : GetModel() ~ String {
+			return "";
+		}
 	}
 	
 	class VehicleTest {
