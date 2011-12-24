@@ -584,7 +584,7 @@ void StackInterpreter::Execute()
       cout << "stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl; 
 #endif
       if(!result && mem) {
-        StackClass* to_cls = MemoryManager::Instance()->GetClass((long*)mem);
+        StackClass* to_cls = MemoryManager::GetClass((long*)mem);
         cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )
              << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
@@ -1352,7 +1352,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
   // save current method
   frame->SetIp(ip);
   PushFrame(frame);
-
+  
   // pop instance
   long* instance = (long*)PopInt();
 
@@ -1890,7 +1890,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #endif
     
     long* inst = (long*)frame->GetMemory()[0];
-    StackClass* cls = MemoryManager::Instance()->GetClass(inst);
+    StackClass* cls = MemoryManager::GetClass(inst);
     if(!cls) {
       cerr << ">>> Internal error: looking up class instance " << inst << " <<<" << endl;
       StackErrorUnwind();

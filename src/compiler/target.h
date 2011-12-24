@@ -941,20 +941,22 @@ class IntermediateClass : public Intermediate {
   map<int, IntermediateMethod*> method_map;
   IntermediateDeclarations* entries;
   bool is_lib;
+  bool is_interface;
   bool is_virtual;
   bool is_debug;
   string file_name;
   
 public:
-  IntermediateClass(int i, const string &n, int pi, const string &p, vector<int> infs, vector<string> in, bool v, 
-		    int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
+  IntermediateClass(int i, const string &n, int pi, const string &p, vector<int> infs, vector<string> in, 
+		    bool is_inf, bool is_vrtl, int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
     id = i;
     name = n;
     pid = pi;
     parent_name = p;
     interface_ids = infs;
     interface_names = in;
-    is_virtual = v;
+    is_interface = is_inf;
+    is_virtual = is_vrtl;
     cls_space = cs;
     inst_space = is;
     entries = e;
@@ -970,6 +972,7 @@ public:
     pid = -1;
     parent_name = lib_klass->GetParentName();
     interface_names = lib_klass->GetInterfaceNames();
+    is_interface = lib_klass->IsInterface();
     is_virtual = lib_klass->IsVirtual();
     is_debug = lib_klass->IsDebug();
     cls_space = lib_klass->GetClassSpace();
@@ -1079,6 +1082,7 @@ public:
       WriteString(interface_names[i], file_out);
     }
     
+    WriteInt(is_interface, file_out);
     WriteInt(is_virtual, file_out);
     WriteInt(is_debug, file_out);
     if(is_debug) {
@@ -1099,9 +1103,9 @@ public:
   void Debug() {
     cout << "=========================================================" << endl;
     cout << "Class: id=" << id << "; name='" << name << "'; parent='" << parent_name
-         << "'; pid=" << pid << "; virtual=" << is_virtual << ";\n  num_methods="
-         << methods.size() << "; class_mem_size=" << cls_space << "; instance_mem_size=" 
-	 << inst_space << "; is_debug=" << is_debug << endl;
+         << "'; pid=" << pid << ";\n interface=" << is_interface << "; virtual=" << is_virtual 
+	 << "; num_methods=" << methods.size() << "; class_mem_size=" << cls_space 
+	 << ";\n instance_mem_size=" << inst_space << "; is_debug=" << is_debug << endl;
     cout << "=========================================================" << endl;
     entries->Debug();
     cout << "=========================================================" << endl;

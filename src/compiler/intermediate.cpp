@@ -547,7 +547,8 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
                                     pid, parent_name, 
 				    interface_ids, current_class->GetInterfaceNames(), 				   
-				    current_class->IsVirtual(), cls_space, inst_space, 
+				    current_class->IsInterface(), current_class->IsVirtual(), 
+				    cls_space, inst_space, 
 				    entries, short_file_name, is_debug);
   // block
   NewBlock();
