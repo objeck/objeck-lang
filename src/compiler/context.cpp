@@ -1317,17 +1317,19 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, int depth)
   // get parameters
   ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
-
+  
   Class* parent = current_class->GetParent();
   if(parent) {
     string encoding;
     AnalyzeMethodCall(parent, method_call, false, encoding, depth);
-  } else {
+  } 
+  else {
     LibraryClass* lib_parent = current_class->GetLibraryParent();
     if(lib_parent) {
       string encoding;
       AnalyzeMethodCall(lib_parent, method_call, false, encoding, true, depth);
-    } else {
+    } 
+    else {
       ProcessError(static_cast<Expression*>(method_call), "Class has no parent");
     }
   }
@@ -1459,8 +1461,17 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 	  method_call->GetMethodName() + ":" +
 	  EncodeMethodCall(method_call->GetCallingParameters(), depth);
         method = parent->GetMethod(encoded_parent_name);
-        // update
-        parent = SearchProgramClasses(parent->GetParentName());
+        
+	// update	    
+	if(!method && parent->GetLibraryParent()) {
+	  // check parent library class for method
+	  LibraryClass* lib_parent = parent->GetLibraryParent();
+	  method_call->SetOriginalClass(klass);
+	  string encoding;
+	  AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
+	  return;
+	}
+	parent = SearchProgramClasses(parent->GetParentName());
       }
     }
     else if(klass->GetLibraryParent()) {
@@ -1468,8 +1479,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
       LibraryClass* lib_parent = klass->GetLibraryParent();
       method_call->SetOriginalClass(klass);
       string encoding;
-      AnalyzeMethodCall(lib_parent, method_call, is_expr,
-			encoding, true, depth + 1);
+      AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
   }
@@ -1489,9 +1499,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
         if(method->GetClass() == parent) {
           found = true;
         }
+	// update
         parent = parent->GetParent();
       }
-
+      
       if(!found) {
         ProcessError(static_cast<Expression*>(method_call),
                      "Cannot reference a private method from this context");
