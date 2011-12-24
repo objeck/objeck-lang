@@ -954,7 +954,7 @@ bundle Struct {
 		}
 	}
 	
-	class IntHolder from Compare {
+	class IntHolder implements Compare {
 		@value : Int;
 
 		New() {
@@ -1063,7 +1063,7 @@ bundle Struct {
 		}
 	}
 	
-	class FloatHolder from Compare {
+	class FloatHolder implements Compare {
 		@value : Float;
 
 		New() {
@@ -1781,7 +1781,7 @@ bundle Struct {
 		}
 	}
 
-	class HashPair from Compare {
+	class HashPair implements Compare {
 		@key : Compare;
 		@value : Base;
 
