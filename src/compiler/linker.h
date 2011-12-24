@@ -202,7 +202,7 @@ public:
     rtrn_type = NULL;
 
     // check return type
-    unsigned int index = 0;
+    size_t index = 0;
     switch(rtrn_name[index]) {
     case 'l':
       rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
@@ -862,7 +862,7 @@ public:
     map<const string, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
       vector<LibraryClass*> classes = iter->second->GetClasses();
-      for(unsigned int i = 0; i < classes.size(); i++) {
+      for(size_t i = 0; i < classes.size(); i++) {
         all_libraries.push_back(classes[i]);
       }
     }
@@ -877,7 +877,7 @@ public:
     map<const string, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); iter++) {
       vector<LibraryEnum*> enums = iter->second->GetEnums();
-      for(unsigned int i = 0; i < enums.size(); i++) {
+      for(size_t i = 0; i < enums.size(); i++) {
         all_libraries.push_back(enums[i]);
       }
     }
@@ -888,7 +888,7 @@ public:
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const string &name) {
     vector<LibraryClass*> classes = GetAllClasses();
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       if(classes[i]->GetName() == name) {
         return classes[i];
       }
@@ -911,14 +911,14 @@ public:
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const string &name, vector<string> uses) {
     vector<LibraryClass*> classes = GetAllClasses();
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       if(classes[i]->GetName() == name) {
         return classes[i];
       }
     }
 
-    for(unsigned int i = 0; i < classes.size(); i++) {
-      for(unsigned int j = 0; j < uses.size(); j++) {
+    for(size_t i = 0; i < classes.size(); i++) {
+      for(size_t j = 0; j < uses.size(); j++) {
         if(classes[i]->GetName() == uses[j] + "." + name) {
           return classes[i];
         }
@@ -931,14 +931,14 @@ public:
   // TODO: finds the first enum match; note multiple matches may exist
   LibraryEnum* SearchEnumLibraries(const string &name, vector<string> uses) {
     vector<LibraryEnum*> enums = GetAllEnums();
-    for(unsigned int i = 0; i < enums.size(); i++) {
+    for(size_t i = 0; i < enums.size(); i++) {
       if(enums[i]->GetName() == name) {
         return enums[i];
       }
     }
 
-    for(unsigned int i = 0; i < enums.size(); i++) {
-      for(unsigned int j = 0; j < uses.size(); j++) {
+    for(size_t i = 0; i < enums.size(); i++) {
+      for(size_t j = 0; j < uses.size(); j++) {
         if(enums[i]->GetName() == uses[j] + "." + name) {
           return enums[i];
         }

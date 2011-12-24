@@ -40,7 +40,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
   map<const string, LibraryMethod*>::iterator mthd_iter;
   for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
     vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
-    for(unsigned int j = 0; j < instrs.size(); j++) {
+    for(size_t j = 0; j < instrs.size(); j++) {
       LibraryInstr* instr = instrs[j];
       // check library call
       switch(instr->GetType()) {
@@ -78,7 +78,7 @@ void Linker::ResloveExternalClasses()
   for(lib_iter = libraries.begin(); lib_iter != libraries.end(); lib_iter++) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       // all methods
       if(classes[i]->GetCalled()) {
         ResloveExternalClass(classes[i]);
@@ -94,13 +94,13 @@ void Linker::ResolveExternalMethodCalls()
   for(lib_iter = libraries.begin(); lib_iter != libraries.end(); lib_iter++) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
-    for(unsigned int i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); i++) {
       // all methods
       map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
       map<const string, LibraryMethod*>::iterator mthd_iter;
       for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
         vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
-        for(unsigned int j = 0; j < instrs.size(); j++) {
+        for(size_t j = 0; j < instrs.size(); j++) {
           LibraryInstr* instr = instrs[j];
 
           switch(instr->GetType()) {
