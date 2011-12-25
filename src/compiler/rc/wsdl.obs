@@ -3,7 +3,7 @@ use XML;
 use Struct;
 
 bundle Default {
-	class Test {
+	class WsdlTest {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() > 0) {
 				Run(args[0]);
