@@ -718,7 +718,7 @@ class StackClass {
   }
 
   inline long GetParentId() const {
-    return id;
+    return pid;
   }
 
   inline bool IsVirtual() {
