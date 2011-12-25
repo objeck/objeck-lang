@@ -4,7 +4,7 @@ use Struct;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			s := IntVector->New();
+			s := String->New();
 			c := s->GetClass();
 			c->GetName()->PrintLine();
 			m := c->GetMethods();
