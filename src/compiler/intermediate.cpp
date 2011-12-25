@@ -218,13 +218,30 @@ void IntermediateEmitter::Translate()
       }
     }
   }
-
+  
   // emit strings
   EmitStrings();
   // emit libraries
   EmitLibraries(parsed_program->GetLinker());
   // emit program
   EmitBundles();
+  
+  // string id (need to command line parameters)
+#ifdef _SYSTEM
+  if(string_cls_id < 0) {
+    Class* klass = SearchProgramClasses("System.String");
+    assert(klass);
+    string_cls_id = klass->GetId();
+  }
+#else
+  if(string_cls_id < 0) {
+    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
+    assert(lib_klass);
+    string_cls_id = lib_klass->GetId();
+  }
+#endif
+  imm_program->SetStringClassId(string_cls_id);
+  
   Class* start_class = parsed_program->GetStartClass();
   Method* start_method = parsed_program->GetStartMethod();
   imm_program->SetStartIds((start_class ? start_class->GetId() : -1),
@@ -1164,13 +1181,17 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_TCP_HOST_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
 #ifdef _SYSTEM
-    Class* klass = SearchProgramClasses("System.String");
-    assert(klass);
-    int string_cls_id = klass->GetId();
+    if(string_cls_id < 0) {
+      Class* klass = SearchProgramClasses("System.String");
+      assert(klass);
+      string_cls_id = klass->GetId();
+    }
 #else
-    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
-    assert(lib_klass);
-    int string_cls_id = lib_klass->GetId();
+     if(string_cls_id < 0) {
+       LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
+       assert(lib_klass);
+       string_cls_id = lib_klass->GetId();
+     }
 #endif
     
     // create 'System.String' instance
@@ -2087,13 +2108,17 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
 
 #ifdef _SYSTEM
-  Class* klass = SearchProgramClasses("System.String");
-  assert(klass);
-  int string_cls_id = klass->GetId();
+  if(string_cls_id < 0) {
+    Class* klass = SearchProgramClasses("System.String");
+    assert(klass);
+    string_cls_id = klass->GetId();
+  }
 #else
-  LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
-  assert(lib_klass);
-  int string_cls_id = lib_klass->GetId();
+  if(string_cls_id < 0) {
+    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
+    assert(lib_klass);
+    string_cls_id = lib_klass->GetId();
+  }
 #endif
 
   // create 'System.String' instance

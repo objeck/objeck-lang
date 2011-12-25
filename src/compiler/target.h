@@ -1214,10 +1214,12 @@ class IntermediateProgram : public Intermediate {
   vector<string> bundle_names;
   int num_src_classes;
   int num_lib_classes;
+  int string_cls_id;
   
 public:
   IntermediateProgram() {
     num_src_classes = num_lib_classes = 0;
+    string_cls_id = -1;
   }
 
   ~IntermediateProgram() {
@@ -1311,6 +1313,10 @@ public:
     bundle_names = n;
   }
 
+  void SetStringClassId(int i) {
+    string_cls_id = i;
+  }
+
   void Write(ofstream* file_out, bool is_lib) {
     // magic number
     if(is_lib) {
@@ -1318,6 +1324,14 @@ public:
     } 
     else {
       WriteInt(0xdddd, file_out);
+    }    
+    
+    // write string id
+    if(!is_lib) {
+#ifdef _DEBUG
+      assert(string_cls_id > 0);
+#endif
+      WriteInt(string_cls_id, file_out);
     }
     
     // write float strings
@@ -1370,10 +1384,9 @@ public:
       } else {
         num_src_classes++;
       }
-
       classes[i]->Write(file_out);
     }
-
+    
     cout << "Compiled " << num_src_classes
          << (num_src_classes > 1 ? " source classes." : " source class.")  << endl;
     cout << "Linked " << num_lib_classes

@@ -175,6 +175,7 @@ class IntermediateEmitter {
   // method parameters
   int new_char_str_count; 
   int cur_line_num;
+  int string_cls_id;
   stack<int> break_labels;
   bool is_str_array;
 
@@ -391,6 +392,7 @@ class IntermediateEmitter {
     is_new_inst = false;
     new_char_str_count = 0;
     cur_line_num = -1;
+    string_cls_id = -1;
     is_str_array = false;
   }
 
