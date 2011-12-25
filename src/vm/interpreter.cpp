@@ -1404,18 +1404,26 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
       StackErrorUnwind();
       exit(1);
     }
-    const string& qualified_method_name = called->GetName();
-    const string& method_name = impl_class->GetName() +
-      qualified_method_name.substr(qualified_method_name.find(':'));
 
 #ifdef _DEBUG
-    cout << "=== Binding virtual method call: from: '" << called->GetName()
-         << "'; to: '" << method_name << "' ===" << endl;
+    cout << "=== Binding virtual method call: from: '" << called->GetName();
 #endif
-    called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+    
+    // binding method
+    // TODO: speed up with hashing?
+    const string& qualified_method_name = called->GetName();
+    const string& method_ending = qualified_method_name.substr(qualified_method_name.find(':'));
+    string method_name = impl_class->GetName() + method_ending;
+    called = impl_class->GetMethod(method_name);
     while(!called) {
-      // TOODO: look up parent based upon ID
+      impl_class = program->GetClass(impl_class->GetParentId());
+      method_name = impl_class->GetName() + method_ending;
+      called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
     }
+    
+#ifdef _DEBUG
+    cout << "'; to: '" << method_name << "' ===" << endl;
+#endif
   }
   
 #ifndef _NO_JIT
