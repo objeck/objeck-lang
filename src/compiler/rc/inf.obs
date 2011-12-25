@@ -46,7 +46,7 @@ bundle Default {
 		}
 		
 		method : public : EchoDescription() ~ Nil {
-			"Partying with Borg, they brought beeer!"->PrintLine();
+			"Partying with the Borg, they brought drinks!"->PrintLine();
 		}
 	}
 
@@ -81,10 +81,8 @@ bundle Default {
 			registration := starShip->As(Registration);
 			registration->GetMake()->PrintLine();
 			registration->GetColor()->PrintLine();
-#~
 			enterprise := registration->As(StarShip);
 			enterprise->EchoDescription();
-~#
 		}			
 	}
 }
