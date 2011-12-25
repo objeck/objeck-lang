@@ -32,19 +32,6 @@
 #ifndef __TARGET_H__
 #define __TARGET_H__
 
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <set>
-#include <string>
-#include <vector>
-#include <stack>
-#include <map>
-#include <stdlib.h>
-#ifdef _MEMCHECK
-#include <mcheck.h>
-#endif
 #include "types.h"
 #include "linker.h"
 #include "tree.h"
