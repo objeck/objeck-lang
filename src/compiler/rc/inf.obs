@@ -67,18 +67,18 @@ bundle Default {
 	class VehicleTest {
 		function : Main(args : System.String[]) ~ Nil {
 			pinto := Pinto->New();
-			starShip := StarShip->New();
+			star_ship := StarShip->New();
 
 			type_of := pinto->TypeOf(Vehicle);
 			type_of->PrintLine();
 
-			type_of := starShip->TypeOf(Vehicle);
+			type_of := star_ship->TypeOf(Vehicle);
 			type_of->PrintLine();
 
 			type_of := pinto->TypeOf(StarShip);
 			type_of->PrintLine();
 
-			registration := starShip->As(Registration);
+			registration := star_ship->As(Registration);
 			registration->GetMake()->PrintLine();
 			registration->GetColor()->PrintLine();
 			enterprise := registration->As(StarShip);
