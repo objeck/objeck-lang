@@ -69,7 +69,8 @@ void Loader::Load()
     exit(1);
   }
 
-  // LoadConfiguration();
+  // read string id
+  string_cls_id = ReadInt();;
 
   int i;
   // read float strings
@@ -234,8 +235,9 @@ void Loader::LoadClasses()
       ReadString();
     }
     
-    // is virtual
-    const bool is_interface = ReadInt();
+    // is interface (covered by is virtual)
+    ReadInt();
+    
     const bool is_virtual = ReadInt();
     const bool is_debug = ReadInt();
     string file_name;
@@ -264,11 +266,12 @@ void Loader::LoadClasses()
     cls_hierarchy[id] = pid;
     StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, dclrs,
                                      num_dclrs, cls_space, inst_space, is_debug);
-    
+    /*
     // slow... but must happend here so that command line parameters can be processed
     if(string_cls_id < 0 && name == "System.String") {
       string_cls_id = id;
     }
+    */
 
 #ifdef _DEBUG
     cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='"

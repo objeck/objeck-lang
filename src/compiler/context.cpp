@@ -1652,7 +1652,7 @@ bool ContextAnalyzer::Analyze()
 		       "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
 
 	}
-
+	
 	//  set entry reference and return type
 	method_call->SetDynamicFunctionCall(entry);
 	method_call->SetEvalType(type->GetFunctionReturn(), true);

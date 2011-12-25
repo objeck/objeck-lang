@@ -121,11 +121,6 @@ class Loader {
 public:
   Loader(const char* arg) {
     filename = arg;
-    /*
-    for(int i = 2; i < argc; i++) {
-      arguments.push_back(argv[i]);
-    }
-    */
     string_cls_id = -1;
     ReadFile();
     program = new StackProgram;
