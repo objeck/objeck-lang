@@ -10,6 +10,7 @@ Highlights include the following:
 * Fixed a bug String class related to the copying of byte buffers.  This had cascading impacts.
 * Resolved an outstanding issue involving inherited support for virtual methods.  One of the primary impacts was nested inheritance from (or to) classes in shared libraries.
 * Sped up the dynamic binding process by keeping references to class definitions as part of the class instance activation record.
+* The HttpClient class now supports cookies.
 * Fixed numerous bugs in the command line debugger, as I actually use it now to find bugs in larger libraries and programs.
 
 --------------
