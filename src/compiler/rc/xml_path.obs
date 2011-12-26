@@ -43,7 +43,7 @@ bundle Default {
 				results := parser->FindElements("/inventory/section/item/price");
 				if(results <> Nil) {
 					each(i : results) {					
-						element := results->Get(i)->As(XMLElement);
+						element := results->Get(i)->As(XmlElement);
 						element->GetContent()->PrintLine();
 					};
 				};
