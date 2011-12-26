@@ -22,13 +22,13 @@ bundle Default {
 				
 				if(results <> Nil) {
 					each(i : results) {
-						element := results->Get(i)->As(XMLElement);
+						element := results->Get(i)->As(XmlElement);
 						name := element->GetAttribute("name");
 name->PrintLine();
 						
 						children := element->GetChildren();
 						each(j : children) {
-							sub_element := children->Get(j)->As(XMLElement);			
+							sub_element := children->Get(j)->As(XmlElement);			
 # sub_element->FindElements("/wsdl:input")->Size()->PrintLine();
 							if(sub_element->GetName()->EndsWith("input")) {
 								message := sub_element->GetAttribute("message");
@@ -47,14 +47,14 @@ IO.Console->Print("  input='")->Print(message)->PrintLine("'");
 				};
 				if(results <> Nil) {
 					each(i : results) {
-						element := results->Get(i)->As(XMLElement);
+						element := results->Get(i)->As(XmlElement);
 						name := element->GetAttribute("name");
 name->PrintLine();
 						
 						children := element->GetChildren();
 						if(children <> Nil) {
 							each(j : children) {
-								sub_element := children->Get(j)->As(XMLElement);
+								sub_element := children->Get(j)->As(XmlElement);
 								message_name := sub_element->GetAttribute("name");
 IO.Console->Print("  name='")->Print(message_name)->PrintLine("'");
 								message_type := sub_element->GetAttribute("type");
@@ -72,16 +72,16 @@ IO.Console->Print("  type='")->Print(message_type)->PrintLine("'");
 				};
 				if(results <> Nil) {
 					each(i : results) {
-						element := results->Get(i)->As(XMLElement);
+						element := results->Get(i)->As(XmlElement);
 						name := element->GetAttribute("name");
 name->PrintLine();
 						children := element->GetChildren();
 						if(children <> Nil) {
-							sub_element := children->Get(0)->As(XMLElement);
+							sub_element := children->Get(0)->As(XmlElement);
 							if(sub_element->GetName()->Equals("all")) {
 								all_elements := sub_element->GetChildren();
 								each(j : all_elements) {
-									all_element := all_elements->Get(j)->As(XMLElement);
+									all_element := all_elements->Get(j)->As(XmlElement);
 									message_name := all_element->GetAttribute("name");
 IO.Console->Print("  name='")->Print(message_name)->PrintLine("'");
 									message_type := all_element->GetAttribute("type");

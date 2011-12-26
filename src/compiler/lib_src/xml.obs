@@ -10,27 +10,27 @@ bundle XML {
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# XML Parser class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-	class XMLBuilder {
-		@root : XMLElement;
+	class XmlBuilder {
+		@root : XmlElement;
 		@version : String;
 		@encoding : String;
 		
 		New(name : String) {
-			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElementType->ELEMENT, name);
 		}
 		
 		New(name : String, version : String) {
-			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElementType->ELEMENT, name);
 			@version := version;
 		}
 		
 		New(name : String, version : String, encoding : String) {
-			@root := XMLElement->New(XMLElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElementType->ELEMENT, name);
 			@version := version;
 			@encoding := encoding;
 		}
 		
-		method : public : GetRoot() ~ XMLElement {
+		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
 		
@@ -76,7 +76,7 @@ bundle XML {
 		@buffer : Char[];
 		@buffer_pos : Int;
 		@error_msg : String;
-		@root : XMLElement;
+		@root : XmlElement;
 		@declarations : StringHash;
 		
 		New(string : String) {
@@ -96,7 +96,7 @@ bundle XML {
 		}
 		
 		method : public : GetVersion() ~ String {
-			element : XMLElement := @declarations->Find("xml")->As(XMLElement);
+			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
 				return element->GetAttribute("version");
 			};
@@ -105,7 +105,7 @@ bundle XML {
 		}
 		
 		method : public : GetEncoding() ~ String {
-			element : XMLElement := @declarations->Find("xml")->As(XMLElement);
+			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
 				return element->GetAttribute("encoding");
 			};
@@ -149,7 +149,7 @@ bundle XML {
 			};
 
 			# parse declarations
-			while(tag->GetType() = XMLElementType->DECLARATION) {
+			while(tag->GetType() = XmlElementType->DECLARATION) {
 				@declarations->Insert(tag->GetName(), tag->As(Base));
 				# update
 				tag := ParseElement();
@@ -159,7 +159,7 @@ bundle XML {
 			};
 			
 			# find root
-			if(tag->GetType() = XMLElementType->ELEMENT) {
+			if(tag->GetType() = XmlElementType->ELEMENT) {
 				@root := tag;
 			}
 			else {
@@ -170,26 +170,26 @@ bundle XML {
 			stack := Stack->New();
 			while(tag <> Nil) {
 				# update element stack
-				if(tag->GetType() = XMLElementType->ELEMENT) {
-					parent : XMLElement;
+				if(tag->GetType() = XmlElementType->ELEMENT) {
+					parent : XmlElement;
 					if(stack->IsEmpty() = false) {
-						parent := stack->Top()->As(XMLElement);
+						parent := stack->Top()->As(XmlElement);
 						parent->AddChild(tag);
 						tag->SetParent(parent);
 					};
 					stack->Push(tag->As(Base));
 				}
-				else if(tag->GetType() = XMLElementType->UNARY_ELEMENT | 
-					tag->GetType() = XMLElementType->CDATA) {
-					parent : XMLElement;
+				else if(tag->GetType() = XmlElementType->UNARY_ELEMENT | 
+					tag->GetType() = XmlElementType->CDATA) {
+					parent : XmlElement;
 					if(stack->IsEmpty() = false) {
-						parent := stack->Top()->As(XMLElement);
+						parent := stack->Top()->As(XmlElement);
 						parent->AddChild(tag);
 					};
 				}
-				else if(tag->GetType() = XMLElementType->CLOSING_ELEMENT) {
-					top : XMLElement := stack->Top()->As(XMLElement);
-					if(top->GetType() = XMLElementType->ELEMENT) {
+				else if(tag->GetType() = XmlElementType->CLOSING_ELEMENT) {
+					top : XmlElement := stack->Top()->As(XmlElement);
+					if(top->GetType() = XmlElementType->ELEMENT) {
 						stack->Pop();
 					}
 					else {
@@ -388,7 +388,7 @@ bundle XML {
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parse element
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : native : ParseElement() ~ XMLElement {
+		method : public : native : ParseElement() ~ XmlElement {
 			# are we done?
 			IgnoreWhiteSpace();
 			if(@buffer_pos = @buffer->Size()) {
@@ -549,7 +549,7 @@ bundle XML {
 					
 # Console->Print("cdata: ")->PrintLine(data);					
 						
-					return XMLElement->New(XMLElementType->CDATA, Nil->As(String), 
+					return XmlElement->New(XmlElementType->CDATA, Nil->As(String), 
 						Nil->As(StringHash), data);
 				}
 				else {
@@ -656,32 +656,32 @@ bundle XML {
 				};
 			};				
 	
-			type : XMLElementType;
+			type : XmlElementType;
 			if(is_unary_tag) {
-				type := XMLElementType->UNARY_ELEMENT;
+				type := XmlElementType->UNARY_ELEMENT;
 			}
 			else if(is_dclr_tag) {
-				type := XMLElementType->DECLARATION;
+				type := XmlElementType->DECLARATION;
 			}
 			else if(is_end_tag) {
-				type := XMLElementType->CLOSING_ELEMENT;
+				type := XmlElementType->CLOSING_ELEMENT;
 			}
 			else {
-				type := XMLElementType->ELEMENT;
+				type := XmlElementType->ELEMENT;
 			};
 			
-			return XMLElement->New(type, tag_name, attribs, tag_contents);
+			return XmlElement->New(type, tag_name, attribs, tag_contents);
 		}
 			
-		method : public : GetRoot() ~ XMLElement {
+		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
 	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XMLElement types
+	# XmlElement types
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-	enum XMLElementType {
+	enum XmlElementType {
 		DECLARATION,
 		CDATA,
 		ELEMENT,
@@ -690,28 +690,28 @@ bundle XML {
 	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XMLElement class
+	# XmlElement class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-	class XMLElement {
+	class XmlElement {
 		@name : String;
-		@type : XMLElementType;
+		@type : XmlElementType;
 		@attribs : StringHash;
 		@content : String;
-		@parent : XMLElement;
+		@parent : XmlElement;
 		@children : Vector;
 		
-		New(type : XMLElementType, name : String) {
+		New(type : XmlElementType, name : String) {
 			@type := type;
 			@name := name;
 		}
 		
-		New(type : XMLElementType, name : String, content : String) {
+		New(type : XmlElementType, name : String, content : String) {
 			@type := type;
 			@name := name;
 			@content := content;
 		}
 		
-		New(type : XMLElementType, name : String, attribs : StringHash, content : String) {
+		New(type : XmlElementType, name : String, attribs : StringHash, content : String) {
 			@type := type;
 			@name := name;
 			@attribs := attribs;
@@ -726,11 +726,11 @@ bundle XML {
 			@name := name;
 		}
 		
-		method : public : GetType() ~ XMLElementType {
+		method : public : GetType() ~ XmlElementType {
 			return @type;
 		}
 		
-		method : public : SetType(type : XMLElementType) ~ Nil {
+		method : public : SetType(type : XmlElementType) ~ Nil {
 			@type := type;
 		}
 		
@@ -757,7 +757,7 @@ bundle XML {
 			return Nil;
 		}
 		
-		method : public : AddChild(tag : XMLElement) ~ Nil {
+		method : public : AddChild(tag : XmlElement) ~ Nil {
 			if(@children = Nil) {
 				@children := Vector->New();
 			};
@@ -772,19 +772,19 @@ bundle XML {
 			return 0;
 		}
 		
-		method : public : GetChild(i : Int) ~ XMLElement {
+		method : public : GetChild(i : Int) ~ XmlElement {
 			if(@children <> Nil & i < @children->Size()) {
-				return @children->Get(i)->As(XMLElement);
+				return @children->Get(i)->As(XmlElement);
 			};
 			
 			return Nil;
 		}
 		
-		method : public : GetParent() ~ XMLElement {
+		method : public : GetParent() ~ XmlElement {
 			return @parent;
 		}
 		
-		method : public : SetParent(parent : XMLElement) ~ Nil {
+		method : public : SetParent(parent : XmlElement) ~ Nil {
 			@parent := parent;
 		}
 		
@@ -800,7 +800,7 @@ bundle XML {
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : ToString(in : String) ~ Nil {
 			# element
-			if(@name <> Nil & @type = XMLElementType->ELEMENT) {
+			if(@name <> Nil & @type = XmlElementType->ELEMENT) {
 				in->Append('<');
 				in->Append(@name);
 				# attribs
@@ -827,7 +827,7 @@ bundle XML {
 				# process children
 				if(@children <> Nil) {
 					each(i : @children) {
-						child : XMLElement := @children->Get(i)->As(XMLElement);
+						child : XmlElement := @children->Get(i)->As(XmlElement);
 						child->ToString(in);
 					};
 				};
@@ -837,7 +837,7 @@ bundle XML {
 				in->Append('>');
 			}
 			# cdata
-			else if(@type = XMLElementType->CDATA) {
+			else if(@type = XmlElementType->CDATA) {
 				in->Append("<![CDATA[");
 				if(@content <> Nil) {
 					in->Append(@content);
@@ -853,7 +853,7 @@ bundle XML {
 		method : public : native : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
 			each(i : @children) {
-				element : XMLElement := @children->Get(i);
+				element : XmlElement := @children->Get(i);
 				if(element->GetName()->Equals(name)) {
 					filtered->AddBack(element->As(Base));
 				};
@@ -887,7 +887,7 @@ bundle XML {
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector {
 			filtered := Vector->New();
 			each(i : @children) {
-				element : XMLElement := @children->Get(i);
+				element : XmlElement := @children->Get(i);
 				if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
 					filtered->AddBack(element->As(Base));
 				};
@@ -901,7 +901,7 @@ bundle XML {
 			if(max > 0) {
 				found := 0;
 				for(i := 0; i < @children->Size() & found < max; i += 1;) {
-					element : XMLElement := @children->Get(i);
+					element : XmlElement := @children->Get(i);
 					if(element->GetName()->Equals(name)) {
 						filtered->AddBack(element->As(Base));
 						found += 1;
@@ -945,7 +945,7 @@ bundle XML {
 		# parses element expression
 		# tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : ProcessExpression(filter : String, element : XMLElement) ~ Vector {
+		method : public : ProcessExpression(filter : String, element : XmlElement) ~ Vector {
 			expr := GetElementExpression(filter);
 			if(expr <> Nil) {
 				if(expr->Equals("first()")) {
@@ -1014,7 +1014,7 @@ bundle XML {
 						all_filtered := Vector->New();
 						each(j : children) {
 							# process child queries
-							element := children->Get(j)->As(XMLElement);
+							element := children->Get(j)->As(XmlElement);
 							filtered := ProcessExpression(filter, element);
 							all_filtered->AddBack(filtered);
 						};

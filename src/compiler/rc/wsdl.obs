@@ -16,12 +16,12 @@ bundle Default {
 				results := parser->FindElements("/wsdl:definitions/wsdl:types");
 				if(results->Size() > 0) {
 					"===== TYPES ====="->PrintLine();
-					types := results->Get(0)->As(XMLElement);
+					types := results->Get(0)->As(XmlElement);
 					elem_name := types->GetName();
 					elem_name->Append("/xsd:schema/xsd:element");
 					results := types->FindElements(elem_name);
 					each(i : results) {	
-						elem := results->Get(i)->As(XMLElement);
+						elem := results->Get(i)->As(XmlElement);
 						type_name := elem->GetAttribute("name");
 						elem_type := elem->GetChild(0)->GetChild(0);
 						type_type := elem_type->GetName();
@@ -31,7 +31,7 @@ bundle Default {
 						
 						elems := elem_type->GetChildren("xsd:element");
 						each(j : elems) {	
-							elem := elems->Get(j)->As(XMLElement);
+							elem := elems->Get(j)->As(XmlElement);
 							Console->Print("\tname=")->Print(elem->GetAttribute("name"))
 								->Print(", type=")->PrintLine(elem->GetAttribute("type"));
 						};
@@ -42,12 +42,12 @@ bundle Default {
 				"===== MESSAGES ====="->PrintLine();
 				messages := parser->FindElements("/wsdl:definitions/wsdl:message");
 				each(i : messages) {
-					message := messages->Get(i)->As(XMLElement);
+					message := messages->Get(i)->As(XmlElement);
 					message_name := message->GetAttribute("name");
 					Console->Print("message: name=")->PrintLine(message_name);
 					parts := message->GetChildren();
 					each(j : parts) {
-						part := parts->Get(j)->As(XMLElement);
+						part := parts->Get(j)->As(XmlElement);
 						part_name := part->GetAttribute("name");
 						part_elem := part->GetAttribute("element");
 						Console->Print("\tpart: name=")->Print(part_name)->Print(", element=")
@@ -58,17 +58,17 @@ bundle Default {
 				results := parser->FindElements("/wsdl:definitions/wsdl:portType");
 				if(results->Size() > 0) {
 					"===== PORTS ====="->PrintLine();
-					port := results->Get(0)->As(XMLElement);
+					port := results->Get(0)->As(XmlElement);
 					port_name := port->GetAttribute("name");
 					Console->Print("port: name=")->PrintLine(port_name);
 					operations := port->GetChildren("wsdl:operation");
 					each(i : operations) {
-						operation := operations->Get(i)->As(XMLElement);
+						operation := operations->Get(i)->As(XmlElement);
 						operation_name := operation->GetAttribute("name");
 						Console->Print("\toperation: name=")->PrintLine(operation_name);
 						ios := operation->GetChildren();
 						each(j : ios) {
-							io := ios->Get(j)->As(XMLElement);
+							io := ios->Get(j)->As(XmlElement);
 							Console->Print("\t\tio: type=")->Print(io->GetName())
 								->Print(", message=")->PrintLine(io->GetAttribute("message"));
 						};
