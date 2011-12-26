@@ -343,12 +343,12 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 		   << char_string << "\"" << endl;
 	    }
 	    else {
-	      cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "Base") << ", value="
+	      cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "System.Base") << ", value="
 		   << (void*)reference->GetIntValue() << endl;
 	    }
 	  }
 	  else {
-	    cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "Base") << ", value="
+	    cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "System.Base") << ", value="
 		 << (void*)reference->GetIntValue() << endl;
 	  }
 	  break;
@@ -365,15 +365,15 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 		     << char_string << "\"" << endl;
 	      }
 	      else {
-		cout << "print: type=Base, value=" << (void*)reference->GetIntValue() << endl;
+		cout << "print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
 	      }
 	    }
 	    else {
-	      cout << "print: type=Base, value=" << (void*)reference->GetIntValue() << endl;
+	      cout << "print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
 	    }
 	  }
 	  else {
-	    cout << "print: type=Base[], value=" << (void*)reference->GetIntValue();
+	    cout << "print: type=System.Base[], value=" << (void*)reference->GetIntValue();
 	    if(reference->GetArrayDimension()) {
 	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
 		   << reference->GetArraySize();
