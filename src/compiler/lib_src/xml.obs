@@ -1,6 +1,6 @@
 #~~
 # XML parsing library
-# Copyright (c) 2010 Randy Hollines
+# Copyright (c) 2010-2012 Randy Hollines
 ~~#
 
 use IO;
