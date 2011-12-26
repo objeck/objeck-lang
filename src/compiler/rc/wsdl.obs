@@ -77,46 +77,4 @@ bundle Default {
 			};
 		}
 	}
-	
-	class ComplexType {
-		@name : String;
-		@type : String;
-		@elems : Vector;
-		
-		New(name : String, type : String) {
-			@name := name;
-			@type := type;
-			@elems := Vector->New();
-		}
-		
-		method : GetName() ~ String {
-			return @name;
-		}
-		
-		method : GetType() ~ String {
-			return @type;
-		}
-		
-		method : AddElement(elem : Element) ~ Nil {
-			@elems->AddBack(elem->As(Base));
-		}
-	}
-	
-	class Element {
-		@name : String;
-		@type : String;
-		
-		New(name : String, type : String) {
-			@name := name;
-			@type := type;
-		}
-		
-		method : GetName() ~ String {
-			return @name;
-		}
-		
-		method : GetType() ~ String {
-			return @type;
-		}
-	}
 }
