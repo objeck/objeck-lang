@@ -3,9 +3,9 @@ use XML;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			builder := XMLBuilder->New("root", "1.0");
+			builder := XmlBuilder->New("root", "1.0");
 			root := builder->GetRoot();
-			element := XMLElement->New(XMLElementType->ELEMENT, "element", "Some text here");
+			element := XmlElement->New(XmlElementType->ELEMENT, "element", "Some text here");
 			root->AddChild(element);
 			builder->ToString()->PrintLine();
 		}

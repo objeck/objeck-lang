@@ -18,8 +18,8 @@ bundle Default {
 				root := parser->GetRoot();
 				children := root->GetChildren("Student");
 				each(i : children) {
-					child : XMLElement := children->Get(i)->As(XMLElement);
-					XMLElement->DecodeString(child->GetAttribute("Name"))->PrintLine();
+					child : XmlElement := children->Get(i)->As(XmlElement);
+					XmlElement->DecodeString(child->GetAttribute("Name"))->PrintLine();
 				};
 			};
 		}
