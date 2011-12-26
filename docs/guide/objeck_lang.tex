@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included as part of release \textit{2.1.2}.  For
+  functionality that is included as part of release \textit{2.1.3}.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://freshmeat.net/projects/objeck-programming-language}
   and
@@ -579,8 +579,8 @@ method : public : Compare(right : Base) ~ Int {
     ...	
 \end{verbatim}
 
-To determine if an object instance is of a certain class type it's
-\texttt{TypeOf} method can be invoked.  This method will return
+To determine if an object instance is of a certain class type (object
+or interface) it's \texttt{TypeOf} method can be invoked.  This method will return
 \texttt{true} if the instance is of the same or a derived type,
 \texttt{false} otherwise.  This method can be used to check a class
 instance type before casting it.
@@ -629,7 +629,7 @@ instantiated.
 
 Below is an example of declaring a virtual method:
 \begin{verbatim}
-method : virtual : public : Compare(right : Base ~ Int;
+method : virtual : public : GetMake() ~ String;
 \end{verbatim}
 
 \subsection{Interfaces}
@@ -2026,7 +2026,7 @@ bundle:
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root node of the DOM.
   \begin{itemize}
-  \item method : public : GetRoot() \textasciitilde XMLElement
+  \item method : public : GetRoot() \textasciitilde XmlElement
   \end{itemize}
 \item \texttt{FindElements} - returns all elements that match the
   given query string.  The following XPath expressions are supported
@@ -2041,8 +2041,8 @@ bundle:
   \end{itemize}
 \end{itemize}
 
-\subsubsection{XMLBuilder}
-The XMLBuilder class allows a programmer to dynamically build an XML
+\subsubsection{XmlBuilder}
+The XmlBuilder class allows a programmer to dynamically build an XML
 DOM.  Once the DOM is build it may be traversed and/or serialized into
 a string. This class in the `XML' bundle:
 \begin{itemize}
@@ -2053,7 +2053,7 @@ a string. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root element.
   \begin{itemize}
-  \item method : public : GetRoot() \textasciitilde XMLElement
+  \item method : public : GetRoot() \textasciitilde XmlElement
   \end{itemize}
 \item \texttt{ToString} - Serializes an element into a string
   \begin{itemize}
@@ -2077,15 +2077,15 @@ a string. This class in the `XML' bundle:
   \end{itemize}
 \end{itemize}
 
-\subsubsection{XMLElement}
-The XMLElement class represents a canonical XML node within a
+\subsubsection{XmlElement}
+The XmlElement class represents a canonical XML node within a
 DOM. This class in the `XML' bundle:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
-  \item New(type : XMLElementType, name : String)
-  \item New(type : XMLElementType, name : String, content : String)
-  \item New(type : XMLElementType, name : String, attribs :
+  \item New(type : XmlElementType, name : String)
+  \item New(type : XmlElementType, name : String, content : String)
+  \item New(type : XmlElementType, name : String, attribs :
     StringHash, content : String)
   \end{itemize}
 \item \texttt{GetName} - Returns the element name.
@@ -2098,23 +2098,23 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root element.
   \begin{itemize}
-  \item method : public : GetRoot() \textasciitilde XMLElement
+  \item method : public : GetRoot() \textasciitilde XmlElement
   \end{itemize}
 \item \texttt{GetType} - Returns the element type.
   \begin{itemize}
-  \item method : public : GetType() \textasciitilde XMLElementType
+  \item method : public : GetType() \textasciitilde XmlElementType
   \end{itemize}
 \item \texttt{SetType} - Sets the element type.
   \begin{itemize}
-  \item method : public : SetType(type : XMLElementType) \textasciitilde Nil
+  \item method : public : SetType(type : XmlElementType) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetParent} - Gets the parent element
   \begin{itemize}
-  \item method : public : GetParent() \textasciitilde XMLElement
+  \item method : public : GetParent() \textasciitilde XmlElement
   \end{itemize}
 \item \texttt{SetParent} - Sets the parent element
   \begin{itemize}
-  \item method : public : SetParent(parent : XMLElement) \textasciitilde Nil
+  \item method : public : SetParent(parent : XmlElement) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetContent} - Returns the XML content between two tags.
   \begin{itemize}
@@ -2147,11 +2147,11 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetChild} - Returns a child element.
   \begin{itemize}
-  \item method : public : GetChild(i : Int) ~ XMLElement
+  \item method : public : GetChild(i : Int) ~ XmlElement
   \end{itemize}
 \item \texttt{AddChild} - adds a child element.
   \begin{itemize}
-  \item method : public : AddChild(child : XMLElement) ~ Nil
+  \item method : public : AddChild(child : XmlElement) ~ Nil
   \end{itemize}
 \item \texttt{GetAttribute} - Returns the value of a given attribute.
   \begin{itemize}
@@ -2249,7 +2249,7 @@ bundle Default {
             parser->FindElements("//nutrition/food[last()]/calories[fat]");
           if(results <> Nil) {
             each(i : results) {          
-              element := results->Get(i)->As(XMLElement);
+              element := results->Get(i)->As(XmlElement);
               element->GetAttribute("total")->PrintLine();
             };
           };
