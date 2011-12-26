@@ -5,15 +5,15 @@ bundle Default {
   class HttpTest {
     function : Main(args : String[]) ~ Nil {
       client := HttpClient->New();
-		client->CookiesEnabled(true);
-#     lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create", 80);
-      lines := client->Get("http://www.google.com", 80);
+      # enable cookies
+      client->CookiesEnabled(true);
+      # request creates a cookie
+      lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create", 80);
       each(i : lines) {
         lines->Get(i)->As(String)->PrintLine();
       };
-
-#     lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
-      lines := client->Get("http://www.google.com/search?q=objeck", 80);
+       # request sends back cookie
+      lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
       each(i : lines) {
         lines->Get(i)->As(String)->PrintLine();
       };
