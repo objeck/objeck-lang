@@ -343,7 +343,7 @@
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{FB1A23CE-E6E7-4C5B-B9AA-7525829915AA}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{8F92430D-FD4C-4483-8AF5-C8208A86CA90}</td><td>DOC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{8F92430D-FD4C-4483-8AF5-C8208A86CA90}</td><td>DOC</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{0EC2E177-481B-4E31-8D6C-084361C5470A}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{B6D13EDA-575F-44C2-9FDB-803CAF9E30A3}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
@@ -4040,6 +4040,7 @@
 		<row><td>ID_STRING29</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-702562579</td></row>
 		<row><td>ID_STRING3</td><td>1033</td><td>Randy Hollines</td><td>0</td><td/><td>-350311156</td></row>
 		<row><td>ID_STRING30</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-702609651</td></row>
+		<row><td>ID_STRING31</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-568357504</td></row>
 		<row><td>ID_STRING4</td><td>1033</td><td>OBJECK~1|Objeck Programming Language</td><td>0</td><td/><td>-199313356</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
@@ -4157,6 +4158,7 @@
 		<row><td>NewShortcut2_40479B40F7B24C7D8682A9E521EE1E6D.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_5903D763B94243DA9A5DF973B0276E50.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_5B2285C6FE204D698A4B65AAD583AF0F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut2_66806F85711D4FEA860A54C05FDD1E73.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_7F98292683864354A96921F093353662.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A959DA6D846142AFB85C73BE68270CA6.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A9AAEE654BA44650B32AA7E21D75A8A2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
@@ -4758,6 +4760,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="s72">DirProperty</col>
 		<col def="i2">InstallMode</col>
 		<row><td>NewShortcut1</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut2</td><td>ISX_DEFAULTCOMPONENT3</td><td/><td>newfolder1</td><td>2</td></row>
 		<row><td>NewShortcut3</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
 	</table>
 
@@ -4845,6 +4848,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
 		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING24##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut1_5D91A90FBCB84543B754D02E30FEB1BE.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING31##</td><td>ISX_DEFAULTCOMPONENT3</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut2_66806F85711D4FEA860A54C05FDD1E73.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING30##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut3_38FB12A434284194825860DDEAFBCCF3.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 	</table>
 
