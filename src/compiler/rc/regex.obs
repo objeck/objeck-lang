@@ -68,6 +68,9 @@ bundle Default {
 			postfix := Int->New[prep->Size()];			
 			i := 0;
 			t := prep[i];
+			
+			stack[top] := Token->LPRN;
+			top += 1;
 			while(t <> 0) {
 				select(t) {
 					label Token->LPRN: {
@@ -76,6 +79,7 @@ bundle Default {
 					}
 					
 					label Token->RPRN: {
+top->PrintLine();					
 						while(t <= stack[top - 1]) {
 							top -= 1;
 							postfix[j] := stack[top];
@@ -87,7 +91,7 @@ bundle Default {
 					label Token->KLEENE:
 					label Token->ALTERN:
 					label Token->CONCAT: {
-						while(t <= stack[top -1]) {
+						while(t <= stack[top - 1]) {
 							top -= 1;
 							postfix[j] := stack[top];
 							j += 1;
@@ -105,8 +109,9 @@ bundle Default {
 				i += 1;
 				t := prep[i];
 			};
+			postfix[j] := 0;
 			
-			return Nil;
+			return postfix;
 		}
 		
 		method : public : Apply(string : String) ~ Nil {
@@ -159,6 +164,8 @@ bundle Default {
 					}
 				};
 			};
+			prep[index] := Token->RPRN;
+			index += 1;
 			prep[index] := 0;
 			
 			if(prn_count <> 0) {
