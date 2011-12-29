@@ -1,0 +1,177 @@
+use Struct;
+
+bundle Default {
+	enum Token := -100 {
+		LPRN,
+		RPRN,
+		KLEENE,
+		ALTERN,
+		CONCAT
+	}
+	
+	class RegEx {
+		@string : String;
+		@pattern : String;
+		@error : Bool;
+		
+		New(pattern : String) {
+			@pattern := pattern;
+			@error := false;
+			
+			prep := Prepare();
+			if(@error = false) {
+				x := Convert(prep);
+				DumpA(x);
+			};
+		}
+		
+		method : public : DumpA(prep : Int[]) ~ Nil {
+			i := 0;
+			t := prep[i];
+			while(t <> 0) {
+				select(t) {
+					label Token->LPRN: {
+						'('->Print();
+					}
+					
+					label Token->RPRN: {
+						')'->Print();
+					}
+					
+					label Token->KLEENE: {
+						'*'->Print();
+					}
+					
+					label Token->ALTERN: {
+						'|'->Print();
+					}
+					label Token->CONCAT: {
+						'.'->Print();
+					}
+					other: {
+						c := t->As(Char);
+						c->Print();
+					}
+				};
+				# update
+				i += 1;
+				t := prep[i];
+			};
+			'\n'->Print();
+		}
+		
+		method : public : Convert(prep : Int[]) ~ Int[] {
+			stack := Int->New[prep->Size()];
+			top := 0; 
+			j := 0; 
+			
+			postfix := Int->New[prep->Size()];			
+			i := 0;
+			t := prep[i];
+			while(t <> 0) {
+				select(t) {
+					label Token->LPRN: {
+						stack[top] := t;
+						top += 1;
+					}
+					
+					label Token->RPRN: {
+						while(t <= stack[top - 1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						top -= 1;
+					}
+					
+					label Token->KLEENE:
+					label Token->ALTERN:
+					label Token->CONCAT: {
+						while(t <= stack[top -1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						stack[top] := t;
+						top += 1;
+					}
+					
+					other: {
+						postfix[j] := t;
+						j += 1;
+					}
+				};
+				# update
+				i += 1;
+				t := prep[i];
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Apply(string : String) ~ Nil {
+			@string := string;
+		}
+		
+		method : public : Prepare() ~ Int[] {
+			prep := Int->New[@pattern->Size() * 2];
+			index := 0;
+			prn_count := 0;
+			concat := false;
+			
+			each(i : @pattern) {
+				c := @pattern->Get(i);
+				select(c) {
+					label '(': {
+						prep[index] := Token->LPRN;
+						index += 1;
+						prn_count += 1;
+						concat := false;
+					}
+					
+					label ')': {
+						prep[index] := Token->RPRN;
+						index += 1;
+						prn_count -= 1;
+						concat := true;
+					}
+					
+					label '*': {
+						prep[index] := Token->KLEENE;
+						index += 1;
+						concat := true;
+					}
+					
+					label '|': {
+						prep[index] := Token->ALTERN;
+						index += 1;
+						concat := false;
+					}
+					
+					other: {
+						if(concat) {
+							prep[index] := Token->CONCAT;
+							index += 1;
+						};
+						prep[index] := c;
+						index += 1;
+						concat := true;
+					}
+				};
+			};
+			prep[index] := 0;
+			
+			if(prn_count <> 0) {
+				"unbalanced parentheses"->PrintLine();
+				@error := true;
+			};
+			
+			return prep;
+		}
+		
+		function : Main(args : String[]) ~ Nil {
+			regex := RegEx->New("(a|b)*a");
+			regex->Apply("ababababab");
+		}
+	}
+}
