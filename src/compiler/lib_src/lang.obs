@@ -528,7 +528,7 @@ bundle System {
 			max := array->Size();
 			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
-				@pos := @pos + 1;
+				@pos += 1;
 			};
 		}
 		
@@ -547,9 +547,10 @@ bundle System {
 				@string := tmp;
 			};
 			
-			for(i : Int := 0; i < array->Size() & array[i] <> '\0'; i += 1;) {
+			max := array->Size();
+			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
-				@pos := @pos + 1;
+				@pos += 1;
 			};
 		}
 
