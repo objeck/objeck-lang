@@ -61,13 +61,13 @@ bundle Default {
 		}
 		
 		method : public : Convert(prep : Int[]) ~ Int[] {
-			stack := Int->New[prep->Size()];
-			top := 0; 
+			stack : Int[] := Int->New[prep->Size()];
+			top : Int := 0; 
 			j := 0; 
 			
-			postfix := Int->New[prep->Size()];			
-			i := 0;
-			t := prep[i];
+			postfix : Int[] := Int->New[prep->Size()];			
+			i : Int := 0;
+			t : Int := prep[i];
 			
 			stack[top] := Token->LPRN;
 			top += 1;
@@ -79,7 +79,6 @@ bundle Default {
 					}
 					
 					label Token->RPRN: {
-top->PrintLine();					
 						while(t <= stack[top - 1]) {
 							top -= 1;
 							postfix[j] := stack[top];
