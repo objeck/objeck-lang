@@ -1,0 +1,20 @@
+Objeck v2.1.3_1
+
+--------------
+Release Notes
+--------------
+This release was focused on bug fixes and performance.  Enhancements were made to the class libraries.  This is a recommended update but will require existing programs to be recompiled.  
+
+Highlights include the following:
+* Full support for interfaces.  The previous implementation lacked runtime support. 
+* Fixed a bug in the String class related to the copying of byte buffers.  This had cascading impacts.
+* Resolved an outstanding issue involving inheritance and virtual methods.  One of the primary impacts was nested inheritance from (or to) classes in shared libraries.
+* Sped up the dynamic binding process by keeping references to class definitions as part of the class instance activation record.
+* The HttpClient class now supports cookies.
+* Fixed numerous bugs in the command line debugger, as I actually use it now to find bugs in larger libraries/programs.
+* Fixed a compiler bug that caused some valid programs to be flagged with errors.
+
+--------------
+About Objeck
+--------------
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
