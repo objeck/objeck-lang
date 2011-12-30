@@ -250,7 +250,7 @@ namespace frontend {
     }
 
     SymbolEntry* GetEntry(const string &name) {
-      ScopeTable* tmp = head;
+      ScopeTable* tmp = iter_ptr;
       while(tmp) {
 	SymbolEntry* entry = tmp->GetEntry(name);
 	if(entry) {
@@ -262,9 +262,16 @@ namespace frontend {
       return NULL;
     }
 
-    bool AddEntry(SymbolEntry* e) {
+    bool AddEntry(SymbolEntry* e, bool is_var = false) {
       // see of we have this entry
-      ScopeTable* tmp = parse_ptr;
+      ScopeTable* tmp;
+      if(is_var) {
+	tmp = iter_ptr;
+      }
+      else {
+	tmp = parse_ptr;
+      }
+
       while(tmp) {
 	SymbolEntry* entry = tmp->GetEntry(e->GetName());
 	if(entry) {
@@ -274,7 +281,12 @@ namespace frontend {
       }
 
       // add new entry
-      parse_ptr->AddEntry(e);
+      if(is_var) {
+	iter_ptr->AddEntry(e);
+      }
+      else {
+	parse_ptr->AddEntry(e);
+      }
       entries.push_back(e);
       return true;
     }

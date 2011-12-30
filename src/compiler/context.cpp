@@ -1025,7 +1025,7 @@ bool ContextAnalyzer::Analyze()
 								    scope_name,
 								    TypeFactory::Instance()->MakeType(VAR_TYPE),
 								    false, true);
-      current_table->AddEntry(entry);
+      current_table->AddEntry(entry, true);
 
       // link entry and variable
       variable->SetTypes(entry->GetType());
