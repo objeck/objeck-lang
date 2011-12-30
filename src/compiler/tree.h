@@ -250,7 +250,7 @@ namespace frontend {
     }
 
     SymbolEntry* GetEntry(const string &name) {
-      ScopeTable* tmp = iter_ptr;
+      ScopeTable* tmp = head;
       while(tmp) {
 	SymbolEntry* entry = tmp->GetEntry(name);
 	if(entry) {
