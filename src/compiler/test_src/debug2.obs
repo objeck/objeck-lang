@@ -1,0 +1,15 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			i := 0;
+			while(i < 3) {
+				i += 3;
+				x := i * 1;
+			};
+			
+			if(x < 8) {
+				x->PrintLine();
+			};
+		}
+	}
+}
