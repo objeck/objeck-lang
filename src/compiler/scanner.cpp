@@ -40,6 +40,7 @@ Scanner::Scanner(string f, bool p)
 {
   // copy file name
   filename = f;
+  cur_char = '\0';
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; i++) {
     tokens[i] = new Token;
