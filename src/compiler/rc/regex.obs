@@ -4,9 +4,9 @@ bundle Default {
 	enum Token := -100 {
 		LPRN,
 		RPRN,
-		KLEENE,
 		ALTERN,
-		CONCAT
+		CONCAT,
+		KLEENE
 	}
 	
 	class RegEx {
