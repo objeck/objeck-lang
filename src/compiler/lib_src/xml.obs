@@ -560,6 +560,7 @@ bundle XML {
 				
 			# looks for tag name or multpile comments
 			IgnoreWhiteSpace();
+			tag_name : String;
 			if(Match('!')) {
 				@buffer_pos -= 1;
 				return ParseElement();
@@ -930,6 +931,8 @@ bundle XML {
 				while(start_pos > -1 & filter->Get(start_pos) <> '[') {
 					start_pos -= 1;
 				};
+
+				expr : String;
 				if(start_pos < end_pos) {
 					start_pos += 1;
 					expr := filter->SubString(start_pos, end_pos - start_pos);	
