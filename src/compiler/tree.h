@@ -308,7 +308,7 @@ namespace frontend {
 	iter_ptr = iter_ptr->GetNextChild();
       }
     }
-
+    
     void PreviousScope() {
       if(iter_ptr) {
 	iter_ptr = iter_ptr->GetParent();
@@ -992,7 +992,7 @@ namespace frontend {
     Expression* else_expression;
     Cond* next;
     
-    Cond(const string &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
+  Cond(const string &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1053,7 +1053,7 @@ namespace frontend {
   class Break : public Statement {
     friend class TreeFactory;
     
-    Break(const string &f, const int l) : Statement(f, l) {
+  Break(const string &f, const int l) : Statement(f, l) {
     }
 
     ~Break() {
@@ -1203,13 +1203,17 @@ namespace frontend {
     friend class TreeFactory;
     Expression* eval_expression;
     map<int, StatementList*> label_statements;
+    vector<StatementList*> statement_lists;
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-  Select(const string &f, const int l, Expression* e, map<ExpressionList*, StatementList*> s, StatementList* o) :
+  Select(const string &f, const int l, Expression* e, 
+	 map<ExpressionList*, StatementList*> s, 
+	 vector<StatementList*> sl, StatementList* o) :
     Statement(f, l) {
       eval_expression = e;
       statement_map = s;
+      statement_lists = sl;
       other = o;
     }
 
@@ -1235,6 +1239,10 @@ namespace frontend {
 
     map<ExpressionList*, StatementList*> GetStatements() {
       return statement_map;
+    }
+    
+    vector<StatementList*> GetStatementLists() {
+      return statement_lists;
     }
 
     StatementList* GetOther() {
@@ -1462,8 +1470,8 @@ namespace frontend {
     friend class TreeFactory;
     StatementType stmt_type;
     
-    OperationAssignment(const string &f, const int l, Variable* v, 
-			Expression* e, StatementType t) : 
+  OperationAssignment(const string &f, const int l, Variable* v, 
+		      Expression* e, StatementType t) : 
     Assignment(f, l, v, e) {
       stmt_type = t;
     }
@@ -1809,8 +1817,8 @@ namespace frontend {
     bool is_interface;
     vector<string> interface_strings;
     
-    Class(const string &f, const int l, const string &n, 
-	  const string &p, vector<string> e, bool i) : ParseNode(f, l) {
+  Class(const string &f, const int l, const string &n, 
+	const string &p, vector<string> e, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -1983,8 +1991,8 @@ namespace frontend {
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
     
-    MethodCall(const string &f, const int l, MethodCallType t,
-	       const string &v, ExpressionList* e) :
+  MethodCall(const string &f, const int l, MethodCallType t,
+	     const string &v, ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = t;
@@ -2031,9 +2039,9 @@ namespace frontend {
       SetEvalType(array_type, false);
     }
     
-    MethodCall(const string &f, const int l,
-	       const string &v, const string &m,
-	       ExpressionList* e) :
+  MethodCall(const string &f, const int l,
+	     const string &v, const string &m,
+	     ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = METHOD_CALL;
@@ -2535,8 +2543,10 @@ namespace frontend {
     }
   
     Select* MakeSelect(const string &file_name, const int line_num, Expression* eval_expression,
-		       map<ExpressionList*, StatementList*> statement_map, StatementList* other) {
-      Select* tmp = new Select(file_name, line_num, eval_expression, statement_map, other);
+		       map<ExpressionList*, StatementList*> statement_map, 
+		       vector<StatementList*> statement_lists, StatementList* other) {
+      Select* tmp = new Select(file_name, line_num, eval_expression, 
+			       statement_map, statement_lists, other);
       statements.push_back(tmp);
       return tmp;
     }
@@ -2708,21 +2718,21 @@ namespace frontend {
       }
       
       /*
-      while(!int_strings.empty()) {
+	while(!int_strings.empty()) {
 	IntStringHolder* tmp = int_strings.front();
 	int_strings.erase(int_strings.begin());
 	// delete
 	delete tmp;
 	tmp = NULL;
-      }
+	}
     
-      while(!float_strings.empty()) {
+	while(!float_strings.empty()) {
 	FloatStringHolder* tmp = float_strings.front();
 	float_strings.erase(float_strings.begin());
 	// delete
 	delete tmp;
 	tmp = NULL;
-      }
+	}
       */
       
       if(linker) {

@@ -2741,6 +2741,7 @@ Select* Parser::ParseSelect(int depth)
   NextToken();
 
   StatementList* other = NULL;
+  vector<StatementList*> statement_lists;
   map<ExpressionList*, StatementList*> statement_map;
   while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
     ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
@@ -2775,6 +2776,8 @@ Select* Parser::ParseSelect(int depth)
       is_other_label = false;
     } 
     else {
+      statement_lists.push_back(statements);
+      // note: order matters during contextual analysis
       statement_map.insert(pair<ExpressionList*, StatementList*>(labels, statements));
     }
   }
@@ -2783,9 +2786,9 @@ Select* Parser::ParseSelect(int depth)
     ProcessError(TOKEN_CLOSED_BRACE);
   }
   NextToken();
-
+  
   return TreeFactory::Instance()->MakeSelect(file_name, line_num, eval_expression,
-					     statement_map, other);
+					     statement_map, statement_lists, other);
 }
 
 /****************************
