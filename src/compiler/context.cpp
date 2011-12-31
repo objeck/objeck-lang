@@ -2270,7 +2270,7 @@ bool ContextAnalyzer::Analyze()
       else if(IsEnumExpression(left) && IsEnumExpression(right)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
-      else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
 	      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
@@ -2288,7 +2288,7 @@ bool ContextAnalyzer::Analyze()
       else if(IsEnumExpression(left) || IsEnumExpression(right)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
-      else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
 	      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
@@ -2318,7 +2318,7 @@ bool ContextAnalyzer::Analyze()
       else if(IsEnumExpression(left) || IsEnumExpression(right)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
-      else if((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE ||
+      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
 	      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
 	ProcessError(expression, "Invalid mathematical operation");
       }
