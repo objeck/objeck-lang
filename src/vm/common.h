@@ -903,10 +903,15 @@ class StackProgram {
     }
 
     if(char_strings) {
+      for(int i = 0; i < num_char_strings; i++) {
+	BYTE_VALUE* tmp = char_strings[i];
+	delete [] tmp;
+	tmp = NULL;
+      }
       delete[] char_strings;
       char_strings = NULL;
     }
-
+    
     if(init_method) {
       delete init_method;
       init_method = NULL;
