@@ -1990,11 +1990,15 @@ bool ContextAnalyzer::Analyze()
 	// statements get assoicated here and validated below
 	label_statements.insert(pair<int, StatementList*>(value, iter->second));
       }
-      // statements
-      AnalyzeStatements(iter->second, depth + 1);
     }
     select_stmt->SetLabelStatements(label_statements);
-
+    
+    // statements (in parse order)
+    vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
+    for(size_t i = 0; i < statement_lists.size(); i++) {
+      AnalyzeStatements(statement_lists[i], depth + 1);
+    }
+    
     if(select_stmt->GetOther()) {
       AnalyzeStatements(select_stmt->GetOther(), depth + 1);
     }
