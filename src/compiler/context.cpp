@@ -2053,17 +2053,23 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
     Show("do/while", do_while_stmt->GetLineNumber(), depth);
 #endif
-
+    
     // 'do/while' statements
+    current_table->NewScope();
     in_loop = true;
-    AnalyzeStatements(do_while_stmt->GetStatements(), depth + 1);
+    vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
+    for(size_t i = 0; i < statements.size(); i++) {
+      AnalyzeStatement(statements[i], depth + 2);
+    }
     in_loop = false;
+    
     // expression
     Expression* expression = do_while_stmt->GetExpression();
     AnalyzeExpression(expression, depth + 1);
     if(!IsBooleanExpression(expression)) {
       ProcessError(expression, "Expected Bool expression");
     }
+    current_table->PreviousScope();
   }
 
   /****************************

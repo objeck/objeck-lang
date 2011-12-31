@@ -1333,10 +1333,9 @@ bundle Struct {
 
 		method : public : SetKey(key : Compare) ~ Nil {
 			@key := key;
-				
 		}
 		
-		method : public : native : GetKey() ~ Compare {
+		method : public : GetKey() ~ Compare {
 			return @key;
 		}
 
@@ -1366,6 +1365,24 @@ bundle Struct {
 
 		method : public : SetRight(right : TreeNode) ~ Nil {
 			@right := right;
+		}
+	}
+
+	class Pair {
+		@key : Compare;
+		@value : Base;
+
+		New(key : Compare, value : Base) {
+			@key := key;
+			@value := value;
+		}
+
+		method : public : GetKey() ~ Compare {
+			return @key;
+		}
+
+		method : public : Get() ~ Base {
+			return @value;
 		}
 	}
 	
