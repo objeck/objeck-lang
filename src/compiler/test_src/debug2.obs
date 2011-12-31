@@ -6,10 +6,8 @@ bundle Default {
 				i += 3;
 				x := i * 1;
 			};
-			
-			if(x < 8) {
-				x->PrintLine();
-			};
+		
+			y := 9;	
 		}
 	}
 }
