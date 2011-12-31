@@ -6,8 +6,14 @@ bundle Default {
 				i += 3;
 				x := i * 1;
 			};
-		
-			y := 9;	
+	
+			x : Float;
+			x->PrintLine();
+			if(x < 3) {	
+				y := 9;	
+				y->PrintLine();
+			};
+			x->PrintLine();
 		}
 	}
 }
