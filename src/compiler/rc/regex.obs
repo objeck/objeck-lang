@@ -1,10 +1,19 @@
+use Struct;
+
 bundle Default {
-	enum Token := -100 {
+	enum Token := -16 {
 		LPRN,
 		RPRN,
 		ALTERN,
 		CONCAT,
 		KLEENE
+	}
+	
+	enum Code := -32 {
+		STOP,
+  	JUMP,
+		MATCH,
+		BRANCH
 	}
 	
 	class RegEx {
@@ -59,13 +68,13 @@ bundle Default {
 		}
 		
 		method : public : Convert(prep : Int[]) ~ Int[] {
-			stack : Int[] := Int->New[prep->Size()];
-			top : Int := 0; 
+			stack := Int->New[prep->Size()];
+			top := 0; 
 			j := 0; 
 			
-			postfix : Int[] := Int->New[prep->Size()];			
-			i : Int := 0;
-			t : Int := prep[i];
+			postfix := Int->New[prep->Size()];			
+			i := 0;
+			t := prep[i];
 			
 			stack[top] := Token->LPRN;
 			top += 1;
@@ -111,8 +120,36 @@ bundle Default {
 			return postfix;
 		}
 		
-		method : public : Compile(prep : Int[]) ~ Nil {
-		
+		method : public : Compile(convert : Int[]) ~ Vector {
+			stack : Int[] := Int->New[convert->Size()];
+			top := 0;
+			
+			pc := 0;
+			instrs := Vector->New();
+			
+			each(i : convert) {
+				c := convert[i];
+    		select(c) {
+					label Token->CONCAT: {
+						top -= 1;
+					}
+					
+					label Token->KLEENE: {
+					}
+			
+					label Token->ALTERN: {
+					}
+					
+					other: {
+						stack[top] := pc;
+						top += 1;
+      			instrs->AddBack(Instruction->New(Code->JUMP, pc + 1)->As(Base));
+      			instrs->AddBack(Instruction->New(Code->MATCH, c)->As(Base));
+					}
+				};
+			};
+			
+			return instrs;
 		}
 		
 		method : public : Apply(string : String) ~ Nil {
@@ -180,6 +217,16 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			regex := RegEx->New("(a|b)*a");
 			regex->Apply("ababababab");
+		}
+	}
+	
+	class Instruction {
+		@operand : Code;
+		@address : Int;
+		
+		New(operand : Code, address : Int) {
+			@operand := operand;
+			@address := address;
 		}
 	}
 }
