@@ -1,3 +1,13 @@
+#~
+Enhanced bytecode machine implementation of Thompson's
+on-the-fly regular expression compiler for Objeck.
+Copyright (c) 2012 Randy Hollines
+
+* Copyright (c) 2004 Jan Burgy.
+* Can be distributed under the MIT license, see bottom of file.
+~#
+
+use IO;
 use Struct;
 
 bundle Default {
@@ -9,7 +19,7 @@ bundle Default {
 		KLEENE
 	}
 	
-	enum Code := -32 {
+	enum Operand := -32 {
 		STOP,
   	JUMP,
 		MATCH,
@@ -25,14 +35,46 @@ bundle Default {
 			@pattern := pattern;
 			@error := false;
 			
+pattern->PrintLine();
 			prep := Prepare();
 			if(@error = false) {
-				x := Convert(prep);
-				DumpA(x);
+				src := Convert(prep);
+DumpSrc(src);
+				instrs := Compile(src);
+DumpInstrs(instrs);
 			};
 		}
+
+		method : public : DumpInstrs(instrs : Instr[]) ~ Nil {
+			i := 0;
+			do {
+				instr := instrs[i];
+				select(instr->GetOperand()) {
+					label Operand->STOP: {
+						Console->Print(i)->PrintLine(": STOP");
+					}
+					
+					label Operand->JUMP: {
+						Console->Print(i)->Print(": JUMP, addr=")
+							->PrintLine(instr->GetAddress());
+					}
+
+					label Operand->MATCH: {
+						Console->Print(i)->Print(": MATCH, symb='")
+							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+					}
+					
+					label Operand->BRANCH: {
+						Console->Print(i)->Print(": BRANCH, symb='")
+							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');				
+					}
+				};
+				i += 1;
+			}
+			while(instr->GetOperand() <> Operand->STOP);
+		}
 		
-		method : public : DumpA(prep : Int[]) ~ Nil {
+		method : public : DumpSrc(prep : Int[]) ~ Nil {
 			i := 0;
 			t := prep[i];
 			while(t <> 0) {
@@ -60,7 +102,6 @@ bundle Default {
 						c->Print();
 					}
 				};
-				# update
 				i += 1;
 				t := prep[i];
 			};
@@ -120,36 +161,66 @@ bundle Default {
 			return postfix;
 		}
 		
-		method : public : Compile(convert : Int[]) ~ Vector {
-			stack : Int[] := Int->New[convert->Size()];
-			top := 0;
-			
+		method : public : Compile(src : Int[]) ~ Instr[] {
 			pc := 0;
-			instrs := Vector->New();
-			
-			each(i : convert) {
-				c := convert[i];
-    		select(c) {
+			top := 0;
+			stack := Int->New[src->Size()];
+			code := Instr->New[src->Size() * 5];
+
+			i := 0;
+			s := src[i];
+			while(s <> 0) {
+    		select(s) {
 					label Token->CONCAT: {
 						top -= 1;
 					}
 					
 					label Token->KLEENE: {
+						code[pc] := Instr->New(Operand->BRANCH, '*'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc - 2);
 					}
 			
 					label Token->ALTERN: {
+						code[pc] := Instr->New(Operand->JUMP, pc + 4);
+						pc += 1;
+						
+						code[pc] := Instr->New(Operand->BRANCH, '|'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+						
+						code[pc] := code[stack[top - 2]];
+						pc += 1;
+						
+						code[stack[top - 2]] := Instr->New(Operand->JUMP, pc - 3);
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc);
+						top -= 1;
 					}
 					
 					other: {
 						stack[top] := pc;
 						top += 1;
-      			instrs->AddBack(Instruction->New(Code->JUMP, pc + 1)->As(Base));
-      			instrs->AddBack(Instruction->New(Code->MATCH, c)->As(Base));
+
+						code[pc] := Instr->New(Operand->JUMP, pc + 1);
+						pc += 1;
+						
+						code[pc] := Instr->New(Operand->MATCH, s);
+						pc += 1;
 					}
 				};
+				i += 1;
+				s := src[i];		
 			};
+			code[pc] := Instr->New(Operand->STOP, pc);
+			pc += 1;
 			
-			return instrs;
+			return code;
 		}
 		
 		method : public : Apply(string : String) ~ Nil {
@@ -220,13 +291,47 @@ bundle Default {
 		}
 	}
 	
-	class Instruction {
-		@operand : Code;
+	class Instr {
+		@operand : Operand;
 		@address : Int;
 		
-		New(operand : Code, address : Int) {
+		New(operand : Operand, address : Int) {
 			@operand := operand;
 			@address := address;
 		}
+
+		method : public : GetOperand() ~ Operand {
+			return @operand;
+		} 
+		
+		method : public : GetAddress() ~ Int {
+			return @address;
+		} 
 	}
 }
+
+#~
+/*
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the
+ * Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall
+ * be included in all copies or substantial portions of the
+ * Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+ * KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS
+ * OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+~#
