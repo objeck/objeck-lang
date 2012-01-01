@@ -1,5 +1,3 @@
-use Struct;
-
 bundle Default {
 	enum Token := -100 {
 		LPRN,
@@ -111,6 +109,10 @@ bundle Default {
 			postfix[j] := 0;
 			
 			return postfix;
+		}
+		
+		method : public : Compile(prep : Int[]) ~ Nil {
+		
 		}
 		
 		method : public : Apply(string : String) ~ Nil {
