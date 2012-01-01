@@ -29,10 +29,12 @@ bundle Default {
 	class RegEx {
 		@string : String;
 		@pattern : String;
+		@max_size : Int;
 		@error : Bool;
 		
 		New(pattern : String) {
 			@pattern := pattern;
+			@max_size := 256;
 			@error := false;
 			
 Console->Print("pattern=")->PrintLine(pattern);
@@ -110,7 +112,7 @@ DumpInstrs(instrs);
 		}
 		
 		method : public : Convert(prep : Int[]) ~ Int[] {
-			stack := Int->New[prep->Size()];
+			stack := Int->New[@max_size];
 			top := 0; 
 			j := 0; 
 			
@@ -165,7 +167,7 @@ DumpInstrs(instrs);
 		method : public : Compile(src : Int[]) ~ Instr[] {
 			pc := 0;
 			top := 0;
-			stack := Int->New[src->Size()];
+			stack := Int->New[@max_size];
 			code := Instr->New[src->Size() * 5];
 
 			i := 0;
@@ -284,6 +286,68 @@ DumpInstrs(instrs);
 			};
 			
 			return prep;
+		}
+
+		method : public : Execute(code : Instr[], src : String) ~ Bool {
+			i := 0;	c := src->Get(i);
+			i += 1;	pc := 0;
+			clist := Int->New[@max_size];
+			cnode := 0;	shift := 0;
+			nlist	:= Int->New[@max_size];
+			nnode := 0;	match := false;
+			
+			while(i < src->Size()) {
+				select(code[pc]->GetOperand()) {
+					label Operand->STOP: {
+						match := false;
+					}
+
+					label Operand->JUMP: {
+						pc := code[pc]->GetAddress();
+						match := false;
+					}
+
+					label Operand->MATCH: {
+						
+						if(c = code[pc]->GetAddress()) {
+							nlist[nnode] := code[pc + 1]->GetAddress();
+							nnode += 1;
+						};
+						match := true;
+					}
+					
+					label Operand->BRANCH: {
+						clist[cnode] := code[pc + 1]->GetAddress();
+						cnode += 1;
+						pc := code[pc + 2]->GetAddress();
+						match := false;
+					}		
+				};
+
+				if(match & shift = cnode) {
+					if(nnode = 0) { return false; };
+					shift := 0;
+					cnode := 0;
+					while(nnode > 0) {
+						nnode -= 1;
+						clist[cnode] := nlist[nnode];
+						cnode += 1;
+					};
+					c := src->Get(i);
+					i += 1;
+				};
+				pc := clist[shift];
+				shift += 1;
+			};
+
+			# is any of the current states final?
+			for(i := shift; i < cnode; i += 1;) {
+				if(code[clist[i]]->GetOperand() = Operand->STOP) {
+					return	true;
+				};
+			};
+			
+			return code[pc]->GetOperand() = Operand->STOP;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
