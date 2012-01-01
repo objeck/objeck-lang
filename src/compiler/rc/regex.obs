@@ -35,7 +35,7 @@ bundle Default {
 			@pattern := pattern;
 			@error := false;
 			
-pattern->PrintLine();
+Console->Print("pattern=")->PrintLine(pattern);
 			prep := Prepare();
 			if(@error = false) {
 				src := Convert(prep);
@@ -75,6 +75,7 @@ DumpInstrs(instrs);
 		}
 		
 		method : public : DumpSrc(prep : Int[]) ~ Nil {
+			"source="->Print();
 			i := 0;
 			t := prep[i];
 			while(t <> 0) {
@@ -286,7 +287,7 @@ DumpInstrs(instrs);
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("(a|b)*a");
+			regex := RegEx->New("(a|b)*aa");
 			regex->Apply("ababababab");
 		}
 	}
