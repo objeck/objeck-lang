@@ -27,8 +27,8 @@ bundle Default {
 	}
 	
 	class RegEx {
-		@string : String;
 		@pattern : String;
+		@instrs : Instr[];
 		@max_size : Int;
 		@error : Bool;
 		
@@ -36,14 +36,15 @@ bundle Default {
 			@pattern := pattern;
 			@max_size := 256;
 			@error := false;
+			@instrs := Nil;
 			
 Console->Print("pattern=")->PrintLine(pattern);
 			prep := Prepare();
 			if(@error = false) {
 				src := Convert(prep);
 DumpSrc(src);
-				instrs := Compile(src);
-DumpInstrs(instrs);
+				@instrs := Compile(src);
+DumpInstrs(@instrs);
 			};
 		}
 
@@ -227,7 +228,9 @@ DumpInstrs(instrs);
 		}
 		
 		method : public : Apply(string : String) ~ Nil {
-			@string := string;
+			if(@instrs <> Nil) {
+				Execute(@instrs, string)->PrintLine();
+			};
 		}
 		
 		method : public : Prepare() ~ Int[] {
@@ -308,7 +311,6 @@ DumpInstrs(instrs);
 					}
 
 					label Operand->MATCH: {
-						
 						if(c = code[pc]->GetAddress()) {
 							nlist[nnode] := code[pc + 1]->GetAddress();
 							nnode += 1;
