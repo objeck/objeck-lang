@@ -299,7 +299,7 @@ DumpInstrs(@instrs);
 			nnode := 0;	
 			match : Bool;
 			
-			while(i < src->Size()) {
+			while(i <= src->Size()) {
 				select(code[pc]->GetOperand()) {
 					label Operand->STOP: {
 						match := true;
@@ -312,6 +312,8 @@ DumpInstrs(@instrs);
 
 					label Operand->MATCH: {
 						if(c = code[pc]->GetAddress()) {
+							Console->Print("match '")->Print(c)->PrintLine("'");
+
 							nlist[nnode] := code[pc + 1]->GetAddress();
 							nnode += 1;
 						};
@@ -347,20 +349,16 @@ DumpInstrs(@instrs);
 			# is any of the current states final?
 			for(i := shift; i < cnode; i += 1;) {
 				if(code[clist[i]]->GetOperand() = Operand->STOP) {
-					"-1-"->PrintLine(); 
 					return	true;
 				};
 			};
-			
-			"-2-"->PrintLine();
-			code[pc]->GetOperand()->PrintLine();
 			
 			return code[pc]->GetOperand() = Operand->STOP;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("abcdefg");
-			regex->Apply("abcdefg");
+			regex := RegEx->New("(ac|b)*aa");
+			regex->Apply("acbacbaa");
 		}
 	}
 	
