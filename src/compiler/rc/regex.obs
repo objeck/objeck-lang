@@ -40,6 +40,7 @@ bundle Default {
 			
 Console->Print("pattern=")->PrintLine(pattern);
 			prep := Prepare();
+
 			if(@error = false) {
 				src := Convert(prep);
 DumpSrc(src);
@@ -139,7 +140,6 @@ DumpInstrs(@instrs);
 						top -= 1;
 					}
 					
-					label Token->KLEENE:
 					label Token->ALTERN:
 					label Token->CONCAT: {
 						while(t <= stack[top - 1]) {
@@ -149,6 +149,16 @@ DumpInstrs(@instrs);
 						};
 						stack[top] := t;
 						top += 1;
+					}
+					
+					label Token->KLEENE: {
+						while(t <= stack[top - 1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						postfix[j] := t;
+						j += 1;
 					}
 					
 					other: {
@@ -299,34 +309,33 @@ DumpInstrs(@instrs);
 			nnode := 0;	
 			match : Bool;
 			
-			while(i <= src->Size()) {
-				if(code[pc] <> Nil) {
-					select(code[pc]->GetOperand()) {
-						label Operand->STOP: {
-							match := true;
-						}
+			while(code[pc] <> Nil) {
+				select(code[pc]->GetOperand()) {
+					label Operand->STOP: {
+						return true;
+					}
 
-						label Operand->JUMP: {
-							pc := code[pc]->GetAddress();
-							match := false;
-						}
+					label Operand->JUMP: {
+						pc := code[pc]->GetAddress();
+						match := false;
+					}
 
-						label Operand->MATCH: {
-							if(c = code[pc]->GetAddress()) {
-								Console->Print("match '")->Print(c)->PrintLine("'");
-								nlist[nnode] := code[pc + 1]->GetAddress();
-								nnode += 1;
-							};
-							match := true;
-						}
-					
-						label Operand->BRANCH: {
-							clist[cnode] := code[pc + 1]->GetAddress();
-							cnode += 1;
-							pc := code[pc + 2]->GetAddress();
-							match := false;
-						}		
-					};
+					label Operand->MATCH: {
+						if(c = code[pc]->GetAddress()) {
+							Console->Print("match '")->Print(c)->PrintLine("'");
+							nlist[nnode] := code[pc + 1]->GetAddress();
+							nnode += 1;
+						};
+						match := true;
+					}
+				
+					label Operand->BRANCH: {
+						clist[cnode] := code[pc + 1]->GetAddress();
+						cnode += 1;
+						pc := code[pc + 2]->GetAddress();
+						match := false;
+	
+					}		
 				};
 				
 				if(match) {
@@ -346,7 +355,7 @@ DumpInstrs(@instrs);
 					};
 					pc := clist[shift];
 					shift += 1;
-				};
+				};	
 			};
 			
 			# are any of the current states final?
