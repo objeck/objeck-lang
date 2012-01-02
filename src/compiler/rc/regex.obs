@@ -1,9 +1,8 @@
 #~
-Enhanced bytecode machine implementation of Thompson's
-on-the-fly regular expression compiler for Objeck.
+RegEx engine for Objeck
 Copyright (c) 2012 Randy Hollines
 
-original implementation   
+shared code/concepts   
 * Copyright (c) 2004 Jan Burgy.
 * Can be distributed under the MIT license, see bottom of file.
 ~#
@@ -29,26 +28,32 @@ bundle Default {
 	
 	class RegEx {
 		@pattern : String;
+		@string : String;
 		@instrs : Instr[];
 		@max_size : Int;
 		@error : Bool;
+		@start : Int;
+		@end : Int;
+		
 		
 		New(pattern : String) {
 			@pattern := pattern;
 			@max_size := 256;
 			@error := false;
 			@instrs := Nil;
+			@start := -1;
+			@end := -1;
 			
 			prep := Prepare();
 			if(@error = false) {
 				src := Convert(prep);
-DumpSrc(src);
+# DumpSrc(src);
 				@instrs := Compile(src);
-DumpInstrs(@instrs);
+# DumpInstrs(@instrs);
 			};
 		}
 		
-		method : public : DumpInstrs(instrs : Instr[]) ~ Nil {
+		method : DumpInstrs(instrs : Instr[]) ~ Nil {
 			i := 0;
 			do {
 				instr := instrs[i];
@@ -77,7 +82,7 @@ DumpInstrs(@instrs);
 			while(instr->GetOperand() <> Operand->STOP);
 		}
 		
-		method : public : DumpSrc(prep : Int[]) ~ Nil {
+		method : DumpSrc(prep : Int[]) ~ Nil {
 			"source="->Print();
 			i := 0;
 			t := prep[i];
@@ -112,14 +117,14 @@ DumpInstrs(@instrs);
 			'\n'->Print();
 		}
 		
-		method : public : Convert(prep : Int[]) ~ Int[] {
-			stack := Int->New[@max_size];
-			top := 0; 
-			j := 0; 
-			
+		method : Convert(prep : Int[]) ~ Int[] {
 			postfix := Int->New[prep->Size()];			
 			i := 0;
 			t := prep[i];
+			
+			stack := Int->New[@max_size];
+			top := 0; 
+			j := 0; 
 			
 			stack[top] := Token->LPRN;
 			top += 1;
@@ -165,7 +170,6 @@ DumpInstrs(@instrs);
 						j += 1;
 					}
 				};
-				# update
 				i += 1;
 				t := prep[i];
 			};
@@ -174,7 +178,7 @@ DumpInstrs(@instrs);
 			return postfix;
 		}
 		
-		method : public : Compile(src : Int[]) ~ Instr[] {
+		method : Compile(src : Int[]) ~ Instr[] {
 			pc := 0;
 			top := 0;
 			stack := Int->New[@max_size];
@@ -236,13 +240,7 @@ DumpInstrs(@instrs);
 			return code;
 		}
 		
-		method : public : Apply(string : String) ~ Nil {
-			if(@instrs <> Nil) {
-				Execute(@instrs, string)->PrintLine();
-			};
-		}
-		
-		method : public : Prepare() ~ Int[] {
+		method : Prepare() ~ Int[] {
 			prep := Int->New[@max_size];
 			index := 0;
 			prn_count := 0;
@@ -300,42 +298,73 @@ DumpInstrs(@instrs);
 			return prep;
 		}
 		
-		method : public : native : Execute(instrs : Instr[], string : String) ~ Bool {
+		method : public : Apply(string : String) ~ String {
+			@string := string;
+			if(@error = true) {
+				return "";
+			};
+			
+			if(Execute(@instrs, string, 0)) {
+				if(@start < 0) {
+					return string;
+				};
+				
+Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);				
+				return string->SubString(@start, @end - @start);
+			};
+			
+			return "";
+		}
+		
+		method : public : Next() ~ String {
+			if(@error = true | @string = Nil) {
+				return "";
+			};
+
+			@start := -1;
+			if(Execute(@instrs, @string, @end)) {
+				if(@start < 0) {
+					return @string;
+				};
+				
+Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);				
+				return @string->SubString(@start, @end - @start);
+			};
+			
+			return "";
+		}
+		
+		method : native : Execute(instrs : Instr[], string : String, offset : Int) ~ Bool {
 			top := 0;
 			stack := Int->New[@max_size];
-			i := 0;
+			i := offset;
 			pc := 0;
-			first := -1;
-			last := -1;
-			
+						
 			do {
 				instr := instrs[pc];
 				select(instr->GetOperand()) {
 					label Operand->STOP: {
-						Console->Print(pc)->PrintLine(": STOP");
-						
-							last := i;
-						Console->Print("range: ")->Print(first)->Print(", ")->PrintLine(last);
+# Console->Print(pc)->PrintLine(": STOP");
+						@end := i;
 						return true;
 					}
 					
 					label Operand->JUMP: {
-						Console->Print(pc)->Print(": JUMP, addr=")->PrintLine(instr->GetAddress());	
-							
+# Console->Print(pc)->Print(": JUMP, addr=")->PrintLine(instr->GetAddress());								
 						pc := instr->GetAddress();
 					}
 
 					label Operand->MATCH: {
 						Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						if(string->Get(i) = instr->GetAddress()->As(Char)) {
-							if(first < 0) {
-								first := i;
+							if(@start < 0) {
+								@start := i;
 							};
 							i += 1;
 							pc += 1;
 						}
 						else {
-							# first := -1;
+							# @start := -1;
 							if(top > 0) {
 								top -=1 ;
 								pc := stack[top];
@@ -348,109 +377,24 @@ DumpInstrs(@instrs);
 					}
 					
 					label Operand->BRANCH: {
-						Console->Print(pc)->Print(": BRANCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
-						
+# Console->Print(pc)->Print(": BRANCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						pc += 1;
 						stack[top] := pc + 1;
 						top += 1;
 					}
 				};
-				
-				"---"->PrintLine();
+# "---"->PrintLine();
 			}
 			while(instr->GetOperand() <> Operand->STOP);
 			
 			return false;
 		}
-
-		method : public : native : Execute2(code : Instr[], src : String) ~ Bool {
-			i := 0;	c := src->Get(i); i += 1;	pc := 0;
-			clist := Int->New[@max_size];
-			cnode := 0;	shift := 0;
-			nlist	:= Int->New[@max_size];
-			nnode := 0;	
-			match : Bool;
-			
-			while(code[pc] <> Nil) {
-				select(code[pc]->GetOperand()) {
-					label Operand->STOP: {
-"stop"->PrintLine();					
-						match := true;
-					}
-
-					label Operand->JUMP: {
-						pc := code[pc]->GetAddress();
-						match := false;
-					}
-
-					label Operand->MATCH: {
-Console->Print("match '")->Print(c)->PrintLine("'");
-
-						if(c = code[pc]->GetAddress()) {
-							nlist[nnode] := code[pc + 1]->GetAddress();
-							nnode += 1;
-						};
-						match := true;
-					}
-				
-					label Operand->BRANCH: {
-"branch"->PrintLine();					
-						clist[cnode] := code[pc + 1]->GetAddress();
-						cnode += 1;
-						pc := code[pc + 2]->GetAddress();
-						match := false;
-	
-					}		
-				};
-				
-				if(match) {
-					if(shift = cnode) {
-"-0-"->PrintLine();					
-						if(nnode = 0) { 
-							return false; 
-						};
-"-1-"->PrintLine();							
-						shift := 0;
-						cnode := 0;
-						while(nnode > 0) {
-							nnode -= 1;
-							clist[cnode] := nlist[nnode];
-							cnode += 1;
-						};
-						c := src->Get(i);
-						i += 1;
-					};
-				
-					pc := clist[shift];
-pc->PrintLine();						
-					shift += 1;
-				};	
-			
-			};
-
-"----"->PrintLine();				
-			
-			# are any of the current states final?
-			for(i := shift; i < cnode; i += 1;) {
-				if(code[clist[i]]->GetOperand() = Operand->STOP) {
-					"xxx"->PrintLine();
-					return	true;
-				};
-			};
-			
-			pc->PrintLine();
-			"yyy"->PrintLine();
-			(code[pc] = Nil)->PrintLine();
-			
-			nnode->PrintLine();
-			
-			return code[pc] = Nil | code[pc]->GetOperand() = Operand->STOP;
-		}
 		
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				regex := RegEx->New(args[0]);
-				regex->Apply(args[1]);
+				regex->Apply(args[1])->PrintLine();
+				regex->Next()->PrintLine();
 			};
 		}
 	}
