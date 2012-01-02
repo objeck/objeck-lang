@@ -234,7 +234,7 @@ DumpInstrs(@instrs);
 		}
 		
 		method : public : Prepare() ~ Int[] {
-			prep := Int->New[@pattern->Size() * 2];
+			prep := Int->New[@max_size];
 			index := 0;
 			prn_count := 0;
 			concat := false;
@@ -292,17 +292,17 @@ DumpInstrs(@instrs);
 		}
 
 		method : public : Execute(code : Instr[], src : String) ~ Bool {
-			i := 0;	c := src->Get(i);
-			i += 1;	pc := 0;
+			i := 0;	c := src->Get(i); i += 1;	pc := 0;
 			clist := Int->New[@max_size];
 			cnode := 0;	shift := 0;
 			nlist	:= Int->New[@max_size];
-			nnode := 0;	match := false;
+			nnode := 0;	
+			match : Bool;
 			
 			while(i < src->Size()) {
 				select(code[pc]->GetOperand()) {
 					label Operand->STOP: {
-						match := false;
+						match := true;
 					}
 
 					label Operand->JUMP: {
@@ -326,35 +326,41 @@ DumpInstrs(@instrs);
 					}		
 				};
 
-				if(match & shift = cnode) {
-					if(nnode = 0) { return false; };
-					shift := 0;
-					cnode := 0;
-					while(nnode > 0) {
-						nnode -= 1;
-						clist[cnode] := nlist[nnode];
-						cnode += 1;
+				if(match) {
+					if(shift = cnode) {
+						if(nnode = 0) { "-0-"->PrintLine(); return false; };
+						shift := 0;
+						cnode := 0;
+						while(nnode > 0) {
+							nnode -= 1;
+							clist[cnode] := nlist[nnode];
+							cnode += 1;
+						};
+						c := src->Get(i);
+						i += 1;
 					};
-					c := src->Get(i);
-					i += 1;
+					pc := clist[shift];
+					shift += 1;
 				};
-				pc := clist[shift];
-				shift += 1;
 			};
 
 			# is any of the current states final?
 			for(i := shift; i < cnode; i += 1;) {
 				if(code[clist[i]]->GetOperand() = Operand->STOP) {
+					"-1-"->PrintLine(); 
 					return	true;
 				};
 			};
+			
+			"-2-"->PrintLine();
+			code[pc]->GetOperand()->PrintLine();
 			
 			return code[pc]->GetOperand() = Operand->STOP;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("(a|b)*aa");
-			regex->Apply("ababababab");
+			regex := RegEx->New("abcdefg");
+			regex->Apply("abcdefg");
 		}
 	}
 	
