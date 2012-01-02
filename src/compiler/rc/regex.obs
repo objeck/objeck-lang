@@ -300,37 +300,40 @@ DumpInstrs(@instrs);
 			match : Bool;
 			
 			while(i <= src->Size()) {
-				select(code[pc]->GetOperand()) {
-					label Operand->STOP: {
-						match := true;
-					}
+				if(code[pc] <> Nil) {
+					select(code[pc]->GetOperand()) {
+						label Operand->STOP: {
+							match := true;
+						}
 
-					label Operand->JUMP: {
-						pc := code[pc]->GetAddress();
-						match := false;
-					}
+						label Operand->JUMP: {
+							pc := code[pc]->GetAddress();
+							match := false;
+						}
 
-					label Operand->MATCH: {
-						if(c = code[pc]->GetAddress()) {
-							Console->Print("match '")->Print(c)->PrintLine("'");
-
-							nlist[nnode] := code[pc + 1]->GetAddress();
-							nnode += 1;
-						};
-						match := true;
-					}
+						label Operand->MATCH: {
+							if(c = code[pc]->GetAddress()) {
+								Console->Print("match '")->Print(c)->PrintLine("'");
+								nlist[nnode] := code[pc + 1]->GetAddress();
+								nnode += 1;
+							};
+							match := true;
+						}
 					
-					label Operand->BRANCH: {
-						clist[cnode] := code[pc + 1]->GetAddress();
-						cnode += 1;
-						pc := code[pc + 2]->GetAddress();
-						match := false;
-					}		
+						label Operand->BRANCH: {
+							clist[cnode] := code[pc + 1]->GetAddress();
+							cnode += 1;
+							pc := code[pc + 2]->GetAddress();
+							match := false;
+						}		
+					};
 				};
-
+				
 				if(match) {
 					if(shift = cnode) {
-						if(nnode = 0) { "-0-"->PrintLine(); return false; };
+						if(nnode = 0) { 
+							return false; 
+						};
 						shift := 0;
 						cnode := 0;
 						while(nnode > 0) {
@@ -345,20 +348,21 @@ DumpInstrs(@instrs);
 					shift += 1;
 				};
 			};
-
-			# is any of the current states final?
+			
+			# are any of the current states final?
 			for(i := shift; i < cnode; i += 1;) {
 				if(code[clist[i]]->GetOperand() = Operand->STOP) {
 					return	true;
 				};
 			};
-			
-			return code[pc]->GetOperand() = Operand->STOP;
+			return code[pc] = Nil | code[pc]->GetOperand() = Operand->STOP;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("(ac|b)*aa");
-			regex->Apply("acbacbaa");
+			if(args->Size() = 2) {
+				regex := RegEx->New(args[0]);
+				regex->Apply(args[1]);
+			};
 		}
 	}
 	
