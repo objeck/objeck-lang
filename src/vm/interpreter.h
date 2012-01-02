@@ -104,6 +104,19 @@ namespace Runtime {
 
     inline void StackErrorUnwind() {
       long pos = call_stack_pos;
+#ifdef _DEBUGGER
+      cerr << "Unwinding local stack (" << this << "):" << endl;
+      StackMethod* method =  frame->GetMethod();
+      cerr << "  method: pos=" << pos << ", name="
+	   << frame->GetMethod()->GetName() << " line=" 
+	   << method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() << endl;
+      while(--pos) {
+	StackMethod* method =  call_stack[pos]->GetMethod();
+	cerr << "  method: pos=" << pos << ", name=" << call_stack[pos]->GetMethod()->GetName() << " line=" 
+	     << method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() << endl;
+      }
+      cerr << "  ..." << endl;
+#else
       cerr << "Unwinding local stack (" << this << "):" << endl;
       cerr << "  method: pos=" << pos << ", name="
 	   << frame->GetMethod()->GetName() << endl;
@@ -112,6 +125,7 @@ namespace Runtime {
 	     << call_stack[pos]->GetMethod()->GetName() << endl;
       }
       cerr << "  ..." << endl;
+#endif
     }
     
     inline void StackErrorUnwind(StackMethod* method) {
