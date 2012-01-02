@@ -3,6 +3,7 @@ Enhanced bytecode machine implementation of Thompson's
 on-the-fly regular expression compiler for Objeck.
 Copyright (c) 2012 Randy Hollines
 
+original implementation   
 * Copyright (c) 2004 Jan Burgy.
 * Can be distributed under the MIT license, see bottom of file.
 ~#
@@ -38,9 +39,7 @@ bundle Default {
 			@error := false;
 			@instrs := Nil;
 			
-Console->Print("pattern=")->PrintLine(pattern);
 			prep := Prepare();
-
 			if(@error = false) {
 				src := Convert(prep);
 DumpSrc(src);
@@ -48,7 +47,7 @@ DumpSrc(src);
 DumpInstrs(@instrs);
 			};
 		}
-
+		
 		method : public : DumpInstrs(instrs : Instr[]) ~ Nil {
 			i := 0;
 			do {
@@ -300,8 +299,71 @@ DumpInstrs(@instrs);
 			
 			return prep;
 		}
+		
+		method : public : native : Execute(instrs : Instr[], string : String) ~ Bool {
+			top := 0;
+			stack := Int->New[@max_size];
+			i := 0;
+			pc := 0;
+			first := -1;
+			last := -1;
+			
+			do {
+				instr := instrs[pc];
+				select(instr->GetOperand()) {
+					label Operand->STOP: {
+						Console->Print(pc)->PrintLine(": STOP");
+						
+							last := i;
+						Console->Print("range: ")->Print(first)->Print(", ")->PrintLine(last);
+						return true;
+					}
+					
+					label Operand->JUMP: {
+						Console->Print(pc)->Print(": JUMP, addr=")->PrintLine(instr->GetAddress());	
+							
+						pc := instr->GetAddress();
+					}
 
-		method : public : Execute(code : Instr[], src : String) ~ Bool {
+					label Operand->MATCH: {
+						Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+						if(string->Get(i) = instr->GetAddress()->As(Char)) {
+							if(first < 0) {
+								first := i;
+							};
+							i += 1;
+							pc += 1;
+						}
+						else {
+							# first := -1;
+							if(top > 0) {
+								top -=1 ;
+								pc := stack[top];
+							}
+							else {
+								return false;
+							};
+						};
+						
+					}
+					
+					label Operand->BRANCH: {
+						Console->Print(pc)->Print(": BRANCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+						
+						pc += 1;
+						stack[top] := pc + 1;
+						top += 1;
+					}
+				};
+				
+				"---"->PrintLine();
+			}
+			while(instr->GetOperand() <> Operand->STOP);
+			
+			return false;
+		}
+
+		method : public : native : Execute2(code : Instr[], src : String) ~ Bool {
 			i := 0;	c := src->Get(i); i += 1;	pc := 0;
 			clist := Int->New[@max_size];
 			cnode := 0;	shift := 0;
@@ -312,7 +374,8 @@ DumpInstrs(@instrs);
 			while(code[pc] <> Nil) {
 				select(code[pc]->GetOperand()) {
 					label Operand->STOP: {
-						return true;
+"stop"->PrintLine();					
+						match := true;
 					}
 
 					label Operand->JUMP: {
@@ -321,8 +384,9 @@ DumpInstrs(@instrs);
 					}
 
 					label Operand->MATCH: {
+Console->Print("match '")->Print(c)->PrintLine("'");
+
 						if(c = code[pc]->GetAddress()) {
-							Console->Print("match '")->Print(c)->PrintLine("'");
 							nlist[nnode] := code[pc + 1]->GetAddress();
 							nnode += 1;
 						};
@@ -330,6 +394,7 @@ DumpInstrs(@instrs);
 					}
 				
 					label Operand->BRANCH: {
+"branch"->PrintLine();					
 						clist[cnode] := code[pc + 1]->GetAddress();
 						cnode += 1;
 						pc := code[pc + 2]->GetAddress();
@@ -340,9 +405,11 @@ DumpInstrs(@instrs);
 				
 				if(match) {
 					if(shift = cnode) {
+"-0-"->PrintLine();					
 						if(nnode = 0) { 
 							return false; 
 						};
+"-1-"->PrintLine();							
 						shift := 0;
 						cnode := 0;
 						while(nnode > 0) {
@@ -353,17 +420,30 @@ DumpInstrs(@instrs);
 						c := src->Get(i);
 						i += 1;
 					};
+				
 					pc := clist[shift];
+pc->PrintLine();						
 					shift += 1;
 				};	
+			
 			};
+
+"----"->PrintLine();				
 			
 			# are any of the current states final?
 			for(i := shift; i < cnode; i += 1;) {
 				if(code[clist[i]]->GetOperand() = Operand->STOP) {
+					"xxx"->PrintLine();
 					return	true;
 				};
 			};
+			
+			pc->PrintLine();
+			"yyy"->PrintLine();
+			(code[pc] = Nil)->PrintLine();
+			
+			nnode->PrintLine();
+			
 			return code[pc] = Nil | code[pc]->GetOperand() = Operand->STOP;
 		}
 		
