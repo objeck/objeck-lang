@@ -26,6 +26,24 @@ bundle Default {
 		BRANCH
 	}
 	
+	class Instr {
+		@operand : Operand;
+		@address : Int;
+		
+		New(operand : Operand, address : Int) {
+			@operand := operand;
+			@address := address;
+		}
+
+		method : public : GetOperand() ~ Operand {
+			return @operand;
+		} 
+		
+		method : public : GetAddress() ~ Int {
+			return @address;
+		} 
+	}
+	
 	class RegEx {
 		@pattern : String;
 		@string : String;
@@ -51,70 +69,6 @@ bundle Default {
 				@instrs := Compile(src);
 # DumpInstrs(@instrs);
 			};
-		}
-		
-		method : DumpInstrs(instrs : Instr[]) ~ Nil {
-			i := 0;
-			do {
-				instr := instrs[i];
-				select(instr->GetOperand()) {
-					label Operand->STOP: {
-						Console->Print(i)->PrintLine(": STOP");
-					}
-					
-					label Operand->JUMP: {
-						Console->Print(i)->Print(": JUMP, addr=")
-							->PrintLine(instr->GetAddress());
-					}
-
-					label Operand->MATCH: {
-						Console->Print(i)->Print(": MATCH, symb='")
-							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
-					}
-					
-					label Operand->BRANCH: {
-						Console->Print(i)->Print(": BRANCH, symb='")
-							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');				
-					}
-				};
-				i += 1;
-			}
-			while(instr->GetOperand() <> Operand->STOP);
-		}
-		
-		method : DumpSrc(prep : Int[]) ~ Nil {
-			"source="->Print();
-			i := 0;
-			t := prep[i];
-			while(t <> 0) {
-				select(t) {
-					label Token->LPRN: {
-						'('->Print();
-					}
-					
-					label Token->RPRN: {
-						')'->Print();
-					}
-					
-					label Token->KLEENE: {
-						'*'->Print();
-					}
-					
-					label Token->ALTERN: {
-						'|'->Print();
-					}
-					label Token->CONCAT: {
-						'.'->Print();
-					}
-					other: {
-						c := t->As(Char);
-						c->Print();
-					}
-				};
-				i += 1;
-				t := prep[i];
-			};
-			'\n'->Print();
 		}
 		
 		method : Convert(prep : Int[]) ~ Int[] {
@@ -269,6 +223,21 @@ bundle Default {
 						concat := true;
 					}
 					
+					label '+': {
+						if(i - 1 > -1) {
+							prep[index] := @pattern->Get(i - 1);
+							index += 1;
+						}
+						else {
+							"invalid operation"->PrintLine();
+							@error := true;
+						};
+						
+						prep[index] := Token->KLEENE;
+						index += 1;
+						concat := true;
+					}
+					
 					label '|': {
 						prep[index] := Token->ALTERN;
 						index += 1;
@@ -317,9 +286,13 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 		}
 		
 		method : public : Next() ~ String {
-			if(@error = true | @string = Nil) {
+# @start->PrintLine();
+			if(@error = true | @string = Nil | @end = -1) {
 				return "";
 			};
+			
+"xxx"->PrintLine();			
+			
 
 			@start := -1;
 			if(Execute(@instrs, @string, @end)) {
@@ -355,7 +328,7 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 					}
 
 					label Operand->MATCH: {
-						Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+# Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						if(string->Get(i) = instr->GetAddress()->As(Char)) {
 							if(@start < 0) {
 								@start := i;
@@ -397,24 +370,70 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 				regex->Next()->PrintLine();
 			};
 		}
-	}
-	
-	class Instr {
-		@operand : Operand;
-		@address : Int;
 		
-		New(operand : Operand, address : Int) {
-			@operand := operand;
-			@address := address;
-		}
+		method : DumpInstrs(instrs : Instr[]) ~ Nil {
+			i := 0;
+			do {
+				instr := instrs[i];
+				select(instr->GetOperand()) {
+					label Operand->STOP: {
+						Console->Print(i)->PrintLine(": STOP");
+					}
+					
+					label Operand->JUMP: {
+						Console->Print(i)->Print(": JUMP, addr=")
+							->PrintLine(instr->GetAddress());
+					}
 
-		method : public : GetOperand() ~ Operand {
-			return @operand;
-		} 
+					label Operand->MATCH: {
+						Console->Print(i)->Print(": MATCH, symb='")
+							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+					}
+					
+					label Operand->BRANCH: {
+						Console->Print(i)->Print(": BRANCH, symb='")
+							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');				
+					}
+				};
+				i += 1;
+			}
+			while(instr->GetOperand() <> Operand->STOP);
+		}
 		
-		method : public : GetAddress() ~ Int {
-			return @address;
-		} 
+		method : DumpSrc(prep : Int[]) ~ Nil {
+			"source="->Print();
+			i := 0;
+			t := prep[i];
+			while(t <> 0) {
+				select(t) {
+					label Token->LPRN: {
+						'('->Print();
+					}
+					
+					label Token->RPRN: {
+						')'->Print();
+					}
+					
+					label Token->KLEENE: {
+						'*'->Print();
+					}
+					
+					label Token->ALTERN: {
+						'|'->Print();
+					}
+					label Token->CONCAT: {
+						'.'->Print();
+					}
+					other: {
+						c := t->As(Char);
+						c->Print();
+					}
+				};
+				i += 1;
+				t := prep[i];
+			};
+			'\n'->Print();
+		}
 	}
 }
 
