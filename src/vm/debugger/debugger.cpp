@@ -359,10 +359,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 	    if(klass) {	      
 	      long* instance = (long*)reference->GetIntValue();
 	      if(instance) {
-		long* string_instance = (long*)instance[0];
-		const char* char_string = (char*)(string_instance + 3);
-		cout << "print: type=" << klass->GetName() << ", value=\""
-		     << char_string << "\"" << endl;
+		cout << "print: type=" << klass->GetName() << ", value=" << (void*)reference->GetIntValue() << endl;
 	      }
 	      else {
 		cout << "print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
