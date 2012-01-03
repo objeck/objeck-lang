@@ -727,6 +727,26 @@ namespace frontend {
 	    skip = 0;
 	    break;
 
+	  case 'a':
+	    char_string += '\a';
+	    skip = 0;
+	    break;
+	    
+	  case 'b':
+	    char_string += '\b';
+	    skip = 0;
+	    break;
+
+	  case 'e':
+	    char_string += '\e';
+	    skip = 0;
+	    break;
+
+	  case 'f':
+	    char_string += '\f';
+	    skip = 0;
+	    break;
+
 	  case '0':
 	    char_string += '\0';
 	    skip = 0;
