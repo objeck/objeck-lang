@@ -40,6 +40,7 @@
 #include "intermediate.h"
 #include "optimization.h"
 #include "target.h"
+#include <list>
 
 extern "C"
 {

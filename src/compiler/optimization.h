@@ -33,7 +33,7 @@
 #define __OPTIMIZE_H__
 
 #include "target.h"
-#include <list>
+#include <deque>
 
 using namespace backend;
 
@@ -62,35 +62,36 @@ class ItermediateOptimizer {
 
   // inline method calls
   IntermediateBlock* InlineMethodCall(IntermediateBlock* inputs);
-  // cleans up jumps
+  // cleans up jumps and remove useless instructions
   IntermediateBlock* CleanJumps(IntermediateBlock* inputs);
+  IntermediateBlock* RemoveUselessInstructions(IntermediateBlock* inputs);
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
-  void CalculateIntFold(IntermediateInstruction* instr, list<IntermediateInstruction*> &calc_stack,
+  void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
                         IntermediateBlock* outputs);
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
   void CalculateFloatFold(IntermediateInstruction* instr,
-                          list<IntermediateInstruction*> &calc_stack,
+                          deque<IntermediateInstruction*> &calc_stack,
                           IntermediateBlock* outputs);
   // strength reduction
   IntermediateBlock* StrengthReduction(IntermediateBlock* inputs);
   void CalculateReduction(IntermediateInstruction* instr,
-                          list<IntermediateInstruction*> &calc_stack,
+                          deque<IntermediateInstruction*> &calc_stack,
                           IntermediateBlock* outputs);
   void ApplyReduction(IntermediateInstruction* test,
                       IntermediateInstruction* instr,
                       IntermediateInstruction* top_instr,
-                      list<IntermediateInstruction*> &calc_stack,
+                      deque<IntermediateInstruction*> &calc_stack,
                       IntermediateBlock* outputs);
   void AddBackReduction(IntermediateInstruction* instr,
                         IntermediateInstruction* top_instr,
-                        list<IntermediateInstruction*> &calc_stack,
+                        deque<IntermediateInstruction*> &calc_stack,
                         IntermediateBlock* outputs);
   // instruction replacement
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
   void ReplacementInstruction(IntermediateInstruction* instr,
-                              list<IntermediateInstruction*> &calc_stack,
+                              deque<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
   
   //
