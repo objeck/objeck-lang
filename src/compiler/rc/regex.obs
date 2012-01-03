@@ -235,7 +235,7 @@ DumpInstrs(@instrs);
 			i := 0;
 			s := src[i];
 			while(s <> 0) {
-    		select(s) {
+				select(s) {
 					label Token->CONCAT: {
 						top -= 1;
 					}
