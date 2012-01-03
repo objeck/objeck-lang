@@ -317,7 +317,7 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 					return @string;
 				};
 				
-Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);				
+# Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);				
 				return @string->SubString(@start, @end - @start);
 			};
 			
@@ -354,7 +354,7 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 							pc += 1;
 						}
 						else {
-							# @start := -1;
+							@start := -1;
 							if(top > 0) {
 								top -=1 ;
 								pc := stack[top];
