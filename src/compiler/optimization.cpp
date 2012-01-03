@@ -62,6 +62,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
 #endif
 
   vector<IntermediateBlock*> jump_blocks;
+  // clean up jumps
   while(!inputs.empty()) {
     IntermediateBlock* tmp = inputs.front();
     jump_blocks.push_back(CleanJumps(tmp));
@@ -71,18 +72,32 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     tmp = NULL;
   }
   
+  vector<IntermediateBlock*> useless_instrs_blocks;
+  // remove useless instructions
+#ifdef _DEBUG
+  cout << "  Method inlining..." << endl;
+#endif
+  while(!jump_blocks.empty()) {
+    IntermediateBlock* tmp = jump_blocks.front();
+    useless_instrs_blocks.push_back(RemoveUselessInstructions(tmp));
+    // delete old block
+    jump_blocks.erase(jump_blocks.begin());
+    delete tmp;
+    tmp = NULL;
+  }
+  
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
     vector<IntermediateBlock*> method_inlined_blocks;
-    // instruction replacement
+    // method inlining
 #ifdef _DEBUG
     cout << "  Method inlining..." << endl;
 #endif
-    while(!jump_blocks.empty()) {
-      IntermediateBlock* tmp = jump_blocks.front();
+    while(!useless_instrs_blocks.empty()) {
+      IntermediateBlock* tmp = useless_instrs_blocks.front();
       method_inlined_blocks.push_back(InlineMethodCall(tmp));
       // delete old block
-      jump_blocks.erase(jump_blocks.begin());
+      useless_instrs_blocks.erase(useless_instrs_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
@@ -115,7 +130,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     }
   } 
   else {
-    return jump_blocks;
+    return useless_instrs_blocks;
   }
 
   vector<IntermediateBlock*> strength_reduced_blocks;
@@ -159,10 +174,69 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   return instruction_replaced_blocks;
 }
 
+IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateBlock* inputs)
+{
+  IntermediateBlock* outputs = new IntermediateBlock;
+  deque<IntermediateInstruction*> working_stack;
+  
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+  for(size_t i = 0; i < input_instrs.size(); i++) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    switch(instr->GetType()) {
+    case LOAD_INT_VAR:
+      if(instr->GetOperand2() == LOCL) {
+	working_stack.push_front(instr);
+      }
+      else {
+	while(!working_stack.empty()) {
+	  outputs->AddInstruction(working_stack.back());
+	  working_stack.pop_back();
+	}
+	outputs->AddInstruction(instr);
+      }
+      break;
+      
+    case STOR_INT_VAR:
+      if(instr->GetOperand2() == LOCL && !working_stack.empty() && 
+	 working_stack.front()->GetType() == LOAD_INT_VAR) {
+	if(instr->GetOperand() == working_stack.front()->GetOperand()) {
+	  working_stack.pop_front();
+	}
+	else {
+	  while(!working_stack.empty()) {
+	    outputs->AddInstruction(working_stack.back());
+	    working_stack.pop_back();
+	  }
+	  outputs->AddInstruction(instr);
+	}
+      }
+      else {
+	while(!working_stack.empty()) {
+	  outputs->AddInstruction(working_stack.back());
+	  working_stack.pop_back();
+	}
+	outputs->AddInstruction(instr);
+      }
+      break;
+     
+    default:
+      while(!working_stack.empty()) {
+	outputs->AddInstruction(working_stack.back());
+	working_stack.pop_back();
+      }
+      outputs->AddInstruction(instr);
+      break;
+    }
+  }
+  
+  return outputs; 
+}
+
 IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  list<IntermediateInstruction*> calc_stack;
+  deque<IntermediateInstruction*> working_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); i++) {
@@ -170,37 +244,37 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 
     switch(instr->GetType()) {
     case JMP:
-      calc_stack.push_front(instr);
+      working_stack.push_front(instr);
       break;
 
     case LBL:
       // ignore jump to next instruction
-      if(!calc_stack.empty() && calc_stack.front()->GetType() == JMP && 
-	 calc_stack.front()->GetOperand() == instr->GetOperand()) {
-        calc_stack.pop_front();
+      if(!working_stack.empty() && working_stack.front()->GetType() == JMP && 
+	 working_stack.front()->GetOperand() == instr->GetOperand()) {
+        working_stack.pop_front();
       }
       // add back in reverse order
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
 
     default:
       // add back in reverse order
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
     }
   }
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 
   return outputs;
@@ -253,7 +327,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  list<IntermediateInstruction*> calc_stack;
+  deque<IntermediateInstruction*> working_stack;
 
   size_t i = 0;
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
@@ -268,66 +342,66 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
     switch(instr->GetType()) {
     case LOAD_INT_VAR:
     case LOAD_FLOAT_VAR:
-      ReplacementInstruction(instr, calc_stack, outputs);
+      ReplacementInstruction(instr, working_stack, outputs);
       break;
 
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
-      if(!calc_stack.empty() && calc_stack.front()->GetType() == STOR_INT_VAR) {
+      if(!working_stack.empty() && working_stack.front()->GetType() == STOR_INT_VAR) {
 	// order matters...
-	while(!calc_stack.empty()) {
-	  outputs->AddInstruction(calc_stack.back());
-	  calc_stack.pop_back();
+	while(!working_stack.empty()) {
+	  outputs->AddInstruction(working_stack.back());
+	  working_stack.pop_back();
 	}
 	outputs->AddInstruction(instr);
       }
       else {
-	calc_stack.push_front(instr);
+	working_stack.push_front(instr);
       }
       break;
       
     default:
       // order matters...
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
     }
   }
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 
   return outputs;
 }
 
 void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr,
-    list<IntermediateInstruction*> &calc_stack,
+    deque<IntermediateInstruction*> &working_stack,
     IntermediateBlock* outputs)
 {
-  if(!calc_stack.empty()) {
-    IntermediateInstruction* top_instr = calc_stack.front();
+  if(!working_stack.empty()) {
+    IntermediateInstruction* top_instr = working_stack.front();
     if(top_instr->GetType() == STOR_INT_VAR && instr->GetType() == LOAD_INT_VAR &&
         instr->GetOperand() == top_instr->GetOperand() &&
         instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_INT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
-      calc_stack.pop_front();
+      working_stack.pop_front();
     } 
     else if(top_instr->GetType() == STOR_FLOAT_VAR && instr->GetType() == LOAD_FLOAT_VAR &&
               instr->GetOperand() == top_instr->GetOperand() &&
               instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_FLOAT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
-      calc_stack.pop_front();
+      working_stack.pop_front();
     } 
     else {
       // order matters...
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
     }
@@ -340,78 +414,78 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
 IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  list<IntermediateInstruction*> calc_stack;
+  deque<IntermediateInstruction*> working_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); i++) {
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
-      calc_stack.push_front(instr);
+      working_stack.push_front(instr);
       break;
 
     case LOAD_INT_VAR:
-      calc_stack.push_front(instr);
+      working_stack.push_front(instr);
       break;
 
     case MUL_INT:
     case DIV_INT:
-      CalculateReduction(instr, calc_stack, outputs);
+      CalculateReduction(instr, working_stack, outputs);
       break;
 
     default:
       // order matters...
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
     }
   }
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 
   return outputs;
 }
 
 void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
-    list<IntermediateInstruction*> &calc_stack,
+    deque<IntermediateInstruction*> &working_stack,
     IntermediateBlock* outputs)
 {
-  if(calc_stack.size() > 1) {
-    IntermediateInstruction* top_instr = calc_stack.front();
-    calc_stack.pop_front();
+  if(working_stack.size() > 1) {
+    IntermediateInstruction* top_instr = working_stack.front();
+    working_stack.pop_front();
     if(top_instr->GetType() == LOAD_INT_LIT) {
-      if(calc_stack.front()->GetType() == LOAD_INT_VAR) {
-        ApplyReduction(top_instr, instr, top_instr, calc_stack, outputs);
+      if(working_stack.front()->GetType() == LOAD_INT_VAR) {
+        ApplyReduction(top_instr, instr, top_instr, working_stack, outputs);
       } else {
-        AddBackReduction(instr, top_instr, calc_stack, outputs);
+        AddBackReduction(instr, top_instr, working_stack, outputs);
       }
-    } else if(calc_stack.front()->GetType() == LOAD_INT_LIT) {
+    } else if(working_stack.front()->GetType() == LOAD_INT_LIT) {
       if(top_instr->GetType() == LOAD_INT_VAR) {
-        ApplyReduction(calc_stack.front(), instr, top_instr, calc_stack, outputs);
+        ApplyReduction(working_stack.front(), instr, top_instr, working_stack, outputs);
       } else {
-        AddBackReduction(instr, top_instr, calc_stack, outputs);
+        AddBackReduction(instr, top_instr, working_stack, outputs);
       }
     } else {
-      AddBackReduction(instr, top_instr, calc_stack, outputs);
+      AddBackReduction(instr, top_instr, working_stack, outputs);
     }
   } else {
     // order matters...
-    while(!calc_stack.empty()) {
-      outputs->AddInstruction(calc_stack.back());
-      calc_stack.pop_back();
+    while(!working_stack.empty()) {
+      outputs->AddInstruction(working_stack.back());
+      working_stack.pop_back();
     }
     outputs->AddInstruction(instr);
   }
 }
 
 void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, IntermediateInstruction* top_instr,
-    list<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs)
+    deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
 
   int shift = 0;
@@ -449,20 +523,20 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
     break;
 
   default:
-    AddBackReduction(instr, top_instr, calc_stack, outputs);
+    AddBackReduction(instr, top_instr, working_stack, outputs);
     break;
   }
 
   if(shift) {
     outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, shift));
     // exclude literal
-    if(calc_stack.front()->GetType() != LOAD_INT_LIT) {
-      outputs->AddInstruction(calc_stack.front());
+    if(working_stack.front()->GetType() != LOAD_INT_LIT) {
+      outputs->AddInstruction(working_stack.front());
     }
     if(top_instr->GetType() != LOAD_INT_LIT) {
       outputs->AddInstruction(top_instr);
     }
-    calc_stack.pop_front();
+    working_stack.pop_front();
     // shift left or right
     if(instr->GetType() == MUL_INT) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, shift));
@@ -471,19 +545,19 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
     }
   }
   // add rest of information
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 }
 
 void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, IntermediateInstruction* top_instr,
-    list<IntermediateInstruction*> &calc_stack, IntermediateBlock* outputs)
+    deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
   outputs->AddInstruction(top_instr);
   outputs->AddInstruction(instr);
@@ -492,7 +566,7 @@ void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, Inte
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  list<IntermediateInstruction*> calc_stack;
+  deque<IntermediateInstruction*> working_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); i++) {
@@ -500,7 +574,7 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
 
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
-      calc_stack.push_front(instr);
+      working_stack.push_front(instr);
       break;
 
     case ADD_INT:
@@ -511,89 +585,89 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
     case BIT_AND_INT:
     case BIT_OR_INT:
     case BIT_XOR_INT:
-      CalculateIntFold(instr, calc_stack, outputs);
+      CalculateIntFold(instr, working_stack, outputs);
       break;
 
     default:
       // add back in reverse order
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
     }
   }
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 
   return outputs;
 }
 
 void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
-    list<IntermediateInstruction*> &calc_stack,
+    deque<IntermediateInstruction*> &working_stack,
     IntermediateBlock* outputs)
 {
-  if(calc_stack.size() == 1) {
-    outputs->AddInstruction(calc_stack.front());
-    calc_stack.pop_front();
+  if(working_stack.size() == 1) {
+    outputs->AddInstruction(working_stack.front());
+    working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } else if(calc_stack.size() > 1) {
-    IntermediateInstruction* left = calc_stack.front();
-    calc_stack.pop_front();
+  } else if(working_stack.size() > 1) {
+    IntermediateInstruction* left = working_stack.front();
+    working_stack.pop_front();
 
-    IntermediateInstruction* right = calc_stack.front();
-    calc_stack.pop_front();
+    IntermediateInstruction* right = working_stack.front();
+    working_stack.pop_front();
 
     switch(instr->GetType()) {
     case ADD_INT: {
       INT_VALUE value = left->GetOperand() + right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case SUB_INT: {
       INT_VALUE value = left->GetOperand() - right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case MUL_INT: {
       INT_VALUE value = left->GetOperand() * right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case DIV_INT: {
       INT_VALUE value = left->GetOperand() / right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case MOD_INT: {
       INT_VALUE value = left->GetOperand() % right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
       
     case BIT_AND_INT: {
       INT_VALUE value = left->GetOperand() & right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case BIT_OR_INT: {
       INT_VALUE value = left->GetOperand() | right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
     case BIT_XOR_INT: {
       INT_VALUE value = left->GetOperand() ^ right->GetOperand();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     }
       break;
 
@@ -608,7 +682,7 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
 IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
-  list<IntermediateInstruction*> calc_stack;
+  deque<IntermediateInstruction*> working_stack;
 
   vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
   for(size_t i = 0; i < input_instrs.size(); i++) {
@@ -616,72 +690,72 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
 
     switch(instr->GetType()) {
     case LOAD_FLOAT_LIT:
-      calc_stack.push_front(instr);
+      working_stack.push_front(instr);
       break;
 
     case ADD_FLOAT:
     case SUB_FLOAT:
     case MUL_FLOAT:
     case DIV_FLOAT:
-      CalculateFloatFold(instr, calc_stack, outputs);
+      CalculateFloatFold(instr, working_stack, outputs);
       break;
 
     default:
       // add back in reverse order
-      while(!calc_stack.empty()) {
-        outputs->AddInstruction(calc_stack.back());
-        calc_stack.pop_back();
+      while(!working_stack.empty()) {
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
     }
   }
   // order matters...
-  while(!calc_stack.empty()) {
-    outputs->AddInstruction(calc_stack.back());
-    calc_stack.pop_back();
+  while(!working_stack.empty()) {
+    outputs->AddInstruction(working_stack.back());
+    working_stack.pop_back();
   }
 
   return outputs;
 }
 
 void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
-    list<IntermediateInstruction*> &calc_stack,
+    deque<IntermediateInstruction*> &working_stack,
     IntermediateBlock* outputs)
 {
-  if(calc_stack.size() == 1) {
-    outputs->AddInstruction(calc_stack.front());
-    calc_stack.pop_front();
+  if(working_stack.size() == 1) {
+    outputs->AddInstruction(working_stack.front());
+    working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } else if(calc_stack.size() > 1) {
-    IntermediateInstruction* left = calc_stack.front();
-    calc_stack.pop_front();
+  } else if(working_stack.size() > 1) {
+    IntermediateInstruction* left = working_stack.front();
+    working_stack.pop_front();
 
-    IntermediateInstruction* right = calc_stack.front();
-    calc_stack.pop_front();
+    IntermediateInstruction* right = working_stack.front();
+    working_stack.pop_front();
 
     switch(instr->GetType()) {
     case ADD_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() + right->GetOperand4();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
 
     case SUB_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() - right->GetOperand4();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
 
     case MUL_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() * right->GetOperand4();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
     
     case DIV_FLOAT: {
       FLOAT_VALUE value = left->GetOperand4() / right->GetOperand4();
-      calc_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
+      working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
       break;
       
