@@ -16,7 +16,8 @@ bundle Default {
 		RPRN,
 		ALTERN,
 		CONCAT,
-		KLEENE
+		KLEENE,
+		OPTION
 	}
 	
 	enum Operand := -32 {
@@ -67,131 +68,8 @@ bundle Default {
 				src := Convert(prep);
 # DumpSrc(src);
 				@instrs := Compile(src);
-# DumpInstrs(@instrs);
+DumpInstrs(@instrs);
 			};
-		}
-		
-		method : Convert(prep : Int[]) ~ Int[] {
-			postfix := Int->New[prep->Size()];			
-			i := 0;
-			t := prep[i];
-			
-			stack := Int->New[@max_size];
-			top := 0; 
-			j := 0; 
-			
-			stack[top] := Token->LPRN;
-			top += 1;
-			while(t <> 0) {
-				select(t) {
-					label Token->LPRN: {
-						stack[top] := t;
-						top += 1;
-					}
-					
-					label Token->RPRN: {
-						while(t <= stack[top - 1]) {
-							top -= 1;
-							postfix[j] := stack[top];
-							j += 1;
-						};
-						top -= 1;
-					}
-					
-					label Token->ALTERN:
-					label Token->CONCAT: {
-						while(t <= stack[top - 1]) {
-							top -= 1;
-							postfix[j] := stack[top];
-							j += 1;
-						};
-						stack[top] := t;
-						top += 1;
-					}
-					
-					label Token->KLEENE: {
-						while(t <= stack[top - 1]) {
-							top -= 1;
-							postfix[j] := stack[top];
-							j += 1;
-						};
-						postfix[j] := t;
-						j += 1;
-					}
-					
-					other: {
-						postfix[j] := t;
-						j += 1;
-					}
-				};
-				i += 1;
-				t := prep[i];
-			};
-			postfix[j] := 0;
-			
-			return postfix;
-		}
-		
-		method : Compile(src : Int[]) ~ Instr[] {
-			pc := 0;
-			top := 0;
-			stack := Int->New[@max_size];
-			code := Instr->New[src->Size() * 5];
-
-			i := 0;
-			s := src[i];
-			while(s <> 0) {
-    		select(s) {
-					label Token->CONCAT: {
-						top -= 1;
-					}
-					
-					label Token->KLEENE: {
-						code[pc] := Instr->New(Operand->BRANCH, '*'->As(Int));
-						pc += 1;
-						
-						code[pc] := code[stack[top - 1]];
-						pc += 1;
-
-						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc - 2);
-					}
-			
-					label Token->ALTERN: {
-						code[pc] := Instr->New(Operand->JUMP, pc + 4);
-						pc += 1;
-						
-						code[pc] := Instr->New(Operand->BRANCH, '|'->As(Int));
-						pc += 1;
-						
-						code[pc] := code[stack[top - 1]];
-						pc += 1;
-						
-						code[pc] := code[stack[top - 2]];
-						pc += 1;
-						
-						code[stack[top - 2]] := Instr->New(Operand->JUMP, pc - 3);
-						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc);
-						top -= 1;
-					}
-					
-					other: {
-						stack[top] := pc;
-						top += 1;
-
-						code[pc] := Instr->New(Operand->JUMP, pc + 1);
-						pc += 1;
-						
-						code[pc] := Instr->New(Operand->MATCH, s);
-						pc += 1;
-					}
-				};
-				i += 1;
-				s := src[i];		
-			};
-			code[pc] := Instr->New(Operand->STOP, pc);
-			pc += 1;
-			
-			return code;
 		}
 		
 		method : Prepare() ~ Int[] {
@@ -219,6 +97,12 @@ bundle Default {
 					
 					label '*': {
 						prep[index] := Token->KLEENE;
+						index += 1;
+						concat := true;
+					}
+					
+					label '?': {
+						prep[index] := Token->OPTION;
 						index += 1;
 						concat := true;
 					}
@@ -266,6 +150,143 @@ bundle Default {
 			
 			return prep;
 		}
+			
+		method : Convert(prep : Int[]) ~ Int[] {
+			postfix := Int->New[prep->Size()];			
+			i := 0;
+			t := prep[i];
+			
+			stack := Int->New[@max_size];
+			top := 0; 
+			j := 0; 
+			
+			stack[top] := Token->LPRN;
+			top += 1;
+			while(t <> 0) {
+				select(t) {
+					label Token->LPRN: {
+						stack[top] := t;
+						top += 1;
+					}
+					
+					label Token->RPRN: {
+						while(t <= stack[top - 1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						top -= 1;
+					}
+					
+					label Token->ALTERN:
+					label Token->CONCAT: {
+						while(t <= stack[top - 1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						stack[top] := t;
+						top += 1;
+					}
+					
+					label Token->KLEENE:
+					label Token->OPTION: {
+						while(t <= stack[top - 1]) {
+							top -= 1;
+							postfix[j] := stack[top];
+							j += 1;
+						};
+						postfix[j] := t;
+						j += 1;
+					}
+					
+					other: {
+						postfix[j] := t;
+						j += 1;
+					}
+				};
+				i += 1;
+				t := prep[i];
+			};
+			postfix[j] := 0;
+			
+			return postfix;
+		}
+		
+		method : Compile(src : Int[]) ~ Instr[] {
+			pc := 0;
+			top := 0;
+			stack := Int->New[@max_size];
+			code := Instr->New[src->Size() * 5];
+
+			i := 0;
+			s := src[i];
+			while(s <> 0) {
+    		select(s) {
+					label Token->CONCAT: {
+						top -= 1;
+					}
+					
+					label Token->KLEENE: {
+						code[pc] := Instr->New(Operand->BRANCH, '*'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc - 2);
+					}
+					
+					label Token->OPTION: {
+						code[pc] := Instr->New(Operand->JUMP, pc + 3);
+						pc += 1;
+					
+						code[pc] := Instr->New(Operand->BRANCH, '?'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc - 2);
+					}
+			
+					label Token->ALTERN: {
+						code[pc] := Instr->New(Operand->JUMP, pc + 4);
+						pc += 1;
+						
+						code[pc] := Instr->New(Operand->BRANCH, '|'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+						
+						code[pc] := code[stack[top - 2]];
+						pc += 1;
+						
+						code[stack[top - 2]] := Instr->New(Operand->JUMP, pc - 3);
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc);
+						top -= 1;
+					}
+					
+					other: {
+						stack[top] := pc;
+						top += 1;
+
+						code[pc] := Instr->New(Operand->JUMP, pc + 1);
+						pc += 1;
+						
+						code[pc] := Instr->New(Operand->MATCH, s);
+						pc += 1;
+					}
+				};
+				i += 1;
+				s := src[i];		
+			};
+			code[pc] := Instr->New(Operand->STOP, pc);
+			pc += 1;
+			
+			return code;
+		}
 		
 		method : public : Apply(string : String) ~ String {
 			@string := string;
@@ -286,9 +307,7 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 		}
 		
 		method : public : Next() ~ String {
-# @start->PrintLine();
 			if(@error = true | @string = Nil | @end = -1) {
-"xxx"->PrintLine();			
 				return "";
 			};
 			
