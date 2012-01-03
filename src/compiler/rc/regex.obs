@@ -68,7 +68,7 @@ bundle Default {
 				src := Convert(prep);
 # DumpSrc(src);
 				@instrs := Compile(src);
-DumpInstrs(@instrs);
+# DumpInstrs(@instrs);
 			};
 		}
 		
