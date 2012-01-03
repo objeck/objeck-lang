@@ -87,6 +87,37 @@ DumpInstrs(@instrs);
 			
 			each(i : @pattern) {
 				c := @pattern->Get(i);
+				
+				if(c = '\\' & i + 1 < @pattern->Size()) {
+					select(@pattern->Get(i + 1)) {
+						label 'r': {
+							i += 1;
+							c := '\r';
+						}
+		
+						label 'n': {
+							i += 1;
+							c := '\n';
+						}
+
+						label 't': {
+							i += 1;
+							c := '\t';
+						}
+						
+						label 'a': {
+							i += 1;
+							c := '\a';
+						}
+
+						label 'b': {
+							i += 1;
+							c := '\b';
+						}
+					};
+				};
+# c->PrintLine();
+				
 				select(c) {
 					label '(': {
 						prep[index] := Token->LPRN;
