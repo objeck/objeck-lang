@@ -29,8 +29,8 @@ bundle Default {
 	
 	enum Operand := -32 {
 		STOP,
-  	JUMP,
-  	ACCEPT,
+		JUMP,
+		ACCEPT,
 		MATCH,
 		BRANCH
 	}
