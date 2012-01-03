@@ -288,12 +288,10 @@ Console->Print("range: ")->Print(@start)->Print(", ")->PrintLine(@end);
 		method : public : Next() ~ String {
 # @start->PrintLine();
 			if(@error = true | @string = Nil | @end = -1) {
+"xxx"->PrintLine();			
 				return "";
 			};
 			
-"xxx"->PrintLine();			
-			
-
 			@start := -1;
 			if(Execute(@instrs, @string, @end)) {
 				if(@start < 0) {

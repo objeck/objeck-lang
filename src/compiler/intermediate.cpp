@@ -900,15 +900,17 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   case SIMPLE_STMT:
     EmitExpression(static_cast<SimpleStatement*>(statement)->GetExpression());
     break;
-
+    
   case RETURN_STMT: {
     Expression* expression = static_cast<Return*>(statement)->GetExpression();
     if(expression) {
       EmitExpression(expression);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
-    break;
+    new_char_str_count = 0;
   }
+    break;
+    
   case IF_STMT:
     EmitIf(static_cast<If*>(statement));
     break;
