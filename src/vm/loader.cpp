@@ -139,7 +139,7 @@ void Loader::Load()
   
   // copy command line params
   for(size_t j = 0; j < arguments.size(); i++, j++) {
-    char_strings[i] = (BYTE_VALUE*)std::string(arguments[j]).c_str();
+    char_strings[i] = (BYTE_VALUE*)strdup((arguments[j]).c_str());
 #ifdef _DEBUG
     cout << "Loaded static string: '" << char_strings[i] << "'" << endl;
 #endif
