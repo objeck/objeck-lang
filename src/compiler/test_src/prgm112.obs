@@ -1,0 +1,40 @@
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			string := "[a-z]123(x|y)";
+
+			i := 0;
+			c := string->Get(i);
+			bracket := 0;
+			start := -1;
+			end := -1;
+			while(i < string->Size()) {
+				if(c = '[') {
+					if(bracket > 1) {
+						"error - unbalanced"->PrintLine();
+						return;
+					};
+					bracket += 1;
+					start := i + 1;
+				} 
+				else if(c = ']') {
+					if(bracket < 0) {
+						"error - unbalanced"->PrintLine();
+						return;
+					};
+					bracket -= 1;
+					end := i - 1;
+				};
+
+				if(start > -1 & end > -1) {
+					IO.Console->Print(start)->Print(", ")->PrintLine(end);
+					start := -1;
+					end := -1;
+				};
+
+				i += 1;
+				c := string->Get(i);
+			};
+		}
+	}
+}
