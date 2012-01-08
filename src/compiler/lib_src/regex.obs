@@ -23,15 +23,14 @@ bundle RegEx {
 		ALTERN,
 		CONCAT,
 		OPTION,
-		KLEENE,
-		ACCEPT
+		KLEENE
 	}
 	
 	enum Operand := -32 {
 		STOP,
 		JUMP,
-		ACCEPT,
 		MATCH,
+		UNMATCH,
 		BRANCH
 	}
 	
@@ -71,6 +70,7 @@ bundle RegEx {
 			@end := -1;
 			
 			prep := Prepare();
+DumpSrc(prep);
 			if(@error = false) {
 				src := Convert(prep);
 DumpSrc(src);
@@ -239,6 +239,11 @@ DumpInstrs(@instrs);
 					}
 					
 					other: {
+						if(stack[top - 1] = Token->CONCAT->As(Int)) {
+							top -= 1;
+							postfix[j] := Token->CONCAT;
+							j += 1;
+						};	
 						postfix[j] := t;
 						j += 1;
 					}
@@ -314,7 +319,7 @@ DumpInstrs(@instrs);
 						pc += 1;
 						
 						if(s = '.') {
-							code[pc] := Instr->New(Operand->ACCEPT, src[i + 2]);
+							code[pc] := Instr->New(Operand->UNMATCH, src[i + 3]);
 							pc += 1;
 						}
 						else {
@@ -352,8 +357,8 @@ DumpInstrs(@instrs);
 						pc := instr->GetAddress();
 					}
 
-					label Operand->ACCEPT: {
-# Console->Print(pc)->Print(": ACCEPT, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+					label Operand->UNMATCH: {
+# Console->Print(pc)->Print(": UNMATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						if(string->Get(i) <> instr->GetAddress()->As(Char)) {
 							if(@start < 0) {
 								@start := i;
@@ -403,7 +408,7 @@ DumpInstrs(@instrs);
 				};
 # "---"->PrintLine();
 			}
-			while(instr->GetOperand() <> Operand->STOP);
+			while(instr->GetOperand() <> Operand->STOP  & i <= string->Size());
 			
 			return false;
 		}
@@ -453,8 +458,8 @@ DumpInstrs(@instrs);
 						Console->Print(i)->PrintLine(": STOP");
 					}
 					
-					label Operand->ACCEPT: {
-						Console->Print(i)->Print(": ACCEPT, symb='")
+					label Operand->UNMATCH: {
+						Console->Print(i)->Print(": UNMATCH, symb='")
 							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 					}
 					
@@ -502,10 +507,6 @@ DumpInstrs(@instrs);
 					
 					label Token->CONCAT: {
 						'&'->Print();
-					}
-					
-					label Token->ACCEPT: {
-						'.'->Print();
 					}
 					
 					other: {
