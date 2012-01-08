@@ -342,7 +342,7 @@ DumpInstrs(@instrs);
 				instr := instrs[pc];
 				select(instr->GetOperand()) {
 					label Operand->STOP: {
-Console->Print(pc)->PrintLine(": STOP");
+# Console->Print(pc)->PrintLine(": STOP");
 						@end := i;
 						return true;
 					}
@@ -353,7 +353,7 @@ Console->Print(pc)->PrintLine(": STOP");
 					}
 
 					label Operand->ACCEPT: {
-Console->Print(pc)->Print(": ACCEPT, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+# Console->Print(pc)->Print(": ACCEPT, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						if(string->Get(i) <> instr->GetAddress()->As(Char)) {
 							if(@start < 0) {
 								@start := i;
@@ -374,8 +374,7 @@ Console->Print(pc)->Print(": ACCEPT, symb='")->Print(instr->GetAddress()->As(Cha
 					}
 
 					label Operand->MATCH: {
-Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))
-	->Print("' char=")->PrintLine(instr->GetAddress()->As(Char));					
+# Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->Print("' char=")->PrintLine(instr->GetAddress()->As(Char));					
 						if(string->Get(i) = instr->GetAddress()->As(Char)) {
 							if(@start < 0) {
 								@start := i;
@@ -455,7 +454,8 @@ Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char
 					}
 					
 					label Operand->ACCEPT: {
-						Console->Print(i)->PrintLine(": ACCEPT");
+						Console->Print(i)->Print(": ACCEPT, symb='")
+							->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 					}
 					
 					label Operand->JUMP: {
