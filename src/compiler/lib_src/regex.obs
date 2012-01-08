@@ -73,9 +73,9 @@ bundle RegEx {
 			prep := Prepare();
 			if(@error = false) {
 				src := Convert(prep);
-# DumpSrc(src);
+DumpSrc(src);
 				@instrs := Compile(src);
-# DumpInstrs(@instrs);
+DumpInstrs(@instrs);
 			};
 		}
 		
@@ -141,12 +141,6 @@ bundle RegEx {
 					
 					label '?': {
 						prep[index] := Token->OPTION;
-						index += 1;
-						concat := true;
-					}
-					
-					label '.': {
-						prep[index] := Token->ACCEPT;
 						index += 1;
 						concat := true;
 					}
@@ -312,20 +306,6 @@ bundle RegEx {
 						top -= 1;
 					}
 					
-					label Token->ACCEPT: {
-						stack[top] := pc;
-						top += 1;
-
-						code[pc] := Instr->New(Operand->JUMP, pc + 1);
-						pc += 1;
-						
-						stack[top] := pc;
-						top += 1;
-
-						code[pc] := Instr->New(Operand->ACCEPT, pc + 1);
-						pc += 1;
-					}
-					
 					other: {
 						stack[top] := pc;
 						top += 1;
@@ -333,8 +313,14 @@ bundle RegEx {
 						code[pc] := Instr->New(Operand->JUMP, pc + 1);
 						pc += 1;
 						
-						code[pc] := Instr->New(Operand->MATCH, s);
-						pc += 1;
+						if(s = '.') {
+							code[pc] := Instr->New(Operand->ACCEPT, src[i + 2]);
+							pc += 1;
+						}
+						else {
+							code[pc] := Instr->New(Operand->MATCH, s);
+							pc += 1;
+						};
 					}
 				};
 				i += 1;
@@ -356,7 +342,7 @@ bundle RegEx {
 				instr := instrs[pc];
 				select(instr->GetOperand()) {
 					label Operand->STOP: {
-# Console->Print(pc)->PrintLine(": STOP");
+Console->Print(pc)->PrintLine(": STOP");
 						@end := i;
 						return true;
 					}
@@ -367,15 +353,29 @@ bundle RegEx {
 					}
 
 					label Operand->ACCEPT: {
-						if(@start < 0) {
-							@start := i;
+Console->Print(pc)->Print(": ACCEPT, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+						if(string->Get(i) <> instr->GetAddress()->As(Char)) {
+							if(@start < 0) {
+								@start := i;
+							};
+							i += 1;
+							pc += 1;
+						}
+						else {
+							if(top > 0) {
+								top -=1 ;
+								pc := stack[top];
+							}
+							else {
+								@start := -1;
+								return false;
+							};
 						};
-						i += 1;
-						pc += 1;
 					}
 
 					label Operand->MATCH: {
-# Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
+Console->Print(pc)->Print(": MATCH, symb='")->Print(instr->GetAddress()->As(Char))
+	->Print("' char=")->PrintLine(instr->GetAddress()->As(Char));					
 						if(string->Get(i) = instr->GetAddress()->As(Char)) {
 							if(@start < 0) {
 								@start := i;
@@ -393,7 +393,6 @@ bundle RegEx {
 								return false;
 							};
 						};
-						
 					}
 					
 					label Operand->BRANCH: {
