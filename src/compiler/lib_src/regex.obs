@@ -20,10 +20,10 @@ bundle RegEx {
 	enum Token := -16 {
 		LPRN,
 		RPRN,
-		ALTERN,
 		CONCAT,
+		KLEENE,
+		ALTERN,
 		OPTION,
-		KLEENE
 	}
 	
 	enum Operand := -32 {
