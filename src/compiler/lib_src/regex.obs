@@ -70,12 +70,12 @@ bundle RegEx {
 			@end := -1;
 			
 			prep := Prepare();
-DumpSrc(prep);
+# DumpSrc(prep);
 			if(@error = false) {
 				src := Convert(prep);
-DumpSrc(src);
+# DumpSrc(src);
 				@instrs := Compile(src);
-DumpInstrs(@instrs);
+# DumpInstrs(@instrs);
 			};
 		}
 		
@@ -116,7 +116,6 @@ DumpInstrs(@instrs);
 						}
 					};
 				};
-# c->PrintLine();
 				
 				select(c) {
 					label '(': {
