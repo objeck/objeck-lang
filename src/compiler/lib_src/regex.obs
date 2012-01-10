@@ -85,7 +85,6 @@ DumpInstrs(@instrs);
 			prep := Int->New[@max_size];
 			index := 0;
 			prn_count := 0;
-			offset := 0;
 			concat := false;
 			
 			each(i : @pattern) {
@@ -137,7 +136,6 @@ DumpInstrs(@instrs);
 							# update
 							i += 1;
 							c := @pattern->Get(i);
-							offset += 1;
 						};
 						
 						# parse range
@@ -146,15 +144,19 @@ DumpInstrs(@instrs);
 # TODO: ensure we have an ending character			
 							i += 1;
 							c := @pattern->Get(i);
+							end_index := i;
 							while((c->IsChar() | c->IsDigit()) & i < @pattern->Size()) {
 								# update
 								i += 1;
 								c := @pattern->Get(i);
-								offset += 1;
+							};
+							
+							if(end_index = i) {
+								"invalid character class"->PrintLine();
+								@error := true;
 							};
 						};
 						end := i;
-						offset += 1;
 						
 						# map range
 						range := @pattern->SubString(start, end - start);
