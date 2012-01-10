@@ -3,7 +3,7 @@ use RegEx;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("ar+");
+			regex := RegEx->New("ab[cd]ef[ghijk]l");
 			regex->Apply("ar")->PrintLine();
 		}
 	}
