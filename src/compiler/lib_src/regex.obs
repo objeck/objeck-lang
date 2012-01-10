@@ -23,7 +23,7 @@ bundle RegEx {
 		CONCAT,
 		KLEENE,
 		ALTERN,
-		OPTION,
+		OPTION
 	}
 	
 	enum Operand := -32 {
@@ -60,6 +60,7 @@ bundle RegEx {
 		@error : Bool;
 		@start : Int;
 		@end : Int;
+		@classes : String;
 		
 		New(pattern : String) {
 			@pattern := pattern;
@@ -68,6 +69,7 @@ bundle RegEx {
 			@instrs := Nil;
 			@start := -1;
 			@end := -1;
+			@classes := String->New();
 			
 			prep := Prepare();
 # DumpSrc(prep);
@@ -83,6 +85,8 @@ bundle RegEx {
 			prep := Int->New[@max_size];
 			index := 0;
 			prn_count := 0;
+			offset := 0;
+			@class_id := -64;
 			concat := false;
 			
 			each(i : @pattern) {
@@ -118,6 +122,46 @@ bundle RegEx {
 				};
 				
 				select(c) {
+					label '[': {
+						if(concat) {
+							prep[index] := Token->CONCAT;
+							index += 1;
+						};
+						
+						start := offset;
+						i += 1;
+						c := @pattern->Get(i);
+						while((c->IsChar() | c->IsDigit() | c = '-') & i < @pattern->Size()) {
+							@classes->Append(c);
+							# update
+							i += 1;
+							c := @pattern->Get(i);
+							offset += 1;
+						};
+						end := offset;
+						@classes->Append('\b');
+						offset += 1;
+						
+#						@class_id -= start - end + 1;
+						
+@classes->SubString(start, end - start)->PrintLine();
+@class_id->PrintLine();						
+						
+						if(c <> ']') {
+							"invalid character class"->PrintLine();
+							@error := true;
+						};
+						i += 1;
+						
+						prep[index] := @class_id;
+						index += 1;
+						concat := true;
+						
+(start - end - 1)->PrintLine();						
+						
+						@class_id -= end - start + 1;
+					}
+					
 					label '(': {
 						prep[index] := Token->LPRN;
 						index += 1;
