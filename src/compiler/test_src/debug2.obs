@@ -14,7 +14,8 @@ bundle Default {
 		}
 		
 		method : Test2(n : Int) ~ Nil {
-			s := im->Find(n);
+			s := im->Find(n)->As(String);
+			s->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {

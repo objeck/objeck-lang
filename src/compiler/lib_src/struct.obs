@@ -1401,13 +1401,13 @@ bundle Struct {
 			@map->Remove(IntHolder->New(key)->As(Compare));
 		}
     
-		method : public : Find(key : Int) ~ Int {
-			result : IntHolder := @map->Find(IntHolder->New(key)->As(Compare))->As(IntHolder);
+		method : public : Find(key : Int) ~ Base {
+			result : Base := @map->Find(IntHolder->New(key)->As(Compare));
 			if(result <> Nil) {
-				return result->Get();
+				return result;
 			};
 
-			return 0;
+			return Nil;
 		}
 		
 		method : public : Has(key : Int) ~ Bool {
