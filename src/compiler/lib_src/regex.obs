@@ -132,35 +132,48 @@ DumpInstrs(@instrs);
 						i += 1;
 						c := @pattern->Get(i);
 						start := i;
-						while((c->IsChar() | c->IsDigit()) & i < @pattern->Size()) {
+						while((c->IsChar() | c->IsDigit() | c = '-') & i < @pattern->Size()) {
+							if(c = '-') {
+								if(is_range) {
+									"invalid character class"->PrintLine();
+									@error := true;
+									return Nil;
+								};
+								is_range := true;
+							};
+							
 							# update
 							i += 1;
 							c := @pattern->Get(i);
 						};
-						
-						# parse range
-						if(c = '-') {
-							is_range := true;
-# TODO: ensure we have an ending character			
-							i += 1;
-							c := @pattern->Get(i);
-							end_index := i;
-							while((c->IsChar() | c->IsDigit()) & i < @pattern->Size()) {
-								# update
-								i += 1;
-								c := @pattern->Get(i);
-							};
-							
-							if(end_index = i) {
-								"invalid character class"->PrintLine();
-								@error := true;
-							};
-						};
 						end := i;
+						
+						if(start = end) {
+							"invalid character class"->PrintLine();
+							@error := true;
+							return Nil;
+						};
 						
 						# map range
 						range := @pattern->SubString(start, end - start);
 						if(is_range) {
+							if(range->Size() = 3 & range->Get(1) = '-') {
+								range_start := range->Get(0);
+								range_end := range->Get(2);
+								if(range_start >= range_end) {
+									"invalid character class"->PrintLine();
+									@error := true;
+									return Nil;
+								};
+								
+Console->Print("range: ")->Print(range_start->As(Int))
+	->Print(", ")->PrintLine(range_end->As(Int));
+							}
+							else {
+								"invalid character class"->PrintLine();
+								@error := true;
+								return Nil;
+							};
 # Console->Print("class range=")->PrintLine(range);
 						}
 						# add elements
@@ -185,6 +198,7 @@ DumpInstrs(@instrs);
 						if(c <> ']') {
 							"invalid character class"->PrintLine();
 							@error := true;
+							return Nil;
 						};
 						concat := true;
 					}
@@ -223,6 +237,7 @@ DumpInstrs(@instrs);
 						else {
 							"invalid operation"->PrintLine();
 							@error := true;
+							return Nil;
 						};
 						
 						prep[index] := Token->KLEENE;
@@ -254,6 +269,7 @@ DumpInstrs(@instrs);
 			if(prn_count <> 0) {
 				"unbalanced parentheses"->PrintLine();
 				@error := true;
+				return Nil;
 			};
 			
 			return prep;
