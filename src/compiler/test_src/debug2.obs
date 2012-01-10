@@ -1,16 +1,26 @@
+use Struct;
+
 bundle Default {
 	class Hello {
-		function : Main(args : String[]) ~ Nil {
-			i := 0;
-			while(i < 3) {
-#				x : Int;
-				i += 3;
-				x := i * 1;
-			};
+		im : IntMap;
 
-			x : Float;
-			x := 5.6;
-			x->PrintLine();
+		New() {
+			im := IntMap->New();
+		}
+
+		method : Test() ~ Nil {
+			s := "Foo";
+			im->Insert(42, s->As(Base));
+		}
+		
+		method : Test2(n : Int) ~ Nil {
+			s := im->Find(n);
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			h := Hello->New();
+			h->Test();
+			h->Test2(42);
 		}
 	}
 }
