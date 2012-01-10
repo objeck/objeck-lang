@@ -562,13 +562,9 @@ DumpInstrs(@instrs);
 					}
 					
 					label Operand->MATCH_RANGE: {
-# instr->GetAddress()->PrintLine();					
-						@ranges->Find(-64);
-					#~	
-range->PrintLine();						
-						Console->Print(i)->Print(": MATCH_RANGE, range='")
-							->Print(range)->PrintLine('\'');
-~#							
+						range := @ranges->Find(instr->GetAddress())->As(String);
+					Console->Print(i)->Print(": MATCH_RANGE, range='")
+							->Print(range)->PrintLine('\'');							
 					}
 					
 					label Operand->JUMP: {
