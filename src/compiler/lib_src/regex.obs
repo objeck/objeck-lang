@@ -72,12 +72,12 @@ bundle RegEx {
 			@classes := String->New();
 			
 			prep := Prepare();
-# DumpSrc(prep);
+DumpSrc(prep);
 			if(@error = false) {
 				src := Convert(prep);
-# DumpSrc(src);
+DumpSrc(src);
 				@instrs := Compile(src);
-# DumpInstrs(@instrs);
+DumpInstrs(@instrs);
 			};
 		}
 		
@@ -86,7 +86,6 @@ bundle RegEx {
 			index := 0;
 			prn_count := 0;
 			offset := 0;
-			@class_id := -64;
 			concat := false;
 			
 			each(i : @pattern) {
@@ -128,38 +127,64 @@ bundle RegEx {
 							index += 1;
 						};
 						
-						start := offset;
+						# parse characters
+						
+						is_range := false;
 						i += 1;
 						c := @pattern->Get(i);
-						while((c->IsChar() | c->IsDigit() | c = '-') & i < @pattern->Size()) {
-							@classes->Append(c);
+						start := i;
+						while((c->IsChar() | c->IsDigit()) & i < @pattern->Size()) {
 							# update
 							i += 1;
 							c := @pattern->Get(i);
 							offset += 1;
 						};
-						end := offset;
-						@classes->Append('\b');
+						
+						# parse range
+						if(c = '-') {
+							is_range := true;
+# TODO: ensure we have an ending character			
+							i += 1;
+							c := @pattern->Get(i);
+							while((c->IsChar() | c->IsDigit()) & i < @pattern->Size()) {
+								# update
+								i += 1;
+								c := @pattern->Get(i);
+								offset += 1;
+							};
+						};
+						end := i;
 						offset += 1;
 						
-#						@class_id -= start - end + 1;
+						# map range
+						range := @pattern->SubString(start, end - start);
+						if(is_range) {
+# Console->Print("class range=")->PrintLine(range);
+						}
+						# add elements
+						else {
+# Console->Print("class element(s)=")->PrintLine(range);	
+							
+							prep[index] := Token->LPRN;
+							index += 1;
+							each(j : range) {
+								prep[index] := range->Get(j);
+								index += 1;
+								if(j + 1 < range->Size()) {
+									prep[index] := Token->ALTERN;
+									index += 1;
+								};
+							};
+							prep[index] := Token->RPRN;
+							index += 1;
+						};
 						
-@classes->SubString(start, end - start)->PrintLine();
-@class_id->PrintLine();						
-						
+						# finish
 						if(c <> ']') {
 							"invalid character class"->PrintLine();
 							@error := true;
 						};
-						i += 1;
-						
-						prep[index] := @class_id;
-						index += 1;
 						concat := true;
-						
-(start - end - 1)->PrintLine();						
-						
-						@class_id -= end - start + 1;
 					}
 					
 					label '(': {
