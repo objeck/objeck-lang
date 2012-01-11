@@ -497,6 +497,29 @@ DumpInstrs(@instrs);
 						};
 					}
 					
+					label Operand->MATCH_RANGE: {
+						range := @ranges->Find(instr->GetAddress())->As(String);
+# Console->Print(i)->Print(": MATCH_RANGE, range='")->Print(range)->PrintLine('\'');
+						c := string->Get(i);
+						if(c >= range->Get(0) & c <= range->Get(2)) {
+							if(@start < 0) {
+								@start := i;
+							};
+							i += 1;
+							pc += 1;
+						}
+						else {
+							if(top > 0) {
+								top -=1 ;
+								pc := stack[top];
+							}
+							else {
+								@start := -1;
+								return false;
+							};
+						};					
+					}
+					
 					label Operand->BRANCH: {
 # Console->Print(pc)->Print(": BRANCH, symb='")->Print(instr->GetAddress()->As(Char))->PrintLine('\'');
 						pc += 1;
@@ -563,7 +586,7 @@ DumpInstrs(@instrs);
 					
 					label Operand->MATCH_RANGE: {
 						range := @ranges->Find(instr->GetAddress())->As(String);
-					Console->Print(i)->Print(": MATCH_RANGE, range='")
+						Console->Print(i)->Print(": MATCH_RANGE, range='")
 							->Print(range)->PrintLine('\'');							
 					}
 					

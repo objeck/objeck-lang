@@ -5,8 +5,8 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 #			regex := RegEx->New("ab[cd]ef[ghijk]l[a-z]");
 #			regex := RegEx->New("[abcd]g+");
-			regex := RegEx->New("[c-g]e");
-			regex->Apply("bgg")->PrintLine();
+			regex := RegEx->New("[c-g]i");
+			regex->Apply("ei")->PrintLine();
 		}
 	}
 }
