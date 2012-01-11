@@ -1,12 +1,14 @@
 #~
 RegEx engine for Objeck.
 operations: 
-'.' - any 1
-'?' - 0 or 1
-'*' - 0 or more
-'+' - 1 or more
-'|' - or
-'()' - grouping
+'.'	 -  any 1
+'?'  -  0 or 1
+'*'  -  0 or more
+'+'  -  1 or more
+'|'  -  OR
+'()' -  grouping
+'[]' -  ranges
+'^'  -  not in range
 
 Copyright (c) 2012 Randy Hollines
 Copyright (c) 2004 Jan Burgy.
@@ -32,6 +34,7 @@ bundle RegEx {
 		MATCH,
 		NOT_MATCH,
 		MATCH_RANGE,
+		NOT_MATCH_RANGE,
 		BRANCH
 	}
 	
@@ -63,21 +66,23 @@ bundle RegEx {
 		@end : Int;
 		# TODO: use IntHash...
 		@ranges : IntMap; 
+		@not_ranges : IntMap; 
 		
 		New(pattern : String) {
 			@pattern := pattern;
-			@max_size := 256;
+			@max_size := 512;
 			@error := false;
 			@instrs := Nil;
 			@start := -1;
 			@end := -1;
-			@ranges := IntMap->New(); 
+			@ranges := IntMap->New();
+			@not_ranges := IntMap->New();
 			
 			prep := Prepare();
 # DumpSrc(prep);
 			if(@error = false) {
 				src := Convert(prep);
-# DumpSrc(src);
+DumpSrc(src);
 				@instrs := Compile(src);
 DumpInstrs(@instrs);
 			};
@@ -89,6 +94,7 @@ DumpInstrs(@instrs);
 			prn_count := 0;
 			concat := false;
 			range_offset := -64;
+			range_not_offset := -128;
 			
 			each(i : @pattern) {
 				c := @pattern->Get(i);
@@ -123,19 +129,21 @@ DumpInstrs(@instrs);
 				};
 				
 				select(c) {
+					# character class
 					label '[': {
 						if(concat) {
 							prep[index] := Token->CONCAT;
 							index += 1;
 						};
 						
-						# parse characters
-						
+						# characters
 						is_range := false;
+						is_not := false;
 						i += 1;
 						c := @pattern->Get(i);
 						start := i;
-						while((c->IsChar() | c->IsDigit() | c = '-') & i < @pattern->Size()) {
+						while((c->IsChar() | c->IsDigit() | c = '-' | c = '^') & i < @pattern->Size()) {
+							# range match
 							if(c = '-') {
 								if(is_range) {
 									"invalid character class"->PrintLine();
@@ -144,7 +152,15 @@ DumpInstrs(@instrs);
 								};
 								is_range := true;
 							};
-							
+							# not match
+							if(c = '^') {
+								if(i <> start) {
+									"invalid character class"->PrintLine();
+									@error := true;
+									return Nil;
+								};
+								is_not := true;
+							};
 							# update
 							i += 1;
 							c := @pattern->Get(i);
@@ -160,7 +176,8 @@ DumpInstrs(@instrs);
 						# map range
 						range := @pattern->SubString(start, end - start);
 						if(is_range) {
-							if(range->Size() = 3 & range->Get(1) = '-') {
+							# match range
+							if((range->Size() = 3 & range->Get(1) = '-')) {
 								range_start := range->Get(0);
 								range_end := range->Get(2);
 								if(range_start >= range_end) {
@@ -177,29 +194,64 @@ DumpInstrs(@instrs);
 								@ranges->Insert(range_offset, range->As(Base));
 								range_offset -= 1;
 							}
+							# not match range
+							else if(is_not & range->Size() = 4 & range->Get(2) = '-') {
+								range_start := range->Get(1);
+								range_end := range->Get(3);
+								if(range_start >= range_end) {
+									"invalid character class 1"->PrintLine();
+									@error := true;
+									return Nil;
+								};
+								
+# Console->Print("not range: ")->Print(range_start->As(Int))->Print(", ")->PrintLine(range_end->As(Int));
+								
+								prep[index] := range_not_offset;
+								index += 1;
+								
+								@not_ranges->Insert(range_not_offset, range->As(Base));
+								range_not_offset -= 1;
+							}
 							else {
-								"invalid character class"->PrintLine();
+								"invalid character class 2"->PrintLine();
 								@error := true;
 								return Nil;
 							};
 # Console->Print("class range=")->PrintLine(range);
 						}
-						# add elements
+						# match elements
 						else {
-# Console->Print("class element(s)=")->PrintLine(range);	
-							
-							prep[index] := Token->LPRN;
-							index += 1;
-							each(j : range) {
-								prep[index] := range->Get(j);
+							if(range->Size() > 0 & range->Get(0) = '^') {
+Console->Print("not match element(s)=")->PrintLine(range);								
+								prep[index] := Token->LPRN;
 								index += 1;
-								if(j + 1 < range->Size()) {
-									prep[index] := Token->ALTERN;
+								for(j := 1; j < range->Size(); j +=1;) {
+									prep[index] := range->Get(j);
 									index += 1;
+									
+									if(j + 1 < range->Size()) {
+										prep[index] := Token->ALTERN;
+										index += 1;
+									};
 								};
+								prep[index] := Token->RPRN;
+								index += 1;
+							}
+							else {
+# Console->Print("match element(s)=")->PrintLine(range);	
+								prep[index] := Token->LPRN;
+								index += 1;
+								each(j : range) {
+									prep[index] := range->Get(j);
+									index += 1;
+									if(j + 1 < range->Size()) {
+										prep[index] := Token->ALTERN;
+										index += 1;
+									};
+								};
+								prep[index] := Token->RPRN;
+								index += 1;
 							};
-							prep[index] := Token->RPRN;
-							index += 1;
 						};
 						
 						# finish
@@ -412,7 +464,11 @@ DumpInstrs(@instrs);
 						code[pc] := Instr->New(Operand->JUMP, pc + 1);
 						pc += 1;
 						
-						if(s <= -64) {
+						if(s <= -128) {
+							code[pc] := Instr->New(Operand->NOT_MATCH_RANGE, s);
+							pc += 1;
+						}
+						else if(s <= -64) {
 							code[pc] := Instr->New(Operand->MATCH_RANGE, s);
 							pc += 1;
 						}
@@ -498,10 +554,33 @@ DumpInstrs(@instrs);
 					}
 					
 					label Operand->MATCH_RANGE: {
-						range := @ranges->Find(instr->GetAddress())->As(String);
+						not_range := @ranges->Find(instr->GetAddress())->As(String);
 # Console->Print(i)->Print(": MATCH_RANGE, range='")->Print(range)->PrintLine('\'');
 						c := string->Get(i);
-						if(c >= range->Get(0) & c <= range->Get(2)) {
+						if(c >= not_range->Get(0) & c <= not_range->Get(2)) {
+							if(@start < 0) {
+								@start := i;
+							};
+							i += 1;
+							pc += 1;
+						}
+						else {
+							if(top > 0) {
+								top -=1 ;
+								pc := stack[top];
+							}
+							else {
+								@start := -1;
+								return false;
+							};
+						};					
+					}
+					
+					label Operand->NOT_MATCH_RANGE: {
+						range := @not_ranges->Find(instr->GetAddress())->As(String);
+# Console->Print(i)->Print(": MATCH_RANGE, range='")->Print(range)->PrintLine('\'');
+						c := string->Get(i);
+						if((c >= range->Get(1) & c <= range->Get(3)) = false) {
 							if(@start < 0) {
 								@start := i;
 							};
@@ -588,6 +667,12 @@ DumpInstrs(@instrs);
 						range := @ranges->Find(instr->GetAddress())->As(String);
 						Console->Print(i)->Print(": MATCH_RANGE, range='")
 							->Print(range)->PrintLine('\'');							
+					}
+					
+					label Operand->NOT_MATCH_RANGE: {
+						not_range := @not_ranges->Find(instr->GetAddress())->As(String);
+						Console->Print(i)->Print(": NOT_MATCH_RANGE, range='")
+							->Print(not_range)->PrintLine('\'');							
 					}
 					
 					label Operand->JUMP: {
