@@ -353,6 +353,7 @@ void Scanner::CheckIdentifier(int index)
 #endif
     tokens[index]->SetType(ident_type);
     break;
+    
   default:
     tokens[index]->SetType(TOKEN_IDENT);
     tokens[index]->SetIdentifier(ident);
@@ -564,6 +565,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	  
         case 'r':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\r');
@@ -572,6 +574,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	  
         case 't':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\t');
@@ -589,6 +592,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	
 	case 'b':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\b');
@@ -597,14 +601,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
-	case 'e':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\e');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
-          NextChar();
-          NextChar();
-          return;
+	
 	case 'f':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\f');
@@ -623,6 +620,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	  
 	case '\'':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\'');
@@ -631,6 +629,7 @@ void Scanner::ParseToken(int index)
           NextChar();
           NextChar();
           return;
+	  
         case '0':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\0');
