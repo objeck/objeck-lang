@@ -74,10 +74,10 @@ bundle RegEx {
 			@ranges := IntMap->New(); 
 			
 			prep := Prepare();
-DumpSrc(prep);
+# DumpSrc(prep);
 			if(@error = false) {
 				src := Convert(prep);
-DumpSrc(src);
+# DumpSrc(src);
 				@instrs := Compile(src);
 DumpInstrs(@instrs);
 			};
