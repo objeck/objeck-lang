@@ -119,7 +119,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			p := Postfix->New("4/(2+3)");
+			p := Postfix->New("4/(2+3)*5");
 			p->Parse();
 			p->Dump();
 		}
