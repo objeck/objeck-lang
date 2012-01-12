@@ -23,6 +23,7 @@ bundle RegEx {
 		LPRN,
 		RPRN,
 		CONCAT,
+		MATCH_KLEENE,
 		KLEENE,
 		ALTERN,
 		OPTION
@@ -54,6 +55,10 @@ bundle RegEx {
 		method : public : GetAddress() ~ Int {
 			return @address;
 		} 
+
+		method : public : SetAddress(address : Int) ~ Nil {
+			@address := address;
+		}
 	}
 	
 	class RegEx {
@@ -282,6 +287,13 @@ Console->Print("not match element(s)=")->PrintLine(range);
 						index += 1;
 						concat := true;
 					}
+
+					label '+': {
+						prep[index] := Token->MATCH_KLEENE;
+						index += 1;
+						concat := true;
+					}
+					
 					
 					label '?': {
 						prep[index] := Token->OPTION;
@@ -289,21 +301,6 @@ Console->Print("not match element(s)=")->PrintLine(range);
 						concat := true;
 					}
 					
-					label '+': {
-						if(i - 1 > -1) {
-							prep[index] := @pattern->Get(i - 1);
-							index += 1;
-						}
-						else {
-							"invalid operation"->PrintLine();
-							@error := true;
-							return Nil;
-						};
-						
-						prep[index] := Token->KLEENE;
-						index += 1;
-						concat := true;
-					}
 					
 					label '|': {
 						prep[index] := Token->ALTERN;
@@ -373,6 +370,7 @@ Console->Print("not match element(s)=")->PrintLine(range);
 						top += 1;
 					}
 					
+					label Token->MATCH_KLEENE:
 					label Token->KLEENE:
 					label Token->OPTION: {
 						while(t <= stack[top - 1]) {
@@ -414,6 +412,19 @@ Console->Print("not match element(s)=")->PrintLine(range);
 				select(s) {
 					label Token->CONCAT: {
 						top -= 1;
+					}
+					
+					label Token->MATCH_KLEENE: {
+						code[pc] := code[pc - 1];
+						pc += 1;
+						
+						code[pc] := Instr->New(Operand->BRANCH, '+'->As(Int));
+						pc += 1;
+						
+						code[pc] := code[stack[top - 1]];
+						pc += 1;
+
+						code[stack[top - 1]] := Instr->New(Operand->JUMP, pc - 4);
 					}
 					
 					label Token->KLEENE: {
@@ -707,6 +718,10 @@ Console->Print("not match element(s)=")->PrintLine(range);
 					
 					label Token->RPRN: {
 						')'->Print();
+					}
+					
+					label Token->MATCH_KLEENE: {
+						'+'->Print();
 					}
 					
 					label Token->KLEENE: {
