@@ -3,10 +3,11 @@ use RegEx;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-#			regex := RegEx->New("ab[cd]ef[ghijk]l[a-z]");
-#			regex := RegEx->New("[abcd]g+");
-			regex := RegEx->New("[^e-g]i+j*");
-			regex->Apply("hiiiiiijj")->PrintLine();
+#			regex := RegEx->New("[^e-g]i+j*");
+#			regex := RegEx->New("[^e-g]i+j*");
+			regex := RegEx->New("(r|j)+");
+#			regex := RegEx->New("[rj]");
+			regex->Apply("rjrj")->PrintLine();
 		}
 	}
 }
