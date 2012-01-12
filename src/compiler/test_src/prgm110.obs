@@ -3,11 +3,8 @@ use RegEx;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-#			regex := RegEx->New("[^e-g]i+j*");
-#			regex := RegEx->New("[^e-g]i+j*");
-			regex := RegEx->New("(r|j)+");
-#			regex := RegEx->New("[rj]");
-			regex->Apply("rjrj")->PrintLine();
+			regex := RegEx->New("(ab)+");
+			regex->Apply("ab")->PrintLine();
 		}
 	}
 }
