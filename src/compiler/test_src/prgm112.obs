@@ -1,9 +1,9 @@
 bundle Default {
 	enum Token := -32 { 
-		ADD,
-		MUL,
-		SUB,
-		DIV
+		ZERO_MORE,
+		ONE_MORE,
+		SEQUENCE,
+		ALTERNATION
 	}
 
 	class Postfix {
@@ -25,66 +25,43 @@ bundle Default {
 			@sp += 1;
 		}
 
-		method : Next() ~ Char {
+		method : Next() ~ Nil {
 			if(@index < @input->Size()) {
 				@char := @input->Get(@index);
 				@index += 1;
+			}
+			else {
+				@char := '\0';
 			};
-
-			return '\0';
 		}
 
 		method : public : Parse() ~ String {
 			Next();
-			Term();
+			Alternation();
 
 			return "";	
 		}	
 
-		method : Term() ~ Nil {
-			Factor();
+		method : Alternation() ~ Nil {
+			Sequence();
 
-			if(@char = '+') {
+			if(@char = '|') {
 				Next();
-				Factor();
-				Push(Token->ADD->As(Int));
-			}
-			else if(@char = '-') {
-				Next();
-				Factor();
-				Push(Token->SUB->As(Int));
+				Sequence();
+				Push(Token->ALTERNATION->As(Int));
 			};
 		}
 
-		method : Factor() ~ Nil {
-			if(@char->IsDigit()) {
-				Push((@char->As(Char))->As(Int));	
-				Next();
-			}
-			else if(@char = '(') {
-				Next();
-				Term();
-				if(@char <> ')') {			
-					"expected )"->PrintLine();
-					return;
-				};		
-				Next();
-			}
-			else {
-				"expected digit"->PrintLine();
-				return;
-			};		
-
-			if(@char = '*') {
-				Next();
-				Factor();
-				Push(Token->MUL->As(Int));
-			}
-			else if(@char = '/') {
-				Next();
-				Factor();
-				Push(Token->DIV->As(Int));
+		method : Sequence() ~ Nil {
+			while(@char->IsChar() & @char <> '\0') {
+				Repetition();
+				Push(Token->SEQUENCE->As(Int));
 			};
+		}
+		
+		method : Repetition() ~ Nil {
+			Push(@char->As(Int));
+			Next();
 		}
 
 		method : Dump() ~ Nil {
@@ -93,24 +70,24 @@ bundle Default {
 
 			while(c <> 0) {
 				select(c) {
-					label Token->ADD: {
-						'+'->PrintLine();
-					}
-
-					label Token->MUL: {
+					label Token->ZERO_MORE: {
 						'*'->PrintLine();
 					}
 
-					label Token->SUB: {
-						'-'->PrintLine();
+					label Token->ONE_MORE: {
+						'+'->PrintLine();
 					}
 
-					label Token->DIV: {
-						'/'->PrintLine();
+					label Token->SEQUENCE: {
+						'.'->PrintLine();
+					}
+
+					label Token->ALTERNATION: {
+						'|'->PrintLine();
 					}
 				
 					other: {
-						(c - 48)->PrintLine();
+						c->As(Char)->PrintLine();
 					}
 				};
 				i += 1;
@@ -119,7 +96,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			p := Postfix->New("4/(2+3)*5");
+			p := Postfix->New("ab");
 			p->Parse();
 			p->Dump();
 		}
