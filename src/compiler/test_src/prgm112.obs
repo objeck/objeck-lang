@@ -10,19 +10,20 @@ bundle Default {
 		@input : String;
 		@index : Int;
 		@char : Char;
-		@stack : Int[];
-		@sp : Int;
+		@input_stack : Int[];
+		@input_index : Int;
+		@error : String;
 
 		New(input : String) {
 			@input := input;
 			@index := 0;
-			@stack := Int->New[256];
-			@sp := 0;
+			@input_stack := Int->New[256];
+			@input_index := 0;
 		}
 
 		method : Push(value : Int) ~ Nil {
-			@stack[@sp] := value;
-			@sp += 1;
+			@input_stack[@input_index] := value;
+			@input_index += 1;
 		}
 
 		method : Next() ~ Nil {
@@ -39,6 +40,10 @@ bundle Default {
 			Next();
 			Alternation();
 
+			if(@error <> Nil) {
+				@error->PrintLine();
+			};
+
 			return "";	
 		}	
 
@@ -53,20 +58,43 @@ bundle Default {
 		}
 
 		method : Sequence() ~ Nil {
-			while(@char->IsChar() & @char <> '\0') {
-				Repetition();
-				Push(Token->SEQUENCE->As(Int));
+			while(@char >= 40 & @char <= 122) {
+				if(Repetition()) {
+					Push(Token->SEQUENCE->As(Int));
+				};
 			};
 		}
 		
-		method : Repetition() ~ Nil {
-			Push(@char->As(Int));
+		method : Repetition() ~ Bool {
+			was_pushed := false;
+	
+			if(@char = '(') {
+				Next();
+				Alternation();
+				if(@char <> ')') {
+					@error := "expected ')'";
+					return;
+				};
+				Next();
+			}
+			else if(@char <> ')') {
+				Push(@char->As(Int));
+				was_pushed := true;
+			};
 			Next();
+			
+			if(@char = '*' | @char = '+') {
+				Push(@char->As(Int));
+				was_pushed := true;
+				Next();
+			};
+			
+			return was_pushed;
 		}
-
+		
 		method : Dump() ~ Nil {
 			i += 0;
-			c := @stack[0];	 
+			c := @input_stack[0];	 
 
 			while(c <> 0) {
 				select(c) {
@@ -87,16 +115,17 @@ bundle Default {
 					}
 				
 					other: {
-						c->As(Char)->PrintLine();
+						v := c->As(Char);
+						v->PrintLine();
 					}
 				};
 				i += 1;
-				c := @stack[i];	 
+				c := @input_stack[i];	 
 			};
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			p := Postfix->New("ab");
+			p := Postfix->New("(ba)*");
 			p->Parse();
 			p->Dump();
 		}
