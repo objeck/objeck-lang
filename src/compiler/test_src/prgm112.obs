@@ -72,37 +72,41 @@ Dump();
 						
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
 						emit_index += 1;
+						
+						calc_stack[calc_index] := c;
+						calc_index += 1;
 					}
 
 					label Token->ONE_MORE: {
 					}
 
 					label Token->SEQUENCE: {
+						calc_index -= 1;
+						match := calc_stack[calc_index];
+						
+						# match characters
+						if(match > 0) {
+							Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(match);
+							emit_index += 1;
+						};
+						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index + 1);
+						emit_index += 1;
 					}
 
 					label Token->ALTERNATION: {
-						# matches
-						calc_index -= 1;
-						right := calc_stack[calc_index];
 						
-						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(right);
-						emit_index += 1;
-						
-						calc_index -= 1;
-						left := calc_stack[calc_index];
-						
-						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(left);
-						emit_index += 1;
 						
 						# operation
 						Console->Print(emit_index)->PrintLine(": ALTERNATION");
 						emit_index += 1;
-						
+
+#~						
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
 						emit_index += 1;
 						
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 4);
 						emit_index += 1;
+~#						
 					}
 					
 					label Token->OPRN: {
