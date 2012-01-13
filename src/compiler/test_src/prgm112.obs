@@ -1,9 +1,14 @@
+use IO;
+
 bundle Default {
-	enum Token := -32 { 
+	enum Token := -32 {
 		ZERO_MORE,
 		ONE_MORE,
 		SEQUENCE,
-		ALTERNATION
+		ALTERNATION,
+		OPRN,
+		CPRN,
+		STOP
 	}
 
 	class Postfix {
@@ -36,15 +41,91 @@ bundle Default {
 			};
 		}
 
-		method : public : Parse() ~ String {
+		method : public : Compile() ~ String {
+			Parse();
+Dump();			
+			if(@error = Nil) {
+				Emit();
+			};
+			
+			return "";
+		}
+		
+		method : Emit() ~ Nil {
+			calc_stack := Int->New[256];
+			calc_index := 0;
+			i := 0;
+			c := @input_stack[0];
+			emit_index := 0;
+			
+			while(c <> 0) {
+				select(c) {
+					label Token->ZERO_MORE: {
+						calc_index -= 1;
+						offset := calc_stack[calc_index];
+						
+						Console->Print(emit_index)->PrintLine(": ZERO_MORE");
+						emit_index += 1;
+						
+						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(offset);
+						emit_index += 1;
+						
+						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index);
+						emit_index += 1;
+					}
+
+					label Token->ONE_MORE: {
+						'+'->PrintLine();
+					}
+
+					label Token->SEQUENCE: {
+						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index + 1);
+						emit_index += 1;
+						
+						calc_index -= 1;
+					}
+
+					label Token->ALTERNATION: {
+						'|'->PrintLine();
+					}
+					
+					label Token->OPRN: {
+#						'('->PrintLine();
+						
+						calc_stack[calc_index] := i;
+						calc_index += 1;
+					}
+					
+#~					
+					label Token->CPRN: {
+						')'->PrintLine();
+					}
+~#
+					
+					label Token->STOP: {
+						Console->Print(emit_index)->PrintLine(": STOP");
+					}
+				
+					other: {
+						m := c->As(Char);
+						Console->Print(emit_index)->Print(": MATCH: id=")->PrintLine(m);
+						emit_index += 1;
+						
+						calc_stack[calc_index] := emit_index;
+						calc_index += 1;
+					}
+				};
+				i += 1;
+				c := @input_stack[i];	 
+			};
+			
+			Console->Print("calc: id=")->PrintLine(calc_index);
+		}
+		
+		method : Parse() ~ Nil {
 			Next();
 			Alternation();
-
-			if(@error <> Nil) {
-				@error->PrintLine();
-			};
-
-			return "";	
+			Push(Token->STOP->As(Int));
 		}	
 
 		method : Alternation() ~ Nil {
@@ -58,7 +139,7 @@ bundle Default {
 		}
 
 		method : Sequence() ~ Nil {
-			while(@char >= 40 & @char <= 122) {
+			while(@char >= 40 & @char <= 122 & @char <> ')') {
 				if(Repetition()) {
 					Push(Token->SEQUENCE->As(Int));
 				};
@@ -69,22 +150,29 @@ bundle Default {
 			was_pushed := false;
 	
 			if(@char = '(') {
+				Push(Token->OPRN->As(Int));
 				Next();
 				Alternation();
 				if(@char <> ')') {
 					@error := "expected ')'";
 					return;
 				};
+				Push(Token->CPRN->As(Int));
 				Next();
 			}
 			else if(@char <> ')') {
 				Push(@char->As(Int));
 				was_pushed := true;
+				Next();
 			};
-			Next();
 			
-			if(@char = '*' | @char = '+') {
-				Push(@char->As(Int));
+			if(@char = '*') {
+				Push(Token->ZERO_MORE->As(Int));
+				was_pushed := true;
+				Next();
+			}
+			else if(@char = '+') {
+				Push(Token->ONE_MORE->As(Int));
 				was_pushed := true;
 				Next();
 			};
@@ -93,7 +181,7 @@ bundle Default {
 		}
 		
 		method : Dump() ~ Nil {
-			i += 0;
+			i := 0;
 			c := @input_stack[0];	 
 
 			while(c <> 0) {
@@ -113,6 +201,18 @@ bundle Default {
 					label Token->ALTERNATION: {
 						'|'->PrintLine();
 					}
+					
+					label Token->OPRN: {
+						'('->PrintLine();
+					}
+					
+					label Token->CPRN: {
+						')'->PrintLine();
+					}
+					
+					label Token->STOP: {
+						"STOP"->PrintLine();
+					}
 				
 					other: {
 						v := c->As(Char);
@@ -122,12 +222,14 @@ bundle Default {
 				i += 1;
 				c := @input_stack[i];	 
 			};
+			"-----"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			p := Postfix->New("(ba)*");
-			p->Parse();
-			p->Dump();
+			if(args->Size() = 1) {
+				p := Postfix->New(args[0]);
+				p->Compile();
+			};
 		}
 	}
 }
