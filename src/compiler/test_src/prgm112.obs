@@ -70,7 +70,7 @@ Dump();
 						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(offset);
 						emit_index += 1;
 						
-						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index);
+						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index + 1);
 						emit_index += 1;
 					}
 
@@ -96,11 +96,9 @@ Dump();
 						calc_index += 1;
 					}
 					
-#~					
 					label Token->CPRN: {
-						')'->PrintLine();
+#						')'->PrintLine();
 					}
-~#
 					
 					label Token->STOP: {
 						Console->Print(emit_index)->PrintLine(": STOP");
