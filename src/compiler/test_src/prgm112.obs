@@ -62,57 +62,63 @@ Dump();
 				select(c) {
 					label Token->ZERO_MORE: {
 						calc_index -= 1;
-						offset := calc_stack[calc_index];
+						match := calc_stack[calc_index];
+						
+						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(match);
+						emit_index += 1;
 						
 						Console->Print(emit_index)->PrintLine(": ZERO_MORE");
 						emit_index += 1;
 						
-						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(offset);
+						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
 						emit_index += 1;
-						
-						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index + 1);
-						emit_index += 1;
-						
-						calc_index += 1;
 					}
 
 					label Token->ONE_MORE: {
-						'+'->PrintLine();
 					}
 
 					label Token->SEQUENCE: {
-						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index + 1);
-						emit_index += 1;
-						
-						calc_index -= 1;
 					}
 
 					label Token->ALTERNATION: {
-						'|'->PrintLine();
+						# matches
+						calc_index -= 1;
+						right := calc_stack[calc_index];
+						
+						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(right);
+						emit_index += 1;
+						
+						calc_index -= 1;
+						left := calc_stack[calc_index];
+						
+						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(left);
+						emit_index += 1;
+						
+						# operation
+						Console->Print(emit_index)->PrintLine(": ALTERNATION");
+						emit_index += 1;
+						
+						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
+						emit_index += 1;
+						
+						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 4);
+						emit_index += 1;
 					}
 					
 					label Token->OPRN: {
-#						'('->PrintLine();
-						
-						calc_stack[calc_index] := i;
-						calc_index += 1;
 					}
 					
 					label Token->CPRN: {
-#						')'->PrintLine();
 					}
 					
 					label Token->STOP: {
 						Console->Print(emit_index)->PrintLine(": STOP");
+						emit_index += 1;
 					}
 				
 					other: {
-						m := c->As(Char);
-						Console->Print(emit_index)->Print(": MATCH: id=")->PrintLine(m);
+						calc_stack[calc_index] := c;
 						calc_index += 1;
-	
-						calc_stack[calc_index] := emit_index;
-						emit_index += 1;
 					}
 				};
 				i += 1;
