@@ -72,6 +72,8 @@ Dump();
 						
 						Console->Print(emit_index)->Print(": JUMP: addr=")->PrintLine(emit_index + 1);
 						emit_index += 1;
+						
+						calc_index += 1;
 					}
 
 					label Token->ONE_MORE: {
@@ -107,10 +109,10 @@ Dump();
 					other: {
 						m := c->As(Char);
 						Console->Print(emit_index)->Print(": MATCH: id=")->PrintLine(m);
-						emit_index += 1;
-						
-						calc_stack[calc_index] := emit_index;
 						calc_index += 1;
+	
+						calc_stack[calc_index] := emit_index;
+						emit_index += 1;
 					}
 				};
 				i += 1;
