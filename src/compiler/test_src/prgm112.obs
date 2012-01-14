@@ -70,6 +70,8 @@ Dump();
 						Console->Print(emit_index)->PrintLine(": ZERO_MORE");
 						emit_index += 1;
 						
+						
+# push index to stack						
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
 						emit_index += 1;
 						
@@ -110,6 +112,11 @@ Dump();
 					}
 					
 					label Token->OPRN: {
+						calc_stack[calc_index] := emit_index + 1;
+						calc_index += 1;
+						
+						calc_stack[calc_index] := c;
+						calc_index += 1;
 					}
 					
 					label Token->CPRN: {
