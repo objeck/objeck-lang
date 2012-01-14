@@ -61,19 +61,35 @@ Dump();
 			while(c <> 0) {
 				select(c) {
 					label Token->ZERO_MORE: {
-						calc_index -= 1;
-						match := calc_stack[calc_index];
-						
-						Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(match);
-						emit_index += 1;
-						
 						Console->Print(emit_index)->PrintLine(": ZERO_MORE");
 						emit_index += 1;
 						
-						
-# push index to stack						
-						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
-						emit_index += 1;
+						top := calc_stack[calc_index - 1];
+						if(top >= 40 & top <= 122) {
+							calc_index -= 1;
+							match := calc_stack[calc_index];
+							
+							Console->Print(emit_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							emit_index += 1;
+							
+							Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
+							emit_index += 1;	
+						}
+						# TODO: caculate jump
+						else {
+							calc_index -= 1;
+							match := calc_stack[calc_index];			
+
+							if(match = Token->OPRN->As(Int)) {
+								calc_index -= 1;
+								match := calc_stack[calc_index];
+# "xxx"->PrintLine();
+# match->PrintLine();
+
+								Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(match);
+								emit_index += 1;
+							};
+						};
 						
 						calc_stack[calc_index] := c;
 						calc_index += 1;
@@ -83,55 +99,52 @@ Dump();
 					}
 
 					label Token->SEQUENCE: {
-						calc_index -= 1;
-						match := calc_stack[calc_index];
-						
-						# match characters
-						if(match > 0) {
-							Console->Print(emit_index)->Print(": MATCH id=")->PrintLine(match);
+						top := calc_stack[calc_index - 1];
+						if(top >= 40 & top <= 122) {
+							calc_index -= 1;
+							match := calc_stack[calc_index];
+							
+							Console->Print(emit_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
 							emit_index += 1;
+						}
+						else {
+							calc_index -= 1;
+							match := calc_stack[calc_index];
+							
+							if(match= Token->OPRN->As(Int)) {
+match->PrintLine();
+							};
 						};
+												
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index + 1);
 						emit_index += 1;
 					}
 
-					label Token->ALTERNATION: {
-						
-						
-						# operation
-						Console->Print(emit_index)->PrintLine(": ALTERNATION");
-						emit_index += 1;
-
-#~						
-						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
-						emit_index += 1;
-						
-						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 4);
-						emit_index += 1;
-~#						
+					label Token->ALTERNATION: {		
 					}
 					
 					label Token->OPRN: {
-						calc_stack[calc_index] := emit_index + 1;
+						calc_stack[calc_index] := calc_index;
 						calc_index += 1;
-						
+					
 						calc_stack[calc_index] := c;
 						calc_index += 1;
 					}
 					
 					label Token->CPRN: {
+#						calc_index -= 1;
 					}
 					
 					label Token->STOP: {
 						Console->Print(emit_index)->PrintLine(": STOP");
-						emit_index += 1;
 					}
 				
-					other: {
+					other: {					
 						calc_stack[calc_index] := c;
 						calc_index += 1;
 					}
 				};
+				# update
 				i += 1;
 				c := @input_stack[i];	 
 			};
