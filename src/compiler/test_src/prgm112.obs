@@ -46,6 +46,10 @@ bundle Default {
 Dump();			
 			if(@error = Nil) {
 				Emit();
+
+if(@error <> Nil) {				
+	@error->PrintLine();
+};
 			};
 			
 			return "";
@@ -69,10 +73,13 @@ Dump();
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-							Console->Print(emit_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							Console->Print(emit_index)->Print(": MATCH id='")
+								->Print(match)->PrintLine("'");
 							emit_index += 1;
 							
-							Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index - 2);
+							Console->Print(emit_index)->Print(": JUMP id=")
+								->PrintLine(emit_index - 2);
+							
 							emit_index += 1;	
 						}
 						# TODO: caculate jump
@@ -80,14 +87,14 @@ Dump();
 							calc_index -= 1;
 							match := calc_stack[calc_index];			
 
-							if(match = Token->OPRN->As(Int)) {
-								calc_index -= 1;
+							if(match = Token->CPRN->As(Int)) {
+								calc_index -= 2;
 								match := calc_stack[calc_index];
-# "xxx"->PrintLine();
-# match->PrintLine();
-
 								Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(match);
 								emit_index += 1;
+							}
+							else {
+								@error := "Invalid expression";
 							};
 						};
 						
@@ -104,18 +111,11 @@ Dump();
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-							Console->Print(emit_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							Console->Print(emit_index)->Print(": MATCH id='")
+								->Print(match)->PrintLine("'");
 							emit_index += 1;
-						}
-						else {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							
-							if(match= Token->OPRN->As(Int)) {
-match->PrintLine();
-							};
 						};
-												
+										
 						Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(emit_index + 1);
 						emit_index += 1;
 					}
@@ -124,18 +124,25 @@ match->PrintLine();
 					}
 					
 					label Token->OPRN: {
-						calc_stack[calc_index] := calc_index;
+						calc_stack[calc_index] := emit_index;
 						calc_index += 1;
-					
+						
 						calc_stack[calc_index] := c;
 						calc_index += 1;
 					}
 					
 					label Token->CPRN: {
-#						calc_index -= 1;
+						calc_stack[calc_index] := c;
+						calc_index += 1;
 					}
 					
 					label Token->STOP: {
+						calc_index -= 1;
+						match := calc_stack[calc_index];			
+						if(match = Token->CPRN->As(Int)) {
+							calc_index -= 2;
+						};
+						
 						Console->Print(emit_index)->PrintLine(": STOP");
 					}
 				
