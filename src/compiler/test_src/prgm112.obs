@@ -82,14 +82,16 @@ if(@error <> Nil) {
 							
 							emit_index += 1;	
 						}
-						# TODO: caculate jump
 						else {
 							calc_index -= 1;
-							match := calc_stack[calc_index];			
-
+							match := calc_stack[calc_index];
 							if(match = Token->CPRN->As(Int)) {
 								calc_index -= 2;
 								match := calc_stack[calc_index];
+								if(match = Token->OPRN->As(Int)) {
+									calc_index -= 1;
+									match := calc_stack[calc_index];
+								};
 								Console->Print(emit_index)->Print(": JUMP id=")->PrintLine(match);
 								emit_index += 1;
 							}
@@ -159,6 +161,7 @@ if(@error <> Nil) {
 			Console->Print("calc: id=")->PrintLine(calc_index);
 		}
 		
+		# TODO: validate input
 		method : Parse() ~ Nil {
 			Next();
 			Alternation();
