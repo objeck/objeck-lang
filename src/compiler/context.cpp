@@ -2105,19 +2105,21 @@ bool ContextAnalyzer::Analyze()
 #endif
 
     Expression* expression = rtrn->GetExpression();
+    Type* type = current_method->GetReturn();
     if(expression) {
       AnalyzeExpression(expression, depth + 1);
-      Type* type = current_method->GetReturn();
-
       AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
-
+      
       if(type->GetType() == CLASS_TYPE) {
 	if(!ResolveClassEnumType(type)) {
 	  ProcessError(rtrn, "Undefined class or enum: '" + type->GetClassName() + "'");
 	}
       }
     }
-
+    else if(type->GetType() != NIL_TYPE) {
+      ProcessError(rtrn, "Invalid return statement");
+    }
+    
     if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
       ProcessError(rtrn, "Cannot return vaule from constructor");
@@ -2754,11 +2756,13 @@ bool ContextAnalyzer::Analyze()
       return;
     }
 
+    /*
     if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
        expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, "Invalid operation method does not return a value");
       return;
     }
+    */
 
     if(is_scalar) {
       switch(left->GetType()) {
