@@ -10,7 +10,8 @@ bundle Default {
 		function : Run() ~ Nil {
 			f := FileReader->New("out.txt");
 			if(f->IsOpen()) {
-#				f->ReadByte()->As(Char)->PrintLine();
+#				c := f->ReadByte()->As(Char);
+# 				c->PrintLine();
 #				bb := Byte->New[10];	
 #				f->ReadBuffer(1, 5, bb);	
 
@@ -26,7 +27,8 @@ bundle Default {
 				for(i:=0; i < 6; i:=i+1;) {
 					c : Char := bb[i];
 					c->PrintLine();
-					bb[i]->As(Char)->PrintLine();
+					c := bb[i]->As(Char);
+					c->PrintLine();
 				};
 ~#
 				f->Close();

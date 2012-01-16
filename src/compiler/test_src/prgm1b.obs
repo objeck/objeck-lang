@@ -23,7 +23,8 @@ bundle Default {
 
 			c := 3.5;
 			c->PrintLine();
-			55.141->As(Char)->PrintLine();	
+			c := 55.141->As(Char);
+			c->PrintLine();	
 
 			(9/3)->PrintLine();
 			(3-9)->PrintLine();

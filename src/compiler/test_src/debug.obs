@@ -1,9 +1,11 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			c := 97;
-			x := c->As(Char);
-			x->IsDigit()->PrintLine();
+#			args[0]->PrintLine();
+		}
+
+		function : Foo() ~ Bool {
+			return false;
 		}
 	}
 }
