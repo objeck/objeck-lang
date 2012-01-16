@@ -1,7 +1,7 @@
 use IO;
 
 bundle Default {
-	enum Token := -32 {
+	enum TokenType := -32 {
 		ZERO_MORE,
 		ONE_MORE,
 		SEQUENCE,
@@ -10,24 +10,47 @@ bundle Default {
 		CPRN,
 		STOP
 	}
-
+	
+	class Token {
+		@type : Int;
+		@value : String;
+		
+		New(type : Int) {
+			@type := type;
+			@value := Nil;
+		}
+		
+		New(type : Int, value : String) {
+			@type := type;
+			@value := value;
+		}
+		
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			return @value;
+		}
+	}
+	
 	class Postfix {
 		@input : String;
 		@index : Int;
 		@char : Char;
-		@input_stack : Int[];
+		@input_stack : Token[];
 		@input_index : Int;
 		@error : String;
 
 		New(input : String) {
 			@input := input;
 			@index := 0;
-			@input_stack := Int->New[256];
+			@input_stack := Token->New[256];
 			@input_index := 0;
 		}
 
 		method : Push(value : Int) ~ Nil {
-			@input_stack[@input_index] := value;
+			@input_stack[@input_index] := Token->New(value);
 			@input_index += 1;
 		}
 
@@ -62,9 +85,9 @@ if(@error <> Nil) {
 			c := @input_stack[0];
 			emit_index := 0;
 			
-			while(c <> 0) {
-				select(c) {
-					label Token->ZERO_MORE: {
+			while(c <> Nil) {
+				select(c->GetType()) {
+					label TokenType->ZERO_MORE: {
 						Console->Print(emit_index)->PrintLine(": ZERO_MORE");
 						emit_index += 1;
 						
@@ -85,10 +108,10 @@ if(@error <> Nil) {
 						else {
 							calc_index -= 1;
 							match := calc_stack[calc_index];
-							if(match = Token->CPRN->As(Int)) {
+							if(match = TokenType->CPRN->As(Int)) {
 								calc_index -= 2;
 								match := calc_stack[calc_index];
-								if(match = Token->OPRN->As(Int)) {
+								if(match = TokenType->OPRN->As(Int)) {
 									calc_index -= 1;
 									match := calc_stack[calc_index];
 								};
@@ -100,14 +123,14 @@ if(@error <> Nil) {
 							};
 						};
 						
-						calc_stack[calc_index] := c;
+						calc_stack[calc_index] := c->GetType();
 						calc_index += 1;
 					}
 
-					label Token->ONE_MORE: {
+					label TokenType->ONE_MORE: {
 					}
 
-					label Token->SEQUENCE: {
+					label TokenType->SEQUENCE: {
 						top := calc_stack[calc_index - 1];
 						if(top >= 40 & top <= 122) {
 							calc_index -= 1;
@@ -122,32 +145,32 @@ if(@error <> Nil) {
 						emit_index += 1;
 					}
 
-					label Token->ALTERNATION: {		
+					label TokenType->ALTERNATION: {		
 					}
 					
-					label Token->OPRN: {
+					label TokenType->OPRN: {
 					
 Console->Print("?? ")->PrintLine(calc_index);			
 					
 						calc_stack[calc_index] := emit_index;
 						calc_index += 1;
 						
-						calc_stack[calc_index] := c;
+						calc_stack[calc_index] := c->GetType();
 						calc_index += 1;
 					}
 					
-					label Token->CPRN: {
-						calc_stack[calc_index] := c;
+					label TokenType->CPRN: {
+						calc_stack[calc_index] := c->GetType();
 						calc_index += 1;
 					}
 					
-					label Token->STOP: {
+					label TokenType->STOP: {
 						calc_index -= 1;
-						match := calc_stack[calc_index];			
-						if(match = Token->CPRN->As(Int)) {
+						match := calc_stack[calc_index];	
+						if(match = TokenType->CPRN->As(Int)) {
 							calc_index -= 2;
 							match := calc_stack[calc_index];
-							if(match = Token->OPRN->As(Int)) {
+							if(match = TokenType->OPRN->As(Int)) {
 								calc_index -= 1;
 							};		
 						};
@@ -156,7 +179,7 @@ Console->Print("?? ")->PrintLine(calc_index);
 					}
 				
 					other: {					
-						calc_stack[calc_index] := c;
+						calc_stack[calc_index] := c->GetType();
 						calc_index += 1;
 					}
 				};
@@ -166,16 +189,13 @@ Console->Print("?? ")->PrintLine(calc_index);
 			};
 			
 			Console->Print("calc: id=")->PrintLine(calc_index);
-			if(calc_index > 0) {
-				@input_stack[calc_index - 1]->PrintLine();
-			};
 		}
 		
 		# TODO: validate input
 		method : Parse() ~ Nil {
 			Next();
 			Alternation();
-			Push(Token->STOP->As(Int));
+			Push(TokenType->STOP->As(Int));
 		}	
 
 		method : Alternation() ~ Nil {
@@ -184,14 +204,14 @@ Console->Print("?? ")->PrintLine(calc_index);
 			if(@char = '|') {
 				Next();
 				Sequence();
-				Push(Token->ALTERNATION->As(Int));
+				Push(TokenType->ALTERNATION->As(Int));
 			};
 		}
 
 		method : Sequence() ~ Nil {
 			while(@char >= 40 & @char <= 122 & @char <> ')') {
 				if(Repetition()) {
-					Push(Token->SEQUENCE->As(Int));
+					Push(TokenType->SEQUENCE->As(Int));
 				};
 			};
 		}
@@ -200,14 +220,14 @@ Console->Print("?? ")->PrintLine(calc_index);
 			was_pushed := false;
 	
 			if(@char = '(') {
-				Push(Token->OPRN->As(Int));
+				Push(TokenType->OPRN->As(Int));
 				Next();
 				Alternation();
 				if(@char <> ')') {
 					@error := "expected ')'";
 					return false;
 				};
-				Push(Token->CPRN->As(Int));
+				Push(TokenType->CPRN->As(Int));
 				Next();
 			}
 			else if(@char <> ')') {
@@ -217,12 +237,12 @@ Console->Print("?? ")->PrintLine(calc_index);
 			};
 			
 			if(@char = '*') {
-				Push(Token->ZERO_MORE->As(Int));
+				Push(TokenType->ZERO_MORE->As(Int));
 				was_pushed := true;
 				Next();
 			}
 			else if(@char = '+') {
-				Push(Token->ONE_MORE->As(Int));
+				Push(TokenType->ONE_MORE->As(Int));
 				was_pushed := true;
 				Next();
 			};
@@ -234,38 +254,38 @@ Console->Print("?? ")->PrintLine(calc_index);
 			i := 0;
 			c := @input_stack[0];	 
 
-			while(c <> 0) {
-				select(c) {
-					label Token->ZERO_MORE: {
+			while(c <> Nil) {
+				select(c->GetType()) {
+					label TokenType->ZERO_MORE: {
 						'*'->PrintLine();
 					}
 
-					label Token->ONE_MORE: {
+					label TokenType->ONE_MORE: {
 						'+'->PrintLine();
 					}
 
-					label Token->SEQUENCE: {
+					label TokenType->SEQUENCE: {
 						'.'->PrintLine();
 					}
 
-					label Token->ALTERNATION: {
+					label TokenType->ALTERNATION: {
 						'|'->PrintLine();
 					}
 					
-					label Token->OPRN: {
+					label TokenType->OPRN: {
 						'('->PrintLine();
 					}
 					
-					label Token->CPRN: {
+					label TokenType->CPRN: {
 						')'->PrintLine();
 					}
 					
-					label Token->STOP: {
+					label TokenType->STOP: {
 						"STOP"->PrintLine();
 					}
 				
 					other: {
-						v := c->As(Char);
+						v := c->GetType()->As(Char);
 						v->PrintLine();
 					}
 				};
