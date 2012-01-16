@@ -5,8 +5,10 @@ bundle Default {
     }
 
     function : native : Run() ~ Nil {
-      'a'->As(Int)->PrintLine();
-			97->As(Char)->PrintLine();
+      i := 'a'->As(Int);
+		i->PrintLine();
+		c := i->As(Char);
+		c->PrintLine();
     }
   }
 }

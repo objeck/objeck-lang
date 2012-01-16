@@ -54,7 +54,8 @@ bundle Default {
 		
 		function : native : F3() ~ Nil {
 			"Fin"->PrintLine();
-			23.5->As(Int)->ToString()->PrintLine();
+			v := 23.5->As(Int);
+			v->ToString()->PrintLine();
 			23->ToString();
 		}
 	}

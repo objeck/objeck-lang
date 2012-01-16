@@ -10,8 +10,9 @@ bundle Default {
 			if(right <> Nil) {
 				if(GetClassID() = right->GetClassID()) {
 					a : A := right->As(A);
-			
-					if(@value = right->As(A)->Get()) {
+		
+					r := right->As(A);
+					if(@value = r->Get()) {
 						return 0;
 					};
 
