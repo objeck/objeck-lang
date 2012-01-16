@@ -28,7 +28,8 @@ bundle Default {
 
 			v := tree->GetValues();
 			for(i : Int := 0; i < v->Size(); i := i + 1;) {
-				v->Get(i)->As(System.String)->PrintLine();
+				s := v->Get(i)->As(System.String);
+				s->PrintLine();
 			};		
 		}
 	}

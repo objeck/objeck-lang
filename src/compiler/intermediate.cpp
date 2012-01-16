@@ -202,9 +202,15 @@ void IntermediateEmitter::Translate()
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
   for(size_t i = 0; i < lib_classes.size(); i++) {
-    if(is_lib || lib_classes[i]->GetCalled()) {
-      lib_classes[i]->SetId(class_id++);
+    LibraryClass* lib_class = lib_classes[i];    
+    // find System.String
+    if(string_cls_id < 0 && lib_class->GetName() == "System.String") {
+      string_cls_id = class_id;
     }
+    // assign class ids
+    if(is_lib || lib_class->GetCalled()) {
+      lib_class->SetId(class_id++);
+    }    
   }
 #endif
   
@@ -226,20 +232,6 @@ void IntermediateEmitter::Translate()
   // emit program
   EmitBundles();
   
-  // string id (need to command line parameters)
-#ifdef _SYSTEM
-  if(string_cls_id < 0) {
-    Class* klass = SearchProgramClasses("System.String");
-    assert(klass);
-    string_cls_id = klass->GetId();
-  }
-#else
-  if(string_cls_id < 0) {
-    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
-    assert(lib_klass);
-    string_cls_id = lib_klass->GetId();
-  }
-#endif
   imm_program->SetStringClassId(string_cls_id);
   
   Class* start_class = parsed_program->GetStartClass();
@@ -1188,12 +1180,6 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
       assert(klass);
       string_cls_id = klass->GetId();
     }
-#else
-     if(string_cls_id < 0) {
-       LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
-       assert(lib_klass);
-       string_cls_id = lib_klass->GetId();
-     }
 #endif
     
     // create 'System.String' instance
@@ -2114,12 +2100,6 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
     Class* klass = SearchProgramClasses("System.String");
     assert(klass);
     string_cls_id = klass->GetId();
-  }
-#else
-  if(string_cls_id < 0) {
-    LibraryClass* lib_klass = parsed_program->GetLinker()->SearchClassLibraries("System.String");
-    assert(lib_klass);
-    string_cls_id = lib_klass->GetId();
   }
 #endif
 

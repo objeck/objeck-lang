@@ -663,12 +663,15 @@ class Library {
     enums.insert(pair<string, LibraryEnum*>(e->GetName(), e));
     enum_list.push_back(e);
   }
-
+  
   void AddClass(LibraryClass* cls) {
+    if(cls->GetName() == "System.String") {
+      cls->SetCalled(true);
+    }    
     named_classes.insert(pair<string, LibraryClass*>(cls->GetName(), cls));
     class_list.push_back(cls);
   }
-
+  
   // loading functions
   void LoadFile(const string &file_name);
   void LoadEnums();
