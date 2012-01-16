@@ -15,7 +15,8 @@ bundle Default {
 			};
 			
 			each(i : vals) {
-				hash->Find(keys[i])->As(String)->PrintLine();
+				v := hash->Find(keys[i])->As(String);
+				v->PrintLine();
 			};
 		}
 	}

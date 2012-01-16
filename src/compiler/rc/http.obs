@@ -10,12 +10,14 @@ bundle Default {
       # request creates a cookie
       lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create", 80);
       each(i : lines) {
-        lines->Get(i)->As(String)->PrintLine();
+        line := lines->Get(i)->As(String);
+        line->PrintLine();
       };
        # request sends back cookie
       lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
       each(i : lines) {
-        lines->Get(i)->As(String)->PrintLine();
+        lines->Get(i)->As(String);
+        line->PrintLine();
       };
     }
   }

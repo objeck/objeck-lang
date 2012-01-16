@@ -10,10 +10,14 @@ bundle Default {
 		function : Test1(x : Int) ~ Nil {
 			f := 10.3;
 			remainder := f - f->Floor();
-			(1000.0 * remainder)->As(Int)->PrintLine();
-			(5 + 3.14)->As(Int)->PrintLine();
-			(3.14 + 2)->As(Int)->PrintLine();
-			(1000.0 * remainder)->PrintLine();
+			k := (1000.0 * remainder)->As(Int);
+			k->PrintLine();
+			k := (5 + 3.14)->As(Int);
+			k->PrintLine();
+			k := (3.14 + 2)->As(Int);
+			k->PrintLine();
+			k := (1000.0 * remainder);
+			k->PrintLine();
 		}
 
 		function : native : Test3() ~ Nil {

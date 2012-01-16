@@ -7,7 +7,8 @@ bundle Default {
 #		function : Run() ~ Nil {
 		function : native : Run() ~ Nil {		
 
-			55.141->As(Char)->PrintLine();	
+			c := 55.141->As(Char);
+			c->PrintLine();	
 			
 				
 

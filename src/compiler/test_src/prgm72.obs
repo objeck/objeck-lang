@@ -28,7 +28,7 @@ bundle Default {
 		}
 
 		function : Power(value : Float) ~ Float {
-			(value)->PrintLine();
+			value->PrintLine();
 			return 10.5;
 		}
 	}
