@@ -13,24 +13,24 @@ bundle Default {
 	
 	class Token {
 		@type : Int;
-		@value : String;
+		@values : String;
 		
 		New(type : Int) {
 			@type := type;
-			@value := Nil;
+			@values := Nil;
 		}
 		
-		New(type : Int, value : String) {
+		New(type : Int, values : String) {
 			@type := type;
-			@value := value;
+			@values := values;
 		}
 		
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 		
-		method : public : GetValue() ~ String {
-			return @value;
+		method : public : GetValues() ~ String {
+			return @values;
 		}
 	}
 	
@@ -38,29 +38,40 @@ bundle Default {
 		ZERO_MORE,
 		ONE_MORE,
 		MATCH,
+		JUMP,
 		STOP
 	}
 	
 	class Instr {
 		@type : InstrType;
-		@value : String;
+		@value : Int;
+		@values : String;
 		
 		New(type : InstrType) {
 			@type := type;
-			@value := Nil;
+			@values := Nil;
 		}
 		
-		New(type : InstrType, value : String) {
+		New(type : InstrType, value : Int) {
 			@type := type;
 			@value := value;
+		}
+		
+		New(type : InstrType, values : String) {
+			@type := type;
+			@values := values;
 		}
 		
 		method : public : GetType() ~ InstrType {
 			return @type;
 		}
 		
-		method : public : GetValue() ~ String {
+		method : public : GetValue() ~ Int {
 			return @value;
+		}
+		
+		method : public : GetValues() ~ String {
+			return @values;
 		}
 	}
 	
@@ -96,9 +107,12 @@ bundle Default {
 
 		method : public : Compile() ~ String {
 			Parse();
-Dump();			
+DumpInput();			
 			if(@error = Nil) {
-				Emit();
+				output := Emit();
+				if(@error = Nil) {
+DumpOutput(output);				
+				};
 
 if(@error <> Nil) {				
 	@error->PrintLine();
@@ -108,9 +122,9 @@ if(@error <> Nil) {
 			return "";
 		}
 		
-		method : Emit() ~ Nil {
+		method : Emit() ~ Instr[] {
 			output := Instr->New[256];
-			output_index := 0;
+			output_index := 1;
 			
 			calc_stack := Int->New[256];
 			calc_index := 0;
@@ -122,8 +136,7 @@ if(@error <> Nil) {
 			while(c <> Nil) {
 				select(c->GetType()) {
 					label TokenType->ZERO_MORE: {
-						Console->Print(output_index)->PrintLine(": ZERO_MORE");
-						
+# Console->Print(output_index)->PrintLine(": ZERO_MORE");
 						output[output_index] := Instr->New(InstrType->ZERO_MORE);
 						output_index += 1;
 						
@@ -132,13 +145,12 @@ if(@error <> Nil) {
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-							Console->Print(output_index)->Print(": MATCH id='")
-								->Print(match)->PrintLine("'");
+# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							output[output_index] := Instr->New(InstrType->MATCH, match);
 							output_index += 1;
 							
-							Console->Print(output_index)->Print(": JUMP id=")
-								->PrintLine(output_index - 2);
-							
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index - 2);
+							output[output_index] := Instr->New(InstrType->JUMP, output_index - 2);
 							output_index += 1;	
 						}
 						else {
@@ -151,7 +163,8 @@ if(@error <> Nil) {
 									calc_index -= 1;
 									match := calc_stack[calc_index];
 								};
-								Console->Print(output_index)->Print(": JUMP id=")->PrintLine(match);
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(match);
+								output[output_index] := Instr->New(InstrType->JUMP, match);
 								output_index += 1;
 							}
 							else {
@@ -172,12 +185,13 @@ if(@error <> Nil) {
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-							Console->Print(output_index)->Print(": MATCH id='")
-								->Print(match)->PrintLine("'");
+# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							output[output_index] := Instr->New(InstrType->MATCH, match);
 							output_index += 1;
 						};
 										
-						Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
+						output[output_index] := Instr->New(InstrType->JUMP, output_index + 1);
 						output_index += 1;
 					}
 
@@ -210,7 +224,8 @@ if(@error <> Nil) {
 							};		
 						};
 						
-						Console->Print(output_index)->PrintLine(": STOP");
+# Console->Print(output_index)->PrintLine(": STOP");
+						output[output_index] := Instr->New(InstrType->STOP);
 					}
 				
 					other: {					
@@ -224,10 +239,17 @@ if(@error <> Nil) {
 			};
 			
 			if(start > -1) {
-				Console->Print(-1)->Print(": JUMP id=")->PrintLine(start);
+# Console->Print(0)->Print(": JUMP id=")->PrintLine(start);
+				output[0] := Instr->New(InstrType->JUMP, start);
+			}
+			else {
+# Console->Print(0)->Print(": JUMP id=")->PrintLine(1);			
+				output[0] := Instr->New(InstrType->JUMP, 1);
 			};
 			
-			Console->Print("calc: id=")->PrintLine(calc_index);
+# Console->Print("calc: id=")->PrintLine(calc_index);
+
+			return output;
 		}
 		
 		# TODO: validate input
@@ -289,7 +311,40 @@ if(@error <> Nil) {
 			return was_pushed;
 		}
 		
-		method : Dump() ~ Nil {
+		function : DumpOutput(instrs : Instr[]) ~ Nil {
+			i := 0;
+			c := instrs[0];	 
+
+			while(c <> Nil) {
+				select(c->GetType()) {
+					label InstrType->ZERO_MORE: {
+						Console->Print(i)->PrintLine(": ZERO_MORE");
+					}
+					
+					label InstrType->ONE_MORE: {
+						Console->Print(i)->PrintLine(": ONE_MORE");
+					}
+					
+					label InstrType->MATCH: {
+						Console->Print(i)->Print(": MATCH char='")
+							->Print(c->GetValue()->As(Char))->PrintLine("'");
+					}
+					
+					label InstrType->JUMP: {
+						Console->Print(i)->Print(": JUMP pos=")->PrintLine(c->GetValue());
+					}
+					
+					label InstrType->STOP: {
+						Console->Print(i)->PrintLine(": STOP");
+					}
+				};
+				i += 1;
+				c := instrs[i];	 
+			};
+			"-----"->PrintLine();
+		}		
+		
+		method : DumpInput() ~ Nil {
 			i := 0;
 			c := @input_stack[0];	 
 
