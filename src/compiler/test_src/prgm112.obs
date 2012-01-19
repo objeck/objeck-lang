@@ -105,6 +105,21 @@ bundle Default {
 				@char := '\0';
 			};
 		}
+		
+		method : IsNext(c : Char) ~ Bool {
+			if(@index < @input->Size()) {
+
+b := @input->Get(@index);
+b->PrintLine();
+c->PrintLine();
+
+				x := c->As(Int) = b;
+x->PrintLine();
+				return x;
+			};
+			
+			return true;
+		}
 
 		method : public : Compile() ~ String {
 			Parse();
@@ -355,8 +370,14 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 			}
 			else if(@char <> ')') {
 				Push(@char->As(Int));
-				was_pushed := true;
 				Next();
+@char->PrintLine();
+IsNext('|')->PrintLine();
+"---"->PrintLine();
+				if(IsNext('|') = false) {
+					was_pushed := true;
+				};
+				
 			};
 			
 			if(@char = '*') {
