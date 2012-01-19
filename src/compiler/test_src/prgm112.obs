@@ -37,6 +37,7 @@ bundle Default {
 	enum InstrType := -64 {
 		ZERO_MORE,
 		ONE_MORE,
+		ALTERNATION,
 		MATCH,
 		JUMP,
 		STOP
@@ -185,17 +186,78 @@ if(@error <> Nil) {
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
 							output[output_index] := Instr->New(InstrType->MATCH, match);
 							output_index += 1;
 						};
 										
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
+Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
 						output[output_index] := Instr->New(InstrType->JUMP, output_index + 1);
 						output_index += 1;
 					}
 
-					label TokenType->ALTERNATION: {		
+					label TokenType->ALTERNATION: {
+Console->Print(output_index)->PrintLine(": ALTERNATION");
+						output[output_index] := Instr->New(InstrType->ALTERNATION);
+						output_index += 1;
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						top := calc_stack[calc_index - 1];
+						if(top >= 40 & top <= 122) {
+							calc_index -= 1;
+							match := calc_stack[calc_index];
+							
+# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+							output[output_index] := Instr->New(InstrType->MATCH, match);
+							output_index += 1;
+							
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index - 2);
+							output[output_index] := Instr->New(InstrType->JUMP, output_index - 2);
+							output_index += 1;	
+						}
+						else {
+							calc_index -= 1;
+							match := calc_stack[calc_index];
+							if(match = TokenType->CPRN->As(Int)) {
+								calc_index -= 2;
+								match := calc_stack[calc_index];
+								if(match = TokenType->OPRN->As(Int)) {
+									calc_index -= 1;
+									match := calc_stack[calc_index];
+								};
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(match);
+								output[output_index] := Instr->New(InstrType->JUMP, match);
+								output_index += 1;
+							}
+							else {
+								@error := "Invalid expression";
+							};
+						};
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
 					}
 					
 					label TokenType->OPRN: {
@@ -323,6 +385,10 @@ if(@error <> Nil) {
 					
 					label InstrType->ONE_MORE: {
 						Console->Print(i)->PrintLine(": ONE_MORE");
+					}
+					
+					label InstrType->ALTERNATION: {
+						Console->Print(i)->PrintLine(": ALTERNATION");
 					}
 					
 					label InstrType->MATCH: {
