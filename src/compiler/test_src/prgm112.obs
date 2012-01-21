@@ -189,8 +189,57 @@ if(@error <> Nil) {
 					}
 
 					label TokenType->ALTERNATION: {
+						left := -1;
+						right := -1;	
+
+						top := @calc_stack[@calc_index - 1];
+						# char match
+						if(top >= 40 & top <= 122) {
+"aaa"->PrintLine();
+							right := @output_index;
+							@calc_index -= 1;
+							match := @calc_stack[@calc_index];
+
+							@calc_index -= 1;
+				 			index := @calc_stack[@calc_index];
+index->PrintLine();
+							
+							@output[@output_index] := Instr->New(InstrType->MATCH, match);
+							@output_index += 1;
+
+							@output[@output_index] := Instr->New(InstrType->JUMP, 101);
+							@output_index += 1;
+						};
+
+						top := @calc_stack[@calc_index - 1];
+
+						# char match
+						if(top >= 40 & top <= 122) {
+"bbb"->PrintLine();
+							left := @output_index;
+							
+							@calc_index -= 1;
+							match := @calc_stack[@calc_index];
+
+							@calc_index -= 1;
+				 			index := @calc_stack[@calc_index];
+index->PrintLine();								
+							@output[@output_index] := Instr->New(InstrType->MATCH, match);
+							@output_index += 1;
+
+							@output[@output_index] := Instr->New(InstrType->JUMP, 102);
+							@output_index += 1;
+						};
+						
 						# instr
 						@output[@output_index] := Instr->New(InstrType->ALTERNATION);
+						@output_index += 1;
+
+						@output[@output_index] := Instr->New(InstrType->JUMP, right);
+						@output_index += 1;
+
+
+						@output[@output_index] := Instr->New(InstrType->JUMP, left);
 						@output_index += 1;
 					}				
 
