@@ -137,11 +137,11 @@ if(@error <> Nil) {
 			
 			calc_stack := Int->New[256];
 			calc_index := 0;
-			i := 0;
-			c := @input_stack[0];
 			
 			start := -1;
 			
+			i := 0;
+			c := @input_stack[i];
 			while(c <> Nil) {
 				select(c->GetType()) {
 					label TokenType->ZERO_MORE: {
@@ -194,43 +194,16 @@ if(@error <> Nil) {
 							calc_index -= 1;
 							match := calc_stack[calc_index];
 							
-Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
+# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
 							output[output_index] := Instr->New(InstrType->MATCH, match);
 							output_index += 1;
 						};
 										
-Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
+# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
 						output[output_index] := Instr->New(InstrType->JUMP, output_index + 1);
 						output_index += 1;
 					}
 
-					
-					
-					
-					
-					
-					
-					
-					label TokenType->ALTERNATION: {
-Console->Print(output_index)->PrintLine(": ALTERNATION");
-						output[output_index] := Instr->New(InstrType->ALTERNATION);
-						output_index += 1;
-						
-						
-						
-						
-						
-						
-						
-					}
-					
-					
-					
-					
-					
-					
-					
-					
 					label TokenType->OPRN: {
 						calc_stack[calc_index] := output_index;
 						calc_index += 1;
@@ -247,16 +220,18 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 					}
 					
 					label TokenType->STOP: {
-						calc_index -= 1;
-						match := calc_stack[calc_index];	
-						if(match = TokenType->CPRN->As(Int)) {
-							calc_index -= 2;
-							match := calc_stack[calc_index];
-							if(match = TokenType->OPRN->As(Int)) {
-								calc_index -= 1;
-							};		
+						if(calc_index > 0) {
+							calc_index -= 1;
+							match := calc_stack[calc_index];	
+							if(match = TokenType->CPRN->As(Int)) {
+								calc_index -= 2;
+								match := calc_stack[calc_index];
+								if(match = TokenType->OPRN->As(Int)) {
+									calc_index -= 1;
+								};		
+							};
 						};
-						
+
 # Console->Print(output_index)->PrintLine(": STOP");
 						output[output_index] := Instr->New(InstrType->STOP);
 					}
@@ -280,7 +255,7 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 				output[0] := Instr->New(InstrType->JUMP, 1);
 			};
 			
-# Console->Print("calc: id=")->PrintLine(calc_index);
+Console->Print("calc: id=")->PrintLine(calc_index);
 
 			return output;
 		}
@@ -327,7 +302,7 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 			else if(@char <> ')') {
 				Push(@char->As(Int));
 				Next();
-				if(IsNext('|') = false & @index < @input->Size()) {
+				if(IsNext('|') = false) {
 					was_pushed := true;
 				};
 			};
