@@ -158,6 +158,7 @@ if(@error <> Nil) {
 				select(c->GetType()) {
 					label TokenType->ZERO_MORE: {
 						top := @calc_stack[@calc_index - 1];
+						
 						# char match
 						if(top >= 40 & top <= 122) {
 							@calc_index -= 1;
@@ -166,8 +167,8 @@ if(@error <> Nil) {
 							@output[@output_index] := Instr->New(InstrType->MATCH, match);
 							@output_index += 1;
 						}
-						# group match
-						else if(top = TokenType->CPRN->As(Int)) {
+						# oper match
+						else if(top <= TokenType->NONE->As(Int) & top >= TokenType->ZERO_MORE->As(Int)) {
 							@calc_index -= 1;
 				 		}
 						else {
@@ -179,6 +180,13 @@ if(@error <> Nil) {
 
 						# instr
 						@output[@output_index] := Instr->New(InstrType->ZERO_MORE);
+						
+						@calc_stack[@calc_index] := @output_index;
+						@calc_index += 1;
+						
+						@calc_stack[@calc_index] := c->GetType();
+						@calc_index += 1;					
+						
 						@output_index += 1;
 				
 						# loop
@@ -207,7 +215,11 @@ if(@error <> Nil) {
 						right := -1;	
 						union := Instr->New(InstrType->JUMP);
 						
+						#
 						# match right
+						#
+						
+						# char right
 						if(@calc_index < 1) {
 							@error := "invalid expression";
 							return;
@@ -227,7 +239,8 @@ if(@error <> Nil) {
 							@output[@output_index] := union;
 							@output_index += 1;
 						}
-						else if(top = TokenType->CPRN->As(Int)) {
+						# oper match
+						else if(top <= TokenType->NONE->As(Int) & top >= TokenType->ZERO_MORE->As(Int)) {
 							@calc_index -= 2;
 			 				right := @calc_stack[@calc_index];
 			 				
@@ -239,8 +252,11 @@ if(@error <> Nil) {
 							return;
 						};
 						
-						
+						#
 						# match left
+						#
+						
+						# char match
 						if(@calc_index < 1) {
 							@error := "invalid expression";
 							return;
@@ -261,7 +277,8 @@ if(@error <> Nil) {
 							@output[@output_index] := union;
 							@output_index += 1;
 						}
-						else if(top = TokenType->CPRN->As(Int)) {
+						# oper match
+						else if(top <= TokenType->NONE->As(Int) & top >= TokenType->ZERO_MORE->As(Int)) {
 							@calc_index -= 2;
 			 				left := @calc_stack[@calc_index];
 			 				
@@ -276,11 +293,17 @@ if(@error <> Nil) {
 						# instr
 						@ctrl->SetValue(@output_index);
 						@output[@output_index] := Instr->New(InstrType->ALTERNATION);
+						
+						@calc_stack[@calc_index] := @output_index;
+						@calc_index += 1;
+						
+						@calc_stack[@calc_index] := c->GetType();
+						@calc_index += 1;
+						
 						@output_index += 1;
 
 						@output[@output_index] := Instr->New(InstrType->JUMP, right);
 						@output_index += 1;
-
 
 						@output[@output_index] := Instr->New(InstrType->JUMP, left);
 						@output_index += 1;
@@ -296,19 +319,32 @@ if(@error <> Nil) {
 						# emit parn
 						offset := @output_index;
 						@input_index += 1;
-						Emit(TokenType->CPRN);	
+						Emit(TokenType->CPRN);
+																	
 						c := @input_stack[@input_index];
 						EmitMatch();
-						
-						# push offset
-						@calc_stack[@calc_index] := offset;
-						@calc_index += 1;
-
-						@calc_stack[@calc_index] := c->GetType();
-						@calc_index += 1;
+							
+						top := 0;
+						if(@calc_index > 0) {
+							top := @calc_stack[@calc_index - 1];
+						};			
+						if(top > TokenType->NONE->As(Int)) {
+							# push offset
+							@calc_stack[@calc_index] := offset;
+							@calc_index += 1;
+	
+							@calc_stack[@calc_index] := c->GetType();
+							@calc_index += 1;
+						};
 					}
 					
 					label TokenType->STOP: {
+						# alt						
+						top := @calc_stack[@calc_index - 1];
+						if(top <= TokenType->NONE->As(Int) & top >= TokenType->ZERO_MORE->As(Int)) {
+							@calc_index -= 2;	
+						};
+						
 						EmitMatch();
 						
 						if(@ctrl->GetValue() < 0) {
@@ -320,6 +356,14 @@ if(@error <> Nil) {
 					}
 					
 					other: {
+						# alt
+						if(@calc_index > 0) {
+							top := @calc_stack[@calc_index - 1];
+							if(top <= TokenType->NONE->As(Int) & top >= TokenType->ZERO_MORE->As(Int)) {
+								@calc_index -= 2;	
+							};
+						};
+						
 						@calc_stack[@calc_index] := @output_index;
 						@calc_index += 1;
 
