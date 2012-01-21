@@ -2148,6 +2148,10 @@ bool ContextAnalyzer::Analyze()
 
     // if variable, bind it and update the instance and entry
     if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
+      if(variable->GetIndices()) {
+	ProcessError(expression, "Invalid operation using Var type");
+      } 
+      
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
 	if(expression->GetCastType()) {
