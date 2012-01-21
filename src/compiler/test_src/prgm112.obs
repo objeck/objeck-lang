@@ -72,6 +72,10 @@ bundle Default {
 			return @value;
 		}
 		
+		method : public : SetValue(value : Int) ~ Nil {
+			@value := value;
+		}
+		
 		method : public : GetValues() ~ String {
 			return @values;
 		}
@@ -97,7 +101,7 @@ bundle Default {
 			@calc_stack := Int->New[256];
 			@calc_index := 0;
 			@output := Instr->New[256];
-			@output_index := 1;
+			@output_index := 0;
 		}
 
 		method : public : Compile() ~ String {
@@ -170,11 +174,9 @@ if(@error <> Nil) {
 						# loop
 						@output[@output_index] := Instr->New(InstrType->JUMP, index);
 						@output_index += 1;
-#~
-						# next			
-						@output[@output_index] := Instr->New(InstrType->JUMP, @output_index + 1);
-						@output_index += 1;
-~#				
+						
+#						@calc_stack[@calc_index] := c->GetType();
+#						@calc_index += 1;	
 					}
 
 					label TokenType->ONE_MORE: {
@@ -191,31 +193,48 @@ if(@error <> Nil) {
 					label TokenType->ALTERNATION: {
 						left := -1;
 						right := -1;	
-
+						union := Instr->New(InstrType->JUMP);
+						
+						# match right
+						if(@calc_index < 1) {
+							@error := "invalid expression";
+							return;
+						};
 						top := @calc_stack[@calc_index - 1];
-						# char match
 						if(top >= 40 & top <= 122) {
-"aaa"->PrintLine();
 							right := @output_index;
 							@calc_index -= 1;
 							match := @calc_stack[@calc_index];
 
 							@calc_index -= 1;
 				 			index := @calc_stack[@calc_index];
-index->PrintLine();
-							
+														
 							@output[@output_index] := Instr->New(InstrType->MATCH, match);
 							@output_index += 1;
-
-							@output[@output_index] := Instr->New(InstrType->JUMP, 101);
+							
+							@output[@output_index] := union;
 							@output_index += 1;
+						}
+						else if(top = TokenType->CPRN->As(Int)) {
+							@calc_index -= 2;
+			 				right := @calc_stack[@calc_index];
+			 				
+			 				@output[@output_index] := union;
+							@output_index += 1;
+						}
+						else {
+							@error := "invalid expression";
+							return;
 						};
-
+						
+						
+						# match left
+						if(@calc_index < 1) {
+							@error := "invalid expression";
+							return;
+						};							
 						top := @calc_stack[@calc_index - 1];
-
-						# char match
 						if(top >= 40 & top <= 122) {
-"bbb"->PrintLine();
 							left := @output_index;
 							
 							@calc_index -= 1;
@@ -223,12 +242,23 @@ index->PrintLine();
 
 							@calc_index -= 1;
 				 			index := @calc_stack[@calc_index];
-index->PrintLine();								
+				 			
 							@output[@output_index] := Instr->New(InstrType->MATCH, match);
 							@output_index += 1;
 
-							@output[@output_index] := Instr->New(InstrType->JUMP, 102);
+							@output[@output_index] := union;
 							@output_index += 1;
+						}
+						else if(top = TokenType->CPRN->As(Int)) {
+							@calc_index -= 2;
+			 				left := @calc_stack[@calc_index];
+			 				
+			 				@output[@output_index] := union;
+							@output_index += 1;
+						}
+						else {
+							@error := "invalid expression";
+							return;
 						};
 						
 						# instr
@@ -241,6 +271,8 @@ index->PrintLine();
 
 						@output[@output_index] := Instr->New(InstrType->JUMP, left);
 						@output_index += 1;
+						
+						union->SetValue(@output_index);
 					}				
 
 					label TokenType->OPRN: {
@@ -277,16 +309,7 @@ index->PrintLine();
 				@input_index += 1;
 				c := @input_stack[@input_index];	 
 			};
-
-			if(start > -1) {
-# Console->Print(0)->Print(": JUMP id=")->PrintLine(start);
-				@output[0] := Instr->New(InstrType->JUMP, start);
-			}
-			else {
-# Console->Print(0)->Print(": JUMP id=")->PrintLine(1);			
-				@output[0] := Instr->New(InstrType->JUMP, 1);
-			};
-
+			
 Console->Print("calc: id=")->PrintLine(@calc_index);
 		}
 
