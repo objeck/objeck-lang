@@ -107,15 +107,8 @@ bundle Default {
 		}
 		
 		method : IsNext(c : Char) ~ Bool {
-			if(@index < @input->Size()) {
-
-b := @input->Get(@index);
-b->PrintLine();
-c->PrintLine();
-
-				x := c->As(Int) = b;
-x->PrintLine();
-				return x;
+			if(@index - 1 < @input->Size()) {
+				return @input->Get(@index - 1) = c;
 			};
 			
 			return true;
@@ -211,6 +204,13 @@ Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
 						output_index += 1;
 					}
 
+					
+					
+					
+					
+					
+					
+					
 					label TokenType->ALTERNATION: {
 Console->Print(output_index)->PrintLine(": ALTERNATION");
 						output[output_index] := Instr->New(InstrType->ALTERNATION);
@@ -222,58 +222,14 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 						
 						
 						
-						
-						
-						
-						
-						
-						
-						
-						
-						top := calc_stack[calc_index - 1];
-						if(top >= 40 & top <= 122) {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							
-# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
-							output[output_index] := Instr->New(InstrType->MATCH, match);
-							output_index += 1;
-							
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index - 2);
-							output[output_index] := Instr->New(InstrType->JUMP, output_index - 2);
-							output_index += 1;	
-						}
-						else {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							if(match = TokenType->CPRN->As(Int)) {
-								calc_index -= 2;
-								match := calc_stack[calc_index];
-								if(match = TokenType->OPRN->As(Int)) {
-									calc_index -= 1;
-									match := calc_stack[calc_index];
-								};
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(match);
-								output[output_index] := Instr->New(InstrType->JUMP, match);
-								output_index += 1;
-							}
-							else {
-								@error := "Invalid expression";
-							};
-						};
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
 					}
+					
+					
+					
+					
+					
+					
+					
 					
 					label TokenType->OPRN: {
 						calc_stack[calc_index] := output_index;
@@ -371,13 +327,9 @@ Console->Print(output_index)->PrintLine(": ALTERNATION");
 			else if(@char <> ')') {
 				Push(@char->As(Int));
 				Next();
-@char->PrintLine();
-IsNext('|')->PrintLine();
-"---"->PrintLine();
-				if(IsNext('|') = false) {
+				if(IsNext('|') = false & @index < @input->Size()) {
 					was_pushed := true;
 				};
-				
 			};
 			
 			if(@char = '*') {
@@ -389,7 +341,7 @@ IsNext('|')->PrintLine();
 				Push(TokenType->ONE_MORE->As(Int));
 				was_pushed := true;
 				Next();
-			};
+			};			
 			
 			return was_pushed;
 		}
