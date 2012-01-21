@@ -91,29 +91,6 @@ bundle Default {
 			@input_index := 0;
 		}
 
-		method : Push(value : Int) ~ Nil {
-			@input_stack[@input_index] := Token->New(value);
-			@input_index += 1;
-		}
-
-		method : Next() ~ Nil {
-			if(@index < @input->Size()) {
-				@char := @input->Get(@index);
-				@index += 1;
-			}
-			else {
-				@char := '\0';
-			};
-		}
-		
-		method : IsNext(c : Char) ~ Bool {
-			if(@index - 1 < @input->Size()) {
-				return @input->Get(@index - 1) = c;
-			};
-			
-			return true;
-		}
-
 		method : public : Compile() ~ String {
 			Parse();
 DumpInput();			
@@ -145,95 +122,21 @@ if(@error <> Nil) {
 			while(c <> Nil) {
 				select(c->GetType()) {
 					label TokenType->ZERO_MORE: {
-# Console->Print(output_index)->PrintLine(": ZERO_MORE");
-						output[output_index] := Instr->New(InstrType->ZERO_MORE);
-						output_index += 1;
-						
-						top := calc_stack[calc_index - 1];
-						if(top >= 40 & top <= 122) {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							
-# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
-							output[output_index] := Instr->New(InstrType->MATCH, match);
-							output_index += 1;
-							
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index - 2);
-							output[output_index] := Instr->New(InstrType->JUMP, output_index - 2);
-							output_index += 1;	
-						}
-						else {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							if(match = TokenType->CPRN->As(Int)) {
-								calc_index -= 2;
-								match := calc_stack[calc_index];
-								if(match = TokenType->OPRN->As(Int)) {
-									calc_index -= 1;
-									match := calc_stack[calc_index];
-								};
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(match);
-								output[output_index] := Instr->New(InstrType->JUMP, match);
-								output_index += 1;
-							}
-							else {
-								@error := "Invalid expression";
-							};
-						};
-						
-						calc_stack[calc_index] := c->GetType();
-						calc_index += 1;
 					}
 
 					label TokenType->ONE_MORE: {
 					}
 
 					label TokenType->SEQUENCE: {
-						top := calc_stack[calc_index - 1];
-						if(top >= 40 & top <= 122) {
-							calc_index -= 1;
-							match := calc_stack[calc_index];
-							
-# Console->Print(output_index)->Print(": MATCH id='")->Print(match)->PrintLine("'");
-							output[output_index] := Instr->New(InstrType->MATCH, match);
-							output_index += 1;
-						};
-										
-# Console->Print(output_index)->Print(": JUMP id=")->PrintLine(output_index + 1);
-						output[output_index] := Instr->New(InstrType->JUMP, output_index + 1);
-						output_index += 1;
 					}
 
 					label TokenType->OPRN: {
-						calc_stack[calc_index] := output_index;
-						calc_index += 1;
-						
-						start := calc_index;
-						
-						calc_stack[calc_index] := c->GetType();
-						calc_index += 1;
 					}
 					
 					label TokenType->CPRN: {
-						calc_stack[calc_index] := c->GetType();
-						calc_index += 1;
 					}
 					
 					label TokenType->STOP: {
-						if(calc_index > 0) {
-							calc_index -= 1;
-							match := calc_stack[calc_index];	
-							if(match = TokenType->CPRN->As(Int)) {
-								calc_index -= 2;
-								match := calc_stack[calc_index];
-								if(match = TokenType->OPRN->As(Int)) {
-									calc_index -= 1;
-								};		
-							};
-						};
-
-# Console->Print(output_index)->PrintLine(": STOP");
-						output[output_index] := Instr->New(InstrType->STOP);
 					}
 				
 					other: {					
@@ -259,28 +162,66 @@ Console->Print("calc: id=")->PrintLine(calc_index);
 
 			return output;
 		}
+
+		method : Push(value : Int) ~ Nil {
+			@input_stack[@input_index] := Token->New(value);
+			@input_index += 1;
+		}
+
+		method : Replace(test : Int, value : Int) ~ Nil {
+			if(@input_stack[@input_index - 1]->GetType() = test) {			
+				@input_stack[@input_index - 1] := Token->New(value);
+			}
+			else {
+				@input_stack[@input_index] := Token->New(value);
+				@input_index += 1;
+			};
+		}
+
+		method : Next() ~ Nil {
+			if(@index < @input->Size()) {
+				@char := @input->Get(@index);
+				@index += 1;
+			}
+			else {
+
+				@char := '\0';
+			};
+		}
+		
+		method : IsNext(c : Char) ~ Bool {
+			if(@index - 1 < @input->Size()) {
+				return @input->Get(@index - 1) = c;
+			};
+			
+			return true;
+		}
 		
 		# TODO: validate input
 		method : Parse() ~ Nil {
 			Next();
 			Alternation();
-			Push(TokenType->STOP->As(Int));
+			Replace(TokenType->SEQUENCE->As(Int), TokenType->STOP->As(Int));
 		}	
 
 		method : Alternation() ~ Nil {
 			Sequence();
 
 			if(@char = '|') {
-				Next();
-				Sequence();
-				Push(TokenType->ALTERNATION->As(Int));
-			};
+				while(@char = '|') {
+					Next();
+					Sequence();
+				};
+				Replace(TokenType->SEQUENCE->As(Int), TokenType->ALTERNATION->As(Int));
+			};			
 		}
 
 		method : Sequence() ~ Nil {
 			while(@char >= 40 & @char <= 122 & @char <> ')') {
 				if(Repetition()) {
-					Push(TokenType->SEQUENCE->As(Int));
+					if(IsNext('|') = false & IsNext(')') = false) {
+						Push(TokenType->SEQUENCE->As(Int));
+					};
 				};
 			};
 		}
@@ -302,9 +243,7 @@ Console->Print("calc: id=")->PrintLine(calc_index);
 			else if(@char <> ')') {
 				Push(@char->As(Int));
 				Next();
-				if(IsNext('|') = false) {
-					was_pushed := true;
-				};
+				was_pushed := true;
 			};
 			
 			if(@char = '*') {
