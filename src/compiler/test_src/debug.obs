@@ -1,11 +1,7 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-#			args[0]->PrintLine();
-		}
-
-		function : Foo() ~ Bool {
-			return false;
+			foo[0] := 10;
 		}
 	}
 }

@@ -8,7 +8,8 @@ bundle Default {
 		ALTERNATION,
 		OPRN,
 		CPRN,
-		STOP
+		STOP,
+		NONE
 	}
 	
 	class Token {
@@ -82,24 +83,34 @@ bundle Default {
 		@char : Char;
 		@input_stack : Token[];
 		@input_index : Int;
+		@calc_stack : Int[];
+		@calc_index : Int;
+		@output : Instr[];
+		@output_index : Int;
 		@error : String;
-
+		
 		New(input : String) {
 			@input := input;
 			@index := 0;
 			@input_stack := Token->New[256];
 			@input_index := 0;
+			@calc_stack := Int->New[256];
+			@calc_index := 0;
+			@output := Instr->New[256];
+			@output_index := 1;
 		}
 
 		method : public : Compile() ~ String {
 			Parse();
 DumpInput();			
 			if(@error = Nil) {
-				output := Emit();
-				if(@error = Nil) {
-DumpOutput(output);				
+				@input_index := 0;
+				Emit(TokenType->NONE);
+				if(@calc_index <> 0) {
+					@error := "invalid expression";
 				};
 
+DumpOutput(@output);
 if(@error <> Nil) {				
 	@error->PrintLine();
 };
@@ -107,60 +118,127 @@ if(@error <> Nil) {
 			
 			return "";
 		}
+
+		method : EmitMatch() ~ Bool {
+			if(@calc_index > 0) {
+				top := @calc_stack[@calc_index - 1];
+				if(top >= 40 & top <= 122) {
+					match := @calc_stack[@calc_index - 1];
+					@calc_index -= 2;
+								
+					@output[@output_index] := Instr->New(InstrType->MATCH, match);
+					@output_index += 1;
+				
+					return true;
+				};
+			};
+			
+			return false;
+		}
 		
-		method : Emit() ~ Instr[] {
-			output := Instr->New[256];
-			output_index := 1;
-			
-			calc_stack := Int->New[256];
-			calc_index := 0;
-			
+		method : Emit(end : TokenType) ~ Nil {
 			start := -1;
 			
-			i := 0;
-			c := @input_stack[i];
-			while(c <> Nil) {
+			c := @input_stack[@input_index];
+			while(c <> Nil & c->GetType() <> end->As(Int)) {
 				select(c->GetType()) {
 					label TokenType->ZERO_MORE: {
+						top := @calc_stack[@calc_index - 1];
+						# char match
+						if(top >= 40 & top <= 122) {
+							@calc_index -= 1;
+							match := @calc_stack[@calc_index];
+								
+							@output[@output_index] := Instr->New(InstrType->MATCH, match);
+							@output_index += 1;
+						}
+						# group match
+						else if(top = TokenType->CPRN->As(Int)) {
+							@calc_index -= 1;
+				 		}
+						else {
+							@error := "invalid expression";
+						};	
+						
+						@calc_index -= 1;
+			 			index := @calc_stack[@calc_index];
+
+						# instr
+						@output[@output_index] := Instr->New(InstrType->ZERO_MORE);
+						@output_index += 1;
+				
+						# loop
+						@output[@output_index] := Instr->New(InstrType->JUMP, index);
+						@output_index += 1;
+#~
+						# next			
+						@output[@output_index] := Instr->New(InstrType->JUMP, @output_index + 1);
+						@output_index += 1;
+~#				
 					}
 
 					label TokenType->ONE_MORE: {
 					}
 
 					label TokenType->SEQUENCE: {
+						EmitMatch();
+						# next			
+						@output[@output_index] := Instr->New(InstrType->JUMP, @output_index + 1);
+						@output_index += 1;
+						
 					}
 
+					label TokenType->ALTERNATION: {
+						# instr
+						@output[@output_index] := Instr->New(InstrType->ALTERNATION);
+						@output_index += 1;
+					}				
+
 					label TokenType->OPRN: {
-					}
-					
-					label TokenType->CPRN: {
+						# emit parn
+						offset := @output_index;
+						@input_index += 1;
+						Emit(TokenType->CPRN);	
+						c := @input_stack[@input_index];
+						EmitMatch();
+						
+						# push offset
+						@calc_stack[@calc_index] := offset;
+						@calc_index += 1;
+
+						@calc_stack[@calc_index] := c->GetType();
+						@calc_index += 1;
 					}
 					
 					label TokenType->STOP: {
+						EmitMatch();
+						@output[@output_index] := Instr->New(InstrType->STOP);
+						@output_index += 1;
 					}
-				
-					other: {					
-						calc_stack[calc_index] := c->GetType();
-						calc_index += 1;
+					
+					other: {
+						@calc_stack[@calc_index] := @output_index;
+						@calc_index += 1;
+
+						@calc_stack[@calc_index] := c->GetType();
+						@calc_index += 1;
 					}
 				};
 				# update
-				i += 1;
-				c := @input_stack[i];	 
+				@input_index += 1;
+				c := @input_stack[@input_index];	 
 			};
-			
+
 			if(start > -1) {
 # Console->Print(0)->Print(": JUMP id=")->PrintLine(start);
-				output[0] := Instr->New(InstrType->JUMP, start);
+				@output[0] := Instr->New(InstrType->JUMP, start);
 			}
 			else {
 # Console->Print(0)->Print(": JUMP id=")->PrintLine(1);			
-				output[0] := Instr->New(InstrType->JUMP, 1);
+				@output[0] := Instr->New(InstrType->JUMP, 1);
 			};
-			
-Console->Print("calc: id=")->PrintLine(calc_index);
 
-			return output;
+Console->Print("calc: id=")->PrintLine(@calc_index);
 		}
 
 		method : Push(value : Int) ~ Nil {
