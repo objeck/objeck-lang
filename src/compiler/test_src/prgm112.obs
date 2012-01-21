@@ -41,7 +41,8 @@ bundle Default {
 		ALTERNATION,
 		MATCH,
 		JUMP,
-		STOP
+		STOP,
+		NOP
 	}
 	
 	class Instr {
@@ -51,7 +52,7 @@ bundle Default {
 		
 		New(type : InstrType) {
 			@type := type;
-			@values := Nil;
+			@value := -1;
 		}
 		
 		New(type : InstrType, value : Int) {
@@ -61,11 +62,16 @@ bundle Default {
 		
 		New(type : InstrType, values : String) {
 			@type := type;
+			@value := -1;
 			@values := values;
 		}
 		
 		method : public : GetType() ~ InstrType {
 			return @type;
+		}
+		
+		method : public : SetType(type : InstrType) ~ Nil {
+			@type := type;
 		}
 		
 		method : public : GetValue() ~ Int {
@@ -92,6 +98,7 @@ bundle Default {
 		@output : Instr[];
 		@output_index : Int;
 		@error : String;
+		@ctrl : Instr;
 		
 		New(input : String) {
 			@input := input;
@@ -109,6 +116,9 @@ bundle Default {
 DumpInput();			
 			if(@error = Nil) {
 				@input_index := 0;
+				@ctrl := Instr->New(InstrType->JUMP);
+				@output[@output_index] := @ctrl;
+				@output_index += 1;
 				Emit(TokenType->NONE);
 				if(@calc_index <> 0) {
 					@error := "invalid expression";
@@ -172,11 +182,13 @@ if(@error <> Nil) {
 						@output_index += 1;
 				
 						# loop
+						@ctrl->SetValue(@output_index - 1);
 						@output[@output_index] := Instr->New(InstrType->JUMP, index);
 						@output_index += 1;
 						
-#						@calc_stack[@calc_index] := c->GetType();
-#						@calc_index += 1;	
+						@ctrl := Instr->New(InstrType->JUMP);
+						@output[@output_index] := @ctrl;
+						@output_index += 1;
 					}
 
 					label TokenType->ONE_MORE: {
@@ -262,6 +274,7 @@ if(@error <> Nil) {
 						};
 						
 						# instr
+						@ctrl->SetValue(@output_index);
 						@output[@output_index] := Instr->New(InstrType->ALTERNATION);
 						@output_index += 1;
 
@@ -273,6 +286,10 @@ if(@error <> Nil) {
 						@output_index += 1;
 						
 						union->SetValue(@output_index);
+						
+						@ctrl := Instr->New(InstrType->JUMP);
+						@output[@output_index] := @ctrl;
+						@output_index += 1;
 					}				
 
 					label TokenType->OPRN: {
@@ -293,6 +310,11 @@ if(@error <> Nil) {
 					
 					label TokenType->STOP: {
 						EmitMatch();
+						
+						if(@ctrl->GetValue() < 0) {
+							@ctrl->SetType(InstrType->NOP);
+						};
+						
 						@output[@output_index] := Instr->New(InstrType->STOP);
 						@output_index += 1;
 					}
@@ -439,6 +461,10 @@ Console->Print("calc: id=")->PrintLine(@calc_index);
 					
 					label InstrType->STOP: {
 						Console->Print(i)->PrintLine(": STOP");
+					}
+					
+					label InstrType->NOP: {
+						Console->Print(i)->PrintLine(": NOP");
 					}
 				};
 				i += 1;
