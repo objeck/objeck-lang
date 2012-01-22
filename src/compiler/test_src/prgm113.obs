@@ -1,0 +1,317 @@
+use IO;
+
+bundle Default {
+	enum TokenType := -32 {
+		ZERO_MORE,
+		ONE_MORE,
+		SEQUENCE,
+		ALTERNATION,
+		OPRN,
+		CPRN,
+		STOP,
+		NONE
+	}
+	
+	class Token {
+		@type : Int;
+		@values : String;
+		
+		New(type : Int) {
+			@type := type;
+			@values := Nil;
+		}
+		
+		New(type : Int, values : String) {
+			@type := type;
+			@values := values;
+		}
+		
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+		
+		method : public : GetValues() ~ String {
+			return @values;
+		}
+	}
+	
+	enum NodeType := -64 {
+		VALUE,
+		ZERO_MORE,
+		SEQUENCE,
+		ALTERNATION
+	}
+	
+	class Node {
+		@value : Int;
+		@type : NodeType;
+		@next : Node;
+
+		New(value : Int) {
+			@type := NodeType->VALUE;			
+			@value := value;			
+		}
+		
+		New(next : Node) {
+			@type := NodeType->SEQUENCE;	
+			@next := next;
+		}
+
+		method : public : GetType() ~ NodeType {
+			return @type;
+		}
+
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+	}
+	
+	class Postfix {
+		@input : String;
+		@index : Int;
+		@char : Char;
+		@input_stack : Token[];
+		@input_index : Int;
+		@error : String;
+		
+		New(input : String) {
+			@input := input;
+			@index := 0;
+			@input_stack := Token->New[256];
+			@input_index := 0;
+		}
+
+		method : public : Compile() ~ String {
+			Parse();
+DumpInput();			
+			if(@error = Nil) {
+				regex := Emit();
+				
+DumpRegEx(regex);
+if(@error <> Nil) {				
+	@error->PrintLine();
+};
+			};
+			
+			return "";
+		}
+
+		method : Emit() ~ Node[] {
+			calc_stack := Node->New[256];
+			calc_index := 0;
+			
+			input_index := 0;
+			token := @input_stack[input_index];
+			input_index += 1;
+
+			while(token <> Nil) {
+				select(token->GetType()) {
+					label TokenType->ZERO_MORE: {
+					}
+			
+					label TokenType->ONE_MORE: {
+					}
+
+					label TokenType->SEQUENCE: {
+						calc_index -= 1;						
+						next := calc_stack[calc_index];
+
+Console->PrintLine(next->GetValue());						
+calc_index->PrintLine();
+
+						calc_stack[calc_index] := Node->New(next);
+						calc_index += 1;
+
+
+						token := @input_stack[input_index];
+						input_index += 1;
+				
+						calc_stack[calc_index] := Node->New(token->GetType());
+						calc_index += 4;		
+
+
+
+						
+					}
+		
+					label TokenType->ALTERNATION: {
+					}
+		
+					label TokenType->OPRN: {
+					}
+
+					label TokenType->CPRN: {
+					}
+
+					label TokenType->STOP: {
+					}
+
+					other: {
+						calc_stack[calc_index] := Node->New(token->GetType());
+						calc_index += 1;
+					}
+				};
+				# update
+				token := @input_stack[input_index];
+				input_index += 1;
+			};
+			
+Console->Print("calc: id=")->PrintLine(calc_index);
+
+			return Nil;
+		}
+
+		method : Push(value : Int) ~ Nil {
+			@input_stack[@input_index] := Token->New(value);
+			@input_index += 1;
+		}
+
+		method : Replace(test : Int, value : Int) ~ Nil {
+			if(@input_stack[@input_index - 1]->GetType() = test) {			
+				@input_stack[@input_index - 1] := Token->New(value);
+			}
+			else {
+				@input_stack[@input_index] := Token->New(value);
+				@input_index += 1;
+			};
+		}
+
+		method : Next() ~ Nil {
+			if(@index < @input->Size()) {
+				@char := @input->Get(@index);
+				@index += 1;
+			}
+			else {
+
+				@char := '\0';
+			};
+		}
+		
+		method : IsNext(c : Char) ~ Bool {
+			if(@index - 1 < @input->Size()) {
+				return @input->Get(@index - 1) = c;
+			};
+			
+			return true;
+		}
+		
+		# TODO: validate input
+		method : Parse() ~ Nil {
+			Next();
+			Alternation();
+			Replace(TokenType->SEQUENCE->As(Int), TokenType->STOP->As(Int));
+		}	
+
+		method : Alternation() ~ Nil {
+			Sequence();
+
+			if(@char = '|') {
+				while(@char = '|') {
+					Next();
+					Sequence();
+				};
+				Replace(TokenType->SEQUENCE->As(Int), TokenType->ALTERNATION->As(Int));
+			};
+		}
+
+		method : Sequence() ~ Nil {
+			while(@char >= 40 & @char <= 122 & @char <> ')') {
+				if(Repetition()) {
+					if(IsNext('|') = false & IsNext(')') = false) {
+						Push(TokenType->SEQUENCE->As(Int));
+					};
+				};
+			};
+		}
+		
+		method : Repetition() ~ Bool {
+			was_pushed := false;
+	
+			if(@char = '(') {
+				Push(TokenType->OPRN->As(Int));
+				Next();
+				Alternation();
+				if(@char <> ')') {
+					@error := "expected ')'";
+					return false;
+				};
+				Push(TokenType->CPRN->As(Int));
+				Next();
+			}
+			else if(@char <> ')') {
+				Push(@char->As(Int));
+				Next();
+				was_pushed := true;
+			};
+			
+			if(@char = '*') {
+				Push(TokenType->ZERO_MORE->As(Int));
+				was_pushed := true;
+				Next();
+			}
+			else if(@char = '+') {
+				Push(TokenType->ONE_MORE->As(Int));
+				was_pushed := true;
+				Next();
+			};			
+			
+			return was_pushed;
+		}
+		
+		function : DumpRegEx(nodes : Node[]) ~ Nil {
+			
+		}		
+		
+		method : DumpInput() ~ Nil {
+			i := 0;
+			c := @input_stack[0];	 
+
+			while(c <> Nil) {
+				select(c->GetType()) {
+					label TokenType->ZERO_MORE: {
+						'*'->PrintLine();
+					}
+
+					label TokenType->ONE_MORE: {
+						'+'->PrintLine();
+					}
+
+					label TokenType->SEQUENCE: {
+						'.'->PrintLine();
+					}
+
+					label TokenType->ALTERNATION: {
+						'|'->PrintLine();
+					}
+					
+					label TokenType->OPRN: {
+						'('->PrintLine();
+					}
+					
+					label TokenType->CPRN: {
+						')'->PrintLine();
+					}
+					
+					label TokenType->STOP: {
+						"STOP"->PrintLine();
+					}
+				
+					other: {
+						v := c->GetType()->As(Char);
+						v->PrintLine();
+					}
+				};
+				i += 1;
+				c := @input_stack[i];	 
+			};
+			"-----"->PrintLine();
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				p := Postfix->New(args[0]);
+				p->Compile();
+			};
+		}
+	}
+}
