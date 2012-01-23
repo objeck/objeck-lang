@@ -67,13 +67,14 @@ bundle RegEx {
 			while(value <> 0) {
 				select(value) {
 					label TokenType->OPN: {
-						output[output_index] := value;
-						output_index += 1;
+						stack[stack_index] := value;
+						stack_index += 1;
 					}
 					
 					label TokenType->POW:
 					label TokenType->PLUS:
-					label TokenType->MUL: {
+					label TokenType->MUL:
+					label TokenType->CPN: {
 						if(stack_index = 0) {
 							stack[stack_index] := value;
 							stack_index += 1;
@@ -84,10 +85,14 @@ bundle RegEx {
 									stack_index -= 1;
 									stack_value := stack[stack_index];
 									
-									output[output_index] := stack_value;
-									output_index += 1;
+									if(stack_value <> TokenType->OPN->As(Int) & 
+											stack_value <> TokenType->CPN->As(Int)) {
+										output[output_index] := stack_value;
+										output_index += 1;
+									};
 								};
 							};
+							
 							stack[stack_index] := value;
 							stack_index += 1;
 						};
@@ -128,7 +133,6 @@ bundle RegEx {
 					}
 					
 					label TokenType->MUL: {
-# "xxx"->PrintLine();					
 						'*'->PrintLine();
 					}
 					
