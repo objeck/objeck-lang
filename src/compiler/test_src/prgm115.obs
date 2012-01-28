@@ -201,11 +201,16 @@ postfix->PrintLine();
 				};
 			};
 
+			# ensure all states have been processed
 			e := @frag_stack->Pop()->As(Fragment);
 			if(@frag_stack->Size() <> 0) {
 				return Nil;
 			};
-#			patch(e.out, &matchstate);
+			
+			# set matching state
+			m := State->New(Operation->MATCH->As(Int),
+				Nil->As(State), Nil->As(State));
+			Patch(e->GetOuts(), m);
 			
 			return e->GetStart();
 		}
