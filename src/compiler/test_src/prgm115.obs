@@ -1,0 +1,163 @@
+use IO;
+
+#~
+Basic NFA regex engine
+R. Hollines 
+
+Based on an implementation by Russ Cox.
+Copyright (c) 2007 Russ Cox.
+Can be distributed under the MIT license, see bottom of file.
+~#
+
+bundle RegEx {
+	class PostFix {
+		@input : String;
+		
+		New(input : String) {
+input->PrintLine();		
+			@input := input;
+			RegEx2Postfix(@input)->PrintLine();
+		}
+		
+		method : public : RegEx2Postfix(input : String) ~ String {
+			output := "";
+			paren_stack := Int->New[200];
+			paren_index := 0;
+			alt_count := 0;
+			atom_count := 0;
+			
+			each(i : input) {
+				char := input->Get(i);
+				select(char){
+					label '(': {
+						if(atom_count > 1) {
+							atom_count -= 1;
+							output->Append('.');
+						};
+						
+						if(paren_index >= 200) {
+							return Nil;
+						};
+						
+						paren_stack[paren_index] := alt_count;
+						paren_index += 1;
+						
+						paren_stack[paren_index] := atom_count;
+						paren_index += 1;
+						
+						alt_count := 0;
+						atom_count := 0;
+					}
+					
+					label '|': {
+						if(atom_count = 0) {
+							return Nil;
+						};
+							
+						atom_count -= 1;
+						while(atom_count > 0) {
+							output->Append('.');
+							atom_count -= 1;
+						};
+						
+						alt_count += 1;
+					}
+						
+					label ')': {
+						if(paren_index = 0) {
+							return Nil;
+						};
+						
+						if(atom_count = 0) {
+							return Nil;
+						};
+						
+						atom_count -= 1;
+						while(atom_count > 0) {
+							output->Append('.');
+							atom_count -= 1;
+						};
+						
+						while(alt_count > 0) {
+							output->Append('|');
+							alt_count -= 1;
+						};
+						
+						paren_index -= 1;	
+						atom_count := paren_stack[paren_index];
+						
+						paren_index -= 1;	
+						alt_count := paren_stack[paren_index];
+						
+						atom_count += 1;
+					}
+					
+					label '*':
+					label '+':
+					label '?': {
+						if(atom_count = 0) {
+							return Nil;
+						};
+						
+						output->Append(char);
+					}
+					
+					other: {
+						if(atom_count > 1) {
+							atom_count -= 1;
+							output->Append('.');
+						};
+						
+						output->Append(char);
+						atom_count += 1;
+					}
+				};
+			};
+			
+			if(paren_index <> 0) {
+				return Nil;
+			};
+			
+			atom_count -= 1;
+			while(atom_count > 0) {
+				output->Append('.');
+				atom_count -= 1;
+			};
+			
+			while(alt_count > 0) {
+				output->Append('|');
+				alt_count -= 1;
+			};
+			
+			return output;
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			postfix := PostFix->New(args[0]);
+		}
+	}
+}
+
+#~
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~#

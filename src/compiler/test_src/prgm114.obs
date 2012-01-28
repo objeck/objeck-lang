@@ -93,8 +93,10 @@ bundle RegEx {
 								};
 							};
 							
-							stack[stack_index] := value;
-							stack_index += 1;
+							if(value <> TokenType->CPN->As(Int)) {
+								stack[stack_index] := value;
+								stack_index += 1;
+							};
 						};
 					}
 					
@@ -111,7 +113,6 @@ bundle RegEx {
 			while(stack_index > 0) {
 				stack_index -= 1;
 				stack_value := stack[stack_index];
-				
 				
 				output[output_index] := stack_value;
 				output_index += 1;
