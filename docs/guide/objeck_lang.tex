@@ -1248,6 +1248,20 @@ Interface for all objects that use comparative algorithms.
   \end{itemize}
 \end{itemize}
 
+\subsubsection{BasicCompare}
+Basic implementation of \texttt{Compare} methods.
+\begin{itemize}
+\item \texttt{Compare} - returns true if argument is the same
+  instance, false otherwise.
+  \begin{itemize}
+  \item method : public : Compare(rhs : System.Compare) \textasciitilde Int
+  \end{itemize}
+\item \texttt{HashID} - hash value based upon instance ID
+  \begin{itemize}
+  \item method : public : HashID() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
 \subsubsection{List/IntList/FloatList}
 The List class allow values to be added, removed and deleted from a
 list.  There are two specialized version of this class:
