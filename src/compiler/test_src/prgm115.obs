@@ -280,13 +280,15 @@ postfix->PrintLine();
 		}
 	}
 	
-	class State implements Compare {
+	class State from BasicCompare {
 		@c : Int;
 		@out : State;
 		@out1 : State;
 		@lastlist : Int;
 	
 		New(c : Int, out: State, out1 : State) {
+			Parent();
+			
 			@c := c;
 			@out := out;
 			@out1 := out1;
@@ -310,26 +312,6 @@ postfix->PrintLine();
 		
 		method : public : SetOut1(out1 : State) ~ Nil {
 			@out1 := out1;
-		}
-		
-		method : public : Compare(rhs : Compare) ~ Int {
-			if(GetClassID() = rhs->GetClassID()) {
-				right := rhs->As(State);
-				if(@c = right->GetC()) {
-					return 0;
-				}
-				else if(@c < right->GetC()) {
-					return 1;
-				};
-				
-				return -1;
-			};
-			
-			return -1;
-		}
-		
-		method : public : HashID() ~ Int {
-			return GetClassID();
 		}
 	}
 }
