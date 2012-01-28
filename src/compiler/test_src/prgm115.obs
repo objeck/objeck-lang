@@ -1,4 +1,5 @@
 use IO;
+use Struct;
 
 #~
 Basic NFA regex engine
@@ -21,8 +22,7 @@ input->PrintLine();
 		
 		method : public : RegEx2Postfix(input : String) ~ String {
 			output := "";
-			paren_stack := Int->New[200];
-			paren_index := 0;
+			parens := IntStack->New();
 			alt_count := 0;
 			atom_count := 0;
 			
@@ -35,15 +35,8 @@ input->PrintLine();
 							output->Append('.');
 						};
 						
-						if(paren_index >= 200) {
-							return Nil;
-						};
-						
-						paren_stack[paren_index] := alt_count;
-						paren_index += 1;
-						
-						paren_stack[paren_index] := atom_count;
-						paren_index += 1;
+						parens->Push(alt_count);
+						parens->Push(atom_count);
 						
 						alt_count := 0;
 						atom_count := 0;
@@ -64,7 +57,7 @@ input->PrintLine();
 					}
 						
 					label ')': {
-						if(paren_index = 0) {
+						if(parens->Size() = 0) {
 							return Nil;
 						};
 						
@@ -83,11 +76,8 @@ input->PrintLine();
 							alt_count -= 1;
 						};
 						
-						paren_index -= 1;	
-						atom_count := paren_stack[paren_index];
-						
-						paren_index -= 1;	
-						alt_count := paren_stack[paren_index];
+						atom_count := parens->Pop();
+						alt_count := parens->Pop();
 						
 						atom_count += 1;
 					}
@@ -114,7 +104,7 @@ input->PrintLine();
 				};
 			};
 			
-			if(paren_index <> 0) {
+			if(parens->Size() <> 0) {
 				return Nil;
 			};
 			
