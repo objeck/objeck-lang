@@ -430,6 +430,27 @@ bundle System {
 		~~#
 		method : virtual : public : HashID() ~ Int;
 	}
+
+	class BasicCompare implements System.Compare {
+		New() {
+			Parent();
+		}
+
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			if(GetInstanceID() = rhs->GetInstanceID()) {
+				return 0;
+			}
+			else if(GetInstanceID() < rhs->GetInstanceID()) {
+				return 1;
+			};
+
+			return -1;
+		}
+
+		method : public : HashID() ~ Int {
+			return GetInstanceID();
+		}
+	}
 	
 	#~~
 	# Character string class
