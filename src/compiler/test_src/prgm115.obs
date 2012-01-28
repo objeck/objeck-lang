@@ -134,33 +134,6 @@ postfix->PrintLine();
 			return output;
 		}
 		
-		method : CreateList(s : State) ~ List {
-			list := List->New();
-			list->AddBack(s->As(Compare));
-			
-			return list;
-		}
-		
-		method : Patch(list : List, state : State) ~ Nil {
-			list->Rewind();
-			while(list->IsEnd() <> true) {
-				s := list->Get()->As(State);
-				s->SetOut(state);				
-				list->Next();
-			};
-#			list->Previous();
-		}
-		
-		method : Append(left : List, right : List) ~ List {
-			right->Rewind();
-			while(right->IsEnd() <> true) {
-				left->AddBack(right->Get());
-				right->Next();
-			};
-			
-			return left;
-		}
-		
 		#~
 		 ...
 		 ...
@@ -199,15 +172,16 @@ postfix->PrintLine();
 						f := Fragment->New(s, Append(e1->GetOuts(), e2->GetOuts()));
 						@frag_stack->Push(f->As(Base));
 					}
-
-#~						
+						
 					# zero or one
 					label '?':	{
-						e = pop();
-						s = State->New(Split, e.start, Nil);
-						push(frag(s, append(e.out, list1(s->out1))));
+						e := @frag_stack->Pop()->As(Fragment);
+						s := State->New(Operation->SPLIT->As(Int),
+							e->GetStart(), Nil->As(State));
+						f := Fragment->New(s, Append(e->GetOuts(), List->New()));
+						@frag_stack->Push(f->As(Base));
 					}
-						
+#~						
 					# zero or more
 					label '*': {
 						e = pop();
@@ -236,9 +210,34 @@ postfix->PrintLine();
 			return e->GetStart();
 		}
 		
+		method : CreateList(state : State) ~ List {
+			list := List->New();
+			list->AddBack(state->As(Compare));
+			return list;
+		}
+		
+		method : Patch(list : List, state : State) ~ Nil {
+			list->Rewind();
+			while(list->IsEnd() <> true) {
+				s := list->Get()->As(State);
+				s->SetOut(state);				
+				list->Next();
+			};
+		}
+		
+		method : Append(left : List, right : List) ~ List {
+			right->Rewind();
+			while(right->IsEnd() <> true) {
+				left->AddBack(right->Get());
+				right->Next();
+			};
+			
+			return left;
+		}
+		
 		function : Dump(s : State, l : Int) ~ Nil {
 			if(s <> Nil) {
-				Console->Print("state=")->Print(s->GetC())->Print(", level=")->PrintLine(l);
+				Console->Print("state=")->Print(s->GetValue())->Print(", level=")->PrintLine(l);
 				Dump(s->GetOut(), l + 1);
 				Dump(s->GetOut1(), l + 1);
 			};
@@ -281,21 +280,21 @@ postfix->PrintLine();
 	}
 	
 	class State from BasicCompare {
-		@c : Int;
+		@value : Int;
 		@out : State;
 		@out1 : State;
 		@lastlist : Int;
 	
-		New(c : Int, out: State, out1 : State) {
+		New(value : Int, out: State, out1 : State) {
 			Parent();
 			
-			@c := c;
+			@value := value;
 			@out := out;
 			@out1 := out1;
 		}
 		
-		method : public : GetC() ~ Int {
-			return @c;
+		method : public : GetValue() ~ Int {
+			return @value;
 		}
 		
 		method : public : GetOut() ~ State {
