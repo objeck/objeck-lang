@@ -28,7 +28,7 @@ input->PrintLine();
 postfix->PrintLine();
 				x := Postfix2Nfa(postfix);
 				Dump(x,0);
-				Evaluate(x, "abc")->PrintLine();
+				Evaluate(x, "b")->PrintLine();
 			};
 		}
 		
@@ -182,18 +182,21 @@ postfix->PrintLine();
 						e := @frag_stack->Pop()->As(Fragment);
 						s := State->New(Operation->SPLIT->As(Int),
 							e->GetStart(), Nil->As(State));
-						f := Fragment->New(s, Append(e->GetOuts(), List->New()));
+						f := Fragment->New(s, Append(e->GetOuts(), CreateList(s)));
 						@frag_stack->Push(f->As(Base));
 					}
-#~						
+					
 					# zero or more
 					label '*': {
-						e = pop();
-						s = State->New(Split, e.start, Nil);
-						patch(e.out, s);
-						push(frag(s, list1(s->out1)));
+						e := @frag_stack->Pop()->As(Fragment);
+						s := State->New(Operation->SPLIT->As(Int),
+							e->GetStart(), Nil->As(State));
+						Patch(e->GetOuts(), s);
+						f := Fragment->New(s, CreateList(s));
+						@frag_stack->Push(f->As(Base));
 					}
 					
+#~				
 					# one or more
 					label '+': {
 						e = pop();
@@ -229,6 +232,7 @@ postfix->PrintLine();
 			list->Rewind();
 			while(list->IsEnd() <> true) {
 				s := list->Get()->As(State);
+"== p =="->PrintLine();				
 				s->SetOut(state);				
 				list->Next();
 			};
@@ -254,10 +258,13 @@ postfix->PrintLine();
 			if(s = Nil | s->GetLastList() = @listid) {
 				return;
 			};
-			
-"- 1 -"->PrintLine();				
+				
 			s->SetLastList(@listid);
 			if(s->GetValue() = Operation->SPLIT->As(Int)) {
+				x := s->GetOut() = Nil ? 0 : 1;
+				y := s->GetOut1() = Nil ? 0 : 1;
+				
+Console->Print("split l=")->Print(x)->Print(", r=")->PrintLine(y);			
 				AddState(l, s->GetOut());
 				AddState(l, s->GetOut1());
 				return;
@@ -274,14 +281,16 @@ postfix->PrintLine();
 		
 		method : Step(clist : NFAList, c : Int, nlist : NFAList) ~ Nil {
 			@listid += 1;
-#			nlist->n = 0;
+			nlist->Reset();
 			states := clist->GetStates();
 			each(i : states) {
 				s := states->Get(i)->As(State);
 			
 Console->Print("test l=")->Print(s->GetValue())->Print(", r=")->PrintLine(c);			
-				
-				if(s->GetValue() = c) {
+
+
+				value := s->GetValue();
+				if(value = Operation->MATCH->As(Int) | value = c) {
 					AddState(nlist, s->GetOut());
 				};
 			};
@@ -290,7 +299,7 @@ Console->Print("test l=")->Print(s->GetValue())->Print(", r=")->PrintLine(c);
 		method : IsMatch(l : NFAList) ~ Bool {
 			states := l->GetStates();
 			each(i : states) {
-				s := states->Get(i)->As(State);
+				s := states->Get(i)->As(State);				
 				if(s->GetValue() = Operation->MATCH->As(Int)) {
 					return true;
 				};
@@ -310,7 +319,8 @@ Console->Print("test l=")->Print(s->GetValue())->Print(", r=")->PrintLine(c);
 			nlist := @l2;
 
 			each(i : s) {
-				c := s->Get(i) and 0xff;
+"= 99 ="->PrintLine();			
+				c := s->Get(i);
 				Step(clist, c->As(Int), nlist);
 				t := clist; 
 				clist := nlist; 
@@ -348,6 +358,10 @@ Console->Print("state=")->Print(s->GetValue())->Print(", level=")->PrintLine(l);
 		
 		method : public : AddState(s : State) ~ Nil {
 			@states->AddBack(s->As(Base));
+		}	
+		
+		method : public : Reset() ~ Nil {
+			@states := Vector->New();
 		}	
 		
 		method : public : GetStates() ~ Vector {
