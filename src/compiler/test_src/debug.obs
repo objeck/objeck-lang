@@ -1,7 +1,17 @@
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			foo[0] := 10;
+			x := true ? "foo" : "bar";
+#~
+			if(false) {
+				x := "foo";
+			}
+			else {
+				x := "bar";
+			};
+~#
+
+			x->PrintLine();
 		}
 	}
 }
