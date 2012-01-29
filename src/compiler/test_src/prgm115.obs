@@ -37,7 +37,59 @@ postfix->PrintLine();
 			
 			each(i : input) {
 				char := input->Get(i);
-				select(char){
+				select(char) {
+					label '[': {
+						start := 0;
+						end := 0;
+						
+						i += 1;
+						char := input->Get(i);
+						if(char->IsDigit() | char->IsChar()) {
+							start := char;
+						}
+						else {
+							return Nil;
+						};
+
+						i += 1;
+						char := input->Get(i);
+						if(char <> '-') {
+							return Nil;
+						};
+
+						i += 1;
+						char := input->Get(i);
+						if(char->IsDigit() | char->IsChar()) {
+							end := char;
+						}
+						else {
+							return Nil;
+						};
+						
+						i += 1;
+						char := input->Get(i);
+						if(char <> ']') {
+							return Nil;
+						};
+						
+						if(start >= end) {
+							return Nil;
+						};
+						
+						j := start;
+						while(j <= end) {
+							output->Append(j->As(Char));
+							j += 1;
+						};
+						
+						count := end - start;
+						while(count <> 0) {
+							output->Append('|');
+							count -= 1;
+						};
+						atom_count += 1;
+					}
+					
 					label '(': {
 						if(atom_count > 1) {
 							atom_count -= 1;
@@ -237,28 +289,27 @@ postfix->PrintLine();
 			return e->GetStart();
 		}
 		
-		method : Step(clist : Vector, c : Char) ~ Vector { 
+		method : Step(clist : Vector, char : Char) ~ Vector { 
 			if(clist->Size() = 0) {
 				return clist;
 			};
 			
+      all_null := true;
+      matched := false;
 			nlist := Vector->New();
 			
-      allNull := true;
-      matched := false;
-      
       each(i : clist) {
       	t := clist->Get(i)->As(Transition);
     		if(t <> Nil) {
-    			value := t->GetValue();
+    			check := t->GetValue();
     			
-					if(value <> -1) {
-						allNull := false;
+					if(check <> -1) {
+						all_null := false;
 					};	
 					
-Console->Print("check l=")->Print(value)->Print(", r=")->PrintLine(c);					
+Console->Print("check l=")->Print(check)->Print(", r=")->PrintLine(char);					
 					
-					if(value = c & t->GetEnd()->GetType() = 1) {
+					if(check = char & t->GetEnd()->GetType() = 1) {
 					  matched := true;
 					  
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
@@ -269,23 +320,23 @@ Console->Print("check l=")->Print(value)->Print(", r=")->PrintLine(c);
 					  	nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
 					  };
 					}
-					else if(value = c & t->GetEnd()->GetType() = 0) {
+					else if(check = char & t->GetEnd()->GetType() = 0) {
             matched := true;  
             return ListUitls->NewList(t); 
           }
-          else if(value = -1 & t->GetEnd() <> Nil) {
+          else if(check = -1 & t->GetEnd() <> Nil) {
             nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
             nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
           };
 				};
 			};
 			
-			if(allNull) {
-				return Step(nlist, c);
+			if(all_null) {
+				return Step(nlist, char);
 			};
 			
 			if(matched = false) {
-      	return Step(nlist, c);
+      	return Step(nlist, char);
       };
 			
 			return nlist;
@@ -297,10 +348,10 @@ Console->Print("check l=")->Print(value)->Print(", r=")->PrintLine(c);
       clist->AddBack(state->GetOut2()->As(Base));
       
       each(i : input) {
-      	c := input->Get(i);  
-    		c := c and 0xff;
+      	char := input->Get(i);  
+    		char := char and 0xff;
     		
-    		clist := Step(clist, c);
+    		clist := Step(clist, char);
     		if(clist->Size() = 0) {
     			return false;
     		};
