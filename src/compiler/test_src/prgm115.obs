@@ -14,6 +14,9 @@ bundle RegEx {
 	class PostFix {
 		@input : String;
 		@frag_stack : Stack;
+		@listid : Int;
+		@l1 : NFAList;
+		@l2 : NFAList;
 		
 		New(input : String) {	
 			@input := input;
@@ -25,6 +28,7 @@ input->PrintLine();
 postfix->PrintLine();
 				x := Postfix2Nfa(postfix);
 				Dump(x,0);
+				Evaluate(x, "abc")->PrintLine();
 			};
 		}
 		
@@ -240,9 +244,91 @@ postfix->PrintLine();
 			return left;
 		}
 		
+		
+		
+		
+		
+		
+		
+		method : AddState(l : NFAList, s : State) ~ Nil {
+			if(s = Nil | s->GetLastList() = @listid) {
+				return;
+			};
+			
+"- 1 -"->PrintLine();				
+			s->SetLastList(@listid);
+			if(s->GetValue() = Operation->SPLIT->As(Int)) {
+				AddState(l, s->GetOut());
+				AddState(l, s->GetOut1());
+				return;
+			};
+			l->AddState(s);
+		}
+		
+		# Compute initial state list
+		method : StartList(start : State, l : NFAList) ~ NFAList {
+			@listid += 1;
+			AddState(l, start);
+			return l;
+		}
+		
+		method : Step(clist : NFAList, c : Int, nlist : NFAList) ~ Nil {
+			@listid += 1;
+#			nlist->n = 0;
+			states := clist->GetStates();
+			each(i : states) {
+				s := states->Get(i)->As(State);
+			
+Console->Print("test l=")->Print(s->GetValue())->Print(", r=")->PrintLine(c);			
+				
+				if(s->GetValue() = c) {
+					AddState(nlist, s->GetOut());
+				};
+			};
+		}
+		
+		method : IsMatch(l : NFAList) ~ Bool {
+			states := l->GetStates();
+			each(i : states) {
+				s := states->Get(i)->As(State);
+				if(s->GetValue() = Operation->MATCH->As(Int)) {
+					return true;
+				};
+			};
+			
+			return false;
+		}
+		
+		#~
+		Run NFA to determine whether it matches s. 
+		~#
+		method : Evaluate(start : State, s : String) ~ Bool {
+			@l1 := NFAList->New();
+			clist := StartList(start, @l1);
+			
+			@l2 := NFAList->New();
+			nlist := @l2;
+
+			each(i : s) {
+				c := s->Get(i) and 0xff;
+				Step(clist, c->As(Int), nlist);
+				t := clist; 
+				clist := nlist; 
+				nlist := t;
+			};
+						
+			return IsMatch(clist);
+		}
+
+		
+		
+		
+		
+		
+		
 		function : Dump(s : State, l : Int) ~ Nil {
 			if(s <> Nil) {
-				Console->Print("state=")->Print(s->GetValue())->Print(", level=")->PrintLine(l);
+Console->Print("state=")->Print(s->GetValue())->Print(", level=")->PrintLine(l);
 				Dump(s->GetOut(), l + 1);
 				Dump(s->GetOut1(), l + 1);
 			};
@@ -250,6 +336,22 @@ postfix->PrintLine();
 				
 		function : Main(args : String[]) ~ Nil {
 			postfix := PostFix->New(args[0]);
+		}
+	}
+	
+	class NFAList {
+		@states : Vector;
+
+		New() {
+			@states := Vector->New();
+		}
+		
+		method : public : AddState(s : State) ~ Nil {
+			@states->AddBack(s->As(Base));
+		}	
+		
+		method : public : GetStates() ~ Vector {
+			return @states;
 		}
 	}
 	
@@ -316,6 +418,14 @@ postfix->PrintLine();
 		
 		method : public : SetOut1(out1 : State) ~ Nil {
 			@out1 := out1;
+		}
+		
+		method : public : GetLastList() ~ Int {
+			return @lastlist;
+		}
+		
+		method : public : SetLastList(lastlist : Int) ~ Nil {
+			@lastlist := lastlist;
 		}
 	}
 }
