@@ -98,7 +98,7 @@ bundle RegEx {
 					label '(': {
 						if(atom_count > 1) {
 							atom_count -= 1;
-							output->Append('.');
+							output->Append('\b');
 						};
 						
 						parens->Push(alt_count);
@@ -115,7 +115,7 @@ bundle RegEx {
 							
 						atom_count -= 1;
 						while(atom_count > 0) {
-							output->Append('.');
+							output->Append('\b');
 							atom_count -= 1;
 						};
 						
@@ -133,7 +133,7 @@ bundle RegEx {
 						
 						atom_count -= 1;
 						while(atom_count > 0) {
-							output->Append('.');
+							output->Append('\b');
 							atom_count -= 1;
 						};
 						
@@ -161,7 +161,7 @@ bundle RegEx {
 					other: {
 						if(atom_count > 1) {
 							atom_count -= 1;
-							output->Append('.');
+							output->Append('\b');
 						};
 						
 						output->Append(char);
@@ -176,7 +176,7 @@ bundle RegEx {
 			
 			atom_count -= 1;
 			while(atom_count > 0) {
-				output->Append('.');
+				output->Append('\b');
 				atom_count -= 1;
 			};
 			
@@ -204,7 +204,7 @@ bundle RegEx {
 						stack->Push(f->As(Base));		
 					}
 					
-					label '.': {  
+					label '\b': {  
 						e2 := stack->Pop()->As(Frame);  
 						e1 := stack->Pop()->As(Frame);
 						ListUitls->Link(e1->GetOuts(), e2->GetStart());
@@ -314,9 +314,8 @@ bundle RegEx {
 						all_null := false;
 					};	
 					
-					if(check = char & t->GetEnd()->GetType() = 1) {
+					if((check = char | check = '.') & t->GetEnd()->GetType() = 1) {
 					  matched := true;
-					  
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
 					  	nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
 					  };
@@ -325,7 +324,7 @@ bundle RegEx {
 					  	nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
 					  };
 					}
-					else if(check = char & t->GetEnd()->GetType() = 0) {
+					else if((check = char | check = '.') & t->GetEnd()->GetType() = 0) {
             matched := true;  
             return ListUitls->NewList(t); 
           }
