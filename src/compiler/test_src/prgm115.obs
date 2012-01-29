@@ -162,7 +162,6 @@ postfix->PrintLine();
 						
 						t1 := Transition->New(-1);
 						t2 := Transition->New(-1);
-						
 						t1->SetEnd(e1->GetStart());
 						t2->SetEnd(e2->GetStart());
 						
@@ -176,10 +175,36 @@ postfix->PrintLine();
 						
 						t1 := Transition->New(-1);
 						t2 := Transition->New(-1); 
-						
 						t1->SetEnd(e->GetStart());
+						
 						s := State->New(t1, t2); 
 						f := Frame->New(s, ListUitls->Append(e->GetOuts(), ListUitls->NewList(t2)));
+						stack->Push(f->As(Base));
+					}
+					
+					label '*': {  
+						e := stack->Pop()->As(Frame);
+						
+						t1 := Transition->New(-1);
+						t2 := Transition->New(-1); 
+						t1->SetEnd(e->GetStart());
+						
+						s := State->New(t1, t2);
+						ListUitls->Link(e->GetOuts(), s);
+						f := Frame->New(s, ListUitls->NewList(s->GetOut2()));
+						stack->Push(f->As(Base));
+					}
+					
+					label '+': {
+						e := stack->Pop()->As(Frame);
+						
+						t1 := Transition->New(-1);
+						t2 := Transition->New(-1); 
+						t1->SetEnd(e->GetStart());
+						
+						s := State->New(t1, t2);
+						ListUitls->Link(e->GetOuts(), s);
+						f := Frame->New(e->GetStart(), ListUitls->NewList(t2));
 						stack->Push(f->As(Base));
 					}
 				};
@@ -297,7 +322,6 @@ Console->Print("check l=")->Print(value)->Print(", r=")->PrintLine(c);
 		
 		method : Evaluate(input : String) ~ Bool {
 			if(@start <> Nil) {
-"- 0 -"->PrintLine();			
 				return Match(@start, input);
 			};
 			
