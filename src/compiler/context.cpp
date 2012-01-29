@@ -1812,9 +1812,11 @@ bool ContextAnalyzer::Analyze()
     // cast
     if(expression->GetCastType()) {
       Type* cast_type = expression->GetCastType();
+      Type* base_type = expression->GetBaseType();
       // cannot cast across different dimensions
-      if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices() &&
-	 cast_type->GetDimension() != expression->GetBaseType()->GetDimension()) {
+      if(base_type && expression->GetExpressionType() == VAR_EXPR && 
+	 !static_cast<Variable*>(expression)->GetIndices() &&
+	 cast_type->GetDimension() != base_type->GetDimension()) {
 	ProcessError(expression, "Dimension size mismatch");
       }
       AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
