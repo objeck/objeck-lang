@@ -11,24 +11,17 @@ Can be distributed under the MIT license, see bottom of file.
 ~#
 
 bundle RegEx {
-	class PostFix {
+	class NFAEngine {
 		@input : String;
-		@frag_stack : Stack;
-		@listid : Int;
-		@l1 : NFAList;
-		@l2 : NFAList;
+		@start : State;
 		
 		New(input : String) {	
 			@input := input;
-			@frag_stack := Stack->New();
-			
-input->PrintLine();
+
 			postfix := RegEx2Postfix(@input);
 			if(postfix <> Nil) {
 postfix->PrintLine();
-				x := Postfix2Nfa(postfix);
-				Dump(x,0);
-				Evaluate(x, "b")->PrintLine();
+				@start := Postfix2Nfa(postfix);
 			};
 		}
 		
@@ -36,7 +29,7 @@ postfix->PrintLine();
 		 ...
 		 ...
 		~#
-		method : public : RegEx2Postfix(input : String) ~ String {
+		method : RegEx2Postfix(input : String) ~ String {
 			output := "";
 			parens := IntStack->New();
 			alt_count := 0;
@@ -143,304 +136,269 @@ postfix->PrintLine();
 		 ...
 		~#
 		method : Postfix2Nfa(postfix : String) ~ State {
-			if(postfix = Nil) {
-				return Nil;
-			};
-		
+			stack := Stack->New();
+			
 			each(i : postfix) {
 				char := postfix->Get(i);
 				select(char) {
 					other: {
-						s := State->New(char->As(Int), Nil->As(State), Nil->As(State));
-						f := Fragment->New(s, CreateList(s));
-						@frag_stack->Push(f->As(Base));
+        		t := Transition->New(char->As(Int));   
+						s := State->New(t, Transition->New(-1));
+						f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
+						stack->Push(f->As(Base));		
 					}
 					
-					# catenate
-					label '.': {
-						e2 := @frag_stack->Pop()->As(Fragment);
-						e1 := @frag_stack->Pop()->As(Fragment);
-						
-						Patch(e1->GetOuts(), e2->GetStart());
-						f := Fragment->New(e1->GetStart(), e2->GetOuts());
-						@frag_stack->Push(f->As(Base));
-					}
-
-					# alternate
-					label '|':{
-						e2 := @frag_stack->Pop()->As(Fragment);
-						e1 := @frag_stack->Pop()->As(Fragment);
-						
-						s := State->New(Operation->SPLIT->As(Int),
-							e1->GetStart(), e2->GetStart());
-						f := Fragment->New(s, Append(e1->GetOuts(), e2->GetOuts()));
-						@frag_stack->Push(f->As(Base));
-					}
-						
-					# zero or one
-					label '?':	{
-						e := @frag_stack->Pop()->As(Fragment);
-						s := State->New(Operation->SPLIT->As(Int),
-							e->GetStart(), Nil->As(State));
-						f := Fragment->New(s, Append(e->GetOuts(), CreateList(s)));
-						@frag_stack->Push(f->As(Base));
+					label '.': {  
+						e2 := stack->Pop()->As(Frame);  
+						e1 := stack->Pop()->As(Frame);
+						ListUitls->Link(e1->GetOuts(), e2->GetStart());
+						f := Frame->New(e1->GetStart(), e2->GetOuts());
+						stack->Push(f->As(Base));
 					}
 					
-					# zero or more
-					label '*': {
-						e := @frag_stack->Pop()->As(Fragment);
-						s := State->New(Operation->SPLIT->As(Int),
-							e->GetStart(), Nil->As(State));
-						Patch(e->GetOuts(), s);
-						f := Fragment->New(s, CreateList(s));
-						@frag_stack->Push(f->As(Base));
+					label '|': {  
+						e2 := stack->Pop()->As(Frame);  
+						e1 := stack->Pop()->As(Frame);
+						
+						t1 := Transition->New(-1);
+						t2 := Transition->New(-1);
+						
+						t1->SetEnd(e1->GetStart());
+						t2->SetEnd(e2->GetStart());
+						
+						s := State->New(t1, t2); 
+						f := Frame->New(s, ListUitls->Append(e1->GetOuts(), e2->GetOuts()));
+						stack->Push(f->As(Base));
 					}
 					
-#~				
-					# one or more
-					label '+': {
-						e = pop();
-						s = State->New(Split, e.start, Nil);
-						patch(e.out, s);
-						push(frag(e.start, list1(s->out1)));
+					label '?': {
+						e := stack->Pop()->As(Frame);
+						
+						t1 := Transition->New(-1);
+						t2 := Transition->New(-1); 
+						
+						t1->SetEnd(e->GetStart());
+						s := State->New(t1, t2); 
+						f := Frame->New(s, ListUitls->Append(e->GetOuts(), ListUitls->NewList(t2)));
+						stack->Push(f->As(Base));
 					}
-~#					
 				};
 			};
-
-			# ensure all states have been processed
-			e := @frag_stack->Pop()->As(Fragment);
-			if(@frag_stack->Size() <> 0) {
+			
+			e := stack->Pop()->As(Frame);
+			if(stack->Size() <> 0) {
 				return Nil;
 			};
-			
-			# set matching state
-			m := State->New(Operation->MATCH->As(Int),
-				Nil->As(State), Nil->As(State));
-			Patch(e->GetOuts(), m);
-			
+
+	    end_state := State->New(Nil->As(Transition), Nil->As(Transition)); 
+    	end_state->SetType(0);
+    
+    	outs := e->GetOuts();
+    	each(i : outs) {
+    		tran := outs->Get(i)->As(Transition);
+    		if(tran->GetValue() <> -1) {
+    			t1 := Transition->New(-1);  
+					t2 := Transition->New(-1);   
+					s := State->New(t1, t2);
+					tran->SetEnd(s);  
+					s->GetOut1()->SetEnd(end_state); 
+					s->GetOut2()->SetEnd(end_state);
+    		}
+    		else {
+    			tran->SetEnd(end_state);
+    		};
+    	};
+
 			return e->GetStart();
 		}
 		
-		method : CreateList(state : State) ~ List {
-			list := List->New();
-			list->AddBack(state->As(Compare));
-			return list;
-		}
-		
-		method : Patch(list : List, state : State) ~ Nil {
-			list->Rewind();
-			while(list->IsEnd() <> true) {
-				s := list->Get()->As(State);
-"== p =="->PrintLine();				
-				s->SetOut(state);				
-				list->Next();
-			};
-		}
-		
-		method : Append(left : List, right : List) ~ List {
-			right->Rewind();
-			while(right->IsEnd() <> true) {
-				left->AddBack(right->Get());
-				right->Next();
+		method : Step(clist : Vector, c : Char) ~ Vector { 
+			if(clist->Size() = 0) {
+				return clist;
 			};
 			
-			return left;
-		}
-		
-		
-		
-		
-		
-		
-		
-		method : AddState(l : NFAList, s : State) ~ Nil {
-			if(s = Nil | s->GetLastList() = @listid) {
-				return;
-			};
-				
-			s->SetLastList(@listid);
-			if(s->GetValue() = Operation->SPLIT->As(Int)) {
-				x := s->GetOut() = Nil ? 0 : 1;
-				y := s->GetOut1() = Nil ? 0 : 1;
-				
-Console->Print("split l=")->Print(x)->Print(", r=")->PrintLine(y);			
-				AddState(l, s->GetOut());
-				AddState(l, s->GetOut1());
-				return;
-			};
-			l->AddState(s);
-		}
-		
-		# Compute initial state list
-		method : StartList(start : State, l : NFAList) ~ NFAList {
-			@listid += 1;
-			AddState(l, start);
-			return l;
-		}
-		
-		method : Step(clist : NFAList, c : Int, nlist : NFAList) ~ Nil {
-			@listid += 1;
-			nlist->Reset();
-			states := clist->GetStates();
-			each(i : states) {
-				s := states->Get(i)->As(State);
+			nlist := Vector->New();
 			
-Console->Print("test l=")->Print(s->GetValue())->Print(", r=")->PrintLine(c);			
-
-
-				value := s->GetValue();
-				if(value = Operation->MATCH->As(Int) | value = c) {
-					AddState(nlist, s->GetOut());
+      allNull := true;
+      matched := false;
+      
+      each(i : clist) {
+      	t := clist->Get(i)->As(Transition);
+    		if(t <> Nil) {
+    			value := t->GetValue();
+    			
+					if(value <> -1) {
+						allNull := false;
+					};	
+					
+Console->Print("check l=")->Print(value)->Print(", r=")->PrintLine(c);					
+					
+					if(value = c & t->GetEnd()->GetType() = 1) {
+					  matched := true;
+					  
+					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
+					  	nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
+					  };
+					  
+					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
+					  	nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
+					  };
+					}
+					else if(value = c & t->GetEnd()->GetType() = 0) {
+            matched := true;  
+            return ListUitls->NewList(t); 
+          }
+          else if(value = -1 & t->GetEnd() <> Nil) {
+            nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
+            nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
+          };
 				};
 			};
+			
+			if(allNull) {
+				return Step(nlist, c);
+			};
+			
+			if(matched = false) {
+      	return Step(nlist, c);
+      };
+			
+			return nlist;
 		}
 		
-		method : IsMatch(l : NFAList) ~ Bool {
-			states := l->GetStates();
-			each(i : states) {
-				s := states->Get(i)->As(State);				
-				if(s->GetValue() = Operation->MATCH->As(Int)) {
-					return true;
-				};
+		method : Match(state : State, input : String) ~ Bool {  
+      clist := Vector->New();  
+      clist->AddBack(state->GetOut1()->As(Base));  
+      clist->AddBack(state->GetOut2()->As(Base));
+      
+      each(i : input) {
+      	c := input->Get(i);  
+    		c := c and 0xff;
+    		
+    		clist := Step(clist, c);
+    		if(clist->Size() = 0) {
+    			return false;
+    		};
+      };
+			
+      return IsMatch(clist); 
+    }
+    
+    method : IsMatch(clist : Vector) ~ Bool {
+    	each(i : clist) {
+    		t := clist->Get(i)->As(Transition);
+    		if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
+    			return true;
+    		};
+    	};
+    	
+    	return false;
+		}
+		
+		method : Evaluate(input : String) ~ Bool {
+			if(@start <> Nil) {
+"- 0 -"->PrintLine();			
+				return Match(@start, input);
 			};
 			
 			return false;
 		}
 		
-		#~
-		Run NFA to determine whether it matches s. 
-		~#
-		method : Evaluate(start : State, s : String) ~ Bool {
-			@l1 := NFAList->New();
-			clist := StartList(start, @l1);
-			
-			@l2 := NFAList->New();
-			nlist := @l2;
-
-			each(i : s) {
-"= 99 ="->PrintLine();			
-				c := s->Get(i);
-				Step(clist, c->As(Int), nlist);
-				t := clist; 
-				clist := nlist; 
-				nlist := t;
-			};
-						
-			return IsMatch(clist);
-		}
-
-		
-		
-		
-		
-		
-		
-		function : Dump(s : State, l : Int) ~ Nil {
-			if(s <> Nil) {
-Console->Print("state=")->Print(s->GetValue())->Print(", level=")->PrintLine(l);
-				Dump(s->GetOut(), l + 1);
-				Dump(s->GetOut1(), l + 1);
-			};
-		}
-				
 		function : Main(args : String[]) ~ Nil {
-			postfix := PostFix->New(args[0]);
+			nfa := NFAEngine->New(args[0]);
+			nfa->Evaluate(args[1])->PrintLine();
 		}
 	}
 	
-	class NFAList {
-		@states : Vector;
-
-		New() {
-			@states := Vector->New();
-		}
-		
-		method : public : AddState(s : State) ~ Nil {
-			@states->AddBack(s->As(Base));
-		}	
-		
-		method : public : Reset() ~ Nil {
-			@states := Vector->New();
-		}	
-		
-		method : public : GetStates() ~ Vector {
-			return @states;
-		}
-	}
+	class Transition {
+    @value : Int;
+    @end : State;
+    
+    New(value : Int) {
+      @value := value;  
+    }
+    
+    method : public : GetValue() ~ Int {
+    	return @value;
+    }
+    
+    method : public : GetEnd() ~ State {
+    	return @end;
+    }
+    
+    method : public : SetEnd(end : State) ~ Nil {
+    	@end := end;
+    }
+  }
 	
-	enum Operation := 256 {
-		MATCH,
-		SPLIT
-	}
+	class State {
+    @out1 : Transition;
+    @out2 : Transition;
+    @type : Int;
+    
+    New(out1 : Transition, out2 : Transition) {
+      @out1 := out1;  
+      @out2 := out2;
+      @type := 1;
+    }
+   
+		method : public : SetType(type : Int) ~ Nil {  
+   		@type := type;
+   	}
+   	
+   	method : public : GetType() ~ Int {  
+   		return @type;
+   	}
+   	
+		method : public : IsMatched() ~ Bool {  
+      return @type = 0;  
+    }
+    
+    method : public : GetOut1() ~ Transition {  
+      return @out1; 
+    }
+    
+    method : public : GetOut2() ~ Transition {  
+      return @out2; 
+    }
+	} 
 	
-	class Fragment {
-		@start : State;
-		@outs : List;
-		
-		New(start : State, outs : List) {
-			@start := start;
-			@outs := outs;
-		}
-		
-		method : public : GetStart() ~ State {
-			return @start;
-		}
-		
-		method : public : SetStart(start : State) ~ Nil {
-			@start := start;
-		}
-		
-		method : public : GetOuts() ~ List {
-			return @outs;
-		}
-		
-		method : public : SetOuts(outs : List) ~ Nil {
-			@outs := outs;
-		}
-	}
-	
-	class State from BasicCompare {
-		@value : Int;
-		@out : State;
-		@out1 : State;
-		@lastlist : Int;
-	
-		New(value : Int, out: State, out1 : State) {
-			Parent();
-			
-			@value := value;
-			@out := out;
-			@out1 := out1;
-		}
-		
-		method : public : GetValue() ~ Int {
-			return @value;
-		}
-		
-		method : public : GetOut() ~ State {
-			return @out;
-		}
-		
-		method : public : SetOut(out : State) ~ Nil {
-			@out := out;
-		}
-		
-		method : public : GetOut1() ~ State {
-			return @out1;
-		}
-		
-		method : public : SetOut1(out1 : State) ~ Nil {
-			@out1 := out1;
-		}
-		
-		method : public : GetLastList() ~ Int {
-			return @lastlist;
-		}
-		
-		method : public : SetLastList(lastlist : Int) ~ Nil {
-			@lastlist := lastlist;
-		}
+  class Frame {
+    @start : State;
+    @outs : Vector;
+    
+    New(start : State, outs : Vector) {
+      @start := start;  
+      @outs := outs;  
+  	}
+  	
+  	method : public : GetStart() ~ State {  
+      return @start;
+    }
+    
+  	method : public : GetOuts() ~ Vector {  
+      return @outs;
+    }
+  }
+  
+  class ListUitls { 
+    function : Link(list : Vector, state : State) ~ Nil { 
+    	each(i : list) {
+    		t := list->Get(i)->As(Transition);
+    		t->SetEnd(state);
+    	};
+    }
+    
+    function : Append(list1 : Vector, list2 : Vector) ~ Vector {
+  		list1->AddBack(list2);
+  		return list1;
+    }
+    
+    function : NewList(out : Transition) ~ Vector {
+      result := Vector->New();
+      result->AddBack(out->As(Base)); 
+      return result;
+    }  
 	}
 }
 
