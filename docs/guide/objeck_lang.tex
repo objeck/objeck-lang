@@ -2212,14 +2212,10 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \begin{itemize}
   \item New(pattern : String)
   \end{itemize}
-\item \texttt{Apply} - Applies the initial regular expression
+\item \texttt{Match} - Attempts to match input string using supplied pattern.
+  Returns true if successful, false otherwise. 
   \begin{itemize}
-  \item method : public : Apply(string : String) \textasciitilde String
-  \end{itemize}
-\item \texttt{Next} - Applies the regular expression to the remainder
-  of the string
-  \begin{itemize}
-  \item method : public : Next() \textasciitilde String
+  \item method : public : Match(input : String) \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
