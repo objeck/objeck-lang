@@ -1,0 +1,14 @@
+Objeck v2.1.5_0
+
+--------------
+Release Notes
+--------------
+This release was focused on bug fixes and basic regex support.  Highlights include the following:
+* Rewrote the buggy "RegEx" class. Expect additional enhancements in the future (major)
+* Addressed a bug related to always linking the "String" class for support of non-referenced command line parameters (medium)
+* Fixed minor compiler bugs for enhanced stability
+
+--------------
+About Objeck
+--------------
+The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
