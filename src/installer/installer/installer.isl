@@ -1989,6 +1989,7 @@
 		<row><td>random.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>random.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\examples\random.obs</td><td>1</td><td/></row>
 		<row><td>range.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>range.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\examples\range.obs</td><td>1</td><td/></row>
 		<row><td>readme.rtf</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\readme.rtf</td><td>1</td><td/></row>
+		<row><td>regex.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>regex.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\bin\regex.obl</td><td>1</td><td/></row>
 		<row><td>regex.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>regex.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\examples\lib\regex.obs</td><td>1</td><td/></row>
 		<row><td>regex.obs1</td><td>ISX_DEFAULTCOMPONENT6</td><td>regex.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\examples\regex.obs</td><td>1</td><td/></row>
 		<row><td>repeat.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>repeat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck_r2.1.5_0_win32\objeck-lang\examples\repeat.obs</td><td>1</td><td/></row>
