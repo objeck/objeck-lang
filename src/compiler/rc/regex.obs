@@ -3,8 +3,8 @@ use RegEx;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New(args[0]);
-			regex->Match(args[1])->PrintLine();
+			regex := RegEx->New("o*b(g|j)eck+");
+			regex->Match("objeck")->PrintLine();
 		}
 	}
 }
