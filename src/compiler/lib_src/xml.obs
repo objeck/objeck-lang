@@ -1000,7 +1000,8 @@ bundle XML {
 			};
 			
 			# process query
-			if(filters->Size() > 0 & filters->Get(0)->As(String)->Equals(@self->GetName())) {
+			first_filter := filters->Get(0)->As(String);
+			if(filters->Size() > 0 & first_filter->Equals(@self->GetName())) {
 				if(filters->Size() = 1) {
 					children->AddBack(@self->As(Base));
 				}
