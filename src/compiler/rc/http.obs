@@ -16,7 +16,7 @@ bundle Default {
        # request sends back cookie
       lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
       each(i : lines) {
-        lines->Get(i)->As(String);
+        line := lines->Get(i)->As(String);
         line->PrintLine();
       };
     }
