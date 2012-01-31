@@ -70,7 +70,7 @@ bool ContextAnalyzer::CheckErrors()
   // check and process errors
   if(errors.size()) {
     map<int, string>::iterator error;
-    for(error = errors.begin(); error != errors.end(); error++) {
+    for(error = errors.begin(); error != errors.end(); ++error) {
       cerr << error->second << endl;
     }
 
@@ -333,7 +333,7 @@ bool ContextAnalyzer::Analyze()
 	  // ensure interface methods are virtual
 	  map<const string, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
 	  map<const string, LibraryMethod*>::iterator iter;
-	  for(iter = lib_methods.begin(); iter != lib_methods.end(); iter++) {
+	  for(iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
 	    LibraryMethod* lib_method = iter->second;
 	    if(!lib_method->IsVirtual()) {
 	      ProcessError(klass, "Interface method must be defined as 'virtual'");
@@ -474,7 +474,7 @@ bool ContextAnalyzer::Analyze()
     // virutal methods
     map<const string, LibraryMethod*>::iterator iter;
     map<const string, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
-    for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); iter++) {
+    for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
       LibraryMethod* virtual_method = iter->second;
       if(virtual_method->IsVirtual()) {
 	string virtual_method_name = virtual_method->GetName();
@@ -1158,6 +1158,8 @@ bool ContextAnalyzer::Analyze()
       // type = expression->GetCastType();
       ProcessError(expression, "Method call from element cast not allowed");
       return false;
+      // ProcessError(expression, "Method call from element cast not allowed");
+      // return false;
     }
     else {
       type = expression->GetEvalType();
@@ -1441,9 +1443,20 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, int depth)
   {
-    const string encoded_name = klass->GetName() + ":" +
+    const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
+  
+
+
+    // TODO: WIP
+    vector<Method*> xxx = klass->GetUnqualifiedMethods(method_call->GetMethodName());
+    cout << xxx.size() << endl;
+    for(int i = 0; i < xxx.size(); i++) {
+      cout << "@@@ name=" <<  xxx[i]->GetEncodedName() << ", full=" << xxx[i]->GetName() << endl;
+    }
+
+
 
 #ifdef _DEBUG
     cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
@@ -1939,7 +1952,7 @@ bool ContextAnalyzer::Analyze()
     // duplicate value vector
     int value = 0;
     map<int, StatementList*> label_statements;
-    for(iter = statements.begin(); iter != statements.end(); iter++) {
+    for(iter = statements.begin(); iter != statements.end(); ++iter) {
       // expressions
       ExpressionList* expressions = iter->first;
       AnalyzeExpressions(expressions, depth + 1);

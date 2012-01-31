@@ -378,7 +378,7 @@ public:
   ~LibraryEnum() {
     // clean up
     map<const string, LibraryEnumItem*>::iterator iter;
-    for(iter = items.begin(); iter != items.end(); iter++) {
+    for(iter = items.begin(); iter != items.end(); ++iter) {
       LibraryEnumItem* tmp = iter->second;
       delete tmp;
       tmp = NULL;
@@ -460,7 +460,7 @@ public:
   ~LibraryClass() {
     // clean up
     map<const string, LibraryMethod*>::iterator iter;
-    for(iter = methods.begin(); iter != methods.end(); iter++) {
+    for(iter = methods.begin(); iter != methods.end(); ++iter) {
       LibraryMethod* tmp = iter->second;
       delete tmp;
       tmp = NULL;
@@ -480,7 +480,7 @@ public:
 #ifdef _UTILS
   void List() {
     map<const string, LibraryMethod*>::iterator iter;
-    for(iter = methods.begin(); iter != methods.end(); iter++) {
+    for(iter = methods.begin(); iter != methods.end(); ++iter) {
       cout << "  method='" << iter->second->GetName() << "'" << endl;
     }
   }
@@ -688,7 +688,7 @@ public:
   ~Library() {
     // clean up
     map<const string, LibraryEnum*>::iterator enum_iter;
-    for(enum_iter = enums.begin(); enum_iter != enums.end(); enum_iter++) {
+    for(enum_iter = enums.begin(); enum_iter != enums.end(); ++enum_iter) {
       LibraryEnum* tmp = enum_iter->second;
       delete tmp;
       tmp = NULL;
@@ -697,7 +697,7 @@ public:
     enum_list.clear();
 
     map<const string, LibraryClass*>::iterator cls_iter;
-    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); cls_iter++) {
+    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
       LibraryClass* tmp = cls_iter->second;
       delete tmp;
       tmp = NULL;
@@ -738,7 +738,7 @@ public:
 #ifdef _UTILS
   void List() {
     map<const string, LibraryClass*>::iterator cls_iter;
-    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); cls_iter++) {
+    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
       cout << "==================================" << endl;
       cout << "class='" << cls_iter->second->GetName() << "'" << endl;
       cout << "==================================" << endl;
@@ -828,7 +828,7 @@ public:
   ~Linker() {
     // clean up
     map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       Library* tmp = iter->second;
       delete tmp;
       tmp = NULL;
@@ -865,7 +865,7 @@ public:
     vector<LibraryClass*> all_libraries;
 
     map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       vector<LibraryClass*> classes = iter->second->GetClasses();
       for(size_t i = 0; i < classes.size(); i++) {
         all_libraries.push_back(classes[i]);
@@ -880,7 +880,7 @@ public:
     vector<LibraryEnum*> all_libraries;
 
     map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       vector<LibraryEnum*> enums = iter->second->GetEnums();
       for(size_t i = 0; i < enums.size(); i++) {
         all_libraries.push_back(enums[i]);
@@ -904,7 +904,7 @@ public:
 
   bool HasBundleName(const string& name) {
     map<const string, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       if(iter->second->HasBundleName(name)) {
         return true;
       }
