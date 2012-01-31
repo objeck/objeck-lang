@@ -8,6 +8,9 @@ bundle Default {
 			im := IntMap->New();
 		}
 
+		method : Test(a : Int) ~ Nil {
+		}
+
 		method : Test() ~ Nil {
 			s := "Foo";
 			im->Insert(42, s->As(Base));

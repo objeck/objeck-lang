@@ -114,7 +114,7 @@ bool Parser::CheckErrors()
   // check and process errors
   if(errors.size()) {
     map<int, string>::iterator error;
-    for(error = errors.begin(); error != errors.end(); error++) {
+    for(error = errors.begin(); error != errors.end(); ++error) {
       cerr << error->second << endl;
     }
 
