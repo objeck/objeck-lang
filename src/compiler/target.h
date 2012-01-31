@@ -968,7 +968,7 @@ public:
     // process methods
     map<const string, LibraryMethod*> lib_methods = lib_klass->GetMethods();
     map<const string, LibraryMethod*>::iterator mthd_iter;
-    for(mthd_iter = lib_methods.begin(); mthd_iter != lib_methods.end(); mthd_iter++) {
+    for(mthd_iter = lib_methods.begin(); mthd_iter != lib_methods.end(); ++mthd_iter) {
       LibraryMethod* lib_method = mthd_iter->second;
       IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
       AddMethod(imm_method);
@@ -1154,7 +1154,7 @@ public:
     // write items
     map<const string, LibraryEnumItem*> items = e->GetItems();
     map<const string, LibraryEnumItem*>::iterator iter;
-    for(iter = items.begin(); iter != items.end(); iter++) {
+    for(iter = items.begin(); iter != items.end(); ++iter) {
       LibraryEnumItem* lib_enum_item = iter->second;
       IntermediateEnumItem* imm_enum_item = new IntermediateEnumItem(lib_enum_item);
       AddItem(imm_enum_item);

@@ -45,7 +45,7 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
   // map and sort values
   int i = 0;
   map<int, StatementList*>::iterator iter;
-  for(iter = label_statements.begin(); iter != label_statements.end(); iter++) {
+  for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     values[i] = iter->first;
     value_label_map[iter->first] = ++emitter->conditional_label;
     i++;
@@ -111,7 +111,7 @@ void SelectArrayTree::Emit()
   // write statements
   map<int, StatementList*> label_statements = select->GetLabelStatements();
   map<int, StatementList*>::iterator iter;
-  for(iter = label_statements.begin(); iter != label_statements.end(); iter++) {
+  for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     vector<Statement*> statements = statement_list->GetStatements();
@@ -289,7 +289,7 @@ void IntermediateEmitter::EmitStrings()
     vector<string> lib_char_string_values;
     vector<IntStringHolder*> lib_int_string_values;
     vector<FloatStringHolder*> lib_float_string_values;
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       // char string processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); i++) {
@@ -379,7 +379,7 @@ void IntermediateEmitter::EmitStrings()
     }
     
     // update indices
-    for(iter = libraries.begin(); iter != libraries.end(); iter++) {
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       // char string processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); i++) {
@@ -483,7 +483,7 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
   map<const string, EnumItem*>items =  eenum->GetItems();
   // copy items
   map<const string, EnumItem*>::iterator iter;
-  for(iter = items.begin(); iter != items.end(); iter++) {
+  for(iter = items.begin(); iter != items.end(); ++iter) {
     imm_eenum->AddItem(new IntermediateEnumItem(iter->second->GetName(), iter->second->GetId()));
   }
 
@@ -775,6 +775,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       method_call = method_call->GetMethodCall();
       while(method_call) {
 	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+	EmitCast(method_call);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
 	  switch(OrphanReturn(method_call)) {
@@ -835,6 +836,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       bool is_nested = false;
       do {
 	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+	EmitCast(method_call);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
 	  switch(OrphanReturn(method_call)) {
@@ -1972,6 +1974,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       
       // emit call
       EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitCast(method_call);
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
