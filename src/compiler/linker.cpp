@@ -38,7 +38,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
 {
   map<const string, LibraryMethod*> methods = klass->GetMethods();
   map<const string, LibraryMethod*>::iterator mthd_iter;
-  for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
+  for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
     vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
     for(size_t j = 0; j < instrs.size(); j++) {
       LibraryInstr* instr = instrs[j];
@@ -75,7 +75,7 @@ void Linker::ResloveExternalClasses()
 {
   // all libraries
   map<const string, Library*>::iterator lib_iter;
-  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); lib_iter++) {
+  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
     for(size_t i = 0; i < classes.size(); i++) {
@@ -91,14 +91,14 @@ void Linker::ResolveExternalMethodCalls()
 {
   // all libraries
   map<const string, Library*>::iterator lib_iter;
-  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); lib_iter++) {
+  for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
     for(size_t i = 0; i < classes.size(); i++) {
       // all methods
       map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
       map<const string, LibraryMethod*>::iterator mthd_iter;
-      for(mthd_iter = methods.begin(); mthd_iter != methods.end(); mthd_iter++) {
+      for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
         vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
         for(size_t j = 0; j < instrs.size(); j++) {
           LibraryInstr* instr = instrs[j];
@@ -173,7 +173,7 @@ vector<LibraryClass*> LibraryClass::GetLibraryChildren()
   if(!lib_children.size()) {
     map<const string, const string> hierarchies = library->GetHierarchies();
     map<const string, const string>::iterator iter;
-    for(iter = hierarchies.begin(); iter != hierarchies.end(); iter++) {
+    for(iter = hierarchies.begin(); iter != hierarchies.end(); ++iter) {
       if(iter->second == name) {
         lib_children.push_back(library->GetClass(iter->first));
       }

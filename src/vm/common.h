@@ -763,7 +763,7 @@ class StackClass {
 #ifdef _UTILS
   void List() {
     map<const string, StackMethod*>::iterator iter;
-    for(iter = method_name_map.begin(); iter != method_name_map.end(); iter++) {
+    for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
       StackMethod* mthd = iter->second;
       cout << "  method='" << mthd->GetName() << "'" << endl;
     }
@@ -1063,7 +1063,7 @@ class StackProgram {
 #ifdef _UTILS
   void List() {
     map<string, StackClass*>::iterator iter;
-    for(iter = cls_map.begin(); iter != cls_map.end(); iter++) {
+    for(iter = cls_map.begin(); iter != cls_map.end(); ++iter) {
       StackClass* cls = iter->second;
       cout << "==================================" << endl;
       cout << "class='" << cls->GetName() << "'" << endl;

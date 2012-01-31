@@ -185,7 +185,7 @@ namespace frontend {
     vector<SymbolEntry*> GetEntries() {
       vector<SymbolEntry*> entries_list;
       map<const string, SymbolEntry*>::iterator iter;
-      for(iter = entries.begin(); iter != entries.end(); iter++) {
+      for(iter = entries.begin(); iter != entries.end(); ++iter) {
 	SymbolEntry* entry = iter->second;
 	entries_list.push_back(entry);
       }
@@ -330,7 +330,7 @@ namespace frontend {
     ~SymbolTableManager() {
       // clean up
       map<const string, SymbolTable*>::iterator iter;
-      for(iter = tables.begin(); iter != tables.end(); iter++) {
+      for(iter = tables.begin(); iter != tables.end(); ++iter) {
 	SymbolTable* tmp = iter->second;
 	delete tmp;
 	tmp = NULL;
@@ -1823,6 +1823,7 @@ namespace frontend {
     int id;
     string name;
     string parent_name;
+    multimap<const string, Method*> unqualified_methods;
     map<const string, Method*> methods;
     vector<Method*> method_list;
     vector<Statement*> statements;
@@ -1903,6 +1904,9 @@ namespace frontend {
       }
       method_list.push_back(m);
       m->SetClass(this);
+
+      
+      
       return true;
     }
 
@@ -1934,7 +1938,20 @@ namespace frontend {
 
       return NULL;
     }
-
+    
+    vector<Method*> GetUnqualifiedMethods(const string &n) {
+      vector<Method*> results;
+      pair<multimap<const string, Method*>::iterator, 
+	multimap<const string, Method*>::iterator> result;
+      result = unqualified_methods.equal_range(n);
+      multimap<const string, Method*>::iterator iter = result.first;
+      for(iter = result.first; iter != result.second; ++iter) {
+	results.push_back(iter->second);
+      }
+      
+      return results;
+    }
+    
     const vector<Method*> GetMethods() {
       return method_list;
     }
@@ -1983,6 +2000,18 @@ namespace frontend {
       for(size_t i = 0; i < method_list.size(); i++) {
 	Method* method = method_list[i];
 	methods.insert(pair<string, Method*>(method->GetEncodedName(), method));
+	
+	// add to unqualified names to list
+	const string &encoded_name = method->GetEncodedName();
+	const int start = encoded_name.find(':');
+	if(start > -1) {
+	  const int end = encoded_name.find(':', start + 1);
+	  if(end > -1) {
+	    const string &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+	    unqualified_methods.insert(pair<string, Method*>(unqualified_name, method));
+	  }
+	}
+
       }
     }
   };
