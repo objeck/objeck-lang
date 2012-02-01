@@ -1439,11 +1439,11 @@ bool ContextAnalyzer::Analyze()
   bool ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm) {
     // get calling type
     Type* calling_type;
-    if(expression->GetCastType()) {
-      calling_type = expression->GetCastType();
+    if(calling_param->GetCastType()) {
+      calling_type = calling_param->GetCastType();
     }
     else {
-      calling_type = expression->GetEvalType();
+      calling_type = calling_param->GetEvalType();
     }
 
     // get method type
@@ -1455,8 +1455,15 @@ bool ContextAnalyzer::Analyze()
     // determine if there's mapping from calling type
     // to method type
     if(calling_type && method_type) {
-      
-      return true;
+      // match types
+      if(calling_type->GetType() == method_type->GetType()) {
+	// match dimensions
+	if(IsScalar(calling_param)) {
+	  return method_type->GetDimension() == 0;
+	}
+	else {
+	}
+      }
     }
 
     return false;
@@ -1471,7 +1478,9 @@ bool ContextAnalyzer::Analyze()
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
       if(expr_params.size() == method_parms.size()) {	
 	// TOOD: compare each param to expr
-	MatchCallingParameter(expr_params[i], method_parms[i]);
+	for(size_t j = 0; j < expr_params.size(); j++) {
+	  MatchCallingParameter(expr_params[j], method_parms[j]);
+	}
       }
     }
     
