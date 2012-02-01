@@ -1436,7 +1436,29 @@ bool ContextAnalyzer::Analyze()
   
 
 
-  bool ContextAnalyzer::MatchCallingParameter(Expression *expr_param, Declaration* method_parm) {
+  bool ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm) {
+    // get calling type
+    Type* calling_type;
+    if(expression->GetCastType()) {
+      calling_type = expression->GetCastType();
+    }
+    else {
+      calling_type = expression->GetEvalType();
+    }
+
+    // get method type
+    Type* method_type = NULL;
+    if(method_parm->GetEntry() && method_parm->GetEntry()->GetType()) {
+      method_type = method_parm->GetEntry()->GetType();
+    }
+    
+    // determine if there's mapping from calling type
+    // to method type
+    if(calling_type && method_type) {
+      
+      return true;
+    }
+
     return false;
   }
   
@@ -1444,6 +1466,7 @@ bool ContextAnalyzer::Analyze()
 					     ExpressionList* calling_params) {
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
+    // inspect each candidate
     for(size_t i = 0; i < candidates.size(); i++) {
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
       if(expr_params.size() == method_parms.size()) {	
@@ -1756,11 +1779,9 @@ bool ContextAnalyzer::Analyze()
 		       "Undefined class or enum: '" + rtrn_type->GetClassName() + "'");
 	}
       }
-
       method->GetClass()->SetCalled(true);
       method_call->SetOriginalClass(klass);
       method_call->SetMethod(method, false);
-      // cout << "### " << func_type_id << " ###" << endl;
     }
     else {
       const string &mthd_name = method_call->GetMethodName();

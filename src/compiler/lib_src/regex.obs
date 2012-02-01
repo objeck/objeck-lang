@@ -356,8 +356,10 @@ bundle RegEx {
     		char := char and 0xff;
     		
     		clist := Step(clist, char);
-    		if(clist->Size() = 0) {
-    			return false;
+    		if(clist->Size() <> 0) {    		
+    			if(IsMatch(clist)) {
+    				i->PrintLine();
+    			};
     		};
       };
 			
