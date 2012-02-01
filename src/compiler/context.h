@@ -680,7 +680,7 @@ class ContextAnalyzer {
   // TODO: WIPg
   Method* ResolveMethodCall(const string &method_name, Class *klass, 
 			    ExpressionList* calling_params);
-  bool MatchCallingParameter(Expression *expr_param, Declaration* method_parm);
+  bool MatchCallingParameter(Expression* calling_param, Declaration* method_parm);
 
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);
