@@ -1433,22 +1433,28 @@ bool ContextAnalyzer::Analyze()
 
     return klass;
   }
+  
 
 
-
-
+  bool ContextAnalyzer::MatchCallingParameter(Expression *expr_param, Declaration* method_parm) {
+    return false;
+  }
+  
   Method* ContextAnalyzer::ResolveMethodCall(const string &method_name, Class *klass,
 					     ExpressionList* calling_params) {
+    vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
     for(size_t i = 0; i < candidates.size(); i++) {
-      vector<Declaration*> method_parms = candidate[i]->GetDeclarations()->GetDeclarations();
-      if(calling_params.size() == method_parms.size()) {
+      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+      if(expr_params.size() == method_parms.size()) {	
 	// TOOD: compare each param to expr
+	MatchCallingParameter(expr_params[i], method_parms[i]);
       }
     }
     
     return NULL;
   }
+
 
 
   /****************************
