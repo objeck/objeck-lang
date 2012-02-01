@@ -1435,6 +1435,22 @@ bool ContextAnalyzer::Analyze()
   }
 
 
+
+
+  Method* ContextAnalyzer::ResolveMethodCall(const string &method_name, Class *klass,
+					     ExpressionList* calling_params) {
+    vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
+    for(size_t i = 0; i < candidates.size(); i++) {
+      vector<Declaration*> method_parms = candidate[i]->GetDeclarations()->GetDeclarations();
+      if(calling_params.size() == method_parms.size()) {
+	// TOOD: compare each param to expr
+      }
+    }
+    
+    return NULL;
+  }
+
+
   /****************************
    * Analyzes a method call.  This
    * is method call within the source
@@ -1446,16 +1462,12 @@ bool ContextAnalyzer::Analyze()
     const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
-  
-
-
+    
+    
+    
     // TODO: WIP
-    vector<Method*> xxx = klass->GetUnqualifiedMethods(method_call->GetMethodName());
-    cout << xxx.size() << endl;
-    for(int i = 0; i < xxx.size(); i++) {
-      cout << "@@@ name=" <<  xxx[i]->GetEncodedName() << ", full=" << xxx[i]->GetName() << endl;
-    }
-
+    ResolveMethodCall(method_call->GetMethodName(), klass, method_call->GetCallingParameters());
+    
 
 
 #ifdef _DEBUG
