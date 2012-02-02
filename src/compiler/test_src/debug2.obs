@@ -1,4 +1,22 @@
+use Struct;
+
 bundle Default {
+	class Car {
+		New() {}
+	}
+
+	class Ford from Car {
+		New() { Parent(); }
+	}
+
+	class Bike {
+		New() { Parent(); }
+	}
+
+	class Plane {
+		New() { Parent(); }
+	}
+
 	class Hello {
 		function : Foo(a : Int) ~ Nil {
 		}
@@ -9,12 +27,25 @@ bundle Default {
 		function : Foo(a : Int[]) ~ Nil {
 		}
 
-		function : Foo(s : String) ~ Nil {
+		function : Bar(b : Bike) ~ Nil {
+		}
+
+#~
+		function : Bar(c : Ford) ~ Nil {
+		}
+~#
+
+		function : Bar(p : Plane) ~ Nil {
 		}
 
 		function : Main(args : String[]) ~ Nil {
+#~
 			a := Int->New[2];
 			Foo(13);
+~#
+
+			c := Ford->New();
+			Bar(c);
 		}
 	}
 }
