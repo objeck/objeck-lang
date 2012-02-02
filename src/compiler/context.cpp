@@ -1436,7 +1436,8 @@ bool ContextAnalyzer::Analyze()
   
 
 
-  bool ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm) {
+  bool ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
+					      Class *klass, LibraryClass *lib_klass) {
     // get calling type
     Type* calling_type;
     if(calling_param->GetCastType()) {
@@ -1456,7 +1457,9 @@ bool ContextAnalyzer::Analyze()
     // to method type
     if(calling_type && method_type) {
       // looks for an exact match
-      if(calling_type->GetType() == method_type->GetType()) {
+      if(calling_type->GetType() != CLASS_TYPE &&
+	 method_type->GetType() != CLASS_TYPE &&
+	 calling_type->GetType() == method_type->GetType()) {
 	if(IsScalar(calling_param)) {
 	  return method_type->GetDimension() == 0;
 	}
@@ -1491,9 +1494,13 @@ bool ContextAnalyzer::Analyze()
 	    break;
 	  
 	    // TODO:
-	  case CLASS_TYPE:
-	    
-	    break;
+	  case CLASS_TYPE: {
+	    const string &from_klass_name = calling_type->GetClassName();
+	    Class* from_klass = SearchProgramClasses(from_klass_name);
+	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
+								      program->GetUses());
+	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass);
+	  }
 	    
 	  case FUNC_TYPE:
 	    return method_type->GetType() == FUNC_TYPE;
@@ -1518,7 +1525,7 @@ bool ContextAnalyzer::Analyze()
       bool match = true;
       if(expr_params.size() == method_parms.size()) {	
 	for(size_t j = 0; match && j < expr_params.size(); j++) {
-	  match = MatchCallingParameter(expr_params[j], method_parms[j]);
+	  match = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
 	}
       }
       else {
@@ -1650,7 +1657,7 @@ bool ContextAnalyzer::Analyze()
   }
 
   /****************************
-   * Analyzes a method call.  This
+  * Analyzes a method call.  This
    * is method call within a linked
    * library
    ****************************/
@@ -3428,13 +3435,12 @@ bool ContextAnalyzer::Analyze()
 	// downcast
 	else {
 	  // TODO: workaround for class cast issue
-	  // expression->SetToLibraryClass(left_lib_class);
-
 	  ProcessError(expression, "Invalid cast between classes: '" +
 		       left_lib_class->GetName() + "' and '" +
-		       right_lib_class->GetName() + "'");        return;
+		       right_lib_class->GetName() + "'");        
 	}
-      } else {
+      } 
+      else {
 	ProcessError(expression, "Invalid cast between class and enum");
       }
     }
