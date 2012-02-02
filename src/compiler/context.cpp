@@ -1455,17 +1455,56 @@ bool ContextAnalyzer::Analyze()
     // determine if there's mapping from calling type
     // to method type
     if(calling_type && method_type) {
-      // match types
+      // looks for an exact match
       if(calling_type->GetType() == method_type->GetType()) {
-	// match dimensions
 	if(IsScalar(calling_param)) {
 	  return method_type->GetDimension() == 0;
 	}
 	else {
+	  return calling_type->GetDimension() == method_type->GetDimension();
+	}
+      }
+      else {
+	// match types starting with scalar
+	if(IsScalar(calling_param) && method_type->GetDimension() == 0)  {
+	  switch(calling_type->GetType()) {
+	  case NIL_TYPE:
+	    return false;
+
+	  case BOOLEAN_TYPE:
+	    return method_type->GetType() == BOOLEAN_TYPE;
+	    
+	  case BYTE_TYPE:
+	  case CHAR_TYPE:
+	  case INT_TYPE:
+	  case FLOAT_TYPE:
+	    switch(method_type->GetType()) {
+	    case BYTE_TYPE:
+	    case CHAR_TYPE:
+	    case INT_TYPE:
+	    case FLOAT_TYPE:
+	      return true;
+
+	    default:
+	      return false;
+	    }
+	    break;
+	  
+	    // TODO:
+	  case CLASS_TYPE:
+	    
+	    break;
+	    
+	  case FUNC_TYPE:
+	    return method_type->GetType() == FUNC_TYPE;
+
+	  case VAR_TYPE:
+	    return false;
+	  }
 	}
       }
     }
-
+    
     return false;
   }
   
@@ -1476,12 +1515,17 @@ bool ContextAnalyzer::Analyze()
     // inspect each candidate
     for(size_t i = 0; i < candidates.size(); i++) {
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+      bool match = true;
       if(expr_params.size() == method_parms.size()) {	
-	// TOOD: compare each param to expr
-	for(size_t j = 0; j < expr_params.size(); j++) {
-	  MatchCallingParameter(expr_params[j], method_parms[j]);
+	for(size_t j = 0; match && j < expr_params.size(); j++) {
+	  match = MatchCallingParameter(expr_params[j], method_parms[j]);
 	}
       }
+      else {
+	match = false;
+      }
+      
+      cout << "@@@ method=" << method_name << ", match=" << match << endl;
     }
     
     return NULL;
