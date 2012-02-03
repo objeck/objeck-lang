@@ -39,6 +39,10 @@ bundle Default {
 			"Car"->PrintLine();
 		}
 
+		function : Bar(p : Ford) ~ Nil {
+			"Ford"->PrintLine();
+		}
+
 		function : Bar(p : Base) ~ Nil {
 			"Bar"->PrintLine();
 		}
@@ -48,9 +52,8 @@ bundle Default {
 			a := Int->New[2];
 			Foo(13);
 ~#
-
 			c := Ford->New();
-			Bar(c->As(Car));
+			Bar(c);
 		}
 	}
 }
