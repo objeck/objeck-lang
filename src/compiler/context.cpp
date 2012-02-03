@@ -1519,8 +1519,10 @@ bool ContextAnalyzer::Analyze()
     return false;
   }
   
-  Method* ContextAnalyzer::ResolveMethodCall(const string &method_name, Class *klass,
-					     ExpressionList* calling_params) {
+  Method* ContextAnalyzer::ResolveMethodCall(Class *klass, MethodCall* method_call) {
+    const string &method_name = method_call->GetMethodName(); 				 
+    ExpressionList* calling_params = method_call->GetCallingParameters();
+    
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
     // inspect each candidate
@@ -1552,13 +1554,11 @@ bool ContextAnalyzer::Analyze()
 
     // multi-match
     if(matched_method_count > 1) {
-      // TODO: error message;
+      ProcessError(static_cast<Expression*>(method_call),  "Unambiguous method call");
     }
     
     return NULL;
   }
-
-
 
   /****************************
    * Analyzes a method call.  This
@@ -1567,23 +1567,18 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, int depth)
-  {
+  {    
     const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    // Method* method = klass->GetMethod(encoded_name);
     
-    
-    
-    // TODO: WIP
-    ResolveMethodCall(method_call->GetMethodName(), klass, method_call->GetCallingParameters());
-    
-
-
 #ifdef _DEBUG
     cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
 #endif
-
-    Method* method = klass->GetMethod(encoded_name);
+    
+    // TODO: WIP
+    Method* method = ResolveMethodCall(klass, method_call);
     if(!method) {
       // check parent classes for method
       if(klass->GetParent()) {
