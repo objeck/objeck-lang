@@ -679,7 +679,7 @@ class ContextAnalyzer {
 
   // TODO: WIP
   Method* ResolveMethodCall(Class *klass, MethodCall* method_call);
-  bool MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
+  int MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
 			     Class *klass, LibraryClass *lib_klass);
 
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
