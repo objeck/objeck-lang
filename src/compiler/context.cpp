@@ -1474,7 +1474,7 @@ bool ContextAnalyzer::Analyze()
 	    return -1;
 
 	  case BOOLEAN_TYPE:
-	    return method_type->GetType() == BOOLEAN_TYPE ? 0 : -1;
+	    return method_type->GetType() == BOOLEAN_TYPE ? 1 : -1;
 	    
 	  case BYTE_TYPE:
 	  case CHAR_TYPE:
@@ -1497,7 +1497,14 @@ bool ContextAnalyzer::Analyze()
 	    Class* from_klass = SearchProgramClasses(from_klass_name);
 	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
 									program->GetUses());
-	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 0 : 1;
+	    if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
+	      return 0;
+	    }
+	    else if(from_lib_klass && from_lib_klass->GetName() == method_type->GetClassName()) {
+	      return 0;
+	    }
+	    
+	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
 	  }
 	    
 	  case FUNC_TYPE: {
@@ -1505,7 +1512,7 @@ bool ContextAnalyzer::Analyze()
 							   calling_type->GetFunctionReturn());	    
 	    const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
 							  method_type->GetFunctionReturn());
-	    return calling_str == method_str ? 0 : 1;
+	    return calling_str == method_str ? 1 : -1;
 	  }
 	    
 	  case VAR_TYPE:
@@ -1523,18 +1530,40 @@ bool ContextAnalyzer::Analyze()
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
-
-    // inspect each candidate    
     Method* matched_method = NULL;
+
+    // save all valid candidates
+    int** matches = new int*[candidates.size()];
+    int matches_index = candidates.size();
+    while(matches_index > 0) {
+      matches[--matches_index] = NULL;
+    }
+    matches_index = 0;
+    
     for(size_t i = 0; i < candidates.size(); i++) {
       // match parameter sizes
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
       if(expr_params.size() == method_parms.size()) {
+	matches[matches_index++] = new int[expr_params.size()];
 	for(size_t j = 0; j < expr_params.size(); j++) {
-	  int parm_match = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
+	  matches[i][j] = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
 	}
       }
     }
+
+    // inspect valid candidates
+    while(matches_index > 0) {
+      int* match = matches[--matches_index];
+      cout << "@@@ " << method_name << " " << matches_index << ": [";
+      for(size_t j = 0; j < expr_params.size(); j++) {
+	cout << match[j] << ",";
+      }   
+      cout << "]" << endl;
+    }
+    
+
+    // clean up
+    //...
     
     return NULL;
   }
