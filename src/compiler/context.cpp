@@ -1436,7 +1436,7 @@ bool ContextAnalyzer::Analyze()
   
 
 
-  bool ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
+  int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
 					      Class *klass, LibraryClass *lib_klass) {
     // get calling type
     Type* calling_type;
@@ -1457,25 +1457,24 @@ bool ContextAnalyzer::Analyze()
     // to method type
     if(calling_type && method_type) {
       // looks for an exact match
-      if(calling_type->GetType() != CLASS_TYPE &&
-	 method_type->GetType() != CLASS_TYPE &&
+      if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
 	 calling_type->GetType() == method_type->GetType()) {
 	if(IsScalar(calling_param)) {
-	  return method_type->GetDimension() == 0;
+	  return method_type->GetDimension() == 0 ? 0 : -1;
 	}
 	else {
-	  return calling_type->GetDimension() == method_type->GetDimension();
+	  return calling_type->GetDimension() == method_type->GetDimension() ? 0 : -1;
 	}
       }
       else {
-	// match types starting with scalar
+	// relative match
 	if(IsScalar(calling_param) && method_type->GetDimension() == 0)  {
 	  switch(calling_type->GetType()) {
 	  case NIL_TYPE:
-	    return false;
+	    return -1;
 
 	  case BOOLEAN_TYPE:
-	    return method_type->GetType() == BOOLEAN_TYPE;
+	    return method_type->GetType() == BOOLEAN_TYPE ? 0 : -1;
 	    
 	  case BYTE_TYPE:
 	  case CHAR_TYPE:
@@ -1486,10 +1485,10 @@ bool ContextAnalyzer::Analyze()
 	    case CHAR_TYPE:
 	    case INT_TYPE:
 	    case FLOAT_TYPE:
-	      return true;
+	      return 1;
 
 	    default:
-	      return false;
+	      return -1;
 	    }
 	    break;
 	  
@@ -1498,7 +1497,7 @@ bool ContextAnalyzer::Analyze()
 	    Class* from_klass = SearchProgramClasses(from_klass_name);
 	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
 									program->GetUses());
-	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass);
+	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 0 : 1;
 	  }
 	    
 	  case FUNC_TYPE: {
@@ -1506,55 +1505,35 @@ bool ContextAnalyzer::Analyze()
 							   calling_type->GetFunctionReturn());	    
 	    const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
 							  method_type->GetFunctionReturn());
-	    return calling_str == method_str;
+	    return calling_str == method_str ? 0 : 1;
 	  }
 	    
 	  case VAR_TYPE:
-	    return false;
+	    return -1;
 	  }
 	}
       }
     }
     
-    return false;
+    return -1;
   }
   
   Method* ContextAnalyzer::ResolveMethodCall(Class *klass, MethodCall* method_call) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
-    
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
-    // inspect each candidate
+
+    // inspect each candidate    
     Method* matched_method = NULL;
-    int matched_method_count = 0;
     for(size_t i = 0; i < candidates.size(); i++) {
-      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
-      bool match = true;
-      if(expr_params.size() == method_parms.size()) {	
-	for(size_t j = 0; match && j < expr_params.size(); j++) {
-	  match = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
+      // match parameter sizes
+      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
+      if(expr_params.size() == method_parms.size()) {
+	for(size_t j = 0; j < expr_params.size(); j++) {
+	  int parm_match = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
 	}
       }
-      else {
-	match = false;
-      }
-      
-      if(match) {
-	matched_method = candidates[i];
-	matched_method_count++;
-      }
-      cout << "@@@ method=" << method_name << ", match=" << match << endl;
-    }
-    
-    // found correct match
-    if(matched_method_count == 1) {
-      return matched_method;
-    }
-
-    // multi-match
-    if(matched_method_count > 1) {
-      ProcessError(static_cast<Expression*>(method_call),  "Unambiguous method call");
     }
     
     return NULL;
