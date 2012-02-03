@@ -35,7 +35,12 @@ bundle Default {
 		}
 ~#
 
-		function : Bar(p : Plane) ~ Nil {
+		function : Bar(p : Car) ~ Nil {
+			"Car"->PrintLine();
+		}
+
+		function : Bar(p : Base) ~ Nil {
+			"Bar"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -45,7 +50,7 @@ bundle Default {
 ~#
 
 			c := Ford->New();
-			Bar(c);
+			Bar(c->As(Car));
 		}
 	}
 }

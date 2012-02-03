@@ -677,9 +677,8 @@ class ContextAnalyzer {
                          bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
 
-  // TODO: WIPg
-  Method* ResolveMethodCall(const string &method_name, Class *klass, 
-			    ExpressionList* calling_params);
+  // TODO: WIP
+  Method* ResolveMethodCall(Class *klass, MethodCall* method_call);
   bool MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
 			     Class *klass, LibraryClass *lib_klass);
 
