@@ -1493,18 +1493,22 @@ bool ContextAnalyzer::Analyze()
 	    }
 	    break;
 	  
-	    // TODO:
 	  case CLASS_TYPE: {
 	    const string &from_klass_name = calling_type->GetClassName();
 	    Class* from_klass = SearchProgramClasses(from_klass_name);
 	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
-								      program->GetUses());
+									program->GetUses());
 	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass);
 	  }
 	    
-	  case FUNC_TYPE:
-	    return method_type->GetType() == FUNC_TYPE;
-
+	  case FUNC_TYPE: {
+	    const string &calling_str = EncodeFunctionType(calling_type->GetFunctionParameters(), 
+							   calling_type->GetFunctionReturn());	    
+	    const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
+							  method_type->GetFunctionReturn());
+	    return calling_str == method_str;
+	  }
+	    
 	  case VAR_TYPE:
 	    return false;
 	  }
@@ -1520,6 +1524,8 @@ bool ContextAnalyzer::Analyze()
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
     // inspect each candidate
+    Method* matched_method = NULL;
+    int matched_method_count = 0;
     for(size_t i = 0; i < candidates.size(); i++) {
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
       bool match = true;
@@ -1532,7 +1538,21 @@ bool ContextAnalyzer::Analyze()
 	match = false;
       }
       
+      if(match) {
+	matched_method = candidates[i];
+	matched_method_count++;
+      }
       cout << "@@@ method=" << method_name << ", match=" << match << endl;
+    }
+    
+    // found correct match
+    if(matched_method_count == 1) {
+      return matched_method;
+    }
+
+    // multi-match
+    if(matched_method_count > 1) {
+      // TODO: error message;
     }
     
     return NULL;
@@ -3598,7 +3618,7 @@ bool ContextAnalyzer::Analyze()
       }
       encoded_name += ',';
     }
-
+    
     // encode return
     encoded_name += ")~";
     encoded_name += EncodeType(func_rtrn);
