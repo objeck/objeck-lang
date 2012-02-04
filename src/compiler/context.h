@@ -41,7 +41,8 @@
 using namespace frontend;
 
 /****************************
- * Performs contextual analysis
+ * Support for inferred method
+ * signatures
  ****************************/
 class MethodCallSelection {
   Method* method;
@@ -115,6 +116,9 @@ class MethodCallSelector {
   }
 };
 
+/****************************
+ * Performs contextual analysis
+ ****************************/
 class ContextAnalyzer {
   ParsedProgram* program;
   ParsedBundle* bundle;
