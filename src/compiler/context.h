@@ -44,23 +44,74 @@ using namespace frontend;
  * Performs contextual analysis
  ****************************/
 class MethodCallSelection {
- public:
   Method* method;
-  int* parm_matches;
+  vector<int> matches; 
   
-  MethodCallSelection(Method* m, size_t length) {
+ public:
+  MethodCallSelection(Method* m) {
     method = m;
-    parm_matches = new int[length];
-    for(int i = 0; i < length; i++) {
-      parm_matches[i] = -1;
-    }
   }
   
   ~MethodCallSelection() {
-    if(parm_matches) {
-      delete parm_matches;
-      parm_matches = NULL;
+  }
+
+  bool IsValid() {
+    for(size_t i = 0; i < matches.size(); i++) {
+      if(matches[i] < 0) {
+	return false;
+      }
     }
+
+    return true;
+  }
+  
+  void AddMatch(int v) {
+    matches.push_back(v);
+  }
+};
+
+class MethodCallSelector {
+  vector<MethodCallSelection*> matches;
+  
+  void Evaluate() {
+    // weed out invalid matches 
+    vector<MethodCallSelection*> valid_matches;
+    for(size_t i = 0; i < matches.size(); i++) {
+      if(matches[i]->IsValid()) {
+	valid_matches.push_back(matches[i]);
+      }
+    }
+
+    // check for multiple matches
+    //...
+  }
+
+ public: 
+  MethodCallSelector(vector<MethodCallSelection*> &m) {
+    matches = m;
+    Evaluate();
+  }
+  
+  ~MethodCallSelector() {
+    while(!matches.empty()) {
+      MethodCallSelection* tmp = matches.front();
+      matches.erase(matches.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+  }
+
+  bool IsError() {
+    return false;
+  }
+
+  const string GetError() {
+    return "";
+  }
+
+  Method* GetSelection() {
+    return NULL;
   }
 };
 
