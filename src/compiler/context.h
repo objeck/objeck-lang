@@ -43,6 +43,27 @@ using namespace frontend;
 /****************************
  * Performs contextual analysis
  ****************************/
+class MethodCallSelection {
+ public:
+  Method* method;
+  int* parm_matches;
+  
+  MethodCallSelection(Method* m, size_t length) {
+    method = m;
+    parm_matches = new int[length];
+    for(int i = 0; i < length; i++) {
+      parm_matches[i] = -1;
+    }
+  }
+  
+  ~MethodCallSelection() {
+    if(parm_matches) {
+      delete parm_matches;
+      parm_matches = NULL;
+    }
+  }
+};
+
 class ContextAnalyzer {
   ParsedProgram* program;
   ParsedBundle* bundle;
