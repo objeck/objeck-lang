@@ -1527,6 +1527,8 @@ bool ContextAnalyzer::Analyze()
   }
   
   Method* ContextAnalyzer::ResolveMethodCall(Class *klass, MethodCall* method_call) {
+    // TODO: NIL type expression
+
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -1534,7 +1536,7 @@ bool ContextAnalyzer::Analyze()
     Method* matched_method = NULL;
 
     // save all valid candidates
-    MethodCallSelection** matches = new MethodCallSelection*[candidates.size()];
+    MethodCallSelection** matches = new MethodCallSelection*[candidates.size()]; // TODO: linked list
     int matches_index = candidates.size();
     while(matches_index > 0) {
       matches[--matches_index] = NULL;
@@ -1555,6 +1557,8 @@ bool ContextAnalyzer::Analyze()
 	}
       }
     }
+
+    // TODO: 2-pass removal
 
     /*
     // inspect valid candidates
