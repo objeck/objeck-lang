@@ -6,7 +6,7 @@ bundle Default {
 	}
 
 	class Ford from Car {
-		New() { Parent(); }
+		New() { Parent(); x := 9; }
 	}
 
 	class Bike {
@@ -27,23 +27,23 @@ bundle Default {
 		function : Foo(a : Int[]) ~ Nil {
 		}
 
-		function : Bar(b : Bike) ~ Nil {
+		function : Bar(b : Bike, i : Int) ~ Nil {
 		}
 
 #~
 		function : Bar(c : Ford) ~ Nil {
 		}
-~#
 
 		function : Bar(p : Car) ~ Nil {
 			"Car"->PrintLine();
 		}
+~#
 
-		function : Bar(p : Ford) ~ Nil {
+		function : Bar(p : Ford, i : Int) ~ Nil {
 			"Ford"->PrintLine();
 		}
 
-		function : Bar(p : Base) ~ Nil {
+		function : Bar(p : Base, i : Float) ~ Nil {
 			"Bar"->PrintLine();
 		}
 
@@ -53,7 +53,7 @@ bundle Default {
 			Foo(13);
 ~#
 			c := Ford->New();
-			Bar(c);
+			Bar(c, 10);
 		}
 	}
 }
