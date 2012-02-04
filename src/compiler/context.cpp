@@ -1528,66 +1528,33 @@ bool ContextAnalyzer::Analyze()
   
   Method* ContextAnalyzer::ResolveMethodCall(Class *klass, MethodCall* method_call) {
     // TODO: NIL type expression
-
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
-    Method* matched_method = NULL;
-
-    // save all valid candidates
-    MethodCallSelection** matches = new MethodCallSelection*[candidates.size()]; // TODO: linked list
-    int matches_index = candidates.size();
-    while(matches_index > 0) {
-      matches[--matches_index] = NULL;
-    }
-    matches_index = 0;
     
+    // save all valid candidates
+    vector<MethodCallSelection*> matches(candidates.size());
     for(size_t i = 0; i < candidates.size(); i++) {
       // match parameter sizes
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
       if(expr_params.size() == method_parms.size()) {
-	matches[matches_index] = new MethodCallSelection(candidates[i], expr_params.size());
-	int* parm_matches = matches[matches_index++]->parm_matches;
+	MethodCallSelection* match = new MethodCallSelection(candidates[i]);
 	for(size_t j = 0; j < expr_params.size(); j++) {
-
-	  AnalyzeExpression(expr_params[j], 0);
-
-	  parm_matches[j] = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
+	  match->AddMatch(MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL));
 	}
+	matches.push_back(match);
       }
     }
-
-    // TODO: 2-pass removal
-
-    /*
-    // inspect valid candidates
-    while(matches_index > 0) {
-      MethodCallSelection* match = matches[--matches_index];
-      cout << "@@@ " << match->method->GetName() << " " << matches_index << ": [";
-      for(size_t j = 0; j < expr_params.size(); j++) {
-	cout << match->parm_matches[j] << ",";
-      }   
-      cout << "]" << endl;
-    }
-    */
-
-    // inspect valid candidates
     
-    for(size_t j = 0; j < expr_params.size(); j++) {
-      int index = matches_index;
-      cout << "@@@ [";
-      while(index > 0) {
-	MethodCallSelection* match = matches[--index];
-	cout << match->parm_matches[j] << ",";
-      }
-      cout << "]" << endl;
+    // evaluate matches
+    MethodCallSelector selector(matches);
+    if(selector.IsError()) {
+      ProcessError(static_cast<Expression*>(method_call), selector.GetError());
+      return NULL;
     }
     
-    // clean up
-    //...
-
-    return NULL;
+    return selector.GetSelection();
   }
 
   /****************************
