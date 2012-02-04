@@ -1497,6 +1497,7 @@ bool ContextAnalyzer::Analyze()
 	    Class* from_klass = SearchProgramClasses(from_klass_name);
 	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
 									program->GetUses());
+	    cout << "@@@ " << from_klass_name << endl;
 	    if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
 	      return 0;
 	    }
@@ -1533,7 +1534,7 @@ bool ContextAnalyzer::Analyze()
     Method* matched_method = NULL;
 
     // save all valid candidates
-    int** matches = new int*[candidates.size()];
+    MethodCallSelection** matches = new MethodCallSelection*[candidates.size()];
     int matches_index = candidates.size();
     while(matches_index > 0) {
       matches[--matches_index] = NULL;
@@ -1544,27 +1545,44 @@ bool ContextAnalyzer::Analyze()
       // match parameter sizes
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
       if(expr_params.size() == method_parms.size()) {
-	matches[matches_index++] = new int[expr_params.size()];
+	matches[matches_index] = new MethodCallSelection(candidates[i], expr_params.size());
+	int* parm_matches = matches[matches_index++]->parm_matches;
 	for(size_t j = 0; j < expr_params.size(); j++) {
-	  matches[i][j] = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
+
+	  AnalyzeExpression(expr_params[j], 0);
+
+	  parm_matches[j] = MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL);
 	}
       }
     }
 
+    /*
     // inspect valid candidates
     while(matches_index > 0) {
-      int* match = matches[--matches_index];
-      cout << "@@@ " << method_name << " " << matches_index << ": [";
+      MethodCallSelection* match = matches[--matches_index];
+      cout << "@@@ " << match->method->GetName() << " " << matches_index << ": [";
       for(size_t j = 0; j < expr_params.size(); j++) {
-	cout << match[j] << ",";
+	cout << match->parm_matches[j] << ",";
       }   
       cout << "]" << endl;
     }
-    
+    */
 
+    // inspect valid candidates
+    
+    for(size_t j = 0; j < expr_params.size(); j++) {
+      int index = matches_index;
+      cout << "@@@ [";
+      while(index > 0) {
+	MethodCallSelection* match = matches[--index];
+	cout << match->parm_matches[j] << ",";
+      }
+      cout << "]" << endl;
+    }
+    
     // clean up
     //...
-    
+
     return NULL;
   }
 
@@ -1579,14 +1597,15 @@ bool ContextAnalyzer::Analyze()
     const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
-    // Method* method = klass->GetMethod(encoded_name);
+    Method* method = klass->GetMethod(encoded_name);
     
 #ifdef _DEBUG
     cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
 #endif
     
     // TODO: WIP
-    Method* method = ResolveMethodCall(klass, method_call);
+    // Method* method = ResolveMethodCall(klass, method_call);
+ResolveMethodCall(klass, method_call);
     if(!method) {
       // check parent classes for method
       if(klass->GetParent()) {
