@@ -39,12 +39,16 @@ bundle Default {
 		}
 ~#
 
-		function : Bar(p : Ford, i : Int) ~ Nil {
+		function : Bar(p : Ford, i : Int, c : Char) ~ Nil {
 			"Ford"->PrintLine();
 		}
 
-		function : Bar(p : Base, i : Float) ~ Nil {
+		function : Bar(p : Base, i : Int, f : Float) ~ Nil {
 			"Bar"->PrintLine();
+		}
+
+		function : Bar(p : Car, i : Int, c : Char) ~ Nil {
+			"String"->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -53,7 +57,7 @@ bundle Default {
 			Foo(13);
 ~#
 			c := Ford->New();
-			Bar(c, 10);
+			Bar(c, 10, 'b');
 		}
 	}
 }

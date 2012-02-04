@@ -46,7 +46,7 @@ using namespace frontend;
  ****************************/
 class MethodCallSelection {
   Method* method;
-  vector<int> matches; 
+  vector<int> parm_matches; 
   
  public:
   MethodCallSelection(Method* m) {
@@ -57,40 +57,46 @@ class MethodCallSelection {
   }
 
   bool IsValid() {
-    for(size_t i = 0; i < matches.size(); i++) {
-      if(matches[i] < 0) {
+    for(size_t i = 0; i < parm_matches.size(); i++) {
+      if(parm_matches[i] < 0) {
 	return false;
       }
     }
 
     return true;
   }
+
+  void AddParameterMatch(int p) {
+    parm_matches.push_back(p);
+  }
   
-  void AddMatch(int v) {
-    matches.push_back(v);
+  vector<int> GetParameterMatches() {
+    return parm_matches;
+  }
+
+  void Dump() {
+    cout << "@@@ [";
+    for(size_t i = 0; i < parm_matches.size(); i++) {
+      cout << parm_matches[i] << ",";
+    }
+    cout << "]" << endl;
   }
 };
 
 class MethodCallSelector {
   vector<MethodCallSelection*> matches;
+  vector<MethodCallSelection*> valid_matches;
   
-  void Evaluate() {
-    // weed out invalid matches 
-    vector<MethodCallSelection*> valid_matches;
-    for(size_t i = 0; i < matches.size(); i++) {
-      if(matches[i]->IsValid()) {
-	valid_matches.push_back(matches[i]);
-      }
-    }
-
-    // check for multiple matches
-    //...
-  }
-
  public: 
   MethodCallSelector(vector<MethodCallSelection*> &m) {
     matches = m;
-    Evaluate();
+    // weed out invalid matches     
+    for(size_t i = 0; i < matches.size(); i++) {
+      if(matches[i]->IsValid()) {
+	valid_matches.push_back(matches[i]);
+matches[i]->Dump();
+      }
+    }
   }
   
   ~MethodCallSelector() {
@@ -112,6 +118,24 @@ class MethodCallSelector {
   }
 
   Method* GetSelection() {
+    if(valid_matches.size() > 0) {
+      const size_t parameter_size = valid_matches[0]->GetParameterMatches().size();
+      for(size_t i = 0; i < parameter_size; i++) {
+	int exact_match = 0;
+	int relative_match = 0;
+	for(size_t j = 0; j < valid_matches.size(); j++) {
+	  vector<int> parameter_matches = valid_matches[j]->GetParameterMatches();
+	  if(parameter_matches[i] == 0) {
+	    exact_match++;
+	  }
+	  else {
+	    relative_match++;
+	  }
+	}
+cout << "@@@ parameter=" << i << ": exact=" << exact_match << ", relative=" << relative_match << endl;
+      }
+    }
+
     return NULL;
   }
 };
@@ -548,7 +572,7 @@ class ContextAnalyzer {
     
     return false;
   }
-
+  
   // TODO: finds the first enum match; note multiple matches may exist
   inline Class* SearchProgramClasses(const string &klass_name) {
     Class* klass = program->GetClass(klass_name);
