@@ -1534,14 +1534,14 @@ bool ContextAnalyzer::Analyze()
     vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
     
     // save all valid candidates
-    vector<MethodCallSelection*> matches(candidates.size());
+    vector<MethodCallSelection*> matches;
     for(size_t i = 0; i < candidates.size(); i++) {
       // match parameter sizes
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
       if(expr_params.size() == method_parms.size()) {
 	MethodCallSelection* match = new MethodCallSelection(candidates[i]);
 	for(size_t j = 0; j < expr_params.size(); j++) {
-	  match->AddMatch(MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL));
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL));
 	}
 	matches.push_back(match);
       }
