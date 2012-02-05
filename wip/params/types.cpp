@@ -35,6 +35,7 @@ int main() {
 	  break;		
 
 	case 'm': {
+     index += 2;
 	  start = index;
 	  while(index < parameters.size() && parameters[index] != '~') {
 	    index++;
