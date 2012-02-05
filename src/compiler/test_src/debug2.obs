@@ -39,21 +39,23 @@ bundle Default {
 		}
 ~#
 
+		function : Bar(p : Ford, i : Float, c : Char) ~ Nil {
+			"Ford2"->PrintLine();
+		}
+
 		function : Bar(p : Ford, i : Int, c : Char) ~ Nil {
 			"Ford"->PrintLine();
 		}
 
+#~
 		function : Bar(p : Base, i : Int, f : Float) ~ Nil {
 			"Bar"->PrintLine();
 		}
+~#
 
 		function : Main(args : String[]) ~ Nil {
-#~
-			a := Int->New[2];
-			Foo(13);
-~#
-			c := Ford->New();
-			Bar(c, 10, 'b');
+			c := Bike->New();
+			Bar(c->As(Ford), 10.5->As(Int), 'b');
 		}
 	}
 }
