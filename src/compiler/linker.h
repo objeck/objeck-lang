@@ -32,6 +32,9 @@
 #ifndef __LINKER_H__
 #define __LINKER_H__
 
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -40,8 +43,6 @@
 #include <iomanip>
 #include <sstream>
 #include <fstream>
-#include <stdlib.h>
-#include <string.h>
 #include "types.h"
 #include "../shared/instrs.h"
 
@@ -182,26 +183,105 @@ class LibraryMethod {
   bool has_and_or;
   int num_params;
   int mem_size;
+  vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
+  
+  void ParseParameters() {
+    const string &method_name = name;
+    size_t start = method_name.find_last_of(':'); 	
+    if(start != string::npos) {
+      const string &parameters = method_name.substr(start + 1);
+      size_t index = 0;
 
-public:
-  LibraryMethod(int i, const string &n, const string &r, frontend::MethodType t, bool v,  bool h,
-                bool nt, bool s, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
-    id = i;
-    name = n;
-    rtrn_name = r;
-    type = t;
-    is_virtual = v;
-    has_and_or = h;
-    is_native = nt;
-    is_static = s;
-    num_params = p;
-    mem_size = m;
-    lib_cls = c;
-    entries = e;
-    rtrn_type = NULL;
+#ifdef _DEBUG
+      cout << "### parsing: |" << parameters << "| ###" << endl;
+#endif
 
-    // check return type
+      while(index < parameters.size()) {
+	frontend::Type* type = NULL;
+	int dimension = 0;
+	switch(parameters[index]) {
+	case 'l':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
+	  index++;
+	  break;
+	  
+	case 'b':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
+	  index++;
+	  break;
+
+	case 'i':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
+	  index++;
+	  break;
+
+	case 'f':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
+	  index++;
+	  break;
+
+	case 'c':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
+	  index++;
+	  break;
+
+	case 'n':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
+	  index++;
+	  break;
+	  
+	case 'm': {
+	  start = index;
+	  while(index < parameters.size() && parameters[index] != '~') {
+	    index++;
+	  }
+	  index++;
+	  while(index < parameters.size() && parameters[index] != '*' && 
+		parameters[index] != ',') {
+	    index++;
+	  }	
+	  size_t end = index;
+	  const string &name = parameters.substr(start, end - start);
+	  // TODO: convenient alternative/kludge to paring the function types. This
+	  // works because the contextual analyzer does sting encoding and then 
+	  // checking of function types.
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name); 
+	}
+	  break;
+
+	case 'o': {
+	  index += 2;
+	  start = index;
+	  while(index < parameters.size() && parameters[index] != '*' && 
+		parameters[index] != ',') {
+	    index++;
+	  }	
+	  size_t end = index;
+	  const string &name = parameters.substr(start, end - start);
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, name);               
+	}
+	  break;
+	}
+	
+	// set dimension
+	while(index < parameters.size() && parameters[index] == '*') {
+	  dimension++;
+	  index++;
+	}
+	type->SetDimension(dimension);
+
+	// add declaration
+	declarations.push_back(type);
+#ifdef _DEBUG
+	assert(parameters[index] == ',');
+#endif
+	index++;
+      }
+    }
+  }
+  
+  void ParseReturn() {
     size_t index = 0;
     switch(rtrn_name[index]) {
     case 'l':
@@ -257,6 +337,27 @@ public:
     }
     rtrn_type->SetDimension(dimension);
   }
+  
+public:
+  LibraryMethod(int i, const string &n, const string &r, frontend::MethodType t, bool v,  bool h,
+                bool nt, bool s, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
+    id = i;
+    name = n;
+    rtrn_name = r;
+    type = t;
+    is_virtual = v;
+    has_and_or = h;
+    is_native = nt;
+    is_static = s;
+    num_params = p;
+    mem_size = m;
+    lib_cls = c;
+    entries = e;
+    rtrn_type = NULL;
+
+    ParseParameters();
+    ParseReturn();
+  }
 
   ~LibraryMethod() {
     // clean up
@@ -294,8 +395,7 @@ public:
   }
   
   vector<frontend::Type*> GetDeclarationTypes() {
-    vector<frontend::Type*> d;
-    return d;
+    return declarations;
   }
   
   int GetSpace() {
