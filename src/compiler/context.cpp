@@ -1495,7 +1495,6 @@ bool ContextAnalyzer::Analyze()
 	    Class* from_klass = SearchProgramClasses(from_klass_name);
 	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
 									program->GetUses());
-	    cout << "@@@ " << from_klass_name << endl;
 	    if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
 	      return 0;
 	    }
@@ -1546,13 +1545,13 @@ bool ContextAnalyzer::Analyze()
     }
     
     // evaluate matches
-    MethodCallSelector selector(matches);
-    if(selector.IsError()) {
+    MethodCallSelector selector(method_call, matches);
+    Method* selected_method = selector.GetSelection();
+    if(!selected_method) {
       ProcessError(static_cast<Expression*>(method_call), selector.GetError());
-      return NULL;
     }
     
-    return selector.GetSelection();
+    return selected_method;
   }
 
   /****************************

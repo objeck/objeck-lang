@@ -88,17 +88,20 @@ class MethodCallSelection {
 };
 
 class MethodCallSelector {
+  MethodCall* method_call;
   vector<MethodCallSelection*> matches;
   vector<MethodCallSelection*> valid_matches;
+  string error_message;
   
  public: 
-  MethodCallSelector(vector<MethodCallSelection*> &m) {
+  MethodCallSelector(MethodCall* c, vector<MethodCallSelection*> &m) {
+    method_call = c;
     matches = m;
     // weed out invalid matches     
     for(size_t i = 0; i < matches.size(); i++) {
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
-// matches[i]->Dump();
+	// matches[i]->Dump();
       }
     }
   }
@@ -112,63 +115,72 @@ class MethodCallSelector {
       tmp = NULL;
     }
   }
-
-  bool IsError() {
-    return false;
-  }
-
+  
   const string GetError() {
-    return "";
+    return error_message;
   }
-
+  
   Method* GetSelection() {
-    if(valid_matches.size() > 0) {
-      Method* result = NULL;
-      const size_t parameter_size = valid_matches[0]->GetParameterMatches().size();
-      size_t match_count = 0;
-      for(size_t i = 0; i < parameter_size; i++) {
-	int exact_match = 0;
-	int relative_match = 0;
-	for(size_t j = 0; j < valid_matches.size(); j++) {
-	  vector<int> parameter_matches = valid_matches[j]->GetParameterMatches();
-	  if(parameter_matches[i] == 0) {
-	    exact_match++;
-	  }
-	  else {
-	    relative_match++;
-	  }
+    // no match
+    if(valid_matches.size() == 0) {
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
 
-	  // ambiguous match
-	  if(relative_match > 1) {
-	    return NULL;
-	  }
-
-	  
-	  if(!result && exact_match == 1) {
-	    result = valid_matches[j]->GetMethod();
-	    match_count++;
-	  }
-	  else if(result && result == valid_matches[j]->GetMethod()) {
-	    match_count++;
-	  }
+      if(mthd_name.size() > 0) {
+	error_message = "Undefined function/method call: '" +
+	  mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      else {
+	error_message = "Undefined function/method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }      
+      return NULL;
+    }
+    // single match
+    else if(valid_matches.size() == 1) {
+      return valid_matches[0]->GetMethod();
+    }
+    
+    int match_index = -1;
+    int high_score = 0;
+    for(size_t i = 0; i < matches.size(); i++) {
+      // calculate match score
+      int match_score = 0;
+      bool exact_match = true;
+      vector<int> parm_matches = matches[i]->GetParameterMatches();
+      for(size_t j = 0; exact_match && j < parm_matches.size(); j++) {
+	if(parm_matches[j] == 0) {
+	  match_score++;
 	}
-
-// cout << "@@@ parameter=" << i << ": exact=" << exact_match << ", relative=" << relative_match << endl;
-// cout << "@@@ method=" << result << ", match=" << match_count << endl;
-
- 
+	else {
+	  exact_match = false;
+	}
       }
-
-      if(parameter_size == 0 && valid_matches.size() == 1) {
-	return valid_matches[0]->GetMethod();
+      // save the index of the best match
+      if(match_score >  high_score) {
+	match_index = i;
+	high_score = match_score;
       }
-      else if(result && match_count == parameter_size) {
-// cout << "@@@ match=" << result->GetEncodedName() << endl;
-	return result;
-      }
+      // cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
     }
 
-    return NULL;
+    // cout << "@@@ " << match_index << endl;      
+    if(match_index == -1) {
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
+      
+      if(mthd_name.size() > 0) {
+	error_message = "Unambiguous method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      else {
+	error_message = "Unambiguous method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      return NULL;
+    }
+    
+    return matches[match_index]->GetMethod();    
   }
 };
 
