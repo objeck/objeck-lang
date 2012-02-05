@@ -44,6 +44,53 @@ using namespace frontend;
  * Support for inferred method
  * signatures
  ****************************/
+class LibraryMethodCallSelection {
+  LibraryMethod* method;
+  vector<int> parm_matches; 
+  
+ public:
+  LibraryMethodCallSelection(LibraryMethod* m) {
+    method = m;
+  }
+  
+  ~LibraryMethodCallSelection() {
+  }
+
+  bool IsValid() {
+    for(size_t i = 0; i < parm_matches.size(); i++) {
+      if(parm_matches[i] < 0) {
+	return false;
+      }
+    }
+
+    return true;
+  }
+
+  void AddParameterMatch(int p) {
+    parm_matches.push_back(p);
+  }
+  
+  vector<int> GetParameterMatches() {
+    return parm_matches;
+  }
+
+  LibraryMethod* GetLibraryMethod() {
+    return method;
+  }
+
+  void Dump() {
+    cout << "@@@ [";
+    for(size_t i = 0; i < parm_matches.size(); i++) {
+      cout << parm_matches[i] << ",";
+    }
+    cout << "]" << endl;
+  }
+};
+
+/****************************
+ * Support for inferred method
+ * signatures
+ ****************************/
 class MethodCallSelection {
   Method* method;
   vector<int> parm_matches; 
@@ -822,9 +869,10 @@ class ContextAnalyzer {
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
 
   // TODO: WIP
-  Method* ResolveMethodCall(Class *klass, MethodCall* method_call);
-  int MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
-			     Class *klass, LibraryClass *lib_klass);
+  Method* ResolveMethodCall(Class* klass, MethodCall* method_call);
+  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call);
+  int MatchCallingParameter(Expression* calling_param, Type* method_type,
+			    Class *klass, LibraryClass *lib_klass);
 
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);

@@ -28,6 +28,7 @@ bundle Default {
 		}
 
 		function : Bar(b : Bike, i : Int) ~ Nil {
+			"Bike"->PrintLine();
 		}
 
 #~
@@ -54,8 +55,11 @@ bundle Default {
 ~#
 
 		function : Main(args : String[]) ~ Nil {
-			c := Bike->New();
-			Bar(c->As(Ford), 10.5->As(Int), 'b');
+			c := Ford->New();
+#			Bar(c->As(Ford), 10.5->As(Int), 'b');
+#			Bar(Nil->As(Ford), 10.5->As(Int), 'b');
+			x := Bike->New();
+			Bar(x, 10);
 		}
 	}
 }
