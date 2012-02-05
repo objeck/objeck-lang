@@ -416,7 +416,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     LoadStatements(mthd, is_debug);
 
     // add method
-    cls->AddMethod(name, mthd);
+    cls->AddMethod(mthd);
   }
 }
 

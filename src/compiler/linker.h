@@ -292,7 +292,12 @@ public:
   frontend::MethodType GetMethodType() {
     return type;
   }
-
+  
+  vector<frontend::Type*> GetDeclarationTypes() {
+    vector<frontend::Type*> d;
+    return d;
+  }
+  
   int GetSpace() {
     return mem_size;
   }
@@ -423,6 +428,7 @@ class LibraryClass {
   int cls_space;
   int inst_space;
   map<const string, LibraryMethod*> methods;
+  multimap<const string, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* entries;
   bool is_interface;
   bool is_virtual;
@@ -445,6 +451,8 @@ public:
     inst_space = is;
     entries = e;
     library = l;
+    
+    // force runtime linking of these classes
     if(name == "Introspection.Class" || 
        name == "Introspection.Method" || 
        name == "Introspection.DataType") {
@@ -561,12 +569,36 @@ public:
     return NULL;
   }
 
+  vector<LibraryMethod*> GetUnqualifiedMethods(const string &n) {
+    vector<LibraryMethod*> results;
+    pair<multimap<const string, LibraryMethod*>::iterator, 
+      multimap<const string, LibraryMethod*>::iterator> result;
+    result = unqualified_methods.equal_range(n);
+    multimap<const string, LibraryMethod*>::iterator iter = result.first;
+    for(iter = result.first; iter != result.second; ++iter) {
+      results.push_back(iter->second);
+    }
+      
+    return results;
+  }
+
   map<const string, LibraryMethod*> GetMethods() {
     return methods;
   }
 
-  void AddMethod(string name, LibraryMethod* mthd) {
-    methods.insert(pair<const string, LibraryMethod*>(name, mthd));
+  void AddMethod(LibraryMethod* method) {
+    const string &encoded_name = method->GetName();
+    methods.insert(pair<const string, LibraryMethod*>(encoded_name, method));
+    
+    // add to unqualified names to list
+    const int start = encoded_name.find(':');
+    if(start > -1) {
+      const int end = encoded_name.find(':', start + 1);
+      if(end > -1) {
+	const string &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+	unqualified_methods.insert(pair<string, LibraryMethod*>(unqualified_name, method));
+      }
+    }
   }
 };
 

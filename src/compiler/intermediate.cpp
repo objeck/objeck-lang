@@ -203,7 +203,7 @@ void IntermediateEmitter::Translate()
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
   for(size_t i = 0; i < lib_classes.size(); i++) {
     LibraryClass* lib_class = lib_classes[i];    
-    // find System.String
+    // find "System.String"
     if(string_cls_id < 0 && lib_class->GetName() == "System.String") {
       string_cls_id = class_id;
     }
