@@ -47,10 +47,6 @@ bundle Default {
 			"Bar"->PrintLine();
 		}
 
-		function : Bar(p : String, i : Int, c : Char) ~ Nil {
-			"String"->PrintLine();
-		}
-
 		function : Main(args : String[]) ~ Nil {
 #~
 			a := Int->New[2];
