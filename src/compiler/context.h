@@ -159,7 +159,10 @@ class MethodCallSelector {
  
       }
 
-      if(result && match_count == parameter_size) {
+      if(parameter_size == 0 && valid_matches.size() == 1) {
+	return valid_matches[0]->GetMethod();
+      }
+      else if(result && match_count == parameter_size) {
 // cout << "@@@ match=" << result->GetEncodedName() << endl;
 	return result;
       }
