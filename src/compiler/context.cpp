@@ -1574,7 +1574,6 @@ bool ContextAnalyzer::Analyze()
     
     // TODO: WIP
     Method* method = ResolveMethodCall(klass, method_call);
-ResolveMethodCall(klass, method_call);
     if(!method) {
       // check parent classes for method
       if(klass->GetParent()) {
