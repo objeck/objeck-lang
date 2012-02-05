@@ -2011,7 +2011,6 @@ namespace frontend {
 	    unqualified_methods.insert(pair<string, Method*>(unqualified_name, method));
 	  }
 	}
-
       }
     }
   };
