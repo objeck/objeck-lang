@@ -873,7 +873,7 @@ bool ContextAnalyzer::Analyze()
       program->AddCharString(str, char_str_index);
       char_str_index++;
     }
-
+    
 #ifndef _SYSTEM
     LibraryClass* lib_klass = linker->SearchClassLibraries("System.String", program->GetUses());
     if(lib_klass) {
@@ -1434,7 +1434,11 @@ bool ContextAnalyzer::Analyze()
     return klass;
   }
   
-  int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
+  /****************************
+   * Resolve method call 
+   * parameter
+   ****************************/
+  int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
 					      Class *klass, LibraryClass *lib_klass) {
     // get calling type
     Type* calling_type;
@@ -1444,15 +1448,8 @@ bool ContextAnalyzer::Analyze()
     else {
       calling_type = calling_param->GetEvalType();
     }
-
-    // get method type
-    Type* method_type = NULL;
-    if(method_parm->GetEntry() && method_parm->GetEntry()->GetType()) {
-      method_type = method_parm->GetEntry()->GetType();
-    }
     
-    // determine if there's mapping from calling type
-    // to method type
+    // determine if there's mapping from calling type to method type
     if(calling_type && method_type) {
       // looks for an exact match
       if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
@@ -1465,12 +1462,15 @@ bool ContextAnalyzer::Analyze()
 	}
       }
       else {
-	// relative match
+	// looks for a relative match
 	if(IsScalar(calling_param) && method_type->GetDimension() == 0)  {
 	  switch(calling_type->GetType()) {
 	  case NIL_TYPE:
+	    if(method_type->GetType() == CLASS_TYPE) {
+	      return 1;
+	    }
 	    return -1;
-
+	    
 	  case BOOLEAN_TYPE:
 	    return method_type->GetType() == BOOLEAN_TYPE ? 1 : -1;
 	    
@@ -1491,18 +1491,22 @@ bool ContextAnalyzer::Analyze()
 	    break;
 	  
 	  case CLASS_TYPE: {
-	    const string &from_klass_name = calling_type->GetClassName();
-	    Class* from_klass = SearchProgramClasses(from_klass_name);
-	    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
-									program->GetUses());
-	    if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
-	      return 0;
-	    }
-	    else if(from_lib_klass && from_lib_klass->GetName() == method_type->GetClassName()) {
-	      return 0;
-	    }
+	    if(method_type->GetType() == CLASS_TYPE) {
+	      const string &from_klass_name = calling_type->GetClassName();
+	      Class* from_klass = SearchProgramClasses(from_klass_name);
+	      LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
+									  program->GetUses());
+	      if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
+		return 0;
+	      }
+	      else if(from_lib_klass && from_lib_klass->GetName() == method_type->GetClassName()) {
+		return 0;
+	      }
 	    
-	    return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
+	      return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
+	    }
+
+	    return -1;
 	  }
 	    
 	  case FUNC_TYPE: {
@@ -1522,9 +1526,11 @@ bool ContextAnalyzer::Analyze()
     
     return -1;
   }
-  
-  Method* ContextAnalyzer::ResolveMethodCall(Class *klass, MethodCall* method_call) {
-    // TODO: NIL type expression
+
+  /****************************
+   * Resolves method calls
+   ****************************/
+  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -1534,11 +1540,18 @@ bool ContextAnalyzer::Analyze()
     vector<MethodCallSelection*> matches;
     for(size_t i = 0; i < candidates.size(); i++) {
       // match parameter sizes
-      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();      
+      vector<Type*> parms_types;
+      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
       if(expr_params.size() == method_parms.size()) {
 	MethodCallSelection* match = new MethodCallSelection(candidates[i]);
-	for(size_t j = 0; j < expr_params.size(); j++) {
-	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], klass, NULL));
+	for(size_t j = 0; j < expr_params.size(); j++) {	  
+	  // get method type
+	  Type* method_type = NULL;
+	  if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
+	    method_type = method_parms[j]->GetEntry()->GetType();
+	  }
+	  // add poarameter match
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL));
 	}
 	matches.push_back(match);
       }
@@ -1553,7 +1566,44 @@ bool ContextAnalyzer::Analyze()
     
     return selected_method;
   }
+  
+  /****************************
+   * Resolves library method calls
+   ****************************/
+  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call) {
+    const string &method_name = method_call->GetMethodName(); 				 
+    ExpressionList* calling_params = method_call->GetCallingParameters();
+    vector<Expression*> expr_params = calling_params->GetExpressions();
+    vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
+    
+    // save all valid candidates
+    vector<LibraryMethodCallSelection*> matches;
+    for(size_t i = 0; i < candidates.size(); i++) {
+      // match parameter sizes
+      vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();      
+      if(expr_params.size() == method_parms.size()) {
+	LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
+	for(size_t j = 0; j < expr_params.size(); j++) {
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass));
+	}
+	matches.push_back(match);
+      }
+    }
+    
+    /*
+    // evaluate matches
+    MethodCallSelector selector(method_call, matches);
+    LibraryMethod* selected_method = selector.GetSelection();
+    if(!selected_method) {
+      ProcessError(static_cast<Expression*>(method_call), selector.GetError());
+    }
+    
+    return selected_method;
+    */
 
+    return NULL;
+  }
+  
   /****************************
    * Analyzes a method call.  This
    * is method call within the source
@@ -1682,6 +1732,8 @@ bool ContextAnalyzer::Analyze()
 #endif
 
     LibraryMethod* lib_method = klass->GetMethod(encoded_name);
+    // TODO: wip
+    // LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
     if(!lib_method) {
       // get parameters
       ExpressionList* call_params = method_call->GetCallingParameters();
