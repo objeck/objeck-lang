@@ -1434,8 +1434,6 @@ bool ContextAnalyzer::Analyze()
     return klass;
   }
   
-
-
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Declaration* method_parm,
 					      Class *klass, LibraryClass *lib_klass) {
     // get calling type
@@ -1568,14 +1566,14 @@ bool ContextAnalyzer::Analyze()
     const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
-    Method* method = klass->GetMethod(encoded_name);
+    // Method* method = klass->GetMethod(encoded_name);
     
 #ifdef _DEBUG
     cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
 #endif
     
     // TODO: WIP
-    // Method* method = ResolveMethodCall(klass, method_call);
+    Method* method = ResolveMethodCall(klass, method_call);
 ResolveMethodCall(klass, method_call);
     if(!method) {
       // check parent classes for method

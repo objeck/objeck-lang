@@ -47,7 +47,7 @@ bundle Default {
 			"Bar"->PrintLine();
 		}
 
-		function : Bar(p : Car, i : Int, c : Char) ~ Nil {
+		function : Bar(p : String, i : Int, c : Char) ~ Nil {
 			"String"->PrintLine();
 		}
 

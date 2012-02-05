@@ -74,6 +74,10 @@ class MethodCallSelection {
     return parm_matches;
   }
 
+  Method* GetMethod() {
+    return method;
+  }
+
   void Dump() {
     cout << "@@@ [";
     for(size_t i = 0; i < parm_matches.size(); i++) {
@@ -94,7 +98,7 @@ class MethodCallSelector {
     for(size_t i = 0; i < matches.size(); i++) {
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
-matches[i]->Dump();
+// matches[i]->Dump();
       }
     }
   }
@@ -119,7 +123,9 @@ matches[i]->Dump();
 
   Method* GetSelection() {
     if(valid_matches.size() > 0) {
+      Method* result = NULL;
       const size_t parameter_size = valid_matches[0]->GetParameterMatches().size();
+      size_t match_count = 0;
       for(size_t i = 0; i < parameter_size; i++) {
 	int exact_match = 0;
 	int relative_match = 0;
@@ -131,8 +137,31 @@ matches[i]->Dump();
 	  else {
 	    relative_match++;
 	  }
+
+	  // ambiguous match
+	  if(relative_match > 1) {
+	    return NULL;
+	  }
+
+	  
+	  if(!result && exact_match == 1) {
+	    result = valid_matches[j]->GetMethod();
+	    match_count++;
+	  }
+	  else if(result && result == valid_matches[j]->GetMethod()) {
+	    match_count++;
+	  }
 	}
-cout << "@@@ parameter=" << i << ": exact=" << exact_match << ", relative=" << relative_match << endl;
+
+// cout << "@@@ parameter=" << i << ": exact=" << exact_match << ", relative=" << relative_match << endl;
+// cout << "@@@ method=" << result << ", match=" << match_count << endl;
+
+ 
+      }
+
+      if(result && match_count == parameter_size) {
+// cout << "@@@ match=" << result->GetEncodedName() << endl;
+	return result;
       }
     }
 
