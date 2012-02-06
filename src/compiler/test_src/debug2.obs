@@ -3,10 +3,18 @@ use Struct;
 bundle Default {
 	class Car {
 		New() {}
+
+		method : public : Foo(i : Int) ~ Nil {
+			"int"->PrintLine();
+		}
 	}
 
 	class Ford from Car {
-		New() { Parent(); x := 9; }
+		New() { Parent(); }
+
+		method : public : Foo(s : String) ~ Nil {
+			"string"->PrintLine();
+		}
 	}
 
 	class Bike {
@@ -18,60 +26,9 @@ bundle Default {
 	}
 
 	class Hello {
-		function : Foo(a : Int) ~ Nil {
-		}
-
-		function : Foo(a : Float) ~ Nil {
-		}
-
-		function : Foo(a : Int[]) ~ Nil {
-		}
-
-		function : Bar(b : Bike, i : Int) ~ Nil {
-			"Bike"->PrintLine();
-		}
-
-#~
-		function : Bar(c : Ford) ~ Nil {
-		}
-
-		function : Bar(p : Car) ~ Nil {
-			"Car"->PrintLine();
-		}
-~#
-
-		function : Bar(p : Ford, i : Float, c : Char) ~ Nil {
-			"Ford2"->PrintLine();
-		}
-
-		function : Bar(p : Ford, i : Int, c : Char) ~ Nil {
-			"Ford"->PrintLine();
-		}
-
-#~
-		function : Foo(v : Vector) ~ Nil {
-			"Vector"->PrintLine();
-		}
-~#
-
-		function : Foo(v : Base) ~ Nil {
-			"Vector"->PrintLine();
-		}
-#~
-		function : Bar(p : Base, i : Int, f : Float) ~ Nil {
-			"Bar"->PrintLine();
-		}
-~#
-
 		function : Main(args : String[]) ~ Nil {
-#			c := Ford->New();
-#			Bar(c->As(Ford), 10.5->As(Int), 'b');
-#			Bar(Nil->As(Ford), 10.5->As(Int), 'b');
-#			x := Bike->New();
-#			Bar(x, 10);
-		
-			v := Vector->New();			
-			Foo(v);
+			f := Ford->New();
+			f->Foo("foo");
 		}
 	}
 }

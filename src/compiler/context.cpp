@@ -1439,7 +1439,7 @@ bool ContextAnalyzer::Analyze()
    * parameter
    ****************************/
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
-					     Class *klass, LibraryClass *lib_klass) {
+					     Class* klass, LibraryClass* lib_klass) {
     // get calling type
     Type* calling_type;
     if(calling_param->GetCastType()) {
@@ -1511,10 +1511,16 @@ bool ContextAnalyzer::Analyze()
 	    
 	  case FUNC_TYPE: {
 	    const string &calling_str = EncodeFunctionType(calling_type->GetFunctionParameters(), 
-							   calling_type->GetFunctionReturn());	    
-	    const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
-							  method_type->GetFunctionReturn());
-	    return calling_str == method_str ? 1 : -1;
+							   calling_type->GetFunctionReturn());
+	    if(lib_klass) {
+	      const string &method_str = method_type->GetClassName();
+	      return calling_str == method_str ? 1 : -1;
+	    }
+	    else {
+	      const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
+							    method_type->GetFunctionReturn());
+	      return calling_str == method_str ? 1 : -1;
+	    }
 	  }
 	    
 	  case VAR_TYPE:
@@ -1559,12 +1565,7 @@ bool ContextAnalyzer::Analyze()
     
     // evaluate matches
     MethodCallSelector selector(method_call, matches);
-    Method* selected_method = selector.GetSelection();
-    if(!selected_method) {
-      ProcessError(static_cast<Expression*>(method_call), selector.GetError());
-    }
-    
-    return selected_method;
+    return selector.GetSelection();
   }
   
   /****************************
@@ -1592,12 +1593,7 @@ bool ContextAnalyzer::Analyze()
     
     // evaluate matches
     LibraryMethodCallSelector selector(method_call, matches);
-    LibraryMethod* selected_method = selector.GetSelection();
-    if(!selected_method) {
-      ProcessError(static_cast<Expression*>(method_call), selector.GetError());
-    }
-    
-    return selected_method;
+    return selector.GetSelection();
   }
   
   /****************************
@@ -1608,15 +1604,18 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, int depth)
   {    
+    /*
     const string encoded_name = klass->GetName() + ":" + 
       method_call->GetMethodName() + ":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
-    // Method* method = klass->GetMethod(encoded_name);
-    
+
 #ifdef _DEBUG
     cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
 #endif
-    
+
+    Method* method = klass->GetMethod(encoded_name);
+    */
+        
     // TODO: WIP
     Method* method = ResolveMethodCall(klass, method_call);
     if(!method) {
@@ -1624,10 +1623,13 @@ bool ContextAnalyzer::Analyze()
       if(klass->GetParent()) {
 	Class* parent = klass->GetParent();
 	while(!method && parent) {
+	  /*
 	  const string &encoded_parent_name =  parent->GetName() + ":" +
 	    method_call->GetMethodName() + ":" +
 	    EncodeMethodCall(method_call->GetCallingParameters(), depth);
-	  method = parent->GetMethod(encoded_parent_name);        
+	  method = parent->GetMethod(encoded_parent_name);  
+	  */
+	  method = ResolveMethodCall(parent, method_call);
 	  // update	    
 	  if(!method && parent->GetLibraryParent()) {
 	    // check parent library class for method
@@ -1712,23 +1714,23 @@ bool ContextAnalyzer::Analyze()
   }
 
   /****************************
-  * Analyzes a method call.  This
+   * Analyzes a method call.  This
    * is method call within a linked
    * library
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, bool is_parent, int depth)
   {
+    /*
     // look up method
     string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" +
-      encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
-
+      encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);    
 #ifdef _DEBUG
     cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
 #endif
-
-    // LibraryMethod* lib_method = klass->GetMethod(encoded_name);
-    // TODO: wip
+    LibraryMethod* lib_method = klass->GetMethod(encoded_name);
+    */
+    
     LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
     if(!lib_method) {
       // get parameters
@@ -1738,12 +1740,17 @@ bool ContextAnalyzer::Analyze()
       LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses());
       while(!lib_method && parent) {
 	// look up parent method
+	/*
 	encoded_name = parent->GetName() + ":" + method_call->GetMethodName() + ":" +
 	  encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
 #ifdef _DEBUG
 	cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
 #endif
 	lib_method = parent->GetMethod(encoded_name);
+	*/
+
+	lib_method = ResolveMethodCall(parent, method_call);
+
 	// update
 	parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses());
       }
@@ -1815,15 +1822,13 @@ bool ContextAnalyzer::Analyze()
 	  }
 	}
 	type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
-
-	const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
-
+	
 	// check parameters again dynamic definition
+	const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
 	if(dyn_func_params != call_params) {
 	  ProcessError(static_cast<Expression*>(method_call),
 		       "Undefined function/method call: '" + method_call->GetMethodName() +
 		       "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-
 	}
 	
 	//  set entry reference and return type
@@ -2932,11 +2937,11 @@ bool ContextAnalyzer::Analyze()
     }
 
     /*
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-       expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+      expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, "Invalid operation method does not return a value");
       return;
-    }
+      }
     */
 
     if(is_scalar) {
