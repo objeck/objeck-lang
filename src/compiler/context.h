@@ -87,6 +87,102 @@ class LibraryMethodCallSelection {
   }
 };
 
+class LibraryMethodCallSelector {
+  MethodCall* method_call;
+  vector<LibraryMethodCallSelection*> matches;
+  vector<LibraryMethodCallSelection*> valid_matches;
+  string error_message;
+  
+ public: 
+  LibraryMethodCallSelector(MethodCall* c, vector<LibraryMethodCallSelection*> &m) {
+    method_call = c;
+    matches = m;
+    // weed out invalid matches     
+    for(size_t i = 0; i < matches.size(); i++) {
+      if(matches[i]->IsValid()) {
+	valid_matches.push_back(matches[i]);
+	// matches[i]->Dump();
+      }
+    }
+  }
+  
+  ~LibraryMethodCallSelector() {
+    while(!matches.empty()) {
+      LibraryMethodCallSelection* tmp = matches.front();
+      matches.erase(matches.begin());
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
+  }
+  
+  const string GetError() {
+    return error_message;
+  }
+  
+  LibraryMethod* GetSelection() {
+    // no match
+    if(valid_matches.size() == 0) {
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
+
+      if(mthd_name.size() > 0) {
+	error_message = "Undefined function/method call: '" +
+	  mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      else {
+	error_message = "Undefined function/method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }      
+      return NULL;
+    }
+    // single match
+    else if(valid_matches.size() == 1) {
+      return valid_matches[0]->GetLibraryMethod();
+    }
+    
+    int match_index = -1;
+    int high_score = 0;
+    for(size_t i = 0; i < matches.size(); i++) {
+      // calculate match score
+      int match_score = 0;
+      bool exact_match = true;
+      vector<int> parm_matches = matches[i]->GetParameterMatches();
+      for(size_t j = 0; exact_match && j < parm_matches.size(); j++) {
+	if(parm_matches[j] == 0) {
+	  match_score++;
+	}
+	else {
+	  exact_match = false;
+	}
+      }
+      // save the index of the best match
+      if(match_score >  high_score) {
+	match_index = i;
+	high_score = match_score;
+      }
+      // cout << "@@@ method=" << matches[i]->GetLibraryMethod()->GetName() << ", score=" << match_score << endl;
+    }
+
+    if(match_index == -1) {
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
+      
+      if(mthd_name.size() > 0) {
+	error_message = "Unambiguous method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      else {
+	error_message = "Unambiguous method call: '" +
+	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      }
+      return NULL;
+    }
+    
+    return matches[match_index]->GetLibraryMethod();    
+  }
+};
+
 /****************************
  * Support for inferred method
  * signatures
@@ -146,9 +242,9 @@ class MethodCallSelector {
     matches = m;
     // weed out invalid matches     
     for(size_t i = 0; i < matches.size(); i++) {
+      // matches[i]->Dump();
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
-	// matches[i]->Dump();
       }
     }
   }
@@ -211,7 +307,6 @@ class MethodCallSelector {
       // cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
     }
 
-    // cout << "@@@ " << match_index << endl;      
     if(match_index == -1) {
       const string &mthd_name = method_call->GetMethodName();
       const string &var_name = method_call->GetVariableName();
