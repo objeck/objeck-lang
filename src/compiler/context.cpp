@@ -1439,7 +1439,7 @@ bool ContextAnalyzer::Analyze()
    * parameter
    ****************************/
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
-					      Class *klass, LibraryClass *lib_klass) {
+					     Class *klass, LibraryClass *lib_klass) {
     // get calling type
     Type* calling_type;
     if(calling_param->GetCastType()) {
@@ -1590,18 +1590,14 @@ bool ContextAnalyzer::Analyze()
       }
     }
     
-    /*
     // evaluate matches
-    MethodCallSelector selector(method_call, matches);
+    LibraryMethodCallSelector selector(method_call, matches);
     LibraryMethod* selected_method = selector.GetSelection();
     if(!selected_method) {
       ProcessError(static_cast<Expression*>(method_call), selector.GetError());
     }
     
     return selected_method;
-    */
-
-    return NULL;
   }
   
   /****************************
@@ -1731,9 +1727,9 @@ bool ContextAnalyzer::Analyze()
     cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
 #endif
 
-    LibraryMethod* lib_method = klass->GetMethod(encoded_name);
+    // LibraryMethod* lib_method = klass->GetMethod(encoded_name);
     // TODO: wip
-    // LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
+    LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
     if(!lib_method) {
       // get parameters
       ExpressionList* call_params = method_call->GetCallingParameters();
