@@ -1540,7 +1540,7 @@ bool ContextAnalyzer::Analyze()
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
-    vector<Method*> candidates = klass->GetUnqualifiedMethods(method_name);
+    vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
     
     // save all valid candidates
     vector<MethodCallSelection*> matches;
@@ -1569,95 +1569,33 @@ bool ContextAnalyzer::Analyze()
   }
   
   /****************************
-   * Resolves library method calls
-   ****************************/
-  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call) {
-    const string &method_name = method_call->GetMethodName(); 				 
-    ExpressionList* calling_params = method_call->GetCallingParameters();
-    vector<Expression*> expr_params = calling_params->GetExpressions();
-    vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
-    
-    // save all valid candidates
-    vector<LibraryMethodCallSelection*> matches;
-    for(size_t i = 0; i < candidates.size(); i++) {
-      // match parameter sizes
-      vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();      
-      if(expr_params.size() == method_parms.size()) {
-	LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
-	for(size_t j = 0; j < expr_params.size(); j++) {
-	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass));
-	}
-	matches.push_back(match);
-      }
-    }
-    
-    // evaluate matches
-    LibraryMethodCallSelector selector(method_call, matches);
-    return selector.GetSelection();
-  }
-  
-  /****************************
    * Analyzes a method call.  This
    * is method call within the source
    * program.
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, int depth)
-  {    
-    /*
-    const string encoded_name = klass->GetName() + ":" + 
-      method_call->GetMethodName() + ":" + encoding +
-      EncodeMethodCall(method_call->GetCallingParameters(), depth);
-
+  {   
 #ifdef _DEBUG
-    cout << "Checking program encoded name: |" << encoded_name << "|" << endl;
+    cout << "Checking program class call: |" << encoding << "|" << endl;
 #endif
-
-    Method* method = klass->GetMethod(encoded_name);
-    */
-        
-    // TODO: WIP
+    
+    // calling parameters
+    ExpressionList* call_params = method_call->GetCallingParameters();
+    AnalyzeExpressions(call_params, depth + 1);
+    
     Method* method = ResolveMethodCall(klass, method_call);
-    if(!method) {
-      // check parent classes for method
-      if(klass->GetParent()) {
-	Class* parent = klass->GetParent();
-	while(!method && parent) {
-	  /*
-	  const string &encoded_parent_name =  parent->GetName() + ":" +
-	    method_call->GetMethodName() + ":" +
-	    EncodeMethodCall(method_call->GetCallingParameters(), depth);
-	  method = parent->GetMethod(encoded_parent_name);  
-	  */
-	  method = ResolveMethodCall(parent, method_call);
-	  // update	    
-	  if(!method && parent->GetLibraryParent()) {
-	    // check parent library class for method
-	    LibraryClass* lib_parent = parent->GetLibraryParent();
-	    method_call->SetOriginalClass(klass);
-	    string encoding;
-	    AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
-	    return;
-	  }
-	  parent = SearchProgramClasses(parent->GetParentName());
-	}
-      }
-      else if(klass->GetLibraryParent()) {
-	// check parent library class for method
-	LibraryClass* lib_parent = klass->GetLibraryParent();
-	method_call->SetOriginalClass(klass);
-	string encoding;
-	AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
-	return;
-      }
+    if(!method && klass->GetLibraryParent()) {
+      // check parent library class for method
+      LibraryClass* lib_parent = klass->GetLibraryParent();
+      method_call->SetOriginalClass(klass);
+      string encoding;
+      AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
+      return;
     }
-
+    
     // found program method
     if(method) {
-      // calling parameters
-      ExpressionList* call_params = method_call->GetCallingParameters();
-      AnalyzeExpressions(call_params, depth + 1);
-
       // public/private check
       if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
 	 (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
@@ -1714,48 +1652,56 @@ bool ContextAnalyzer::Analyze()
   }
 
   /****************************
+   * Resolves library method calls
+   ****************************/
+  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call) {
+    const string &method_name = method_call->GetMethodName(); 				 
+    ExpressionList* calling_params = method_call->GetCallingParameters();
+    vector<Expression*> expr_params = calling_params->GetExpressions();
+    vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
+    
+    // save all valid candidates
+    vector<LibraryMethodCallSelection*> matches;
+    for(size_t i = 0; i < candidates.size(); i++) {
+      // match parameter sizes
+      vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();      
+      if(expr_params.size() == method_parms.size()) {
+	LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
+	for(size_t j = 0; j < expr_params.size(); j++) {
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass));
+	}
+	matches.push_back(match);
+      }
+    }
+    
+    // evaluate matches
+    LibraryMethodCallSelector selector(method_call, matches);
+    return selector.GetSelection();
+  }
+  
+  /****************************
    * Analyzes a method call.  This
    * is method call within a linked
    * library
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
 					  bool is_expr, string &encoding, bool is_parent, int depth)
-  {
-    /*
-    // look up method
-    string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" +
-      encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);    
+  {      
 #ifdef _DEBUG
-    cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
+    cout << "Checking library encoded name: |" << encoding << "|" << endl;
 #endif
-    LibraryMethod* lib_method = klass->GetMethod(encoded_name);
-    */
     
+    ExpressionList* call_params = method_call->GetCallingParameters();
+    AnalyzeExpressions(call_params, depth + 1);
     LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
-    if(!lib_method) {
-      // get parameters
-      ExpressionList* call_params = method_call->GetCallingParameters();
-      AnalyzeExpressions(call_params, depth + 1);
-
+    if(!lib_method) {  
       LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses());
       while(!lib_method && parent) {
-	// look up parent method
-	/*
-	encoded_name = parent->GetName() + ":" + method_call->GetMethodName() + ":" +
-	  encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
-#ifdef _DEBUG
-	cout << "Checking library encoded name: |" << encoded_name << "|" << endl;
-#endif
-	lib_method = parent->GetMethod(encoded_name);
-	*/
-
 	lib_method = ResolveMethodCall(parent, method_call);
-
-	// update
 	parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses());
       }
     }
-
+    
     method_call->SetOriginalLibraryClass(klass);
     AnalyzeMethodCall(lib_method, method_call, klass->IsVirtual() && !is_parent, is_expr, depth);
   }

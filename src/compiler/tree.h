@@ -1852,7 +1852,7 @@ namespace frontend {
     }
 
     ~Class() {
-    }
+    } 
 
   public:
     void SetId(int i) {
@@ -1938,7 +1938,7 @@ namespace frontend {
 
       return NULL;
     }
-    
+
     vector<Method*> GetUnqualifiedMethods(const string &n) {
       vector<Method*> results;
       pair<multimap<const string, Method*>::iterator, 
@@ -1949,6 +1949,23 @@ namespace frontend {
 	results.push_back(iter->second);
       }
       
+      return results;
+    }
+    
+    vector<Method*> GetAllUnqualifiedMethods(const string &n) {
+      if(n == "New") {
+	return GetUnqualifiedMethods(n);
+      }
+      
+      vector<Method*> results = GetUnqualifiedMethods(n);
+      Class* next = parent;
+      while(next) {
+	vector<Method*> next_results = next->GetUnqualifiedMethods(n);
+	for(size_t i = 0; i < next_results.size(); i++) {
+	  results.push_back(next_results[i]);
+	}
+	next = next->GetParent();
+      }
       return results;
     }
     
