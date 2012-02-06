@@ -49,17 +49,29 @@ bundle Default {
 		}
 
 #~
+		function : Foo(v : Vector) ~ Nil {
+			"Vector"->PrintLine();
+		}
+~#
+
+		function : Foo(v : Base) ~ Nil {
+			"Vector"->PrintLine();
+		}
+#~
 		function : Bar(p : Base, i : Int, f : Float) ~ Nil {
 			"Bar"->PrintLine();
 		}
 ~#
 
 		function : Main(args : String[]) ~ Nil {
-			c := Ford->New();
+#			c := Ford->New();
 #			Bar(c->As(Ford), 10.5->As(Int), 'b');
 #			Bar(Nil->As(Ford), 10.5->As(Int), 'b');
-			x := Bike->New();
-			Bar(x, 10);
+#			x := Bike->New();
+#			Bar(x, 10);
+		
+			v := Vector->New();			
+			Foo(v);
 		}
 	}
 }
