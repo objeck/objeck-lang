@@ -91,7 +91,6 @@ class LibraryMethodCallSelector {
   MethodCall* method_call;
   vector<LibraryMethodCallSelection*> matches;
   vector<LibraryMethodCallSelection*> valid_matches;
-  string error_message;
   
  public: 
   LibraryMethodCallSelector(MethodCall* c, vector<LibraryMethodCallSelection*> &m) {
@@ -116,24 +115,9 @@ class LibraryMethodCallSelector {
     }
   }
   
-  const string GetError() {
-    return error_message;
-  }
-  
   LibraryMethod* GetSelection() {
     // no match
     if(valid_matches.size() == 0) {
-      const string &mthd_name = method_call->GetMethodName();
-      const string &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-	error_message = "Undefined function/method call: '" +
-	  mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
-      else {
-	error_message = "Undefined function/method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }      
       return NULL;
     }
     // single match
@@ -165,17 +149,6 @@ class LibraryMethodCallSelector {
     }
 
     if(match_index == -1) {
-      const string &mthd_name = method_call->GetMethodName();
-      const string &var_name = method_call->GetVariableName();
-      
-      if(mthd_name.size() > 0) {
-	error_message = "Unambiguous method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
-      else {
-	error_message = "Unambiguous method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
       return NULL;
     }
     
@@ -234,7 +207,6 @@ class MethodCallSelector {
   MethodCall* method_call;
   vector<MethodCallSelection*> matches;
   vector<MethodCallSelection*> valid_matches;
-  string error_message;
   
  public: 
   MethodCallSelector(MethodCall* c, vector<MethodCallSelection*> &m) {
@@ -259,24 +231,9 @@ class MethodCallSelector {
     }
   }
   
-  const string GetError() {
-    return error_message;
-  }
-  
   Method* GetSelection() {
     // no match
     if(valid_matches.size() == 0) {
-      const string &mthd_name = method_call->GetMethodName();
-      const string &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-	error_message = "Undefined function/method call: '" +
-	  mthd_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
-      else {
-	error_message = "Undefined function/method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }      
       return NULL;
     }
     // single match
@@ -308,17 +265,6 @@ class MethodCallSelector {
     }
 
     if(match_index == -1) {
-      const string &mthd_name = method_call->GetMethodName();
-      const string &var_name = method_call->GetVariableName();
-      
-      if(mthd_name.size() > 0) {
-	error_message = "Unambiguous method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
-      else {
-	error_message = "Unambiguous method call: '" +
-	  var_name + "(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-      }
       return NULL;
     }
     
@@ -962,13 +908,10 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
-
-  // TODO: WIP
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
 			    Class *klass, LibraryClass *lib_klass);
-
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
