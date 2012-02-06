@@ -1,8 +1,12 @@
 use Struct;
 
 bundle Default {
-	class Car {
+	class Vehicle {
 		New() {}
+	}
+
+	class Car from Vehicle {
+		New() { Parent(); }
 
 		method : public : Foo(i : Int) ~ Nil {
 			"int"->PrintLine();
@@ -15,10 +19,22 @@ bundle Default {
 		method : public : Foo(s : String) ~ Nil {
 			"string"->PrintLine();
 		}
+
+		method : public : Foo(f : Float) ~ Nil {
+			"float"->PrintLine();
+		}
 	}
 
 	class Bike {
 		New() { Parent(); }
+
+		method : public : Foo(v : Vector) ~ Nil {
+			"vector"->PrintLine();
+		}
+			
+		method : public : Foo(s : String) ~ Nil {
+			"string"->PrintLine();
+		}
 	}
 
 	class Plane {
@@ -27,8 +43,12 @@ bundle Default {
 
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			f := Ford->New();
-			f->Foo("foo");
+#			f := Ford->New();
+#			f->Foo(13.3);
+
+			v := Vector->New();
+			b := Bike->New();
+			b->Foo(v);
 		}
 	}
 }
