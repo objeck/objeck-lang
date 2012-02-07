@@ -1243,7 +1243,8 @@ bool ContextAnalyzer::Analyze()
 	klass = program->GetClass(BASE_ARRAY_CLASS_ID);
 	lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses());
 	encoding = "o.System.Base";
-      } else {
+      } 
+      else {
 	const string &cls_name = type->GetClassName();
 	klass = SearchProgramClasses(cls_name);
 	lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
@@ -1309,9 +1310,9 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
-  /****************************
+  /*********************************
    * Analyzes a parent method call
-   ****************************/
+   *********************************/
   void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, int depth)
   {
     // get parameters
@@ -1369,11 +1370,11 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
-  /****************************
+  /*********************************
    * Analyzes a method call.  This
    * is method call within the source
    * program.
-   ****************************/
+   *********************************/
   Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, int depth)
   {
     Class* klass = NULL;
@@ -1404,11 +1405,11 @@ bool ContextAnalyzer::Analyze()
     return klass;
   }
 
-  /****************************
+  /*********************************
    * Analyzes a method call.  This
    * is method call within a linked
    * library
-   ****************************/
+   *********************************/
   LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, int depth)
   {
     LibraryClass* klass = NULL;
@@ -1448,12 +1449,7 @@ bool ContextAnalyzer::Analyze()
       calling_type = calling_param->GetEvalType();
     }
 
-    /*
-    cout << "@@@ line=" << calling_param->GetLineNumber() << ", a=" 
-	 << calling_type->GetType() << ", b=" << method_type->GetType() << endl;
-    */
-    
-    // determine if there's mapping from calling type to method type
+    // determine if there's a mapping from calling type to method type
     if(calling_type && method_type) {
       // processing an array
       if(!IsScalar(calling_param)) {
@@ -1461,7 +1457,7 @@ bool ContextAnalyzer::Analyze()
 	  calling_type->GetDimension() == method_type->GetDimension() ? 0 : -1;
       }
       else {
-	// processing a exact scalar match
+	// look for an exact match
 	if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
 	   calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
 	   method_type->GetDimension() == 0) {
@@ -1469,7 +1465,7 @@ bool ContextAnalyzer::Analyze()
 	}
 
 	// looks for a relative match
-	if(IsScalar(calling_param) && method_type->GetDimension() == 0)  {
+	if(method_type->GetDimension() == 0)  {
 	  switch(calling_type->GetType()) {
 	  case NIL_TYPE:
 	    if(method_type->GetType() == CLASS_TYPE) {
@@ -1478,7 +1474,7 @@ bool ContextAnalyzer::Analyze()
 	    return -1;
 	    
 	  case BOOLEAN_TYPE:
-	    return method_type->GetType() == BOOLEAN_TYPE ? 1 : -1;
+	    return method_type->GetType() == BOOLEAN_TYPE ? 0 : -1;
 	    
 	  case BYTE_TYPE:
 	  case CHAR_TYPE:
