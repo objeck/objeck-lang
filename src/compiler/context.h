@@ -195,7 +195,7 @@ class MethodCallSelection {
   }
 
   void Dump() {
-    cout << "@@@ [";
+    cout << "@@@ method=" << method->GetEncodedName() << " [";
     for(size_t i = 0; i < parm_matches.size(); i++) {
       cout << parm_matches[i] << ",";
     }
@@ -212,9 +212,9 @@ class MethodCallSelector {
   MethodCallSelector(MethodCall* c, vector<MethodCallSelection*> &m) {
     method_call = c;
     matches = m;
-    // weed out invalid matches     
+    // weed out invalid matches
     for(size_t i = 0; i < matches.size(); i++) {
-      // matches[i]->Dump();
+matches[i]->Dump();
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
       }
@@ -261,7 +261,7 @@ class MethodCallSelector {
 	match_index = i;
 	high_score = match_score;
       }
-      // cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
+cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
     }
 
     if(match_index == -1) {
