@@ -1527,8 +1527,15 @@ bool ContextAnalyzer::Analyze()
 	  }
 	    
 	  case FUNC_TYPE: {
-	    const string &calling_name = "m." + calling_type->GetClassName();
-	    return calling_name == method_type->GetClassName() ? 0 : -1;
+	    const string &calling_type_name = "m." + calling_type->GetClassName();
+	    string method_type_name = method_type->GetClassName();
+	    if(method_type_name.size() == 0) {
+	      method_type_name = "m." + EncodeFunctionType(method_type->GetFunctionParameters(),
+							   method_type->GetFunctionReturn());
+	      method_type->SetClassName(method_type_name);
+	    }
+	    
+	    return calling_type_name == method_type_name ? 0 : -1;
 	  }
 	    
 	  case VAR_TYPE:
@@ -2837,13 +2844,13 @@ bool ContextAnalyzer::Analyze()
 	switch(right->GetType()) {
 	case FUNC_TYPE: {
 	  if(left->GetClassName().size() == 0) {
-	    left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(),
+	    left->SetClassName("m." + EncodeFunctionType(left->GetFunctionParameters(),
 						  left->GetFunctionReturn()));
 	  }
 
 	  if(right->GetClassName().size() == 0) {
-	    right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(),
-						   right->GetFunctionReturn()));
+	    right->SetClassName("m." + EncodeFunctionType(right->GetFunctionParameters(),
+							  right->GetFunctionReturn()));
 	  }
 
 	  if(left->GetClassName() != right->GetClassName()) {
@@ -3247,13 +3254,13 @@ bool ContextAnalyzer::Analyze()
 	switch(right->GetType()) {
 	case FUNC_TYPE: {
 	  if(left->GetClassName().size() == 0) {
-	    left->SetClassName(EncodeFunctionType(left->GetFunctionParameters(),
-						  left->GetFunctionReturn()));
+	    left->SetClassName("m." + EncodeFunctionType(left->GetFunctionParameters(),
+							 left->GetFunctionReturn()));
 	  }
 
 	  if(right->GetClassName().size() == 0) {
-	    right->SetClassName(EncodeFunctionType(right->GetFunctionParameters(),
-						   right->GetFunctionReturn()));
+	    right->SetClassName("m." + EncodeFunctionType(right->GetFunctionParameters(),
+							  right->GetFunctionReturn()));
 	  }
 
 	  if(left->GetClassName() != right->GetClassName()) {
@@ -3499,14 +3506,14 @@ bool ContextAnalyzer::Analyze()
       else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
 	// resolve function name
 	Type* type = entry->GetType();
-	const string encoded_name = EncodeFunctionType(type->GetFunctionParameters(),
-						       type->GetFunctionReturn());
+	const string encoded_name = "m." + EncodeFunctionType(type->GetFunctionParameters(),
+							      type->GetFunctionReturn());
 #ifdef _DEBUG
 	cout << "Encoded function declaration: |" << encoded_name << "|" << endl;
 #endif
 	type->SetClassName(encoded_name);
       }
-
+      
       Statement* statement = declaration->GetAssignment();
       if(statement) {
 	AnalyzeStatement(statement, depth);
