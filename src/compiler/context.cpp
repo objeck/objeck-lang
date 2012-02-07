@@ -1434,10 +1434,9 @@ bool ContextAnalyzer::Analyze()
     return klass;
   }
   
-  /****************************
-   * Resolve method call 
-   * parameter
-   ****************************/
+  /*********************************
+   * Resolve method call parameter
+   *********************************/
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
 					     Class* klass, LibraryClass* lib_klass) {
     // get calling type
@@ -1448,21 +1447,27 @@ bool ContextAnalyzer::Analyze()
     else {
       calling_type = calling_param->GetEvalType();
     }
+
+    /*
+    cout << "@@@ line=" << calling_param->GetLineNumber() << ", a=" 
+	 << calling_type->GetType() << ", b=" << method_type->GetType() << endl;
+    */
     
     // determine if there's mapping from calling type to method type
     if(calling_type && method_type) {
-      // looks for an exact match
-      if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
-	 calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
-	 calling_type->GetType() == method_type->GetType()) {
-	if(IsScalar(calling_param)) {
-	  return method_type->GetDimension() == 0 ? 0 : -1;
-	}
-	else {
-	  return calling_type->GetDimension() == method_type->GetDimension() ? 0 : -1;
-	}
+      // processing an array
+      if(!IsScalar(calling_param)) {
+	return calling_type->GetType() == method_type->GetType() && 
+	  calling_type->GetDimension() == method_type->GetDimension() ? 0 : -1;
       }
       else {
+	// processing a exact scalar match
+	if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
+	   calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
+	   method_type->GetDimension() == 0) {
+	  return calling_type->GetType() == method_type->GetType() ? 0 : -1;
+	}
+
 	// looks for a relative match
 	if(IsScalar(calling_param) && method_type->GetDimension() == 0)  {
 	  switch(calling_type->GetType()) {
@@ -1497,16 +1502,34 @@ bool ContextAnalyzer::Analyze()
 	      Class* from_klass = SearchProgramClasses(from_klass_name);
 	      LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
 									  program->GetUses());
-	      if(from_klass && from_klass->GetName() == method_type->GetClassName()) {
+	      // resolve to_klass name
+	      string to_klass_name;
+	      Class* to_klass = SearchProgramClasses(method_type->GetClassName());
+	      if(!to_klass) {
+		LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(),
+									  program->GetUses());
+		if(to_lib_klass) {
+		  to_klass_name = to_lib_klass->GetName();
+		}
+	      }
+	      else {
+		to_klass_name = to_klass->GetName();
+	      }
+	      
+	      // look for exact class match
+	      if(from_klass && from_klass->GetName() == to_klass_name) {
 		return 0;
 	      }
-	      else if(from_lib_klass && from_lib_klass->GetName() == method_type->GetClassName()) {
+	      
+	      // look for exact class library match
+	      if(from_lib_klass && from_lib_klass->GetName() == to_klass_name) {
 		return 0;
 	      }
-	    
+	      
+	      // calculate relative match
 	      return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
 	    }
-
+	    
 	    return -1;
 	  }
 	    
@@ -1569,7 +1592,7 @@ bool ContextAnalyzer::Analyze()
 					  bool is_expr, string &encoding, int depth)
   {   
 #ifdef _DEBUG
-    cout << "Checking program class call: |" 
+    cout << "Checking program class call: |" << klass->GetName() << ":" 
 	 << (method_call->GetMethodName().size() > 0 ? 
 	     method_call->GetMethodName() : method_call->GetVariableName())
 	 << "|" << endl;
@@ -1690,7 +1713,8 @@ bool ContextAnalyzer::Analyze()
 					  bool is_expr, string &encoding, bool is_parent, int depth)
   {      
 #ifdef _DEBUG
-    cout << "Checking library encoded name: |" << method_call->GetMethodName() << "|" << endl;
+    cout << "Checking library encoded name: |" << klass->GetName() << ":" 
+	 << method_call->GetMethodName() << "|" << endl;
 #endif
     
     ExpressionList* call_params = method_call->GetCallingParameters();
