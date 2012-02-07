@@ -428,6 +428,11 @@ bool ContextAnalyzer::Analyze()
     return virtual_methods_defined;
   }
 
+  /****************************
+   * Analyzes virtual method, which
+   * are made when compiling shared 
+   * libraries.
+   ****************************/
   void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 					     bool impl_is_static, bool impl_is_virtual, Method* virtual_method) {
     // check method types
@@ -467,6 +472,11 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
+  /****************************
+   * Analyzes virtual method, which
+   * are made when compiling shared 
+   * libraries.
+   ****************************/
   bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, int depth)
   {
     bool virtual_methods_defined = true;
@@ -527,6 +537,11 @@ bool ContextAnalyzer::Analyze()
     return virtual_methods_defined;
   }
 
+  /****************************
+   * Analyzes virtual method, which
+   * are made when compiling shared 
+   * libraries.
+   ****************************/
   void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 					     bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method) {
     // check method types
@@ -1894,6 +1909,9 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
+  /****************************
+   * Checks a function reference
+   ****************************/
   void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
 						 string &encoding, int depth) {
     const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
