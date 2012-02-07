@@ -970,10 +970,10 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, int depth);
   string EncodeMethodCall(ExpressionList* calling_params, int depth);
-  Method* ResolveMethodCall(Class* klass, MethodCall* method_call);
-  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call);
+  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, int depth);
+  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
-			    Class *klass, LibraryClass *lib_klass);
+			    Class* klass, LibraryClass* lib_klass, int depth);
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
