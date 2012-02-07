@@ -214,7 +214,7 @@ class MethodCallSelector {
     matches = m;
     // weed out invalid matches
     for(size_t i = 0; i < matches.size(); i++) {
-matches[i]->Dump();
+      // matches[i]->Dump();
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
       }
@@ -261,7 +261,7 @@ matches[i]->Dump();
 	match_index = i;
 	high_score = match_score;
       }
-cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
+      // cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
     }
 
     if(match_index == -1) {
@@ -841,6 +841,68 @@ class ContextAnalyzer {
       }
       
       return found;
+  }
+
+  bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
+    const string &from_klass_name = calling_type->GetClassName();
+    Class* from_klass = SearchProgramClasses(from_klass_name);
+    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
+								program->GetUses());
+    // resolve to_klass name
+    string to_klass_name;
+    Class* to_klass = SearchProgramClasses(method_type->GetClassName());
+    if(!to_klass) {
+      LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(),
+								program->GetUses());
+      if(to_lib_klass) {
+	to_klass_name = to_lib_klass->GetName();
+      }
+    }
+    else {
+      to_klass_name = to_klass->GetName();
+    }
+	      
+    // check enum types
+    if(!from_klass && !from_lib_klass) {
+      Enum* from_enum = SearchProgramEnums(from_klass_name);
+      LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetUses());
+	
+      string to_enum_name;	
+      Enum* to_enum = SearchProgramEnums(method_type->GetClassName());
+      if(!to_enum) {
+	LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(),
+							       program->GetUses());
+	if(to_lib_enum) {
+	  to_enum_name = to_lib_enum->GetName();
+	}
+      }
+      else {
+	to_enum_name = to_enum->GetName();
+      }
+
+      // look for exact class match
+      if(from_enum && from_enum->GetName() == to_enum_name) {
+	return true;
+      }
+	      
+      // look for exact class library match
+      if(from_lib_enum && from_lib_enum->GetName() == to_enum_name) {
+	return true;
+      }
+    }
+    else {
+      // look for exact class match
+      if(from_klass && from_klass->GetName() == to_klass_name) {
+	return true;
+      }
+	      
+      // look for exact class library match
+      if(from_lib_klass && from_lib_klass->GetName() == to_klass_name) {
+	return true;
+      }
+    }
+    
+    return false;
   }
 
   // error processing

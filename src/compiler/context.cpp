@@ -1451,10 +1451,28 @@ bool ContextAnalyzer::Analyze()
 
     // determine if there's a mapping from calling type to method type
     if(calling_type && method_type) {
+      
+#ifdef _DEBUG
+      cout << "@@@ line=" << calling_param->GetLineNumber() << ", a=" << calling_type->GetType()
+	   << ", b=" << method_type->GetType() << endl;
+#endif
+      
       // processing an array
       if(!IsScalar(calling_param)) {
-	return calling_type->GetType() == method_type->GetType() && 
-	  calling_type->GetDimension() == method_type->GetDimension() ? 0 : -1;
+	if(calling_type->GetType() == method_type->GetType()) {
+	  // class/enum arrays
+	  if(calling_type->GetType() == CLASS_TYPE && 
+	     IsClassEnumParameterMatch(calling_type, method_type) &&
+	     calling_type->GetDimension() == method_type->GetDimension()) {
+	    return 0;
+	  }
+	  // basic arrays
+	  else if(calling_type->GetDimension() == method_type->GetDimension()) {
+	    return 0;
+	  }
+	}
+	
+	return -1;
       }
       else {
 	// look for an exact match
@@ -1490,39 +1508,18 @@ bool ContextAnalyzer::Analyze()
 	    default:
 	      return -1;
 	    }
-	    break;
-	  
+	    
 	  case CLASS_TYPE: {
 	    if(method_type->GetType() == CLASS_TYPE) {
+	      // calculate exact match
+	      if(IsClassEnumParameterMatch(calling_type, method_type)) {
+		return 0;
+	      }	      
+	      // calculate relative match
 	      const string &from_klass_name = calling_type->GetClassName();
 	      Class* from_klass = SearchProgramClasses(from_klass_name);
-	      LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name,
+	      LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
 									  program->GetUses());
-	      // resolve to_klass name
-	      string to_klass_name;
-	      Class* to_klass = SearchProgramClasses(method_type->GetClassName());
-	      if(!to_klass) {
-		LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(),
-									  program->GetUses());
-		if(to_lib_klass) {
-		  to_klass_name = to_lib_klass->GetName();
-		}
-	      }
-	      else {
-		to_klass_name = to_klass->GetName();
-	      }
-	      
-	      // look for exact class match
-	      if(from_klass && from_klass->GetName() == to_klass_name) {
-		return 0;
-	      }
-	      
-	      // look for exact class library match
-	      if(from_lib_klass && from_lib_klass->GetName() == to_klass_name) {
-		return 0;
-	      }
-	      
-	      // calculate relative match
 	      return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
 	    }
 	    
