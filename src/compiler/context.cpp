@@ -1702,6 +1702,13 @@ bool ContextAnalyzer::Analyze()
       }
     }
     
+    // last resort to find system based methods i.e. $Int, $Float, etc.
+    if(!lib_method) {
+      string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" +
+	encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+      lib_method = klass->GetMethod(encoded_name);
+    }
+
     method_call->SetOriginalLibraryClass(klass);
     AnalyzeMethodCall(lib_method, method_call, klass->IsVirtual() && !is_parent, is_expr, depth);
   }
