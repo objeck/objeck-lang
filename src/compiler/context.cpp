@@ -1439,24 +1439,18 @@ bool ContextAnalyzer::Analyze()
    * Resolve method call parameter
    *********************************/
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
-					     Class* klass, LibraryClass* lib_klass) {
+					     Class* klass, LibraryClass* lib_klass, int depth) {
     // get calling type
-    Type* calling_type;
-    if(calling_param->GetCastType()) {
-      calling_type = calling_param->GetCastType();
-    }
-    else {
-      calling_type = calling_param->GetEvalType();
-    }
-
+    Type* calling_type = GetExpressionType(calling_param, depth + 1);
+    
     // determine if there's a mapping from calling type to method type
     if(calling_type && method_type) {
-      
+      /*
 #ifdef _DEBUG
       cout << "@@@ line=" << calling_param->GetLineNumber() << ", a=" << calling_type->GetType()
 	   << ", b=" << method_type->GetType() << endl;
 #endif
-      
+      */
       // processing an array
       if(!IsScalar(calling_param)) {
 	if(calling_type->GetType() == method_type->GetType()) {
@@ -1551,7 +1545,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Resolves method calls
    ****************************/
-  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call) {
+  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, int depth) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -1572,7 +1566,7 @@ bool ContextAnalyzer::Analyze()
 	    method_type = method_parms[j]->GetEntry()->GetType();
 	  }
 	  // add poarameter match
-	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL));
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth));
 	}
 	matches.push_back(match);
       }
@@ -1602,7 +1596,7 @@ bool ContextAnalyzer::Analyze()
     ExpressionList* call_params = method_call->GetCallingParameters();
     AnalyzeExpressions(call_params, depth + 1);
     
-    Method* method = ResolveMethodCall(klass, method_call);
+    Method* method = ResolveMethodCall(klass, method_call, depth);
     if(!method && klass->GetLibraryParent()) {
       // check parent library class for method
       LibraryClass* lib_parent = klass->GetLibraryParent();
@@ -1679,7 +1673,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Resolves library method calls
    ****************************/
-  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call) {
+  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, int depth) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -1693,7 +1687,8 @@ bool ContextAnalyzer::Analyze()
       if(expr_params.size() == method_parms.size()) {
 	LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
 	for(size_t j = 0; j < expr_params.size(); j++) {
-	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass));
+	  match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_parms[j], 
+							 NULL, klass, depth));
 	}
 	matches.push_back(match);
       }
@@ -1719,11 +1714,11 @@ bool ContextAnalyzer::Analyze()
     
     ExpressionList* call_params = method_call->GetCallingParameters();
     AnalyzeExpressions(call_params, depth + 1);
-    LibraryMethod* lib_method = ResolveMethodCall(klass, method_call);
+    LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
     if(!lib_method) {  
       LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses());
       while(!lib_method && parent) {
-	lib_method = ResolveMethodCall(parent, method_call);
+	lib_method = ResolveMethodCall(parent, method_call, depth);
 	parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses());
       }
     }
