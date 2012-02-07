@@ -1453,6 +1453,7 @@ bool ContextAnalyzer::Analyze()
     if(calling_type && method_type) {
       // looks for an exact match
       if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
+	 calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
 	 calling_type->GetType() == method_type->GetType()) {
 	if(IsScalar(calling_param)) {
 	  return method_type->GetDimension() == 0 ? 0 : -1;
@@ -1510,17 +1511,8 @@ bool ContextAnalyzer::Analyze()
 	  }
 	    
 	  case FUNC_TYPE: {
-	    const string &calling_str = EncodeFunctionType(calling_type->GetFunctionParameters(), 
-							   calling_type->GetFunctionReturn());
-	    if(lib_klass) {
-	      const string &method_str = method_type->GetClassName();
-	      return calling_str == method_str ? 1 : -1;
-	    }
-	    else {
-	      const string &method_str = EncodeFunctionType(method_type->GetFunctionParameters(), 
-							    method_type->GetFunctionReturn());
-	      return calling_str == method_str ? 1 : -1;
-	    }
+	    const string &calling_name = "m." + calling_type->GetClassName();
+	    return calling_name == method_type->GetClassName() ? 0 : -1;
 	  }
 	    
 	  case VAR_TYPE:
@@ -1577,7 +1569,10 @@ bool ContextAnalyzer::Analyze()
 					  bool is_expr, string &encoding, int depth)
   {   
 #ifdef _DEBUG
-    cout << "Checking program class call: |" << encoding << "|" << endl;
+    cout << "Checking program class call: |" 
+	 << (method_call->GetMethodName().size() > 0 ? 
+	     method_call->GetMethodName() : method_call->GetVariableName())
+	 << "|" << endl;
 #endif
     
     // calling parameters
@@ -1592,6 +1587,13 @@ bool ContextAnalyzer::Analyze()
       string encoding;
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
+    }
+    
+    // note: last resort to find system based methods i.e. $Int, $Float, etc.
+    if(!method) {
+      const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" + encoding +
+	EncodeMethodCall(method_call->GetCallingParameters(), depth);
+      method = klass->GetMethod(encoded_name);
     }
     
     // found program method
@@ -1688,7 +1690,7 @@ bool ContextAnalyzer::Analyze()
 					  bool is_expr, string &encoding, bool is_parent, int depth)
   {      
 #ifdef _DEBUG
-    cout << "Checking library encoded name: |" << encoding << "|" << endl;
+    cout << "Checking library encoded name: |" << method_call->GetMethodName() << "|" << endl;
 #endif
     
     ExpressionList* call_params = method_call->GetCallingParameters();
@@ -1702,7 +1704,7 @@ bool ContextAnalyzer::Analyze()
       }
     }
     
-    // last resort to find system based methods i.e. $Int, $Float, etc.
+    // note: last resort to find system based methods i.e. $Int, $Float, etc.
     if(!lib_method) {
       string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" +
 	encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
