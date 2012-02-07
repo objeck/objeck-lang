@@ -47,10 +47,17 @@ bundle Default {
 #			f := Ford->New();
 #			f->Foo("randy");
 
-#			v := Vector->New();
-#			b := Bike->New();
-#			b->Foo(v);
-			10->PrintLine();
+			v := Vector->New();
+			v->AddBack("Hello");
+			v->AddBack("World");
+			v->AddBack("!");
+			v->AddBack(13);
+			v->Size()->PrintLine();
+		
+			each(i : v) {
+				s := v->Get(i)->As(String);
+				s->PrintLine();
+			};
 		}
 	}
 }
