@@ -350,29 +350,22 @@ bundle RegEx {
 		}
 		
 		# match all
-		method : MatchAll(state : State, input : String) ~ Bool {  
-      clist := Vector->New();  
-      clist->AddBack(state->GetOut1()->As(Base));  
+		method : MatchAll(state : State, input : String) ~ Bool {
+      clist := Vector->New();
+      clist->AddBack(state->GetOut1()->As(Base));
       clist->AddBack(state->GetOut2()->As(Base));
-      
-      longest := -1;
+
       each(i : input) {
-      	char := input->Get(i);  
-    		char := char and 0xff;
-    		
-    		clist := Step(clist, char);
-    		if(clist->Size() <> 0) {    		
-    			if(IsMatch(clist)) {
-    				if(i > longest) {
-    					longest := i;
-    				};
-    			};
-    		};
+        char := input->Get(i);
+        char := char and 0xff;
+
+        clist := Step(clist, char);
+        if(clist->Size() = 0) {
+          return false;
+        };
       };
-			
-longest->PrintLine();
-			
-      return IsMatch(clist); 
+
+      return IsMatch(clist);
     }
 		
 		method : public : MatchAll(input : String) ~ Bool {
@@ -383,23 +376,7 @@ longest->PrintLine();
 			return false;
 		}
 		
-		
-		
-		
-		
-		
-		method : Find(clist : Vector) ~ Bool {
-    	each(i : clist) {
-    		t := clist->Get(i)->As(Transition);
-    		if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
-    			return true;
-    		};
-    	};
-    	
-    	return false;
-		}
-		
-		# find substring
+		# find longest match
 		method : Find(state : State, input : String, offset : Int) ~ Int {
 			longest := -1;
 			clist := Vector->New();  
@@ -423,7 +400,6 @@ longest->PrintLine();
 			return longest; 
     }
 		
-		# find substring
 		method : public : Find(input : String, offset : Int) ~ Int {
 			if(@start <> Nil & offset < input->Size()) {
 				return Find(@start, input, offset);
