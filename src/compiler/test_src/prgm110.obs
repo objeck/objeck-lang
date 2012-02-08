@@ -3,8 +3,8 @@ use RegEx;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("(ab)+");
-			regex->Apply("ab")->PrintLine();
+			regex := RegEx->New(".*(an)+");
+			regex->Find("Ranandy")->PrintLine();
 		}
 	}
 }

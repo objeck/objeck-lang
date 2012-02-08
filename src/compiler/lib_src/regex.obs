@@ -23,14 +23,6 @@ bundle RegEx {
 			};
 		}
 		
-		method : public : Match(input : String) ~ Bool {
-			if(@start <> Nil) {
-				return Match(@start, input);
-			};
-			
-			return false;
-		}
-		
 		#~
 		 translate regex to postfix format
 		~#
@@ -346,27 +338,7 @@ bundle RegEx {
 			return nlist;
 		}
 		
-		method : Match(state : State, input : String) ~ Bool {  
-      clist := Vector->New();  
-      clist->AddBack(state->GetOut1()->As(Base));  
-      clist->AddBack(state->GetOut2()->As(Base));
-      
-      each(i : input) {
-      	char := input->Get(i);  
-    		char := char and 0xff;
-    		
-    		clist := Step(clist, char);
-    		if(clist->Size() <> 0) {    		
-    			if(IsMatch(clist)) {
-    				i->PrintLine();
-    			};
-    		};
-      };
-			
-      return IsMatch(clist); 
-    }
-    
-    method : IsMatch(clist : Vector) ~ Bool {
+		method : IsMatch(clist : Vector) ~ Bool {
     	each(i : clist) {
     		t := clist->Get(i)->As(Transition);
     		if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
@@ -375,6 +347,93 @@ bundle RegEx {
     	};
     	
     	return false;
+		}
+		
+		# match all
+		method : MatchAll(state : State, input : String) ~ Bool {  
+      clist := Vector->New();  
+      clist->AddBack(state->GetOut1()->As(Base));  
+      clist->AddBack(state->GetOut2()->As(Base));
+      
+      longest := -1;
+      each(i : input) {
+      	char := input->Get(i);  
+    		char := char and 0xff;
+    		
+    		clist := Step(clist, char);
+    		if(clist->Size() <> 0) {    		
+    			if(IsMatch(clist)) {
+    				if(i > longest) {
+    					longest := i;
+    				};
+    			};
+    		};
+      };
+			
+longest->PrintLine();
+			
+      return IsMatch(clist); 
+    }
+		
+		method : public : MatchAll(input : String) ~ Bool {
+			if(@start <> Nil) {
+				return MatchAll(@start, input);
+			};
+			
+			return false;
+		}
+		
+		
+		
+		
+		
+		
+		method : Find(clist : Vector) ~ Bool {
+    	each(i : clist) {
+    		t := clist->Get(i)->As(Transition);
+    		if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
+    			return true;
+    		};
+    	};
+    	
+    	return false;
+		}
+		
+		# find substring
+		method : Find(state : State, input : String, offset : Int) ~ Int {
+			longest := -1;
+			clist := Vector->New();  
+			clist->AddBack(state->GetOut1()->As(Base));  
+			clist->AddBack(state->GetOut2()->As(Base));
+			
+			for(i := offset; i < input->Size(); i += 1;) {
+				char := input->Get(i);  
+				char := char and 0xff;
+				
+				clist := Step(clist, char);
+				if(clist->Size() <> 0) {    		
+					if(IsMatch(clist)) {
+						if(i > longest) {
+							longest := i;
+						};
+					};
+				};
+			};
+						
+			return longest; 
+    }
+		
+		# find substring
+		method : public : Find(input : String, offset : Int) ~ Int {
+			if(@start <> Nil & offset < input->Size()) {
+				return Find(@start, input, offset);
+			};
+			
+			return -1;
+		}
+		
+		method : public : Find(input : String) ~ Int {
+			return Find(input, 0);
 		}
 	}
 	
