@@ -11,13 +11,13 @@ bundle Default {
     
     function : native : Parse(file : String) ~ Nil {
       reserved := StringMap->New();
-      reserved->Insert("method", "keyword: method"->As(Base));
-      reserved->Insert("function", "keyword: function"->As(Base));
-      reserved->Insert("Int", "keyword: Int"->As(Base));
-      reserved->Insert("Float", "keyword: Float"->As(Base));
-      reserved->Insert("class", "keyword: class"->As(Base));
-      reserved->Insert("bundle", "keyword: bundle"->As(Base));
-      reserved->Insert("native", "keyword: native"->As(Base));
+      reserved->Insert("method", "keyword: method");
+      reserved->Insert("function", "keyword: function");
+      reserved->Insert("Int", "keyword: Int");
+      reserved->Insert("Float", "keyword: Float");
+      reserved->Insert("class", "keyword: class");
+      reserved->Insert("bundle", "keyword: bundle");
+      reserved->Insert("native", "keyword: native");
 
       line_num := 0;
       reader := FileReader->New(file);
