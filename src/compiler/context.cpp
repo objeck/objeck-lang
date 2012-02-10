@@ -1170,11 +1170,8 @@ bool ContextAnalyzer::Analyze()
     // data type call
     Type* type;
     if(expression->GetCastType()) {
-      // type = expression->GetCastType();
       ProcessError(expression, "Method call from element cast not allowed");
       return false;
-      // ProcessError(expression, "Method call from element cast not allowed");
-      // return false;
     }
     else {
       type = expression->GetEvalType();
