@@ -3,8 +3,8 @@ use RegEx;
 bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			regex := RegEx->New("...(ab)+c");
-			regex->Find("xxxabcrandy")->PrintLine();
+			regex := RegEx->New(".*(ab)+c");
+			regex->Find("xxxabababc")->PrintLine();
 		}
 	}
 }
