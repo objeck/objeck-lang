@@ -1,7 +1,30 @@
 bundle Default {
 	class Hello {
+		function : Replace(find : String, replace : String, string : String) ~ String {
+			index := string->Find(find);
+			if(index < 0) {
+				return string;
+			};
+
+			begin := string->SubString(0, index);
+			index += find->Size();
+
+			length := 	string->Size() - index;
+			end := string->SubString(index, length);
+			if(end = Nil) {
+				return string;
+			};
+
+			new_string := String->New(begin);
+			new_string->Append(replace);
+			new_string->Append(end);
+
+			return new_string;
+		}
+
 		function : Main(args : String[]) ~ Nil {
-			10->PrintLine();
+			str := "Tend the cat.";
+			Replace("the", "da", str)->PrintLine();
 		}
 	}
 }
