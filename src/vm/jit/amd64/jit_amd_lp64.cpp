@@ -289,7 +289,6 @@ void JitCompilerIA64::ProcessIntCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-// TODO: implement
 void JitCompilerIA64::ProcessFunctionCallParameter() {
   #ifdef _DEBUG
   cout << "FUNC_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
@@ -331,8 +330,7 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
   move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
   
   RegisterHolder* dest_holder = GetXmmRegister();
-  // sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
-dec_mem(0, stack_pos_holder->GetRegister());  
+  dec_mem(0, stack_pos_holder->GetRegister());  
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
@@ -508,8 +506,7 @@ void JitCompilerIA64::ProcessInstructions() {
       }
     }
       break;
-
-      // TODO: implement
+      
     case DYN_MTHD_CALL: {
 #ifdef _DEBUG
       cout << "DYN_MTHD_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
@@ -1430,7 +1427,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   
   long i = 0;     
   for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
-      iter != working_stack.rend(); iter++) {
+      iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
       switch(left->GetType()) {
@@ -1540,7 +1537,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
     
     long i = 0;     
     for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
-	iter != working_stack.rend(); iter++) {
+	iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
       if(i < non_params) {
