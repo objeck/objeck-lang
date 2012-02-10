@@ -617,7 +617,7 @@ bundle System {
 			return Find(0, char);
 		}
 		
-		method : public : Find(offset : Int, char : Char) ~ Int {
+		method : public : native : Find(offset : Int, char : Char) ~ Int {
 			if(offset < @pos) {
 				found_index := -1;
 				for(i := offset; i < @pos; i += 1;) {
@@ -630,7 +630,7 @@ bundle System {
 			return -1;
 		}
 
-		method : public : native : Find(find : String) ~ Int {
+		method : public : Find(find : String) ~ Int {
 			return Find(find, 0);
 		}
 
@@ -660,6 +660,39 @@ bundle System {
 			};
 
 			return -1;
+		}
+		
+		method : public : native : ReplaceAll(find : String, replace : String) ~ String {
+			last := @self;
+			result := last->Replace(find, replace);
+			while(result <> last) {
+				last := result;
+				result := last->Replace(find, replace);
+			};
+			
+			return result;
+		}
+		
+		method : public : native : Replace(find : String, replace : String) ~ String {
+			index := Find(find);
+			if(index < 0) {
+				return @self;
+			};
+			
+			begin := SubString(0, index);
+			index += find->Size();
+			
+			length :=   Size() - index;
+			end := SubString(index, length);
+			if(end = Nil) {
+				return @self;
+			};
+			
+			new_string := String->New(begin);
+			new_string->Append(replace);
+			new_string->Append(end);
+			
+			return new_string;
 		}
 		
 		method : public : native : IsEmpty() ~ Bool {

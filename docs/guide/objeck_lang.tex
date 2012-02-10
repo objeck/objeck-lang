@@ -1034,6 +1034,15 @@ Base class for all objects.
   given String; -1 if not found
   \begin{itemize}
   \item method : public : native : Find(s : String) \textasciitilde Int
+  \item method : public : native : Find(s : String, offfset : Int) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Replace} - find and replace a single string instance.
+  \begin{itemize}
+  \item method : public : native : Replace(find : String, replace : String) \textasciitilde String
+  \end{itemize}  
+\item \texttt{ReplaceAll} - find and replace all string instances.
+  \begin{itemize}  
+  \item method : public : native : ReplaceAll(find : String, replace : String) \textasciitilde String
   \end{itemize}
 \item \texttt{Size} - returns the size of the String
   \begin{itemize}
@@ -2215,7 +2224,13 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
 \item \texttt{Match} - Attempts to match input string using supplied pattern.
   Returns true if successful, false otherwise. 
   \begin{itemize}
-  \item method : public : Match(input : String) \textasciitilde Bool
+  \item method : public : MatchAll(input : String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Find} - Finds the last index of the matching pattern.
+  Return -1 if expression does not match.
+  \begin{itemize}
+  \item method : public : Find(input : String) \textasciitilde Int
+  \item method : public : Find(input : String, offset : Int) \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
