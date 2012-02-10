@@ -1818,8 +1818,7 @@ namespace Runtime {
       RegisterHolder* call_holder = GetRegister();
       // save registers
       for(list<RegisterHolder*>::iterator fwd_iter = used_regs.begin(); 
-	  fwd_iter != used_regs.end(); 
-	  fwd_iter++) {
+	  fwd_iter != used_regs.end(); ++fwd_iter) {
 	push_reg((*fwd_iter)->GetRegister());
       }
       // set parameter
@@ -1831,8 +1830,7 @@ namespace Runtime {
       add_imm_reg(4, ESP);
       // restore registers
       for(list<RegisterHolder*>::reverse_iterator bck_iter = used_regs.rbegin(); 
-	  bck_iter != used_regs.rend(); 
-	  bck_iter++) {
+	  bck_iter != used_regs.rend(); ++bck_iter) {
 	pop_reg((*bck_iter)->GetRegister());
       }
       // clean up
@@ -2008,7 +2006,7 @@ namespace Runtime {
       int32_t index = TMP_REG_5;
       int32_t last_id = -1;
       multimap<int32_t, StackInstr*>::iterator value;
-      for(value = values.begin(); value != values.end(); value++) {
+      for(value = values.begin(); value != values.end(); ++value) {
 	int32_t id = value->first;
 	StackInstr* instr = (*value).second;
 	// instance reference
@@ -2197,7 +2195,7 @@ namespace Runtime {
 
 	// show content
 	map<int32_t, StackInstr*>::iterator iter;
-	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
+	for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
 	  StackInstr* instr = iter->second;
 	  int32_t src_offset = iter->first;
 	  int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;

@@ -1899,16 +1899,14 @@ namespace Runtime {
       move_imm_reg((long)MemoryManager::AddStaticMemory, call_holder->GetRegister());
       // save registers
       for(list<RegisterHolder*>::iterator fwd_iter = used_regs.begin(); 
-	  fwd_iter != used_regs.end(); 
-	  fwd_iter++) {
+	  fwd_iter != used_regs.end(); ++fwd_iter) {
 	push_reg((*fwd_iter)->GetRegister());
       }
       // call method	
       call_reg(call_holder->GetRegister());
       // restore registers
       for(list<RegisterHolder*>::reverse_iterator bck_iter = used_regs.rbegin(); 
-	  bck_iter != used_regs.rend(); 
-	  bck_iter++) {
+	  bck_iter != used_regs.rend(); ++bck_iter) {
 	pop_reg((*bck_iter)->GetRegister());
       }
       // clean up
@@ -2079,7 +2077,7 @@ namespace Runtime {
       long index = RED_ZONE;
       long last_id = -1;
       multimap<long, StackInstr*>::iterator value;
-      for(value = values.begin(); value != values.end(); value++) {
+      for(value = values.begin(); value != values.end(); ++value) {
 	long id = value->first;
 	StackInstr* instr = value->second;
 	// instance reference
@@ -2282,7 +2280,7 @@ namespace Runtime {
 
 	// show content
 	map<int, StackInstr*>::iterator iter;
-	for(iter = jump_table.begin(); iter != jump_table.end(); iter++) {
+	for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
 	  StackInstr* instr = iter->second;
 	  long src_offset = iter->first;
 	  long dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
