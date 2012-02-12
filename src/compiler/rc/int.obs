@@ -2,7 +2,7 @@ use IO;
 
 bundle Default {
   class Arithmetic {
-    function : Main(args : System.String[]) ~ Nil {
+    function : Main(args : String[]) ~ Nil {
       DoArithmetic();
     }
 	
