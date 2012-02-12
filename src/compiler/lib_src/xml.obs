@@ -150,7 +150,7 @@ bundle XML {
 
 			# parse declarations
 			while(tag->GetType() = XmlElementType->DECLARATION) {
-				@declarations->Insert(tag->GetName(), tag->As(Base));
+				@declarations->Insert(tag->GetName(), tag);
 				# update
 				tag := ParseElement();
 				if(@error_msg <> Nil) {
@@ -177,7 +177,7 @@ bundle XML {
 						parent->AddChild(tag);
 						tag->SetParent(parent);
 					};
-					stack->Push(tag->As(Base));
+					stack->Push(tag);
 				}
 				else if(tag->GetType() = XmlElementType->UNARY_ELEMENT | 
 					tag->GetType() = XmlElementType->CDATA) {
@@ -607,7 +607,7 @@ bundle XML {
 			
 # Console->Print("value: ")->PrintLine(attrib_value);    
 			
-				attribs->Insert(attrib_key, attrib_value->As(Base));
+				attribs->Insert(attrib_key, attrib_value);
 			
 				# update
 				IgnoreWhiteSpace();
@@ -747,7 +747,7 @@ bundle XML {
 			if(@attribs = Nil) {
 				@attribs := StringHash->New();
 			};
-			@attribs->Insert(key, value->As(Base));
+			@attribs->Insert(key, value);
 		}
 		
 		method : public : GetAttribute(key : String) ~ String {
@@ -762,7 +762,7 @@ bundle XML {
 			if(@children = Nil) {
 				@children := Vector->New();
 			};
-			@children->AddBack(tag->As(Base));
+			@children->AddBack(tag);
 		}
 		
 		method : public : GetChildCount() ~ Int {
@@ -856,7 +856,7 @@ bundle XML {
 			each(i : @children) {
 				element : XmlElement := @children->Get(i);
 				if(element->GetName()->Equals(name)) {
-					filtered->AddBack(element->As(Base));
+					filtered->AddBack(element);
 				};
 			};
 			
@@ -890,7 +890,7 @@ bundle XML {
 			each(i : @children) {
 				element : XmlElement := @children->Get(i);
 				if(element->GetName()->Equals(name) & element->GetAttribute(attrib) <> Nil) {
-					filtered->AddBack(element->As(Base));
+					filtered->AddBack(element);
 				};
 			};
 			
@@ -904,7 +904,7 @@ bundle XML {
 				for(i := 0; i < @children->Size() & found < max; i += 1;) {
 					element : XmlElement := @children->Get(i);
 					if(element->GetName()->Equals(name)) {
-						filtered->AddBack(element->As(Base));
+						filtered->AddBack(element);
 						found += 1;
 					};
 				};
@@ -989,21 +989,21 @@ bundle XML {
 				if(path->Get(i) = '/') {
 					if(i - start > 0) {
 						filter := path->SubString(start, i - start);
-						filters->AddBack(filter->As(Base));
+						filters->AddBack(filter);
 					};
 					start := i + 1;
 				};
 			};
 			if(start < path->Size() & path->Size() - start > 0) {
 				filter := path->SubString(start, path->Size() - start);
-				filters->AddBack(filter->As(Base));
+				filters->AddBack(filter);
 			};
 			
 			# process query
 			first_filter := filters->Get(0)->As(String);
 			if(filters->Size() > 0 & first_filter->Equals(@self->GetName())) {
 				if(filters->Size() = 1) {
-					children->AddBack(@self->As(Base));
+					children->AddBack(@self);
 				}
 				else {
 					# process root query
