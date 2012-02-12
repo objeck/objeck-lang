@@ -1,6 +1,6 @@
 bundle Default {
 	class For {
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			DoFor();
 		}
 
