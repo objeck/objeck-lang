@@ -33,7 +33,7 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			Run();
 		}
 		

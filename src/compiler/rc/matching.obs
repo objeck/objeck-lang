@@ -1,6 +1,6 @@
 bundle Default {
 	class Hello {
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			"abcd"->StartsWith("ab")->PrintLine(); # returns true
 			"abcd"->EndsWith("zn")->PrintLine(); # returns false
 			("abab"->Find("bb") <> -1)->PrintLine(); # returns false

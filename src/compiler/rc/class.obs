@@ -19,7 +19,7 @@ bundle Default {
   }
   
   class Test {
-    function : Main(args : System.String[]) ~ Nil {
+    function : Main(args : String[]) ~ Nil {
       inst := MyClass->New();
       inst->GetVar()->PrintLine();
       

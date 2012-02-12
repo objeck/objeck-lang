@@ -2,7 +2,7 @@ use IO;
 
 bundle Default {
   class TwoDee {
-    function : Main(args : System.String[]) ~ Nil {
+    function : Main(args : String[]) ~ Nil {
       DoIt();
     }
 	

@@ -2,7 +2,7 @@ bundle Default {
   class Arithmetic {
     a : static : Int;
     
-    function : Main(args : System.String[]) ~ Nil {
+    function : Main(args : String[]) ~ Nil {
       array1 := [3, 5, 7];
       array2 := [2, 4, 6];
       

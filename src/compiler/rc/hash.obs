@@ -2,7 +2,7 @@ use Struct;
 
 bundle Default {
 	class Test {
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			Run();
 		}
 		

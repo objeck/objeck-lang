@@ -13,7 +13,7 @@ bundle Default {
         line := lines->Get(i)->As(String);
         line->PrintLine();
       };
-       # request sends back cookie
+		# request sends back cookie
       lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi", 80);
       each(i : lines) {
         line := lines->Get(i)->As(String);
