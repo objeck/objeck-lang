@@ -8,6 +8,7 @@ The focus for v3.0 was on completing outstanding features and improving stabilit
 * Relaxed syntax via type inference and inferred method call signature resolution
 * Regular expression support
 * Block scoping of variables
+* ODBC database support
 * Enhancements and bug fixes to existing class libraries  
 * Increased stability and performance 
 
