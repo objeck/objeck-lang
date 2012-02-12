@@ -1525,8 +1525,16 @@ bool ContextAnalyzer::Analyze()
 	      const string &from_klass_name = calling_type->GetClassName();
 	      Class* from_klass = SearchProgramClasses(from_klass_name);
 	      LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
-									  program->GetUses());
-	      return ValidDownCast(method_type->GetClassName(), from_klass, from_lib_klass) ? 1 : -1;
+									  program->GetUses());	      
+	      Class* to_klass = SearchProgramClasses(method_type->GetClassName());
+	      LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(), 
+									program->GetUses());
+	      if(to_klass) {
+		return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
+	      }
+	      else if(to_lib_klass) {
+		return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
+	      }
 	    }
 	    
 	    return -1;
