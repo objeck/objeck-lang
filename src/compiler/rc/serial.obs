@@ -22,9 +22,9 @@ bundle Default {
 			@name := name;
 			@values := StringMap->New();
 			v := IntHolder->New(101);
-			@values->Insert("Jason", v->As(Base));
+			@values->Insert("Jason", v);
 			v := IntHolder->New(9);
-			@values->Insert("Mark", v->As(Base));
+			@values->Insert("Mark", v);
 		}
 
 		method : public : Print() ~ Nil {
@@ -43,8 +43,8 @@ bundle Default {
 			p := Person->New(13, "Bush");
 
 			s := IO.Serializer->New();
-			s->Write(t->As(Base));
-			s->Write(p->As(Base));
+			s->Write(t);
+			s->Write(p);
 
 			writer := IO.FileWriter->New("objects.dat");			
 			writer->WriteBuffer(s->Serialize());

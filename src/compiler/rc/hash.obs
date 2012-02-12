@@ -11,7 +11,7 @@ bundle Default {
 			vals := ["a", "b", "c"];
 			hash := StringHash->New();
 			each(i : vals) {			
-				hash->Insert(keys[i], vals[i]->As(Base));
+				hash->Insert(keys[i], vals[i]);
 			};
 			
 			each(i : vals) {
