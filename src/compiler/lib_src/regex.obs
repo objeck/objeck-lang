@@ -193,7 +193,7 @@ bundle RegEx {
         		t := Transition->New(char->As(Int));   
 						s := State->New(t, Transition->New(-1));
 						f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
-						stack->Push(f->As(Base));		
+						stack->Push(f);		
 					}
 					
 					label '\b': {  
@@ -201,7 +201,7 @@ bundle RegEx {
 						e1 := stack->Pop()->As(Frame);
 						ListUitls->Link(e1->GetOuts(), e2->GetStart());
 						f := Frame->New(e1->GetStart(), e2->GetOuts());
-						stack->Push(f->As(Base));
+						stack->Push(f);
 					}
 					
 					label '|': {  
@@ -215,7 +215,7 @@ bundle RegEx {
 						
 						s := State->New(t1, t2); 
 						f := Frame->New(s, ListUitls->Append(e1->GetOuts(), e2->GetOuts()));
-						stack->Push(f->As(Base));
+						stack->Push(f);
 					}
 					
 					label '?': {
@@ -227,7 +227,7 @@ bundle RegEx {
 						
 						s := State->New(t1, t2); 
 						f := Frame->New(s, ListUitls->Append(e->GetOuts(), ListUitls->NewList(t2)));
-						stack->Push(f->As(Base));
+						stack->Push(f);
 					}
 					
 					label '*': {  
@@ -240,7 +240,7 @@ bundle RegEx {
 						s := State->New(t1, t2);
 						ListUitls->Link(e->GetOuts(), s);
 						f := Frame->New(s, ListUitls->NewList(s->GetOut2()));
-						stack->Push(f->As(Base));
+						stack->Push(f);
 					}
 					
 					label '+': {
@@ -253,7 +253,7 @@ bundle RegEx {
 						s := State->New(t1, t2);
 						ListUitls->Link(e->GetOuts(), s);
 						f := Frame->New(e->GetStart(), ListUitls->NewList(t2));
-						stack->Push(f->As(Base));
+						stack->Push(f);
 					}
 				};
 			};
@@ -309,11 +309,11 @@ bundle RegEx {
 					if((check = char | check = '.') & t->GetEnd()->GetType() = 1) {
 					  matched := true;
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
-					  	nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
+					  	nlist->AddBack(t->GetEnd()->GetOut1());
 					  };
 					  
 					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
-					  	nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
+					  	nlist->AddBack(t->GetEnd()->GetOut2());
 					  };
 					}
 					else if((check = char | check = '.') & t->GetEnd()->GetType() = 0) {
@@ -321,8 +321,8 @@ bundle RegEx {
             return ListUitls->NewList(t); 
           }
           else if(check = -1 & t->GetEnd() <> Nil) {
-            nlist->AddBack(t->GetEnd()->GetOut1()->As(Base));
-            nlist->AddBack(t->GetEnd()->GetOut2()->As(Base));
+            nlist->AddBack(t->GetEnd()->GetOut1());
+            nlist->AddBack(t->GetEnd()->GetOut2());
           };
 				};
 			};
@@ -352,8 +352,8 @@ bundle RegEx {
 		# match all
 		method : MatchAll(state : State, input : String) ~ Bool {
       clist := Vector->New();
-      clist->AddBack(state->GetOut1()->As(Base));
-      clist->AddBack(state->GetOut2()->As(Base));
+      clist->AddBack(state->GetOut1());
+      clist->AddBack(state->GetOut2());
 
       each(i : input) {
         char := input->Get(i);
