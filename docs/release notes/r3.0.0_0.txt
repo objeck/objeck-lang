@@ -1,0 +1,21 @@
+Objeck v3.0.0_0
+
+--------------
+Release Notes
+--------------
+The focus for v3.0 was on completing outstanding features and improving stability.  Since v2.0, the following features have been added:
+* Full support for class interfaces
+* Relaxed syntax via type inference and inferred method call signature resolution
+* Regular expression support
+* Block scoping of variables
+* Enhancements and bug fixes to existing class libraries  
+* Increased stability and performance 
+
+This specific release provides support for inferred method call signature resolution, such that calling parameters don't have to be down casted.  Other highlights include the following:
+* Enhancements to the String and RegEx classes (medium) 
+* Refactored class libraries that advantage of language enhancements (medium) 
+
+--------------
+About Objeck
+--------------
+The Objeck programming language is a lightweight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
