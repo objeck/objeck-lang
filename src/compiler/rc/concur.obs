@@ -16,7 +16,7 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			t0 := MyThread->New("t0");	
 			t1 := MyThread->New("t1");	
 			t2 := MyThread->New("t2");	

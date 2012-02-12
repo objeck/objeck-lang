@@ -65,7 +65,7 @@ bundle Default {
 	}
 	
 	class VehicleTest {
-		function : Main(args : System.String[]) ~ Nil {
+		function : Main(args : String[]) ~ Nil {
 			pinto := Pinto->New();
 			star_ship := StarShip->New();
 
