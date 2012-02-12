@@ -865,12 +865,12 @@ bundle Struct {
 
 		method : public : AddBack(value : Int) ~ Nil {
 			holder : IntHolder := IntHolder->New(value);
-			@list->AddBack(holder->As(Compare));
+			@list->AddBack(holder);
 		}
 
 		method : public : AddFront(value : Int) ~ Nil {
 			holder : IntHolder := IntHolder->New(value);
-			@list->AddFront(holder->As(Compare));
+			@list->AddFront(holder);
 		}
 
 		method : public : Get() ~ Int {
@@ -886,7 +886,7 @@ bundle Struct {
 		
 		method : public : Insert(value : Int) ~ Nil {
 			holder : IntHolder := IntHolder->New(value);
-			@list->Insert(holder->As(Compare));
+			@list->Insert(holder);
 		}
 
 		method : public : RemoveBack() ~ Nil {
@@ -998,12 +998,12 @@ bundle Struct {
 
 		method : public : AddBack(value : Float) ~ Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			@list->AddBack(holder->As(Compare));
+			@list->AddBack(holder);
 		}
 
 		method : public : AddFront(value : Float) ~ Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			@list->AddFront(holder->As(Compare));
+			@list->AddFront(holder);
 		}
 
 		method : public : Get() ~ Float {
@@ -1019,7 +1019,7 @@ bundle Struct {
 		
 		method : public : Insert(value : Float) ~ Nil {
 			holder : FloatHolder := FloatHolder->New(value);
-			@list->Insert(holder->As(Compare));
+			@list->Insert(holder);
 		}
 		
 		method : public : RemoveBack() ~ Nil {
@@ -1394,15 +1394,15 @@ bundle Struct {
 		}
 
 		method : public : Insert(key : Int, value : Base) ~ Nil {
-			@map->Insert(IntHolder->New(key)->As(Compare), value);
+			@map->Insert(IntHolder->New(key), value);
 		}
 		
 		method : public : Remove(key : Int) ~ Nil {
-			@map->Remove(IntHolder->New(key)->As(Compare));
+			@map->Remove(IntHolder->New(key));
 		}
     
 		method : public : Find(key : Int) ~ Base {
-			result : Base := @map->Find(IntHolder->New(key)->As(Compare));
+			result : Base := @map->Find(IntHolder->New(key));
 			if(result <> Nil) {
 				return result;
 			};
@@ -1411,7 +1411,7 @@ bundle Struct {
 		}
 		
 		method : public : Has(key : Int) ~ Bool {
-			result : IntHolder := @map->Find(IntHolder->New(key)->As(Compare))->As(IntHolder);
+			result : IntHolder := @map->Find(IntHolder->New(key))->As(IntHolder);
 			return result <> Nil;
 		}
     
@@ -1443,15 +1443,15 @@ bundle Struct {
 		}
 
 		method : public : Insert(key : Float, value : Base) ~ Nil {
-			@map->Insert(FloatHolder->New(key)->As(Compare), value);
+			@map->Insert(FloatHolder->New(key), value);
 		}
 		
 		method : public : Remove(key : Float) ~ Nil {
-			@map->Remove(FloatHolder->New(key)->As(Compare));
+			@map->Remove(FloatHolder->New(key));
 		}
     
 		method : public : Find(key : Float) ~ Float {
-			result : FloatHolder := @map->Find(FloatHolder->New(key)->As(Compare))->As(FloatHolder);
+			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			if(result <> Nil) {
 				return result->Get();
 			};
@@ -1460,7 +1460,7 @@ bundle Struct {
 		}
 		
 		method : public : Has(key : Float) ~ Bool {
-			result : FloatHolder := @map->Find(FloatHolder->New(key)->As(Compare))->As(FloatHolder);
+			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			return result <> Nil;
 		}
     
@@ -1492,19 +1492,19 @@ bundle Struct {
 		}
 
 		method : public : Insert(key : String, value : Base) ~ Nil {
-			@map->Insert(key->As(Compare), value);
+			@map->Insert(key, value);
 		}
 		
 		method : public : Remove(key : String) ~ Nil {
-			@map->Remove(key->As(Compare));
+			@map->Remove(key);
 		}
     
 		method : public : Find(key : String) ~ Base {
-			return @map->Find(key->As(Compare));
+			return @map->Find(key);
 		}
 		
 		method : public : Has(key : String) ~ Bool {
-			result := @map->Find(key->As(Compare));
+			result := @map->Find(key);
 			return result <> Nil;
 		}
     
@@ -1608,7 +1608,7 @@ bundle Struct {
 				GetKeys(node->GetLeft(), vector);
 				
 				key : Compare := node->GetKey();
-				vector->AddBack(key->As(Base));
+				vector->AddBack(key);
 				
 				# process right
 				GetKeys(node->GetRight(), vector);
@@ -1769,19 +1769,19 @@ bundle Struct {
 		}
 
 		method : public : Insert(key : String, value : Base) ~ Nil {
-			@hash->Insert(key->As(Compare), value);
+			@hash->Insert(key, value);
 		}
 		
 		method : public : Remove(key : String) ~ Nil {
-			@hash->Remove(key->As(Compare));
+			@hash->Remove(key);
 		}
     
 		method : public : Find(key : String) ~ Base {
-			return @hash->Find(key->As(Compare));
+			return @hash->Find(key);
 		}
 		
 		method : public : Has(key : String) ~ Bool {
-			result := @hash->Find(key->As(Compare));
+			result := @hash->Find(key);
 			return result <> Nil;
 		}
     
@@ -1841,7 +1841,7 @@ bundle Struct {
 				list := List->New();
 				@buckets[hash] := list;
 			};
-			list->AddBack(HashPair->New(key, value)->As(Compare));
+			list->AddBack(HashPair->New(key, value));
 			@size := @size + 1;
 		}
 
@@ -1898,7 +1898,7 @@ bundle Struct {
 					list->Rewind();
 					while(list->IsEnd() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
-						keys->AddBack(pair->GetKey()->As(Base));
+						keys->AddBack(pair->GetKey());
 						list->Next();
 					};
 				};
@@ -1954,7 +1954,7 @@ bundle Net {
 		}	
 		
 		method : public : SetCookie(cookie : String) ~ Nil {
-			@cookies->AddBack(cookie->As(Base));
+			@cookies->AddBack(cookie);
 		}	
 		
 		method : public : Post(url : String, port : Int, data : String) ~ Vector {
@@ -2024,14 +2024,14 @@ bundle Net {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
-								@headers->Insert(name->As(Compare), value->As(Base));
+								@headers->Insert(name, value);
 # IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->Size() > 0);
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding"->As(Compare))->As(String);
+						encoding : String := @headers->Find("Transfer-Encoding")->As(String);
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -2044,7 +2044,7 @@ bundle Net {
 										line->Append(socket->ReadByte());
 									};
 									socket->ReadString();
-									content->AddBack(line->As(Base));
+									content->AddBack(line);
 								}
 								else {
 									done := true;
@@ -2053,7 +2053,7 @@ bundle Net {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length"->As(Compare))->As(String);
+							length_header : String := @headers->Find("Content-Length")->As(String);
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
@@ -2061,7 +2061,7 @@ bundle Net {
 									buffer[i] := socket->ReadByte();
 								};
 								line := String->New(buffer);
-								content->AddBack(line->As(Base));
+								content->AddBack(line);
 							};						
 						};
 					};
@@ -2140,11 +2140,11 @@ bundle Net {
 									if(offset > -1) {
 										value := value->SubString(offset);
 									};
-									@cookies->AddBack(value->As(Base));
+									@cookies->AddBack(value);
 # IO.Console->Print("cookie=")->PrintLine(value);									
 								}
 								else {
-									@headers->Insert(name->As(Compare), value->As(Base));
+									@headers->Insert(name, value);
 								};
 							};
 						}
@@ -2153,7 +2153,7 @@ bundle Net {
 # IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding"->As(Compare))->As(String);
+						encoding : String := @headers->Find("Transfer-Encoding")->As(String);
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -2166,7 +2166,7 @@ bundle Net {
 										line->Append(socket->ReadByte());
 									};
 									socket->ReadString();
-									content->AddBack(line->As(Base));
+									content->AddBack(line);
 								}
 								else {								
 									done := true;
@@ -2175,7 +2175,7 @@ bundle Net {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length"->As(Compare))->As(String);
+							length_header : String := @headers->Find("Content-Length")->As(String);
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
@@ -2183,7 +2183,7 @@ bundle Net {
 									buffer[i] := socket->ReadByte();
 								};
 								line := String->New(buffer);
-								content->AddBack(line->As(Base));
+								content->AddBack(line);
 							};						
 						};
 					};
