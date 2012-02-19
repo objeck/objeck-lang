@@ -113,7 +113,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
       // check if memory has been marked
       if(mem[-1]) {
 #ifndef _SERIAL
-	      LeaveCriticalSection(&allocated_cs);
+	LeaveCriticalSection(&allocated_cs);
 #endif
         return false;
       }
@@ -510,7 +510,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       found = true;
     }
 
-	// not found, will be collected
+    // not found, will be collected
     if(!found) {
       // object or array	
       long mem_size;
@@ -522,8 +522,8 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
         if(cls) {
           mem_size = cls->GetInstanceMemorySize();
         }
-		else {
-         mem_size = iter->second;
+	else {
+	  mem_size = iter->second;
         }
       } 
       else {
@@ -699,7 +699,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         // update
         mem += 2;
       }
-      break;
+	break;
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
@@ -765,8 +765,8 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         mem++;
         break;
 		
-		default:
-			break;
+      default:
+	break;
       }
     }
 
@@ -880,7 +880,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       // update
       mem += 2;
     }
-    break;
+      break;
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
@@ -945,8 +945,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       mem++;
       break;
 	  
-	  default:
-		break;
+    default:
+      break;
     }
   }
 }
