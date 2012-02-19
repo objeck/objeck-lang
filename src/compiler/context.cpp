@@ -1484,8 +1484,8 @@ bool ContextAnalyzer::Analyze()
 	// look for an exact match
 	if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
 	   calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
-	   method_type->GetDimension() == 0) {
-	  return calling_type->GetType() == method_type->GetType() ? 0 : -1;
+	   method_type->GetDimension() == 0 && calling_type->GetType() == method_type->GetType()) {
+	  return 0;
 	}
 
 	// looks for a relative match
