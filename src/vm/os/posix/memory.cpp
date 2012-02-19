@@ -526,7 +526,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
-  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
+  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     bool found = false;
     
     // check dynamic memory
@@ -627,7 +627,7 @@ void* MemoryManager::CheckStatic(void* arg)
   pthread_mutex_lock(&static_mutex);
 #endif
   map<long*, long>::iterator static_iter;
-  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); static_iter++) {
+  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
     CheckObject(static_iter->first, false, 1);	
   }
 #ifndef _GC_SERIAL
@@ -668,7 +668,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif
   
   list<ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
+  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = (*jit_iter);
     long* mem = id->mem;
     StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
@@ -833,7 +833,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
   // look at pda methods
   list<StackFrame*>::iterator pda_iter;
-  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); pda_iter++) {
+  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
     StackMethod* mthd = (*pda_iter)->GetMethod();
     long* mem = (*pda_iter)->GetMemory();
 
