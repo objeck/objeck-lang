@@ -293,7 +293,7 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
 
     // Add byte code to buffer
-    void AddMachineCode(BYTE_VALUE b) {
+    inline void AddMachineCode(BYTE_VALUE b) {
       if(code_index == code_buf_max) {
 #ifdef _WIN32
 	code = (BYTE_VALUE*)realloc(code, code_buf_max * 2); 
@@ -318,7 +318,7 @@ namespace Runtime {
     
     // Encodes and writes out 32-bit
     // integer values
-    void AddImm(int32_t imm) {
+    inline void AddImm(int32_t imm) {
       BYTE_VALUE buffer[sizeof(int32_t)];
       ByteEncode32(buffer, imm);
       for(int32_t i = 0; i < (int32_t)sizeof(int32_t); i++) {
@@ -328,7 +328,7 @@ namespace Runtime {
     
     // Caculates the IA-32 MOD R/M
     // offset
-    BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
+    inline BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
       BYTE_VALUE byte = 0;
 
       switch(mod_rm) {
@@ -479,13 +479,13 @@ namespace Runtime {
 
     // Encodes a byte array with a
     // 32-bit value
-    void ByteEncode32(BYTE_VALUE buffer[], int32_t value) {
+    inline void ByteEncode32(BYTE_VALUE buffer[], int32_t value) {
       memcpy(buffer, &value, sizeof(int32_t));
     }
     
     // Encodes an array with the 
     // binary ID of a register
-    void RegisterEncode3(BYTE_VALUE& code, int32_t offset, Register reg) {
+    inline void RegisterEncode3(BYTE_VALUE& code, int32_t offset, Register reg) {
 #ifdef _DEBUG
       assert(offset == 2 || offset == 5);
 #endif
@@ -809,7 +809,7 @@ namespace Runtime {
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
 
-    static int32_t PopInt(int32_t* op_stack, int32_t *stack_pos) {
+    inline static int32_t PopInt(int32_t* op_stack, int32_t *stack_pos) {
       int32_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
       cout << "\t[pop_i: value=" << (int32_t*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
@@ -818,7 +818,7 @@ namespace Runtime {
       return value;
     }
 
-    static void PushInt(int32_t* op_stack, int32_t *stack_pos, int32_t value) {
+    inline static void PushInt(int32_t* op_stack, int32_t *stack_pos, int32_t value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
       cout << "\t[push_i: value=" << (int32_t*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
