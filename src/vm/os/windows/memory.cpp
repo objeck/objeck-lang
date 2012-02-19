@@ -207,7 +207,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   EnterCriticalSection(&jit_cs);
 #endif
   list<ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
+  for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = (*jit_iter);
     if(id->mem == mem) {
       found = id;
@@ -502,7 +502,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 #ifndef _SERIAL
   
 #endif
-  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
+  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
       long* tmp = iter->first;
@@ -598,7 +598,7 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
   EnterCriticalSection(&static_cs);
 #endif
   map<long*, long>::iterator static_iter;
-  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); static_iter++) {
+  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
     CheckObject(static_iter->first, false, 1);	
   }
 #ifndef _GC_SERIAL
@@ -797,7 +797,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 #endif
   // look at pda methods
   list<StackFrame*>::iterator pda_iter;
-  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); pda_iter++) {
+  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
     StackMethod* mthd = (*pda_iter)->GetMethod();
     long* mem = (*pda_iter)->GetMemory();
 
