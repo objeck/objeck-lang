@@ -1,8 +1,35 @@
+use IO;
+
 bundle Default {
+	class Foo {
+		New() {
+		}
+
+		method : virtual : public : A(a : Int) ~ Nil;
+	}
+
+	class Bar from Foo {
+		New() {
+			Parent();
+		}
+
+		method : public : Z() ~ Nil {
+			"z"->PrintLine();
+		}
+
+		method : public : A(a : Int) ~ Nil {
+			a->PrintLine();
+		}
+
+		method : public : B() ~ Nil {
+			"b"->PrintLine();
+		}
+	}
+
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			str := "Tend the cat.";
-			str->ReplaceAll("the", "da")->PrintLine();
+			f : Foo := Bar->New();
+			f->A(13);
 		}
 	}
 }
