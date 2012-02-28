@@ -628,7 +628,7 @@ class ByteBuffer {
  * StackClass class
  ********************************/
 class StackClass {
-  // map<long, StackMethod*> method_map;
+  unordered_map<string, StackMethod*> method_name_map;
   StackMethod** methods;
   int method_num;
   long id;
@@ -643,8 +643,6 @@ class StackClass {
   long* cls_mem;
   bool is_debug;
   
-  map<const string, StackMethod*> method_name_map;
-
   long InitMemory(long size) {
     cls_mem = new long[size];
     memset(cls_mem, 0, size * sizeof(long));
@@ -762,7 +760,7 @@ class StackClass {
   
 #ifdef _UTILS
   void List() {
-    map<const string, StackMethod*>::iterator iter;
+    unordered_map<string, StackMethod*>::iterator iter;
     for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
       StackMethod* mthd = iter->second;
       cout << "  method='" << mthd->GetName() << "'" << endl;
@@ -771,7 +769,7 @@ class StackClass {
 #endif
 
   inline StackMethod* GetMethod(const string &n) {
-    map<const string, StackMethod*>::iterator result = method_name_map.find(n);
+    unordered_map<string, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
       return result->second;
     }
