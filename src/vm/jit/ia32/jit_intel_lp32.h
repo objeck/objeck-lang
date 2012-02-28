@@ -242,7 +242,7 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    map<int32_t, StackInstr*> jump_table;
+    unordered_map<int32_t, StackInstr*> jump_table;
     int32_t local_space;
     StackMethod* method;
     int32_t instr_count;
@@ -938,7 +938,7 @@ namespace Runtime {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
 	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
 								  program->GetHierarchy(),
-                  program->GetInterfaces());
+								  program->GetInterfaces());
 	if(result) {
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -2130,7 +2130,7 @@ namespace Runtime {
 	skip_jump = false;
 	method = cm;
 	
-  int32_t cls_id = method->GetClass()->GetId();
+	int32_t cls_id = method->GetClass()->GetId();
 	int32_t mthd_id = method->GetId();
 #ifdef _DEBUG
 	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
@@ -2194,7 +2194,7 @@ namespace Runtime {
 	}
 
 	// show content
-	map<int32_t, StackInstr*>::iterator iter;
+	unordered_map<int32_t, StackInstr*>::iterator iter;
 	for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
 	  StackInstr* instr = iter->second;
 	  int32_t src_offset = iter->first;

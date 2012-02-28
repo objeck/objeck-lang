@@ -252,7 +252,7 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    map<int, StackInstr*> jump_table; // jump addresses are 64-bits
+    unordered_map<int, StackInstr*> jump_table; // jump addresses are 64-bits
     long org_local_space, local_space;
     StackMethod* method;
     long instr_count;
@@ -2279,7 +2279,7 @@ namespace Runtime {
 	}
 
 	// show content
-	map<int, StackInstr*>::iterator iter;
+	unordered_map<int, StackInstr*>::iterator iter;
 	for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
 	  StackInstr* instr = iter->second;
 	  long src_offset = iter->first;
