@@ -284,12 +284,16 @@ bundle System {
 	~~#	
 	class $Float {
 		function : native : Pi() ~ Float {
-			return 3.14159265;
+			return 3.1415926536;
 		}
 
 		function : native : E() ~ Float {
-			return 2.71828183;
+			return 2.7182818285;
 		}	
+
+		function : native : ToRadians(v : Float) ~ Float {
+			return v * Pi() / 180.0;
+		}
 		
 		function : native : Min(l : Float, r : Float) ~ Float {
 			if(l < r) {
@@ -335,6 +339,18 @@ bundle System {
 		
 		function : Tan(f : Float) ~ Float {
 			TAN_FLOAT;
+		}
+
+		function : ArcSin(f : Float) ~ Float {
+			ASIN_FLOAT;
+		}
+		
+		function : ArcCos(f : Float) ~ Float {
+			ACOS_FLOAT;
+		}
+		
+		function : ArcTan(f : Float) ~ Float {
+			ATAN_FLOAT;
 		}
 		
 		function : Log(f : Float) ~ Float {

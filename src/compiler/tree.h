@@ -384,7 +384,7 @@ namespace frontend {
   Statement(const string &f, const int l) : ParseNode(f, l) {
     }
 
-    ~Statement() {
+    virtual ~Statement() {
     }
 
     virtual const StatementType GetStatementType() = 0;
@@ -481,7 +481,7 @@ namespace frontend {
       type_of = NULL;
     }
 
-    ~Expression() {
+    virtual ~Expression() {
     }
 
   public:
@@ -1466,7 +1466,7 @@ namespace frontend {
       expression = e;
     }
 
-    ~Assignment() {
+    virtual ~Assignment() {
     }
 
   public:

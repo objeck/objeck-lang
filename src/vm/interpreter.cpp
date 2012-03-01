@@ -503,6 +503,18 @@ void StackInterpreter::Execute()
     case TAN_FLOAT:
       PushFloat(tan(PopFloat()));
       break;
+
+    case ASIN_FLOAT:
+      PushFloat(asin(PopFloat()));
+      break;
+      
+    case ACOS_FLOAT:
+      PushFloat(acos(PopFloat()));
+      break;
+      
+    case ATAN_FLOAT:
+      PushFloat(atan(PopFloat()));
+      break;
       
     case LOG_FLOAT:
       PushFloat(log(PopFloat()));
