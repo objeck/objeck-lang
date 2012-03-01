@@ -31,6 +31,7 @@
 
 #include "loader.h"
 #include "common.h"
+#include "../shared/version.h"
 
 StackProgram* Loader::program;
 
@@ -59,12 +60,18 @@ void Loader::LoadConfiguration()
 
 void Loader::Load()
 {
+  int ver_num = ReadInt();
+  if(ver_num != VER_NUM) {
+    cerr << "This executable appears to be compiled with a different version of the toolchain.  Please recompile the executable." << endl;
+    exit(1);
+  } 
+  
   int magic_num = ReadInt();
-  if(magic_num == 0xddde) {
+  if(magic_num == MAGIC_NUM_LIB) {
     cerr << "Unable to use execute shared library '" << filename << "'." << endl;
     exit(1);
   } 
-  else if(magic_num != 0xdddd) {
+  else if(MAGIC_NUM_EXE != 0xdddd) {
     cerr << "Unable to execute invalid program file '" << filename << "'." << endl;
     exit(1);
   }

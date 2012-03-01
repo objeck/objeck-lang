@@ -32,6 +32,10 @@
 #ifndef __VER_H__
 #define __VER_H__
 
-#define VERSION_STRING "v3.0.0_0"
+#define MAGIC_NUM_LIB 0xddde
+#define MAGIC_NUM_EXE 0xdddd
+#define VER_NUM 3010
+
+#define VERSION_STRING "v3.0.1_0"
 
 #endif
