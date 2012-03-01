@@ -2213,6 +2213,10 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     EmitExpression(right);
     break;
   }
+  
+  if(right->GetMethodCall()) {
+    EmitMethodCall(right->GetMethodCall(), false, false);
+  }
 
   Expression* left = expression->GetLeft();
   switch(left->GetExpressionType()) {
@@ -2240,6 +2244,10 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
   }
 
+  if(left->GetMethodCall()) {
+    EmitMethodCall(left->GetMethodCall(), false, false);
+  }
+  
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
   case EQL_EXPR:

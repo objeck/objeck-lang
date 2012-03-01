@@ -137,6 +137,9 @@ void Scanner::LoadKeywords()
   ident_map["SIN_FLOAT"] = SIN_FLOAT;
   ident_map["COS_FLOAT"] = COS_FLOAT;
   ident_map["TAN_FLOAT"] = TAN_FLOAT;
+  ident_map["ASIN_FLOAT"] = ASIN_FLOAT;
+  ident_map["ACOS_FLOAT"] = ACOS_FLOAT;
+  ident_map["ATAN_FLOAT"] = ATAN_FLOAT;
   ident_map["LOG_FLOAT"] = LOG_FLOAT;
   ident_map["POW_FLOAT"] = POW_FLOAT;
   ident_map["SQRT_FLOAT"] = SQRT_FLOAT;
@@ -278,6 +281,9 @@ void Scanner::CheckIdentifier(int index)
   case SIN_FLOAT:
   case COS_FLOAT:
   case TAN_FLOAT:
+  case ASIN_FLOAT:
+  case ACOS_FLOAT:
+  case ATAN_FLOAT:
   case LOG_FLOAT:
   case POW_FLOAT:
   case SQRT_FLOAT:

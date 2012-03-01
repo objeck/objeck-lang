@@ -985,6 +985,24 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
       
+    case ASIN_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::ASIN_FLOAT);
+      NextToken();
+      break;
+      
+    case ACOS_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::ACOS_FLOAT);
+      NextToken();
+      break;
+      
+    case ATAN_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::ATAN_FLOAT);
+      NextToken();
+      break;
+      
     case LOG_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::LOG_FLOAT);
