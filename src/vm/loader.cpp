@@ -678,6 +678,18 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       method->AddInstruction(new StackInstr(line_num, TAN_FLOAT));
       break;
       
+    case ASIN_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, ASIN_FLOAT));
+      break;
+      
+    case ACOS_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, ACOS_FLOAT));
+      break;
+      
+    case ATAN_FLOAT:
+      method->AddInstruction(new StackInstr(line_num, ATAN_FLOAT));
+      break;
+      
     case LOG_FLOAT:
       method->AddInstruction(new StackInstr(line_num, LOG_FLOAT));
       break;
