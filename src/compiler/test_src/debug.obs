@@ -2,34 +2,18 @@ use IO;
 
 bundle Default {
 	class Foo {
-		New() {
-		}
+		New() {}
 
-		method : virtual : public : A(a : Int) ~ Nil;
-	}
-
-	class Bar from Foo {
-		New() {
-			Parent();
-		}
-
-		method : public : Z() ~ Nil {
-			"z"->PrintLine();
-		}
-
-		method : public : A(a : Int) ~ Nil {
-			a->PrintLine();
-		}
-
-		method : public : B() ~ Nil {
-			"b"->PrintLine();
+		a : Int;
+		
+		method : public : GetA() ~ Int {
+			return a;
 		}
 	}
 
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			f : Foo := Bar->New();
-			f->A(13);
+			2.0->Power(3.0)->PrintLine();
 		}
 	}
 }
