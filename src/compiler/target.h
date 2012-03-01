@@ -36,6 +36,7 @@
 #include "linker.h"
 #include "tree.h"
 #include "../shared/instrs.h"
+#include "../shared/version.h"
 
 using namespace std;
 using namespace instructions;
@@ -528,6 +529,18 @@ public:
       cout << "TAN_FLOAT" << endl;
       break;
 
+    case instructions::ASIN_FLOAT:
+      cout << "ASIN_FLOAT" << endl;
+      break;
+      
+    case instructions::ACOS_FLOAT:
+      cout << "ACOS_FLOAT" << endl;
+      break;
+      
+    case instructions::ATAN_FLOAT:
+      cout << "ATAN_FLOAT" << endl;
+      break;
+      
     case instructions::LOG_FLOAT:
       cout << "LOG_FLOAT" << endl;
       break;
@@ -1305,12 +1318,15 @@ public:
   }
 
   void Write(ofstream* file_out, bool is_lib) {
+    // version
+    WriteInt(VER_NUM, file_out);
+    
     // magic number
     if(is_lib) {
-      WriteInt(0xddde, file_out);
+      WriteInt(MAGIC_NUM_LIB, file_out);
     } 
     else {
-      WriteInt(0xdddd, file_out);
+      WriteInt(MAGIC_NUM_EXE, file_out);
     }    
     
     // write string id

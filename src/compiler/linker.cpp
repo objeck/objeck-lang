@@ -31,6 +31,7 @@
 
 #include "linker.h"
 #include "../shared/instrs.h"
+#include "../shared/version.h"
 
 using namespace instructions;
 
@@ -202,7 +203,13 @@ void Library::LoadFile(const string &file_name)
 {
   // read file into memory
   ReadFile(file_name);
-
+  
+  int ver_num = ReadInt();
+  if(ver_num != VER_NUM) {
+    cerr << "The " << lib_path << " library appears to be compiled with a different version of the toolchain.  Please recompile the libraries or link the correct version." << endl;
+    exit(1);
+  } 
+  
   int magic_num = ReadInt();
   if(magic_num ==  0xdddd) {
     cerr << "Unable to use executable '" << file_name << "' as linked library." << endl;
@@ -723,6 +730,18 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       
     case TAN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, TAN_FLOAT));
+      break;
+      
+    case ASIN_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, ASIN_FLOAT));
+      break;
+      
+    case ACOS_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, ACOS_FLOAT));
+      break;
+      
+    case ATAN_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, ATAN_FLOAT));
       break;
       
     case LOG_FLOAT:
