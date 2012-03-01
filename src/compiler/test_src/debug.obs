@@ -2,18 +2,17 @@ use IO;
 
 bundle Default {
 	class Foo {
-		New() {}
-
-		a : Int;
-		
-		method : public : GetA() ~ Int {
-			return a;
-		}
-	}
-
-	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			2.0->Power(3.0)->PrintLine();
+			dx := 2.4;	
+			dy := 3.3;	
+			dz := 4.2;	
+
+			a := dx * dx + dy * dy + dz * dz;
+			b := a->SquareRoot() / 2.0;
+			b->PrintLine();
+
+			x := (dx * dx + dy * dy + dz * dz)->SquareRoot() / 2.0;
+			x->PrintLine();
 		}
 	}
 }
