@@ -58,10 +58,10 @@ namespace frontend {
       file_name = f;
       line_num = l;
     }
-
-    ~ParseNode() {
+    
+    virtual ~ParseNode() {
     }
-
+    
     const string GetFileName() {
       return file_name;
     }
