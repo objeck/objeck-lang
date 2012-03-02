@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Release" />
-	<File name="..\compiler.cpp" open="1" top="0" tabpos="1">
-		<Cursor position="4275" topLine="103" />
+	<File name="..\compiler.cpp" open="0" top="0" tabpos="1">
+		<Cursor position="4681" topLine="131" />
 	</File>
-	<File name="..\context.cpp" open="1" top="0" tabpos="4">
+	<File name="..\compiler\objeck.rc" open="1" top="0" tabpos="2">
+		<Cursor position="2126" topLine="72" />
+	</File>
+	<File name="..\context.cpp" open="0" top="0" tabpos="4">
 		<Cursor position="108874" topLine="3339" />
 	</File>
-	<File name="..\context.h" open="1" top="0" tabpos="2">
+	<File name="..\context.h" open="0" top="0" tabpos="2">
 		<Cursor position="20764" topLine="636" />
 	</File>
-	<File name="..\intermediate.cpp" open="1" top="0" tabpos="3">
-		<Cursor position="74532" topLine="1668" />
+	<File name="..\intermediate.cpp" open="0" top="0" tabpos="3">
+		<Cursor position="69844" topLine="1530" />
 	</File>
 </CodeBlocks_layout_file>
