@@ -10,8 +10,8 @@
 	<File name="..\debugger.h" open="1" top="0" tabpos="2">
 		<Cursor position="2806" topLine="69" />
 	</File>
-	<File name="..\debugger\objeck.rc" open="1" top="0" tabpos="5">
-		<Cursor position="1845" topLine="56" />
+	<File name="..\debugger\objeck.rc" open="1" top="1" tabpos="5">
+		<Cursor position="1845" topLine="0" />
 	</File>
 	<File name="..\parser.cpp" open="1" top="0" tabpos="1">
 		<Cursor position="13704" topLine="536" />
