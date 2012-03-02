@@ -1663,7 +1663,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
   array += 2;
   long index = ArrayIndex(instr, array, size);
   array += instr->GetOperand();
-  ((BYTE_VALUE*)array)[index] = PopInt();
+  ((BYTE_VALUE*)array)[index] = (BYTE_VALUE)PopInt();
 }
 
 /********************************

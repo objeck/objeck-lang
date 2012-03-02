@@ -49,8 +49,8 @@ class Loader {
   string filename;
   char* buffer;
   char* alloc_buffer;
-  int buffer_size;
-  int buffer_pos;
+  size_t buffer_size;
+  size_t buffer_pos;
   int start_class_id;
   int start_method_id;
   map<const string, const int> params;
@@ -84,14 +84,14 @@ class Loader {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(string filename, int &buffer_size) {
+  char* LoadFileBuffer(string filename, size_t &buffer_size) {
     char* buffer = NULL;
     // open file
     ifstream in(filename.c_str(), ifstream::binary);
     if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
-      buffer_size = in.tellg();
+      buffer_size = (size_t)in.tellg();
       in.seekg(0, ios::beg);
       buffer = new char[buffer_size];
       in.read(buffer, buffer_size);
