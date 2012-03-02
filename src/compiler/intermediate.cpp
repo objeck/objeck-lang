@@ -2222,17 +2222,16 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(right));
+    if(right->GetMethodCall()) {
+      EmitMethodCall(right->GetMethodCall(), false, false);
+    }
     break;
-
+    
   default:
     EmitExpression(right);
     break;
   }
   
-  if(right->GetMethodCall()) {
-    EmitMethodCall(right->GetMethodCall(), false, false);
-  }
-
   Expression* left = expression->GetLeft();
   switch(left->GetExpressionType()) {
   case EQL_EXPR:
@@ -2252,16 +2251,17 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_OR_EXPR:
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(left));
+    if(left->GetMethodCall()) {
+      EmitMethodCall(left->GetMethodCall(), false, false);
+    }
     break;
-
+    
   default:
     EmitExpression(left);
     break;
   }
 
-  if(left->GetMethodCall()) {
-    EmitMethodCall(left->GetMethodCall(), false, false);
-  }
+  
   
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
