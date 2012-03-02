@@ -339,9 +339,9 @@ private:
   // input buffer
   char* buffer;
   // buffer size
-  std::streamoff buffer_size;
+  size_t buffer_size;
   // input buffer position
-  int buffer_pos;
+  size_t buffer_pos;
   // start marker position
   int start_pos;
   // end marker position
@@ -362,14 +362,14 @@ private:
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(string filename, std::streamoff& buffer_size) {
+  char* LoadFileBuffer(string filename, size_t& buffer_size) {
     char* buffer = NULL;
     // open file
     ifstream in(filename.c_str(), ifstream::binary);
     if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
-      buffer_size = in.tellg();
+      buffer_size = (size_t)in.tellg();
       in.seekg(0, ios::beg);
       buffer = (char*)calloc(buffer_size + 1, sizeof(char));
       in.read(buffer, buffer_size);

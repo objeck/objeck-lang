@@ -724,7 +724,7 @@ class Library {
   string lib_path;
   char* buffer;
   char* alloc_buffer;
-  std::streamoff buffer_size;
+  size_t buffer_size;
   long buffer_pos;
   map<const string, LibraryEnum*> enums;
   vector<LibraryEnum*> enum_list;
@@ -765,14 +765,14 @@ class Library {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(string filename, std::streamoff& buffer_size) {
+  char* LoadFileBuffer(string filename, size_t& buffer_size) {
     char* buffer = NULL;
     // open file
     ifstream in(filename.c_str(), ifstream::binary);
     if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
-      buffer_size = in.tellg();
+      buffer_size = (size_t)in.tellg();
       in.seekg(0, ios::beg);
       buffer = new char[buffer_size];
       in.read(buffer, buffer_size);

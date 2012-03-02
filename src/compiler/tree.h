@@ -737,10 +737,12 @@ namespace frontend {
 	    skip = 0;
 	    break;
 
+#ifndef _WIN32
 	  case 'e':
 	    char_string += '\e';
 	    skip = 0;
 	    break;
+#endif
 
 	  case 'f':
 	    char_string += '\f';
