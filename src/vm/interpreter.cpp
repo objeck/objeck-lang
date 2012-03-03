@@ -483,7 +483,7 @@ void StackInterpreter::Execute()
     }
       break;
       
-      // Note: not supported via JIT -- *start*
+      // Note: no supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat()));
       break;
@@ -536,7 +536,7 @@ void StackInterpreter::Execute()
       PushFloat(value / (FLOAT_VALUE)RAND_MAX);
       break;
     }
-      // Note: not supported via JIT -- *end*
+      // Note: no supported via JIT -- *end*
       
     case I2F:
 #ifdef _DEBUG
