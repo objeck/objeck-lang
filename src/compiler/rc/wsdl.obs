@@ -40,9 +40,10 @@ bundle Default {
 				};
 				
 				"===== MESSAGES ====="->PrintLine();
-				messages := parser->FindElements("/wsdl:definitions/wsdl:message");
-				each(i : messages) {
-					message := messages->Get(i)->As(XmlElement);
+				results := parser->FindElements("/wsdl:definitions/wsdl:message");
+				messages := StringMap->New();
+				each(i : results) {
+					message := results->Get(i)->As(XmlElement);
 					message_name := message->GetAttribute("name");
 					Console->Print("message: name=")->PrintLine(message_name);
 					parts := message->GetChildren();
@@ -52,10 +53,13 @@ bundle Default {
 						part_elem := part->GetAttribute("element");
 						Console->Print("\tpart: name=")->Print(part_name)->Print(", element=")
 							->PrintLine(part_elem);
+						messages->Insert(part_elem, message_name);
 					};
 				};
+				Console->Print("message count: ")->PrintLine(messages->Size());
 				
 				results := parser->FindElements("/wsdl:definitions/wsdl:portType");
+				ports := StringMap->New();		
 				if(results->Size() > 0) {
 					"===== PORTS ====="->PrintLine();
 					port := results->Get(0)->As(XmlElement);
@@ -66,15 +70,33 @@ bundle Default {
 						operation := operations->Get(i)->As(XmlElement);
 						operation_name := operation->GetAttribute("name");
 						Console->Print("\toperation: name=")->PrintLine(operation_name);
+						p := Port->New(operation_name);
 						ios := operation->GetChildren();
 						each(j : ios) {
 							io := ios->Get(j)->As(XmlElement);
 							Console->Print("\t\tio: type=")->Print(io->GetName())
 								->Print(", message=")->PrintLine(io->GetAttribute("message"));
+							p->AddOperation(io->GetName(), io->GetAttribute("message"));
 						};
+						ports->Insert(operation_name, p);
 					};
 				};
+				Console->Print("port count: ")->PrintLine(ports->Size());
 			};
+		}
+	}
+	
+	class Port {
+		@name : String;
+		@operations : StringMap;
+		
+		New(name : String) {
+			@name := name;
+			@operations := StringMap->New();
+		}
+		
+		method : public : AddOperation(name: String, value: String) ~ Nil {
+			@operations->Insert(name, value);
 		}
 	}
 }
