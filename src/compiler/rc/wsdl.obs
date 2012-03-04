@@ -23,13 +23,28 @@ bundle Default {
 		}
 		
 		method : public : Query(name : String) ~ Nil {
+"===== QUERY ====="->PrintLine();
 			port := @ports->Find(name)->As(Port);
 			if(port <> Nil) {
-port->GetInputName()->PrintLine();			
-				params := @messages->Find(port->GetInputName())->As(String);
-				
-				if(params <> Nil) {
-					params->PrintLine();
+# port->GetInputName()->PrintLine();
+				message_name := port->GetInputName();
+				index := message_name->Find(':');
+				if(index > 0) {
+					message_name := message_name->SubString(index + 1, message_name->Size() - index - 1);
+# message_name->PrintLine();
+					type_name := @messages->Find(message_name)->As(String);
+					if(type_name <> Nil) {
+						type_name := type_name->SubString(index + 1, type_name->Size() - index - 1);
+						type := @types->Find(type_name)->As(Type);
+						if(type <> Nil) {
+							params := type->GetParameters();
+							each(i : params) {
+								param := params->Get(i)->As(Parameter);
+param->ToString()->PrintLine();
+							};
+# type_name->PrintLine();
+						};
+					};
 				};
 			};
 		}
@@ -125,6 +140,10 @@ Console->Print("port count: ")->PrintLine(@ports->Size());
 		method : public : AddParameter(param : Parameter) ~ Nil {
 			@parameters->AddBack(param);
 		}
+		
+		method : public : GetParameters() ~ Vector {
+			return @parameters;
+		}
 	}
 	
 	class Parameter {
@@ -134,6 +153,15 @@ Console->Print("port count: ")->PrintLine(@ports->Size());
 		New(name : String, type : String) {
 			@name := name;
 			@type := type;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := String->New();
+			buffer->Append("name=");
+			buffer->Append(@name);
+			buffer->Append(", type=");
+			buffer->Append(@type);	
+			return buffer;
 		}
 	}
 	
