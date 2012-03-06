@@ -1,63 +1,31 @@
+use Net;
+use XML;
 use Struct;
 
 bundle Default {
-	class Vehicle {
-		New() {}
-	}
-
-	class Car from Vehicle {
-		New() { Parent(); }
-
-		method : public : Foo(i : Int) ~ Nil {
-			"int"->PrintLine();
-		}
-	}
-
-	class Ford from Car {
-		New() { Parent(); }
-
-		method : public : Foo(s : String) ~ Nil {
-			"string"->PrintLine();
-			Foo(11.5);
-		}
-
-		method : public : Foo(f : Float) ~ Nil {
-			"float"->PrintLine();
-		}
-	}
-
-	class Bike {
-		New() { Parent(); }
-
-		method : public : Foo(v : Vector) ~ Nil {
-			"vector"->PrintLine();
-		}
-			
-		method : public : Foo(s : String) ~ Nil {
-			"string"->PrintLine();
-		}
-	}
-
-	class Plane {
-		New() { Parent(); }
-	}
-
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-#			f := Ford->New();
-#			f->Foo("randy");
-
-			v := Vector->New();
-			v->AddBack("Hello");
-			v->AddBack("World");
-			v->AddBack("!");
-			v->AddBack(13);
-			v->Size()->PrintLine();
-		
-			each(i : v) {
-				s := v->Get(i)->As(String);
-				s->PrintLine();
-			};
-		}
-	}
+  class HttpPostTest {
+    function : Main(args : String[]) ~ Nil {
+      url := "http://www.mobilefish.com/services/web_service/countries.php";
+      port := 80;
+      type := "text/xml";
+      client := HttpClient->New();
+      # make POST request
+      lines := client->Post(url, port, type,
+        "<?xml version='1.0' encoding='UTF-8' standalone='no'?><SOAP-ENV:Envelope xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:wsdl='http://schemas.xmlsoap.org/wsdl/' xmlns:soap='http://schemas.xmlsoap.org/wsdl/soap/' xmlns:tns='urn:countries.webservice.mobilefish.com' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:SOAP-ENC='http://schemas.xmlsoap.org/soap/encoding/' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' ><SOAP-ENV:Body><mns:countryInfoByIana xmlns:mns='http://schemas.xmlsoap.org/soap/envelope/' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><ianacode xsi:type='xsd:string'>zw</ianacode></mns:countryInfoByIana></SOAP-ENV:Body></SOAP-ENV:Envelope>");
+      # read response
+      xml := "";  
+      each(i : lines) {
+        xml->Append(lines->Get(i)->As(String));
+      };
+      # parse XML
+      parser := XmlParser->New(xml);
+        if(parser->Parse()) {
+          results := parser->FindElements("/SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:countryInfoByIanaResponse/return/countryname");
+        if(results->Size() > 0) {
+          element := results->Get(0)->As(XmlElement);
+          element->GetContent()->PrintLine();
+        };
+      };
+    }
+  }
 }
