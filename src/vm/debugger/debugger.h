@@ -35,6 +35,7 @@
 #include "../common.h"
 #include "../loader.h"
 #include "../interpreter.h"
+#include "../../shared/version.h"
 #include "tree.h"
 #include "parser.h"
 #include <iomanip>
@@ -174,9 +175,12 @@ namespace Runtime {
       if(touch.is_open()) {
 	if(is_exe) {
 	  int magic_num;
+	  // version
+	  touch.read((char*)&magic_num, sizeof(int));
+	  // file type
 	  touch.read((char*)&magic_num, sizeof(int));
 	  touch.close();
-	  return magic_num == 0xdddd;
+	  return magic_num == MAGIC_NUM_EXE;
 	}
 	touch.close();
 	return true;
