@@ -257,9 +257,9 @@ class StackMethod {
   long num_dclrs;
   StackClass* cls;
 #ifdef _WIN32
-  CRITICAL_SECTION virutal_cs;
+  static CRITICAL_SECTION virutal_cs;
 #else 
-  pthread_mutex_t virtual_mutex;
+  static pthread_mutex_t virtual_mutex;
 #endif
   static unordered_map<const string, StackMethod*> virutal_cache;
   
