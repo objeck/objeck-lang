@@ -249,7 +249,6 @@ class StackMethod {
   bool has_and_or;
   vector<StackInstr*> instrs;
   unordered_map<long, long> jump_table;
-  
   long param_count;
   long mem_size;
   NativeCode* native_code;
@@ -257,6 +256,12 @@ class StackMethod {
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
+#ifdef _WIN32
+  CRITICAL_SECTION virutal_cs;
+#else 
+  pthread_mutex_t virtual_mutex;
+#endif
+  static unordered_map<const string, StackMethod*> virutal_cache;
   
   const string& ParseName(const string &name) const {
     int state;
@@ -578,6 +583,44 @@ class StackMethod {
 
   StackInstr* GetInstruction(long i) const {
     return instrs[i];
+  }
+  
+  void AddVirtualEntry(const string &key, StackMethod* mthd) { 
+#ifdef _WIN32
+    EnterCriticalSection(&virtual_cs);
+#else
+    pthread_mutex_lock(&virtual_mutex);
+#endif
+    
+    virutal_cache.insert(pair<const string, StackMethod*>(key, mthd));
+
+#ifdef _WIN32
+    LeaveCriticalSection(&virtual_cs);
+#else
+    pthread_mutex_unlock(&virtual_mutex);
+#endif
+  }
+
+  StackMethod* GetVirtualEntry(const string &key) {
+    StackMethod* mthd = NULL;
+#ifdef _WIN32
+    EnterCriticalSection(&virtual_cs);
+#else
+    pthread_mutex_lock(&virtual_mutex);
+#endif
+    
+    unordered_map<const string, StackMethod*>::iterator found = virutal_cache.find(key);
+    if(found != virutal_cache.end()) {
+      mthd = found->second;
+    }    
+    
+#ifdef _WIN32
+    LeaveCriticalSection(&virtual_cs);
+#else
+    pthread_mutex_unlock(&virtual_mutex);
+#endif
+
+    return mthd;
   }
 };
 
