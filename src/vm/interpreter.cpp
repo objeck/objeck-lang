@@ -89,6 +89,10 @@ void* StackInterpreter::CompileMethod(void* arg)
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
+
+#ifdef _WIN32
+  StackMethod::InitVirtualEntry();
+#endif 
   
 #ifdef _X64
   JitCompilerIA64::Initialize(program);
@@ -1422,16 +1426,22 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 #endif
     
     // binding method
-    // TODO: speed up with hashing?
     const string& qualified_method_name = called->GetName();
     const string& method_ending = qualified_method_name.substr(qualified_method_name.find(':'));
     string method_name = impl_class->GetName() + method_ending;
-    called = impl_class->GetMethod(method_name);
-    while(!called) {
-      impl_class = program->GetClass(impl_class->GetParentId());
-      method_name = impl_class->GetName() + method_ending;
-      called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
-    }
+
+	// check method cache
+	called = StackMethod::GetVirtualEntry(method_name);
+	if(!called) {
+		called = impl_class->GetMethod(method_name);
+		while(!called) {
+		  impl_class = program->GetClass(impl_class->GetParentId());
+		  method_name = impl_class->GetName() + method_ending;
+		  called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+		}
+		// add cache entry
+		StackMethod::AddVirtualEntry(method_name, called);
+	}
     
 #ifdef _DEBUG
     cout << "'; to: '" << method_name << "' ===" << endl;
