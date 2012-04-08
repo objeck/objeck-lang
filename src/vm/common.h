@@ -1369,6 +1369,6 @@ class ObjectDeserializer
 void APITools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
 			 const char* cls_id, const char* mthd_id);
 void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance, 
-			 const int cls_id, const int mthd_id);			 
+			   const int cls_id, const int mthd_id);			 
 
 #endif

@@ -1,18 +1,25 @@
-use IO;
-
 bundle Default {
+	interface Fee {
+		method : virtual : public : Who() ~ Nil;
+	}
+	
+	class Fie implements Fee {
+		New() {}
+		method : public : Who() ~ Nil {
+			"Fie"->PrintLine();
+		}
+	}
+
 	class Foo {
+		New() {}
 		function : Main(args : String[]) ~ Nil {
-			dx := 2.4;	
-			dy := 3.3;	
-			dz := 4.2;	
+			f : Fee := Fie->New();
+			f->Who();
+			f->Who();
+		}
 
-			a := dx * dx + dy * dy + dz * dz;
-			b := a->SquareRoot() / 2.0;
-			b->PrintLine();
-
-			x := (dx * dx + dy * dy + dz * dz)->SquareRoot() / 2.0;
-			x->PrintLine();
+		method : public : Who() ~ Nil {
+			"Foo"->PrintLine();
 		}
 	}
 }

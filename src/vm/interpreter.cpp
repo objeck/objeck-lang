@@ -418,7 +418,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-	  const long src_array_len = src_array[2];
+      const long src_array_len = src_array[2];
       const long dest_array_len = dest_array[2];
 
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
@@ -446,7 +446,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
 
-	  const long src_array_len = src_array[0];
+      const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
@@ -473,7 +473,7 @@ void StackInterpreter::Execute()
 	exit(1);
       }
       
-	  const long src_array_len = src_array[0];
+      const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	long* src_array_ptr = src_array + 3;
@@ -1430,18 +1430,18 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
     const string& method_ending = qualified_method_name.substr(qualified_method_name.find(':'));
     string method_name = impl_class->GetName() + method_ending;
 
-	// check method cache
-	called = StackMethod::GetVirtualEntry(method_name);
-	if(!called) {
-		called = impl_class->GetMethod(method_name);
-		while(!called) {
-		  impl_class = program->GetClass(impl_class->GetParentId());
-		  method_name = impl_class->GetName() + method_ending;
-		  called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
-		}
-		// add cache entry
-		StackMethod::AddVirtualEntry(method_name, called);
-	}
+    // check method cache
+    called = StackMethod::GetVirtualEntry(method_name);
+    if(!called) {
+      called = impl_class->GetMethod(method_name);
+      while(!called) {
+	impl_class = program->GetClass(impl_class->GetParentId());
+	method_name = impl_class->GetName() + method_ending;
+	called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+      }
+      // add cache entry
+      StackMethod::AddVirtualEntry(method_name, called);
+    }
     
 #ifdef _DEBUG
     cout << "'; to: '" << method_name << "' ===" << endl;
