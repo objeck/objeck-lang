@@ -728,7 +728,7 @@ void Scanner::ParseToken(int index)
       }
       else if(cur_char == 'e' || cur_char == 'E') {
         // error
-        if((double_state && double_state) != 1 || hex_state) {
+        if((double_state) != 1 || hex_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
