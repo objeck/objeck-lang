@@ -1102,8 +1102,8 @@ bool ContextAnalyzer::Analyze()
     else if(method_call->GetCallType() == PARENT_CALL) {
       AnalyzeParentCall(method_call, depth);
     }
-    // method/function call
-    else {
+    // method/function
+    else { 
       string encoding;
       // local call
       string variable_name = method_call->GetVariableName();
@@ -1625,6 +1625,15 @@ bool ContextAnalyzer::Analyze()
       AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
       return;
     }
+    else if(!method && klass->GetParent()) {
+      // check parent library class for method
+      Class* parent = klass->GetParent();
+      method_call->SetOriginalClass(klass);
+      string encoding;
+      AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
+      return;
+
+    }
     
     // note: last resort to find system based methods i.e. $Int, $Float, etc.
     if(!method) {
@@ -1764,7 +1773,8 @@ bool ContextAnalyzer::Analyze()
   {
     if(lib_method) {
       // public/private check
-      if((lib_method->GetMethodType() == PRIVATE_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+      if((lib_method->GetMethodType() == PRIVATE_METHOD || 
+	  lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
 	 !lib_method->IsStatic()) {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Cannot reference a private method from this context");

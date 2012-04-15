@@ -8,10 +8,18 @@ bundle Default {
 		method : public : Who() ~ Nil {
 			"Fie"->PrintLine();
 		}
+
+		method : public : Call(called : (String)~Nil) ~ Nil {
+			called("xxx");			
+		}
 	}
 
 	class Foo from Fie implements Fee {
-		New() { Parent(); }
+#	class Foo {
+		New() { 
+			Parent(); 
+		}
+
 		method : public : Who() ~ Nil {
 			"Foo"->PrintLine();
 		}
@@ -20,9 +28,18 @@ bundle Default {
 	class Fum {
 		New() {}
 		function : Main(args : String[]) ~ Nil {
+#~
 			f : Fee := Foo->New();
 			f->Who();
 			f->Who();
+~#
+
+			ff := Foo->New();
+			ff->Call(Fum->Callee(String) ~ Nil);
+		}
+
+		function : public : Callee(value : String) ~ Nil {
+			value->PrintLine();
 		}
 
 		method : public : Who() ~ Nil {

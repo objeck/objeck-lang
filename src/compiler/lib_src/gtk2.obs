@@ -128,6 +128,7 @@ bundle Gtk2 {
 	
 	# GtkHBox class
 	class GtkBox from GtkContainer {
+		New() { Parent(); }
 		method : public : PackStart(child : GtkWidget, expand : Bool, fill : Bool, padding : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[5];
