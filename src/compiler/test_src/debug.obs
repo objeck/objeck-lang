@@ -3,6 +3,18 @@ bundle Default {
 		method : virtual : public : Who() ~ Nil;
 	}
 	
+	class Test {
+		@called : (String) ~ Nil;
+
+		New(called : (String)~ Nil) {
+			@called := called;
+		}
+
+		method : public : Foo() ~ Nil {
+			"fee, fie, foo, fum"->PrintLine();
+		}
+	}
+
 	class Fie implements Fee {
 		New() {}
 		method : public : Who() ~ Nil {
@@ -10,12 +22,12 @@ bundle Default {
 		}
 
 		method : public : Call(called : (String)~Nil) ~ Nil {
-			called("xxx");			
+			t := Test->New(called);
+			t->Foo();
 		}
 	}
 
 	class Foo from Fie implements Fee {
-#	class Foo {
 		New() { 
 			Parent(); 
 		}
