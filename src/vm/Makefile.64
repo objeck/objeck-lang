@@ -9,7 +9,7 @@ JIT_PATH= jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl
 
 memory.a:
 	cd $(MEM_PATH); make	
