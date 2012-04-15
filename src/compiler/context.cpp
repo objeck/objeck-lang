@@ -1617,29 +1617,29 @@ bool ContextAnalyzer::Analyze()
     AnalyzeExpressions(call_params, depth + 1);
     
     Method* method = ResolveMethodCall(klass, method_call, depth);
-    if(!method && klass->GetLibraryParent()) {
-      // check parent library class for method
-      LibraryClass* lib_parent = klass->GetLibraryParent();
-      method_call->SetOriginalClass(klass);
-      string encoding;
-      AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
-      return;
-    }
-    else if(!method && klass->GetParent()) {
-      // check parent library class for method
-      Class* parent = klass->GetParent();
-      method_call->SetOriginalClass(klass);
-      string encoding;
-      AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
-      return;
-
-    }
     
-    // note: last resort to find system based methods i.e. $Int, $Float, etc.
+    // note: find system based methods and call with function parameters (i.e. $Int, $Float)
     if(!method) {
       const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() + ":" + encoding +
 	EncodeMethodCall(method_call->GetCallingParameters(), depth);
       method = klass->GetMethod(encoded_name);
+    }
+    
+    if(!method) {
+      if(klass->GetParent()) {
+	Class* parent = klass->GetParent();
+	method_call->SetOriginalClass(klass);
+	string encoding;
+	AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
+	return;
+      }
+      else if(klass->GetLibraryParent()) {
+	LibraryClass* lib_parent = klass->GetLibraryParent();
+	method_call->SetOriginalClass(klass);
+	string encoding;
+	AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
+	return;
+      }
     }
     
     // found program method

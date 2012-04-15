@@ -12,6 +12,7 @@ bundle Default {
 
 		method : public : Foo() ~ Nil {
 			"fee, fie, foo, fum"->PrintLine();
+			@called("do that!");
 		}
 	}
 
