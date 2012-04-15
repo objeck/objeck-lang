@@ -10,10 +10,17 @@ bundle Default {
 		}
 	}
 
-	class Foo {
+	class Foo from Fie implements Fee {
+		New() { Parent(); }
+		method : public : Who() ~ Nil {
+			"Foo"->PrintLine();
+		}
+	}
+
+	class Fum {
 		New() {}
 		function : Main(args : String[]) ~ Nil {
-			f : Fee := Fie->New();
+			f : Fee := Foo->New();
 			f->Who();
 			f->Who();
 		}

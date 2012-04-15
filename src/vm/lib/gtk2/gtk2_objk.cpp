@@ -129,6 +129,7 @@ extern "C" {
     // find right handler
     glong id;
     switch(signal) {
+      /*
     case -100:
       id = g_signal_connect(GTK_OBJECT((GtkWidget*)self), "delete-event",
 			    G_CALLBACK(delete_callback_handler), data);
@@ -138,7 +139,7 @@ extern "C" {
       id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)self), "destroy", 
 			      G_CALLBACK(gtk_main_quit), NULL);
       break;
-      
+      */
     case -98:
       id = g_signal_connect((GtkWidget*)self, "clicked", 
 			    G_CALLBACK(callback_handler), data);
