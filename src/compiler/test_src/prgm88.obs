@@ -1,6 +1,16 @@
 use Gtk2;
 
 bundle Default {
+	class MyButton from GtkButton {
+		New(title : String) {
+			Parent(title);
+		}
+
+		method : public : Clicked() ~ Nil {
+			"clicked..."->PrintLine();
+		}
+	}
+
 	class HelloGtk {
 		function : TestHandle(widget : GtkWidget) ~ Nil {
 			"Hello Gtk2"->PrintLine();
@@ -8,7 +18,8 @@ bundle Default {
 		}
 
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {
-			"Button Clicked!"->PrintLine();
+				button : GtkButton := widget;
+				button->Clicked();
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -16,12 +27,10 @@ bundle Default {
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget) ~ Nil;
 			button_callback := ButtonHandle(GtkWidget) ~ Nil;
-
-			button_callback(Nil->As(GtkWidget));
 	
 			# create 
-			button := GtkButton->New("button 1");
-			button2 := GtkButton->New("button 2");
+			button := MyButton->New("button 1");
+			button2 := MyButton->New("button 2");
 
 			hbox := GtkHBox->New(false, 0);
 			hbox->PackStart(button->As(GtkWidget), true, true, 0);
