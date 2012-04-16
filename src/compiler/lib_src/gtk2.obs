@@ -58,7 +58,7 @@ bundle Gtk2 {
 			id := array_args[0]->As(IntHolder);
 			return id->Get();
 		}
-				
+		
 		method : public : SignalConnectSwapped(signal : Signal, widget : GtkWidget, 
 				callback : (GtkWidget) ~ Nil) ~ Nil {
 			lib_proxy := GetDllProxy();
@@ -167,6 +167,12 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_button_new_with_label", array_args);
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
+
+			SignalConnect(Signal->Clicked, ButtonHandle(GtkWidget) ~ Nil);
+		}
+
+		function : ButtonHandle(widget : GtkWidget) ~ Nil {
+			"hello world!"->PrintLine();
 		}
 
 		method : virtual : public : Clicked() ~ Nil;

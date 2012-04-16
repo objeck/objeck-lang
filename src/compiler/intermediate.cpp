@@ -593,7 +593,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   IntermediateDeclarations* entries = new IntermediateDeclarations;
 
 #ifdef _DEBUG
-  cout << "Class variables (local): name=" << method->GetName() << endl;
+  cout << "Method variables (local): name=" << method->GetName() << endl;
 #endif
   int space = CalculateEntrySpace(entries, false);
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
@@ -697,12 +697,27 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     MethodCall* method_call = static_cast<MethodCall*>(statement);
     if(method_call->IsFunctionDefinition()) {
       if(method_call->GetMethod()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+	if(is_lib) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+										     method_call->GetMethod()->GetClass()->GetName(),
+										     method_call->GetMethod()->GetEncodedName()));
+	  
+	}
+	else {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+	}
       }
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+	if(is_lib) {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+										     method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
+										     method_call->GetLibraryMethod()->GetName()));
+	}
+	else {
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+	}
       }
     }
     else if(method_call->IsDynamicFunctionCall()) {
@@ -1739,160 +1754,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitStaticArray(static_cast<StaticArray*>(expression));
     break;
     
-  case METHOD_CALL_EXPR: {
-    // find end of nested call
-    MethodCall* method_call = static_cast<MethodCall*>(expression);
-    if(method_call->IsFunctionDefinition()) {
-      if(method_call->GetMethod()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
-      }
-      else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
-      }
-    }
-    else if(method_call->IsDynamicFunctionCall()) {
-      MethodCall* tail = method_call;
-      while(tail->GetMethodCall()) {
-	tail = tail->GetMethodCall();
-      }
-      
-      // emit parameters for nested call
-      MethodCall* temp = static_cast<MethodCall*>(tail);
-      while(temp) {
-	EmitMethodCallParameters(temp);
-	// update
-	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
-      }
-
-      // emit function variable
-      MemoryContext mem_context;
-      SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
-      if(entry->IsLocal()) {
-	mem_context = LOCL;
-      } 
-      else if(entry->IsStatic()) {
-	mem_context = CLS;
-      } 
-      else {
-	mem_context = INST;
-      }
-      //
-      if(mem_context == INST) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      } 
-      else if(mem_context == CLS) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
-      }      
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
-      
-      // emit dynamic call
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-
-      switch(OrphanReturn(method_call)) {
-      case 0:
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
-	break;
-	
-      case 1:
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
-	break;
-
-      case 2:
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
-	if(!method_call->GetMethodCall()) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
-	}
-	break;
-	
-      default:
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
-	break;
-      }
-      
-      // emit nested calls
-      bool is_nested = false; // fuction call
-      method_call = method_call->GetMethodCall();
-      while(method_call) {
-	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
-	EmitCast(method_call);
-	// next call
-	if(method_call->GetMethod()) {
-	  Method* method = method_call->GetMethod();
-	  if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	    is_nested = true;
-	  } 
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else if(method_call->GetLibraryMethod()) {
-	  LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	  if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	    is_nested = true;
-	  } 
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
-	method_call = method_call->GetMethodCall();
-      } 
-
-
-
-
-
-    }
-    else {
-      MethodCall* tail = method_call;
-      while(tail->GetMethodCall()) {
-	tail = tail->GetMethodCall();
-      }
-
-      // emit parameters for nested call
-      MethodCall* temp = static_cast<MethodCall*>(tail);
-      while(temp) {
-	EmitMethodCallParameters(temp);
-	// update
-	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
-      }
-
-      bool is_nested = false;
-      do {
-	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
-	EmitCast(method_call);
-	// next call
-	if(method_call->GetMethod()) {
-	  Method* method = method_call->GetMethod();
-	  if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	    is_nested = true;
-	  } 
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else if(method_call->GetLibraryMethod()) {
-	  LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	  if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	    is_nested = true;
-	  } 
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
-	method_call = method_call->GetMethodCall();
-      } 
-      while(method_call);
-    }
-  }
+  case METHOD_CALL_EXPR:
+    EmitMethodCallExpression(static_cast<MethodCall*>(expression));
     break;
     
   case BOOLEAN_LIT_EXPR:
@@ -2010,6 +1873,176 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       }
       method_call = method_call->GetMethodCall();
     }
+  }
+}
+
+/****************************
+ * Translates a method call
+ * expression and supports
+ * dynamic functions.
+ ****************************/
+void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call) {
+  // find end of nested call
+  if(method_call->IsFunctionDefinition()) {
+    if(method_call->GetMethod()) {
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+										   method_call->GetMethod()->GetClass()->GetName(),
+										   method_call->GetMethod()->GetEncodedName()));
+										   
+      }
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+      }
+    }
+    else {
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+										   method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
+										   method_call->GetLibraryMethod()->GetName()));
+      }
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+      }
+
+    }
+  }
+  else if(method_call->IsDynamicFunctionCall()) {
+    MethodCall* tail = method_call;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+      
+    // emit parameters for nested call
+    MethodCall* temp = static_cast<MethodCall*>(tail);
+    while(temp) {
+      EmitMethodCallParameters(temp);
+      // update
+      temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+    }
+
+    // emit function variable
+    MemoryContext mem_context;
+    SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
+    if(entry->IsLocal()) {
+      mem_context = LOCL;
+    } 
+    else if(entry->IsStatic()) {
+      mem_context = CLS;
+    } 
+    else {
+      mem_context = INST;
+    }
+    //
+    if(mem_context == INST) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    } 
+    else if(mem_context == CLS) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+    }      
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
+      
+    // emit dynamic call
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+
+    switch(OrphanReturn(method_call)) {
+    case 0:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
+      break;
+	
+    case 1:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
+      break;
+
+    case 2:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
+      if(!method_call->GetMethodCall()) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+      }
+      break;
+	
+    default:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
+      break;
+    }
+      
+    // emit nested calls
+    bool is_nested = false; // fuction call
+    method_call = method_call->GetMethodCall();
+    while(method_call) {
+      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitCast(method_call);
+      // next call
+      if(method_call->GetMethod()) {
+	Method* method = method_call->GetMethod();
+	if(method->GetReturn()->GetType() == CLASS_TYPE) {
+	  is_nested = true;
+	} 
+	else {
+	  is_nested = false;
+	}
+      } 
+      else if(method_call->GetLibraryMethod()) {
+	LibraryMethod* lib_method = method_call->GetLibraryMethod();
+	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+	  is_nested = true;
+	} 
+	else {
+	  is_nested = false;
+	}
+      } 
+      else {
+	is_nested = false;
+      }
+      method_call = method_call->GetMethodCall();
+    } 
+  }
+  else {
+    MethodCall* tail = method_call;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+
+    // emit parameters for nested call
+    MethodCall* temp = static_cast<MethodCall*>(tail);
+    while(temp) {
+      EmitMethodCallParameters(temp);
+      // update
+      temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+    }
+
+    bool is_nested = false;
+    do {
+      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitCast(method_call);
+      // next call
+      if(method_call->GetMethod()) {
+	Method* method = method_call->GetMethod();
+	if(method->GetReturn()->GetType() == CLASS_TYPE) {
+	  is_nested = true;
+	} 
+	else {
+	  is_nested = false;
+	}
+      } 
+      else if(method_call->GetLibraryMethod()) {
+	LibraryMethod* lib_method = method_call->GetLibraryMethod();
+	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+	  is_nested = true;
+	} 
+	else {
+	  is_nested = false;
+	}
+      } 
+      else {
+	is_nested = false;
+      }
+      method_call = method_call->GetMethodCall();
+    } 
+    while(method_call);
   }
 }
 

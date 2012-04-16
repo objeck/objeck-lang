@@ -155,6 +155,32 @@ void Linker::ResolveExternalMethodCalls()
             }
           }
 	    break;
+	    
+	  case instructions::LIB_FUNC_DEF: {
+            LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+            if(lib_klass) {
+              LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
+              if(lib_method) {
+		// set method
+                instr->SetType(instructions::LOAD_INT_LIT);
+                instr->SetOperand(lib_method->GetId());
+		// set class
+		instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
+		instrs[j + 1]->SetOperand(lib_klass->GetId());
+              } else {
+                // TODO: better error handling
+                cerr << "Error: Unable to resolve external library method: '"
+                     << instr->GetOperand6() << "'; check library path" << endl;
+                exit(1);
+              }
+            } else {
+              cerr << "Error: Unable to resolve external library class: '"
+                   << instr->GetOperand5() << "'; check library path" << endl;
+              exit(1);
+            }
+          }
+	    break;
+
 
 	  default:
 	    break;
@@ -590,6 +616,18 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       Linker::Show(msg, 0, 2);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name));
+    }
+      break;
+      
+    case LIB_FUNC_DEF: {
+      const string& cls_name = ReadString();
+      const string& mthd_name = ReadString();
+#ifdef _DEBUG
+      const string &msg = "LIB_FUNC_DEF: class=" + cls_name + ", method=" + mthd_name;
+      Linker::Show(msg, 0, 2);
+#endif
+      instrs.push_back(new LibraryInstr(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name));
+      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, -1));
     }
       break;
 

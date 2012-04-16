@@ -18,15 +18,15 @@ bundle Default {
 		}
 
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {
-				button : GtkButton := widget;
-				button->Clicked();
+			button : GtkButton := widget;
+			button->Clicked();
 		}
 
 		function : Main(args : String[]) ~ Nil {
 			# callbacks
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget) ~ Nil;
-			button_callback := ButtonHandle(GtkWidget) ~ Nil;
+#			button_callback := ButtonHandle(GtkWidget) ~ Nil;
 	
 			# create 
 			button := MyButton->New("button 1");
@@ -40,7 +40,7 @@ bundle Default {
 			window->SignalConnect(Signal->Destroy, test_callback);
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
-			button->SignalConnect(Signal->Clicked, button_callback);
+#			button->SignalConnect(Signal->Clicked, button_callback);
 			window->Add(hbox->As(GtkWidget));
 			
 			# show
