@@ -17,10 +17,12 @@ bundle Default {
 			Appliction->MainQuit();
 		}
 
+#~
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {
 			button : GtkButton := widget;
 			button->Clicked();
 		}
+~#
 
 		function : Main(args : String[]) ~ Nil {
 			# callbacks
