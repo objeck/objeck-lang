@@ -172,7 +172,8 @@ bundle Gtk2 {
 		}
 
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {
-			"hello world!"->PrintLine();
+			button : GtkButton := widget;
+			button->Clicked();
 		}
 
 		method : virtual : public : Clicked() ~ Nil;
