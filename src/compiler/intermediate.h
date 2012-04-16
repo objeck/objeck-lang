@@ -207,6 +207,7 @@ class IntermediateEmitter {
   void EmitAssignment(Assignment* assignment);
   void EmitDeclaration(Declaration* declaration);
   void EmitMethodCallParameters(MethodCall* method_call);
+  void EmitMethodCallExpression(MethodCall* method_call);
   void EmitMethodCall(MethodCall* method_call, bool is_nested, bool is_cast);
   void EmitSystemDirective(SystemStatement* statement);
   int CalculateEntrySpace(SymbolTable* table, int &index,
