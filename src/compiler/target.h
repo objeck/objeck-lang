@@ -207,7 +207,12 @@ public:
       WriteString(operand5, file_out);
       WriteString(operand6, file_out);
       break;
-
+      
+    case LIB_FUNC_DEF:
+      WriteString(operand5, file_out);
+      WriteString(operand6, file_out);
+      break;
+      
     case JMP:
     case DYN_MTHD_CALL:
     case LOAD_INT_VAR:
@@ -582,7 +587,12 @@ public:
       cout << "LIB_MTHD_CALL: class='" << operand5 << "', method='"
            << operand6 << "'; native=" << (operand3 ? "true" : "false") << endl;
       break;
-
+      
+    case LIB_FUNC_DEF:
+      cout << "LIB_FUNC_DEF: class='" << operand5 << "', method='" 
+	   << operand6 << "'" << endl;
+      break;
+      
     case LBL:
       cout << "LBL: id=" << operand << endl;
       break;

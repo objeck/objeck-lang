@@ -142,6 +142,7 @@ namespace instructions {
     LIB_NEW_OBJ_INST,
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
+    LIB_FUNC_DEF,
     // system directives
     END_STMTS,
   } 
