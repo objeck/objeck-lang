@@ -109,7 +109,8 @@ extern "C" {
   }
 
   void og_signal_connect(VMContext& context) {
-    long* self = (long*)APITools_GetIntValue(context, 1);
+    long* target = (long*)APITools_GetIntValue(context, 1);
+    long* self = (long*)APITools_GetObjectValue(context, 1);
     int signal = APITools_GetIntValue(context, 2);
     int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID);
     int mthd_id = APITools_GetFunctionValue(context, 3, MTHD_ID);
@@ -129,19 +130,18 @@ extern "C" {
     // find right handler
     glong id;
     switch(signal) {
-      /*
     case -100:
-      id = g_signal_connect(GTK_OBJECT((GtkWidget*)self), "delete-event",
+      id = g_signal_connect(GTK_OBJECT((GtkWidget*)target), "delete-event",
 			    G_CALLBACK(delete_callback_handler), data);
       break;
       
     case -99:
-      id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)self), "destroy", 
+      id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)target), "destroy", 
 			      G_CALLBACK(gtk_main_quit), NULL);
       break;
-      */
+
     case -98:
-      id = g_signal_connect((GtkWidget*)self, "clicked", 
+      id = g_signal_connect((GtkWidget*)target, "clicked", 
 			    G_CALLBACK(callback_handler), data);
       break;
     }
