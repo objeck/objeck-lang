@@ -32,7 +32,7 @@ bundle Gtk2 {
 
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/gtk2/ojk_gtk");
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
 			};
 
 			return @lib_proxy;
@@ -168,6 +168,8 @@ bundle Gtk2 {
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
 		}
+
+		method : virtual : public : Clicked() ~ Nil;
 	}	
 
 	# GtkWindow class
