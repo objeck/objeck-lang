@@ -975,6 +975,7 @@ class ContextAnalyzer {
 			    Class* klass, LibraryClass* lib_klass, int depth);
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   string EncodeFunctionReference(ExpressionList* calling_params, int depth);
+  void AnalyzeDynamicFunctionCall(MethodCall* method_call, int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
 				string &encoding, int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,

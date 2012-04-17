@@ -259,6 +259,12 @@ bundle System {
 			return v;
 		}
 
+		function : Times(n : Int, f : () ~ Nil) ~ Nil {
+			for(i := 0; i < n; i += 1;) {
+				f();	
+			};	
+		}
+
 		function : Print(i : Int) ~ Nil {
 			STD_OUT_INT;
 		}
