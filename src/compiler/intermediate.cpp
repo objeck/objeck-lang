@@ -698,7 +698,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     if(method_call->IsFunctionDefinition()) {
       if(method_call->GetMethod()) {
 	if(is_lib) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
 										     method_call->GetMethod()->GetClass()->GetName(),
 										     method_call->GetMethod()->GetEncodedName()));
 	  
@@ -710,7 +710,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       }
       else {
 	if(is_lib) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
 										     method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
 										     method_call->GetLibraryMethod()->GetName()));
 	}
@@ -1886,7 +1886,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call) {
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
 										   method_call->GetMethod()->GetClass()->GetName(),
 										   method_call->GetMethod()->GetEncodedName()));
 										   
@@ -1898,7 +1898,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call) {
     }
     else {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, 0,
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
 										   method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
 										   method_call->GetLibraryMethod()->GetName()));
       }
