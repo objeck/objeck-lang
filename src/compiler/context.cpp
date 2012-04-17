@@ -1457,12 +1457,6 @@ bool ContextAnalyzer::Analyze()
     
     // determine if there's a mapping from calling type to method type
     if(calling_type && method_type) {
-      /*
-#ifdef _DEBUG
-      cout << "@@@ line=" << calling_param->GetLineNumber() << ", a=" << calling_type->GetType()
-	   << ", b=" << method_type->GetType() << endl;
-#endif
-      */
       // processing an array
       if(!IsScalar(calling_param)) {
 	if(calling_type->GetType() == method_type->GetType()) {
@@ -1640,6 +1634,10 @@ bool ContextAnalyzer::Analyze()
 	AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
 	return;
       }
+      else { 
+	AnalyzeDynamicFunctionCall(method_call, depth + 1);
+	return;
+      }
     }
     
     // found program method
@@ -1766,7 +1764,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a method call.  This
    * is method call within a linked
-   * lib8rary
+   * library
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
 					  bool is_virtual, bool is_expr, int depth)
@@ -1800,65 +1798,73 @@ bool ContextAnalyzer::Analyze()
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
     else {
-      // dynamic function call that is not bound to a class/function until runtime
-      SymbolEntry* entry = GetEntry(method_call->GetMethodName());
-      if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-	// generate parameter strings
-	Type* type = entry->GetType();
-	string dyn_func_params = type->GetClassName();
-	if(dyn_func_params.size() == 0) {
-	  vector<Type*>& func_params = type->GetFunctionParameters();
-	  for(size_t i = 0; i < func_params.size(); i++) {
-	    dyn_func_params += EncodeType(func_params[i]);
-	    // encode dimension
-	    for(int i = 0; i < type->GetDimension(); i++) {
-	      dyn_func_params += '*';
-	    }
-	    dyn_func_params += ',';
-	  }
-	}
-	else {
-	  // TODO: hackish!
-	  int start = dyn_func_params.find('(');
-	  int end = dyn_func_params.find(')', start + 1);
-	  if(start != (int)string::npos && end != (int)string::npos) {
-	    dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
-	  }
-	}
-	type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
-	
-	// check parameters again dynamic definition
-	const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
-	if(dyn_func_params != call_params) {
-	  ProcessError(static_cast<Expression*>(method_call),
-		       "Undefined function/method call: '" + method_call->GetMethodName() +
-		       "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-	}
-	
-	//  set entry reference and return type
-	method_call->SetDynamicFunctionCall(entry);
-	method_call->SetEvalType(type->GetFunctionReturn(), true);
-	if(method_call->GetMethodCall()) {
-	  method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
-	}
+      AnalyzeDynamicFunctionCall(method_call, depth + 1);
+    }
+  }
 
-	// next call
-	AnalyzeExpressionMethodCall(method_call, depth + 1);
+  /********************************
+   * Analyzes a dynamic function 
+   * call
+   ********************************/
+  void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, int depth) {
+    // dynamic function call that is not bound to a class/function until runtime
+    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+    if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+      // generate parameter strings
+      Type* type = entry->GetType();
+      string dyn_func_params = type->GetClassName();
+      if(dyn_func_params.size() == 0) {
+	vector<Type*>& func_params = type->GetFunctionParameters();
+	for(size_t i = 0; i < func_params.size(); i++) {
+	  dyn_func_params += EncodeType(func_params[i]);
+	  // encode dimension
+	  for(int i = 0; i < type->GetDimension(); i++) {
+	    dyn_func_params += '*';
+	  }
+	  dyn_func_params += ',';
+	}
       }
       else {
-	const string &mthd_name = method_call->GetMethodName();
-	const string &var_name = method_call->GetVariableName();
+	// TODO: hackish!
+	int start = dyn_func_params.find('(');
+	int end = dyn_func_params.find(')', start + 1);
+	if(start != (int)string::npos && end != (int)string::npos) {
+	  dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
+	}
+      }
+      type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+	
+      // check parameters again dynamic definition
+      const string call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
+      if(dyn_func_params != call_params) {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + method_call->GetMethodName() +
+		     "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+      }
+	
+      //  set entry reference and return type
+      method_call->SetDynamicFunctionCall(entry);
+      method_call->SetEvalType(type->GetFunctionReturn(), true);
+      if(method_call->GetMethodCall()) {
+	method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
+      }
 
-	if(mthd_name.size() > 0) {
-	  ProcessError(static_cast<Expression*>(method_call),
-		       "Undefined function/method call: '" + mthd_name +
-		       "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-	}
-	else {
-	  ProcessError(static_cast<Expression*>(method_call),
-		       "Undefined function/method call: '" + var_name +
-		       "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-	}
+      // next call
+      AnalyzeExpressionMethodCall(method_call, depth + 1);
+    }
+    else {
+      const string &mthd_name = method_call->GetMethodName();
+      const string &var_name = method_call->GetVariableName();
+
+      if(mthd_name.size() > 0) {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + mthd_name +
+		     "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+      }
+      else {
+	ProcessError(static_cast<Expression*>(method_call),
+		     "Undefined function/method call: '" + var_name +
+		     "(..)'\n\tEnsure the object and it's calling parameters are properly casted");
       }
     }
   }
