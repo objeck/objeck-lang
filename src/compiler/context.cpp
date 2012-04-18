@@ -1880,7 +1880,7 @@ bool ContextAnalyzer::Analyze()
 
     Method* method = klass->GetMethod(encoded_name);
     if(method) {
-      const string func_type_id = '(' + func_encoding + ")~" + method->GetEncodedReturn();
+      const string func_type_id = "m.(" + func_encoding + ")~" + method->GetEncodedReturn();
       Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
       type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
       type->SetFunctionReturn(method->GetReturn());
