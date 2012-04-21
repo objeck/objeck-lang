@@ -50,9 +50,11 @@ bundle Default {
 			ff := Foo->New();
 			ff->Call(Fum->Callee(String) ~ Nil);
 
+#			i := 5;
+#			5->Times(PrintHello() ~ Nil);
 
-			4->Times(4, PrintHello() ~ Nil);
-#			4->Min(3);
+			i := 15;
+			10->Max(i)->PrintLine();
 		}
 
 		function : public : PrintHello() ~ Nil {
