@@ -25,18 +25,18 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE
+2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,0,1,0
- PRODUCTVERSION 3,0,1,0
+ FILEVERSION 3,0,1,2
+ PRODUCTVERSION 3,0,1,2
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -70,12 +70,12 @@ BEGIN
             VALUE "Comments", "Objeck Virtual Machine"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck Virtual Machine"
-            VALUE "FileVersion", "3.0.1.0"
+            VALUE "FileVersion", "3.0.1.2"
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2008-2012"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
-            VALUE "ProductVersion", "3.0.1.0"
+            VALUE "ProductVersion", "3.0.1.2"
         END
     END
     BLOCK "VarFileInfo"
