@@ -24,6 +24,7 @@ bundle Default {
 		z : System.String;
 
 		New() {
+			Parent("xxx");
 		}
 
 		method : public : native : GetName() ~ System.String {
