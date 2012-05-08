@@ -34,12 +34,17 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
+static Loader* loader;
+static Runtime::StackInterpreter* intpr;
+
 static void Init(const char* arg)
 {
   // loader; when this goes out of scope program memory is released
   srand(time(NULL)); rand(); // calling rand() once improves random number generation
-  Loader loader(arg);
-  loader.Load();
+  Loader* loader = new Loader(arg);
+  loader->Load();
+  
+  intpr = new Runtime::StackInterpreter(Loader::GetProgram());
 }
 
 static void Request(const char* cls_id, const char* mthd_id)
@@ -53,8 +58,7 @@ static void Request(const char* cls_id, const char* mthd_id)
       long* stack_pos = new long;
       (*stack_pos) = 0;
 
-      Runtime::StackInterpreter intpr;
-      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
 
       // clean up
       delete[] op_stack;
@@ -76,7 +80,15 @@ static void Request(const char* cls_id, const char* mthd_id)
 
 static void Exit()
 {
-  
+  if(loader) {
+    delete loader;
+    loader = NULL;
+  }
+
+  if(intpr) {
+    delete intpr;
+    intpr = NULL;
+  }
 
   MemoryManager::Instance()->Clear(); 
 }
