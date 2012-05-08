@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for the VM.
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2008-2010 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,79 +29,41 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "vm.h"
+#include <iostream>
+#include <dlfcn.h>
+#include <stdlib.h>
 
-#define SUCCESS 0
-#define USAGE_ERROR -1
+using namespace std;
 
-static Loader* loader;
-static Runtime::StackInterpreter* intpr;
+typedef void (*vm_init_def)(const char*);
+typedef void (*vm_call_def)(const char*, const char*);
+typedef void (*vm_exit_def)();
 
-extern "C" 
+int main(const int argc, const char* argv[])
 {
-  void Init(const char* arg)
-  {
-#ifdef _DEBUG
-    cout << "dynamic lib: Init" << endl;
-#endif
-  
-    // loader; when this goes out of scope program memory is released
-    srand(time(NULL)); rand(); // calling rand() once improves random number generation
-    loader = new Loader(arg);
-    loader->Load();
-  
-    intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+  void* dynamic_lib = dlopen("./obr.so", RTLD_LAZY);
+  if(!dynamic_lib) {
+    cerr << ">>> Runtime error loading DLL: " << dlerror() << " <<<" << endl;
+    exit(1);
   }
-
-  void Call(const char* cls_id, const char* mthd_id)
-  {
-cout << "---- 0 ----" << endl;
-    StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-cout << "---- 1 ----" << endl;
-    if(cls) {
-      StackMethod* mthd = cls->GetMethod(mthd_id);
-      if(mthd) {
-	// execute
-	long* op_stack = new long[STACK_SIZE];
-	long* stack_pos = new long;
-	(*stack_pos) = 2;
-
-	op_stack[0] = 0;
-	op_stack[1] = 0;
-
-	
-	intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
-
-	// clean up
-	delete[] op_stack;
-	op_stack = NULL;
-
-	delete stack_pos;
-	stack_pos = NULL;
-      }
-      else {
-	cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
-	exit(1);
-      }
-    }
-    else {
-      cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
-      exit(1);
-    }
-  }
-
-  void Exit()
-  {
-    if(loader) {
-      delete loader;
-      loader = NULL;
-    }
     
-    if(intpr) {
-      delete intpr;
-      intpr = NULL;
-    }
-  
-    MemoryManager::Instance()->Clear(); 
+  // call load function
+  char* error;
+  vm_init_def init_ptr = (vm_init_def)dlsym(dynamic_lib, "Init");
+  if((error = dlerror()) != NULL)  {
+    cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
+    exit(1);
   }
+
+  vm_call_def call_ptr = (vm_call_def)dlsym(dynamic_lib, "Call");
+  if((error = dlerror()) != NULL)  {
+    cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
+    exit(1);
+  }
+
+  // call function
+  (*init_ptr)("../compiler/a.obe");
+  (*call_ptr)("Hello", "Hello:Main:o.System.String*,");
+    
+  return 0;
 }
