@@ -34,36 +34,49 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
-static long* op_stack;
-static long* stack_pos;
-
 static void Init(const char* arg)
 {
   // loader; when this goes out of scope program memory is released
   srand(time(NULL)); rand(); // calling rand() once improves random number generation
   Loader loader(arg);
   loader.Load();
-
-  // execute
-  op_stack = new long[STACK_SIZE];
-  stack_pos = new long;
-  (*stack_pos) = 0;
 }
 
-static void Request()
+static void Request(const char* cls_id, const char* mthd_id)
 {
-  Runtime::StackInterpreter intpr(Loader::GetProgram());
-  // intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+  StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+  if(cls) {
+    StackMethod* mthd = cls->GetMethod(mthd_id);
+    if(mthd) {
+      // execute
+      long* op_stack = new long[STACK_SIZE];
+      long* stack_pos = new long;
+      (*stack_pos) = 0;
+
+      Runtime::StackInterpreter intpr;
+      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+
+      // clean up
+      delete[] op_stack;
+      op_stack = NULL;
+
+      delete stack_pos;
+      stack_pos = NULL;
+    }
+    else {
+      cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
+      exit(1);
+    }
+  }
+  else {
+    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
+    exit(1);
+  }
 }
 
 static void Exit()
 {
-  // clean up
-  delete[] op_stack;
-  op_stack = NULL;
-
-  delete stack_pos;
-  stack_pos = NULL;
+  
 
   MemoryManager::Instance()->Clear(); 
 }
