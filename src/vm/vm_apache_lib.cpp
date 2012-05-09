@@ -34,12 +34,13 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
-static Loader* loader;
-static Runtime::StackInterpreter* intpr;
+static Loader* loader = NULL;
+static Runtime::StackInterpreter* intpr = NULL;
+static StackMethod* mthd = NULL;
 
 extern "C" 
 {
-  void Init(const char* arg)
+  void Init(const char* prgm_id, const char* cls_id, const char* mthd_id)
   {
 #ifdef _DEBUG
     cout << "dynamic lib: Init" << endl;
@@ -47,45 +48,44 @@ extern "C"
   
     // loader; when this goes out of scope program memory is released
     srand(time(NULL)); rand(); // calling rand() once improves random number generation
-    loader = new Loader(arg);
+    loader = new Loader(prgm_id);
     loader->Load();
   
     intpr = new Runtime::StackInterpreter(Loader::GetProgram());
-  }
 
-  void Call(const char* cls_id, const char* mthd_id)
-  {
-cout << "---- 0 ----" << endl;
     StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-cout << "---- 1 ----" << endl;
     if(cls) {
-      StackMethod* mthd = cls->GetMethod(mthd_id);
-      if(mthd) {
-	// execute
-	long* op_stack = new long[STACK_SIZE];
-	long* stack_pos = new long;
-	(*stack_pos) = 2;
-
-	op_stack[0] = 0;
-	op_stack[1] = 0;
-
-	
-	intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
-
-	// clean up
-	delete[] op_stack;
-	op_stack = NULL;
-
-	delete stack_pos;
-	stack_pos = NULL;
-      }
-      else {
+      mthd = cls->GetMethod(mthd_id);
+      if(!mthd) {
 	cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
-	exit(1);
+	return;
       }
     }
     else {
       cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
+      return;
+    }
+  }
+
+  void Call()
+  {
+    if(mthd) {    
+      // execute
+      long* op_stack = new long[STACK_SIZE];
+      long* stack_pos = new long;
+      (*stack_pos) = 0;
+
+      intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+
+      // clean up
+      delete[] op_stack;
+      op_stack = NULL;
+
+      delete stack_pos;
+      stack_pos = NULL;      
+    }
+    else {
+      cerr << ">>> DLL call: Invalid method!" << endl;
       exit(1);
     }
   }
