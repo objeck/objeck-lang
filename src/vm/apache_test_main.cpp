@@ -35,8 +35,8 @@
 
 using namespace std;
 
-typedef void (*vm_init_def)(const char*);
-typedef void (*vm_call_def)(const char*, const char*);
+typedef void (*vm_init_def)(const char*, const char*, const char*);
+typedef void (*vm_call_def)();
 typedef void (*vm_exit_def)();
 
 int main(const int argc, const char* argv[])
@@ -62,8 +62,8 @@ int main(const int argc, const char* argv[])
   }
 
   // call function
-  (*init_ptr)("../compiler/a.obe");
-  (*call_ptr)("Hello", "Hello:Main:o.System.String*,");
+  (*init_ptr)("../compiler/a.obe", "Hello", "Hello:Main:o.System.String*,");
+  (*call_ptr)();
     
   return 0;
 }
