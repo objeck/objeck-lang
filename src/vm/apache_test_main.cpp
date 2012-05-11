@@ -32,11 +32,12 @@
 #include <iostream>
 #include <dlfcn.h>
 #include <stdlib.h>
+#include "httpd.h"
 
 using namespace std;
 
 typedef void (*vm_init_def)(const char*, const char*, const char*);
-typedef void (*vm_call_def)();
+typedef void (*vm_call_def)(request_rec*);
 typedef void (*vm_exit_def)();
 
 int main(const int argc, const char* argv[])
@@ -60,10 +61,10 @@ int main(const int argc, const char* argv[])
     cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
     exit(1);
   }
-
+  
   // call function
-  (*init_ptr)("../compiler/a.obe", "Hello", "Hello:Main:o.System.String*,");
-  (*call_ptr)();
-    
+  (*init_ptr)("../compiler/a.obe", "ApacheModule", "ApacheModule:Request:o.Apache.Request,");
+  (*call_ptr)(NULL);
+  
   return 0;
 }
