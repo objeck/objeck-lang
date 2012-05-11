@@ -7,7 +7,7 @@ bundle Apache {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/odbc/apache");
+				@lib_proxy := DllProxy->New("/tmp/lib/apache");
 			};
 
 			return @lib_proxy;
@@ -22,5 +22,16 @@ bundle Apache {
 		
 		New() {
 		}
+
+		method : public : Print(s : String) ~ Nil {
+      if(@native_request <> 0) {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New(@native_request);
+        array_args[1] := s;
+        @lib_proxy := Proxy->GetDllProxy();
+        @lib_proxy->CallFunction("apache_write", array_args);
+      };
+    }
+
 	}
 }
