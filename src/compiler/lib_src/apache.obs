@@ -28,10 +28,26 @@ bundle Apache {
         array_args := Base->New[2];
         array_args[0] := IntHolder->New(@native_request);
         array_args[1] := s;
+
         @lib_proxy := Proxy->GetDllProxy();
         @lib_proxy->CallFunction("apache_write", array_args);
       };
     }
 
+		method : public : GetUri() ~ String {
+      if(@native_request <> 0) {
+				array_args := Base->New[2];
+        array_args[0] := IntHolder->New(@native_request);
+				array_args[1] := IntHolder->New();
+
+        @lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("apache_get_uri", array_args);
+
+				value := array_args[1]->As(String);
+				return value;
+			};
+
+			return "";
+		}
 	}
 }
