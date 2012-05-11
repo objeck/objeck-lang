@@ -1,7 +1,7 @@
 /***************************************************************************
- * Starting point for the VM.
+ * Wrapper for Apache2 module
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2012, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "vm.h"
+#include <string>
+#include "httpd.h"
 
-#define SUCCESS 0
-#define USAGE_ERROR -1
+#include "vm.h"
 
 static Loader* loader = NULL;
 static Runtime::StackInterpreter* intpr = NULL;
@@ -67,22 +67,41 @@ extern "C"
     }
   }
 
-  void Call()
+  void Call(request_rec *r)
   {
-    if(mthd) {    
-      // execute
+    if(mthd) { 
+      // execute method
       long* op_stack = new long[STACK_SIZE];
       long* stack_pos = new long;
-      (*stack_pos) = 0;
 
-      intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      // create and populate request object      
+      long* obj = MemoryManager::Instance()->AllocateObject("ApacheModule",
+							    op_stack, *stack_pos);
+      if(obj) {
+	obj[0] = (long)r;
+	
+	// set calling parameters
+	op_stack[0] = (long)obj;
+	(*stack_pos) = 1;
+	
+	intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      }
 
+#ifdef _DEBUG
+      cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+      if((*stack_pos) > 0) {
+	for(int i = 0; i < (*stack_pos); i++) {
+	  cout << "dump: value=" << (void*)(*stack_pos) << endl;
+	} 
+      }
+#endif
+      
       // clean up
       delete[] op_stack;
       op_stack = NULL;
 
       delete stack_pos;
-      stack_pos = NULL;      
+      stack_pos = NULL;
     }
     else {
       cerr << ">>> DLL call: Invalid method!" << endl;

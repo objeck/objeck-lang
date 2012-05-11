@@ -1,0 +1,26 @@
+use API;
+use Struct;
+
+bundle Apache {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/odbc/apache");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	#~
+	# Apache Request 
+	~#
+	class Request {
+		@native_request : Int;
+		
+		New() {
+		}
+	}
+}
