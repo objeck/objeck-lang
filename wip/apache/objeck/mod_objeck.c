@@ -53,34 +53,50 @@ static apr_pool_t* call_pool = NULL;
 
 static apr_status_t destroy_call_pool (void * dummy)
 {
-  void* dynamic_lib = NULL; 
-  apr_pool_userdata_get(&dynamic_lib, "objeck:lib", call_pool);
-  if(!dynamic_lib) {
+  void* data;
+  vm_exit_def exit_ptr;
+  
+  /* call clean up function on library */
+  apr_pool_userdata_get(&data, "objeck:exit", call_pool);
+  if(!data) {
     return 1;
   }
-  dlclose(dynamic_lib);
+  exit_ptr = (vm_exit_def)data;
+  (*exit_ptr)();
   
+  /* release library handle */
+  apr_pool_userdata_get(&data, "objeck:lib", call_pool);
+  if(!data) {
+    return 1;
+  }
+  dlclose(data);
+  
+  /* release pool */
   apr_pool_destroy(call_pool);
   call_pool = NULL;
   return APR_SUCCESS;
 }
 
-/* sample child init */
+/* child initialization */
 static void exipc_child_init(apr_pool_t *p, server_rec *s)
 {
-  ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "*** Init - start ***");
+  void* dynamic_lib;
+  vm_init_def init_ptr;
+  vm_call_def call_ptr;
+  vm_exit_def exit_ptr;
+  char* error;
   
-  void* dynamic_lib = dlopen("/tmp/obr.so", RTLD_LAZY);
+  /* load library */
+  dynamic_lib = dlopen("/tmp/obr.so", RTLD_LAZY);
   if(!dynamic_lib) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, 
 		 ">>> Runtime error loading DLL: %s\n", 
 		 dlerror());
     exit(1);
   }
-
-  // call load function
-  char* error;
-  vm_init_def init_ptr = (vm_init_def)dlsym(dynamic_lib, "Init");
+  
+  /* load function references */
+  init_ptr = (vm_init_def)dlsym(dynamic_lib, "Init");
   if((error = dlerror()) != NULL)  {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, 
 		 ">>> Runtime error calling function: %s\n",
@@ -88,7 +104,7 @@ static void exipc_child_init(apr_pool_t *p, server_rec *s)
     exit(1);
   }
 
-  vm_call_def call_ptr = (vm_call_def)dlsym(dynamic_lib, "Call");
+  call_ptr = (vm_call_def)dlsym(dynamic_lib, "Call");
   if((error = dlerror()) != NULL)  {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, 
 		 ">>> Runtime error calling function: %s\n", 
@@ -96,38 +112,48 @@ static void exipc_child_init(apr_pool_t *p, server_rec *s)
     exit(1);
   }
   
+  exit_ptr = (vm_exit_def)dlsym(dynamic_lib, "Exit");
+  if((error = dlerror()) != NULL)  {
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, 
+		 ">>> Runtime error exiting function: %s", 
+		 error);
+    exit(1);
+  }
+  
+  /* create resource pool */
   if(APR_SUCCESS == apr_pool_create(&call_pool, 0)) {
     apr_pool_cleanup_register(p, 0, destroy_call_pool, destroy_call_pool);
   }
   
   apr_pool_userdata_set(dynamic_lib, "objeck:lib", apr_pool_cleanup_null, call_pool);
   apr_pool_userdata_set(call_ptr, "objeck:call", apr_pool_cleanup_null, call_pool);
+  apr_pool_userdata_set(exit_ptr, "objeck:exit", apr_pool_cleanup_null, call_pool);
   
-  // call function
+  /* call library initialization function */
   (*init_ptr)("/tmp/a.obe", "ApacheModule", "ApacheModule:Request:o.Apache.Request,");
-  
-  ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "*** Init 2 - end ***");
 }
 
 /* content handler */
 static int objeck_handler(request_rec *r)
 { 
+  void* data = NULL; 
+
   if(strcmp(r->handler, "objeck")) {
     return DECLINED;
   }
-  
-  void* data = NULL; 
+
   apr_pool_userdata_get(&data, "objeck:call", call_pool);
   if(!data) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
 		 ">>> Unable to load calling funciton <<<");
-    exit(1);
+    return 1;
   }
   vm_call_def call_ptr = (vm_call_def)data;    
-
+  
+  /* set content type to html and call VM */
   r->content_type = "text/html";      
   if(!r->header_only) {
-    ap_rputs("030 - The sample page from mod_objeck.c\n", r);
+    (*call_ptr)(r);
   }
 
   return OK;
