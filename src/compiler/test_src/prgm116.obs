@@ -7,7 +7,14 @@ bundle Default {
 			request->Print("<html><head><title>Objeck</title></head><body><i>Hello Web!</i><br/> URI is");
 			request->Print(request->GetUri());
 			request->Print("<br/> Params: ");
-			request->Print(request->GetParams());
+
+			params := request->GetParams()->Split("&");
+			each(i : params) {
+				request->Print("<p> Param: ");
+				request->Print(params[i]);
+				request->Print("</p>");
+			};
+
 			request->Print("<br/> Protocol: ");
 			request->Print(request->GetProtocol());
 			request->Print("</html>");
