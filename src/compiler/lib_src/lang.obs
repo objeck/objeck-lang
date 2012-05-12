@@ -1038,7 +1038,8 @@ bundle System {
 						delim_index += 1;
 					}
 					else if(delim_index = delim->Size()) {
-						parsed_strings[count] := SubString(start_index, found_index + delim->Size() - start_index);
+#						parsed_strings[count] := SubString(start_index, found_index + delim->Size() - start_index);
+						parsed_strings[count] := SubString(start_index, found_index - start_index);
 						count += 1;
 						
 						start_index := found_index + delim->Size();

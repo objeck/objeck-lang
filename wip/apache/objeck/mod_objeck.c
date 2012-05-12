@@ -45,6 +45,8 @@
 
 #include <dlfcn.h>
 
+#define INTERNAL_ERROR 500
+
 typedef void (*vm_init_def)(const char*, const char*, const char*);
 typedef void (*vm_call_def)(request_rec*);
 typedef void (*vm_exit_def)();
@@ -59,7 +61,7 @@ static apr_status_t destroy_call_pool (void * dummy)
   /* call clean up function on library */
   apr_pool_userdata_get(&data, "objeck:exit", call_pool);
   if(!data) {
-    return FORBIDDEN;
+    return INTERNAL_ERROR;
   }
   exit_ptr = (vm_exit_def)data;
   (*exit_ptr)();
@@ -67,7 +69,7 @@ static apr_status_t destroy_call_pool (void * dummy)
   /* release library handle */
   apr_pool_userdata_get(&data, "objeck:lib", call_pool);
   if(!data) {
-    return FORBIDDEN;
+    return INTERNAL_ERROR;
   }
   dlclose(data);
   
@@ -146,7 +148,7 @@ static int objeck_handler(request_rec *r)
   if(!data) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
 		 ">>> Unable to load calling funciton <<<");
-    return FORBIDDEN;
+    return INTERNAL_ERROR;
   }
   vm_call_def call_ptr = (vm_call_def)data;    
   
