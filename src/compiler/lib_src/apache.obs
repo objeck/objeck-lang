@@ -49,5 +49,37 @@ bundle Apache {
 
 			return "";
 		}
+
+		method : public : GetParams() ~ String {
+      if(@native_request <> 0) {
+				array_args := Base->New[2];
+        array_args[0] := IntHolder->New(@native_request);
+				array_args[1] := IntHolder->New();
+
+        @lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("apache_get_args", array_args);
+
+				value := array_args[1]->As(String);
+				return value;
+			};
+
+			return "";
+		}
+		
+		method : public : GetProtocol() ~ String {
+      if(@native_request <> 0) {
+				array_args := Base->New[2];
+        array_args[0] := IntHolder->New(@native_request);
+				array_args[1] := IntHolder->New();
+
+        @lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("apache_get_protocol", array_args);
+
+				value := array_args[1]->As(String);
+				return value;
+			};
+
+			return "";
+		}
 	}
 }
