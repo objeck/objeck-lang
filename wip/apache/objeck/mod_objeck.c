@@ -59,7 +59,7 @@ static apr_status_t destroy_call_pool (void * dummy)
   /* call clean up function on library */
   apr_pool_userdata_get(&data, "objeck:exit", call_pool);
   if(!data) {
-    return 1;
+    return FORBIDDEN;
   }
   exit_ptr = (vm_exit_def)data;
   (*exit_ptr)();
@@ -67,7 +67,7 @@ static apr_status_t destroy_call_pool (void * dummy)
   /* release library handle */
   apr_pool_userdata_get(&data, "objeck:lib", call_pool);
   if(!data) {
-    return 1;
+    return FORBIDDEN;
   }
   dlclose(data);
   
@@ -146,7 +146,7 @@ static int objeck_handler(request_rec *r)
   if(!data) {
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
 		 ">>> Unable to load calling funciton <<<");
-    return 1;
+    return FORBIDDEN;
   }
   vm_call_def call_ptr = (vm_call_def)data;    
   
