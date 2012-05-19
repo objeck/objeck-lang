@@ -8,11 +8,13 @@ bundle Default {
 			request->Print(request->GetUri());
 			request->Print("<br/> Params: ");
 
-			params := request->GetParams()->Split("&");
-			each(i : params) {
-				request->Print("<p> Param: ");
-				request->Print(params[i]);
-				request->Print("</p>");
+			params := request->GetParams()->Split("=");
+			if(params <> Nil) {
+				each(i : params) {
+					request->Print("<p> Param: ");
+					request->Print(params[i]);
+					request->Print("</p>");
+				};
 			};
 
 			request->Print("<br/> Protocol: ");
