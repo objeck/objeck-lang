@@ -981,6 +981,24 @@ class StackProgram {
     thread_ids.remove(h);
     LeaveCriticalSection(&program_cs);
   }
+
+  static void SuspendThreads() {
+    EnterCriticalSection(&program_cs);
+	for(list<HANDLE>::iterator iter = thread_ids.begin(); 
+		iter != thread_ids.end(); iter++) {
+      SuspendThread(*iter);
+	}
+    LeaveCriticalSection(&program_cs);
+  }
+
+  static void ResumeThreads() {
+    EnterCriticalSection(&program_cs);
+	for(list<HANDLE>::iterator iter = thread_ids.begin(); 
+		iter != thread_ids.end(); iter++) {
+		ResumeThread(*iter);
+	}
+    LeaveCriticalSection(&program_cs);
+  }
   
   static list<HANDLE> GetThreads() {
     list<HANDLE> temp;
