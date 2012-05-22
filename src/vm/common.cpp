@@ -40,7 +40,9 @@ CRITICAL_SECTION StackMethod::virutal_cs;
 #else
 list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t StackProgram::condition_var = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #endif
 unordered_map<string, StackMethod*> StackMethod::virutal_cache;
 
