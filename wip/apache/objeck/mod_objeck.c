@@ -80,7 +80,7 @@ static apr_status_t destroy_call_pool (void * dummy)
 }
 
 /* child initialization */
-static void exipc_child_init(apr_pool_t *p, server_rec *s)
+static void objeck_child_init(apr_pool_t *p, server_rec *s)
 {
   void* dynamic_lib;
   vm_init_def init_ptr;
@@ -135,6 +135,15 @@ static void exipc_child_init(apr_pool_t *p, server_rec *s)
   (*init_ptr)("/tmp/a.obe", "ApacheModule", "ApacheModule:Request:o.Apache.Request,");
 }
 
+/* fixups */
+static int objeck_fixups(request_rec *r)
+{
+  apr_table_setn(r->headers_out, "Set-Cookie", "a=13");
+  // ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, ">>> Unique ID: %s\n", value);
+
+  return OK;
+}
+
 /* content handler */
 static int objeck_handler(request_rec *r)
 { 
@@ -163,8 +172,9 @@ static int objeck_handler(request_rec *r)
 
 static void objeck_register_hooks(apr_pool_t *p)
 {
-  ap_hook_child_init(exipc_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_child_init(objeck_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(objeck_handler, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_fixups(objeck_fixups, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 /* Dispatch list for API hooks */
