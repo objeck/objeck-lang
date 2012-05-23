@@ -867,13 +867,13 @@ void StackInterpreter::ProcessCurrentTime()
   
   struct tm* local_time = localtime (&raw_time);
   long* time = (long*)frame->GetMemory()[0];
-  time[0] = local_time->tm_mday;      // day
-  time[1] = local_time->tm_mon;       // month
-  time[2] = local_time->tm_year;      // year
-  time[3] = local_time->tm_hour;      // hours
-  time[4] = local_time->tm_min;       // mins
-  time[5] = local_time->tm_sec;       // secs
-  time[6] = local_time->tm_isdst > 0; // savings time
+  time[0] = local_time->tm_mday;          // day
+  time[1] = local_time->tm_mon + 1;       // month
+  time[2] = local_time->tm_year + 1900;   // year
+  time[3] = local_time->tm_hour;          // hours
+  time[4] = local_time->tm_min;           // mins
+  time[5] = local_time->tm_sec;           // secs
+  time[6] = local_time->tm_isdst > 0;     // savings time
 }
 
 /********************************
