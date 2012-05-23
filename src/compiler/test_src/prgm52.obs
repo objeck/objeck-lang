@@ -6,17 +6,15 @@ bundle Default {
 		New() {
 		}
 
-		function : Main(args : System.String[]) ~ Nil {
-			"Hello World!" ->SubString(3, 3)->PrintLine();
-#			"Hello World!"->SubString(0, 3)->PrintLine();
-
-#			Time();
+		function : Main(args : String[]) ~ Nil {
+			Time();
 		}
 
-		function : native : Time() ~ Nil {
-#		function : Time() ~ Nil {
+#		function : native : Time() ~ Nil {
+		function : Time() ~ Nil {
 			t := Date->New();
-			Console->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+			Console->Print(t->GetMonth())->Print("/")->Print(t->GetDay())->Print("/")->PrintLine(t->GetYear());
+			Console->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(".")->PrintLine(t->GetSeconds());
 		}
 	}
 }
