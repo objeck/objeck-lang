@@ -406,8 +406,6 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   info->stack_pos = stack_pos;
   
 #ifndef _GC_SERIAL
-  StackProgram::SuspendThreads();
-  
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
@@ -430,8 +428,6 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   }
   pthread_attr_destroy(&attrs);
   pthread_mutex_unlock(&marked_sweep_mutex);
-
-  StackProgram::ResumeThreads();
 #endif
 }
 
