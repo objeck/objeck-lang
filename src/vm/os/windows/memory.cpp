@@ -404,7 +404,6 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
   info->stack_pos = stack_pos;
   
 #ifndef _SERIAL
-  StackProgram::SuspendThreads();
   HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread_id) {
     cerr << "Unable to create garbage collection thread!" << endl;
@@ -421,7 +420,6 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
   }
   CloseHandle(collect_thread_id);
   LeaveCriticalSection(&marked_sweep_cs);
-  StackProgram::ResumeThreads();
 #endif
 }
 
