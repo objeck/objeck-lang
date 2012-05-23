@@ -1247,6 +1247,7 @@ bundle Time {
 		@mins : Int;
 		@secs : Int;
 		@is_savings : Bool;
+		@week_day : Int;
 		
 		New() {
 			Parent();
@@ -1257,11 +1258,21 @@ bundle Time {
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
+
+		method : public : GetDayName() ~ String {
+			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday","Thursday","Friday","Saturday"];
+			return days_of_week[@week_day];
+		}
 		
 		method : public : GetMonth() ~ Int {
 			return @month;
 		}
 		
+		method : public : GetMonthName() ~ String {
+			days_of_month := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+			return days_of_month[@month - 1];
+		}
+
 		method : public : GetYear() ~ Int {
 			return @year;
 		}
