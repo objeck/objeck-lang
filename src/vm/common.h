@@ -890,7 +890,6 @@ class StackProgram {
 #else
   static list<pthread_t> thread_ids;
   static pthread_mutex_t program_mutex;
-  static pthread_cond_t condition_var;
 #endif
 
  public:
@@ -982,24 +981,6 @@ class StackProgram {
     thread_ids.remove(h);
     LeaveCriticalSection(&program_cs);
   }
-
-  static void SuspendThreads() {
-    EnterCriticalSection(&program_cs);
-    for(list<HANDLE>::iterator iter = thread_ids.begin(); 
-	iter != thread_ids.end(); iter++) {
-      SuspendThread(*iter);
-    }
-    LeaveCriticalSection(&program_cs);
-  }
-
-  static void ResumeThreads() {
-    EnterCriticalSection(&program_cs);
-    for(list<HANDLE>::iterator iter = thread_ids.begin(); 
-	iter != thread_ids.end(); iter++) {
-      ResumeThread(*iter);
-    }
-    LeaveCriticalSection(&program_cs);
-  }
   
   static list<HANDLE> GetThreads() {
     list<HANDLE> temp;
@@ -1014,19 +995,6 @@ class StackProgram {
     pthread_mutex_lock(&program_mutex);
     thread_ids.push_back(t);
     pthread_mutex_unlock(&program_mutex);
-  }
-
-  static void SuspendThreads() {
-    pthread_mutex_lock(&program_mutex);    
-    for(list<pthread_t>::iterator iter = thread_ids.begin(); 
-	iter != thread_ids.end(); iter++) {
-      pthread_cond_wait(&condition_var, &program_mutex);
-    }
-    pthread_mutex_unlock(&program_mutex);
-  }
-  
-  static void ResumeThreads() {
-    pthread_cond_broadcast(&condition_var);
   }
 
   static void RemoveThread(pthread_t t) {
