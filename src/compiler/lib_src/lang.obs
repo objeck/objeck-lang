@@ -1906,7 +1906,7 @@ bundle Net {
       SOCK_TCP_BIND;
     }
 
-		method : public : Listen(backlog : Int) ~ Nil {
+		method : public : Listen(backlog : Int) ~ Bool {
       SOCK_TCP_LISTEN;
 		}
 
