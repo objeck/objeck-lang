@@ -2132,7 +2132,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
-    cout << "# socket bind: port=" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
+    cout << "# socket bind: port=" << port << "; instance=" << instance << "(" << (long)instance << ")" <<
       "; addr=" << server << "(" << (long)server << ") #" << endl;
 #endif
     instance[0] = (long)server;
@@ -2161,14 +2161,23 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET server = (SOCKET)instance[0];
     
-#ifdef _DEBUG
-    cout << "# socket accept: instance=" << instance << "(" << (long)instance << ")" << "; addr=" << server << "(" << (long)server << ") #" << endl;
-#endif
-    
     if(server >= 0) {
       char client_address[255 + 1];
       int client_port;
       SOCKET client = IPSocket::Accept(server, client_address, client_port);
+#ifdef _DEBUG
+      cout << "# socket accept: instance=" << instance << "(" << (long)instance << ")" << "; ip=" 
+	   << client_address << "; port=" << client_port << "; addr=" << server << "(" 
+	   << (long)server << ") #" << endl;
+#endif
+
+      long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
+						     (long*)op_stack, *stack_pos);
+      sock_obj[0] = client;
+      sock_obj[1] = (long)CreateStringObject(client_address);
+      sock_obj[2] = client_port;
+
+      PushInt((long)sock_obj);
     }
   }
     break;
