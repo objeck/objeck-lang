@@ -1959,6 +1959,14 @@ following operations:
   \begin{itemize}
   \item method : public : IsOpen() \textasciitilde Bool
   \end{itemize}
+\item \texttt{GetAddress} - return the socket address
+  \begin{itemize}
+  \item method : public : GetAddress() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetPort} - return the socket port
+  \begin{itemize}
+  \item method : public : GetPort() \textasciitilde Int
+  \end{itemize}
 \item \texttt{Close} - closes a connected socket.
   \begin{itemize}
   \item method : public : Close() \textasciitilde Nil
@@ -1992,6 +2000,27 @@ following operations:
 \item \texttt{HostName} - returns the host name
   \begin{itemize}
   \item function : HostName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TCPSocketServer}
+The TCPSocket class allows programmers develop TCP/IP socket servers. This class in the `Net' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(port : Int)
+  \end{itemize}
+\item \texttt{Listen} - listens for client connections
+  \begin{itemize}
+  \item method : public : Listen(backlog : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Accept} - listens for client connections
+  \begin{itemize}
+  \item method : public : Accept() \textasciitilde TCPSocket
+  \end{itemize}
+\item \texttt{Close} - closes a connected socket.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
