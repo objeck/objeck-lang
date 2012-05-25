@@ -1480,8 +1480,8 @@ namespace Runtime {
 	  BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 	  
 	  // get host name
-	  char value_str[255 + 1];    
-	  if(!gethostname(value_str, 255)) {
+	  char value_str[SMALL_BUFFER_MAX + 1];    
+	  if(!gethostname(value_str, SMALL_BUFFER_MAX)) {
 	    // copy name    
 	    for(long i = 0; value_str[i] != '\0' && i < size; i++) {
 	      str[i] = value_str[i];
