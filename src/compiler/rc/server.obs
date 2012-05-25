@@ -6,6 +6,7 @@ bundle Default {
 			server := TCPSocketServer->New(4660);
 			if(server->Listen(5)) {
 				client := server->Accept();
+				IO.Console->Print("connected to: ")->PrintLine(client->GetAddress());
 				client->WriteString("Hello");
 				client->Close();
 			};
