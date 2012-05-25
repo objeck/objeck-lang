@@ -67,6 +67,8 @@ namespace std {
 #endif
 #endif
 
+#define SMALL_BUFFER_MAX 255
+
 using namespace std;
 using namespace instructions;
 

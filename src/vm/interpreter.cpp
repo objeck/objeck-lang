@@ -2095,8 +2095,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 
     // get host name
-    char value_str[255 + 1];    
-    if(!gethostname(value_str, 255)) {
+    char value_str[SMALL_BUFFER_MAX + 1];    
+    if(!gethostname(value_str, SMALL_BUFFER_MAX)) {
       // copy name    
       for(long i = 0; value_str[i] != '\0' && i < size; i++) {
 	str[i] = value_str[i];
@@ -2162,7 +2162,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SOCKET server = (SOCKET)instance[0];
     
     if(server >= 0) {
-      char client_address[255 + 1];
+      char client_address[SMALL_BUFFER_MAX + 1];
       int client_port;
       SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
