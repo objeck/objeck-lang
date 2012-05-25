@@ -2166,7 +2166,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 #endif
     
     if(server >= 0) {
-      SOCKET client = IPSocket::Accept(server);
+      char client_address[255 + 1];
+      int client_port;
+      SOCKET client = IPSocket::Accept(server, client_address, client_port);
     }
   }
     break;

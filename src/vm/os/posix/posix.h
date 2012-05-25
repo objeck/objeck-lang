@@ -178,11 +178,11 @@ class IPSocket {
     
     return true;
   }
-
-  static SOCKET Accept(SOCKET server) {
+  
+  static SOCKET Accept(SOCKET server, char* client_address, int &client_port) {
     struct sockaddr_in pin;
     socklen_t addrlen = sizeof(pin); 
-    SOCKET client = accept(server, (struct sockaddr *) &pin, &addrlen);
+    SOCKET client = accept(server, (struct sockaddr *)&pin, &addrlen);
     if(client < 0) {
       return -1;
     }
