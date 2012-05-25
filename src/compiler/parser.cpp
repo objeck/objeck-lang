@@ -1237,6 +1237,24 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
       
+    case SOCK_TCP_BIND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_BIND);
+      NextToken();
+      break;
+
+    case SOCK_TCP_LISTEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_LISTEN);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_ACCEPT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_ACCEPT);
+      NextToken();
+      break;      
+      
     case SOCK_TCP_IS_CONNECTED:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SOCK_TCP_IS_CONNECTED);

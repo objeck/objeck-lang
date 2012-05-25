@@ -84,6 +84,9 @@ namespace instructions {
     DIR_LIST,
     // socket i/o
     SOCK_TCP_CONNECT,
+    SOCK_TCP_BIND,
+    SOCK_TCP_LISTEN,
+    SOCK_TCP_ACCEPT,
     SOCK_TCP_IS_CONNECTED,
     SOCK_TCP_CLOSE,
     SOCK_TCP_IN_BYTE,

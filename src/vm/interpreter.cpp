@@ -2126,6 +2126,50 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     instance[0] = (long)sock;
   }
     break;  
+
+  case SOCK_TCP_BIND: {
+    long port = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET server = IPSocket::Bind(port);
+#ifdef _DEBUG
+    cout << "# socket bind: port=" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
+      "; addr=" << server << "(" << (long)server << ") #" << endl;
+#endif
+    instance[0] = (long)server;
+  }
+    break;  
+    
+  case SOCK_TCP_LISTEN: {
+    long backlog = PopInt();
+    long* instance = (long*)PopInt();
+    SOCKET server = (SOCKET)instance[0];
+    
+#ifdef _DEBUG
+    cout << "# socket listen: backlog=" << backlog << "'; instance=" << instance << "(" << (long)instance << ")" << "; addr=" << server << "(" << (long)server << ") #" << endl;
+#endif
+    
+    if(server >= 0 && IPSocket::Listen(server, backlog)) {
+      PushInt(1);      
+    }
+    else {
+      PushInt(0);
+    }
+  }
+    break;   
+    
+  case SOCK_TCP_ACCEPT: {
+    long* instance = (long*)PopInt();
+    SOCKET server = (SOCKET)instance[0];
+    
+#ifdef _DEBUG
+    cout << "# socket accept: instance=" << instance << "(" << (long)instance << ")" << "; addr=" << server << "(" << (long)server << ") #" << endl;
+#endif
+    
+    if(server >= 0) {
+      SOCKET client = IPSocket::Accept(server);
+    }
+  }
+    break;
     
   case SOCK_TCP_CLOSE: {
     long* instance = (long*)PopInt();

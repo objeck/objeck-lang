@@ -59,7 +59,7 @@ class File {
 	  
     struct stat info;
     if(fstat(fd, &info) < 0) {
-	  close(fd);
+      close(fd);
       return -1;
     }
 	  
@@ -131,12 +131,12 @@ class IPSocket {
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(socket < 0) {
-	  return -1;
+      return -1;
     }
 
     struct hostent* host_info = gethostbyname(address);
     if(!host_info) {
-	  close(sock);
+      close(sock);
       return -1;
     }
     
@@ -152,8 +152,42 @@ class IPSocket {
       return sock;
     }
      
-	close(sock);
+    close(sock);
     return -1;
+  }
+  
+  static SOCKET Bind(int port) {
+    struct   sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(port);
+    
+    SOCKET server;
+    if(bind(server, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+      return -1;
+    }
+    
+    return server;
+  }
+  
+  static bool Listen(SOCKET server, int backlog) {
+    if(listen(server, backlog) < 0) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  static SOCKET Accept(SOCKET server) {
+    struct sockaddr_in pin;
+    socklen_t addrlen = sizeof(pin); 
+    SOCKET client = accept(server, (struct sockaddr *) &pin, &addrlen);
+    if(client < 0) {
+      return -1;
+    }
+    
+    return client;
   }
 
   static void WriteByte(char value, SOCKET sock) {

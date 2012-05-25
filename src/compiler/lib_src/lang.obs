@@ -1849,10 +1849,6 @@ bundle Net {
 			SOCK_TCP_IS_CONNECTED;
 		}
 		
-		method : public : Close() ~ Nil {
-			SOCK_TCP_CLOSE;
-		}
-	
 		method : public : WriteByte(b : Int) ~ Bool {
 			SOCK_TCP_OUT_BYTE;
 		}
@@ -1894,7 +1890,34 @@ bundle Net {
 		function : HostName() ~ String {
 			SOCK_TCP_HOST_NAME;
 		}
+
+		method : public : Close() ~ Nil {
+			SOCK_TCP_CLOSE;
+		}
 	}	
+
+	class TCPSocketServer {
+    @handle : Int;
+    @port : Int;
+   
+    New(port : Int) {
+      Parent();
+      @port := port;
+      SOCK_TCP_BIND;
+    }
+
+		method : public : Listen(backlog : Int) ~ Nil {
+      SOCK_TCP_LISTEN;
+		}
+
+		method : public : Accept() ~ TCPSocket {
+      SOCK_TCP_ACCEPT;
+		}
+
+		method : public : Close() ~ Nil {
+			SOCK_TCP_CLOSE;
+		}
+	}
 }
 
 #------------ Introspection ------------#
