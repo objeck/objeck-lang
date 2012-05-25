@@ -497,7 +497,7 @@ Expression* Parser::ParseLogic(int depth)
       break;
 
     default:
-        break;
+      break;
     }
     NextToken();
 
@@ -555,7 +555,7 @@ Expression* Parser::ParseMathLogic(int depth)
       break;
 
     default:
-        break;
+      break;
     }
     NextToken();
 
