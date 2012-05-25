@@ -272,40 +272,55 @@ class StackMethod {
       // check return type
       index = 0;
       while(index < params_name.size()) {
+#ifdef _DEBUG
         ParamType param;
+#endif
+	
         switch(params_name[index]) {
         case 'l':
+#ifdef _DEBUG
           param = INT_PARM;
+#endif
           state = 0;
           index++;
           break;
 
         case 'b':
+#ifdef _DEBUG
           param = INT_PARM;
+#endif
           state = 1;
           index++;
           break;
 
         case 'i':
+#ifdef _DEBUG
           param = INT_PARM;
+#endif
           state = 2;
           index++;
           break;
 
         case 'f':
+#ifdef _DEBUG
           param = FLOAT_PARM;
+#endif
           state = 3;
           index++;
           break;
 
         case 'c':
+#ifdef _DEBUG
           param = INT_PARM;
+#endif
           state = 4;
           index++;
           break;
 
         case 'o':
+#ifdef _DEBUG
           param = OBJ_PARM;
+#endif
           state = 5;
           index++;
           while(index < params_name.size() && params_name[index] != ',') {
@@ -314,7 +329,9 @@ class StackMethod {
           break;
 
 	case 'm':
+#ifdef _DEBUG
           param = FUNC_PARM;
+#endif
           state = 6;
           index++;
           while(index < params_name.size() && params_name[index] != '~') {
@@ -342,21 +359,29 @@ class StackMethod {
         if(dimension) {
           switch(state) {
           case 1:
+#ifdef _DEBUG
             param = BYTE_ARY_PARM;
+#endif
             break;
 
           case 0:
           case 2:
           case 4:
+#ifdef _DEBUG
             param = INT_ARY_PARM;
+#endif
             break;
 
           case 3:
+#ifdef _DEBUG
             param = FLOAT_ARY_PARM;
+#endif
             break;
 
           case 5:
+#ifdef _DEBUG
             param = OBJ_ARY_PARM;
+#endif
             break;
           }
         }
