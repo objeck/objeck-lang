@@ -1844,7 +1844,15 @@ bundle Net {
 			@port := port;
 			SOCK_TCP_CONNECT;
 		}
+
+		method : public : GetAddress() ~ String {
+			return @address;
+		}
 		
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
 		method : public : IsOpen() ~ Bool {
 			SOCK_TCP_IS_CONNECTED;
 		}
