@@ -195,6 +195,10 @@ enum TokenType {
   SOCK_TCP_CONNECT,
   SOCK_TCP_IS_CONNECTED,
   SOCK_TCP_CLOSE,
+  // socket server operations
+  SOCK_TCP_BIND,
+  SOCK_TCP_LISTEN,
+  SOCK_TCP_ACCEPT,
   // socket-in
   SOCK_TCP_IN_BYTE,
   SOCK_TCP_IN_BYTE_ARY,
