@@ -1,0 +1,15 @@
+use Net;
+
+bundle Default {
+	class SocketServer {
+		function : Main(args : String[]) ~ Nil {
+			server := TCPSocketServer->New(4660);
+			if(server->Listen(5)) {
+				client := server->Accept();
+				client->WriteString("Hello");
+				client->Close();
+			};
+			server->Close();
+		}
+	}
+}

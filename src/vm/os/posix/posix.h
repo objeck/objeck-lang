@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
 
@@ -157,14 +158,19 @@ class IPSocket {
   }
   
   static SOCKET Bind(int port) {
-    struct   sockaddr_in sin;
+    SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
+    if(server < 0) {
+      return -1;
+    }
+    
+    struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
     
-    SOCKET server;
     if(bind(server, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+      close(server);
       return -1;
     }
     
@@ -184,8 +190,13 @@ class IPSocket {
     socklen_t addrlen = sizeof(pin); 
     SOCKET client = accept(server, (struct sockaddr *)&pin, &addrlen);
     if(client < 0) {
+      client_address[0] = '\0';
+      client_port = -1;
       return -1;
     }
+    
+    strncpy(client_address, inet_ntoa(pin.sin_addr), 255);
+    client_port = ntohs(pin.sin_port);
     
     return client;
   }
