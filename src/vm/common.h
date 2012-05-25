@@ -872,6 +872,7 @@ class StackProgram {
   int string_cls_id;
   int cls_cls_id;
   int mthd_cls_id;
+  int sock_cls_id;
   int data_type_cls_id;
   
   FLOAT_VALUE** float_strings;
@@ -898,7 +899,7 @@ class StackProgram {
     cls_interfaces = NULL;
     classes = NULL;
     char_strings = NULL;
-    string_cls_id = cls_cls_id = mthd_cls_id = data_type_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
 #endif
@@ -1053,6 +1054,19 @@ class StackProgram {
     }
     
     return mthd_cls_id;
+  }
+  
+  int GetSocketObjectId() {
+    if(sock_cls_id < 0) {
+      StackClass* cls = GetClass("Introspection.Method");
+      if(!cls) {
+	cerr << ">>> Internal error: unable to find class: Introspection.Method <<<" << endl;
+	exit(1);
+      }
+      sock_cls_id = cls->GetId();
+    }
+    
+    return sock_cls_id;
   }
   
   int GetDataTypeObjectId() {
