@@ -1085,9 +1085,9 @@ class StackProgram {
   
   int GetSocketObjectId() {
     if(sock_cls_id < 0) {
-      StackClass* cls = GetClass("Introspection.Method");
+      StackClass* cls = GetClass("Net.TCPSocket");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: Introspection.Method <<<" << endl;
+	cerr << ">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
 	exit(1);
       }
       sock_cls_id = cls->GetId();

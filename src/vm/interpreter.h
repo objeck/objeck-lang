@@ -122,8 +122,10 @@ namespace Runtime {
       cerr << "  method: pos=" << pos << ", name="
 	   << frame->GetMethod()->GetName() << endl;
       while(--pos) {
-	cerr << "  method: pos=" << pos << ", name="
-	     << call_stack[pos]->GetMethod()->GetName() << endl;
+	if(pos > - 1) {
+	  cerr << "  method: pos=" << pos << ", name="
+	       << call_stack[pos]->GetMethod()->GetName() << endl;
+	}
       }
       cerr << "  ..." << endl;
 #endif
@@ -135,8 +137,10 @@ namespace Runtime {
       cerr << "  method: pos=" << pos << ", name="
 	   << method->GetName() << endl;
       while(--pos) {
-	cerr << "  method: pos=" << pos << ", name="
-	     << call_stack[pos]->GetMethod()->GetName() << endl;
+	if(pos > - 1) {
+	  cerr << "  method: pos=" << pos << ", name="
+	       << call_stack[pos]->GetMethod()->GetName() << endl;
+	}
       }
       cerr << "  ..." << endl;
     }
