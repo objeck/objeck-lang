@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included as part of release 3.0.  For
+  functionality that is included as part of release 3.1.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck}, 
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
@@ -808,7 +808,7 @@ resources, such as files and sockets, while also providing support for
 basic data structures like lists and vectors.  As new class libraries
 are added they will be documented in this section.
 
-\subsection{Core Libraries}
+\subsection{Core}
 Class support for basic datatypes.
 
 \subsubsection{Base}
@@ -1167,92 +1167,8 @@ Base class for all objects.
   \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
-
-\subsection{Introspection}
-Supports the ability to access program information at runtime.
-
-\subsubsection{Class}
-\begin{itemize}
-\item New(c : String)
-\item \texttt{IsLoaded} - returns true if this class has been loaded
-  \begin{itemize}
-  \item method : public : IsLoaded() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{IsLoaded} - returns true if this class has been loaded,
-  false otherwise
-  \begin{itemize}
-  \item method : public : IsLoaded() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{GetName} - returns the name of the class
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetMethods} - returns an array of methods
-  \begin{itemize}
-  \item method : public : GetMethods() \textasciitilde GetMethods[]
-  \end{itemize}
-\item \texttt{GetMethodNumber} - returns the number of methods in the class
-  \begin{itemize}
-  \item method : public : GetMethodNumber() \textasciitilde Int
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Method}
-\begin{itemize}
-
-\item \texttt{GetClass} - returns class assoicated with the method
-  \begin{itemize}
-  \item method : public : GetClass() \textasciitilde Class
-  \end{itemize}
-
-\item \texttt{GetName} - returns the pretty name of the method
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-
-\item \texttt{GetParameters} - returns the datatypes of the parameters
-  \begin{itemize}
-  \item method : public : GetParameters() \textasciitilde DataType[]
-  \end{itemize}
-
-\item \texttt{GetReturn} - returns the datatype of the return
-  \begin{itemize}
-  \item method : public : GetReturn() \textasciitilde DataType
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{DataType}
-\begin{itemize}
-
-\item \texttt{GetType} - returns the type ID
-  \begin{itemize}
-  \item method : public : GetType() \textasciitilde TypeId
-  \end{itemize}
-
-\item \texttt{GetDimension} - returns dimensions of the datatype
-  \begin{itemize}
-  \item method : public : GetDimension() \textasciitilde Int
-  \end{itemize}
-
-\item \texttt{GetClassName} - returns string name of non-basic
-  objects, Nil otherwise
-  \begin{itemize}
-  \item method : public : GetClassName() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{TypeId}
- \begin{itemize}
- \item BOOL
- \item BYTE
- \item CHAR
- \item INT
- \item FLOAT
- \item CLASS
- \item FUNC
- \end{itemize}
  
-\subsection{Data Structs}
+\subsection{Data Structures}
 Provides support for basic data structures such as vectors, lists,
 hashes, maps, etc.  These classes are located in the `Struct'
 bundle.
@@ -1558,8 +1474,9 @@ for larger sets):
   \end{itemize}
 \end{itemize}
 
-\subsection{System Libraries}
-These classes provide access to system resources.
+\subsection{System}
+These classes provide access to system resources such as threads,
+system time and standard I/O.
 
 \subsubsection{Runtime}
 The Runtime class provides information about the runtime VM
@@ -1730,6 +1647,186 @@ The Time class allows programmers perform simple timings.  This class is in the 
   \end{itemize}
 \end{itemize}
 
+\subsubsection{Serializer}
+The Serializer class allows datatypes to be deflated into a byte
+array for storage or transmission.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Add} - deflates a datatype
+  \begin{itemize}
+  \item method : public : Write(b : Bool) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(i : Int) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(f : Float) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(o : Base) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Byte[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(c : Charl[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(i : Int[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(f : Float[]) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Serialize} - returns a byte stream of serialized data
+  \begin{itemize}
+  \item method : public : Serialize() \textasciitilde Byte[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Deserializer}
+The Deserializer class allows datatypes to be inflated from a byte
+array.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(b : Byte[])
+  \end{itemize}
+\item \texttt{ReadBool} - reads a boolean value
+  \begin{itemize}
+  \item method : public : ReadBool() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{ReadInt} - reads an integer value
+  \begin{itemize}
+  \item method : public : ReadInt() \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadFloat} - reads a float value
+  \begin{itemize}
+  \item method : public : ReadFloat() \textasciitilde Float
+  \end{itemize}
+\item \texttt{ReadObject} - reads an object
+  \begin{itemize}
+  \item method : public : ReadObject() \textasciitilde Float
+  \end{itemize}
+\item \texttt{ReadBoolArray} - reads a boolean array
+  \begin{itemize}
+  \item method : public : ReadBoolArray() \textasciitilde Bool[]
+  \end{itemize}
+\item \texttt{ReadByteArray} - reads a byte array
+  \begin{itemize}
+  \item method : public : ReadByteArray() \textasciitilde Byte[]
+  \end{itemize}
+\item \texttt{ReadCharArray} - reads a character array
+  \begin{itemize}
+  \item method : public : ReadCharArray() \textasciitilde Char[]
+  \end{itemize}
+\item \texttt{ReadIntArray} - reads an integer array
+  \begin{itemize}
+  \item method : public : ReadIntArray() \textasciitilde Byte[]
+  \end{itemize}
+\item \texttt{ReadFloatArray} - reads a float array
+  \begin{itemize}
+  \item method : public : ReadFloatArray() \textasciitilde Float[]
+  \end{itemize}
+\end{itemize}
+
+\subsection{Introspection}
+Supports the ability to access program information at runtime.
+
+\subsubsection{Class}
+\begin{itemize}
+\item New(c : String)
+\item \texttt{IsLoaded} - returns true if this class has been loaded
+  \begin{itemize}
+  \item method : public : IsLoaded() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{IsLoaded} - returns true if this class has been loaded,
+  false otherwise
+  \begin{itemize}
+  \item method : public : IsLoaded() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{GetName} - returns the name of the class
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetMethods} - returns an array of methods
+  \begin{itemize}
+  \item method : public : GetMethods() \textasciitilde GetMethods[]
+  \end{itemize}
+\item \texttt{GetMethodNumber} - returns the number of methods in the class
+  \begin{itemize}
+  \item method : public : GetMethodNumber() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Method}
+\begin{itemize}
+
+\item \texttt{GetClass} - returns class assoicated with the method
+  \begin{itemize}
+  \item method : public : GetClass() \textasciitilde Class
+  \end{itemize}
+
+\item \texttt{GetName} - returns the pretty name of the method
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+
+\item \texttt{GetParameters} - returns the datatypes of the parameters
+  \begin{itemize}
+  \item method : public : GetParameters() \textasciitilde DataType[]
+  \end{itemize}
+
+\item \texttt{GetReturn} - returns the datatype of the return
+  \begin{itemize}
+  \item method : public : GetReturn() \textasciitilde DataType
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{DataType}
+\begin{itemize}
+
+\item \texttt{GetType} - returns the type ID
+  \begin{itemize}
+  \item method : public : GetType() \textasciitilde TypeId
+  \end{itemize}
+
+\item \texttt{GetDimension} - returns dimensions of the datatype
+  \begin{itemize}
+  \item method : public : GetDimension() \textasciitilde Int
+  \end{itemize}
+
+\item \texttt{GetClassName} - returns string name of non-basic
+  objects, Nil otherwise
+  \begin{itemize}
+  \item method : public : GetClassName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TypeId}
+ \begin{itemize}
+ \item BOOL
+ \item BYTE
+ \item CHAR
+ \item INT
+ \item FLOAT
+ \item CLASS
+ \item FUNC
+ \end{itemize}
+
+\subsection{Filesystem}
+Provides support for file and directory operations.
+
 \subsubsection{File}
 The File class allows programmers manipulate system files.  This class
 is in the `IO' bundle.  The class supports the following operations:
@@ -1853,98 +1950,8 @@ the following operations:
   \end{itemize}
 \end{itemize}
 
-\subsubsection{Serializer}
-The Serializer class allows datatypes to be deflated into a byte
-array for storage or transmission.  This class is in the `IO' bundle.  The class supports
-the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \end{itemize}
-\item \texttt{Add} - deflates a datatype
-  \begin{itemize}
-  \item method : public : Write(b : Bool) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(i : Int) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(f : Float) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(o : Base) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Bool[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Bool[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Byte[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(c : Charl[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(i : Int[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(f : Float[]) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Serialize} - returns a byte stream of serialized data
-  \begin{itemize}
-  \item method : public : Serialize() \textasciitilde Byte[]
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Deserializer}
-The Deserializer class allows datatypes to be inflated from a byte
-array.  This class is in the `IO' bundle.  The class supports
-the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(b : Byte[])
-  \end{itemize}
-\item \texttt{ReadBool} - reads a boolean value
-  \begin{itemize}
-  \item method : public : ReadBool() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{ReadInt} - reads an integer value
-  \begin{itemize}
-  \item method : public : ReadInt() \textasciitilde Int
-  \end{itemize}
-\item \texttt{ReadFloat} - reads a float value
-  \begin{itemize}
-  \item method : public : ReadFloat() \textasciitilde Float
-  \end{itemize}
-\item \texttt{ReadObject} - reads an object
-  \begin{itemize}
-  \item method : public : ReadObject() \textasciitilde Float
-  \end{itemize}
-\item \texttt{ReadBoolArray} - reads a boolean array
-  \begin{itemize}
-  \item method : public : ReadBoolArray() \textasciitilde Bool[]
-  \end{itemize}
-\item \texttt{ReadByteArray} - reads a byte array
-  \begin{itemize}
-  \item method : public : ReadByteArray() \textasciitilde Byte[]
-  \end{itemize}
-\item \texttt{ReadCharArray} - reads a character array
-  \begin{itemize}
-  \item method : public : ReadCharArray() \textasciitilde Char[]
-  \end{itemize}
-\item \texttt{ReadIntArray} - reads an integer array
-  \begin{itemize}
-  \item method : public : ReadIntArray() \textasciitilde Byte[]
-  \end{itemize}
-\item \texttt{ReadFloatArray} - reads a float array
-  \begin{itemize}
-  \item method : public : ReadFloatArray() \textasciitilde Float[]
-  \end{itemize}
-\end{itemize}
+\subsection{Networking}
+Provides support for TCP/IP client and server sockets as well as HTTP access.
 
 \subsubsection{TCPSocket}
 The TCPSocket class allows programmers connect to TCP/IP socket
@@ -2069,7 +2076,7 @@ This class in the `Net' bundle:
   \end{itemize}
 \end{itemize}
 
-\subsection{XML Libraries}
+\subsection{XML}
 These classes provide support for XML parsing and document creation.
 
 \subsubsection{XMLParser}
@@ -2288,6 +2295,7 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
 
 \section{Examples}
 \subsection{Prime Numbers}
+Demonstrates basic language features such as arithmetic and logical operations.
 \begin{verbatim}
 bundle Default {
   class FindPrime {
@@ -2322,7 +2330,10 @@ bundle Default {
 }
 \end{verbatim}
 
+\newpage
+
 \subsection{Simple HTTP client}
+Demonstrates HTTP access.
 \begin{verbatim}
 use Net;
 use IO;
@@ -2343,7 +2354,10 @@ bundle Default {
 }
 \end{verbatim}
 
+\newpage
+
 \subsection{XML Parsing and Querying}
+Demonstrates simple XML parsing.
 \begin{verbatim}
 use IO;
 use XML;
@@ -2366,6 +2380,49 @@ bundle Default {
         else {
           parser->GetError()->PrintLine();
         };
+      };
+    }
+  }
+}
+\end{verbatim}
+
+\newpage
+
+\subsection{Echo Server}
+Demonstrates usage of server sockets and threads.
+\begin{verbatim}
+use Net;
+use Concurrency;
+ 
+bundle Default {
+  class SocketServer {
+    id : static : Int;
+ 
+    function : Main(args : String[]) ~ Nil {
+      server := TCPSocketServer->New(12321);
+      if(server->Listen(5)) {
+        while(true) {
+          client := server->Accept();
+          service := Service->New(id->ToString());
+          service->Execute(client);
+          id += 1;
+        };
+      };
+      server->Close();
+    }
+  }
+ 
+  class Service from Thread {
+    New(name : String) {
+      Parent(name);
+    }
+ 
+    method : public : Run(param : Base) ~ Nil {
+      client := param->As(TCPSocket);
+      line := client->ReadString();
+      while(line->Size() > 0) {
+        line->PrintLine();
+        line := client->ReadString();
       };
     }
   }
