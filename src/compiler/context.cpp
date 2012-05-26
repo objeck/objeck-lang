@@ -3407,11 +3407,15 @@ bool ContextAnalyzer::Analyze()
       if(right_class) {
 	// downcast
 	if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
+	  left_class->SetCalled(true);
+	  right_class->SetCalled(true);
 	  return;
 	}
 	// upcast
 	else if(right_class->IsInterface() || ValidUpCast(left_class->GetName(), right_class)) {
 	  expression->SetToClass(left_class);
+	  left_class->SetCalled(true);
+	  right_class->SetCalled(true);
 	  return;
 	}
 	// invalid cast
@@ -3481,11 +3485,15 @@ bool ContextAnalyzer::Analyze()
       if(right_class) {
 	// downcast
 	if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
+	  left_lib_class->SetCalled(true);
+	  right_class->SetCalled(true);
 	  return;
 	}
 	// upcast
 	else if(right_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_class)) {
 	  expression->SetToLibraryClass(left_lib_class);
+	  left_lib_class->SetCalled(true);
+	  right_class->SetCalled(true);
 	  return;
 	}
 	// invalid cast
@@ -3500,11 +3508,15 @@ bool ContextAnalyzer::Analyze()
 	LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses());
 	// downcast
 	if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
+	  left_lib_class->SetCalled(true);
+	  right_lib_class->SetCalled(true);
 	  return;
 	}
 	// upcast
 	else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class))) {
 	  expression->SetToLibraryClass(left_lib_class);
+	  left_lib_class->SetCalled(true);
+	  right_lib_class->SetCalled(true);
 	  return;
 	}
 	// downcast
