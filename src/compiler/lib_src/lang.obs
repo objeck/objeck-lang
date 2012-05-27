@@ -1282,7 +1282,11 @@ bundle Time {
 
 		method : public : GetDayName() ~ String {
 			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday","Thursday","Friday","Saturday"];
-			return days_of_week[@week_day];
+			if(@week_day > -1 & @week_day < days_of_week->Size()) {
+				return days_of_week[@week_day];
+			};
+
+			return "";
 		}
 		
 		method : public : GetMonth() ~ Int {
@@ -1291,7 +1295,11 @@ bundle Time {
 		
 		method : public : GetMonthName() ~ String {
 			days_of_month := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-			return days_of_month[@month - 1];
+			if(@month > -1 & @month < days_of_month->Size()) {
+				return days_of_month[@month - 1];
+			};
+
+			return "";
 		}
 
 		method : public : GetYear() ~ Int {
