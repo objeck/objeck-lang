@@ -1275,6 +1275,13 @@ bundle Time {
 			DATE_TIME_SET_2;
 		}
 
+#~ TODO
+		New(date : String, format : String) {
+			Parent();
+			DATE_TIME_SET_3;
+		}
+~#
+
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
