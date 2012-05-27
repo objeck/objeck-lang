@@ -1248,6 +1248,7 @@ bundle Time {
 		@secs : Int;
 		@is_savings : Bool;
 		@week_day : Int;
+		@is_gmt : Bool;
 		
 		New() {
 			Parent();
@@ -1315,7 +1316,23 @@ bundle Time {
 		method : public : GetSeconds() ~ Int {
 			return @secs;
 		}
-		
+
+    method : public : AddDays(value : Int) ~ Nil {
+			DATE_TIME_ADD_DAYS;
+		}
+
+    method : public : AddHours(value : Int) ~ Nil {
+			DATE_TIME_ADD_HOURS;
+    }
+   
+    method : public : AddMinutes(value : Int) ~ Nil {
+			DATE_TIME_ADD_MINS;
+    }
+
+    method : public : AddSeconds(value : Int) ~ Nil {
+			DATE_TIME_ADD_SECS;
+    }
+
 		method : public : IsSavingsTime() ~ Bool {
 			return @is_savings;
 		}
