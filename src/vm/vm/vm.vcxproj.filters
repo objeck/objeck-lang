@@ -51,6 +51,9 @@
     <ClInclude Include="..\lib_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\strptime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

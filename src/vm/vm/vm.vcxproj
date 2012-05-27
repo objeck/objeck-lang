@@ -183,6 +183,7 @@
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\os\windows\memory.h" />
+    <ClInclude Include="..\strptime.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\vm.h" />
     <ClInclude Include="..\os\windows\windows.h" />

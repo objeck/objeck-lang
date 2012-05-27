@@ -49,6 +49,7 @@
 #endif
 
 #include <math.h>
+#include "strptime.h"
 
 using namespace Runtime;
 
