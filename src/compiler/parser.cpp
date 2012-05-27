@@ -930,7 +930,31 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::DATE_TIME_SET_2);
       NextToken();
       break;
+
+    case DATE_TIME_ADD_DAYS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DATE_TIME_ADD_DAYS);
+      NextToken();
+      break;
+
+    case DATE_TIME_ADD_HOURS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DATE_TIME_ADD_HOURS);
+      NextToken();
+      break;
       
+    case DATE_TIME_ADD_MINS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DATE_TIME_ADD_MINS);
+      NextToken();
+      break;
+      
+    case DATE_TIME_ADD_SECS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::DATE_TIME_ADD_SECS);
+      NextToken();
+      break;
+            
     case PLTFRM:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::PLTFRM);

@@ -883,6 +883,68 @@ void StackInterpreter::ProcessCurrentTime(bool is_gmt)
   instance[5] = curr_time->tm_sec;           // secs
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
+  instance[8] = is_gmt;                      // is GMT
+}
+
+/********************************
+ * Date/time calculations
+ ********************************/
+void StackInterpreter::ProcessAddTime(TimeInterval t)
+{  
+  long value = PopInt();
+  long* instance = (long*)PopInt();
+ 
+  // calculate change in seconds
+  long offset;
+  switch(t) {
+  case DAY_TIME:
+    offset = 86400 * value;
+    break;
+
+  case HOUR_TIME:
+    offset = 3600 * value;
+    break;
+
+  case MIN_TIME:
+    offset = 60 * value;
+    break;
+
+  default:
+    offset = value;
+    break;
+  }
+  
+  // create time structure
+  struct tm set_time;
+  set_time.tm_mday = instance[0];          // day
+  set_time.tm_mon = instance[1] - 1;       // month
+  set_time.tm_year = instance[2] - 1900;   // year
+  set_time.tm_hour = instance[3];          // hours
+  set_time.tm_min = instance[4];           // mins
+  set_time.tm_sec = instance[5];           // secs
+  set_time.tm_isdst = instance[6] > 0;     // savings time
+  
+  // calculate difference
+  time_t raw_time = mktime(&set_time);
+  raw_time += offset;  
+  
+  struct tm* curr_time;
+  if(instance[8]) {
+    curr_time = gmtime(&raw_time);
+  }
+  else {
+    curr_time = localtime(&raw_time);
+  }
+  
+  // set instance values
+  instance[0] = curr_time->tm_mday;          // day
+  instance[1] = curr_time->tm_mon + 1;       // month
+  instance[2] = curr_time->tm_year + 1900;   // year
+  instance[3] = curr_time->tm_hour;          // hours
+  instance[4] = curr_time->tm_min;           // mins
+  instance[5] = curr_time->tm_sec;           // secs
+  instance[6] = curr_time->tm_isdst > 0;     // savings time
+  instance[7] = curr_time->tm_wday;          // day of week
 }
 
 /********************************
@@ -924,6 +986,7 @@ void StackInterpreter::ProcessSetTime1()
   instance[5] = curr_time->tm_sec;           // secs
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
+  instance[8] = is_gmt;                      // is GMT
 }
 
 void StackInterpreter::ProcessSetTime2() 
@@ -967,6 +1030,7 @@ void StackInterpreter::ProcessSetTime2()
   instance[5] = curr_time->tm_sec;           // secs
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
+  instance[8] = is_gmt;                      // is GMT
 }
 
 /********************************
@@ -2186,6 +2250,18 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
   case DATE_TIME_SET_2:
     ProcessSetTime2();
+    break;
+      
+  case DATE_TIME_ADD_HOURS:
+    ProcessAddTime(HOUR_TIME);
+    break;
+    
+  case DATE_TIME_ADD_MINS:
+    ProcessAddTime(MIN_TIME);
+    break;
+    
+  case DATE_TIME_ADD_SECS:
+    ProcessAddTime(SEC_TIME);
     break;
     
   case PLTFRM:

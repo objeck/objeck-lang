@@ -53,7 +53,14 @@ namespace Runtime {
 #endif
 
 #define STACK_SIZE 256
-
+  
+  enum TimeInterval {
+    DAY_TIME,
+    HOUR_TIME,
+    MIN_TIME,
+    SEC_TIME
+  };
+  
   struct ThreadHolder {
     StackMethod* called;
     long* param;
@@ -739,6 +746,7 @@ namespace Runtime {
     inline void ProcessCurrentTime(bool is_gmt);
     inline void ProcessSetTime1();
     inline void ProcessSetTime2();
+    inline void ProcessAddTime(TimeInterval t);
     inline void ProcessPlatform();
     inline void ProcessTrap(StackInstr* instr);
     

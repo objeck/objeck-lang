@@ -193,6 +193,10 @@ void Scanner::LoadKeywords()
   ident_map["GMT_TIME"] = GMT_TIME;
   ident_map["DATE_TIME_SET_1"] = DATE_TIME_SET_1;
   ident_map["DATE_TIME_SET_2"] = DATE_TIME_SET_2;
+  ident_map["DATE_TIME_ADD_DAYS"] = DATE_TIME_ADD_DAYS;
+  ident_map["DATE_TIME_ADD_HOURS"] = DATE_TIME_ADD_HOURS;
+  ident_map["DATE_TIME_ADD_MINS"] = DATE_TIME_ADD_MINS;
+  ident_map["DATE_TIME_ADD_SECS"] = DATE_TIME_ADD_SECS; 
   ident_map["PLTFRM"] = PLTFRM;
   ident_map["EXIT"] = EXIT;
   ident_map["TIMER_START"] = TIMER_START;
@@ -339,6 +343,10 @@ void Scanner::CheckIdentifier(int index)
   case GMT_TIME:
   case DATE_TIME_SET_1:
   case DATE_TIME_SET_2:
+  case DATE_TIME_ADD_DAYS:
+  case DATE_TIME_ADD_HOURS:
+  case DATE_TIME_ADD_MINS:
+  case DATE_TIME_ADD_SECS:
   case PLTFRM:
   case EXIT:
   case TIMER_START:

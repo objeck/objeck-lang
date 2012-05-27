@@ -1584,6 +1584,9 @@ time.  This class is in the `Time' bundle.  The class supports the following ope
 \item \texttt{New}
   \begin{itemize}
   \item New()
+  \item New(gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
   \end{itemize}
 \item \texttt{GetDay} - return the current day as an \texttt{Int}.
   \begin{itemize}
@@ -1623,6 +1626,13 @@ time.  This class is in the `Time' bundle.  The class supports the following ope
   false otherwise
   \begin{itemize}
   \item method : public : IsSavingsTime() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Add} - adds (or subtracts) time from a date
+  \begin{itemize}
+  \item method : public : AddDays(value : Int) \textasciitilde Nil
+  \item method : public : AddHours(value : Int) \textasciitilde Nil
+  \item method : public : AddMinutes(value : Int) \textasciitilde Nil
+  \item method : public : AddSeconds(value : Int) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -2220,20 +2230,20 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{GetChildren} - Returns all child elements.
   \begin{itemize}
-  \item method : public : GetChildren() ~ Vector
+  \item method : public : GetChildren() \textasciitilde Vector
   \end{itemize}
 \item \texttt{GetChildren} - Returns all child elements that match the
   given name.
   \begin{itemize}
-  \item method : public : GetChildren(name : String) ~ Vector
+  \item method : public : GetChildren(name : String) \textasciitilde Vector
   \end{itemize}
 \item \texttt{GetChild} - Returns a child element.
   \begin{itemize}
-  \item method : public : GetChild(i : Int) ~ XmlElement
+  \item method : public : GetChild(i : Int) \textasciitilde XmlElement
   \end{itemize}
 \item \texttt{AddChild} - adds a child element.
   \begin{itemize}
-  \item method : public : AddChild(child : XmlElement) ~ Nil
+  \item method : public : AddChild(child : XmlElement) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetAttribute} - Returns the value of a given attribute.
   \begin{itemize}
