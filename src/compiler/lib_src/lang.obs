@@ -1251,10 +1251,31 @@ bundle Time {
 		
 		New() {
 			Parent();
-
 			SYS_TIME;
 		}
 		
+		New(day : Int, month : Int, year : Int) {
+			Parent();
+			@day := day;
+			@month := month;
+			@year := year;
+			@hours := 0;
+			@mins := 0;
+			@secs := 0;
+			DATE_TIME_SET_1;
+		}
+		
+		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int) {
+			Parent();
+			@day := day;
+			@month := month;
+			@year := year;
+			@hours := hours;
+			@mins := mins;
+			@secs := secs;
+			DATE_TIME_SET_2;
+		}
+
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
