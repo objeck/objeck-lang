@@ -746,13 +746,12 @@ namespace Runtime {
     inline void ProcessCurrentTime(bool is_gmt);
     inline void ProcessSetTime1();
     inline void ProcessSetTime2();
+    inline void ProcessSetTime3();
     inline void ProcessAddTime(TimeInterval t);
     inline void ProcessPlatform();
-    inline void ProcessTrap(StackInstr* instr);
-    
+    inline void ProcessTrap(StackInstr* instr);    
     inline void SerializeObject();
     inline void DeserializeObject();
-
     inline void ProcessDllLoad(StackInstr* instr);
     inline void ProcessDllUnload(StackInstr* instr);
     inline void ProcessDllCall(StackInstr* instr);
