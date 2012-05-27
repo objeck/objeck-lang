@@ -190,6 +190,8 @@ void Scanner::LoadKeywords()
   ident_map["THREAD_SLEEP"] = THREAD_SLEEP;
   ident_map["THREAD_JOIN"] = THREAD_JOIN;
   ident_map["SYS_TIME"] = SYS_TIME;
+  ident_map["DATE_TIME_SET_1"] = DATE_TIME_SET_1;
+  ident_map["DATE_TIME_SET_2"] = DATE_TIME_SET_2;
   ident_map["PLTFRM"] = PLTFRM;
   ident_map["EXIT"] = EXIT;
   ident_map["TIMER_START"] = TIMER_START;
@@ -333,6 +335,8 @@ void Scanner::CheckIdentifier(int index)
   case THREAD_SLEEP:
   case THREAD_JOIN:
   case SYS_TIME:
+  case DATE_TIME_SET_1:
+  case DATE_TIME_SET_2:
   case PLTFRM:
   case EXIT:
   case TIMER_START:
