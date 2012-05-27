@@ -863,18 +863,18 @@ void StackInterpreter::Execute()
 void StackInterpreter::ProcessCurrentTime() 
 {
   time_t raw_time;
-  time (&raw_time);
-  
+  time(&raw_time);  
   struct tm* local_time = localtime(&raw_time);
-  long* time = (long*)frame->GetMemory()[0];
-  time[0] = local_time->tm_mday;          // day
-  time[1] = local_time->tm_mon + 1;       // month
-  time[2] = local_time->tm_year + 1900;   // year
-  time[3] = local_time->tm_hour;          // hours
-  time[4] = local_time->tm_min;           // mins
-  time[5] = local_time->tm_sec;           // secs
-  time[6] = local_time->tm_isdst > 0;     // savings time
-  time[7] = local_time->tm_wday;          // day of week
+
+  long* instance = (long*)frame->GetMemory()[0];  
+  instance[0] = local_time->tm_mday;          // day
+  instance[1] = local_time->tm_mon + 1;       // month
+  instance[2] = local_time->tm_year + 1900;   // year
+  instance[3] = local_time->tm_hour;          // hours
+  instance[4] = local_time->tm_min;           // mins
+  instance[5] = local_time->tm_sec;           // secs
+  instance[6] = local_time->tm_isdst > 0;     // savings time
+  instance[7] = local_time->tm_wday;          // day of week
 }
 
 /********************************
@@ -883,12 +883,68 @@ void StackInterpreter::ProcessCurrentTime()
  ********************************/
 void StackInterpreter::ProcessSetTime1() 
 {
+  // get time values
+  long year = PopInt();
+  long month = PopInt();
+  long day = PopInt();
+  long* instance = (long*)PopInt();
   
+  // get current time
+  time_t raw_time;
+  time(&raw_time);  
+  struct tm* local_time = localtime(&raw_time);
+  
+  // update time
+  local_time->tm_year = year - 1900;
+  local_time->tm_mon = month - 1;
+  local_time->tm_mday = day;
+  mktime(local_time);
+  
+  // set instance values
+  instance[0] = local_time->tm_mday;          // day
+  instance[1] = local_time->tm_mon + 1;       // month
+  instance[2] = local_time->tm_year + 1900;   // year
+  instance[3] = local_time->tm_hour;          // hours
+  instance[4] = local_time->tm_min;           // mins
+  instance[5] = local_time->tm_sec;           // secs
+  instance[6] = local_time->tm_isdst > 0;     // savings time
+  instance[7] = local_time->tm_wday;          // day of week
 }
 
 void StackInterpreter::ProcessSetTime2() 
 {
+  // get time values
+  long secs = PopInt();
+  long mins = PopInt();
+  long hours = PopInt();
+  long year = PopInt();
+  long month = PopInt();
+  long day = PopInt();
+  long* instance = (long*)PopInt();
   
+  // get current time
+  time_t raw_time;
+  time(&raw_time);  
+  struct tm* local_time = localtime(&raw_time);
+  
+  // update time
+  local_time->tm_year = year - 1900;
+  local_time->tm_mon = month - 1;
+  local_time->tm_mday = day;
+  local_time->tm_hour = hours;
+  local_time->tm_min = mins;
+  local_time->tm_sec = secs;  
+  mktime(local_time);
+  
+  // set instance values
+  instance[0] = local_time->tm_mday;          // day
+  instance[1] = local_time->tm_mon + 1;       // month
+  instance[2] = local_time->tm_year + 1900;   // year
+  instance[3] = local_time->tm_hour;          // hours
+  instance[4] = local_time->tm_min;           // mins
+  instance[5] = local_time->tm_sec;           // secs
+  instance[6] = local_time->tm_isdst > 0;     // savings time
+  instance[7] = local_time->tm_wday;          // day of week
 }
 
 /********************************
