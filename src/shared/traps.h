@@ -51,6 +51,10 @@ namespace instructions {
     GMT_TIME,
 		DATE_TIME_SET_1,
 		DATE_TIME_SET_2,
+		DATE_TIME_ADD_DAYS,
+		DATE_TIME_ADD_HOURS,
+		DATE_TIME_ADD_MINS,
+		DATE_TIME_ADD_SECS,
     TIMER_START,
     TIMER_END,
     // standard i/o
