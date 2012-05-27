@@ -1,0 +1,17 @@
+Objeck v3.1.0_0
+
+--------------
+Release Notes
+--------------
+This release provides support for server sockets and enhancements to the Date class.  In addition, minor bugs were addressed in the compiler and virtual machine.
+
+Highlights of this specific release include the following:
+* Support for server sockets (new)
+* Date class enhancements (new)
+* Compiler bug related to linking class casts that are not referenced (low).
+* Resolved a bug that caused the runtime to crash when printing out exiting stack traces (low).
+
+--------------
+About Objeck
+--------------
+The Objeck programming language is a lightweight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
