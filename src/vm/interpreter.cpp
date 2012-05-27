@@ -878,6 +878,20 @@ void StackInterpreter::ProcessCurrentTime()
 }
 
 /********************************
+ * Creates a Date object with 
+ * specified time
+ ********************************/
+void StackInterpreter::ProcessSetTime1() 
+{
+  
+}
+
+void StackInterpreter::ProcessSetTime2() 
+{
+  
+}
+
+/********************************
  * Get platform string
  ********************************/
 void StackInterpreter::ProcessPlatform() 
@@ -2083,7 +2097,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SYS_TIME:
     ProcessCurrentTime();
     break;
-
+    
+  case DATE_TIME_SET_1:
+    ProcessSetTime1();
+    break;
+    
+  case DATE_TIME_SET_2:
+    ProcessSetTime2();
+    break;
+    
   case PLTFRM:
     ProcessPlatform();
     break;
