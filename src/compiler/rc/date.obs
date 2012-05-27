@@ -4,10 +4,9 @@ use Time;
 bundle Default {
 	class CurrentDate {
 		function : Main(args : String[]) ~ Nil {
-			t := Date->New(false);
+			t := Date->New();
 			Console->Print(t->GetYear())->Print("-")->Print(t->GetMonth())->Print("-")->PrintLine(t->GetDay());
 			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
-
 			t->AddHours(62);
 			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 
@@ -15,11 +14,8 @@ bundle Default {
 			Console->Print(t->GetYear())->Print("-")->Print(t->GetMonth())->Print("-")->PrintLine(t->GetDay());
 			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 
-			t := Date->New(22, 6, 2010, false);
+			t := Date->New(5, 11, 2010, false);
 			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->PrintLine(t->GetYear());
-
-			t := Date->New(31, 5, 2031, 15, 0, 0, true);
-			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 			t->IsSavingsTime()->PrintLine();
 		}
 	}
