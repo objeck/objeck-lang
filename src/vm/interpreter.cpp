@@ -49,7 +49,7 @@
 #endif
 
 #include <math.h>
-#include "strptime.h"
+// #include "strptime.h"
 
 using namespace Runtime;
 
@@ -1032,6 +1032,19 @@ void StackInterpreter::ProcessSetTime2()
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
   instance[8] = is_gmt;                      // is GMT
+}
+
+void StackInterpreter::ProcessSetTime3() 
+{
+  /* TOOD
+  long* array;    
+  array = (long*)((long*)PopInt())[0];
+  const char* format_str = (char*)(array + 3);
+  array = (long*)((long*)PopInt())[0];
+  const char* date_str = (char*)(array + 3);
+  long* instance = (long*)PopInt();  
+  */
+  
 }
 
 /********************************
@@ -2252,7 +2265,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case DATE_TIME_SET_2:
     ProcessSetTime2();
     break;
-      
+    
+    /* TODO
+  case DATE_TIME_SET_3:
+    ProcessSetTime3();
+    break;
+    */
+    
   case DATE_TIME_ADD_HOURS:
     ProcessAddTime(HOUR_TIME);
     break;
