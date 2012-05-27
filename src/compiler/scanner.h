@@ -232,6 +232,7 @@ enum TokenType {
   THREAD_JOIN,
   // time
   SYS_TIME,
+  GMT_TIME,
   DATE_TIME_SET_1,
   DATE_TIME_SET_2,
   TIMER_START,

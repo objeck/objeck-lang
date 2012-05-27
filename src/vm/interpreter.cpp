@@ -858,23 +858,31 @@ void StackInterpreter::Execute()
 }
 
 /********************************
- * Processes the current time
+ * Creates a Date object with
+ * current time
  ********************************/
-void StackInterpreter::ProcessCurrentTime() 
+void StackInterpreter::ProcessCurrentTime(bool is_gmt) 
 {
   time_t raw_time;
   time(&raw_time);  
-  struct tm* local_time = localtime(&raw_time);
-
+  
+  struct tm* curr_time;
+  if(is_gmt) {
+    curr_time = gmtime(&raw_time);
+  }
+  else {
+    curr_time = localtime(&raw_time);
+  }
+  
   long* instance = (long*)frame->GetMemory()[0];  
-  instance[0] = local_time->tm_mday;          // day
-  instance[1] = local_time->tm_mon + 1;       // month
-  instance[2] = local_time->tm_year + 1900;   // year
-  instance[3] = local_time->tm_hour;          // hours
-  instance[4] = local_time->tm_min;           // mins
-  instance[5] = local_time->tm_sec;           // secs
-  instance[6] = local_time->tm_isdst > 0;     // savings time
-  instance[7] = local_time->tm_wday;          // day of week
+  instance[0] = curr_time->tm_mday;          // day
+  instance[1] = curr_time->tm_mon + 1;       // month
+  instance[2] = curr_time->tm_year + 1900;   // year
+  instance[3] = curr_time->tm_hour;          // hours
+  instance[4] = curr_time->tm_min;           // mins
+  instance[5] = curr_time->tm_sec;           // secs
+  instance[6] = curr_time->tm_isdst > 0;     // savings time
+  instance[7] = curr_time->tm_wday;          // day of week
 }
 
 /********************************
@@ -884,6 +892,7 @@ void StackInterpreter::ProcessCurrentTime()
 void StackInterpreter::ProcessSetTime1() 
 {
   // get time values
+  long is_gmt = PopInt();
   long year = PopInt();
   long month = PopInt();
   long day = PopInt();
@@ -892,28 +901,35 @@ void StackInterpreter::ProcessSetTime1()
   // get current time
   time_t raw_time;
   time(&raw_time);  
-  struct tm* local_time = localtime(&raw_time);
-  
+  struct tm* curr_time;
+  if(is_gmt) {
+    curr_time = gmtime(&raw_time);
+  }
+  else {
+    curr_time = localtime(&raw_time);
+  }
+    
   // update time
-  local_time->tm_year = year - 1900;
-  local_time->tm_mon = month - 1;
-  local_time->tm_mday = day;
-  mktime(local_time);
+  curr_time->tm_year = year - 1900;
+  curr_time->tm_mon = month - 1;
+  curr_time->tm_mday = day;
+  mktime(curr_time);
   
   // set instance values
-  instance[0] = local_time->tm_mday;          // day
-  instance[1] = local_time->tm_mon + 1;       // month
-  instance[2] = local_time->tm_year + 1900;   // year
-  instance[3] = local_time->tm_hour;          // hours
-  instance[4] = local_time->tm_min;           // mins
-  instance[5] = local_time->tm_sec;           // secs
-  instance[6] = local_time->tm_isdst > 0;     // savings time
-  instance[7] = local_time->tm_wday;          // day of week
+  instance[0] = curr_time->tm_mday;          // day
+  instance[1] = curr_time->tm_mon + 1;       // month
+  instance[2] = curr_time->tm_year + 1900;   // year
+  instance[3] = curr_time->tm_hour;          // hours
+  instance[4] = curr_time->tm_min;           // mins
+  instance[5] = curr_time->tm_sec;           // secs
+  instance[6] = curr_time->tm_isdst > 0;     // savings time
+  instance[7] = curr_time->tm_wday;          // day of week
 }
 
 void StackInterpreter::ProcessSetTime2() 
 {
   // get time values
+  long is_gmt = PopInt();
   long secs = PopInt();
   long mins = PopInt();
   long hours = PopInt();
@@ -925,26 +941,32 @@ void StackInterpreter::ProcessSetTime2()
   // get current time
   time_t raw_time;
   time(&raw_time);  
-  struct tm* local_time = localtime(&raw_time);
-  
+  struct tm* curr_time;
+  if(is_gmt) {
+    curr_time = gmtime(&raw_time);
+  }
+  else {
+    curr_time = localtime(&raw_time);
+  }
+    
   // update time
-  local_time->tm_year = year - 1900;
-  local_time->tm_mon = month - 1;
-  local_time->tm_mday = day;
-  local_time->tm_hour = hours;
-  local_time->tm_min = mins;
-  local_time->tm_sec = secs;  
-  mktime(local_time);
+  curr_time->tm_year = year - 1900;
+  curr_time->tm_mon = month - 1;
+  curr_time->tm_mday = day;
+  curr_time->tm_hour = hours;
+  curr_time->tm_min = mins;
+  curr_time->tm_sec = secs;  
+  mktime(curr_time);
   
   // set instance values
-  instance[0] = local_time->tm_mday;          // day
-  instance[1] = local_time->tm_mon + 1;       // month
-  instance[2] = local_time->tm_year + 1900;   // year
-  instance[3] = local_time->tm_hour;          // hours
-  instance[4] = local_time->tm_min;           // mins
-  instance[5] = local_time->tm_sec;           // secs
-  instance[6] = local_time->tm_isdst > 0;     // savings time
-  instance[7] = local_time->tm_wday;          // day of week
+  instance[0] = curr_time->tm_mday;          // day
+  instance[1] = curr_time->tm_mon + 1;       // month
+  instance[2] = curr_time->tm_year + 1900;   // year
+  instance[3] = curr_time->tm_hour;          // hours
+  instance[4] = curr_time->tm_min;           // mins
+  instance[5] = curr_time->tm_sec;           // secs
+  instance[6] = curr_time->tm_isdst > 0;     // savings time
+  instance[7] = curr_time->tm_wday;          // day of week
 }
 
 /********************************
@@ -2150,8 +2172,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     exit(PopInt());
     break;
 
+  case GMT_TIME:
+    ProcessCurrentTime(true);
+    break;
+
   case SYS_TIME:
-    ProcessCurrentTime();
+    ProcessCurrentTime(false);
     break;
     
   case DATE_TIME_SET_1:

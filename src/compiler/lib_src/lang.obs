@@ -1253,26 +1253,24 @@ bundle Time {
 			Parent();
 			SYS_TIME;
 		}
-		
-		New(day : Int, month : Int, year : Int) {
+
+		New(gmt : Bool) {
 			Parent();
-			@day := day;
-			@month := month;
-			@year := year;
-			@hours := 0;
-			@mins := 0;
-			@secs := 0;
+			if(gmt) {
+				GMT_TIME;
+			}
+			else {
+				SYS_TIME;
+			};
+		}
+		
+		New(day : Int, month : Int, year : Int, gmt : Bool) {
+			Parent();
 			DATE_TIME_SET_1;
 		}
 		
-		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int) {
+		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
 			Parent();
-			@day := day;
-			@month := month;
-			@year := year;
-			@hours := hours;
-			@mins := mins;
-			@secs := secs;
 			DATE_TIME_SET_2;
 		}
 
