@@ -736,7 +736,7 @@ namespace Runtime {
     inline void ProcessLoadFloat(StackInstr* instr);
     inline void ProcessCopyInt(StackInstr* instr);
     inline void ProcessCopyFloat(StackInstr* instr);
-    inline void ProcessCurrentTime();
+    inline void ProcessCurrentTime(bool is_gmt);
     inline void ProcessSetTime1();
     inline void ProcessSetTime2();
     inline void ProcessPlatform();
