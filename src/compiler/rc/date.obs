@@ -6,7 +6,13 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			t := Date->New();
 			Console->Print(t->GetYear())->Print("-")->Print(t->GetMonth())->Print("-")->PrintLine(t->GetDay());
+			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+
+			t := Date->New(22, 6, 2010);
 			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->PrintLine(t->GetYear());
+
+			t := Date->New(1993, 5, 31, 15, 0, 0);
+			Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
 }
