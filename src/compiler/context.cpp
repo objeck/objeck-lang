@@ -861,17 +861,22 @@ bool ContextAnalyzer::Analyze()
     Type* else_type = GetExpressionType(else_conditional, depth + 1);
 
     // validate types
-    if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
+    if(if_type) {
+      if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
+	AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
+      }
+      else if(if_type->GetType() != else_type->GetType() ||
+	      if_type->GetType() == NIL_TYPE ||
+	      else_type->GetType() == NIL_TYPE) {
+	ProcessError(conditional, "'?' invalid type mismatch");
+      }
+      // set eval type
+      conditional->SetEvalType(if_conditional->GetEvalType(), true);
+      current_method->SetAndOr(true);
     }
-    else if(if_type->GetType() != else_type->GetType() ||
-	    if_type->GetType() == NIL_TYPE ||
-	    else_type->GetType() == NIL_TYPE) {
-      ProcessError(conditional, "'?' invalid type mismatch");
+    else {
+      ProcessError(conditional, "Invalid 'if' statement");
     }
-    // set eval type
-    conditional->SetEvalType(if_conditional->GetEvalType(), true);
-    current_method->SetAndOr(true);
   }
 
   void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int depth) {
