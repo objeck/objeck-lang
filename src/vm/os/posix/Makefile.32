@@ -8,9 +8,9 @@
 ###############
 # For Linux
 ###############
-# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
+# ARGS=-g -D_DEBUG  -Wunused -Wall
 # ARGS=-g -Wunused
-ARGS=-O3 -Wno-deprecated
+ARGS=-O3 -Wall
 
 CC=g++
 AR=ar
