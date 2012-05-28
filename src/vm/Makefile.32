@@ -1,19 +1,8 @@
 ##############
-# For OSX only
+# For Posix
 ##############
-# ARGS=-pthread -mstackrealign -O3
-# ARGS=-pthread -D_TIMING -mstackrealign -O3
-# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
-# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
-
-##############
-# For Linux
-##############
-ARGS=-pthread -O3 -Wno-deprecated
-# ARGS=-g -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wno-deprecated
-# ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-O3 -pthread
+ARGS=-O3 -pthread -D_JIT_SERIAL -Wall
+# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wall
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
@@ -23,7 +12,7 @@ JIT_PATH=jit/ia32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread
 
 memory.a:
 	cd $(MEM_PATH); make	
