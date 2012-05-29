@@ -170,6 +170,7 @@ enum TokenType {
   FILE_OPEN_WRITE,
   FILE_OPEN_READ_WRITE,
   FILE_CLOSE,
+  FILE_FLUSH,
   // file-in
   FILE_IN_BYTE,
   FILE_IN_BYTE_ARY,

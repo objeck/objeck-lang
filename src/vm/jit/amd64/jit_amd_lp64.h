@@ -1485,6 +1485,17 @@ namespace Runtime {
 	}
 	  break;
 
+	case FILE_FLUSH: {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  FILE* file = (FILE*)instance[0];
+	  
+	  if(file) {
+	    instance[0] = (long)NULL;
+	    fflush(file);
+	  }
+	}
+	  break;
+	  
 	case FILE_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);	

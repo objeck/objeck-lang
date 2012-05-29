@@ -71,6 +71,7 @@ namespace instructions {
     FILE_OPEN_WRITE,
     FILE_OPEN_READ_WRITE,
     FILE_CLOSE,
+    FILE_FLUSH,
     FILE_IN_BYTE,
     FILE_OUT_BYTE,
     FILE_IN_BYTE_ARY,
