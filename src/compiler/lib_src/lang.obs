@@ -1694,7 +1694,13 @@ bundle IO {
 		}
 	}
 
-	class FileReader from File {
+	interface InputStream {
+		method : virtual : public : ReadByte() ~ Byte;
+		method : virtual : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
+		method : virtual : ReadString(buffer : Char[]) ~ Nil;
+	}
+
+	class FileReader from File implements InputStream {
 		New(name : System.String) {
 			Parent(name);
 			FILE_OPEN_READ;
@@ -1708,11 +1714,11 @@ bundle IO {
 			FILE_IN_BYTE;
 		}
 
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			FILE_IN_BYTE_ARY;
 		}
-		
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_IN_BYTE_ARY;
 		}
 
@@ -1754,8 +1760,15 @@ bundle IO {
 			return Nil;
 		}
 	}
+
+	interface OutputStream {
+		method : virtual : public : WriteByte(b : Int) ~ Bool;
+		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
+		method : virtual : public : WriteString(str : System.String) ~ Nil;
+		method : virtual : public : Flush() ~ Nil;
+	}
 	
-	class FileWriter from File {
+	class FileWriter from File implements OutputStream {
 		New(name : System.String) {
 			Parent(name);
 			FILE_OPEN_WRITE;
@@ -1763,6 +1776,10 @@ bundle IO {
 		
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
+		}
+
+		method : public : Flush() ~ Nil {
+			FILE_FLUSH;
 		}
 
 		method : public : WriteByte(b : Int) ~ Bool {
@@ -1906,7 +1923,7 @@ bundle IO {
 
 #------------ Socket ------------
 bundle Net {
-	class TCPSocket {
+	class TCPSocket implements InputStream, OutputStream {
 		@handle : Int;
 		@address : System.String;
 		@port : Int;
@@ -1971,6 +1988,8 @@ bundle Net {
 		function : HostName() ~ String {
 			SOCK_TCP_HOST_NAME;
 		}
+
+		method : public : Flush() ~ Nil {}
 
 		method : public : Close() ~ Nil {
 			SOCK_TCP_CLOSE;

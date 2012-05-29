@@ -2599,6 +2599,20 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
     break;
 
+  case FILE_FLUSH: {
+    long* instance = (long*)PopInt();
+    FILE* file = (FILE*)instance[0];
+
+#ifdef _DEBUG
+    cout << "# file close: addr=" << file << "(" << (long)file << ") #" << endl;
+#endif
+    if(file) {
+      instance[0] = 0;
+      fflush(file);
+    }
+  }
+    break;
+    
   case FILE_IN_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();

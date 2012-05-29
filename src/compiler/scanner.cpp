@@ -161,6 +161,7 @@ void Scanner::LoadKeywords()
   // file i/o
   ident_map["FILE_OPEN_READ"] = FILE_OPEN_READ;
   ident_map["FILE_CLOSE"] = FILE_CLOSE;
+  ident_map["FILE_FLUSH"] = FILE_FLUSH;
   ident_map["FILE_IN_BYTE"] = FILE_IN_BYTE;
   ident_map["FILE_IN_BYTE_ARY"] = FILE_IN_BYTE_ARY;
   ident_map["FILE_IN_STRING"] = FILE_IN_STRING;
@@ -314,6 +315,7 @@ void Scanner::CheckIdentifier(int index)
   case STD_OUT_FLOAT:
   case FILE_OPEN_READ:
   case FILE_CLOSE:
+  case FILE_FLUSH:
   case FILE_IN_BYTE:
   case FILE_IN_BYTE_ARY:
   case FILE_IN_STRING:
