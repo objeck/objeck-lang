@@ -1165,6 +1165,12 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
+    case FILE_FLUSH:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::FILE_FLUSH);
+      NextToken();
+      break;
+      
     case FILE_IN_BYTE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::FILE_IN_BYTE);

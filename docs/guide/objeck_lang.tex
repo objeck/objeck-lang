@@ -1839,6 +1839,49 @@ Supports the ability to access program information at runtime.
  \item FUNC
  \end{itemize}
 
+\subsection{Generic I/O}
+Provides support generic and buffered I/O operations.  
+
+\subsubsection{OutputStream}
+The OutputStream interface defines output operations.
+\begin{itemize}
+\item \texttt{WriteByte} - writes a byte
+  \begin{itemize}
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{WriteBuffer} - writes n number of bytes
+  \begin{itemize}
+  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
+    : Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{WriteString} - writes a string
+  \begin{itemize}
+  \item method : public : WriteString(s : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Flush} - flushes buffer
+  \begin{itemize}
+  \item method : public : Flush() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{InputStream}
+The InputStream interface defines input operations.
+\begin{itemize}
+\item \texttt{ReadByte} - reads a byte
+  \begin{itemize}
+  \item method : public : ReadByte() \textasciitilde Byte
+  \end{itemize}
+\item \texttt{ReadBuffer} - reads n number of bytes
+  \begin{itemize}
+  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
+    Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadString} - reads a line
+  \begin{itemize}
+  \item method : public : ReadString() \textasciitilde String
+  \end{itemize}
+\end{itemize}  
+
 \subsection{Filesystem}
 Provides support for file and directory operations.
 
@@ -1886,7 +1929,7 @@ is in the `IO' bundle.  The class supports the following operations:
 \end{itemize}
 
 \subsubsection{FileReader}
-The FileReader is inherited from the File class and allows programmers
+The FileReader is inherited from the File class implements InputStream and allows programmers
 read files.  This class is in the `IO' bundle.  The class supports the
 following operations:
 \begin{itemize}
@@ -1922,13 +1965,17 @@ following operations:
 \end{itemize}
 
 \subsubsection{FileWriter}
-The FileReader is inherited from the File class and allows programmers
+The FileReader is inherited from the File class implements OutputStream and allows programmers
 read files.  This class is in the `IO' bundle.  The class supports the
 following operations:
 \begin{itemize}
 \item \texttt{Close} - closes a file.
   \begin{itemize}
   \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Flush} - flushes a file.
+  \begin{itemize}
+  \item method : public : Flush() \textasciitilde Nil
   \end{itemize}
 \item \texttt{WriteByte} - writes a byte to a file.
   \begin{itemize}
@@ -1969,7 +2016,7 @@ the following operations:
 Provides support for TCP/IP client and server sockets as well as HTTP access.
 
 \subsubsection{TCPSocket}
-The TCPSocket class allows programmers connect to TCP/IP socket
+The TCPSocket class implements InputStream and OuptStream allows programmers connect to TCP/IP socket
 servers.  This class in the `Net' bundle.  The class supports the
 following operations:
 \begin{itemize}
@@ -1993,29 +2040,29 @@ following operations:
   \begin{itemize}
   \item method : public : Close() \textasciitilde Nil
   \end{itemize}
-\item \texttt{WriteByte} - writes a byte to a file.
+\item \texttt{WriteByte} - writes a byte to a socket.
   \begin{itemize}
   \item method : public : WriteByte(b : Int) \textasciitilde Bool
   \end{itemize}
-\item \texttt{WriteBuffer} - writes n number of bytes to a file.
+\item \texttt{WriteBuffer} - writes n number of bytes to a socket.
   \begin{itemize}
   \item method : public : WriteBuffer(offset : Int, num : Int, buffer
     : Byte[]) \textasciitilde Int
   \end{itemize}
-\item \texttt{WriteString} - writes a string to a file.
+\item \texttt{WriteString} - writes a string to a socket.
   \begin{itemize}
   \item method : public : WriteString(s : String) \textasciitilde Nil
   \end{itemize}
-\item \texttt{ReadByte} - reads a byte from a file.
+\item \texttt{ReadByte} - reads a byte from a socket.
   \begin{itemize}
   \item method : public : ReadByte() \textasciitilde Byte
   \end{itemize}
-\item \texttt{ReadBuffer} - reads n number of bytes from a file.
+\item \texttt{ReadBuffer} - reads n number of bytes from a socket.
   \begin{itemize}
   \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
     Byte[]) \textasciitilde Int
   \end{itemize}
-\item \texttt{ReadString} - reads a line from a file.
+\item \texttt{ReadString} - reads a line from a socket.
   \begin{itemize}
   \item method : public : ReadString() \textasciitilde String
   \end{itemize}
