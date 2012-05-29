@@ -78,6 +78,17 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : native : ToBinaryString(b : Int) ~ String {
+			out := String->New();
+      while(b > 0) {
+        v := b % 2;
+        out->Append(v);
+        b /= 2;
+      };
+
+      return out->Reverse();
+		}
+
 		function : native : ToString(b : Byte) ~ String {
 			string : String := String->New();
 			
@@ -270,6 +281,17 @@ bundle System {
 
 		function : native : Size(i : Int[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : native : ToBinaryString(i : Int) ~ String {
+			out := String->New();
+      while(i > 0) {
+        v := i % 2;
+        out->Append(v);
+        i /= 2;
+      };
+
+      return out->Reverse();
 		}
 
 		function : native : ToString(i : Int) ~ String {
