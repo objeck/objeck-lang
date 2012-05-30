@@ -34,8 +34,8 @@
 
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
-list<ClassMethodId*> MemoryManager::jit_roots;
-list<StackFrame*> MemoryManager::pda_roots;
+set<ClassMethodId*> MemoryManager::jit_roots;
+set<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 set<long*> MemoryManager::allocated_int_obj_array;
 map<long*, long> MemoryManager::static_memory;
@@ -146,7 +146,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  pda_roots.push_back(frame);
+  pda_roots.insert(frame);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
@@ -162,7 +162,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  pda_roots.remove(frame);
+  pda_roots.erase(frame);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
@@ -188,7 +188,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  jit_roots.push_back(mthd_info);
+  jit_roots.insert(mthd_info);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
@@ -201,7 +201,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  list<ClassMethodId*>::iterator jit_iter;
+  set<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
     if(id->mem == mem) {
@@ -224,7 +224,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  jit_roots.remove(found);
+  jit_roots.erase(found);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
@@ -667,7 +667,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
   cout << "memory types: " << endl;
 #endif
   
-  list<ClassMethodId*>::iterator jit_iter;
+  set<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = (*jit_iter);
     long* mem = id->mem;
@@ -832,7 +832,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
-  list<StackFrame*>::iterator pda_iter;
+  set<StackFrame*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
     StackMethod* mthd = (*pda_iter)->GetMethod();
     long* mem = (*pda_iter)->GetMemory();
