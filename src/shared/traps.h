@@ -66,6 +66,7 @@ namespace instructions {
     STD_OUT_INT,
     STD_OUT_FLOAT,
     STD_OUT_CHAR_ARY,
+    STD_OUT_BYTE_ARY,
     // file i/o
     FILE_OPEN_READ,
     FILE_OPEN_WRITE,

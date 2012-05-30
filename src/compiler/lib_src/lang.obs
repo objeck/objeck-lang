@@ -1486,6 +1486,14 @@ bundle IO {
 			console := IO.ConsoleIO->Instance();
 			return console->ReadString();
 		}
+
+		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
+      STD_OUT_BYTE_ARY;
+    }
+
+    function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
+      STD_OUT_BYTE_ARY;
+    }
 		
 		function : Print(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(b);

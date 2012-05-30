@@ -1146,7 +1146,13 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::STD_OUT_CHAR_ARY);
       NextToken();
       break;
-
+      
+    case STD_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_OUT_BYTE_ARY);
+      NextToken();
+      break;
+      
     case STD_IN_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::STD_IN_STRING);

@@ -1525,6 +1525,11 @@ the system console.  The class supports the following operations:
   \begin{itemize}
   \item function : PrintLine(t : type) \textasciitilde ConsoleIO
   \end{itemize}
+\item \texttt{WriteBuffer} - writes a buffer to standard out.
+  \begin{itemize}
+  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) \textasciitilde Bool
+  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) \textasciitilde Bool
+  \end{itemize}
 \item \texttt{ReadString} - reads in a line of text as a
   \texttt{Char[]} from standard in.
   \begin{itemize}

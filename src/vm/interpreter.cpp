@@ -2236,7 +2236,23 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << str;
   }
     break;
-
+    
+  case STD_OUT_BYTE_ARY: {
+    long* array = (long*)PopInt();
+    const long num = PopInt();
+    const long offset = PopInt();
+    
+    if(offset >= 0 && offset + num < array[0]) {
+      char* buffer = (char*)(array + 3);
+      cout.write(buffer + offset, num);
+      PushInt(1);
+    } 
+    else {
+      PushInt(0);
+    }
+  }
+    break;
+    
   case STD_IN_STRING: {
     long* array = (long*)PopInt();
     char* buffer = (char*)(array + 3);
@@ -2750,8 +2766,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long offset = PopInt();
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
-
-    if(file && offset + num < array[0]) {
+    
+    if(file && offset >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(fread(buffer + offset, 1, num, file));        
     } 
@@ -2788,7 +2804,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
 
-    if(file && offset + num < array[0]) {
+    if(file && offset >=0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(fwrite(buffer + offset, 1, num, file));
     } 

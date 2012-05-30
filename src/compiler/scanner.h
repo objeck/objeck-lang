@@ -164,6 +164,7 @@ enum TokenType {
   STD_OUT_FLOAT,
   LOAD_ARY_SIZE,
   STD_OUT_CHAR_ARY,
+  STD_OUT_BYTE_ARY,
   STD_IN_STRING,
   // file open/close
   FILE_OPEN_READ,
