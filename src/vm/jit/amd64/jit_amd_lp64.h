@@ -1161,6 +1161,7 @@ namespace Runtime {
 	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
 	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
 	       << "' to '" << program->GetClass(to_id)->GetName() << "' <<<" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 	PushInt(op_stack, stack_pos, result);
@@ -1173,6 +1174,7 @@ namespace Runtime {
 	long* instance = inst;
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1193,6 +1195,7 @@ namespace Runtime {
 	long* instance = inst;
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
@@ -1203,6 +1206,7 @@ namespace Runtime {
 	long* instance = (long*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}      
 	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
@@ -1213,6 +1217,7 @@ namespace Runtime {
 	long* instance = (long*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}      
 	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
@@ -1229,6 +1234,7 @@ namespace Runtime {
 	
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
     
@@ -1255,6 +1261,7 @@ namespace Runtime {
       
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1281,6 +1288,7 @@ namespace Runtime {
       
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1582,6 +1590,7 @@ namespace Runtime {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  if(!array) {
 	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+      cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	    exit(1);
 	  }
 	  PushInt(op_stack, stack_pos, (long)array[2]);

@@ -131,17 +131,16 @@ bundle Default {
 
 		function : native : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
 			index := 0;
-        		m := 0;
+      m := 0;
 			k := 0;
 			kn := ALUB->Size();
 			
-        		descStr := ">";
+      descStr := ">";
 			descStr->Append(id);
 			descStr->Append(" ");
 			descStr->Append(desc);
 			descStr->Append('\n');
-			
-		        descStr->Print();
+      descStr->Print();
 
 			while (n > 0) {
 				if (n < LINE_LENGTH) {
@@ -175,7 +174,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			Init();
+#			Init();
 			MakeCumulative(HomoSapiens);
 			MakeCumulative(IUB);
 
@@ -191,10 +190,10 @@ bundle Default {
 	}
 	
 	class Frequency {
-	        @c : Char;
-	        @p : Float;
+    @c : Char;
+    @p : Float;
 
-        	New(c : Char, p : Float) {
+    New(c : Char, p : Float) {
 			@c := c;
 			@p := p;
 		}
@@ -214,5 +213,5 @@ bundle Default {
 		method : public : SetC(c : Char) ~ Nil {
 			@c := c;
 		}
-        }
+  }
 }
