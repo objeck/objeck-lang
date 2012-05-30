@@ -1183,6 +1183,22 @@ namespace Runtime {
 	}
 	  break;
 	  
+	case STD_OUT_BYTE_ARY: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long num = PopInt(op_stack, stack_pos);
+	  const long offset = PopInt(op_stack, stack_pos);
+	  
+	  if(offset >= 0 && offset + num < array[0]) {
+	    char* buffer = (char*)(array + 3);
+	    cout.write(buffer + offset, num);
+	    PushInt(op_stack, stack_pos, 1);
+	  } 
+	  else {
+	    PushInt(op_stack, stack_pos, 0);
+	  }
+	}
+	  break;
+	  
 	  // ---------------- system time ----------------
 	case SYS_TIME: {
 	  time_t raw_time;
@@ -1600,7 +1616,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
 
-	  if(file && offset + num < array[0]) {
+	  if(file && offset >=0 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
 	  } 
@@ -1637,7 +1653,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  FILE* file = (FILE*)instance[0];
 
-	  if(file && offset + num < array[0]) {
+	  if(file && offset >=0 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
 	  } 

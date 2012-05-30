@@ -158,6 +158,7 @@ void Scanner::LoadKeywords()
   ident_map["STD_OUT_INT"] = STD_OUT_INT;
   ident_map["STD_OUT_FLOAT"] = STD_OUT_FLOAT;
   ident_map["STD_OUT_CHAR_ARY"] = STD_OUT_CHAR_ARY;
+  ident_map["STD_OUT_BYTE_ARY"] = STD_OUT_BYTE_ARY;
   // file i/o
   ident_map["FILE_OPEN_READ"] = FILE_OPEN_READ;
   ident_map["FILE_CLOSE"] = FILE_CLOSE;
@@ -308,6 +309,7 @@ void Scanner::CheckIdentifier(int index)
   case STD_OUT_BOOL:
   case LOAD_ARY_SIZE:
   case STD_OUT_CHAR_ARY:
+  case STD_OUT_BYTE_ARY:
   case STD_IN_STRING:
   case STD_OUT_BYTE:
   case STD_OUT_CHAR:
