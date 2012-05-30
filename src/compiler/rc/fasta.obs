@@ -174,7 +174,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-#			Init();
+			Init();
 			MakeCumulative(HomoSapiens);
 			MakeCumulative(IUB);
 
