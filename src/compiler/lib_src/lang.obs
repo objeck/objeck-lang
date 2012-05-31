@@ -19,7 +19,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : Size(b : Bool[]) ~ Int {
+		function : Size(b : Bool[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -74,7 +74,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : Size(b : Byte[]) ~ Int {
+		function : Size(b : Byte[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -198,7 +198,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : Size(c : Char[]) ~ Int {
+		function : Size(c : Char[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -279,7 +279,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : Size(i : Int[]) ~ Int {
+		function : Size(i : Int[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -400,7 +400,7 @@ bundle System {
 			'\n'->Print();
 		}
 
-		function : native : Size(f : Float[]) ~ Int {
+		function : Size(f : Float[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 
@@ -419,7 +419,7 @@ bundle System {
 	# Array class support
 	~~#	
 	class $BaseArray {
-		function : native : Size(f : System.Base[]) ~ Int {
+		function : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
 	}
