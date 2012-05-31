@@ -1,8 +1,6 @@
-##############
-# For Posix
-##############
-# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -D_X64 -pthread
-ARGS=-O3 -pthread -D_X64 -D_JIT_SERIAL -Wall
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DEBUG 
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING 
+ARGS=-O3 -Wall -pthread -D_X64 -D_JIT_SERIAL
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
@@ -12,7 +10,7 @@ JIT_PATH= jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -pthread -ldl
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread 
 
 memory.a:
 	cd $(MEM_PATH); make	
@@ -21,10 +19,7 @@ jit_amd_lp64.a:
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
-	$(CC) -m64 $(A GS) -c $< 
-six
-##############
-
+	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make clean
