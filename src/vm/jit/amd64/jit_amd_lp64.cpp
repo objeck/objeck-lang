@@ -180,16 +180,20 @@ void JitCompilerIA64::UnregisterRoot() {
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
 
+  /*
   push_reg(R15);
   push_reg(R14);
   push_reg(R13);
-  
+  */
+
   call_reg(call_holder->GetRegister());
 
+  /*
   pop_reg(R13);
   pop_reg(R14);
   pop_reg(R15);
-  
+  */
+
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
