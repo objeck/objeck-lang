@@ -92,8 +92,35 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void fcgi_get_protocol(VMContext& context) {
+    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
+    if(envp) {
+      char* value = FCGX_GetParam("SERVER_PROTOCOL", envp);
+      if(value) {
+	APITools_SetStringValue(context, 1, value);
+	return;
+      }
+    }
+      
+    APITools_SetStringValue(context, 1, "--%%%%--");
+      
     /*
       char *FCGX_GetParam(const char *name, FCGX_ParamArray envp);
+      
+      SERVER_SOFTWARE=Apache/2.2.22 (Ubuntu)
+      SERVER_NAME=localhost
+      SERVER_ADDR=127.0.0.1
+      SERVER_PORT=80
+      REMOTE_ADDR=127.0.0.1
+      DOCUMENT_ROOT=/var/www
+      SERVER_ADMIN=webmaster@localhost
+      SCRIPT_FILENAME=/tmp/a.out
+      REMOTE_PORT=53974
+      GATEWAY_INTERFACE=CGI/1.1
+      SERVER_PROTOCOL=HTTP/1.1
+      REQUEST_METHOD=GET
+      QUERY_STRING=
+      REQUEST_URI=/a
+      SCRIPT_NAME=/a
 
       request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
       if(request && request->args) {
