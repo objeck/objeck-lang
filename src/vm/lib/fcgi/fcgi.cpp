@@ -93,6 +93,8 @@ extern "C" {
 #endif
   void fcgi_get_protocol(VMContext& context) {
     /*
+      char *FCGX_GetParam(const char *name, FCGX_ParamArray envp);
+
       request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
       if(request && request->args) {
       APITools_SetStringValue(context, 1, request->protocol);
