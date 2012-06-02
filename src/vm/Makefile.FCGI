@@ -16,7 +16,7 @@ ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -pthread -fPIC
 # ARGS=-O3 -pthread
 
 CC=g++
-SRC=common.o interpreter.o loader.o vm_apache_lib.o
+SRC=common.o interpreter.o loader.o vm_fcgi_lib.o
 INC=-I/usr/include/apr-1.0 -I/usr/include/openssl -I/usr/include/xmltok
 OBJ_LIBS=jit_intel_lp32.a memory.a
 MEM_PATH=os/posix
@@ -24,7 +24,7 @@ JIT_PATH=jit/ia32
 EXE=obr.so
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread -shared
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lfcgi -ldl -pthread -shared
 
 memory.a:
 	cd $(MEM_PATH); make	
@@ -33,7 +33,7 @@ jit_intel_lp32.a:
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
-	$(CC) -m32 -fPIC -I/usr/include/apache2 $(INC) $(ARGS) -c $< 
+	$(CC) -m32 -fPIC $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make clean

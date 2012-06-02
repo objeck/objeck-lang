@@ -29,9 +29,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include <string>
-#include "httpd.h"
+#include "fcgi_config.h"
+#include "fcgiapp.h"
 
+#include <string>
 #include "vm.h"
 
 static Loader* loader = NULL;
@@ -66,27 +67,17 @@ extern "C"
       return;
     }
   }
-
-  void Call(request_rec *r)
+  
+  void Call(FCGX_Stream* in, FCGX_Stream* out, FCGX_Stream* err, FCGX_ParamArray envp)
   {
     if(mthd) { 
       // execute method
       long* op_stack = new long[STACK_SIZE];
       long* stack_pos = new long;
-
-      // create and populate request object      
-      long* obj = MemoryManager::Instance()->AllocateObject("ApacheModule",
-							    op_stack, *stack_pos);
-      if(obj) {
-	obj[0] = (long)r;
-	
-	// set calling parameters
-	op_stack[0] = (long)obj;
-	(*stack_pos) = 1;
-	
-	intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
-      }
-
+      
+      (*stack_pos) = 0;	
+      intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);      
+      
 #ifdef _DEBUG
       cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
       if((*stack_pos) > 0) {
@@ -99,7 +90,7 @@ extern "C"
       // clean up
       delete[] op_stack;
       op_stack = NULL;
-
+      
       delete stack_pos;
       stack_pos = NULL;
     }
