@@ -64,7 +64,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void apache_write(VMContext& context) {
+  void fcgi_write(VMContext& context) {
     request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
     if(request) {
       const char* value = APITools_GetStringValue(context, 1);
@@ -78,7 +78,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void apache_get_uri(VMContext& context) {
+  void fcgi_get_uri(VMContext& context) {
     request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
     if(request) {
       APITools_SetStringValue(context, 1, request->uri);
@@ -94,7 +94,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void apache_get_args(VMContext& context) {
+  void fcgi_get_args(VMContext& context) {
     request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
     if(request && request->args) {
       APITools_SetStringValue(context, 1, request->args);
@@ -110,7 +110,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void apache_get_protocol(VMContext& context) {
+  void fcgi_get_protocol(VMContext& context) {
     request_rec* request = (request_rec*)APITools_GetIntValue(context, 0);
     if(request && request->args) {
       APITools_SetStringValue(context, 1, request->protocol);
