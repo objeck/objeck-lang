@@ -17,13 +17,14 @@ ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -pthread -fPIC
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm_fcgi_lib.o
-INC=-I/usr/include/apr-1.0 -I/usr/include/openssl -I/usr/include/xmltok
 OBJ_LIBS=jit_intel_lp32.a memory.a
+FCGI=fcgi_main.a
 MEM_PATH=os/posix
 JIT_PATH=jit/ia32
+FCGI_PATH=fcgi_main
 EXE=obr.so
 
-$(EXE): $(SRC) $(OBJ_LIBS)
+$(EXE): $(SRC) $(OBJ_LIBS) $(FCGI)
 	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lfcgi -ldl -pthread -shared
 
 memory.a:
@@ -32,11 +33,15 @@ memory.a:
 jit_intel_lp32.a:
 	cd $(JIT_PATH); make	
 	
+fcgi_main.a:
+	cd $(FCGI_PATH); make 
+	
 %.o: %.cpp
 	$(CC) -m32 -fPIC $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
+	cd $(FCGI_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
 

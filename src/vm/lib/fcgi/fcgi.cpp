@@ -60,9 +60,10 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void fcgi_write(VMContext& context) {
+    FCGX_Stream* out = (FCGX_Stream*)APITools_GetIntValue(context, 0);
     const char* value = APITools_GetStringValue(context, 1);
-    if(value != NULL) {
-      printf("%s", value);
+    if(out && value) {
+      FCGX_FPrintF(out, "%s", value);
     }
   }
   
