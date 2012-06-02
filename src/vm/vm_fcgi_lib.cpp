@@ -1,5 +1,5 @@
 /***************************************************************************
- * Wrapper for Apache2 module
+ * Wrapper for FastCGI module
  *
  * Copyright (c) 2012, Randy Hollines
  * All rights reserved.
@@ -75,8 +75,21 @@ extern "C"
       long* op_stack = new long[STACK_SIZE];
       long* stack_pos = new long;
       
-      (*stack_pos) = 0;	
-      intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);      
+      /// create and populate request object
+      long* obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
+							    op_stack, *stack_pos);
+      if(obj) {
+ 	obj[0] = (long)in;
+	obj[1] = (long)out;
+	obj[2] = (long)err;
+	obj[3] = (long)envp;
+ 	
+	// set calling parameters
+ 	op_stack[0] = (long)obj;
+	(*stack_pos) = 1;
+ 	
+ 	intpr->Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      }
       
 #ifdef _DEBUG
       cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
