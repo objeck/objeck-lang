@@ -31,45 +31,86 @@
 
 #include "fcgi_config.h"
 #include "fcgiapp.h"
+#include "vm.h"
 
-#include <iostream>
-#include <dlfcn.h>
-#include <stdlib.h>
-
-using namespace std;
-
-// Objeck VM lifecycle functions
-typedef void (*vm_init_def)(const char*, const char*, const char*);
-typedef void (*vm_call_def)(FCGX_Stream*, FCGX_Stream*, FCGX_Stream*, FCGX_ParamArray);
-typedef void (*vm_exit_def)();
+#define SUCCESS 0
+#define USAGE_ERROR -1
 
 int main(const int argc, const char* argv[])
 {
-  void* dynamic_lib = dlopen("./obr.so", RTLD_LAZY);
-  if(!dynamic_lib) {
-    cerr << ">>> Runtime error loading DLL: " << dlerror() << " <<<" << endl;
-    exit(1);
+  const char* prgm_id = "../compiler/a.obe";
+  const char* cls_id = "FastCgiModule";
+  const char* mthd_id =  "FastCgiModule:Request:o.FastCgi.Request,";
+  
+  // load program
+  srand(time(NULL)); rand();
+  Loader loader(prgm_id);
+  loader.Load();
+  
+#ifdef _TIMING
+  clock_t start = clock();
+#endif
+
+  // locate starting class and method
+  StackMethod* mthd = NULL;  
+  Runtime::StackInterpreter intpr(Loader::GetProgram());
+  StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+  if(cls) {
+    mthd = cls->GetMethod(mthd_id);
+    if(!mthd) {
+      cerr << ">>> DLL call: Unable to locate method; name=': " 
+	   << mthd_id << "' <<<" << endl;
+      return 1;
+    }
   }
-    
-  // call load function
-  char* error;
-  vm_init_def init_ptr = (vm_init_def)dlsym(dynamic_lib, "Init");
-  if((error = dlerror()) != NULL)  {
-    cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
-    exit(1);
+  else {
+    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
+      return 1;
   }
 
-  vm_call_def call_ptr = (vm_call_def)dlsym(dynamic_lib, "Call");
-  if((error = dlerror()) != NULL)  {
-    cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
-    exit(1);
-  }
-  (*init_ptr)("../compiler/a.obe", "FastCgiModule", "FastCgiModule:Request:");  
-  
-  FCGX_Stream *in, *out, *err;
+  // go into accept loop...
+  FCGX_Stream*in;
+  FCGX_Stream* out;
+  FCGX_Stream* err;
   FCGX_ParamArray envp;
-  while (FCGX_Accept(&in, &out, &err, &envp) >= 0) {
-    (*call_ptr)(in, out, err, envp);    
+  
+  while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
+    // execute method
+    long* op_stack = new long[STACK_SIZE];
+    long* stack_pos = new long;
+      
+    /// create and populate request object
+    long* obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
+							  op_stack, *stack_pos);
+    if(obj) {
+      obj[0] = (long)in;
+      obj[1] = (long)out;
+      obj[2] = (long)err;
+      obj[3] = (long)envp;
+ 	
+      // set calling parameters
+      op_stack[0] = (long)obj;
+      *stack_pos = 1;
+ 	
+      // execute method
+      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+    }
+    
+#ifdef _DEBUG
+    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
+#endif
+    
+    // clean up
+    delete[] op_stack;
+    op_stack = NULL;
+
+    delete stack_pos;
+    stack_pos = NULL;
   }
   
   return 0;
