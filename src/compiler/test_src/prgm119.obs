@@ -1,0 +1,28 @@
+use FastCgi;
+
+bundle Default {
+	class FastCgiModule {
+		function : Main(args : String[]) ~ Nil {
+		}
+
+		function : Request(r : Request) ~ Nil {
+			r->Print("Content-type: text/html\r\nStatus: 200 OK\r\n\r\n");
+
+			r->Print("<html>");
+			r->Print("<form method=\"get\">");
+			r->Print("First name: <input type=\"text\" name=\"fname\" /><br />");
+			r->Print("Last name: <input type=\"text\" name=\"lname\" /><br />");
+			r->Print("<input type=\"submit\" value=\"Submit\" />");
+			r->Print("</form>"); 
+			
+			r->Print("<i>name="); 			
+			name := r->GetParameter("lname");
+			if(name <> Nil) {
+				r->Print(name);
+			};
+			r->Print("</i>"); 
+
+			r->Print("<html>");
+		}
+	}
+}
