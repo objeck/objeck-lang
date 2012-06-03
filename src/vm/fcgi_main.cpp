@@ -36,6 +36,14 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
+void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
+{
+  cout << endl << label << endl;
+  for( ; *envp != NULL; envp++) {
+    cout << "\t" << *envp << endl;
+  }
+}
+
 int main(const int argc, const char* argv[])
 {
   const char* prgm_id = "../compiler/a.obe";
@@ -74,7 +82,7 @@ int main(const int argc, const char* argv[])
   FCGX_Stream* err;
   FCGX_ParamArray envp;
   
-  while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
+  while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {    
     // execute method
     long* op_stack = new long[STACK_SIZE];
     long* stack_pos = new long;
@@ -111,6 +119,11 @@ int main(const int argc, const char* argv[])
 
     delete stack_pos;
     stack_pos = NULL;
+    
+#ifdef _DEBUG
+    PrintEnv(out, "Request environment", envp);
+    PrintEnv(out, "Initial environment", environ);
+#endif
   }
   
   return 0;
