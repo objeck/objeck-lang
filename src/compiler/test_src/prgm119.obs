@@ -6,8 +6,6 @@ bundle Default {
 		}
 
 		function : Request(r : Request) ~ Nil {
-			r->Print("Content-type: text/html\r\nStatus: 200 OK\r\n\r\n");
-
 			r->Print("<html>");
 			r->Print("<form method=\"get\">");
 			r->Print("First name: <input type=\"text\" name=\"fname\" /><br />");
