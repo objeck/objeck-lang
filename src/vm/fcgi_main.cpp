@@ -89,18 +89,20 @@ int main(const int argc, const char* argv[])
     long* op_stack = new long[STACK_SIZE];
     long* stack_pos = new long;
       
-    /// create and populate request object
+    // create request
     long* req_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
 							      op_stack, *stack_pos);
     if(req_obj) {
       req_obj[0] = (long)in;
-      req_obj[1] = (long)out;
-      req_obj[2] = (long)err;
-      req_obj[3] = (long)envp;
-
+      req_obj[1] = (long)envp;
+      
+      // create response
       long* res_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Response", 
 								op_stack, *stack_pos);
       if(res_obj) { 	
+	res_obj[0] = (long)out;
+	res_obj[1] = (long)err;
+	
 	// set calling parameters
 	op_stack[0] = (long)req_obj;
 	op_stack[1] = (long)res_obj;
