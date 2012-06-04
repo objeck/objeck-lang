@@ -5,40 +5,41 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 		}
 
-		function : Request(r : Request, s : Response) ~ Nil {
-			r->Print("<html>");
-			r->Print("<form method=\"get\">");
-			r->Print("First name: <input type=\"text\" name=\"fname\" /><br />");
-			r->Print("Last name: <input type=\"text\" name=\"lname\" /><br />");
-			r->Print("<input type=\"submit\" value=\"Submit\" />");
-			r->Print("</form>"); 
+		function : Request(req : Request, res : Response) ~ Nil {
+			res->AddBody("<html>");
+			res->AddBody("<form method=\"get\">");
+			res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
+			res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
+			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
+			res->AddBody("</form>"); 
 			
-			r->Print("<i>name="); 			
-			name := r->GetParameter("lname");
+			res->AddBody("<i>name="); 			
+			name := req->GetParameter("lname");
 			if(name <> Nil) {
-				r->Print(name);
+				res->AddBody(name);
 			};
-			r->Print("</i><br/>"); 
+			res->AddBody("</i><br/>"); 
 
-			r->Print("<i>cookie value="); 			
-			cookie := r->GetCookie("name3");
+			res->AddBody("<i>cookie value="); 			
+			cookie := req->GetCookie("name3");
 			if(cookie <> Nil) {
-				r->Print(cookie);
+				res->AddBody(cookie);
 			};
 
-			cookie := r->GetCookie("name2");
+			cookie := req->GetCookie("name2");
 			if(cookie <> Nil) {
-				r->Print("; cookie value="); 			
-				r->Print(cookie);
+				res->AddBody("; cookie value="); 			
+				res->AddBody(cookie);
 			};
-			r->Print("</i>"); 
+			res->AddBody("</i>"); 
 
-			r->Print("<p>"); 
-			r->Print(r->GetRemoteAddress());
-			r->Print(s->GetFoo());
-			r->Print("<p/>"); 
+			res->AddBody("<p>"); 
+			res->AddBody(req->GetClientAddress());
+			res->AddBody("<p/>"); 
 
-			r->Print("<html>");
+			res->AddBody("<html>");
+
+			res->Submit();
 		}
 	}
 }
