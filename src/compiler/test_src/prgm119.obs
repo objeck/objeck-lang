@@ -31,8 +31,11 @@ bundle Default {
 				r->Print("; cookie value="); 			
 				r->Print(cookie);
 			};
-
 			r->Print("</i>"); 
+
+			r->Print("<p>"); 
+			r->Print(r->GetRemoteAddress());
+			r->Print("<p/>"); 
 
 			r->Print("<html>");
 		}
