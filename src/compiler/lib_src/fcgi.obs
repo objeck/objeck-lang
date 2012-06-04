@@ -168,4 +168,15 @@ bundle FastCgi {
 			return Nil;
 		}
 	}
+
+	#~
+	# FastCgi Response 
+	~#
+	class Response {
+		@native_out : Int;
+	
+		method : public : GetFoo() ~ String {
+			return "foooooooooooo...........";
+		}
+	}
 }

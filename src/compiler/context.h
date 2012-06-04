@@ -823,10 +823,11 @@ class ContextAnalyzer {
 
       LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
       if(lib_klass) {
+	lib_klass->SetCalled(true);
         type->SetClassName(lib_klass->GetName());
         found = true;
       }
-
+      
       Enum* eenum = SearchProgramEnums(type->GetClassName());
       if(eenum) {
         type->SetClassName(eenum->GetName());
