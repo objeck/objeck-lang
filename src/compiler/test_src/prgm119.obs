@@ -18,6 +18,20 @@ bundle Default {
 			if(name <> Nil) {
 				r->Print(name);
 			};
+			r->Print("</i><br/>"); 
+
+			r->Print("<i>cookie value="); 			
+			cookie := r->GetCookie("name3");
+			if(cookie <> Nil) {
+				r->Print(cookie);
+			};
+
+			cookie := r->GetCookie("name2");
+			if(cookie <> Nil) {
+				r->Print("<br/>");
+				r->Print(cookie);
+			};
+
 			r->Print("</i>"); 
 
 			r->Print("<html>");
