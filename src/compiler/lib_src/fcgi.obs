@@ -19,42 +19,10 @@ bundle FastCgi {
 	~#
 	class Request {
 		@native_in : Int;
-		@native_out : Int;
-		@native_err : Int;
 		@native_envp : Int;
-		@header_submitted : Bool;
 		@cookies : StringMap;
-		@query : String;		
 		@parameters : StringMap;
-		
-		method : public : Print(s : String) ~ Nil {
-			if(@header_submitted = false) {
-				PrintRaw("Content-type: text/html\r\nStatus: 200 OK\r\n");
-				PrintRaw("Set-Cookie: name3=mobb; Expires=Wed, 09 Jun 2021 10:18:14 GMT\r\n");
-				PrintRaw("Set-Cookie: name2=deep\r\n\r\n");
-				@header_submitted := true;
-			};
-			PrintRaw(s);
-		}
-		
-		method : PrintRaw(s : String) ~ Nil {
-			if(s <> Nil) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@native_out);
-				array_args[1] := s;
-				
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("fcgi_write", array_args);
-			};
-		}
-		
-		method : public : GetUri() ~ String {
-			return "";
-		}
-
-		method : public : GetParams() ~ String {
-			return "";   
-		}
+		@query : String;
 		
 		method : public : GetProtocol() ~ String {
 			if(@native_envp <> 0) {
@@ -70,7 +38,7 @@ bundle FastCgi {
 			return "";
 		}
 
-		method : public : GetRemoteAddress() ~ String {
+		method : public : GetClientAddress() ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_envp);
@@ -174,6 +142,59 @@ bundle FastCgi {
 	~#
 	class Response {
 		@native_out : Int;
+		@native_err : Int;
+		@cookies : String;
+		@body : String;
+		
+		method : public : AddBody(s : String) ~ Nil {
+			if(@body = Nil) {
+				@body := String->New();
+			};
+			@body->Append(s);
+		}
+
+		method : public : Submit() ~ Nil {
+			WriteRaw("Content-type: text/html\r\nStatus: 200 OK\r\n");
+			if(@cookies <> Nil) {
+				WriteRaw(@cookies);
+			};
+			WriteRaw("\r\n");
+			
+			# TODO: error handle
+			if(@body <> Nil) {
+				WriteRaw(@body);
+			};
+		}
+
+		method : public : AddCookie(name : String, value : String) ~ Nil {
+			AddCookie(name, value, Nil);
+		}
+		
+		method : public : AddCookie(name : String, value : String, expires : Time.Date) ~ Nil {
+			if(@cookies = Nil) {
+				@cookies := String->New();
+			};
+			
+			@cookies->Append("Set-Cookie: ");
+			@cookies->Append(name);
+			@cookies->Append('=');
+			@cookies->Append(value);
+			if(expires <> Nil) {
+				# TODO: implement
+			};
+			@cookies->Append("\r\n");
+		}	
+		
+		method : WriteRaw(s : String) ~ Nil {
+			if(s <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_out);
+				array_args[1] := s;
+				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_write", array_args);
+			};
+		}
 	
 		method : public : GetFoo() ~ String {
 			return "foooooooooooo...........";
