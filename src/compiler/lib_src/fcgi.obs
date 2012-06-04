@@ -70,6 +70,34 @@ bundle FastCgi {
 			return "";
 		}
 
+		method : public : GetRemoteAddress() ~ String {
+			if(@native_envp <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_envp);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_get_remote_address", array_args);
+				value := array_args[1]->As(String);
+				return value;
+			};
+			
+			return "";
+		}
+
+		method : public : GetRequestUri() ~ String {
+			if(@native_envp <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_envp);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_get_request_uri", array_args);
+				value := array_args[1]->As(String);
+				return value;
+			};
+			
+			return "";
+		}
+
 		method : ProcessCookies(string : String) ~ Nil {
 			@cookies := StringMap->New();
 			name_values := string->Split(";");
