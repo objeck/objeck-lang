@@ -116,4 +116,17 @@ extern "C" {
     
     APITools_SetStringValue(context, 1, "");
   }
+
+  void fcgi_get_cookie(VMContext& context) {
+    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
+    if(envp) {
+      char* value = FCGX_GetParam("HTTP_COOKIE", envp);
+      if(value) {
+	APITools_SetStringValue(context, 1, value);
+	return;
+      }
+    }
+    
+    APITools_SetStringValue(context, 1, "");
+  }
 }
