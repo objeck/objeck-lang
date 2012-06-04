@@ -28,7 +28,7 @@ bundle Default {
 
 			cookie := r->GetCookie("name2");
 			if(cookie <> Nil) {
-				r->Print("<br/>");
+				r->Print("; cookie value="); 			
 				r->Print(cookie);
 			};
 
