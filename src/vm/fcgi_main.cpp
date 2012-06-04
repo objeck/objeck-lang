@@ -48,7 +48,7 @@ int main(const int argc, const char* argv[])
 {
   const char* prgm_id = "../compiler/a.obe";
   const char* cls_id = "FastCgiModule";
-  const char* mthd_id =  "FastCgiModule:Request:o.FastCgi.Request,";
+  const char* mthd_id =  "FastCgiModule:Request:o.FastCgi.Request,o.FastCgi.Response,";
   
   // load program
   srand(time(NULL)); rand();
@@ -68,12 +68,14 @@ int main(const int argc, const char* argv[])
     if(!mthd) {
       cerr << ">>> DLL call: Unable to locate method; name=': " 
 	   << mthd_id << "' <<<" << endl;
+      // TODO: error
       return 1;
     }
   }
   else {
     cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
-      return 1;
+    // TODO: error
+    return 1;
   }
 
   // go into accept loop...
@@ -88,20 +90,35 @@ int main(const int argc, const char* argv[])
     long* stack_pos = new long;
       
     /// create and populate request object
-    long* obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
-							  op_stack, *stack_pos);
-    if(obj) {
-      obj[0] = (long)in;
-      obj[1] = (long)out;
-      obj[2] = (long)err;
-      obj[3] = (long)envp;
+    long* req_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
+							      op_stack, *stack_pos);
+    if(req_obj) {
+      req_obj[0] = (long)in;
+      req_obj[1] = (long)out;
+      req_obj[2] = (long)err;
+      req_obj[3] = (long)envp;
+
+      long* res_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Response", 
+								op_stack, *stack_pos);
+      if(res_obj) { 	
+	// set calling parameters
+	op_stack[0] = (long)req_obj;
+	op_stack[1] = (long)res_obj;
+	*stack_pos = 2;
  	
-      // set calling parameters
-      op_stack[0] = (long)obj;
-      *stack_pos = 1;
- 	
-      // execute method
-      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+	// execute method
+	intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      }
+      else {
+	cerr << ">>> DLL call: Unable to allocate object FastCgi.Response <<" << endl;
+	// TODO: error
+	return 1;
+      }
+    }
+    else {
+      cerr << ">>> DLL call: Unable to allocate object FastCgi.Request <<<" << endl;
+      // TODO: error
+      return 1;
     }
     
 #ifdef _DEBUG

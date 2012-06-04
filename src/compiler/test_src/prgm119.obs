@@ -5,7 +5,7 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 		}
 
-		function : Request(r : Request) ~ Nil {
+		function : Request(r : Request, s : Response) ~ Nil {
 			r->Print("<html>");
 			r->Print("<form method=\"get\">");
 			r->Print("First name: <input type=\"text\" name=\"fname\" /><br />");
@@ -35,6 +35,7 @@ bundle Default {
 
 			r->Print("<p>"); 
 			r->Print(r->GetRemoteAddress());
+			r->Print(s->GetFoo());
 			r->Print("<p/>"); 
 
 			r->Print("<html>");
