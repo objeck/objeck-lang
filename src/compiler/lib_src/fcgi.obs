@@ -75,8 +75,8 @@ bundle FastCgi {
 			name_values := string->Split(";");
 			each(i : name_values) {
 				name_value := name_values[i]->Split("=");
-				if(name_value->Size() = 2) {
-					@cookies->Insert(name_value[0], name_value[1]);
+				if(name_value <> Nil & name_value->Size() = 2) {
+					@cookies->Insert(name_value[0]->Trim(), name_value[1]->Trim());
 				};
 			};
 		}
@@ -88,7 +88,6 @@ bundle FastCgi {
 
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("fcgi_get_cookie", array_args);
-"xxxxx"->PrintLine();
 				ProcessCookies(array_args[1]->As(String));
 			};
 			
