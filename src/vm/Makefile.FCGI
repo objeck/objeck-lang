@@ -9,9 +9,9 @@
 ##############
 # For Linux
 ##############
-# ARGS=-pthread -O3 -Wall
+ARGS=-pthread -O3 -Wall
 # ARGS=-g -Wall -pthread
-ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -pthread
+# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -pthread
 # ARGS=-g -D_DEBUG -Wunused -pthread
 # ARGS=-O3 -pthread
 
