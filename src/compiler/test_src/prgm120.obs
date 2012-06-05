@@ -1,0 +1,133 @@
+bundle Default {
+	class Foo {
+		function : native : ToString(d : Time.Date) ~ String {
+			# format: DAY, DD-MMM-YYYY HH:MM:SS GMT
+			date_str := String->New();
+
+			dd := d->GetDayName();
+			if(dd->Equals("Sunday")) {
+				date_str->Append("Sun");
+			}	
+			else if(dd->Equals("Monday")) {
+				date_str->Append("Mon");
+			}
+			else if(dd->Equals("Tuesday")) {
+				date_str->Append("Tue");
+			}
+			else if(dd->Equals("Wednesday")) {
+				date_str->Append("Wed");
+			}
+			else if(dd->Equals("Thursday")) {
+				date_str->Append("Thu");
+			}
+			else if(dd->Equals("Friday")) {
+				date_str->Append("Fri");
+			}
+			else {
+				date_str->Append("Sat");
+			};
+			date_str->Append(", ");
+
+			day := d->GetDay();
+			if(day < 10) {
+				date_str->Append('0');
+				date_str->Append(day);
+			}
+			else {
+				date_str->Append(day);
+			};
+			date_str->Append('-');
+
+			select(d->GetMonth()) {
+				label 1: {
+					date_str->Append("Jan");
+				}
+
+				label 2: {
+					date_str->Append("Feb");
+				}
+
+				label 3: {
+					date_str->Append("Mar");
+				}
+
+				label 4: {
+					date_str->Append("Apr");
+				}
+
+				label 5: {
+					date_str->Append("May");
+				}
+
+				label 6: {
+					date_str->Append("Jun");
+				}
+
+				label 7: {
+					date_str->Append("Jul");
+				}
+
+				label 8: {
+					date_str->Append("Aug");
+				}
+
+				label 9: {
+					date_str->Append("Sep");
+				}
+
+				label 10: {
+					date_str->Append("Oct");
+				}
+
+				label 11: {
+					date_str->Append("Nov");
+				}
+
+				label 12: {
+					date_str->Append("Dec");
+				}
+			};
+			date_str->Append('-');
+
+			date_str->Append(d->GetYear());
+			date_str->Append(' ');
+
+			hours := d->GetHours();
+			if(hours < 10) {
+				date_str->Append('0');
+				date_str->Append(hours);
+			}
+			else {
+				date_str->Append(hours);
+			};
+			date_str->Append(':');
+
+			mins := d->GetMinutes();
+			if(mins < 10) {
+				date_str->Append('0');
+				date_str->Append(mins);
+			}
+			else {
+				date_str->Append(mins);
+			};
+			date_str->Append(':');
+			
+			secs := d->GetSeconds();
+			if(secs < 10) {
+				date_str->Append('0');
+				date_str->Append(secs);
+			}
+			else {
+				date_str->Append(secs);
+			};
+			date_str->Append(" GMT");
+
+			return date_str;
+		}
+
+		function : Main(args : String[]) ~ Nil {
+#			ToString(Time.Date->New(true))->PrintLine();
+			ToString(Time.Date->New())->PrintLine();
+		}
+	}
+}
