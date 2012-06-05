@@ -39,6 +39,12 @@ bundle Default {
 
 			res->AddBody("<html>");
 
+			future := Time.Date->New();
+#~
+			future->AddDays(1);
+~#
+			res->AddCookie("name3", "foo");
+
 			res->Submit();
 		}
 	}
