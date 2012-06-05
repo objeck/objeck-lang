@@ -105,7 +105,7 @@ extern "C" {
   }
 
   void fcgi_get_request_uri(VMContext& context) {
-    fcgi_get_env_value("REQUEST_METHOD", context);
+    fcgi_get_env_value("REQUEST_URI", context);
   }
   
   static void fcgi_get_env_value(const char* name, VMContext& context) {
