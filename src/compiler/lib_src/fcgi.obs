@@ -67,7 +67,6 @@ bundle FastCgi {
 		}
 
 		method : ProcessCookies(string : String) ~ Nil {
-IO.Console->Print("blah: ")->PrintLine(string);
 			@cookies := StringMap->New();
 			name_values := string->Split(";");
 			if(name_values <> Nil & name_values->Size() > 0) {
@@ -77,19 +76,26 @@ IO.Console->Print("blah: ")->PrintLine(string);
 						@cookies->Insert(name_value[0]->Trim(), name_value[1]->Trim());
 					};
 				};
+			}
+			else {
+				name_value := string->Split("=");
+				if(name_value <> Nil & name_value->Size() = 2) {
+					@cookies->Insert(name_value[0]->Trim(), name_value[1]->Trim());
+				};
 			};
 		}
 		
 		method : public : GetCookie(name : String) ~ String {
-			if(@cookies = Nil & @native_envp <> 0) {
+			if(@native_envp <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_envp);
 
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("fcgi_get_cookie", array_args);
+
 				ProcessCookies(array_args[1]->As(String));
 			};
-			
+
 			if(@cookies <> Nil) {
 				return @cookies->Find(name)->As(String);
 			};
@@ -316,7 +322,6 @@ IO.Console->Print("blah: ")->PrintLine(string);
 
 		method : WriteRaw(s : String) ~ Nil {
 			if(s <> Nil) {
-s->PrintLine();
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_out);
 				array_args[1] := s;
