@@ -2288,6 +2288,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
     */
     
+  case DATE_TIME_ADD_DAYS:
+    ProcessAddTime(DAY_TIME);
+    break;
+    
   case DATE_TIME_ADD_HOURS:
     ProcessAddTime(HOUR_TIME);
     break;
