@@ -35,6 +35,8 @@
 #include "../../lib_api.h"
 
 extern "C" {
+  static void fcgi_get_env_value(const char* name, VMContext& context);
+    
   //
   // initialize fcgi environment
   //
@@ -73,15 +75,6 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void fcgi_get_uri(VMContext& context) {
-  }
-  
-  //
-  // TOOD
-  //
-#ifdef _WIN32
-  __declspec(dllexport) 
-#endif
   void fcgi_get_args(VMContext& context) {
   }
   
@@ -92,61 +85,33 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void fcgi_get_protocol(VMContext& context) {
-    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
-    if(envp) {
-      char* value = FCGX_GetParam("SERVER_PROTOCOL", envp);
-      if(value) {
-	APITools_SetStringValue(context, 1, value);
-	return;
-      }
-    }
-      
-    APITools_SetStringValue(context, 1, "");
+    fcgi_get_env_value("SERVER_PROTOCOL", context);
   }
   
   void fcgi_get_query(VMContext& context) {
-    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
-    if(envp) {
-      char* value = FCGX_GetParam("QUERY_STRING", envp);
-      if(value) {
-	APITools_SetStringValue(context, 1, value);
-	return;
-      }
-    }
-    
-    APITools_SetStringValue(context, 1, "");
+    fcgi_get_env_value("QUERY_STRING", context);
   }
 
   void fcgi_get_cookie(VMContext& context) {
-    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
-    if(envp) {
-      char* value = FCGX_GetParam("HTTP_COOKIE", envp);
-      if(value) {
-	APITools_SetStringValue(context, 1, value);
-	return;
-      }
-    }
-    
-    APITools_SetStringValue(context, 1, "");
+    fcgi_get_env_value("HTTP_COOKIE", context);
   }
   
   void fcgi_get_remote_address(VMContext& context) {
-    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
-    if(envp) {
-      char* value = FCGX_GetParam("REMOTE_ADDR", envp);
-      if(value) {
-	APITools_SetStringValue(context, 1, value);
-	return;
-      }
-    }
-    
-    APITools_SetStringValue(context, 1, "");
+    fcgi_get_env_value("REMOTE_ADDR", context);
   }
   
+  void fcgi_get_request_method(VMContext& context) {
+    fcgi_get_env_value("REQUEST_METHOD", context);
+  }
+
   void fcgi_get_request_uri(VMContext& context) {
+    fcgi_get_env_value("REQUEST_METHOD", context);
+  }
+  
+  static void fcgi_get_env_value(const char* name, VMContext& context) {
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
     if(envp) {
-      char* value = FCGX_GetParam("REQUEST_URI", envp);
+      char* value = FCGX_GetParam(name, envp);
       if(value) {
 	APITools_SetStringValue(context, 1, value);
 	return;
@@ -156,3 +121,5 @@ extern "C" {
     APITools_SetStringValue(context, 1, "");
   }
 }
+
+

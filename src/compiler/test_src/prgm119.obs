@@ -35,6 +35,8 @@ bundle Default {
 
 			res->AddBody("<p>"); 
 			res->AddBody(req->GetClientAddress());
+			res->AddBody("</br>"); 
+			res->AddBody(req->GetRequestMethod());
 			res->AddBody("<p/>"); 
 
 			res->AddBody("<html>");
