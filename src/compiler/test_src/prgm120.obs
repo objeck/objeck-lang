@@ -127,7 +127,9 @@ bundle Default {
 
 		function : Main(args : String[]) ~ Nil {
 #			ToString(Time.Date->New(true))->PrintLine();
-			ToString(Time.Date->New())->PrintLine();
+			future := Time.Date->New();
+			future->AddDays(-1);
+			ToString(future)->PrintLine();
 		}
 	}
 }
