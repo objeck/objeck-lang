@@ -159,8 +159,28 @@ bundle FastCgi {
 		@native_in : Int;
 		@native_envp : Int;
 		@cookies : StringMap;
-		@parameters : StringMap;
 		@query : String;
+		@data : String;
+		
+		method : public : GetData() ~ String {
+			if(@data <> Nil) {
+				return @data;
+			};
+					
+			if(@native_in <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@native_in);
+				array_args[1] := IntHolder->New(@native_envp);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_get_response", array_args);
+				@data := array_args[2]->As(String);
+				
+				return @data;
+			};
+			
+			return Nil;
+		}
 		
 		method : public : GetProtocol() ~ String {
 			if(@native_envp <> 0) {
@@ -268,33 +288,25 @@ bundle FastCgi {
 				@lib_proxy->CallFunction("fcgi_get_query", array_args);
 				@query := array_args[1]->As(String);
 				
-				if(@query <> Nil & @query->Size() > 0) {
-					@parameters := StringMap->New();
-					name_values := @query->Split("&");
-					each(i : name_values) {
-						name_value := name_values[i]->Split("=");
-						if(name_value->Size() = 2) {
-							@parameters->Insert(name_value[0], name_value[1]);
-						};
-					};
-				};
-				
 				return @query;
 			};
 			
 			return Nil;
 		}
 
-		method : public : GetParameter(name : String) ~ String {
-			if(@query = Nil | @query->Size() = 0) {
-				GetQuery();
+		method : public : ParseParameters(@params : String) ~ StringMap {
+			parameters := StringMap->New();
+			if(@params <> Nil & @params->Size() > 0) {
+				name_values := @params->Split("&");
+				each(i : name_values) {
+					name_value := name_values[i]->Split("=");
+					if(name_value->Size() = 2) {
+						parameters->Insert(name_value[0], name_value[1]);
+					};
+				};
 			};
 
-			if(@parameters <> Nil) {
-				return @parameters->Find(name)->As(String);
-			};
-
-			return Nil;
+			return parameters;
 		}
 	}
 

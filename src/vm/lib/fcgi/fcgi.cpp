@@ -75,7 +75,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void fcgi_get_args(VMContext& context) {
+  void fcgi_get_protocol(VMContext& context) {
+    fcgi_get_env_value("SERVER_PROTOCOL", context);
   }
   
   //
@@ -84,30 +85,84 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void fcgi_get_protocol(VMContext& context) {
-    fcgi_get_env_value("SERVER_PROTOCOL", context);
-  }
-  
   void fcgi_get_query(VMContext& context) {
     fcgi_get_env_value("QUERY_STRING", context);
   }
 
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void fcgi_get_cookie(VMContext& context) {
     fcgi_get_env_value("HTTP_COOKIE", context);
   }
   
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void fcgi_get_remote_address(VMContext& context) {
     fcgi_get_env_value("REMOTE_ADDR", context);
   }
   
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void fcgi_get_request_method(VMContext& context) {
     fcgi_get_env_value("REQUEST_METHOD", context);
   }
 
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void fcgi_get_request_uri(VMContext& context) {
     fcgi_get_env_value("REQUEST_URI", context);
   }
+
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void fcgi_get_response(VMContext& context) {
+    FCGX_Stream* in = (FCGX_Stream*)APITools_GetIntValue(context, 0);
+    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 1);
+    
+    if(in && environ) {
+      char* buff_size_str = FCGX_GetParam("CONTENT_LENGTH", envp);
+      if(buff_size_str) {
+	long buff_size = atoi(buff_size_str);
+	if(buff_size > 0 && buff_size < 1024 * 8) {
+	  char* buffer = new char[buff_size + 1];
+	  long read = FCGX_GetStr(buffer, buff_size, in);
+	  buffer[read] = '\0';
+	  APITools_SetStringValue(context, 2, buffer);
+	  delete[] buffer;
+	  return;
+	}
+      }
+    }
+    
+    APITools_SetStringValue(context, 1, "");
+  }
   
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   static void fcgi_get_env_value(const char* name, VMContext& context) {
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
     if(envp) {
