@@ -160,27 +160,9 @@ bundle FastCgi {
 		@native_envp : Int;
 		@cookies : StringMap;
 		@query : String;
+		@query_values : StringMap;
 		@data : String;
-		
-		method : public : GetData() ~ String {
-			if(@data <> Nil) {
-				return @data;
-			};
-					
-			if(@native_in <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New(@native_in);
-				array_args[1] := IntHolder->New(@native_envp);
-
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("fcgi_get_response", array_args);
-				@data := array_args[2]->As(String);
-				
-				return @data;
-			};
-			
-			return Nil;
-		}
+		@data_values : StringMap;
 		
 		method : public : GetProtocol() ~ String {
 			if(@native_envp <> 0) {
@@ -294,10 +276,46 @@ bundle FastCgi {
 			return Nil;
 		}
 
-		method : public : ParseParameters(@params : String) ~ StringMap {
+		method : public : GetQueryValue(name : String) ~ String {
+			if(@query_values = Nil) {
+				@query_values := ParseNameValues(GetQuery());
+			};
+			
+			return @query_values->Find(name)->As(String);
+		}
+
+		method : public : GetData() ~ String {
+			if(@data <> Nil) {
+				return @data;
+			};
+					
+			if(@native_in <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@native_in);
+				array_args[1] := IntHolder->New(@native_envp);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_get_response", array_args);
+				@data := array_args[2]->As(String);
+				
+				return @data;
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetDataValue(name : String) ~ String {
+			if(@data_values = Nil) {
+				@data_values := ParseNameValues(GetData());
+			};
+			
+			return @data_values->Find(name)->As(String);
+		}
+		
+		function : ParseNameValues(params : String) ~ StringMap {
 			parameters := StringMap->New();
-			if(@params <> Nil & @params->Size() > 0) {
-				name_values := @params->Split("&");
+			if(params <> Nil & params->Size() > 0) {
+				name_values := params->Split("&");
 				each(i : name_values) {
 					name_value := name_values[i]->Split("=");
 					if(name_value->Size() = 2) {
@@ -323,7 +341,10 @@ bundle FastCgi {
 			if(@body = Nil) {
 				@body := String->New();
 			};
-			@body->Append(s);
+
+			if(s <> Nil & s->Size() > 0) {
+				@body->Append(s);
+			};
 		}
 
 		method : public : Submit() ~ Nil {

@@ -13,15 +13,11 @@ bundle Default {
 			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
 			res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
 			res->AddBody("</form>"); 
-			
+
 			res->AddBody("<i>name="); 
-			query := req->GetQuery();
-			if(query <> Nil & query->Size() > 0) {
-				pp := req->ParseParameters(query);			
-				name := pp->Find("lname")->As(String);
-				if(name <> Nil) {
-					res->AddBody(name);
-				};
+			name := req->GetQueryValue("lname");
+			if(name <> Nil) {
+#				res->AddBody(name);
 			};
 			res->AddBody("</i><br/>"); 
 
@@ -44,17 +40,15 @@ bundle Default {
 			res->AddBody(req->GetRequestMethod());
 			res->AddBody("<p/>"); 
 
-			data := req->GetData();
-			if(data <> Nil & data->Size() > 0) {
-				dd := req->ParseParameters(data);			
-				name := dd->Find("dog")->As(String);
-				if(name <> Nil) {
-					res->AddBody("<pre>");
-					res->AddBody(name);
-					res->AddBody("</pre>");
-				};
+			name := req->GetDataValue("dog");
+			if(name <> Nil) {
+				res->AddBody("<pre>");
+				res->AddBody(name);
+				res->AddBody("</pre>");
 			};
+		
 
+			data := req->GetData();
 			if(data <> Nil) {
 				res->AddBody("<pre>");
 				res->AddBody(data);
