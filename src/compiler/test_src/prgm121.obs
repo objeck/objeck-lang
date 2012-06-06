@@ -1,0 +1,88 @@
+use IO;
+
+bundle Default {
+	class PageParser  {
+		@index : Int;
+		@page_chars : Char[];
+		@cur_char : Char;
+		@nxt_char : Char;
+		@nxt_nxt_char : Char;
+
+		New(page : String) {
+			if(page <> Nil) {
+				@page_chars := page->ToCharArray();
+				@index := -1;
+				NextChar();
+			};
+		}
+
+		method : NextChar() ~ Nil {
+			@index += 1;
+
+			if(@index < @page_chars->Size()) {
+				@cur_char := @page_chars[@index];
+				if(@index + 1 < @page_chars->Size()) {
+					@nxt_char := @page_chars[@index + 1];
+					if(@index + 2 < @page_chars->Size()) {
+						@nxt_nxt_char := @page_chars[@index + 2];
+					}
+					else {	
+						@nxt_nxt_char := '\0';
+					};
+				}
+				else {	
+					@nxt_char := '\0';
+				};
+			}
+			else {
+				@cur_char := '\0';
+			};
+		}
+
+		method : public : Parse() ~ Nil {
+			tag_start := false;
+			while(@cur_char <> '\0') {
+				# open tag
+				if(@cur_char = '<' & @nxt_char = '/' & @nxt_nxt_char = '#') {
+					NextChar();	NextChar();	NextChar();	
+					s := @index;
+					while(@cur_char <> '>') {
+						NextChar();	
+					};
+					e := @index;
+					tag_start := false;
+IO.Console->Print("end tag ")->Print(s)->Print(", ")->PrintLine(e - s);
+				}
+				else if(@cur_char = '<' & @nxt_char = '#') {
+					NextChar();	NextChar();	
+					s := @index;
+					while(@cur_char <> ' ' & @cur_char <> '>') {
+						NextChar();	
+					};
+					e := @index;
+					tag_start := true;
+IO.Console->Print("start tag ")->Print(s)->Print(", ")->PrintLine(e - s);
+				}
+				else if(tag_start & @cur_char = '/' & @nxt_char = '>') {
+					NextChar();	NextChar();	
+					tag_start := false;
+IO.Console->Print("end tag ")->Print(@index - 2)->Print(", ")->PrintLine(2);
+# "ending tag"->PrintLine();
+				}
+				# proceede
+				else {
+					NextChar();	
+				};
+			};
+			@cur_char->Print('\n');
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				parser := PageParser->New(FileReader->ReadFile(args[0]));
+				parser->Parse();
+			};
+		}	
+	
+	}
+}
