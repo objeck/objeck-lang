@@ -44,9 +44,9 @@ typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *i
 					const char* cls_name, const char* mthd_name);
 typedef void(*APITools_MethodCallId_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const int cls_id, const int mthd_id);
-typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos);
+typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos, bool collect);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
-					    long* op_stack, long stack_pos);
+					    long* op_stack, long stack_pos, bool collect);
 // context structure
 struct VMContext {
   long* data_array;
@@ -274,7 +274,7 @@ void APITools_SetStringValue(VMContext &context, int index, const char* value) {
 						((char_array_dim + 2) *
 						 sizeof(long)),
 						BYTE_ARY_TYPE,
-						context.op_stack, *context.stack_pos);
+						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -284,7 +284,8 @@ void APITools_SetStringValue(VMContext &context, int index, const char* value) {
   strcpy(char_array_ptr, value);
   
   // create 'System.String' object instance
-  long* str_obj = context.alloc_obj("System.String", (long*)context.op_stack, *context.stack_pos);
+  long* str_obj = context.alloc_obj("System.String", (long*)context.op_stack, 
+				    *context.stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
