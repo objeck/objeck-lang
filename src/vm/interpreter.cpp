@@ -1061,7 +1061,7 @@ void StackInterpreter::ProcessPlatform()
 							 ((char_array_dim + 2) *
 							  sizeof(long)),
 							 BYTE_ARY_TYPE,
-							 op_stack, *stack_pos);
+							 op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -1072,7 +1072,7 @@ void StackInterpreter::ProcessPlatform()
 
   // create 'System.String' object instance
   long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-						(long*)op_stack, *stack_pos);
+						(long*)op_stack, *stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
 
@@ -2102,7 +2102,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     }
     /// set name and create 'Class' instance
     long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-						  (long*)op_stack, *stack_pos);
+						  (long*)op_stack, *stack_pos, false);
     cls_obj[0] = (long)CreateStringObject(cls->GetName());
     frame->GetMemory()[1] = (long)cls_obj;
     CreateClassObject(cls, cls_obj);
@@ -2390,9 +2390,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 	   << client_address << "; port=" << client_port << "; addr=" << server << "(" 
 	   << (long)server << ") #" << endl;
 #endif
-
+      
       long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
-						     (long*)op_stack, *stack_pos);
+						     (long*)op_stack, *stack_pos, false);
       sock_obj[0] = client;
       sock_obj[1] = (long)CreateStringObject(client_address);
       sock_obj[2] = client_port;
@@ -2945,7 +2945,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
 							      str_obj_array_dim + 2,
 							      INT_TYPE, op_stack,
-							      *stack_pos);
+							      *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;

@@ -136,7 +136,7 @@ bundle FastCgi {
 				if(c = '+') {
 					buffer->Append(' ');
 				}
-				else if(c = '%') {
+				else if(c = '%' & i + 2 < buffer->Size()) {
 					value := "0x";
 					value->Append(str->Get(i + 1));
 					value->Append(str->Get(i + 2));

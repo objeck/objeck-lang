@@ -1876,8 +1876,9 @@ namespace Runtime {
 	  const long str_obj_array_dim = 1;  
 	  long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
 										str_obj_array_dim + 2, 
-										INT_TYPE, (long*)op_stack, 
-										*stack_pos);
+										INT_TYPE, 
+										(long*)op_stack, 
+										*stack_pos, false);
 	  str_obj_array[0] = str_obj_array_size;
 	  str_obj_array[1] = str_obj_array_dim;
 	  str_obj_array[2] = str_obj_array_size;
@@ -1895,7 +1896,8 @@ namespace Runtime {
 									       ((char_array_dim + 2) * 
 										sizeof(long)),  
 									       BYTE_ARY_TYPE, 
-									       (long*)op_stack, *stack_pos);
+									       (long*)op_stack, 
+									       *stack_pos, false);
 	    char_array[0] = char_array_size;
 	    char_array[1] = char_array_dim;
 	    char_array[2] = char_array_size;
@@ -1906,7 +1908,8 @@ namespace Runtime {
       
 	    // create 'System.String' object instance
 	    long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(), 
-								      (long*)op_stack, *stack_pos);
+								      (long*)op_stack, *stack_pos,
+								      false);
 	    str_obj[0] = (long)char_array;
 	    str_obj[1] = char_array_size;
 
