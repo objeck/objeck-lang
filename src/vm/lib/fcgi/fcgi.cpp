@@ -65,7 +65,7 @@ extern "C" {
     FCGX_Stream* out = (FCGX_Stream*)APITools_GetIntValue(context, 0);
     const char* value = APITools_GetStringValue(context, 1);
     if(out && value) {
-      FCGX_FPrintF(out, "%s", value);
+      FCGX_PutS(value, out);
     }
   }
   

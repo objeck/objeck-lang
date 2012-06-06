@@ -11,6 +11,7 @@ bundle Default {
 			res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
 			res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
 			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
+			res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
 			res->AddBody("</form>"); 
 			
 			res->AddBody("<i>name="); 			
@@ -38,6 +39,13 @@ bundle Default {
 			res->AddBody("</br>"); 
 			res->AddBody(req->GetRequestMethod());
 			res->AddBody("<p/>"); 
+
+			name := req->GetParameter("dog");
+			if(name <> Nil) {
+				res->AddBody("<pre>");
+				res->AddBody(UrlUtility->Decode(name));
+				res->AddBody("</pre>");
+			};	
 
 			res->AddBody("<html>");
 
