@@ -7,7 +7,7 @@ bundle Default {
 
 		function : Request(req : Request, res : Response) ~ Nil {
 			res->AddBody("<html>");
-			res->AddBody("<form method=\"get\">");
+			res->AddBody("<form method=\"post\">");
 			res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
 			res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
 			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
