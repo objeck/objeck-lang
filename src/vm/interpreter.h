@@ -298,7 +298,7 @@ namespace Runtime {
       long* mthd_obj_array = (long*)MemoryManager::Instance()->AllocateArray(mthd_obj_array_size +
 									     mthd_obj_array_dim + 2,
 									     INT_TYPE, op_stack,
-									     *stack_pos);
+									     *stack_pos, false);
       
       mthd_obj_array[0] = mthd_obj_array_size;
       mthd_obj_array[1] = mthd_obj_array_dim;
@@ -316,7 +316,8 @@ namespace Runtime {
     
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
-								 (long*)op_stack, *stack_pos);
+								 (long*)op_stack, *stack_pos,
+								 false);
       // method and class object
       mthd_obj[0] = (long)mthd;
       mthd_obj[1] = (long)cls_obj;
@@ -346,7 +347,8 @@ namespace Runtime {
       vector<long*> data_type_obj_holder;
       while(index < (int)params_string.size()) {
 	long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
-									(long*)op_stack, *stack_pos);
+									(long*)op_stack, *stack_pos,
+									false);
 	data_type_obj_holder.push_back(data_type_obj);
         
 	switch(params_string[index]) {
@@ -422,7 +424,7 @@ namespace Runtime {
       long* type_obj_array = (long*)MemoryManager::Instance()->AllocateArray(type_obj_array_size +
 									     type_obj_array_dim + 2,
 									     INT_TYPE, op_stack,
-									     *stack_pos);
+									     *stack_pos, false);
       type_obj_array[0] = type_obj_array_size;
       type_obj_array[1] = type_obj_array_dim;
       type_obj_array[2] = type_obj_array_size;
@@ -445,7 +447,8 @@ namespace Runtime {
 									 ((char_array_dim + 2) *
 									  sizeof(long)),
 									 BYTE_ARY_TYPE,
-									 op_stack, *stack_pos);
+									 op_stack, *stack_pos,
+									 false);
       char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
@@ -456,7 +459,8 @@ namespace Runtime {
       
       // create 'System.String' object instance
       long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
-								(long*)op_stack, *stack_pos);
+								(long*)op_stack, *stack_pos,
+								false);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;
@@ -564,15 +568,17 @@ namespace Runtime {
 								       ((dest_array_dim + 2) *
 									sizeof(long)),
 								       BYTE_ARY_TYPE,
-								       op_stack, *stack_pos);
+								       op_stack, *stack_pos,
+								       false);
 	}
 	else if(type == INT_ARY_PARM) {
 	  dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
-							   INT_TYPE, op_stack, *stack_pos);
+							   INT_TYPE, op_stack, *stack_pos,
+							   false);
 	}
 	else {
 	  dest_array = (long*)MemoryManager::AllocateArray(dest_array_size * 2 + dest_array_dim + 2, 
-							   INT_TYPE, op_stack, *stack_pos);
+							   INT_TYPE, op_stack, *stack_pos, false);
 	}
 	
 	dest_array[0] = dest_array_size;
@@ -604,7 +610,8 @@ namespace Runtime {
 									   ((byte_array_dim + 2) *
 									    sizeof(long)),
 									   BYTE_ARY_TYPE,
-									   op_stack, *stack_pos);
+									   op_stack, *stack_pos,
+									   false);
 	byte_array[0] = byte_array_size + 1;
 	byte_array[1] = byte_array_dim;
 	byte_array[2] = byte_array_size;

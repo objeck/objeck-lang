@@ -233,7 +233,8 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   found = NULL;
 }
 
-long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos)
+long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, 
+				    long stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG
@@ -251,7 +252,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 #endif
 
     // collect memory
-    if(allocation_size + size > mem_max_size) {
+    if(collect && allocation_size + size > mem_max_size) {
       CollectMemory(op_stack, stack_pos);
     }
     // allocate memory
@@ -279,7 +280,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 }
 
 long* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   long* op_stack, long stack_pos)
+                                   long* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
   long* mem;
@@ -302,7 +303,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
   }
   // collect memory
-  if(allocation_size + calc_size > mem_max_size) {
+  if(collect && allocation_size + calc_size > mem_max_size) {
     CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
