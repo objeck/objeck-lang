@@ -14,10 +14,14 @@ bundle Default {
 			res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
 			res->AddBody("</form>"); 
 			
-			res->AddBody("<i>name="); 			
-			name := req->GetParameter("lname");
-			if(name <> Nil) {
-				res->AddBody(name);
+			res->AddBody("<i>name="); 
+			query := req->GetQuery();
+			if(query <> Nil & query->Size() > 0) {
+				pp := req->ParseParameters(query);			
+				name := pp->Find("lname")->As(String);
+				if(name <> Nil) {
+					res->AddBody(name);
+				};
 			};
 			res->AddBody("</i><br/>"); 
 
@@ -40,12 +44,22 @@ bundle Default {
 			res->AddBody(req->GetRequestMethod());
 			res->AddBody("<p/>"); 
 
-			name := req->GetParameter("dog");
-			if(name <> Nil) {
+			data := req->GetData();
+			if(data <> Nil & data->Size() > 0) {
+				dd := req->ParseParameters(data);			
+				name := dd->Find("dog")->As(String);
+				if(name <> Nil) {
+					res->AddBody("<pre>");
+					res->AddBody(name);
+					res->AddBody("</pre>");
+				};
+			};
+
+			if(data <> Nil) {
 				res->AddBody("<pre>");
-				res->AddBody(UrlUtility->Decode(name));
-				res->AddBody("</pre>");
-			};	
+				res->AddBody(data);
+				res->AddBody("</pre>");	
+			};
 
 			res->AddBody("<html>");
 
