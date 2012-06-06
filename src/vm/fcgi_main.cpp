@@ -88,17 +88,17 @@ int main(const int argc, const char* argv[])
     // execute method
     long* op_stack = new long[STACK_SIZE];
     long* stack_pos = new long;
-      
+    
     // create request
     long* req_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
-							      op_stack, *stack_pos);
+							      op_stack, *stack_pos, false);
     if(req_obj) {
       req_obj[0] = (long)in;
       req_obj[1] = (long)envp;
       
       // create response
       long* res_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Response", 
-								op_stack, *stack_pos);
+								op_stack, *stack_pos, false);
       if(res_obj) { 	
 	res_obj[0] = (long)out;
 	res_obj[1] = (long)err;
