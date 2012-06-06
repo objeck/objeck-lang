@@ -43,7 +43,7 @@ bundle Default {
 			name := req->GetDataValue("dog");
 			if(name <> Nil) {
 				res->AddBody("<pre>");
-				res->AddBody(name);
+				res->AddBody(UrlUtility->Decode(name));
 				res->AddBody("</pre>");
 			};
 		
