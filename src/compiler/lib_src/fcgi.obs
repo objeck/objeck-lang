@@ -15,7 +15,7 @@ bundle FastCgi {
 	}
 	
 	class UrlUtility {
-		function : Encode(str : String) ~ String {
+		function : native : Encode(str : String) ~ String {
 			buffer := String->New();
 			each(i : str) {
 				c := str->Get(i);
@@ -129,7 +129,7 @@ bundle FastCgi {
 			return buffer;
 		}
 
-		function : Decode(str : String) ~ String {
+		function : native : Decode(str : String) ~ String {
 			buffer := String->New();
 			each(i : str) {
 				c := str->Get(i);
