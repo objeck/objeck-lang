@@ -429,7 +429,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   
 #ifdef _DEBUG
   long start = allocation_size;
-  cout << endl << "=========================================" << endl;
+  cout << dec << endl << "=========================================" << endl;
   cout << "Starting Garbage Collection; thread=" << GetCurrentThread() << endl;
   cout << "=========================================" << endl;
   cout << "## Marking memory ##" << endl;
