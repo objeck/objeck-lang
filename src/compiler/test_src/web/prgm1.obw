@@ -1,4 +1,4 @@
-<#class name=Foo request=res respeonse=res/> 
+<#meta class=Foo request=res respeonse=res/> 
 <html>
 	<head>
 	</head> 
@@ -7,12 +7,9 @@
 			<#code>
 				each(i:s) { req->GetRequesUri(); };
 				each(i:s) { req->GetRequesUri(); };
-				each(i:s) { req->GetRequesUri(); };
-				each(i:s) { req->GetRequesUri(); };
-				each(i:s) { req->GetRequesUri(); };
 			</#code>
 		</b>
-<i><#code> a:= 10; b := 13</#code>foo bar</i>
+<i><#code> a:= 10; b := 13;</#code>foo bar</i>
 
 	<body>
 		

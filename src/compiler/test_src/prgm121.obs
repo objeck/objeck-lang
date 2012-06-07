@@ -93,6 +93,9 @@ bundle Default {
 					if(block->GetType() = BlockType->HTML) {
 						Console->Print("html='")->Print(block->GetText())->PrintLine("'");
 					}
+					else if(block->GetType() = BlockType->META) {
+						Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+					}
 					else {
 						Console->Print("code='")->Print(block->GetText())->PrintLine("'");
 					};
@@ -108,14 +111,24 @@ bundle Default {
 		method : UnaryEndTag() ~ Nil {
 			NextChar();	NextChar();	
 			top_tag := @tag_stack->Top()->As(Tag);
+			
 			if(top_tag = Nil) {
 				"Expected starting tag..."->PrintLine();
 				Runtime->Exit(1);
 			};
+			
+			if(top_tag->GetName()->Equals("meta") = false) {
+				"Invalid unary tag name..."->PrintLine();
+				Runtime->Exit(1);
+			};
+
 			@tag_stack->Pop();
-			text := @page->SubString(top_tag->GetPosition(), @index - top_tag->GetPosition() - 2);
-			@blocks->AddBack(Block->New(BlockType->CODE, text));
-Console->Print("\tending unary: text='")->Print(text)->PrintLine("'");
+			code_block := @page->SubString(top_tag->GetPosition(), 
+				@index - top_tag->GetPosition() - 2);
+			if(code_block->Size() > 0) {
+				@blocks->AddBack(Block->New(BlockType->META, code_block));
+			};
+# Console->Print("\tending unary: code_block='")->Print(code_block)->PrintLine("'");
 		}
 	
 		# ending tag
@@ -135,17 +148,21 @@ Console->Print("\tending unary: text='")->Print(text)->PrintLine("'");
 			};
 			@tag_stack->Pop();
 
-			text := @page->SubString(top_tag->GetPosition(), start - top_tag->GetPosition() - 3);
-			@blocks->AddBack(Block->New(BlockType->CODE, text));
-Console->Print("\tending: text='")->Print(text)->PrintLine("'");
-			NextChar();	
+			code_block := @page->SubString(top_tag->GetPosition(), 
+				start - top_tag->GetPosition() - 3);
+			if(code_block->Size() > 0) {
+				@blocks->AddBack(Block->New(BlockType->CODE, code_block));
+			};
+			NextChar();
+# Console->Print("\tending: code_block='")->Print(code_block)->PrintLine("'");
 		}
 		
 		# start tag
 		method : StartTag(html_block : String) ~ Nil {
 			# add html block
-			@blocks->AddBack(Block->New(BlockType->HTML, html_block));
-			
+			if(html_block->Size() > 0) {
+				@blocks->AddBack(Block->New(BlockType->HTML, html_block));
+			};
 			NextChar();	NextChar();	
 			start := @index;
 			while(@cur_char <> ' ' & @cur_char <> '>') {
@@ -155,7 +172,7 @@ Console->Print("\tending: text='")->Print(text)->PrintLine("'");
 			name := @page->SubString(start, end -start);
 			NextChar();
 			@tag_stack->Push(Tag->New(@index, name));
-Console->Print("starting tag: '")->Print(name)->PrintLine("'");
+# Console->Print("starting tag: '")->Print(name)->PrintLine("'");
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -191,8 +208,9 @@ Console->Print("starting tag: '")->Print(name)->PrintLine("'");
 	# Block class
 	~#
 	enum BlockType {
-		HTML,
-		CODE
+		META,
+		CODE,
+		HTML
 	}
 	
 	class Block {
