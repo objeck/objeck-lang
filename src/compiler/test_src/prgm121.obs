@@ -95,6 +95,15 @@ bundle Default {
 					}
 					else if(block->GetType() = BlockType->META) {
 						Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+
+						attribs := block->GetText()->Split(" ");
+						each(j : attribs) {
+							name_values := attribs[j]->Trim()->Split("=");
+							if(name_values->Size() = 2) {
+								# todo add to map
+Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
+							};
+						};
 					}
 					else {
 						Console->Print("code='")->Print(block->GetText())->PrintLine("'");
