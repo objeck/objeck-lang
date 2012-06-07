@@ -2,6 +2,9 @@ use IO;
 use Struct;
 
 bundle Default {
+	#~
+	# Tag PageParser
+	~#
 	class PageParser  {
 		@index : Int;
 		@page : String;
@@ -10,21 +13,22 @@ bundle Default {
 		@nxt_char : Char;
 		@nxt_nxt_char : Char;
 		@code : String;
-		@html : String;
 		@tag_stack : Stack;
+		@blocks : Vector;
 
 		New(page : String) {
 			if(page <> Nil) {
 				@page := page;
 				@page_chars := page->ToCharArray();
 				@index := -1;
-				@html := String->New();
 				@code := String->New();
 				@tag_stack := Stack->New();
 				NextChar();
+				@blocks := Vector->New();
 			};
 		}
 
+		# get next char, look ahead 3 chars
 		method : NextChar() ~ Nil {
 			@index += 1;
 			if(@index < @page_chars->Size()) {
@@ -47,41 +51,52 @@ bundle Default {
 			};
 		}
 
+		# parse page
 		method : public : Parse() ~ Nil {
 			if(@page_chars = Nil) {
 				return;
 			};
 
 			tag_start := false;
+			html_block := String->New();
 			while(@cur_char <> '\0') {
 				# end tag
 				if(@cur_char = '<' & @nxt_char = '/' & @nxt_nxt_char = '#') {
 					EndTag();
+					html_block := String->New();
 					tag_start := false;
 				}
 				# start tag
 				else if(@cur_char = '<' & @nxt_char = '#') {
-					StartTag();
+					StartTag(html_block);
 					tag_start := true;
 				}
+				# unary end tag
 				else if(tag_start & @cur_char = '/' & @nxt_char = '>') {
 					UnaryEndTag();
+					html_block := String->New();
 					tag_start := false;
 				}
 				# html markup
 				else {
 					if(tag_start <> true) {
-						@html->Append(@cur_char);
-					}
-					else {	
-						@code->Append(@cur_char);
+						html_block->Append(@cur_char);
 					};
 					NextChar();	
 				};
 			};
+			@blocks->AddBack(Block->New(BlockType->HTML, html_block));
 
 			if(@tag_stack->Size() = 0) {
-Console->PrintLine()->PrintLine("html ='")->Print(@html->Trim())->PrintLine("'");
+				each(i : @blocks) {
+					block := @blocks->Get(i)->As(Block);
+					if(block->GetType() = BlockType->HTML) {
+						Console->Print("html='")->Print(block->GetText())->PrintLine("'");
+					}
+					else {
+						Console->Print("code='")->Print(block->GetText())->PrintLine("'");
+					};
+				};
 				"OK"->PrintLine();
 			}
 			else {
@@ -89,6 +104,7 @@ Console->PrintLine()->PrintLine("html ='")->Print(@html->Trim())->PrintLine("'")
 			};
 		}
 
+		# ending unary tag
 		method : UnaryEndTag() ~ Nil {
 			NextChar();	NextChar();	
 			top_tag := @tag_stack->Top()->As(Tag);
@@ -98,9 +114,11 @@ Console->PrintLine()->PrintLine("html ='")->Print(@html->Trim())->PrintLine("'")
 			};
 			@tag_stack->Pop();
 			text := @page->SubString(top_tag->GetPosition(), @index - top_tag->GetPosition() - 2);
+			@blocks->AddBack(Block->New(BlockType->CODE, text));
 Console->Print("\tending unary: text='")->Print(text)->PrintLine("'");
 		}
-
+	
+		# ending tag
 		method : EndTag() ~ Nil {
 			NextChar();	NextChar();	NextChar();	
 			start := @index;
@@ -118,11 +136,16 @@ Console->Print("\tending unary: text='")->Print(text)->PrintLine("'");
 			@tag_stack->Pop();
 
 			text := @page->SubString(top_tag->GetPosition(), start - top_tag->GetPosition() - 3);
+			@blocks->AddBack(Block->New(BlockType->CODE, text));
 Console->Print("\tending: text='")->Print(text)->PrintLine("'");
 			NextChar();	
 		}
-
-		method : StartTag() ~ Nil {
+		
+		# start tag
+		method : StartTag(html_block : String) ~ Nil {
+			# add html block
+			@blocks->AddBack(Block->New(BlockType->HTML, html_block));
+			
 			NextChar();	NextChar();	
 			start := @index;
 			while(@cur_char <> ' ' & @cur_char <> '>') {
@@ -143,6 +166,9 @@ Console->Print("starting tag: '")->Print(name)->PrintLine("'");
 		}	
 	}
 
+	#~
+	# Tag class
+	~#
 	class Tag {
 		@name : String;
 		@pos : Int;
@@ -159,5 +185,31 @@ Console->Print("starting tag: '")->Print(name)->PrintLine("'");
 		method : public : GetPosition() ~ Int {
 			return @pos;
 		}
+	}
+
+	#~
+	# Block class
+	~#
+	enum BlockType {
+		HTML,
+		CODE
+	}
+	
+	class Block {
+		@block_type : BlockType;
+		@text : String;
+
+		New(block_type : BlockType, text : String) {
+			@block_type := block_type;
+			@text := text;
+		}
+
+		method : public : GetType() ~ BlockType {
+			return @block_type;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}	
 	}
 }
