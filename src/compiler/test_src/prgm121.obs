@@ -1,4 +1,5 @@
 use IO;
+use Struct;
 
 bundle Default {
 	class PageParser  {
@@ -9,6 +10,7 @@ bundle Default {
 		@nxt_char : Char;
 		@nxt_nxt_char : Char;
 		@html : String;
+		@tag_stack : Stack;
 
 		New(page : String) {
 			if(page <> Nil) {
@@ -16,6 +18,7 @@ bundle Default {
 				@page_chars := page->ToCharArray();
 				@index := -1;
 				@html := String->New();
+				@tag_stack := Stack->New();
 				NextChar();
 			};
 		}
@@ -95,6 +98,5 @@ Console->Print("starting tag: '")->Print(@page->SubString(s, e -s))->PrintLine("
 				parser->Parse();
 			};
 		}	
-	
 	}
 }
