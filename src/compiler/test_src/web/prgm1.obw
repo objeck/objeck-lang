@@ -12,6 +12,7 @@
 				each(i:s) { req->GetRequesUri(); };
 			</#code>
 		</b>
+<i><#code> a:= 10; b := 13</#code>foo bar</i>
 
 	<body>
 		
