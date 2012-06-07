@@ -1,0 +1,12 @@
+<#class name=Foo request=res respeonse=res/> 
+<html>
+	<head>
+	</head> 
+		<b>
+			<#code>res->GetRequestMethod();</#code>
+		</b>
+
+	<body>
+		
+	</body>
+</html> 
