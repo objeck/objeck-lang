@@ -4,6 +4,13 @@
 	</head> 
 		<b>
 			<#code>res->GetRequestMethod();</#code>
+			<#code>
+				each(i:s) { req->GetRequesUri(); };
+				each(i:s) { req->GetRequesUri(); };
+				each(i:s) { req->GetRequesUri(); };
+				each(i:s) { req->GetRequesUri(); };
+				each(i:s) { req->GetRequesUri(); };
+			</#code>
 		</b>
 
 	<body>
