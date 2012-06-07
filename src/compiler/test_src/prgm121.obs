@@ -25,7 +25,6 @@ bundle Default {
 
 		method : NextChar() ~ Nil {
 			@index += 1;
-
 			if(@index < @page_chars->Size()) {
 				@cur_char := @page_chars[@index];
 				if(@index + 1 < @page_chars->Size()) {
@@ -53,34 +52,21 @@ bundle Default {
 
 			tag_start := false;
 			while(@cur_char <> '\0') {
-				# open tag
+				# end tag
 				if(@cur_char = '<' & @nxt_char = '/' & @nxt_nxt_char = '#') {
-					NextChar();	NextChar();	NextChar();	
-					s := @index;
-					while(@cur_char <> '>') {
-						NextChar();	
-					};
-					e := @index;
-Console->Print("ending tag: '")->Print(@page->SubString(s, e -s))->PrintLine("'");
-					NextChar();	
+					EndTag();
 					tag_start := false;
 				}
+				# start tag
 				else if(@cur_char = '<' & @nxt_char = '#') {
-					NextChar();	NextChar();	
-					s := @index;
-					while(@cur_char <> ' ' & @cur_char <> '>') {
-						NextChar();	
-					};
-					e := @index;
+					StartTag();
 					tag_start := true;
-Console->Print("starting tag: '")->Print(@page->SubString(s, e -s))->PrintLine("'");
 				}
 				else if(tag_start & @cur_char = '/' & @nxt_char = '>') {
-					NextChar();	NextChar();	
+					UnaryEndTag();
 					tag_start := false;
-"ending unary tag "->PrintLine();
 				}
-				# proceede
+				# html markup
 				else {
 					if(tag_start <> true) {
 						@html->Append(@cur_char);
@@ -88,8 +74,56 @@ Console->Print("starting tag: '")->Print(@page->SubString(s, e -s))->PrintLine("
 					NextChar();	
 				};
 			};
-			@cur_char->Print('\n');
-			@html->PrintLine();
+@cur_char->Print('\n');
+@html->PrintLine();
+			if(@tag_stack->Size() = 0) {
+				"OK"->PrintLine();
+			}
+			else {
+				Console->Print("ERROR: size=")->PrintLine(@tag_stack->Size());
+			};
+		}
+
+		method : UnaryEndTag() ~ Nil {
+			NextChar();	NextChar();	
+			top_tag := @tag_stack->Top()->As(Tag);
+			if(top_tag->GetType() <> TagType->START) {
+				"Expected starting tag..."->PrintLine();
+				Runtime->Exit(1);
+			};
+			@tag_stack->Pop();
+"ending unary tag "->PrintLine();
+		}
+
+		method : EndTag() ~ Nil {
+			NextChar();	NextChar();	NextChar();	
+			start := @index;
+			while(@cur_char <> '>') {
+				NextChar();	
+			};
+			end := @index;
+
+			top_tag := @tag_stack->Top()->As(Tag);
+			name := @page->SubString(start, end -start);
+			if(top_tag->GetType() <> TagType->START | top_tag->GetName()->Equals(name) = false) {
+				"Expected starting tag..."->PrintLine();
+				Runtime->Exit(1);
+			};
+			@tag_stack->Pop();
+Console->Print("ending tag: '")->Print(name)->PrintLine("'");
+			NextChar();	
+		}
+
+		method : StartTag() ~ Nil {
+			NextChar();	NextChar();	
+			start := @index;
+			while(@cur_char <> ' ' & @cur_char <> '>') {
+				NextChar();	
+			};
+			end := @index;
+			name := @page->SubString(start, end -start);
+			@tag_stack->Push(Tag->New(TagType->START, name));
+Console->Print("starting tag: '")->Print(name)->PrintLine("'");
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -98,5 +132,35 @@ Console->Print("starting tag: '")->Print(@page->SubString(s, e -s))->PrintLine("
 				parser->Parse();
 			};
 		}	
+	}
+
+	enum TagType {
+		START,
+		END,
+		UNARY_END,
+		DATA
+	}
+
+	class Tag {
+		@type : TagType;
+		@name : String;
+
+		New(type : TagType) {
+			@type := type;
+			@name := "";
+		}
+
+		New(type : TagType, name : String) {	
+			@type := type;
+			@name := name;
+		}
+		
+		method : public : GetType() ~ TagType {
+			return @type;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
 	}
 }
