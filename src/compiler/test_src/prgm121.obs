@@ -15,10 +15,15 @@ bundle Default {
 		@code : String;
 		@tag_stack : Stack;
 		@blocks : Vector;
+<<<<<<< .mine
+		@metadata : StringMap;
+
+=======
 		@meta_values : StringMap;
 		
+>>>>>>> .r2315
 		New(page : String) {
-			if(page <> Nil) {
+			if(page <> Nil & page->Size() > 0) {
 				@page := page;
 				@page_chars := page->ToCharArray();
 				@index := -1;
@@ -26,7 +31,11 @@ bundle Default {
 				@tag_stack := Stack->New();
 				NextChar();
 				@blocks := Vector->New();
+<<<<<<< .mine
+				@metadata := StringMap->New();
+=======
 				@meta_values := StringMap->New();
+>>>>>>> .r2315
 			};
 		}
 
@@ -118,9 +127,9 @@ bundle Default {
 
 
 		# parse page
-		method : public : Parse() ~ Nil {
+		method : public : Parse() ~ Bool {
 			if(@page_chars = Nil) {
-				return;
+				return false;
 			};
 
 			tag_start := false;
@@ -160,13 +169,17 @@ bundle Default {
 # Console->Print("html='")->Print(block->GetText())->PrintLine("'");
 					}
 					else if(block->GetType() = BlockType->META) {
+<<<<<<< .mine
+Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+=======
 # Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
 
+>>>>>>> .r2315
 						attribs := block->GetText()->Split(" ");
 						each(j : attribs) {
 							name_values := attribs[j]->Trim()->Split("=");
 							if(name_values->Size() = 2) {
-								# todo add to map
+								@metadata->Insert(name_values[0]->Trim(), name_values[1]->Trim());
 								@meta_values->Insert(name_values[0]->Trim(), name_values[1]->Trim());
 # Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
 							};
@@ -177,10 +190,18 @@ bundle Default {
 					};
 				};
 # "OK"->PrintLine();
+				return true;
 			}
 			else {
 				"mismatched tags"->PrintLine();
+				return false;
 			};
+
+			return false;
+		}
+
+		method : public : Translate() ~ Nil {
+
 		}
 
 		# ending unary tag
@@ -254,7 +275,9 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
 				parser := PageParser->New(FileReader->ReadFile(args[0]));
-				parser->Parse();
+				if(parser->Parse()) {
+					parser->Translate();
+				};
 				parser->Format();
 			};
 		}	

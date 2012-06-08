@@ -992,6 +992,9 @@ void StackInterpreter::ProcessSetTime1()
   instance[8] = is_gmt;                      // is GMT
 }
 
+/********************************
+ * Sets a time instance
+ ********************************/
 void StackInterpreter::ProcessSetTime2() 
 {
   // get time values
@@ -1036,6 +1039,9 @@ void StackInterpreter::ProcessSetTime2()
   instance[8] = is_gmt;                      // is GMT
 }
 
+/********************************
+ * Set a time instance
+ ********************************/
 void StackInterpreter::ProcessSetTime3() 
 {
   /* TOOD
@@ -1449,7 +1455,9 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 }
 
 #ifdef _WIN32
+//
 // windows thread callback
+//
 uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
@@ -1492,7 +1500,9 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   return 0;
 }
 #else
+//
 // posix thread callback
+//
 void* StackInterpreter::AsyncMethodCall(void* arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
@@ -2342,8 +2352,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const char* addr = (char*)(array + 3);
     SOCKET sock = IPSocket::Open(addr, port);
 #ifdef _DEBUG
-    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << sock << "(" << (long)sock << ") #" << endl;
+    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" 
+	 << instance << "(" << (long)instance << ")" << "; addr=" << sock << "(" 
+	 << (long)sock << ") #" << endl;
 #endif
     instance[0] = (long)sock;
   }
@@ -2354,8 +2365,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
-    cout << "# socket bind: port=" << port << "; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << server << "(" << (long)server << ") #" << endl;
+    cout << "# socket bind: port=" << port << "; instance=" << instance << "(" 
+	 << (long)instance << ")" << "; addr=" << server << "(" << (long)server 
+	 << ") #" << endl;
 #endif
     instance[0] = (long)server;
   }
@@ -2367,7 +2379,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SOCKET server = (SOCKET)instance[0];
     
 #ifdef _DEBUG
-    cout << "# socket listen: backlog=" << backlog << "'; instance=" << instance << "(" << (long)instance << ")" << "; addr=" << server << "(" << (long)server << ") #" << endl;
+    cout << "# socket listen: backlog=" << backlog << "'; instance=" << instance 
+	 << "(" << (long)instance << ")" << "; addr=" << server << "(" 
+	 << (long)server << ") #" << endl;
 #endif
     
     if(server >= 0 && IPSocket::Listen(server, backlog)) {
@@ -2572,8 +2586,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "rb");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << file << "(" << (long)file << ") #" << endl;
+    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	 << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2586,8 +2601,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "wb");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")" <<
-      "; addr=" << file << "(" << (long)file << ") #" << endl;
+    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	 << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2600,8 +2616,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const char* name = (char*)(array + 3);
     FILE* file = File::FileOpen(name, "w+b");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" << (long)instance << ")"
-         << "; addr=" << file << "(" << (long)file << ") #" << endl;
+    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	 << ") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2964,6 +2981,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   }
 }
 
+/********************************
+ * Serializes an object graph
+ ********************************/
 void StackInterpreter::SerializeObject() {
   long* obj = (long*)frame->GetMemory()[1];
   ObjectSerializer serializer(obj);
@@ -2985,6 +3005,9 @@ void StackInterpreter::SerializeObject() {
   inst[1] = dest_pos;
 }
 
+/********************************
+ * Deserializes an object graph
+ ********************************/
 void StackInterpreter::DeserializeObject() {
   if(!DeserializeByte()) {
     PushInt(0);    
