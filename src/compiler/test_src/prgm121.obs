@@ -15,7 +15,8 @@ bundle Default {
 		@code : String;
 		@tag_stack : Stack;
 		@blocks : Vector;
-
+		@meta_values : StringMap;
+		
 		New(page : String) {
 			if(page <> Nil) {
 				@page := page;
@@ -25,6 +26,7 @@ bundle Default {
 				@tag_stack := Stack->New();
 				NextChar();
 				@blocks := Vector->New();
+				@meta_values := StringMap->New();
 			};
 		}
 
@@ -50,6 +52,70 @@ bundle Default {
 				@cur_char := '\0';
 			};
 		}
+
+		# format page
+		method : public : Format() ~ Nil {
+			output := String->New();
+			if(@blocks ->Size() > 0 & @meta_values ->Size() > 0) {
+				output->Append("use FastCgi;");
+				output->Append("\n");
+				output->Append("\nbundle Default {");
+				output->Append("\n\tclass FastCgiModule {");
+				output->Append("\n\t\tfunction : Main(args : String[]) ~ Nil {}");
+				output->Append("\n");
+				output->Append("\n\t\tfunction : Request(req : Request, res : Response) ~ Nil {");
+
+				each(i : @blocks) {
+					block := @blocks->Get(i)->As(Block);
+					if(block->GetType() = BlockType->HTML) {
+						output->Append("\nres->AddBody(\"");
+						# TODO strip and escape output
+						output->Append(Sanitize(block->GetText()));
+						output->Append("\");");
+					}
+					else if(block->GetType() = BlockType->CODE) {
+						output->Append("\n");
+						output->Append(block->GetText());
+					};
+				};
+				output->Append("\n\t\t\tres->Submit();");
+
+				output->Append("\n\t\t}");
+				output->Append("\n\t}");
+				output->Append("\n}");
+			};
+			
+			
+			output->PrintLine();
+		}
+
+		method : Sanitize(input : String) ~ String {
+			output := String->New();
+			each(i : input) {
+				char := input->Get(i);
+				select(char) {
+					label '\r':
+					label '\n':
+					label '\t': {
+					}
+
+					label '\\': {
+						output->Append("\\\\");
+					}
+
+					label '"': {
+						output->Append("\\\"");
+					}
+				
+					other: {
+						output->Append(char);
+					}
+				};
+			};
+			
+			return output;
+		}
+
 
 		# parse page
 		method : public : Parse() ~ Nil {
@@ -91,25 +157,26 @@ bundle Default {
 				each(i : @blocks) {
 					block := @blocks->Get(i)->As(Block);
 					if(block->GetType() = BlockType->HTML) {
-						Console->Print("html='")->Print(block->GetText())->PrintLine("'");
+# Console->Print("html='")->Print(block->GetText())->PrintLine("'");
 					}
 					else if(block->GetType() = BlockType->META) {
-						Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
+# Console->Print("meta='")->Print(block->GetText())->PrintLine("'");
 
 						attribs := block->GetText()->Split(" ");
 						each(j : attribs) {
 							name_values := attribs[j]->Trim()->Split("=");
 							if(name_values->Size() = 2) {
 								# todo add to map
-Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
+								@meta_values->Insert(name_values[0]->Trim(), name_values[1]->Trim());
+# Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
 							};
 						};
 					}
 					else {
-						Console->Print("code='")->Print(block->GetText())->PrintLine("'");
+# Console->Print("code='")->Print(block->GetText())->PrintLine("'");
 					};
 				};
-				"OK"->PrintLine();
+# "OK"->PrintLine();
 			}
 			else {
 				"mismatched tags"->PrintLine();
@@ -188,6 +255,7 @@ Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->Pri
 			if(args->Size() = 1) {
 				parser := PageParser->New(FileReader->ReadFile(args[0]));
 				parser->Parse();
+				parser->Format();
 			};
 		}	
 	}
