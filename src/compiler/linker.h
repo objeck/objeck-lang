@@ -269,8 +269,11 @@ class LibraryMethod {
 	  dimension++;
 	  index++;
 	}
-	type->SetDimension(dimension);
-
+	
+	if(type) {
+      type->SetDimension(dimension);
+	}
+	
 	// add declaration
 	declarations.push_back(type);
 #ifdef _DEBUG
