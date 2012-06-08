@@ -213,7 +213,13 @@ bundle System {
 	class Number {
 		function : native : IntToString(value : Int, string : String) ~ Nil {
 			values := Int->New[16];
+
 			i := 0;
+			if(value < 0) {
+				value *= -1;
+				string->Append('-');
+			};
+
 			while(value >= 10 & i < 16) {
 				mod := value % 10;
 				values[i] := mod;

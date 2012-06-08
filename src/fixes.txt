@@ -2,6 +2,8 @@
 -----
 * compiler bug related to linking library classes that aren't referenced
 * fixed bug in the native C API that could cause memory allocated using APIs to be collected
+* Int -> String for negative numbers
+
 
 10/8/11
 * fixed bug related to escaped string literals
