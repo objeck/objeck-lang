@@ -1,17 +1,14 @@
-<#meta class=Foo request=res respeonse=req/> 
+<#meta class=Foo request=res respeonse=req/>
 <html>
 	<head>
 	</head> 
-		<b>
-			<#code>res->GetRequestMethod();</#code>
-			<#code>
-				each(i:s) { req->GetRequesUri(); };
-				each(i:s) { req->GetRequesUri(); };
-			</#code>
-		</b>
-<i><#code> a:= 10; b := 13;</#code>foo bar</i>
 
 	<body>
+		<p><b>
+			<#code>res->AddBody(req->GetRequestMethod());</#code>
+		</p></b>
 		
+		<p><i><#code>res->AddBody(req->GetRequestUri());</#code></i></p>
+
 	</body>
 </html> 
