@@ -2,8 +2,7 @@ use FastCgi;
 
 bundle Default {
 	class FastCgiModule {
-		function : Main(args : String[]) ~ Nil {
-		}
+		function : Main(args : String[]) ~ Nil {}
 
 		function : Request(req : Request, res : Response) ~ Nil {
 			res->AddBody("<html>");
