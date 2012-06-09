@@ -60,13 +60,14 @@ void TargetEmitter::Emit()
 
   if(is_lib) {
     // TODO: better error handling
-    if(file_name.rfind(".obl") == string::npos) {
+    if(!EndsWith(file_name, ".obl")) {
       cerr << "Error: Libraries must end in '.obl'" << endl;
       exit(1);
     }
-  } else {
+  } 
+  else {
     // TODO: better error handling
-    if(file_name.rfind(".obe") == string::npos) {
+    if(!EndsWith(file_name, ".obe")) {
       cerr << "Error: Executables must end in '.obe'" << endl;
       exit(1);
     }

@@ -1,9 +1,10 @@
-6/5/12
+6/5/12 - now
 -----
 * compiler bug related to linking library classes that aren't referenced
 * fixed bug in the native C API that could cause memory allocated using APIs to be collected
 * Int -> String for negative numbers
-
+* file ending compiler check
+* strength reduction opt bug fixed
 
 10/8/11
 * fixed bug related to escaped string literals

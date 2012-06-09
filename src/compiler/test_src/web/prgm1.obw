@@ -7,10 +7,6 @@
 		<p><b>
 			<#code>res->AddBody(req->GetRequestMethod());</#code></b>
 		</p>
-
-		
-		
 		<p><i><#code>res->AddBody(req->GetRequestUri());</#code></i></p>
-
 	</body>
 </html> 
