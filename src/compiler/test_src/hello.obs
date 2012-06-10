@@ -5,16 +5,24 @@ bundle Default {
     New() {
     }
 
-		method: public : Bar() ~ Nil {
-			"back on dat ass..."->PrintLine();
+		method : public : Bar() ~ String {
+			return "Bar";
 		}
   }
   
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
 #			f := Foo->New();
-			f := Class->NewInstance("Foo");
+#			f := Class->NewInstance("Foo");
+			f := Class->NewInstance("Foo")->As(Foo);
+			f->Bar()->PrintLine();
 #			f->Bar();
+#			t := Boo("jimi")->As(String);
+#			t := Boo(10);
+		}
+
+		function : Boo(v : String) ~ Base {
+			return "hendrix";
 		}
 	}
 }

@@ -5,6 +5,8 @@
 * Int -> String for negative numbers
 * file ending compiler check
 * strength reduction opt bug fixed
+* error handling (null values passed to APIs)
+* fixed function return class cast bug
 
 10/8/11
 * fixed bug related to escaped string literals
