@@ -1433,7 +1433,7 @@ class TargetEmitter {
   IntermediateProgram* program;
   string file_name;
   bool is_lib;
-
+  
   bool EndsWith(string const &str, string const &ending) {
     if(str.length() >= ending.length()) {
       return str.compare(str.length() - ending.length(), ending.length(), ending) == 0;

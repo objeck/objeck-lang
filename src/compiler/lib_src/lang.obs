@@ -456,6 +456,10 @@ bundle System {
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}
+
+		method : public : native : NewInstance() ~ System.Base {
+			LOAD_NEW_OBJ_INST;
+		}
 	}
 	
 	#~~
@@ -2039,11 +2043,13 @@ bundle Introspection {
 	class Class {
 		@name : String;
 		@methods : Method[];
-		
+	
+#~	
 		New : private (name : String) {
 			Parent();
 			LOAD_CLS_BY_NAME;
 		}
+~#
 		
 		method : public : IsLoaded() ~ Bool {
 			return @methods <> Nil;

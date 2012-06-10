@@ -6,7 +6,9 @@ bundle Default {
   
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			f := Foo->New();
+#			f := Foo->New();
+#			c := Class->New("Foo");
+			f := Foo->GetClass()->NewInstance();	
 		}
 	}
 }
