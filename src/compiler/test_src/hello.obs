@@ -1,63 +1,12 @@
 bundle Default {
+  class Foo {
+    New() {
+    }
+  }
+  
 	class Hello {
-		function : Main(args : System.String[]) ~ Nil {
-			Test1(2);
-#			Test2();
-#			Test3();
-		}
-	
-#		function : native : Run() ~ Nil {
-		function : Test1(x : Int) ~ Nil {
-			f := 10.3;
-			remainder := f - f->Floor();
-			k := (1000.0 * remainder)->As(Int);
-			k->PrintLine();
-			k := (5 + 3.14)->As(Int);
-			k->PrintLine();
-			k := (3.14 + 2)->As(Int);
-			k->PrintLine();
-			k := (1000.0 * remainder);
-			k->PrintLine();
-		}
-
-		function : native : Test3() ~ Nil {
-			s := 512->ToString();	
-			s->Append("#");
-			s->PrintLine();
-
-			13.145->ToString()->PrintLine();
-			0.5->ToString()->PrintLine();
-		}
-
-		function : Test2() ~ Nil {
-			string := String->New();
-			Append(1023, string);
-			string->PrintLine();
-			"--------"->PrintLine();
-        
-			string2 := String->New();
-			f := 10.5;
-			remainder := f - f->Floor();
-			Append(f->Floor()->As(Int) ~ string2);
-			string2->Append('.');
-			Append((1000.0 * remainder)->As(Int) ~ string2);
-			string2->PrintLine();
-			"--------"->PrintLine();
-		}
-
-		 function : native : Append(value : Int, string : String) ~ Nil {
-			values :=  Struct.IntList->New();
-			while(value >= 10) {
-			mod := value % 10;
-			values->AddFront(mod);
-				value := value / 10;
-			};
-			values->AddFront(value);
-
-			while(values->IsEnd() = false) {
-				string->Append((values->Get() + 48)->As(Char));
-				values->Next();
-			};      
+		function : Main(args : String[]) ~ Nil {
+			f := Foo->New();
 		}
 	}
 }
