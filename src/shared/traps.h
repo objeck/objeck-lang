@@ -39,7 +39,7 @@ namespace instructions {
     LOAD_CLS_INST_ID = -4000,
     LOAD_CLS_BY_INST,
     LOAD_CLS_BY_NAME,
-    INVOKE_MTHD,
+		LOAD_NEW_OBJ_INST,
     LOAD_INST_UID,
     LOAD_ARY_SIZE,
     CPY_CHAR_STR_ARY,

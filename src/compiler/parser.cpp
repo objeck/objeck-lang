@@ -1123,15 +1123,9 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
-    case LOAD_CLS_BY_NAME:
+    case LOAD_NEW_OBJ_INST:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::LOAD_CLS_BY_NAME);
-      NextToken();
-      break;
-      
-    case INVOKE_MTHD:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::INVOKE_MTHD);
+							       instructions::LOAD_NEW_OBJ_INST);
       NextToken();
       break;
       

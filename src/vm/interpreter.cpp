@@ -2080,25 +2080,6 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case LOAD_CLS_INST_ID:
     PushInt(MemoryManager::GetObjectID((long*)PopInt()));
     break;
-
-  case LOAD_CLS_BY_NAME: {
-#ifdef _DEBUG
-    cout << "stack oper: LOAD_CLS_BY_NAME; call_pos=" << call_stack_pos << endl;
-#endif
-    long* cls_str_obj = (long*)frame->GetMemory()[1];
-    if(cls_str_obj) {
-      long* char_ary = (long*)cls_str_obj[0];
-      // set name and 'Class' instance
-      const char* cls_name_ptr = (char*)(char_ary + 3);  
-      long* cls_obj = (long*)frame->GetMemory()[0];
-      cls_obj[0] = (long)CreateStringObject(cls_name_ptr);
-      StackClass* cls = program->GetClass(cls_name_ptr);
-      if(cls) {
-	CreateClassObject(cls, cls_obj);
-      }
-    }
-  }
-    break;
     
   case LOAD_CLS_BY_INST: {
 #ifdef _DEBUG
