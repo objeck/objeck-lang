@@ -789,7 +789,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       bool is_nested = false; // fuction call
       method_call = method_call->GetMethodCall();
       while(method_call) {
-	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+	EmitMethodCall(method_call, is_nested);
 	EmitCast(method_call);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
@@ -850,7 +850,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       // emit method calls
       bool is_nested = false;
       do {
-	EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+	EmitMethodCall(method_call, is_nested);
 	EmitCast(method_call);
 	// pop return value if not used
 	if(!method_call->GetMethodCall()) {
@@ -1943,7 +1943,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       new_char_str_count = 0;
       
       // emit call
-      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       // next call
       if(method_call->GetMethod()) {
@@ -2065,7 +2065,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call) {
     bool is_nested = false; // fuction call
     method_call = method_call->GetMethodCall();
     while(method_call) {
-      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       // next call
       if(method_call->GetMethod()) {
@@ -2108,7 +2108,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call) {
 
     bool is_nested = false;
     do {
-      EmitMethodCall(method_call, is_nested, method_call->GetCastType() != NULL);
+      EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       // next call
       if(method_call->GetMethod()) {
@@ -2348,7 +2348,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(right));
     if(right->GetMethodCall()) {
-      EmitMethodCall(right->GetMethodCall(), false, false);
+      EmitMethodCall(right->GetMethodCall(), false);
     }
     break;
     
@@ -2377,7 +2377,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(left));
     if(left->GetMethodCall()) {
-      EmitMethodCall(left->GetMethodCall(), false, false);
+      EmitMethodCall(left->GetMethodCall(), false);
     }
     break;
     
@@ -2949,7 +2949,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 /****************************
  * Translates a method call
  ****************************/
-void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested, bool is_cast)
+void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested)
 {
   cur_line_num = static_cast<Statement*>(method_call)->GetLineNumber();
   
@@ -3094,7 +3094,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  }
         }
         // TODO: this needs to be looked at... simpiler?
-        else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        else if(!is_nested && (!variable || !variable->GetIndices() || 
+			       variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
 	else if(method_call->IsEnumCall()) {
@@ -3131,8 +3132,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  }
         }
         // TODO: this needs to be looked at... simpiler?
-        else if(!is_cast && !is_nested && (!variable || !variable->GetIndices() ||
-					   variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        else if(!is_nested && (!variable || !variable->GetIndices() ||
+			       variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
 	else if(method_call->IsEnumCall()) {
