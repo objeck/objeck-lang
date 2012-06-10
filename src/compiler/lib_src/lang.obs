@@ -2040,7 +2040,7 @@ bundle Introspection {
 		@name : String;
 		@methods : Method[];
 	
-		function : NewInstance(name : System.String) ~ System.Base {
+		function : Instance(name : System.String) ~ System.Base {
 			LOAD_NEW_OBJ_INST;
 		}
 
@@ -2057,7 +2057,11 @@ bundle Introspection {
 		}
 		
 		method : public : GetMethodNumber() ~ Int {
-			return @methods->Size();
+			if(@methods <> Nil) {
+				return @methods->Size();
+			};
+
+			return 0;
 		}
 	}
 	
