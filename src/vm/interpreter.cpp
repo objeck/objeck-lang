@@ -1917,6 +1917,12 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   long* instance = (long*)frame->GetMemory()[0];
   long* str_obj = (long*)instance[0];
   long* array = (long*)str_obj[0];
+
+  if(!array) {
+    cerr << ">>> Name of runtime DLL was not specified! <<<" << endl;
+    exit(1);
+  }
+  
   const char* str = (char*)(array + 3);
 
   string dll_string(str);
@@ -2022,6 +2028,11 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   long* instance = (long*)frame->GetMemory()[0];
   long* str_obj = (long*)frame->GetMemory()[1];
   long* array = (long*)str_obj[0];
+  if(!array) {
+    cerr << ">>> Runtime error calling function <<<" << endl;
+    exit(1);
+  }
+
   const char* str = (char*)(array + 3);
   long* args = (long*)frame->GetMemory()[2];
   lib_func_def ext_func;
@@ -2081,6 +2092,23 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     PushInt(MemoryManager::GetObjectID((long*)PopInt()));
     break;
     
+  case LOAD_NEW_OBJ_INST: {
+    long* array = (long*)PopInt();
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+    
+#ifdef _DEBUG
+      cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos 
+	   << ", name='" << name << "'"  << endl;
+#endif
+    }
+    else {
+      PushInt(0);
+    }    
+  }
+    break;
+
   case LOAD_CLS_BY_INST: {
 #ifdef _DEBUG
     cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos << endl;
@@ -2225,8 +2253,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
   case STD_OUT_CHAR_ARY: {
     long* array = (long*)PopInt();
-    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-    cout << str;
+    if(array) {
+      BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
+      cout << str;
+    }
   }
     break;
     
@@ -2235,7 +2265,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     const long num = PopInt();
     const long offset = PopInt();
     
-    if(offset >= 0 && offset + num < array[0]) {
+    if(array && offset >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       cout.write(buffer + offset, num);
       PushInt(1);
@@ -2248,9 +2278,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     
   case STD_IN_STRING: {
     long* array = (long*)PopInt();
-    char* buffer = (char*)(array + 3);
-    const long num = array[0];
-    cin.getline(buffer, num);
+    if(array) {
+      char* buffer = (char*)(array + 3);
+      const long num = array[0];
+      cin.getline(buffer, num);
+    }
   }
     break;
   
@@ -2276,9 +2308,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
     
     /* TODO
-  case DATE_TIME_SET_3:
-    ProcessSetTime3();
-    break;
+       case DATE_TIME_SET_3:
+       ProcessSetTime3();
+       break;
     */
     
   case DATE_TIME_ADD_DAYS:
@@ -2304,40 +2336,47 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     // ---------------- ip socket i/o ----------------
   case SOCK_TCP_HOST_NAME: {
     long* array = (long*)PopInt();
-    const long size = array[0];
-    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
+    if(array) {    
+      const long size = array[0];
+      BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 
-    // get host name
-    char value_str[SMALL_BUFFER_MAX + 1];    
-    if(!gethostname(value_str, SMALL_BUFFER_MAX)) {
-      // copy name    
-      for(long i = 0; value_str[i] != '\0' && i < size; i++) {
-	str[i] = value_str[i];
+      // get host name
+      char value_str[SMALL_BUFFER_MAX + 1];    
+      if(!gethostname(value_str, SMALL_BUFFER_MAX)) {
+	// copy name    
+	for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+	  str[i] = value_str[i];
+	}
       }
+      else {
+	str[0] = '\0';
+      }
+#ifdef _DEBUG
+      cout << "stack oper: SOCK_TCP_HOST_NAME: host='" << value_str << "'" << endl;
+#endif
+      PushInt((long)array);
     }
     else {
-      str[0] = '\0';
+      PushInt(0);
     }
-#ifdef _DEBUG
-    cout << "stack oper: SOCK_TCP_HOST_NAME: host='" << value_str << "'" << endl;
-#endif
-    PushInt((long)array);
   }
     break;
     
   case SOCK_TCP_CONNECT: {
     long port = PopInt();
     long* array = (long*)PopInt();
-    array = (long*)array[0];
     long* instance = (long*)PopInt();
-    const char* addr = (char*)(array + 3);
-    SOCKET sock = IPSocket::Open(addr, port);
+    if(array) {
+      array = (long*)array[0];
+      const char* addr = (char*)(array + 3);
+      SOCKET sock = IPSocket::Open(addr, port);
 #ifdef _DEBUG
-    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" 
-	 << instance << "(" << (long)instance << ")" << "; addr=" << sock << "(" 
-	 << (long)sock << ") #" << endl;
+      cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" 
+	   << instance << "(" << (long)instance << ")" << "; addr=" << sock << "(" 
+	   << (long)sock << ") #" << endl;
 #endif
-    instance[0] = (long)sock;
+      instance[0] = (long)sock;
+    }
   }
     break;  
 
@@ -2416,11 +2455,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SOCK_TCP_OUT_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    char* data = (char*)(array + 3);
-    
-    if(sock >= 0) {
-      IPSocket::WriteBytes(data, strlen(data), sock);
+    if(array && instance) {
+      SOCKET sock = (SOCKET)instance[0];
+      char* data = (char*)(array + 3);      
+      if(sock >= 0) {
+	IPSocket::WriteBytes(data, strlen(data), sock);
+      }
     }
   }
     break;
@@ -2562,49 +2602,55 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
     long* instance = (long*)PopInt();
-    const char* name = (char*)(array + 3);
-    FILE* file = File::FileOpen(name, "rb");
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      FILE* file = File::FileOpen(name, "rb");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	 << ") #" << endl;
+      cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	   << ") #" << endl;
 #endif
-    instance[0] = (long)file;
+      instance[0] = (long)file;
+    }
   }
     break;
 
   case FILE_OPEN_WRITE: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
     long* instance = (long*)PopInt();
-    const char* name = (char*)(array + 3);
-    FILE* file = File::FileOpen(name, "wb");
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      FILE* file = File::FileOpen(name, "wb");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	 << ") #" << endl;
+      cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	   << ") #" << endl;
 #endif
-    instance[0] = (long)file;
+      instance[0] = (long)file;
+    }
   }
     break;
 
   case FILE_OPEN_READ_WRITE: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
     long* instance = (long*)PopInt();
-    const char* name = (char*)(array + 3);
-    FILE* file = File::FileOpen(name, "w+b");
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      FILE* file = File::FileOpen(name, "w+b");
 #ifdef _DEBUG
-    cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	 << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	 << ") #" << endl;
+      cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
+	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+	   << ") #" << endl;
 #endif
-    instance[0] = (long)file;
+      instance[0] = (long)file;
+    }
   }
     break;
-
+    
   case FILE_CLOSE: {
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
@@ -2636,19 +2682,21 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case FILE_IN_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    char* buffer = (char*)(array + 3);
-    const long num = array[0] - 1;
-    FILE* file = (FILE*)instance[0];
+    if(array) {
+      char* buffer = (char*)(array + 3);
+      const long num = array[0] - 1;
+      FILE* file = (FILE*)instance[0];
 
-    if(file && fgets(buffer, num, file)) {
-      long end_index = strlen(buffer) - 1;
-      if(end_index >= 0) {
-        if(buffer[end_index] == '\n') {
-          buffer[end_index] = '\0';
-        }
-      }
-      else {
-        buffer[0] = '\0';
+      if(file && fgets(buffer, num, file)) {
+	long end_index = strlen(buffer) - 1;
+	if(end_index >= 0) {
+	  if(buffer[end_index] == '\n') {
+	    buffer[end_index] = '\0';
+	  }
+	}
+	else {
+	  buffer[0] = '\0';
+	}
       }
     }
   }
@@ -2656,12 +2704,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
   case FILE_OUT_STRING: {
     long* array = (long*)PopInt();
-    long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-    const char* data = (char*)(array + 3);
-
-    if(file) {
-      fputs(data, file);
+    long* instance = (long*)PopInt();    
+    if(array) {
+      FILE* file = (FILE*)instance[0];
+      const char* data = (char*)(array + 3);      
+      if(file) {
+	fputs(data, file);
+      }
     }
   }
     break;
@@ -2707,7 +2756,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
     
-    if(sock >= 0 && offset + num < array[0]) {
+    if(array && sock >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock));
     }
@@ -2734,7 +2783,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     SOCKET sock = (SOCKET)instance[0];
 
-    if(sock >= 0 && offset + num < array[0]) {
+    if(array && sock >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock));
     } 
@@ -2771,7 +2820,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
     
-    if(file && offset >= 0 && offset + num < array[0]) {
+    if(array && file && offset >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(fread(buffer + offset, 1, num, file));        
     } 
@@ -2808,7 +2857,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     FILE* file = (FILE*)instance[0];
 
-    if(file && offset >=0 && offset + num < array[0]) {
+    if(array && file && offset >=0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       PushInt(fwrite(buffer + offset, 1, num, file));
     } 
@@ -2865,43 +2914,61 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
   case FILE_EXISTS: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
-    const char* name = (char*)(array + 3);
-
-    PushInt(File::FileExists(name));
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      PushInt(File::FileExists(name));
+    }
+    else {
+      PushInt(0);
+    }
   }
     break;
 
   case FILE_SIZE: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
-    const char* name = (char*)(array + 3);
-
-    PushInt(File::FileSize(name));
-
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      PushInt(File::FileSize(name));
+    }
+    else {
+      PushInt(-1);
+    }
   }
     break;
 
   case FILE_DELETE: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
-    const char* name = (char*)(array + 3);
-
-    if(remove(name) != 0) {
-      PushInt(0);
-    } 
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      
+      if(remove(name) != 0) {
+	PushInt(0);
+      } 
+      else {
+	PushInt(1);
+      }
+    }
     else {
-      PushInt(1);
+      PushInt(0);
     }
   }
     break;
 
   case FILE_RENAME: {
     long* to = (long*)PopInt();
+    long* from = (long*)PopInt();
+
+    if(!to || !from) {
+      PushInt(0);
+      return;
+    }
+
     to = (long*)to[0];
     const char* to_name = (char*)(to + 3);
-
-    long* from = (long*)PopInt();
+    
     from = (long*)from[0];
     const char* from_name = (char*)(from + 3);
 
@@ -2916,47 +2983,60 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     //----------- directory functions -----------
   case DIR_CREATE: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
-    const char* name = (char*)(array + 3);
-
-    PushInt(File::MakeDir(name));
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);      
+      PushInt(File::MakeDir(name));
+    }
+    else {
+      PushInt(0);
+    }
   }
     break;
 
   case DIR_EXISTS: {
     long* array = (long*)PopInt();
-    array = (long*)array[0];
-    const char* name = (char*)(array + 3);
-
-    PushInt(File::IsDir(name));
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);      
+      PushInt(File::IsDir(name));
+    }
+    else {
+      PushInt(0);
+    }
   }
     break;
 
   case DIR_LIST: {
     long* array = (long*)PopInt();
     array = (long*)array[0];
-    char* name = (char*)(array + 3);
+    if(array) {
+      char* name = (char*)(array + 3);
 
-    vector<string> files = File::ListDir(name);
+      vector<string> files = File::ListDir(name);
 
-    // create 'System.String' object array
-    const long str_obj_array_size = files.size();
-    const long str_obj_array_dim = 1;
-    long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
-							      str_obj_array_dim + 2,
-							      INT_TYPE, op_stack,
-							      *stack_pos, false);
-    str_obj_array[0] = str_obj_array_size;
-    str_obj_array[1] = str_obj_array_dim;
-    str_obj_array[2] = str_obj_array_size;
-    long* str_obj_array_ptr = str_obj_array + 3;
+      // create 'System.String' object array
+      const long str_obj_array_size = files.size();
+      const long str_obj_array_dim = 1;
+      long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
+								str_obj_array_dim + 2,
+								INT_TYPE, op_stack,
+								*stack_pos, false);
+      str_obj_array[0] = str_obj_array_size;
+      str_obj_array[1] = str_obj_array_dim;
+      str_obj_array[2] = str_obj_array_size;
+      long* str_obj_array_ptr = str_obj_array + 3;
 
-    // create and assign 'System.String' instances to array
-    for(size_t i = 0; i < files.size(); i++) {
-      str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
+      // create and assign 'System.String' instances to array
+      for(size_t i = 0; i < files.size(); i++) {
+	str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
+      }
+
+      PushInt((long)str_obj_array);
     }
-
-    PushInt((long)str_obj_array);
+    else {
+      PushInt(0);
+    }
   }
     break;
   }
