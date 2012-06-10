@@ -3,7 +3,7 @@ use IO;
 bundle Default {
 	class Introspection {
 		function : Main(args : String[]) ~ Nil {
-			s := String->New();
+			s := Class->Instance("System.String");
 			c := s->GetClass();
 			Console->Print("class=")->PrintLine(c->GetName());
 			m := c->GetMethods();
