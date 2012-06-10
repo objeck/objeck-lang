@@ -469,6 +469,24 @@ namespace Runtime {
     }
 
     //
+    // creates new object and call default constructor
+    // 
+    inline void CreateNewObject(const string &cls_id) {
+      long* obj = MemoryManager::Instance()->AllocateObject(cls_id.c_str(), (long*)op_stack, *stack_pos,	false);
+      PushInt((long)obj);
+      if(obj) {
+         // instance will be on the stack
+        string mthd_name = cls_id + ":New:";
+        APITools_MethodCall((long*)op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
+      }
+
+/*
+      void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
+			 const char* cls_id, const char* mthd_id) 
+*/
+    }
+
+    //
     // writes out serialized objects
     // 
     inline void WriteSerializedBytes(const BYTE_VALUE* array, const long src_buffer_size) {
