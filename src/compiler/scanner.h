@@ -153,8 +153,7 @@ enum TokenType {
   RAND_FLOAT,
   LOAD_CLS_INST_ID,
   LOAD_CLS_BY_INST,
-  LOAD_CLS_BY_NAME,
-  INVOKE_MTHD,
+  LOAD_NEW_OBJ_INST,
   LOAD_INST_UID,
   // standard i/o
   STD_OUT_BOOL,
