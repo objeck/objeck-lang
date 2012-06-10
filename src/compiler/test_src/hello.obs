@@ -15,7 +15,9 @@ bundle Default {
 #			f := Foo->New();
 #			f := Class->NewInstance("Foo");
 			f := Class->NewInstance("Foo")->As(Foo);
-			f->Bar()->PrintLine();
+			if(f <> Nil) {
+				f->Bar()->PrintLine();
+			};
 #			f->Bar();
 #			t := Boo("jimi")->As(String);
 #			t := Boo(10);
