@@ -466,12 +466,12 @@ void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance,
       intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, instance, false);
     }
     else {
-      cerr << ">>> DLL call: Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
+      cerr << ">>> Unable to locate method; name=': " << mthd_id << "' <<<" << endl;
       exit(1);
     }
   }
   else {
-    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
+    cerr << ">>> Unable to locate class; name='" << cls_id << "' <<<" << endl;
     exit(1);
   }
 }
