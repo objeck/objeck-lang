@@ -2099,9 +2099,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       const char* name = (char*)(array + 3);
     
 #ifdef _DEBUG
-      cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos 
+      cout << "stack oper: LOAD_NEW_OBJ_INST; call_pos=" << call_stack_pos 
 	   << ", name='" << name << "'"  << endl;
 #endif
+      CreateNewObject(name);
     }
     else {
       PushInt(0);

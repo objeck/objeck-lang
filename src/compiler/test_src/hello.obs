@@ -4,12 +4,17 @@ bundle Default {
   class Foo {
     New() {
     }
+
+		method: public : Bar() ~ Nil {
+			"back on dat ass..."->PrintLine();
+		}
   }
   
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
 #			f := Foo->New();
-			f := Class->NewInstance("Foo");	
+			f := Class->NewInstance("Foo");
+#			f->Bar();
 		}
 	}
 }

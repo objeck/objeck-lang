@@ -473,7 +473,7 @@ namespace Runtime {
     // 
     inline void CreateNewObject(const string &cls_id) {
       long* obj = MemoryManager::Instance()->AllocateObject(cls_id.c_str(), (long*)op_stack, *stack_pos,	false);
-      PushInt((long)obj);
+      // PushInt((long)obj);
       if(obj) {
          // instance will be on the stack
         string mthd_name = cls_id + ":New:";
