@@ -479,6 +479,9 @@ namespace Runtime {
         string mthd_name = cls_id + ":New:";
         APITools_MethodCall((long*)op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
       }
+      else {
+	PushInt(0);
+      }
     }
     
     //
