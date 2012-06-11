@@ -1441,7 +1441,7 @@ bundle Concurrency {
 		#~~
 		# Returns the run ID
 		~~#
-		method : public : GetRunID() ~ Int {
+		method : public : GetExecuteID() ~ Int {
 			return @id;
 		}
 		
