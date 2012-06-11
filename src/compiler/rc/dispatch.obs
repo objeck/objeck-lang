@@ -4,7 +4,9 @@ bundle Default {
 	}
 
 	class English implements Language {
-		New() {}
+		New() {
+		}
+
 		method : public : Hi() ~ String {
 			return "Hello";
 		}
@@ -30,7 +32,7 @@ bundle Default {
 			langs[0] := Class->Instance("English")->As(Language);
 			langs[1] := Class->Instance("French")->As(Language);
 			langs[2] := Class->Instance("Klingon")->As(Language);
-			langs[3] := Class->Instance(Nil)->As(Language);
+			langs[3] := Class->Instance("Swahili")->As(Language);
 
 			each(i : langs) {
 				if(langs[i] <> Nil) {

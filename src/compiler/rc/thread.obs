@@ -39,8 +39,7 @@ bundle Default {
 
       threads := Thread->New[10];
 			each( i : threads) {
-				id := "t"; id->Append(i);
-				threads[i] := MyThread->New(id);
+				threads[i] := MyThread->New("a");
 			};	
 
 			each( i : threads) {
@@ -48,6 +47,7 @@ bundle Default {
 			};
 			
 			each( i : threads) {
+				threads[i]->GetExecuteID()->PrintLine();
 				threads[i]->Join();
 			};
 			

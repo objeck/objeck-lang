@@ -209,10 +209,11 @@ void Parser::ParseBundle(int depth)
   // name space
   if(!Match(TOKEN_BUNDLE_ID)) {
     ProcessError("Expected 'bundle' or 'use'");
-  } else {
+  } 
+  else {
     while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
       NextToken();
-
+      
       string bundle_name = ParseBundleName();
       if(bundle_name == DEFAULT_BUNDLE_NAME) {
         bundle_name = "";
@@ -424,14 +425,16 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
         ProcessError("Method or function already defined '" + method->GetName() + "'",
                      TOKEN_CLOSED_PAREN);
       }
-    } else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
+    } 
+    else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
         ProcessError("Method or function already defined '" + method->GetName() + "'",
                      TOKEN_CLOSED_PAREN);
       }
-    } else if(Match(TOKEN_IDENT)) {
+    } 
+    else if(Match(TOKEN_IDENT)) {
       const string &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
@@ -440,12 +443,13 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
         ProcessError(TOKEN_SEMI_COLON);
       }
       NextToken();
-    } else {
+    } 
+    else {
       ProcessError("Expected declaration", TOKEN_SEMI_COLON);
       NextToken();
     }
   }
-
+  
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(TOKEN_CLOSED_BRACE);
   }
@@ -590,15 +594,17 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
         ProcessError(TOKEN_COLON);
       }
       NextToken();
-    } else if(Match(TOKEN_PRIVATE_ID)) {
+    } 
+    else if(Match(TOKEN_PRIVATE_ID)) {
       method_type = PRIVATE_METHOD;
       NextToken();
-
+      
       if(!Match(TOKEN_COLON)) {
         ProcessError(TOKEN_COLON);
       }
       NextToken();
-    } else {
+    } 
+    else {
       method_type = PRIVATE_METHOD;
     }
 
@@ -611,6 +617,21 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
     }
 
+    // virtual method
+    if(!is_virtual && Match(TOKEN_VIRTUAL_ID)) {
+      is_virtual = true;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+      current_class->SetVirtual(true);
+    }
+    else if(is_virtual && Match(TOKEN_VIRTUAL_ID)) {
+      ProcessError("The 'virtual' attribute has already been specified", TOKEN_IDENT);
+    }
+    
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
