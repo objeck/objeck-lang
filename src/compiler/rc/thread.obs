@@ -4,7 +4,6 @@ bundle Default {
 	class MyThread from Thread {
 		@m : static : ThreadMutex;
 		@x : static : Int;
-		@y : static : Int;
 		
 		New(name : String) {
 			Parent(name);
@@ -16,20 +15,17 @@ bundle Default {
 		
 		function : Init() ~ Nil {
 			@m := ThreadMutex->New("m0");
-			@m->GetName()->PrintLine();	
 		}
 		
 		function : native : DoStuff() ~ Nil {
 			critical(@m) {
 				@x += 1;
-				@y += @x * 2;
 				@x->PrintLine();
-				@y->PrintLine();					
 			};			
 		}
 	}
 
-	class Hello {
+	class Threading {
 		New() {
 		}
 
@@ -40,21 +36,19 @@ bundle Default {
 		function : Run() ~ Nil {
 			s := "Hello";
 			MyThread->Init();
+
+      threads := Thread->New[10];
+			each( i : threads) {
+				id := "t"; id->Append(i);
+				threads[i] := MyThread->New(id);
+			};	
+
+			each( i : threads) {
+				threads[i]->Execute(Nil);
+			};
 			
-			t0 := MyThread->New("t0");	
-			t1 := MyThread->New("t1");	
-			t2 := MyThread->New("t2");	
-				
-			for(i := 0; i < 10; i += 1;) {
-				
-	
-				t0->Execute(s);
-				t1->Execute(s);
-				t2->Execute(s);
-		
-				t0->Join();
-				t1->Join();
-				t2->Join();				
+			each( i : threads) {
+				threads[i]->Join();
 			};
 			
 			"Fin."->PrintLine();
