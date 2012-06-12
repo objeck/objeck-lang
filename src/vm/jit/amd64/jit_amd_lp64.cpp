@@ -62,7 +62,7 @@ void JitCompilerIA64::Prolog() {
     0x48, 0x89, 0xe5,                              // mov  %rsp, %rbp    
     0x48, 0x81, 0xec,                              // sub  $imm, %rsp
     buffer[0], buffer[1], buffer[2], buffer[3],      
-                                                   // save registers
+    // save registers
     0x48, 0x53,                                    // push rbx
     /****/
     0x48, 0x51,                                    // push rcx
@@ -181,17 +181,17 @@ void JitCompilerIA64::UnregisterRoot() {
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
 
   /*
-  push_reg(R15);
-  push_reg(R14);
-  push_reg(R13);
+    push_reg(R15);
+    push_reg(R14);
+    push_reg(R13);
   */
 
   call_reg(call_holder->GetRegister());
 
   /*
-  pop_reg(R13);
-  pop_reg(R14);
-  pop_reg(R15);
+    pop_reg(R13);
+    pop_reg(R14);
+    pop_reg(R15);
   */
 
   // clean up
@@ -294,7 +294,7 @@ void JitCompilerIA64::ProcessIntCallParameter() {
 }
 
 void JitCompilerIA64::ProcessFunctionCallParameter() {
-  #ifdef _DEBUG
+#ifdef _DEBUG
   cout << "FUNC_CALL: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
   
@@ -600,7 +600,7 @@ void JitCompilerIA64::ProcessInstructions() {
     }
       break;
 
-case CPY_INT_ARY: {
+    case CPY_INT_ARY: {
 #ifdef _DEBUG
       cout << "CPY_INT_ARY: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
@@ -608,7 +608,7 @@ case CPY_INT_ARY: {
     }
       break;
 
-case CPY_FLOAT_ARY: {
+    case CPY_FLOAT_ARY: {
 #ifdef _DEBUG
       cout << "CPY_FLOAT_ARY: regs=" << aval_regs.size() << "," << aux_regs.size() << endl;
 #endif
@@ -1706,12 +1706,18 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
       break;
       
     case REG_INT: {
+      RegisterHolder* imm_holder = GetRegister();
+      move_imm_reg(left->GetOperand(), imm_holder->GetRegister());
       RegisterHolder* holder = right->GetRegister();
-      math_imm_reg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
-      working_stack.push_front(new RegInstr(holder));
+      
+      math_reg_reg(holder->GetRegister(), imm_holder->GetRegister(), 
+		   instruction->GetType());
+      
+      ReleaseRegister(holder);
+      working_stack.push_front(new RegInstr(imm_holder));
     }
       break;
-
+      
     case MEM_INT: {
       RegisterHolder* holder = GetRegister();
       move_mem_reg(right->GetOperand(), RBP, holder->GetRegister());
@@ -2021,7 +2027,7 @@ void JitCompilerIA64::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
     cout << "  " << (++instr_count) << ": [movl %" << GetRegisterName(src) 
-       << ", %" << GetRegisterName(dest) << "]" << endl;
+	 << ", %" << GetRegisterName(dest) << "]" << endl;
 #endif
     // encode
     AddMachineCode(ROB(src, dest));
