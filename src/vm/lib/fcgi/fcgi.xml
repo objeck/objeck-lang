@@ -1,0 +1,7 @@
+<fcgi>
+  <config lib="/var/lib/apache2/fastcgi/fcgi"/>
+  <pages>
+    <page uri-path="foo">FGGI.Foo</page>
+    <page uri-path="bar">FCGI.Bar</page>
+  </pages>
+</fcgi>
