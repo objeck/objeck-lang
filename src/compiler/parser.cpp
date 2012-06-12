@@ -198,7 +198,7 @@ void Parser::ParseBundle(int depth)
     const string &ident = ParseBundleName();
     uses.push_back(ident);
     if(!TOKEN_SEMI_COLON) {
-      ProcessError(TOKEN_SEMI_COLON);
+      ProcessError("Expected ';'", TOKEN_SEMI_COLON);
     }
     NextToken();
 #ifdef _DEBUG
@@ -224,7 +224,7 @@ void Parser::ParseBundle(int depth)
       symbol_table = new SymbolTableManager;
       ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
       if(!TOKEN_OPEN_BRACE) {
-        ProcessError(TOKEN_OPEN_BRACE);
+        ProcessError("Expected '{'", TOKEN_OPEN_BRACE);
       }
       NextToken();
 
@@ -250,7 +250,7 @@ void Parser::ParseBundle(int depth)
       }
       
       if(!Match(TOKEN_CLOSED_BRACE)) {
-        ProcessError(TOKEN_CLOSED_BRACE);
+        ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
       }
       NextToken();
       
@@ -259,7 +259,7 @@ void Parser::ParseBundle(int depth)
     
     // detect stray characters
     if(!Match(TOKEN_END_OF_STREAM)) {
-      ProcessError("Stray tokens");
+      ProcessError("Unexpected tokens (likely related to other errors)");
     }    
   }
   program->SetUses(uses);
@@ -301,7 +301,7 @@ Enum* Parser::ParseEnum(int depth)
   }
 
   if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(TOKEN_OPEN_BRACE);
+    ProcessError("Expected '{'", TOKEN_OPEN_BRACE);
   }
   NextToken();
 
@@ -322,12 +322,12 @@ Enum* Parser::ParseEnum(int depth)
       }
     } 
     else if(!Match(TOKEN_CLOSED_BRACE)) {
-      ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+      ProcessError("Expected ',' or ')'", TOKEN_CLOSED_BRACE);
       NextToken();
     }
   }
   if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(TOKEN_CLOSED_BRACE);
+    ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
 
@@ -386,13 +386,13 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 	}
       } 
       else if(!Match(TOKEN_OPEN_BRACE)) {
-	ProcessError("Expected comma or open brace", TOKEN_OPEN_BRACE);
+	ProcessError("Expected ',' or '{'", TOKEN_OPEN_BRACE);
 	NextToken();
       }
     }
   }
   if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(TOKEN_OPEN_BRACE);
+    ProcessError("Expected '{'", TOKEN_OPEN_BRACE);
   }
   
   symbol_table->NewParseScope();
@@ -440,7 +440,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 
       klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
-        ProcessError(TOKEN_SEMI_COLON);
+        ProcessError("Expected ';'", TOKEN_SEMI_COLON);
       }
       NextToken();
     } 
@@ -451,7 +451,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
   }
   
   if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(TOKEN_CLOSED_BRACE);
+    ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
 
@@ -484,7 +484,7 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
 #endif
   
   if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(TOKEN_OPEN_BRACE);
+    ProcessError("Expected '{'", TOKEN_OPEN_BRACE);
   }
   symbol_table->NewParseScope();
   NextToken();
@@ -528,7 +528,7 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
   }
 
   if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(TOKEN_CLOSED_BRACE);
+    ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
 
@@ -569,7 +569,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     NextToken();
 
     if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
+      ProcessError("Expected ';'", TOKEN_COLON);
     }
     NextToken();
 
@@ -579,7 +579,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(TOKEN_COLON);
+        ProcessError("Expected ';'", TOKEN_COLON);
       }
       NextToken();
       current_class->SetVirtual(true);
@@ -591,7 +591,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(TOKEN_COLON);
+        ProcessError("Expected ';'", TOKEN_COLON);
       }
       NextToken();
     } 
@@ -600,7 +600,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
       
       if(!Match(TOKEN_COLON)) {
-        ProcessError(TOKEN_COLON);
+        ProcessError("Expected ';'", TOKEN_COLON);
       }
       NextToken();
     } 
@@ -612,7 +612,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
       is_native = true;
       if(!Match(TOKEN_COLON)) {
-        ProcessError(TOKEN_COLON);
+        ProcessError("Expected ';'", TOKEN_COLON);
       }
       NextToken();
     }
@@ -623,7 +623,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(TOKEN_COLON);
+        ProcessError("Expected ';'", TOKEN_COLON);
       }
       NextToken();
       current_class->SetVirtual(true);
@@ -657,7 +657,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   Type* return_type;
   if(method_type != NEW_PUBLIC_METHOD && method_type != NEW_PRIVATE_METHOD) {
     if(!Match(TOKEN_TILDE)) {
-      ProcessError(TOKEN_TILDE);
+      ProcessError("Expected '~'", TOKEN_TILDE);
     }
     NextToken();
     return_type = ParseType(depth + 1);
@@ -672,7 +672,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     method->SetStatements(NULL);
     // virtual function/method ending
     if(!Match(TOKEN_SEMI_COLON)) {
-      ProcessError(TOKEN_SEMI_COLON);
+      ProcessError("Expected ';'", TOKEN_SEMI_COLON);
     }
     NextToken();
   } 
@@ -700,7 +700,7 @@ StatementList* Parser::ParseStatementList(int depth)
 
   // statement list
   if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(TOKEN_OPEN_BRACE);
+    ProcessError("Expected '{'", TOKEN_OPEN_BRACE);
   }
   NextToken();
 
@@ -709,7 +709,7 @@ StatementList* Parser::ParseStatementList(int depth)
     statements->AddStatement(ParseStatement(depth + 1));
   }
   if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(TOKEN_CLOSED_BRACE);
+    ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
 
@@ -1465,7 +1465,7 @@ Statement* Parser::ParseStatement(int depth)
   }
 
   if(!Match(TOKEN_SEMI_COLON)) {
-    ProcessError(TOKEN_SEMI_COLON);
+    ProcessError("Expected ';'", TOKEN_SEMI_COLON);
   }
   NextToken();
 
@@ -1493,7 +1493,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
     }
     
     if(!Match(TOKEN_CLOSED_BRACKET)) {
-      ProcessError(TOKEN_CLOSED_BRACKET);
+      ProcessError("Expected ']'", TOKEN_CLOSED_BRACKET);
     }
     NextToken();
   }
@@ -1562,13 +1562,13 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 	NextToken();
       } 
       else if(!Match(TOKEN_CLOSED_BRACKET)) {
-	ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	ProcessError("Expected ';' or ']'", TOKEN_SEMI_COLON);
 	NextToken();
       }
     }
   
     if(!Match(TOKEN_CLOSED_BRACKET)) {
-      ProcessError(TOKEN_CLOSED_BRACKET);
+      ProcessError("Expected ']'", TOKEN_CLOSED_BRACKET);
     }
     NextToken();
   }
@@ -1607,7 +1607,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
 #endif
 
   if(!Match(TOKEN_COLON)) {
-    ProcessError(TOKEN_COLON);
+    ProcessError("Expected ','", TOKEN_COLON);
   }
   NextToken();
   
@@ -1648,7 +1648,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-	ProcessError(TOKEN_COLON);
+	ProcessError("Expected ','", TOKEN_COLON);
       }
       NextToken();
     }
@@ -1695,7 +1695,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 #endif
 
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
@@ -1717,12 +1717,12 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
       }
     } 
     else if(!Match(TOKEN_CLOSED_PAREN)) {
-      ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+      ProcessError("Expected ',' or ')'", TOKEN_CLOSED_BRACE);
       NextToken();
     }
   }
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
 
@@ -1752,7 +1752,7 @@ ExpressionList* Parser::ParseExpressionList(int depth, TokenType open, TokenType
       NextToken();
     } 
     else if(!Match(closed)) {
-      ProcessError("Expected comma or closed parenthesis", closed);
+      ProcessError("Invalid token", closed);
       NextToken();
     }
   }
@@ -1790,7 +1790,7 @@ ExpressionList* Parser::ParseIndices(int depth)
 	  NextToken();
 	}
 	if(!Match(TOKEN_CLOSED_BRACKET)) {
-	  ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	  ProcessError("Expected ',' or ']'", TOKEN_SEMI_COLON);
 	  NextToken();
 	}
 	NextToken();
@@ -1804,13 +1804,13 @@ ExpressionList* Parser::ParseIndices(int depth)
 	    NextToken();
 	  } 
 	  else if(!Match(TOKEN_CLOSED_BRACKET)) {
-	    ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+	    ProcessError("Expected ',' or ']'", TOKEN_SEMI_COLON);
 	    NextToken();
 	  }
 	}
       
 	if(!Match(TOKEN_CLOSED_BRACKET)) {
-	  ProcessError(TOKEN_CLOSED_BRACKET);
+	  ProcessError("Expected ']'", TOKEN_CLOSED_BRACKET);
 	}
 	NextToken();
       }
@@ -1843,7 +1843,7 @@ Expression* Parser::ParseExpression(int depth)
     NextToken();
     Expression* if_expression = ParseLogic(depth + 1);
     if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
+      ProcessError("Expected ';'", TOKEN_COLON);
     }
     NextToken();
     return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
@@ -2189,7 +2189,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
     NextToken();
     expression = ParseExpression(depth + 1);
     if(!Match(TOKEN_CLOSED_PAREN)) {
-      ProcessError(TOKEN_CLOSED_PAREN);
+      ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
     }
     NextToken();
   } 
@@ -2296,7 +2296,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       NextToken();
       
       if(!Match(TOKEN_OPEN_PAREN)) {
-	ProcessError(TOKEN_OPEN_PAREN);
+	ProcessError("Expected '('", TOKEN_OPEN_PAREN);
       }
       NextToken();
 
@@ -2305,7 +2305,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       }
 
       if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError(TOKEN_CLOSED_PAREN);
+	ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
       }
       NextToken();
     }
@@ -2313,7 +2313,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       NextToken();
 
       if(!Match(TOKEN_OPEN_PAREN)) {
-	ProcessError(TOKEN_OPEN_PAREN);
+	ProcessError("Expected '('", TOKEN_OPEN_PAREN);
       }
       NextToken();
 
@@ -2322,7 +2322,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       }
 
       if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError(TOKEN_CLOSED_PAREN);
+	ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
       }
       NextToken();
     }
@@ -2409,7 +2409,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       
       NextToken();
       if(!Match(TOKEN_OPEN_PAREN)) {
-	ProcessError(TOKEN_OPEN_PAREN);
+	ProcessError("Expected '('", TOKEN_OPEN_PAREN);
       }
       NextToken();
       
@@ -2418,7 +2418,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       }
       
       if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError(TOKEN_CLOSED_PAREN);
+	ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
       }
       NextToken();
       
@@ -2433,7 +2433,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       
       NextToken();
       if(!Match(TOKEN_OPEN_PAREN)) {
-	ProcessError(TOKEN_OPEN_PAREN);
+	ProcessError("Expected '('", TOKEN_OPEN_PAREN);
       }
       NextToken();
       
@@ -2442,7 +2442,7 @@ MethodCall* Parser::ParseMethodCall(const string &ident, int depth)
       }
       
       if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError(TOKEN_CLOSED_PAREN);
+	ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
       }
       NextToken();
     }
@@ -2552,13 +2552,13 @@ If* Parser::ParseIf(int depth)
 
   NextToken();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   Expression* expression = ParseExpression(depth + 1);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
@@ -2607,13 +2607,13 @@ DoWhile* Parser::ParseDoWhile(int depth)
   NextToken();
 
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   Expression* expression = ParseExpression(depth + 1);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   symbol_table->CurrentParseScope()->PreviousParseScope();
@@ -2635,13 +2635,13 @@ While* Parser::ParseWhile(int depth)
 
   NextToken();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   Expression* expression = ParseExpression(depth + 1);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
@@ -2665,7 +2665,7 @@ CriticalSection* Parser::ParseCritical(int depth)
 
   NextToken();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
@@ -2678,7 +2678,7 @@ CriticalSection* Parser::ParseCritical(int depth)
   
   NextToken();
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
 
@@ -2704,7 +2704,7 @@ For* Parser::ParseEach(int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected ')'", TOKEN_OPEN_PAREN);
   }
   NextToken();
   
@@ -2738,7 +2738,7 @@ For* Parser::ParseEach(int depth)
 								 entry, count_assign);
   
   if(!Match(TOKEN_COLON)) {
-    ProcessError(TOKEN_COLON);
+    ProcessError("Expected ';'", TOKEN_COLON);
   }
   NextToken();
   
@@ -2767,7 +2767,7 @@ For* Parser::ParseEach(int depth)
 									    update_left, update_right,
 									    ADD_ASSIGN_STMT);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   
@@ -2795,7 +2795,7 @@ For* Parser::ParseFor(int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
   // pre-statement
@@ -2803,14 +2803,14 @@ For* Parser::ParseFor(int depth)
   // conditional
   Expression* cond_expr = ParseExpression(depth + 1);
   if(!Match(TOKEN_SEMI_COLON)) {
-    ProcessError(TOKEN_SEMI_COLON);
+    ProcessError("Expected ';'", TOKEN_SEMI_COLON);
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   // update statement
   Statement* update_stmt = ParseStatement(depth + 1);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   // statement list
@@ -2836,18 +2836,18 @@ Select* Parser::ParseSelect(int depth)
 
   NextToken();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(TOKEN_OPEN_PAREN);
+    ProcessError("Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
   Expression* eval_expression = ParseExpression(depth + 1);
   if(!Match(TOKEN_CLOSED_PAREN)) {
-    ProcessError(TOKEN_CLOSED_PAREN);
+    ProcessError("Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
 
   if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(TOKEN_OPEN_BRACE);
+    ProcessError("Expected '('", TOKEN_OPEN_BRACE);
   }
   NextToken();
 
@@ -2863,7 +2863,7 @@ Select* Parser::ParseSelect(int depth)
         NextToken();
         labels->AddExpression(ParseSimpleExpression(depth + 1));
         if(!Match(TOKEN_COLON)) {
-          ProcessError(TOKEN_COLON);
+          ProcessError("Expected ';'", TOKEN_COLON);
         }
         NextToken();
       } 
@@ -2871,7 +2871,7 @@ Select* Parser::ParseSelect(int depth)
         is_other_label = true;
         NextToken();
         if(!Match(TOKEN_COLON)) {
-          ProcessError(TOKEN_COLON);
+          ProcessError("Expected ';'", TOKEN_COLON);
         }
         NextToken();
       }
@@ -2894,7 +2894,7 @@ Select* Parser::ParseSelect(int depth)
   }
 
   if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(TOKEN_CLOSED_BRACE);
+    ProcessError("Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
   
@@ -3001,14 +3001,14 @@ Type* Parser::ParseType(int depth)
 	NextToken();
       } 
       else if(!Match(TOKEN_CLOSED_PAREN)) {
-	ProcessError("Expected comma or closed brace", TOKEN_CLOSED_BRACE);
+	ProcessError("Expected ',' or ')'", TOKEN_CLOSED_BRACE);
 	NextToken();
       }
     }
     NextToken();
     
     if(!Match(TOKEN_TILDE)) {
-      ProcessError(TOKEN_TILDE);
+      ProcessError("Expected '~'", TOKEN_TILDE);
     }
     NextToken();
     
@@ -3035,13 +3035,13 @@ Type* Parser::ParseType(int depth)
           NextToken();
         } 
 	else if(!Match(TOKEN_CLOSED_BRACKET)) {
-          ProcessError("Expected comma or semi-colon", TOKEN_SEMI_COLON);
+          ProcessError("Expected ',' or ';'", TOKEN_SEMI_COLON);
           NextToken();
         }
       }
 
       if(!Match(TOKEN_CLOSED_BRACKET)) {
-        ProcessError(TOKEN_CLOSED_BRACKET);
+        ProcessError("Expected ']'", TOKEN_CLOSED_BRACKET);
       }
       NextToken();
     }
