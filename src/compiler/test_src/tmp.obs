@@ -1,0 +1,18 @@
+bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			Run(20, 10, 4);
+		}
+	
+#		function : Run(maxDepth : Int, depth : Int, minDepth : Int) ~ Nil {
+		function : native : Run(maxDepth : Int, depth : Int, minDepth : Int) ~ Nil {
+			result := 1 << (maxDepth - depth + minDepth);
+#			result := 100 - (maxDepth - depth + minDepth);
+#~
+			a :=  14;
+			result := 1 << 14;
+~#
+			result->PrintLine();
+		}
+	}
+}
