@@ -2,6 +2,7 @@
 # For Posix
 ##############
 ARGS=-O3 -pthread -D_JIT_SERIAL -Wall
+# ARGS=-g -pthread -D_JIT_SERIAL -Wall -pg
 # ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread -Wall
 
 CC=g++
@@ -9,7 +10,7 @@ SRC=common.o interpreter.o loader.o vm.o posix_main.o
 OBJ_LIBS= jit_intel_lp32.a memory.a
 MEM_PATH=os/posix
 JIT_PATH=jit/ia32
-EXE= obr
+EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread
