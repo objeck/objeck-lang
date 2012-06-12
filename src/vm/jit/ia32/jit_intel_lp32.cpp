@@ -1629,9 +1629,15 @@ void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
       break;
       
     case REG_INT: {
+      RegisterHolder* imm_holder = GetRegister();
+      move_imm_reg(left->GetOperand(), imm_holder->GetRegister());
       RegisterHolder* holder = right->GetRegister();
-      math_imm_reg(left->GetOperand(), holder->GetRegister(), instruction->GetType());
-      working_stack.push_front(new RegInstr(holder));
+
+      math_reg_reg(holder->GetRegister(), imm_holder->GetRegister(), 
+		   instruction->GetType());
+      
+      ReleaseRegister(holder);
+      working_stack.push_front(new RegInstr(imm_holder));
     }
       break;
 
