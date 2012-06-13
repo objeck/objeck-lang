@@ -144,11 +144,11 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 #endif
 
 #ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
+  pthread_mutex_lock(&pda_mutex);
 #endif
   pda_roots.insert(frame);
 #ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
+  pthread_mutex_unlock(&pda_mutex);
 #endif
 }
 
@@ -160,7 +160,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 #endif
 
 #ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
+  pthread_mutex_lock(&pda_mutex);
 #endif
   pda_roots.erase(frame);
 #ifndef _GC_SERIAL
@@ -824,7 +824,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
+  pthread_mutex_lock(&pda_mutex);
 #endif
   
 #ifdef _DEBUG
@@ -856,7 +856,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 #ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
+  pthread_mutex_unlock(&pda_mutex);
   pthread_exit(NULL);
 #endif
 }
