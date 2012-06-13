@@ -249,12 +249,6 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
   long* mem = NULL;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
-#ifdef _X64
-    // TODO: note: memory size is doubled because integers are assumed to be
-    // 4-bytes.  This approach allocates more memory because doubles are also
-    // doubled.  This will be refactored soon...
-    size *= 2;
-#endif
 
     // collect memory
     if(allocation_size + size > mem_max_size) {
