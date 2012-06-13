@@ -164,7 +164,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 #endif
   pda_roots.erase(frame);
 #ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
+  pthread_mutex_unlock(&pda_mutex);
 #endif
 }
 

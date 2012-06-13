@@ -167,7 +167,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 #ifndef _SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
-  pda_roots.insert(frame);
+  pda_roots.erase(frame);
 #ifndef _SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
