@@ -81,7 +81,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <PreprocessorDefinitions>_JIT_SERIAL;%(PreprocessorDefinitions);_JIT_SERIAL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);_JIT_SERIAL;_NO_JIT</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -183,7 +183,6 @@
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\os\windows\memory.h" />
-    <ClInclude Include="..\strptime.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\vm.h" />
     <ClInclude Include="..\os\windows\windows.h" />
