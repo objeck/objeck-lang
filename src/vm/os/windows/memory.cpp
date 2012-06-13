@@ -1,33 +1,33 @@
 /***************************************************************************
- * Vm memory manager. Implements a "mark and sweep" collection algorithm.
- *
- * Copyright (c) 2008-2012, Randy Hollines
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * - Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck Team nor the names of its
- * contributors may be used to endorse or promote products derived
- * from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
- * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+* Vm memory manager. Implements a "mark and sweep" collection algorithm.
+*
+* Copyright (c) 2008-2012, Randy Hollines
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* - Redistributions of source code must retain the above copyright
+* notice, this list of conditions and the following disclaimer.
+* - Redistributions in binary form must reproduce the above copyright
+* notice, this list of conditions and the following disclaimer in
+* the documentation and/or other materials provided with the distribution.
+* - Neither the name of the Objeck Team nor the names of its
+* contributors may be used to endorse or promote products derived
+* from this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+***************************************************************************/
 
 #include "memory.h"
 #include <iomanip>
@@ -81,7 +81,7 @@ void MemoryManager::AddStaticMemory(long* mem)
   EnterCriticalSection(&static_cs);
   EnterCriticalSection(&allocated_cs);
 #endif
-  
+
   // only add static references that don't exist
   map<long*, long>::iterator exists = static_memory.find(mem);
   if(exists == static_memory.end()) {
@@ -94,7 +94,7 @@ void MemoryManager::AddStaticMemory(long* mem)
       static_memory.insert(pair<long*, long>(mem, result->second));
     }
   }
-  
+
 #ifndef _GC_SERIAL
   LeaveCriticalSection(&static_cs);
   LeaveCriticalSection(&allocated_cs);
@@ -113,7 +113,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
       // check if memory has been marked
       if(mem[-1]) {
 #ifndef _SERIAL
-	LeaveCriticalSection(&allocated_cs);
+        LeaveCriticalSection(&allocated_cs);
 #endif
         return false;
       }
@@ -137,7 +137,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
       return false;
     }
   }
-  
+
   return false;
 }
 
@@ -145,15 +145,15 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 {
 #ifdef _DEBUG
   cout << "adding PDA method: frame=" << frame << ", self="
-       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+    << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
 
 #ifndef _SERIAL
-  EnterCriticalSection(&jit_cs);
+  EnterCriticalSection(&pda_cs);
 #endif
   pda_roots.insert(frame);
 #ifndef _SERIAL
-  LeaveCriticalSection(&jit_cs);
+  LeaveCriticalSection(&pda_cs);
 #endif
 }
 
@@ -161,24 +161,24 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 {
 #ifdef _DEBUG
   cout << "removing PDA method: frame=" << frame << ", self="
-       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+    << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
 #endif
 
 #ifndef _SERIAL
-  EnterCriticalSection(&jit_cs);
+  EnterCriticalSection(&pda_cs);
 #endif
   pda_roots.insert(frame);
 #ifndef _SERIAL
-  LeaveCriticalSection(&jit_cs);
+  LeaveCriticalSection(&pda_cs);
 #endif
 }
 
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
-                                     long* self, long* mem, long offset)
+  long* self, long* mem, long offset)
 {
 #ifdef _DEBUG
   cout << "adding JIT root: class=" << cls_id << ", method=" << mthd_id << ", self=" << self
-       << "(" << (long)self << "), mem=" << mem << ", offset=" << offset << endl;
+    << "(" << (long)self << "), mem=" << mem << ", offset=" << offset << endl;
 #endif
 
   // zero out memory
@@ -220,13 +220,13 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #ifdef _DEBUG
   assert(found);
   cout << "removing JIT method: mem=" << found->mem << ", self=" 
-       << found->self << "(" << (long)found->self << ")" << endl;
+    << found->self << "(" << (long)found->self << ")" << endl;
 #endif
 
 #ifdef _DEBUG
   assert(found);
 #endif
-  
+
 #ifndef _SERIAL
   EnterCriticalSection(&jit_cs);
 #endif
@@ -234,7 +234,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #ifndef _SERIAL
   LeaveCriticalSection(&jit_cs);
 #endif
-  
+
   delete found;
   found = NULL;
 }
@@ -274,10 +274,10 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 #ifndef _SERIAL
     LeaveCriticalSection(&allocated_cs);
 #endif
-    
+
 #ifdef _DEBUG
     cout << "# allocating object: addr=" << mem << "(" << (long)mem << "), size="
-         << size << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+      << size << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
 #endif
   }
 
@@ -285,7 +285,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 }
 
 long* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   long* op_stack, long stack_pos, bool collect)
+  long* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
   long* mem;
@@ -326,10 +326,10 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
-  
+
 #ifdef _DEBUG
   cout << "# allocating array: addr=" << mem << "(" << (long)mem << "), size=" << calc_size
-       << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+    << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
 #endif
 
   return mem;
@@ -340,7 +340,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 #ifndef _SERIAL
   EnterCriticalSection(&allocated_cs);
 #endif
-  
+
   long id;  
   map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
@@ -352,7 +352,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 #endif
     return NULL;
   }
-  
+
   // upcast
   int tmp_id = id;
   while(tmp_id != -1) {
@@ -382,11 +382,11 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
       tmp_id = interfaces[++i];
     }
   }
-  
+
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
-  
+
   return NULL;
 }
 
@@ -398,11 +398,11 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
     return;
   }
 #endif
-  
+
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
-  
+
 #ifndef _SERIAL
   HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread_id) {
@@ -412,7 +412,7 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
 #else
   CollectMemory(info);
 #endif
-  
+
 #ifndef _SERIAL
   if(WaitForSingleObject(collect_thread_id, INFINITE) != WAIT_OBJECT_0) {
     cerr << "Unable to join garbage collection threads!" << endl;
@@ -426,7 +426,7 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
 uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
-  
+
 #ifdef _DEBUG
   long start = allocation_size;
   cout << dec << endl << "=========================================" << endl;
@@ -450,7 +450,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
-  
+
   thread_ids[2] = (HANDLE)_beginthreadex(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
   if(!thread_ids[2]) {
     cerr << "Unable to create garbage collection thread!" << endl;
@@ -462,7 +462,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
     cerr << "Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
-  
+
   // join all of the mark threads
   if(WaitForMultipleObjects(num_threads, thread_ids, TRUE, INFINITE) != WAIT_OBJECT_0) {
     cerr << "Unable to join garbage collection threads!" << endl;
@@ -478,19 +478,19 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   CheckPdaRoots(NULL);
   CheckJitRoots(NULL);
 #endif
-  
+
   // sweep memory
 #ifdef _DEBUG
   cout << "## Sweeping memory ##" << endl;
 #endif
   vector<long*> erased_memory;
-  
+
   // sort and search
 #ifndef _SERIAL
   EnterCriticalSection(&allocated_cs);
   EnterCriticalSection(&marked_cs);
 #endif
-  
+
 #ifdef _DEBUG
   cout << "-----------------------------------------" << endl;
   cout << "Marked " << marked_memory.size() << " items." << endl;
@@ -500,7 +500,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   map<long*, long>::iterator iter;
 
 #ifndef _SERIAL
-  
+
 #endif
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     bool found = false;
@@ -522,8 +522,8 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
         if(cls) {
           mem_size = cls->GetInstanceMemorySize();
         }
-	else {
-	  mem_size = iter->second;
+        else {
+          mem_size = iter->second;
         }
       } 
       else {
@@ -532,7 +532,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 
 #ifdef _DEBUG
       cout << "# releasing memory: addr=" << iter->first << "(" << (long)iter->first
-           << "), size=" << mem_size << " byte(s) #" << endl;
+        << "), size=" << mem_size << " byte(s) #" << endl;
 #endif
 
       // account for deallocated memory
@@ -550,7 +550,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 #ifndef _SERIAL
   LeaveCriticalSection(&marked_cs);
 #endif  
-  
+
   // did not collect memory; ajust constraints
   if(erased_memory.empty()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
@@ -569,7 +569,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       collected_count = 0;
     }
   }
-  
+
   // remove references from allocated pool
   for(size_t i = 0; i < erased_memory.size(); i++) {
     allocated_memory.erase(erased_memory[i]);
@@ -578,16 +578,16 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 #ifndef _SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
-  
+
 #ifdef _DEBUG
   cout << "===============================================================" << endl;
   cout << "Finished Collection: collected=" << (start - allocation_size)
-       << " of " << start << " byte(s) - " << showpoint << setprecision(3)
-       << (((double)(start - allocation_size) / (double)start) * 100.0)
-       << "%" << endl;
+    << " of " << start << " byte(s) - " << showpoint << setprecision(3)
+    << (((double)(start - allocation_size) / (double)start) * 100.0)
+    << "%" << endl;
   cout << "===============================================================" << endl;
 #endif
-  
+
   return 0;
 }
 
@@ -613,14 +613,14 @@ uintptr_t WINAPI MemoryManager::CheckStack(void* arg)
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
   cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos 
-       << "; thread=" << GetCurrentThread() << " -----" << endl;
+    << "; thread=" << GetCurrentThread() << " -----" << endl;
 #endif
   while(info->stack_pos > -1) {
     CheckObject((long*)info->op_stack[info->stack_pos--], false, 1);
   }
   delete info;
   info = NULL;
-  
+
   return 0;
 }
 
@@ -629,13 +629,13 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #ifndef _SERIAL
   EnterCriticalSection(&jit_cs);
 #endif  
-  
+
 #ifdef _DEBUG
   cout << "---- Sweeping JIT method root(s): num=" << jit_roots.size() 
-       << "; thread=" << GetCurrentThread() << " ------" << endl;
+    << "; thread=" << GetCurrentThread() << " ------" << endl;
   cout << "memory types: " << endl;
 #endif
-  
+
   set<ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = (*jit_iter);
@@ -645,8 +645,8 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
     cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->cls_id << "," 
-	 << id->mthd_id << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() 
-	 << " =====" << endl;
+      << id->mthd_id << "; addr=" << mthd << "; num=" << mthd->GetNumberDeclarations() 
+      << " =====" << endl;
 #endif
 
     // check self
@@ -657,7 +657,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #ifndef _SERIAL
       EnterCriticalSection(&allocated_cs);
 #endif
-      
+
 #ifdef _DEBUG
       // get memory size
       long array_size = 0;
@@ -666,22 +666,22 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         array_size = result->second;
       }
 #endif
-      
+
 #ifndef _SERIAL
       LeaveCriticalSection(&allocated_cs);
 #endif
-      
+
       // update address based upon type
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
-	cout << "\t" << j << ": FUNC_PARM: value=" << (*mem) 
-	     << "," << *(mem + 1)<< endl;
+        cout << "\t" << j << ": FUNC_PARM: value=" << (*mem) 
+          << "," << *(mem + 1)<< endl;
 #endif
-	// update
-	mem += 2;
-	break;
-	
+        // update
+        mem += 2;
+        break;
+
       case INT_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": INT_PARM: value=" << (*mem) << endl;
@@ -698,13 +698,13 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #endif
         // update
         mem += 2;
-      }
-	break;
+                       }
+                       break;
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": BYTE_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+          << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -715,7 +715,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case INT_ARY_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": INT_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+          << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -726,7 +726,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << " byte(s)" << array_size << endl;
+          << "(" << (long)(*mem) << "), size=" << " byte(s)" << array_size << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -737,7 +737,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case OBJ_PARM:
 #ifdef _DEBUG
         cout << "\t" << j << ": OBJ_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), id=" << array_size << endl;
+          << "(" << (long)(*mem) << "), id=" << array_size << endl;
 #endif
         // check object
         CheckObject((long*)(*mem), true, 1);
@@ -749,7 +749,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
         cout << "\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << "(" << (long)(*mem)
-             << "), size=" << array_size << " byte(s)" << endl;
+          << "), size=" << array_size << " byte(s)" << endl;
 #endif
         // mark data
         if(MarkMemory((long*)(*mem))) {
@@ -764,9 +764,9 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         // update
         mem++;
         break;
-		
+
       default:
-	break;
+        break;
       }
     }
 
@@ -776,7 +776,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       CheckObject((long*)mem[i], false, 1);
     }
   }
-  
+
 #ifndef _SERIAL
   LeaveCriticalSection(&jit_cs);  
 #endif
@@ -787,12 +787,12 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifndef _SERIAL
-  EnterCriticalSection(&jit_cs);
+  EnterCriticalSection(&pda_cs);
 #endif
-  
+
 #ifdef _DEBUG
   cout << "----- PDA method root(s): num=" << pda_roots.size() 
-       << "; thread=" << GetCurrentThread()<< " -----" << endl;
+    << "; thread=" << GetCurrentThread()<< " -----" << endl;
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
@@ -800,10 +800,10 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
     StackMethod* mthd = (*pda_iter)->GetMethod();
     long* mem = (*pda_iter)->GetMemory();
-
+    
 #ifdef _DEBUG
     cout << "\t===== PDA method: name=" << mthd->GetName() << ", addr="
-         << mthd << ", num=" << mthd->GetNumberDeclarations() << " =====" << endl;
+      << mthd << ", num=" << mthd->GetNumberDeclarations() << " =====" << endl;
 #endif
 
     // mark self
@@ -819,7 +819,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 #ifndef _SERIAL
-  LeaveCriticalSection(&jit_cs);
+  LeaveCriticalSection(&pda_cs);
 #endif
 
   return 0;
@@ -832,7 +832,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifndef _SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
-    
+
 #ifdef _DEBUG
     // get memory size
     long array_size = 0;
@@ -845,7 +845,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifndef _SERIAL
     LeaveCriticalSection(&allocated_cs);
 #endif
-    
+
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       cout << "\t";
@@ -857,12 +857,12 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case FUNC_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": FUNC_PARM: value=" << (*mem) 
-	   << "," << *(mem + 1)<< endl;
+        << "," << *(mem + 1)<< endl;
 #endif
       // update
       mem += 2;
       break;
-      
+
     case INT_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
@@ -879,13 +879,13 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #endif
       // update
       mem += 2;
-    }
-      break;
+                     }
+                     break;
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -896,7 +896,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case INT_ARY_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": INT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -907,7 +907,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -918,7 +918,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case OBJ_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": OBJ_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), id=" << array_size << endl;
+        << (long)(*mem) << "), id=" << array_size << endl;
 #endif
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
@@ -929,7 +929,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
       cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
 #endif
       // mark data
       if(MarkMemory((long*)(*mem))) {
@@ -944,7 +944,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       // update
       mem++;
       break;
-	  
+
     default:
       break;
     }
@@ -962,7 +962,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         cout << "\t";
       }
       cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
-           << cls->GetNumberDeclarations() << " -----" << endl;
+        << cls->GetNumberDeclarations() << " -----" << endl;
 #endif
 
       // mark data
@@ -985,17 +985,17 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 #endif
       // primitive or object array
       if(MarkMemory(mem)) {
-	// ensure we're only checking int and obj arrays
-	set<long*>::iterator result = allocated_int_obj_array.find(mem);
-      	if(result != allocated_int_obj_array.end()) {
-	  long* array = mem;
-	  const long size = array[0];
-	  const long dim = array[1];
-	  long* objects = (long*)(array + 2 + dim);
-	  for(long k = 0; k < size; k++) {
-	    CheckObject((long*)objects[k], false, 2);
-	  }
-	}
+        // ensure we're only checking int and obj arrays
+        set<long*>::iterator result = allocated_int_obj_array.find(mem);
+        if(result != allocated_int_obj_array.end()) {
+          long* array = mem;
+          const long size = array[0];
+          const long dim = array[1];
+          long* objects = (long*)(array + 2 + dim);
+          for(long k = 0; k < size; k++) {
+            CheckObject((long*)objects[k], false, 2);
+          }
+        }
       }
     }
   }
