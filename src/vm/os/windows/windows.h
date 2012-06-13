@@ -536,7 +536,6 @@ public:
 
     else
     {
-      printf( "This sample does not support this version of Windows.\n");
       return FALSE;
     }
   }
