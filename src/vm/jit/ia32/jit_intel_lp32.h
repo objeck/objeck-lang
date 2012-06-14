@@ -960,7 +960,7 @@ namespace Runtime {
 	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
 	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
 	       << "' to '" << program->GetClass(to_id)->GetName() << "' <<<" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 	PushInt(op_stack, stack_pos, result);
@@ -973,7 +973,7 @@ namespace Runtime {
         int32_t* instance = inst;
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 #ifdef _WIN32
@@ -1005,7 +1005,7 @@ namespace Runtime {
         int32_t* instance = inst;
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 #ifdef _WIN32
@@ -1020,7 +1020,7 @@ namespace Runtime {
         int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 #ifdef _WIN32
@@ -1035,7 +1035,7 @@ namespace Runtime {
         int32_t* instance = (int32_t*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 #ifdef _WIN32
@@ -1057,7 +1057,7 @@ namespace Runtime {
       
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1085,7 +1085,7 @@ namespace Runtime {
       
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1112,7 +1112,7 @@ namespace Runtime {
       
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1252,7 +1252,7 @@ namespace Runtime {
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
 	  if(instance && (SOCKET)instance[0] >= 0) {
-      SOCKET sock = (SOCKET)instance[0];
+	    SOCKET sock = (SOCKET)instance[0];
 	    instance[0] = (long)NULL;
 	    IPSocket::Close(sock);
 	  }
@@ -1264,7 +1264,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(array && instance && (SOCKET)instance[0] >= 0) {
-      SOCKET sock = (SOCKET)instance[0];
+	    SOCKET sock = (SOCKET)instance[0];
 	    char* data = (char*)(array + 3);
 	    IPSocket::WriteBytes(data, strlen(data), sock);
 	  }
@@ -1339,7 +1339,7 @@ namespace Runtime {
 	case FILE_CLOSE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    instance[0] = (long)NULL;
 	    fclose(file);
 	  }
@@ -1349,7 +1349,7 @@ namespace Runtime {
 	case FILE_FLUSH: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    instance[0] = (long)NULL;
 	    fflush(file);
 	  }
@@ -1384,7 +1384,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(array && instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];	
+	    FILE* file = (FILE*)instance[0];	
 	    const char* name = (char*)(array + 3);
 	    fputs(name, file);
 	  }
@@ -1394,7 +1394,7 @@ namespace Runtime {
 	case FILE_REWIND: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];	
+	    FILE* file = (FILE*)instance[0];	
 	    rewind(file);
 	  }
 	}
@@ -1429,7 +1429,7 @@ namespace Runtime {
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
 	  if(!array) {
 	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-      cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	    exit(1);
 	  }
 	  PushInt(op_stack, stack_pos, (int32_t)array[2]);
@@ -1548,7 +1548,7 @@ namespace Runtime {
 	case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (SOCKET)instance[0] >= 0) {
-      SOCKET sock = (SOCKET)instance[0];
+	    SOCKET sock = (SOCKET)instance[0];
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
@@ -1559,14 +1559,14 @@ namespace Runtime {
 	  
 	case SOCK_TCP_IN_BYTE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance) {
+	  if(instance) {
 	    SOCKET sock = (SOCKET)instance[0];
 	    int status;
 	    PushInt(op_stack, stack_pos, IPSocket::ReadByte(sock, status));
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
+	  }
+	  else {
+	    PushInt(op_stack, stack_pos, 0);
+	  }
 	}
 	  break;
 
@@ -1577,7 +1577,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
     
 	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
-      SOCKET sock = (SOCKET)instance[0];
+	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
 	  }
@@ -1591,14 +1591,14 @@ namespace Runtime {
 	  long value = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 
-    if(instance) {
+	  if(instance) {
 	    SOCKET sock = (SOCKET)instance[0];
 	    IPSocket::WriteByte(value, sock);
 	    PushInt(op_stack, stack_pos, 1);
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
+	  }
+	  else {
+	    PushInt(op_stack, stack_pos, 0);
+	  }
 	}
 	  break;
 
@@ -1609,7 +1609,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
-      SOCKET sock = (SOCKET)instance[0];
+	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
 	  } 
@@ -1623,7 +1623,7 @@ namespace Runtime {
 	case FILE_IN_BYTE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    if(fgetc(file) == EOF) {
 	      PushInt(op_stack, stack_pos, 0);
 	    } 
@@ -1644,7 +1644,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
 	  } 
@@ -1659,7 +1659,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    if(fputc(value, file) != value) {
 	      PushInt(op_stack, stack_pos, 0);
 	    } 
@@ -1680,7 +1680,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
 	  } 
@@ -1695,7 +1695,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    if(fseek(file, pos, SEEK_CUR) != 0) {
 	      PushInt(op_stack, stack_pos, 0);
 	    } 
@@ -1713,7 +1713,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    PushInt(op_stack, stack_pos, feof(file) != 0);
 	  } 
 	  else {
@@ -1726,7 +1726,7 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 
 	  if(instance && (FILE*)instance[0]) {
-      FILE* file = (FILE*)instance[0];
+	    FILE* file = (FILE*)instance[0];
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
