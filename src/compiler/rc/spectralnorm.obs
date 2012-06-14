@@ -18,7 +18,7 @@ bundle Default {
 			for(i:=0;i<N;i+=1;) {
 				Au[i]:=0.0;
 				for(j:=0;j<N;j+=1;) {
-					Au[i] += Eval_A(i,j)*u[j];
+					Au[i] += Eval_A(j,i)*u[j];
 				};
 			};
 		}
