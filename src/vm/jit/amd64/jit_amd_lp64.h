@@ -1404,7 +1404,7 @@ namespace Runtime {
 	  long port = PopInt(op_stack, stack_pos);
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(instance && array) {
 	    array = (long*)array[0];
 	    const char* addr = (char*)(array + 3);
 	    SOCKET sock = IPSocket::Open(addr, port);
@@ -1419,12 +1419,11 @@ namespace Runtime {
     
 	case SOCK_TCP_CLOSE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  SOCKET sock = (SOCKET)instance[0];
-
+	  if(instance && (SOCKET)instance[0] > -1) {
+	    SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
-	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
+	    cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-	  if(sock > -1) {
 	    instance[0] = (long)NULL;
 	    IPSocket::Close(sock);
 	  }
@@ -1434,10 +1433,9 @@ namespace Runtime {
 	case SOCK_TCP_OUT_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(array && instance) {
 	    SOCKET sock = (SOCKET)instance[0];
-	    char* data = (char*)(array + 3);
-	    
+	    char* data = (char*)(array + 3);	    
 	    if(sock > -1) {
 	      IPSocket::WriteBytes(data, strlen(data), sock);
 	    }
@@ -1480,7 +1478,7 @@ namespace Runtime {
 	case FILE_OPEN_READ: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(instance && array) {
 	    array = (long*)array[0];	
 	    const char* name = (char*)(array + 3);
 	    instance[0] = (long)File::FileOpen(name, "r");
@@ -1491,7 +1489,7 @@ namespace Runtime {
 	case FILE_OPEN_WRITE: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(instance && array) {
 	    array = (long*)array[0];
 	    const char* name = (char*)(array + 3);
 	    instance[0] = (long)File::FileOpen(name, "w");
@@ -1502,19 +1500,18 @@ namespace Runtime {
 	case FILE_OPEN_READ_WRITE: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(array && instance) {
 	    array = (long*)array[0];
 	    const char* name = (char*)(array + 3);
 	    instance[0] = (long)File::FileOpen(name, "w+");
 	  }
 	}
 	  break;
-
+	  
 	case FILE_CLOSE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-	
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    instance[0] = (long)NULL;
 	    fclose(file);
 	  }
@@ -1523,9 +1520,8 @@ namespace Runtime {
 
 	case FILE_FLUSH: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-	  
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    instance[0] = (long)NULL;
 	    fflush(file);
 	  }
@@ -1535,7 +1531,7 @@ namespace Runtime {
 	case FILE_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);	
-	  if(array) {
+	  if(array && instance) {
 	    char* buffer = (char*)(array + 3);
 	    const long num = array[0] - 1;
 	    FILE* file = (FILE*)instance[0];
@@ -1558,7 +1554,7 @@ namespace Runtime {
 	case FILE_OUT_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
+	  if(array && instance) {
 	    FILE* file = (FILE*)instance[0];	
 	    const char* name = (char*)(array + 3);	    
 	    if(file) {
@@ -1569,10 +1565,9 @@ namespace Runtime {
 	  break;
 	
 	case FILE_REWIND: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	
-	
-	  if(file) {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);	
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];	
 	    rewind(file);
 	  }
 	}
@@ -1700,8 +1695,8 @@ namespace Runtime {
 	  // ---------------- file i/o ----------------
 	case FILE_IN_BYTE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];	  
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];	  
 	    if(fgetc(file) == EOF) {
 	      PushInt(op_stack, stack_pos, 0);
 	    }
@@ -1721,9 +1716,8 @@ namespace Runtime {
 	  const long num = PopInt(op_stack, stack_pos);
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(array && file && offset >=0 && offset + num < array[0]) {
+	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
 	  } 
@@ -1736,9 +1730,8 @@ namespace Runtime {
 	case FILE_OUT_BYTE: {
 	  long value = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    if(fputc(value, file) != value) {
 	      PushInt(op_stack, stack_pos, 0);
 	    } 
@@ -1758,9 +1751,8 @@ namespace Runtime {
 	  const long num = PopInt(op_stack, stack_pos);
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(array && file && offset >=0 && offset + num < array[0]) {
+	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
 	  } 
@@ -1769,13 +1761,12 @@ namespace Runtime {
 	  }
 	}
 	  break;
-
+	  
 	case FILE_SEEK: {
 	  long pos = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    if(fseek(file, pos, SEEK_CUR) != 0) {
 	      PushInt(op_stack, stack_pos, 0);
 	    } 
@@ -1788,12 +1779,11 @@ namespace Runtime {
 	  }
 	}
 	  break;
-
+	  
 	case FILE_EOF: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
+	    FILE* file = (FILE*)instance[0];
 	    PushInt(op_stack, stack_pos, feof(file) != 0);
 	  } 
 	  else {
@@ -1804,9 +1794,7 @@ namespace Runtime {
 
 	case FILE_IS_OPEN: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  FILE* file = (FILE*)instance[0];
-
-	  if(file) {
+	  if(instance && (FILE*)instance[0]) {
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {

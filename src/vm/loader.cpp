@@ -273,12 +273,6 @@ void Loader::LoadClasses()
     cls_hierarchy[id] = pid;
     StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, dclrs,
                                      num_dclrs, cls_space, inst_space, is_debug);
-    /*
-    // slow... but must happend here so that command line parameters can be processed
-    if(string_cls_id < 0 && name == "System.String") {
-      string_cls_id = id;
-    }
-    */
 
 #ifdef _DEBUG
     cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='"
