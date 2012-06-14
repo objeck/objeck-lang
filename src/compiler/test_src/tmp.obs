@@ -1,21 +1,13 @@
 bundle Default {
 	class Hello {
-#		ii : static : Int[];
+		function : Foo(i : Float, j : Float) ~ Float {
+			return i * j;
+    }
 
 		function : Main(args : String[]) ~ Nil {
-			ii := Int->New[8];
-			ii[5] := 13;
-
-			v := 13;
-			a += v *ii[5];
-			a->PrintLine();
-#~
-			ii := Int->New[8];
-			ii[5] := 13;
-#			ii[5] := ii[5] + 8;
-			ii[5] += 8;
-			ii[5]->PrintLine();
-~#
+			x := 13;
+			y := 7;
+			Foo(x,y)->PrintLine();
 		}
 	}
 }

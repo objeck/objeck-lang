@@ -1,11 +1,11 @@
 bundle Default {
 	class Hello {
-		function : Eval_A(i : Int, j : Int) ~ Float {
+		function : native : Eval_A(i : Int, j : Int) ~ Float {
 			return 1.0/((i+j)*(i+j+1.0)/2+i+1.0);
 		}
 
 
-		function : Eval_A_Times_U(N : Int, u : Float[], Au : Float[]) ~ Nil {
+		function : native : Eval_A_Times_U(N : Int, u : Float[], Au : Float[]) ~ Nil {
 			for(i:=0;i<N;i+=1;) {
 				Au[i]:=0.0;
 				for(j:=0;j<N;j+=1;) {
@@ -14,7 +14,7 @@ bundle Default {
 			};
 		}
 
-		function : Eval_At_Times_U(N : Int, u : Float[], Au : Float[]) ~ Nil {
+		function : native : Eval_At_Times_U(N : Int, u : Float[], Au : Float[]) ~ Nil {
 			for(i:=0;i<N;i+=1;) {
 				Au[i]:=0.0;
 				for(j:=0;j<N;j+=1;) {
@@ -23,7 +23,7 @@ bundle Default {
 			};
 		}
 
-		function : Eval_AtA_Times_U(N : Int, u : Float[], AtAu : Float[]) ~ Nil {
+		function : native : Eval_AtA_Times_U(N : Int, u : Float[], AtAu : Float[]) ~ Nil {
 			v := Float->New[N]; 
 			Eval_A_Times_U(N,u,v); 
 			Eval_At_Times_U(N,v,AtAu); 
@@ -34,7 +34,10 @@ bundle Default {
 			if (args->Size() > 0) {
 				N := args[0]->ToInt();
 			};	
+			Run(N);
+		}
 
+		function : native : Run(N : Int) ~ Nil {
 			u := Float->New[N];
 			v := Float->New[N];
 
@@ -53,8 +56,6 @@ bundle Default {
 				vBv+=u[i]*v[i]; 
 				vv+=v[i]*v[i]; 
 			};
-			vBv->PrintLine();			
-			vv->PrintLine();			
 			(vBv/vv)->SquareRoot()->PrintLine();			
 		}
 	}
