@@ -1,33 +1,33 @@
 /***************************************************************************
- * VM stack machine.
- *
- * Copyright (c) 2008-2012, Randy Hollines
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * - Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck Team nor the names of its
- * contributors may be used to endorse or promote products derived
- * from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
- * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+* VM stack machine.
+*
+* Copyright (c) 2008-2012, Randy Hollines
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* - Redistributions of source code must retain the above copyright
+* notice, this list of conditions and the following disclaimer.
+* - Redistributions in binary form must reproduce the above copyright
+* notice, this list of conditions and the following disclaimer in
+* the documentation and/or other materials provided with the distribution.
+* - Neither the name of the Objeck Team nor the names of its
+* contributors may be used to endorse or promote products derived
+* from this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+***************************************************************************/
 
 #include "interpreter.h"
 #include "lib_api.h"
@@ -58,15 +58,15 @@ using namespace Runtime;
 StackProgram* StackInterpreter::program;
 
 /********************************
- * JIT compiler thread
- ********************************/
+* JIT compiler thread
+********************************/
 #ifdef _WIN32
 uintptr_t WINAPI StackInterpreter::CompileMethod(LPVOID arg)
 {
   StackMethod* method = (StackMethod*)arg;
   JitCompilerIA32 jit_compiler;
   jit_compiler.Compile(method);
-  
+
   return 0;
 }
 #else
@@ -79,7 +79,7 @@ void* StackInterpreter::CompileMethod(void* arg)
   JitCompilerIA32 jit_compiler;
 #endif
   jit_compiler.Compile(method);
-  
+
   // clean up
   program->RemoveThread(pthread_self());
   return NULL;
@@ -87,8 +87,8 @@ void* StackInterpreter::CompileMethod(void* arg)
 #endif
 
 /********************************
- * VM initialization
- ********************************/
+* VM initialization
+********************************/
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
@@ -96,7 +96,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 #ifdef _WIN32
   StackMethod::InitVirtualEntry();
 #endif 
-  
+
 #ifdef _X64
   JitCompilerIA64::Initialize(program);
 #else
@@ -106,10 +106,10 @@ void StackInterpreter::Initialize(StackProgram* p)
 }
 
 /********************************
- * Main VM execution method
- ********************************/
+* Main VM execution method
+********************************/
 void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
-                               long* instance, bool jit_called)
+  long* instance, bool jit_called)
 {
   // TODO: if JIT called envoke method do not go into loop
 
@@ -127,9 +127,9 @@ void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* meth
 
 #ifdef _DEBUG
   cout << "\n---------- Executing Interpretered Code: id=" 
-       << ((frame->GetMethod()->GetClass()) ? frame->GetMethod()->GetClass()->GetId() : -1) << ","
-       << frame->GetMethod()->GetId() << "; method_name='" << frame->GetMethod()->GetName() 
-       << "' ---------\n" << endl;
+    << ((frame->GetMethod()->GetClass()) ? frame->GetMethod()->GetClass()->GetId() : -1) << ","
+    << frame->GetMethod()->GetId() << "; method_name='" << frame->GetMethod()->GetName() 
+    << "' ---------\n" << endl;
 #endif
 
   // add frame
@@ -147,11 +147,11 @@ void StackInterpreter::Execute()
   halt = false;
   while(!halt) {
     StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
-    
+
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
 #endif
-    
+
     switch(instr->GetType()) {
     case STOR_INT_VAR:
       ProcessStoreInt(instr);
@@ -160,7 +160,7 @@ void StackInterpreter::Execute()
     case STOR_FUNC_VAR:
       ProcessStoreFunction(instr);
       break;
-      
+
     case STOR_FLOAT_VAR:
       ProcessStoreFloat(instr);
       break;
@@ -187,8 +187,8 @@ void StackInterpreter::Execute()
       long value = PopInt();
       long shift = PopInt();
       PushInt(value << shift);
-    }
-      break;
+                  }
+                  break;
 
     case SHR_INT: {
 #ifdef _DEBUG
@@ -197,8 +197,8 @@ void StackInterpreter::Execute()
       long value = PopInt();
       long shift = PopInt();
       PushInt(value >> shift);
-    }
-      break;
+                  }
+                  break;
 
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG
@@ -214,7 +214,7 @@ void StackInterpreter::Execute()
     case LOAD_FUNC_VAR:
       ProcessLoadFunction(instr);
       break;
-      
+
     case LOAD_FLOAT_VAR:
       ProcessLoadFloat(instr);
       break;
@@ -226,8 +226,8 @@ void StackInterpreter::Execute()
       long right = PopInt();
       long left = PopInt();
       PushInt(left && right);
-    }
-      break;
+                  }
+                  break;
 
     case OR_INT: {
 #ifdef _DEBUG
@@ -236,8 +236,8 @@ void StackInterpreter::Execute()
       long right = PopInt();
       long left = PopInt();
       PushInt(left || right);
-    }
-      break;
+                 }
+                 break;
 
     case ADD_INT:
 #ifdef _DEBUG
@@ -301,28 +301,28 @@ void StackInterpreter::Execute()
 #endif
       PushInt(PopInt() % PopInt());
       break;
-      
+
     case BIT_AND_INT:
 #ifdef _DEBUG
       cout << "stack oper: BIT_AND; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt(PopInt() & PopInt());
       break;
-      
+
     case BIT_OR_INT:
 #ifdef _DEBUG
       cout << "stack oper: BIT_OR; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt(PopInt() | PopInt());
       break;
-      
+
     case BIT_XOR_INT:
 #ifdef _DEBUG
       cout << "stack oper: BIT_XOR; call_pos=" << call_stack_pos << endl;
 #endif
       PushInt(PopInt() ^ PopInt());
       break;
-      
+
     case LES_EQL_INT:
 #ifdef _DEBUG
       cout << "stack oper: LES_EQL; call_pos=" << call_stack_pos << endl;
@@ -413,28 +413,28 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      
-      
+
+
       if(!src_array || !dest_array) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
-      
+
       const long src_array_len = src_array[2];
       const long dest_array_len = dest_array[2];
 
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	char* src_array_ptr = (char*)(src_array + 3);
-	char* dest_array_ptr = (char*)(dest_array + 3);
-	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
-	PushInt(1);
+        char* src_array_ptr = (char*)(src_array + 3);
+        char* dest_array_ptr = (char*)(dest_array + 3);
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+        PushInt(1);
       }
       else {
-	PushInt(0);
+        PushInt(0);
       }
-    }
-      break;
+                       }
+                       break;
 
     case CPY_INT_ARY: {
       long length = PopInt();
@@ -442,26 +442,26 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      
+
       if(!src_array || !dest_array) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
 
       const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	long* src_array_ptr = src_array + 3;
-	long* dest_array_ptr = dest_array + 3;
-	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
-	PushInt(1);
+        long* src_array_ptr = src_array + 3;
+        long* dest_array_ptr = dest_array + 3;
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
+        PushInt(1);
       }
       else {
-	PushInt(0);
+        PushInt(0);
       }
-    }
-      break;
+                      }
+                      break;
 
     case CPY_FLOAT_ARY: {
       long length = PopInt();
@@ -469,28 +469,28 @@ void StackInterpreter::Execute()
       long* src_array = (long*)PopInt();
       const long dest_offset = PopInt();
       long* dest_array = (long*)PopInt();      
-      
+
       if(!src_array || !dest_array) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
-      
+
       const long src_array_len = src_array[0];
       const long dest_array_len = dest_array[0];
       if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	long* src_array_ptr = src_array + 3;
-	long* dest_array_ptr = dest_array + 3;
-	memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
-	PushInt(1);
+        long* src_array_ptr = src_array + 3;
+        long* dest_array_ptr = dest_array + 3;
+        memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+        PushInt(1);
       }
       else {
-	PushInt(0);
+        PushInt(0);
       }
-    }
-      break;
-      
-      // Note: no supported via JIT -- *start*
+                        }
+                        break;
+
+                        // Note: no supported via JIT -- *start*
     case CEIL_FLOAT:
       PushFloat(ceil(PopFloat()));
       break;
@@ -502,11 +502,11 @@ void StackInterpreter::Execute()
     case SIN_FLOAT:
       PushFloat(sin(PopFloat()));
       break;
-      
+
     case COS_FLOAT:
       PushFloat(cos(PopFloat()));
       break;
-      
+
     case TAN_FLOAT:
       PushFloat(tan(PopFloat()));
       break;
@@ -514,15 +514,15 @@ void StackInterpreter::Execute()
     case ASIN_FLOAT:
       PushFloat(asin(PopFloat()));
       break;
-      
+
     case ACOS_FLOAT:
       PushFloat(acos(PopFloat()));
       break;
-      
+
     case ATAN_FLOAT:
       PushFloat(atan(PopFloat()));
       break;
-      
+
     case LOG_FLOAT:
       PushFloat(log(PopFloat()));
       break;
@@ -531,20 +531,20 @@ void StackInterpreter::Execute()
       FLOAT_VALUE left = PopFloat();
       FLOAT_VALUE right = PopFloat();
       PushFloat(pow(right, left));
-    }
-      break;
-      
+                    }
+                    break;
+
     case SQRT_FLOAT:
       PushFloat(sqrt(PopFloat()));
       break;
-      
+
     case RAND_FLOAT: {
       FLOAT_VALUE value = (FLOAT_VALUE)rand();
       PushFloat(value / (FLOAT_VALUE)RAND_MAX);
       break;
-    }
-      // Note: no supported via JIT -- *end*
-      
+                     }
+                     // Note: no supported via JIT -- *end*
+
     case I2F:
 #ifdef _DEBUG
       cout << "stack oper: I2F; call_pos=" << call_stack_pos << endl;
@@ -558,7 +558,7 @@ void StackInterpreter::Execute()
 #endif
       PushInt((long)PopFloat());
       break;
-      
+
     case SWAP_INT:
 #ifdef _DEBUG
       cout << "stack oper: SWAP_INT; call_pos=" << call_stack_pos << endl;
@@ -579,39 +579,39 @@ void StackInterpreter::Execute()
 #endif
       PopFloat();
       break;
-      
+
     case OBJ_TYPE_OF: {
       long* mem = (long*)PopInt();
       long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
-								program->GetHierarchy(),
-								program->GetInterfaces());
+        program->GetHierarchy(),
+        program->GetInterfaces());
       if(result) {
-	PushInt(1);
+        PushInt(1);
       }
       else {
-	PushInt(0);
+        PushInt(0);
       }
-    }
-      break;
-      
+                      }
+                      break;
+
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt();
       long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
-								     program->GetHierarchy(),
-								     program->GetInterfaces());
+        program->GetHierarchy(),
+        program->GetInterfaces());
 #ifdef _DEBUG
       cout << "stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl; 
 #endif
       if(!result && mem) {
         StackClass* to_cls = MemoryManager::GetClass((long*)mem);
         cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )
-             << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+          << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
         exit(1);
       }
       PushInt(result);
-    }
-      break;
+                        }
+                        break;
 
     case RTRN:
       ProcessReturn();
@@ -630,7 +630,7 @@ void StackInterpreter::Execute()
         return;
       }
       break;
-      
+
     case MTHD_CALL:
       ProcessMethodCall(instr);
       // return directly back to JIT code
@@ -643,25 +643,25 @@ void StackInterpreter::Execute()
     case ASYNC_MTHD_CALL: {
       long* instance = (long*)frame->GetMemory()[0];
       long* param = (long*)frame->GetMemory()[1];
-      
+
       StackClass* impl_class = MemoryManager::GetClass(instance);
 #ifdef _DEBUG
       assert(impl_class);
 #endif
-      
+
       StackMethod* called = impl_class->GetMethod(instr->GetOperand2());
 #ifdef _DEBUG
       cout << "=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-	   << called->GetId() << "; name='" << called->GetName() 
-	   << "'; param=" << param << " ===" << endl;
+        << called->GetId() << "; name='" << called->GetName() 
+        << "'; param=" << param << " ===" << endl;
 #endif
 
       // create and execute the new thread
       // make sure that calls to the model are synced.  Are find method synced?
       ProcessAsyncMethodCall(called, param);
-    }
-      break;
-      
+                          }
+                          break;
+
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr);
       break;
@@ -708,7 +708,7 @@ void StackInterpreter::Execute()
 #endif
       PushInt((long)frame->GetMethod()->GetClass()->GetClassMemory());
       break;
-      
+
     case LOAD_INST_MEM:
 #ifdef _DEBUG
       cout << "stack oper: LOAD_INST_MEM; call_pos=" << call_stack_pos << endl;
@@ -724,34 +724,34 @@ void StackInterpreter::Execute()
       ProcessTrap(instr);
       break;
 
-      // DLL support
+      // shared library support
     case DLL_LOAD:
       ProcessDllLoad(instr);
       break;
-      
+
     case DLL_UNLOAD:
       ProcessDllUnload(instr);
       break;
-      
+
     case DLL_FUNC_CALL:
       ProcessDllCall(instr);
       break;
-      
+
       //
       // Start: Thread support
       // 
-      
+
     case THREAD_JOIN: {
 #ifdef _DEBUG
       cout << "stack oper: THREAD_JOIN; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
-      
+
 #ifdef _WIN32
       HANDLE vm_thread = (HANDLE)instance[0];
       if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
@@ -762,13 +762,13 @@ void StackInterpreter::Execute()
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
-	cerr << ">>> Unable to join thread! <<<" << endl;
-	exit(1);
+        cerr << ">>> Unable to join thread! <<<" << endl;
+        exit(1);
       }
 #endif
-    }
-      break;
-      
+                      }
+                      break;
+
     case THREAD_SLEEP:
 #ifdef _DEBUG
       cout << "stack oper: THREAD_SLEEP; call_pos=" << call_stack_pos << endl;
@@ -780,42 +780,42 @@ void StackInterpreter::Execute()
       sleep(PopInt());
 #endif
       break;
-      
+
     case THREAD_MUTEX: {
 #ifdef _DEBUG
       cout << "stack oper: THREAD_MUTEX; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)frame->GetMemory()[0];
       if(!instance) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
 #ifdef _WIN32
       InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
       pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
 #endif
-    }
-      break;
-      
+                       }
+                       break;
+
     case CRITICAL_START: {
 #ifdef _DEBUG
       cout << "stack oper: CRITICAL_START; call_pos=" << call_stack_pos << endl;
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
 #ifdef _WIN32
       EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
       pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
 #endif
-    }
-      break;
+                         }
+                         break;
 
     case CRITICAL_END: {
 #ifdef _DEBUG
@@ -823,22 +823,22 @@ void StackInterpreter::Execute()
 #endif
       long* instance = (long*)PopInt();
       if(!instance) {
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	StackErrorUnwind();
-	exit(1);
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
 #ifdef _WIN32
       LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
       pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
 #endif
-    }
-      break;
+                       }
+                       break;
 
-      //
-      // End: Thread support
-      // 
-      
+                       //
+                       // End: Thread support
+                       // 
+
     case JMP:
 #ifdef _DEBUG
       cout << "stack oper: JMP; call_pos=" << call_stack_pos << endl;
@@ -849,7 +849,7 @@ void StackInterpreter::Execute()
         ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
       }
       break;
-      
+
       // note: just for debugger
     case END_STMTS:
       break;
@@ -861,14 +861,14 @@ void StackInterpreter::Execute()
 }
 
 /********************************
- * Creates a Date object with
- * current time
- ********************************/
+* Creates a Date object with
+* current time
+********************************/
 void StackInterpreter::ProcessCurrentTime(bool is_gmt) 
 {
   time_t raw_time;
   time(&raw_time);  
-  
+
   struct tm* curr_time;
   if(is_gmt) {
     curr_time = gmtime(&raw_time);
@@ -876,84 +876,88 @@ void StackInterpreter::ProcessCurrentTime(bool is_gmt)
   else {
     curr_time = localtime(&raw_time);
   }
-  
-  long* instance = (long*)frame->GetMemory()[0];  
-  instance[0] = curr_time->tm_mday;          // day
-  instance[1] = curr_time->tm_mon + 1;       // month
-  instance[2] = curr_time->tm_year + 1900;   // year
-  instance[3] = curr_time->tm_hour;          // hours
-  instance[4] = curr_time->tm_min;           // mins
-  instance[5] = curr_time->tm_sec;           // secs
-  instance[6] = curr_time->tm_isdst > 0;     // savings time
-  instance[7] = curr_time->tm_wday;          // day of week
-  instance[8] = is_gmt;                      // is GMT
+
+  long* instance = (long*)frame->GetMemory()[0];
+  if(instance) {
+    instance[0] = curr_time->tm_mday;          // day
+    instance[1] = curr_time->tm_mon + 1;       // month
+    instance[2] = curr_time->tm_year + 1900;   // year
+    instance[3] = curr_time->tm_hour;          // hours
+    instance[4] = curr_time->tm_min;           // mins
+    instance[5] = curr_time->tm_sec;           // secs
+    instance[6] = curr_time->tm_isdst > 0;     // savings time
+    instance[7] = curr_time->tm_wday;          // day of week
+    instance[8] = is_gmt;                      // is GMT
+  }
 }
 
 /********************************
- * Date/time calculations
- ********************************/
+* Date/time calculations
+********************************/
 void StackInterpreter::ProcessAddTime(TimeInterval t)
 {  
   long value = PopInt();
   long* instance = (long*)PopInt();
- 
-  // calculate change in seconds
-  long offset;
-  switch(t) {
-  case DAY_TIME:
-    offset = 86400 * value;
-    break;
 
-  case HOUR_TIME:
-    offset = 3600 * value;
-    break;
+  if(instance) {
+    // calculate change in seconds
+    long offset;
+    switch(t) {
+    case DAY_TIME:
+      offset = 86400 * value;
+      break;
 
-  case MIN_TIME:
-    offset = 60 * value;
-    break;
+    case HOUR_TIME:
+      offset = 3600 * value;
+      break;
 
-  default:
-    offset = value;
-    break;
+    case MIN_TIME:
+      offset = 60 * value;
+      break;
+
+    default:
+      offset = value;
+      break;
+    }
+
+    // create time structure
+    struct tm set_time;
+    set_time.tm_mday = instance[0];          // day
+    set_time.tm_mon = instance[1] - 1;       // month
+    set_time.tm_year = instance[2] - 1900;   // year
+    set_time.tm_hour = instance[3];          // hours
+    set_time.tm_min = instance[4];           // mins
+    set_time.tm_sec = instance[5];           // secs
+    set_time.tm_isdst = instance[6] > 0;     // savings time
+
+    // calculate difference
+    time_t raw_time = mktime(&set_time);
+    raw_time += offset;  
+
+    struct tm* curr_time;
+    if(instance[8]) {
+      curr_time = gmtime(&raw_time);
+    }
+    else {
+      curr_time = localtime(&raw_time);
+    }
+
+    // set instance values
+    instance[0] = curr_time->tm_mday;          // day
+    instance[1] = curr_time->tm_mon + 1;       // month
+    instance[2] = curr_time->tm_year + 1900;   // year
+    instance[3] = curr_time->tm_hour;          // hours
+    instance[4] = curr_time->tm_min;           // mins
+    instance[5] = curr_time->tm_sec;           // secs
+    instance[6] = curr_time->tm_isdst > 0;     // savings time
+    instance[7] = curr_time->tm_wday;          // day of week
   }
-  
-  // create time structure
-  struct tm set_time;
-  set_time.tm_mday = instance[0];          // day
-  set_time.tm_mon = instance[1] - 1;       // month
-  set_time.tm_year = instance[2] - 1900;   // year
-  set_time.tm_hour = instance[3];          // hours
-  set_time.tm_min = instance[4];           // mins
-  set_time.tm_sec = instance[5];           // secs
-  set_time.tm_isdst = instance[6] > 0;     // savings time
-  
-  // calculate difference
-  time_t raw_time = mktime(&set_time);
-  raw_time += offset;  
-  
-  struct tm* curr_time;
-  if(instance[8]) {
-    curr_time = gmtime(&raw_time);
-  }
-  else {
-    curr_time = localtime(&raw_time);
-  }
-  
-  // set instance values
-  instance[0] = curr_time->tm_mday;          // day
-  instance[1] = curr_time->tm_mon + 1;       // month
-  instance[2] = curr_time->tm_year + 1900;   // year
-  instance[3] = curr_time->tm_hour;          // hours
-  instance[4] = curr_time->tm_min;           // mins
-  instance[5] = curr_time->tm_sec;           // secs
-  instance[6] = curr_time->tm_isdst > 0;     // savings time
-  instance[7] = curr_time->tm_wday;          // day of week
 }
 
 /********************************
- * Creates a Date object with 
- * specified time
- ********************************/
+* Creates a Date object with 
+* specified time
+********************************/
 void StackInterpreter::ProcessSetTime1() 
 {
   // get time values
@@ -962,7 +966,8 @@ void StackInterpreter::ProcessSetTime1()
   long month = PopInt();
   long day = PopInt();
   long* instance = (long*)PopInt();
-  
+
+  if(instance) {
   // get current time
   time_t raw_time;
   time(&raw_time);  
@@ -973,13 +978,13 @@ void StackInterpreter::ProcessSetTime1()
   else {
     curr_time = localtime(&raw_time);
   }
-    
+
   // update time
   curr_time->tm_year = year - 1900;
   curr_time->tm_mon = month - 1;
   curr_time->tm_mday = day;
   mktime(curr_time);
-  
+
   // set instance values
   instance[0] = curr_time->tm_mday;          // day
   instance[1] = curr_time->tm_mon + 1;       // month
@@ -990,11 +995,12 @@ void StackInterpreter::ProcessSetTime1()
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
   instance[8] = is_gmt;                      // is GMT
+  }
 }
 
 /********************************
- * Sets a time instance
- ********************************/
+* Sets a time instance
+********************************/
 void StackInterpreter::ProcessSetTime2() 
 {
   // get time values
@@ -1006,7 +1012,8 @@ void StackInterpreter::ProcessSetTime2()
   long month = PopInt();
   long day = PopInt();
   long* instance = (long*)PopInt();
-  
+
+  if(instance) {
   // get current time
   time_t raw_time;
   time(&raw_time);  
@@ -1017,7 +1024,7 @@ void StackInterpreter::ProcessSetTime2()
   else {
     curr_time = localtime(&raw_time);
   }
-    
+
   // update time
   curr_time->tm_year = year - 1900;
   curr_time->tm_mon = month - 1;
@@ -1026,7 +1033,7 @@ void StackInterpreter::ProcessSetTime2()
   curr_time->tm_min = mins;
   curr_time->tm_sec = secs;  
   mktime(curr_time);
-  
+
   // set instance values
   instance[0] = curr_time->tm_mday;          // day
   instance[1] = curr_time->tm_mon + 1;       // month
@@ -1037,27 +1044,19 @@ void StackInterpreter::ProcessSetTime2()
   instance[6] = curr_time->tm_isdst > 0;     // savings time
   instance[7] = curr_time->tm_wday;          // day of week
   instance[8] = is_gmt;                      // is GMT
+  }
 }
 
 /********************************
- * Set a time instance
- ********************************/
+* Set a time instance
+********************************/
 void StackInterpreter::ProcessSetTime3() 
 {
-  /* TOOD
-  long* array;    
-  array = (long*)((long*)PopInt())[0];
-  const char* format_str = (char*)(array + 3);
-  array = (long*)((long*)PopInt())[0];
-  const char* date_str = (char*)(array + 3);
-  long* instance = (long*)PopInt();  
-  */
-  
 }
 
 /********************************
- * Get platform string
- ********************************/
+* Get platform string
+********************************/
 void StackInterpreter::ProcessPlatform() 
 {
   string value_str = System::GetPlatform();
@@ -1066,10 +1065,10 @@ void StackInterpreter::ProcessPlatform()
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
   long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-							 ((char_array_dim + 2) *
-							  sizeof(long)),
-							 BYTE_ARY_TYPE,
-							 op_stack, *stack_pos, false);
+    ((char_array_dim + 2) *
+    sizeof(long)),
+    BYTE_ARY_TYPE,
+    op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -1080,7 +1079,7 @@ void StackInterpreter::ProcessPlatform()
 
   // create 'System.String' object instance
   long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-						(long*)op_stack, *stack_pos, false);
+    (long*)op_stack, *stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
 
@@ -1088,14 +1087,14 @@ void StackInterpreter::ProcessPlatform()
 }
 
 /********************************
- * Processes a load function
- * variable instruction.
- ********************************/
+* Processes a load function
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadFunction(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
@@ -1115,14 +1114,14 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr)
 }
 
 /********************************
- * Processes a load integer
- * variable instruction.
- ********************************/
+* Processes a load integer
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
@@ -1140,14 +1139,14 @@ void StackInterpreter::ProcessLoadInt(StackInstr* instr)
 }
 
 /********************************
- * Processes a load float
- * variable instruction.
- ********************************/
+* Processes a load float
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
@@ -1166,14 +1165,14 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr)
 }
 
 /********************************
- * Processes a store function
- * variable instruction.
- ********************************/
+* Processes a store function
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreFunction(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
@@ -1193,14 +1192,14 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr)
 }
 
 /********************************
- * Processes a store integer
- * variable instruction.
- ********************************/
+* Processes a store integer
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
@@ -1213,7 +1212,7 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr)
       StackErrorUnwind();
       exit(1);
     }
-    
+
     long mem = PopInt();
     // mark static reference
     if(instr->GetOperand2() == CLS) {
@@ -1226,14 +1225,14 @@ void StackInterpreter::ProcessStoreInt(StackInstr* instr)
 }
 
 /********************************
- * Processes a store float
- * variable instruction.
- ********************************/
+* Processes a store float
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = PopFloat();
@@ -1252,14 +1251,14 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
 }
 
 /********************************
- * Processes a copy integer
- * variable instruction.
- ********************************/
+* Processes a copy integer
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessCopyInt(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = frame->GetMemory();
@@ -1276,14 +1275,14 @@ void StackInterpreter::ProcessCopyInt(StackInstr* instr)
 }
 
 /********************************
- * Processes a copy float
- * variable instruction.
- ********************************/
+* Processes a copy float
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessCopyFloat(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+    << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat();
@@ -1302,9 +1301,9 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr)
 }
 
 /********************************
- * Processes a new object instance
- * request.
- ********************************/
+* Processes a new object instance
+* request.
+********************************/
 void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1312,14 +1311,14 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr)
 #endif
 
   long inst_mem = (long)MemoryManager::AllocateObject(instr->GetOperand(),
-						      op_stack, *stack_pos);
+    op_stack, *stack_pos);
   PushInt(inst_mem);
 }
 
 /********************************
- * Processes a new array instance
- * request.
- ********************************/
+* Processes a new array instance
+* request.
+********************************/
 void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
 {
 #ifdef _DEBUG
@@ -1335,34 +1334,34 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, bool is_float)
     size *= value;
     indices[dim++] = value;
   }
-  
+
   long* mem;  
 #ifdef _X64
   mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-					    op_stack, *stack_pos);
+    op_stack, *stack_pos);
 #else
   if(is_float) {
     // doubles are twice the size of integers for 32-bit target
     mem = (long*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
-					      op_stack, *stack_pos);
+      op_stack, *stack_pos);
   }
   else {
     mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-					      op_stack, *stack_pos);
+      op_stack, *stack_pos);
   }
 #endif
-  
+
   mem[0] = size;
   mem[1] = dim;
-  
+
   memcpy(mem + 2, indices, dim * sizeof(long));
   PushInt((long)mem);
 }
 
 /********************************
- * Processes a new byte array instance
- * request.
- ********************************/
+* Processes a new byte array instance
+* request.
+********************************/
 void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1381,7 +1380,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
   // NULL terminated string workaround
   size++;
   long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
-						  BYTE_ARY_TYPE, op_stack, *stack_pos);
+    BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(long));
@@ -1389,10 +1388,10 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr)
 }
 
 /********************************
- * Processes a return instruction.
- * This instruction modifies the
- * call stack.
- ********************************/
+* Processes a return instruction.
+* This instruction modifies the
+* call stack.
+********************************/
 void StackInterpreter::ProcessReturn()
 {
 #ifdef _DEBUG
@@ -1407,7 +1406,7 @@ void StackInterpreter::ProcessReturn()
 
   delete frame;
   frame = NULL;
-  
+
   // restore previous frame
   if(!StackEmpty()) {
     frame = PopFrame();
@@ -1418,9 +1417,9 @@ void StackInterpreter::ProcessReturn()
 }
 
 /********************************
- * Processes a asynchronous
- * method call.
- ********************************/
+* Processes a asynchronous
+* method call.
+********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 {
   ThreadHolder* holder = new ThreadHolder;
@@ -1437,7 +1436,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-  
+
   // execute thread
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
@@ -1447,6 +1446,11 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 #endif  
   // assign thread ID
   long* instance = (long*)frame->GetMemory()[0];
+  if(!instance) {
+    cerr << ">>> Unable to create runtime thread! <<<" << endl;
+    exit(-1);
+  }
+
   instance[0] = (long)vm_thread;
 #ifdef _DEBUG
   cout << "*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
@@ -1466,35 +1470,35 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   long* thread_op_stack = new long[STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
-  
+
   // set parameter
   thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
 
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
-		  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
-  
+    &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
+
 #ifdef _DEBUG
   cout << "# Starting thread=" << vm_thread << " #" << endl;
 #endif  
-  
+
   Runtime::StackInterpreter intpr;
   intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
 
 #ifdef _DEBUG
   cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << vm_thread << " #" << endl;
 #endif
-  
+
   // clean up
   delete[] thread_op_stack;
   thread_op_stack = NULL;
-  
+
   delete thread_stack_pos;
   thread_stack_pos = NULL;
 
   delete holder;
   holder = NULL;
-  
+
   program->RemoveThread(vm_thread);
 
   return 0;
@@ -1511,31 +1515,31 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   long* thread_op_stack = new long[STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
-  
+
   // set parameter
   thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
-  
+
 #ifdef _DEBUG
   cout << "# Starting thread=" << pthread_self() << " #" << endl;
 #endif  
-  
+
   Runtime::StackInterpreter intpr;
   intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
 
 #ifdef _DEBUG
   cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
 #endif
-  
+
   // clean up
   delete[] thread_op_stack;
   thread_op_stack = NULL;
-  
+
   delete thread_stack_pos;
   thread_stack_pos = NULL;
 
   delete holder;
   holder = NULL;
-  
+
   program->RemoveThread(pthread_self());
 
   return NULL;
@@ -1543,15 +1547,15 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 #endif
 
 /********************************
- * Processes a synchronous
- * dynamic method call.
- ********************************/
+* Processes a synchronous
+* dynamic method call.
+********************************/
 void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
 {
   // save current method
   frame->SetIp(ip);
   PushFrame(frame);
-  
+
   // pop instance
   long* instance = (long*)PopInt();
 
@@ -1565,7 +1569,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
 #ifdef _DEBUG
   cout << "=== Binding funcion call: to: '" << called->GetName() << "' ===" << endl;
 #endif
-  
+
 #ifndef _NO_JIT
   // execute JIT call
   if(instr->GetOperand3()) {
@@ -1581,9 +1585,9 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr)
 }
 
 /********************************
- * Processes a synchronous method
- * call.
- ********************************/
+* Processes a synchronous method
+* call.
+********************************/
 void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 {
   // save current method
@@ -1607,7 +1611,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 #ifdef _DEBUG
     cout << "=== Binding virtual method call: from: '" << called->GetName();
 #endif
-    
+
     // binding method
     const string& qualified_method_name = called->GetName();
     const string& method_ending = qualified_method_name.substr(qualified_method_name.find(':'));
@@ -1618,19 +1622,19 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
     if(!called) {
       called = impl_class->GetMethod(method_name);
       while(!called) {
-	impl_class = program->GetClass(impl_class->GetParentId());
-	method_name = impl_class->GetName() + method_ending;
-	called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
+        impl_class = program->GetClass(impl_class->GetParentId());
+        method_name = impl_class->GetName() + method_ending;
+        called = program->GetClass(impl_class->GetId())->GetMethod(method_name);
       }
       // add cache entry
       StackMethod::AddVirtualEntry(method_name, called);
     }
-    
+
 #ifdef _DEBUG
     cout << "'; to: '" << method_name << "' ===" << endl;
 #endif
   }
-  
+
 #ifndef _NO_JIT
   // execute JIT call
   if(instr->GetOperand3()) {
@@ -1646,9 +1650,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr)
 }
 
 /********************************
- * Processes an interpreted
- * synchronous method call.
- ********************************/
+* Processes an interpreted
+* synchronous method call.
+********************************/
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 {
 #ifdef _DEBUGGER
@@ -1662,13 +1666,13 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     if(status < 0) {
       switch(status) {
       case -1:
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
-	break;
-	
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+        break;
+
       case -2:
       case -3:
-	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
-	break;
+        cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
+        break;
       }
       StackErrorUnwind(called);
       exit(1);
@@ -1698,13 +1702,13 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     if(status < 0) {
       switch(status) {
       case -1:
-	cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
-	break;
-	
+        cerr << ">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+        break;
+
       case -2:
       case -3:
-	cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
-	break;
+        cerr << ">>> Index out of bounds in native JIT code! <<<" << endl;
+        break;
       }
       StackErrorUnwind(called);
       exit(1);
@@ -1723,8 +1727,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     else { 
       HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CompileMethod, called, 0, NULL);
       if(!thread_id) {
-	cerr << ">>> Unable to create thread to compile method! <<<" << endl;
-	exit(-1);
+        cerr << ">>> Unable to create thread to compile method! <<<" << endl;
+        exit(-1);
       }
       program->AddThread(thread_id);
       ProcessInterpretedMethodCall(called, instance);
@@ -1740,11 +1744,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
       pthread_attr_t attrs;
       pthread_attr_init(&attrs);
       pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-      
+
       pthread_t jit_thread;
       if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
-	cerr << ">>> Unable to create thread to compile method! <<<" << endl;
-	exit(-1);
+        cerr << ">>> Unable to create thread to compile method! <<<" << endl;
+        exit(-1);
       }
       program->AddThread(jit_thread);
       pthread_attr_destroy(&attrs);
@@ -1760,14 +1764,14 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
 }
 
 /********************************
- * Processes an interpreted
- * synchronous method call.
- ********************************/
+* Processes an interpreted
+* synchronous method call.
+********************************/
 void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* instance)
 {
 #ifdef _DEBUG
   cout << "=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-       << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
+    << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif
   ip = 0;
   frame = new StackFrame(called, instance);
@@ -1778,9 +1782,9 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* i
 }
 
 /********************************
- * Processes a load integer array
- * variable instruction.
- ********************************/
+* Processes a load integer array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1799,16 +1803,16 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Processes a load store array
- * variable instruction.
- ********************************/
+* Processes a load store array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
   long* array = (long*)PopInt();
-  
+
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size);
@@ -1816,9 +1820,9 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Processes a load byte array
- * variable instruction.
- ********************************/
+* Processes a load byte array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1838,9 +1842,9 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Processes a store byte array
- * variable instruction.
- ********************************/
+* Processes a store byte array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1860,9 +1864,9 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Processes a load float array
- * variable instruction.
- ********************************/
+* Processes a load float array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1883,9 +1887,9 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Processes a store float array
- * variable instruction.
- ********************************/
+* Processes a store float array
+* variable instruction.
+********************************/
 void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
 {
 #ifdef _DEBUG
@@ -1905,29 +1909,33 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr)
 }
 
 /********************************
- * Shared library operations
- ********************************/
+* Shared library operations
+********************************/
 
 typedef void (*ext_load_def)();
 void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 {
 #ifdef _DEBUG
-  cout << "stack oper: DLL_LOAD; call_pos=" << call_stack_pos << endl;
+  cout << "stack oper: shared library_LOAD; call_pos=" << call_stack_pos << endl;
 #endif
   long* instance = (long*)frame->GetMemory()[0];
-  long* str_obj = (long*)instance[0];
-  long* array = (long*)str_obj[0];
-
-  if(!array) {
-    cerr << ">>> Name of runtime DLL was not specified! <<<" << endl;
+  if(!instance) {
+    cerr << ">>> Unable to load shared library! <<<" << endl;
     exit(1);
   }
-  
+
+  long* str_obj = (long*)instance[0];
+  if(str_obj && (long*)str_obj[0]) {
+    cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
+    exit(1);
+  }
+  long* array = (long*)str_obj[0];
+
   const char* str = (char*)(array + 3);
 
   string dll_string(str);
   if(dll_string.size() == 0) {
-    cerr << ">>> Name of runtime DLL was not specified! <<<" << endl;
+    cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
     exit(1);
   }
 
@@ -1940,13 +1948,13 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #else
   dll_string += ".so";
 #endif 
-  
-  // load DLL
+
+  // load shared library
 #ifdef _WIN32
-  // Load DLL file
+  // Load shared library file
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
-    cerr << ">>> Runtime error loading DLL: " << dll_string.c_str() << " <<<" << endl;
+    cerr << ">>> Runtime error loading shared library: " << dll_string.c_str() << " <<<" << endl;
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1962,7 +1970,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
-    cerr << ">>> Runtime error loading DLL: " << dlerror() << " <<<" << endl;
+    cerr << ">>> Runtime error loading shared library: " << dlerror() << " <<<" << endl;
     exit(1);
   }
   instance[1] = (long)dll_handle;
@@ -1983,10 +1991,10 @@ typedef void (*ext_unload_def)();
 void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 {
 #ifdef _DEBUG
-  cout << "stack oper: DLL_UNLOAD; call_pos=" << call_stack_pos << endl;
+  cout << "stack oper: shared library_UNLOAD; call_pos=" << call_stack_pos << endl;
 #endif
   long* instance = (long*)frame->GetMemory()[0];
-  // unload DLL
+  // unload shared library
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
@@ -2023,7 +2031,7 @@ typedef void (*lib_func_def) (VMContext& callbacks);
 void StackInterpreter::ProcessDllCall(StackInstr* instr)
 {
 #ifdef _DEBUG
-  cout << "stack oper: DLL_FUNC_CALL; call_pos=" << call_stack_pos << endl;
+  cout << "stack oper: shared library_FUNC_CALL; call_pos=" << call_stack_pos << endl;
 #endif 
   long* instance = (long*)frame->GetMemory()[0];
   long* str_obj = (long*)frame->GetMemory()[1];
@@ -2036,7 +2044,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
   const char* str = (char*)(array + 3);
   long* args = (long*)frame->GetMemory()[2];
   lib_func_def ext_func;
-  
+
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
@@ -2083,38 +2091,38 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr)
 }
 
 /********************************
- * Processes trap instruction
- ********************************/
+* Processes trap instruction
+********************************/
 void StackInterpreter::ProcessTrap(StackInstr* instr)
 {
   switch(PopInt()) {
   case LOAD_CLS_INST_ID:
     PushInt(MemoryManager::GetObjectID((long*)PopInt()));
     break;
-    
+
   case LOAD_NEW_OBJ_INST: {
     long* array = (long*)PopInt();
     if(array) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
-    
+
 #ifdef _DEBUG
       cout << "stack oper: LOAD_NEW_OBJ_INST; call_pos=" << call_stack_pos 
-	   << ", name='" << name << "'"  << endl;
+        << ", name='" << name << "'"  << endl;
 #endif
       CreateNewObject(name);
     }
     else {
       PushInt(0);
     }    
-  }
-    break;
+                          }
+                          break;
 
   case LOAD_CLS_BY_INST: {
 #ifdef _DEBUG
     cout << "stack oper: LOAD_CLS_BY_INST; call_pos=" << call_stack_pos << endl;
 #endif
-    
+
     long* inst = (long*)frame->GetMemory()[0];
     StackClass* cls = MemoryManager::GetClass(inst);
     if(!cls) {
@@ -2124,13 +2132,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     }
     /// set name and create 'Class' instance
     long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-						  (long*)op_stack, *stack_pos, false);
+      (long*)op_stack, *stack_pos, false);
     cls_obj[0] = (long)CreateStringObject(cls->GetName());
     frame->GetMemory()[1] = (long)cls_obj;
     CreateClassObject(cls, cls_obj);
-  }
-    break;
-    
+                         }
+                         break;
+
   case LOAD_ARY_SIZE: {
     long* array = (long*)PopInt();
     if(!array) {
@@ -2139,8 +2147,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       exit(1);
     }
     PushInt(array[2]);
-  }
-    break;
+                      }
+                      break;
 
   case CPY_CHAR_STR_ARY: {
     long index = PopInt();
@@ -2159,8 +2167,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << "stack oper: CPY_CHAR_STR_ARY: index=" << index << ", string='" << value_str << "'" << endl;
 #endif
     PushInt((long)array);
-  }
-    break;
+                         }
+                         break;
 
   case CPY_CHAR_STR_ARYS: {
     // copy array
@@ -2181,9 +2189,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << "stack oper: CPY_CHAR_STR_ARYS" << endl;
 #endif
     PushInt((long)array);
-  }
-    break;
-    
+                          }
+                          break;
+
   case CPY_INT_STR_ARY: {
     long index = PopInt();
     int* value_str = program->GetIntStrings()[index];
@@ -2204,9 +2212,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     cout << "stack oper: CPY_INT_STR_ARY" << endl;
 #endif
     PushInt((long)array);
-  }
-    break;
-    
+                        }
+                        break;
+
   case CPY_FLOAT_STR_ARY: {
     long index = PopInt();
     FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
@@ -2223,15 +2231,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     for(long i = 0; i < size; i++) {
       str[i] = value_str[i];
     }
-    
+
 #ifdef _DEBUG
     cout << "stack oper: CPY_FLOAT_STR_ARY" << endl;
 #endif
     PushInt((long)array);
-  }
-    break;
-    
-    // ---------------- standard i/o ----------------
+                          }
+                          break;
+
+                          // ---------------- standard i/o ----------------
   case STD_OUT_BOOL:
     cout << ((PopInt() == 0) ? "false" : "true");
     break;
@@ -2258,14 +2266,14 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
       cout << str;
     }
-  }
-    break;
-    
+                         }
+                         break;
+
   case STD_OUT_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
-    
+
     if(array && offset >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       cout.write(buffer + offset, num);
@@ -2274,9 +2282,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
-    
+                         }
+                         break;
+
   case STD_IN_STRING: {
     long* array = (long*)PopInt();
     if(array) {
@@ -2284,10 +2292,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       const long num = array[0];
       cin.getline(buffer, num);
     }
-  }
-    break;
-  
-    // ---------------- runtime ----------------
+                      }
+                      break;
+
+                      // ---------------- runtime ----------------
   case EXIT:
     exit(PopInt());
     break;
@@ -2299,41 +2307,41 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
   case SYS_TIME:
     ProcessCurrentTime(false);
     break;
-    
+
   case DATE_TIME_SET_1:
     ProcessSetTime1();
     break;
-    
+
   case DATE_TIME_SET_2:
     ProcessSetTime2();
     break;
-    
+
     /* TODO
-       case DATE_TIME_SET_3:
-       ProcessSetTime3();
-       break;
+    case DATE_TIME_SET_3:
+    ProcessSetTime3();
+    break;
     */
-    
+
   case DATE_TIME_ADD_DAYS:
     ProcessAddTime(DAY_TIME);
     break;
-    
+
   case DATE_TIME_ADD_HOURS:
     ProcessAddTime(HOUR_TIME);
     break;
-    
+
   case DATE_TIME_ADD_MINS:
     ProcessAddTime(MIN_TIME);
     break;
-    
+
   case DATE_TIME_ADD_SECS:
     ProcessAddTime(SEC_TIME);
     break;
-    
+
   case PLTFRM:
     ProcessPlatform();
     break;
-    
+
     // ---------------- ip socket i/o ----------------
   case SOCK_TCP_HOST_NAME: {
     long* array = (long*)PopInt();
@@ -2344,13 +2352,13 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       // get host name
       char value_str[SMALL_BUFFER_MAX + 1];    
       if(!gethostname(value_str, SMALL_BUFFER_MAX)) {
-	// copy name    
-	for(long i = 0; value_str[i] != '\0' && i < size; i++) {
-	  str[i] = value_str[i];
-	}
+        // copy name    
+        for(long i = 0; value_str[i] != '\0' && i < size; i++) {
+          str[i] = value_str[i];
+        }
       }
       else {
-	str[0] = '\0';
+        str[0] = '\0';
       }
 #ifdef _DEBUG
       cout << "stack oper: SOCK_TCP_HOST_NAME: host='" << value_str << "'" << endl;
@@ -2360,98 +2368,107 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
-    
+                           }
+                           break;
+
   case SOCK_TCP_CONNECT: {
     long port = PopInt();
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    if(array) {
+    if(array && instance) {
       array = (long*)array[0];
       const char* addr = (char*)(array + 3);
       SOCKET sock = IPSocket::Open(addr, port);
 #ifdef _DEBUG
       cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" 
-	   << instance << "(" << (long)instance << ")" << "; addr=" << sock << "(" 
-	   << (long)sock << ") #" << endl;
+        << instance << "(" << (long)instance << ")" << "; addr=" << sock << "(" 
+        << (long)sock << ") #" << endl;
 #endif
       instance[0] = (long)sock;
     }
-  }
-    break;  
+                         }
+                         break;  
 
   case SOCK_TCP_BIND: {
     long port = PopInt();
     long* instance = (long*)PopInt();
+    if(instance) {
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
     cout << "# socket bind: port=" << port << "; instance=" << instance << "(" 
-	 << (long)instance << ")" << "; addr=" << server << "(" << (long)server 
-	 << ") #" << endl;
+      << (long)instance << ")" << "; addr=" << server << "(" << (long)server 
+      << ") #" << endl;
 #endif
     instance[0] = (long)server;
-  }
-    break;  
-    
+    }
+                      }
+                      break;  
+
   case SOCK_TCP_LISTEN: {
     long backlog = PopInt();
     long* instance = (long*)PopInt();
+    if(instance) {
     SOCKET server = (SOCKET)instance[0];
-    
+
 #ifdef _DEBUG
     cout << "# socket listen: backlog=" << backlog << "'; instance=" << instance 
-	 << "(" << (long)instance << ")" << "; addr=" << server << "(" 
-	 << (long)server << ") #" << endl;
+      << "(" << (long)instance << ")" << "; addr=" << server << "(" 
+      << (long)server << ") #" << endl;
 #endif
-    
+
     if(server >= 0 && IPSocket::Listen(server, backlog)) {
       PushInt(1);      
     }
     else {
       PushInt(0);
     }
-  }
-    break;   
-    
+    }
+    else {
+       PushInt(0);
+    }
+                        }
+                        break;   
+
   case SOCK_TCP_ACCEPT: {
     long* instance = (long*)PopInt();
-    SOCKET server = (SOCKET)instance[0];
-    
-    if(server >= 0) {
+    if(instance && (SOCKET)instance[0] >= 0) {
+      SOCKET server = (SOCKET)instance[0];
+
       char client_address[SMALL_BUFFER_MAX + 1];
       int client_port;
       SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
       cout << "# socket accept: instance=" << instance << "(" << (long)instance << ")" << "; ip=" 
-	   << client_address << "; port=" << client_port << "; addr=" << server << "(" 
-	   << (long)server << ") #" << endl;
+        << client_address << "; port=" << client_port << "; addr=" << server << "(" 
+        << (long)server << ") #" << endl;
 #endif
-      
+
       long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
-						     (long*)op_stack, *stack_pos, false);
+        (long*)op_stack, *stack_pos, false);
       sock_obj[0] = client;
       sock_obj[1] = (long)CreateStringObject(client_address);
       sock_obj[2] = client_port;
 
       PushInt((long)sock_obj);
     }
-  }
-    break;
-    
+                        }
+                        break;
+
   case SOCK_TCP_CLOSE: {
     long* instance = (long*)PopInt();
+    if(instance && (SOCKET)instance[0] >= 0) {
     SOCKET sock = (SOCKET)instance[0];
 
 #ifdef _DEBUG
     cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-    if(sock >= 0) {
+    
       instance[0] = 0;
       IPSocket::Close(sock);
     }
-  }
-    break;
+                    
+                       }
+                       break;
 
   case SOCK_TCP_OUT_STRING: {
     long* array = (long*)PopInt();
@@ -2460,15 +2477,16 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       SOCKET sock = (SOCKET)instance[0];
       char* data = (char*)(array + 3);      
       if(sock >= 0) {
-	IPSocket::WriteBytes(data, strlen(data), sock);
+        IPSocket::WriteBytes(data, strlen(data), sock);
       }
     }
-  }
-    break;
+                            }
+                            break;
 
   case SOCK_TCP_IN_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
+    if(array && instance) {
     char* buffer = (char*)(array + 3);
     const long num = array[0] - 1;
     SOCKET sock = (SOCKET)instance[0];
@@ -2479,25 +2497,26 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       BYTE_VALUE value;
       bool end_line = false;
       do {
-	value = IPSocket::ReadByte(sock, status);
-	if(value != '\r' && value != '\n' && index < num && status > 0) {
-	  buffer[index++] = value;
-	}
-	else {
-	  end_line = true;
-	}
+        value = IPSocket::ReadByte(sock, status);
+        if(value != '\r' && value != '\n' && index < num && status > 0) {
+          buffer[index++] = value;
+        }
+        else {
+          end_line = true;
+        }
       }
       while(!end_line);
-      
+
       // assume LF
       if(value == '\r') {
-	IPSocket::ReadByte(sock, status);
+        IPSocket::ReadByte(sock, status);
       }
     }
-  }
-    break;
-    
-    // ---------------- serialization ----------------
+    }
+                           }
+                           break;
+
+                           // ---------------- serialization ----------------
   case SERL_INT:
 #ifdef _DEBUG
     cout << "# serializing int #" << endl;
@@ -2505,7 +2524,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SerializeInt(INT_PARM);
     SerializeInt(frame->GetMemory()[1]);
     break;
-    
+
   case SERL_FLOAT: {
 #ifdef _DEBUG
     cout << "# serializing float #" << endl;
@@ -2514,9 +2533,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     FLOAT_VALUE value;
     memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
     SerializeFloat(value);
-  }
-    break;
-    
+                   }
+                   break;
+
   case SERL_OBJ_INST:
     SerializeObject();
     break;
@@ -2535,7 +2554,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     SerializeInt(FLOAT_ARY_PARM);
     SerializeArray((long*)frame->GetMemory()[1], FLOAT_ARY_PARM);
     break;
-    
+
   case DESERL_INT:
 #ifdef _DEBUG
     cout << "# deserializing int #" << endl;
@@ -2575,7 +2594,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       PushInt(0);
     }
     break;
-    
+
   case DESERL_INT_ARY:
 #ifdef _DEBUG
     cout << "# deserializing int array #" << endl;
@@ -2599,207 +2618,212 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       PushInt(0);
     }
     break;
-    
+
     // ---------------- file i/o ----------------
   case FILE_OPEN_READ: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    if(array) {
+    if(array && instance) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
       FILE* file = File::FileOpen(name, "rb");
 #ifdef _DEBUG
       cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	   << ") #" << endl;
+        << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+        << ") #" << endl;
 #endif
       instance[0] = (long)file;
     }
-  }
-    break;
+                       }
+                       break;
 
   case FILE_OPEN_WRITE: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    if(array) {
+    if(array && instance) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
       FILE* file = File::FileOpen(name, "wb");
 #ifdef _DEBUG
       cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	   << ") #" << endl;
+        << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+        << ") #" << endl;
 #endif
       instance[0] = (long)file;
     }
-  }
-    break;
+                        }
+                        break;
 
   case FILE_OPEN_READ_WRITE: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    if(array) {
+    if(array && instance) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
       FILE* file = File::FileOpen(name, "w+b");
 #ifdef _DEBUG
       cout << "# file open: name='" << name << "'; instance=" << instance << "(" 
-	   << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
-	   << ") #" << endl;
+        << (long)instance << ")" << "; addr=" << file << "(" << (long)file 
+        << ") #" << endl;
 #endif
       instance[0] = (long)file;
     }
-  }
-    break;
-    
+                             }
+                             break;
+
   case FILE_CLOSE: {
     long* instance = (long*)PopInt();
+    if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
-
 #ifdef _DEBUG
     cout << "# file close: addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
-    if(file) {
       instance[0] = 0;
       fclose(file);
     }
-  }
-    break;
+                   }
+                   break;
 
   case FILE_FLUSH: {
     long* instance = (long*)PopInt();
+    if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
 
 #ifdef _DEBUG
     cout << "# file close: addr=" << file << "(" << (long)file << ") #" << endl;
 #endif
-    if(file) {
       instance[0] = 0;
       fflush(file);
     }
-  }
-    break;
-    
+                   }
+                   break;
+
   case FILE_IN_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();
-    if(array) {
+    if(array && instance) {
       char* buffer = (char*)(array + 3);
       const long num = array[0] - 1;
       FILE* file = (FILE*)instance[0];
 
       if(file && fgets(buffer, num, file)) {
-	long end_index = strlen(buffer) - 1;
-	if(end_index >= 0) {
-	  if(buffer[end_index] == '\n') {
-	    buffer[end_index] = '\0';
-	  }
-	}
-	else {
-	  buffer[0] = '\0';
-	}
+        long end_index = strlen(buffer) - 1;
+        if(end_index >= 0) {
+          if(buffer[end_index] == '\n') {
+            buffer[end_index] = '\0';
+          }
+        }
+        else {
+          buffer[0] = '\0';
+        }
       }
     }
-  }
-    break;
+                       }
+                       break;
 
   case FILE_OUT_STRING: {
     long* array = (long*)PopInt();
     long* instance = (long*)PopInt();    
-    if(array) {
+    if(array && instance) {
       FILE* file = (FILE*)instance[0];
       const char* data = (char*)(array + 3);      
       if(file) {
-	fputs(data, file);
+        fputs(data, file);
       }
     }
-  }
-    break;
+                        }
+                        break;
 
   case FILE_REWIND: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       rewind(file);
     }
-  }
-    break;
+                    }
+                    break;
 
-    // --- TRAP_RTRN --- //
+                    // --- TRAP_RTRN --- //
 
-    // ---------------- socket i/o ----------------
+                    // ---------------- socket i/o ----------------
   case SOCK_TCP_IS_CONNECTED: {
     long* instance = (long*)PopInt();
+    if(instance && (SOCKET)instance[0] >= 0) {
     SOCKET sock = (SOCKET)instance[0];
-    
-    if(sock >= 0) {
       PushInt(1);
     } 
     else {
       PushInt(0);
     }
-  }
-    break;
+                              }
+                              break;
 
   case SOCK_TCP_IN_BYTE: {
     long* instance = (long*)PopInt();
+    if(instance) {
     SOCKET sock = (SOCKET)instance[0];
     int status;
     PushInt(IPSocket::ReadByte(sock, status));
-  }
-    break;
+    }
+    else {
+      PushInt(0);
+    }
+                         }
+                         break;
 
   case SOCK_TCP_IN_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
     long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
     
-    if(array && sock >= 0 && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+      SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock));
     }
     else {
       PushInt(-1);
     }
-  }
-    break;
+                             }
+                             break;
 
   case SOCK_TCP_OUT_BYTE: {
     long value = PopInt();
     long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-    
-    IPSocket::WriteByte(value, sock);
-    PushInt(1);
-  }
-    break;
+    if(instance) {
+      SOCKET sock = (SOCKET)instance[0];
+      IPSocket::WriteByte(value, sock);
+      PushInt(1);
+    }
+    else {
+      PushInt(0);
+    }
+                          }
+                          break;
 
   case SOCK_TCP_OUT_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
     long* instance = (long*)PopInt();
-    SOCKET sock = (SOCKET)instance[0];
-
-    if(array && sock >= 0 && offset + num < array[0]) {
+    
+    if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+      SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock));
     } 
     else {
       PushInt(-1);
     }
-  } 
-    break;
+                              } 
+                              break;
 
-    // -------------- file i/o -----------------
+                              // -------------- file i/o -----------------
   case FILE_IN_BYTE: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    if((FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       if(fgetc(file) == EOF) {
         PushInt(0);
       } 
@@ -2810,33 +2834,32 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
-
+                     }
+                     break;
 
   case FILE_IN_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
     
-    if(array && file && offset >= 0 && offset + num < array[0]) {
+    if(array && instance && (FILE*)instance[0] && offset >= 0 && offset + num < array[0]) {
+      FILE* file = (FILE*)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(fread(buffer + offset, 1, num, file));        
     } 
     else {
       PushInt(-1);
     }
-  }
-    break;
+                         }
+                         break;
 
   case FILE_OUT_BYTE: {
     long value = PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       if(fputc(value, file) != value) {
         PushInt(0);
       } 
@@ -2848,32 +2871,32 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                      }
+                      break;
 
   case FILE_OUT_BYTE_ARY: {
     long* array = (long*)PopInt();
     const long num = PopInt();
     const long offset = PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(array && file && offset >=0 && offset + num < array[0]) {
+    
+    if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
+      FILE* file = (FILE*)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(fwrite(buffer + offset, 1, num, file));
     } 
     else {
       PushInt(-1);
     }
-  }
-    break;
+                          }
+                          break;
 
   case FILE_SEEK: {
     long pos = PopInt();
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       if(fseek(file, pos, SEEK_CUR) != 0) {
         PushInt(0);
       } 
@@ -2884,34 +2907,32 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                  }
+                  break;
 
   case FILE_EOF: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       PushInt(feof(file) != 0);
     } 
     else {
       PushInt(1);
     }
-  }
-    break;
+                 }
+                 break;
 
   case FILE_IS_OPEN: {
     long* instance = (long*)PopInt();
-    FILE* file = (FILE*)instance[0];
-
-    if(file) {
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
       PushInt(1);
     } 
     else {
       PushInt(0);
     }
-  }
-    break;
+                     }
+                     break;
 
   case FILE_EXISTS: {
     long* array = (long*)PopInt();
@@ -2923,8 +2944,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                    }
+                    break;
 
   case FILE_SIZE: {
     long* array = (long*)PopInt();
@@ -2936,27 +2957,27 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(-1);
     }
-  }
-    break;
+                  }
+                  break;
 
   case FILE_DELETE: {
     long* array = (long*)PopInt();
     if(array) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
-      
+
       if(remove(name) != 0) {
-	PushInt(0);
+        PushInt(0);
       } 
       else {
-	PushInt(1);
+        PushInt(1);
       }
     }
     else {
       PushInt(0);
     }
-  }
-    break;
+                    }
+                    break;
 
   case FILE_RENAME: {
     long* to = (long*)PopInt();
@@ -2969,7 +2990,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
     to = (long*)to[0];
     const char* to_name = (char*)(to + 3);
-    
+
     from = (long*)from[0];
     const char* from_name = (char*)(from + 3);
 
@@ -2978,10 +2999,10 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     } else {
       PushInt(1);
     }
-  }
-    break;
+                    }
+                    break;
 
-    //----------- directory functions -----------
+                    //----------- directory functions -----------
   case DIR_CREATE: {
     long* array = (long*)PopInt();
     if(array) {
@@ -2992,8 +3013,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                   }
+                   break;
 
   case DIR_EXISTS: {
     long* array = (long*)PopInt();
@@ -3005,8 +3026,8 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                   }
+                   break;
 
   case DIR_LIST: {
     long* array = (long*)PopInt();
@@ -3020,9 +3041,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
       const long str_obj_array_size = files.size();
       const long str_obj_array_dim = 1;
       long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
-								str_obj_array_dim + 2,
-								INT_TYPE, op_stack,
-								*stack_pos, false);
+        str_obj_array_dim + 2,
+        INT_TYPE, op_stack,
+        *stack_pos, false);
       str_obj_array[0] = str_obj_array_size;
       str_obj_array[1] = str_obj_array_dim;
       str_obj_array[2] = str_obj_array_size;
@@ -3030,7 +3051,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
 
       // create and assign 'System.String' instances to array
       for(size_t i = 0; i < files.size(); i++) {
-	str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
+        str_obj_array_ptr[i] = (long)CreateStringObject(files[i]);
       }
 
       PushInt((long)str_obj_array);
@@ -3038,14 +3059,14 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     else {
       PushInt(0);
     }
-  }
-    break;
+                 }
+                 break;
   }
 }
 
 /********************************
- * Serializes an object graph
- ********************************/
+* Serializes an object graph
+********************************/
 void StackInterpreter::SerializeObject() {
   long* obj = (long*)frame->GetMemory()[1];
   ObjectSerializer serializer(obj);
@@ -3054,11 +3075,11 @@ void StackInterpreter::SerializeObject() {
   long* inst = (long*)frame->GetMemory()[0];
   long* dest_buffer = (long*)inst[0];
   long dest_pos = inst[1];
-  
+
   // expand buffer, if needed
   dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
   inst[0] = (long)dest_buffer;
-  
+
   // copy content
   char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
   for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
@@ -3068,8 +3089,8 @@ void StackInterpreter::SerializeObject() {
 }
 
 /********************************
- * Deserializes an object graph
- ********************************/
+* Deserializes an object graph
+********************************/
 void StackInterpreter::DeserializeObject() {
   if(!DeserializeByte()) {
     PushInt(0);    
@@ -3080,7 +3101,7 @@ void StackInterpreter::DeserializeObject() {
     const long dest_pos = inst[1];
     const long byte_array_dim_size = byte_array[2];  
     const BYTE_VALUE* byte_array_ptr = ((BYTE_VALUE*)(byte_array + 3) + dest_pos);
-    
+
     ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
     PushInt((long)deserializer.DeserializeObject());
     inst[1] = dest_pos + deserializer.GetOffset();

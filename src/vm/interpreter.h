@@ -52,7 +52,7 @@ namespace Runtime {
   class Debugger;
 #endif
 
-#define STACK_SIZE 256
+#define STACK_SIZE 4096
   
   enum TimeInterval {
     DAY_TIME,
