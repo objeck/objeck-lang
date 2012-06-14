@@ -1640,6 +1640,18 @@ bool ContextAnalyzer::Analyze()
     
     // found program method
     if(method) {
+      // look for implicit casts
+      vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
+      ExpressionList* call_params = method_call->GetCallingParameters();
+      vector<Expression*> expressions = call_params->GetExpressions();
+#ifdef _DEBUG
+      assert(mthd_params.size() == expressions.size());
+#endif
+      for(size_t i = 0; i < expressions.size(); i++) {
+	AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expressions[i]->GetEvalType(), 
+			 expressions[i], IsScalar(expressions[i]), depth + 1);	
+      }
+      
       // public/private check
       if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
 	 (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
