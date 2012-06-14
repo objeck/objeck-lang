@@ -2716,6 +2716,53 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 
   // array variable
   if(indices) {
+    // operation assignment
+    EntryType eval_type = variable->GetEvalType()->GetType();      
+    switch(assignment->GetStatementType()) {
+    case ADD_ASSIGN_STMT:
+      EmitOperatorVariable(variable, mem_context);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
+      }
+      break;
+      
+    case SUB_ASSIGN_STMT:
+      EmitOperatorVariable(variable, mem_context);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
+      }
+      break;
+      
+    case MUL_ASSIGN_STMT:
+      EmitOperatorVariable(variable, mem_context);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
+      }      
+      break;
+      
+    case DIV_ASSIGN_STMT:
+      EmitOperatorVariable(variable, mem_context);
+      if(eval_type == frontend::FLOAT_TYPE) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
+      } 
+      else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
+      }
+      break;
+
+    default:
+      break;
+    }
+    
     int dimension = (int)indices->GetExpressions().size();
     EmitIndices(indices);
 

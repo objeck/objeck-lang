@@ -689,15 +689,8 @@ bool ContextAnalyzer::Analyze()
     case ADD_ASSIGN_STMT:
     case SUB_ASSIGN_STMT:
     case MUL_ASSIGN_STMT:
-    case DIV_ASSIGN_STMT: {
-      Assignment* assignment = static_cast<Assignment*>(statement);
-      if(assignment->GetVariable() && assignment->GetVariable()->GetIndices()) {
-	ProcessError(statement, "Invalid unary assignment operation.");
-      }
-      else {
-	AnalyzeAssignment(static_cast<Assignment*>(statement), depth);
-      }
-    }
+    case DIV_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), depth);      
       break;
 
     case ASSIGN_STMT:

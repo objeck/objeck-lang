@@ -359,21 +359,59 @@ class IntermediateEmitter {
   }
   
   void EmitOperatorVariable(Variable* variable, MemoryContext mem_context) {
-    switch(variable->GetBaseType()->GetType()) {
-    case frontend::BOOLEAN_TYPE:
-    case frontend::BYTE_TYPE:
-    case frontend::CHAR_TYPE:
-    case frontend::INT_TYPE:
-    case frontend::CLASS_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-      break;
-      
-    case frontend::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, variable->GetId(), mem_context));
-      break;
+    // indices
+    ExpressionList* indices = variable->GetIndices();
+    
+    // array variable
+    if(indices) {
+      int dimension = (int)indices->GetExpressions().size();
+      EmitIndices(indices);
 
-    default:
-      break;
+      // load instance or class memory
+      if(mem_context == INST) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      } else if(mem_context == CLS) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }
+
+      switch(variable->GetBaseType()->GetType()) {
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
+	break;
+
+      case frontend::INT_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_ARY_ELM, dimension, mem_context));
+	break;
+	
+      case frontend::FLOAT_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_ARY_ELM, dimension, mem_context));
+	break;
+	
+      default:
+	break;
+      }
+    }
+    else {
+      switch(variable->GetBaseType()->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::CLASS_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+	break;
+      
+      case frontend::FLOAT_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, variable->GetId(), mem_context));
+	break;
+
+      default:
+	break;
+      }
     }
   }
   

@@ -1,18 +1,21 @@
 bundle Default {
 	class Hello {
+#		ii : static : Int[];
+
 		function : Main(args : String[]) ~ Nil {
-			Run(20, 10, 4);
-		}
-	
-#		function : Run(maxDepth : Int, depth : Int, minDepth : Int) ~ Nil {
-		function : native : Run(maxDepth : Int, depth : Int, minDepth : Int) ~ Nil {
-			result := 1 << (maxDepth - depth + minDepth);
-#			result := 100 - (maxDepth - depth + minDepth);
+			ii := Int->New[8];
+			ii[5] := 13;
+
+			v := 13;
+			a += v *ii[5];
+			a->PrintLine();
 #~
-			a :=  14;
-			result := 1 << 14;
+			ii := Int->New[8];
+			ii[5] := 13;
+#			ii[5] := ii[5] + 8;
+			ii[5] += 8;
+			ii[5]->PrintLine();
 ~#
-			result->PrintLine();
 		}
 	}
 }

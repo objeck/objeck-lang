@@ -9,6 +9,7 @@
 * fixed function return class cast bug
 * GC threading code on all platforms
 * GC bug stability bug on Windows
+* operator assignment statment with lval type of array element
 
 10/8/11
 * fixed bug related to escaped string literals
