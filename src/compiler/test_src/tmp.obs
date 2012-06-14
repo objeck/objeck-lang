@@ -1,13 +1,14 @@
+use IO;
+
 bundle Default {
-	class Hello {
+	class Test {
 		function : Foo(i : Float, j : Float) ~ Float {
 			return i * j;
-    }
+		}
 
 		function : Main(args : String[]) ~ Nil {
-			x := 13;
-			y := 7;
-			Foo(x,y)->PrintLine();
+			writer : FileWriter;
+			writer->WriteByte(13);
 		}
 	}
 }
