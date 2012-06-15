@@ -1593,7 +1593,7 @@ namespace Runtime {
 
 	  if(instance) {
 	    SOCKET sock = (SOCKET)instance[0];
-	    IPSocket::WriteByte(value, sock);
+	    IPSocket::WriteByte((char)value, sock);
 	    PushInt(op_stack, stack_pos, 1);
 	  }
 	  else {
