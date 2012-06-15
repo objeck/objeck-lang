@@ -39,7 +39,7 @@ int Execute(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // loader; when this goes out of scope program memory is released
-    srand(time(NULL)); rand(); // calling rand() once improves random number generation
+    srand((unsigned int)time(NULL)); rand(); // calling rand() once improves random number generation
     Loader loader(argc, argv);
     loader.Load();
 

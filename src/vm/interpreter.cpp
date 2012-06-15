@@ -1925,14 +1925,13 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   }
 
   long* str_obj = (long*)instance[0];
-  if(str_obj && (long*)str_obj[0]) {
+  if(!str_obj && !(long*)str_obj[0]) {
     cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
     exit(1);
   }
+
   long* array = (long*)str_obj[0];
-
   const char* str = (char*)(array + 3);
-
   string dll_string(str);
   if(dll_string.size() == 0) {
     cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
@@ -2790,7 +2789,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* instance = (long*)PopInt();
     if(instance) {
       SOCKET sock = (SOCKET)instance[0];
-      IPSocket::WriteByte(value, sock);
+      IPSocket::WriteByte((char)value, sock);
       PushInt(1);
     }
     else {
