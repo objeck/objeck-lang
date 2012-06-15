@@ -1247,12 +1247,11 @@ namespace Runtime {
     
 	case SOCK_TCP_CLOSE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-
+	  if(instance && (SOCKET)instance[0] >= 0) {
+	    SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
 	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
-	  if(instance && (SOCKET)instance[0] >= 0) {
-	    SOCKET sock = (SOCKET)instance[0];
 	    instance[0] = (long)NULL;
 	    IPSocket::Close(sock);
 	  }
@@ -1548,7 +1547,6 @@ namespace Runtime {
 	case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  if(instance && (SOCKET)instance[0] >= 0) {
-	    SOCKET sock = (SOCKET)instance[0];
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
@@ -1726,7 +1724,6 @@ namespace Runtime {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 
 	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
