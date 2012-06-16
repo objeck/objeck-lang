@@ -3,7 +3,7 @@ Objeck v3.1.1_0
 --------------
 Release Notes
 --------------
-This release provides support for server sockets and enhancements to the Date class.  In addition, minor bugs were addressed in the compiler and virtual machine.
+This release provides support for dynamic class loading.  A number of bugs were found and resolved as part of the Fast CGI integration effort.  Stress testing and bug fixing has also occurred as program have been implemented for the "The Computer Language Benchmarks Game" challenge.  Benchmarks look good given that Objeck is an interpreted language (with a JIT support).  For the majority of the tests runtime performance is significantly faster than languages like Ruby, Perl and Python.
 
 Highlights of this specific release include the following:
 * Support for dynamic class loading (new)
