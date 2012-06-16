@@ -9,6 +9,13 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			writer : FileWriter;
 			writer->WriteByte(13);
+			if(false) {
+				i := 10;
+			};
+
+			if(i = 10) {
+				i += 10;
+			};
 		}
 	}
 }
