@@ -1654,8 +1654,6 @@ bool ContextAnalyzer::Analyze()
       Expression* expression;
       for(size_t i = 0; i < expressions.size(); i++) {
 	expression = expressions[i];
-	// check expression
-	AnalyzeExpression(expressions[i], depth + 1);
 	// find eval type
 	while(expression->GetMethodCall()) {
 	  AnalyzeExpressionMethodCall(expression, depth + 1);
