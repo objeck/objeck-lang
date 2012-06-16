@@ -1,19 +1,5 @@
-##############
-# For OSX only
-##############
-ARGS=-pthread -mstackrealign -O3 -D_DEBUGGER
-# ARGS=-pthread -D_TIMING -mstackrealign -O3
-# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused -D_DEBUGGER
-
-##############
-# For Linux
-##############
-# ARGS=-g -Wunused -pthread
-# ARGS=-O3 -D_JIT_SERIAL -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wunused -pthread
-# ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-O3 -pthread
-# ARGS=-pthread -g -D_DEBUG -D_DEBUGGER -Wunused
+ARGS=-g -D_DEBUG -D_DEBUGGER -pthread -Wall
+# ARGS=-O3 -D_DEBUG -D_DEBUGGER -pthread -Wall
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
