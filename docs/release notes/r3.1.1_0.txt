@@ -3,16 +3,16 @@ Objeck v3.1.1_0
 --------------
 Release Notes
 --------------
-This release provides support for dynamic class loading.  A number of bugs were found and resolved as part of the Fast CGI integration effort.  Stress testing and bug fixing has also occurred as program have been implemented for the "The Computer Language Benchmarks Game" challenge.  Benchmarks look good given that Objeck is an interpreted language (with a JIT support).  For the majority of the tests runtime performance is significantly faster than languages like Ruby, Perl and Python.
+This release provides support for dynamic class loading.  A number of bugs were found and resolved as part of the Fast CGI integration effort.  Stress testing, performance tuning and bug fixing has also been done as part the "The Computer Language Benchmarks Game" challenge.  Initial benchmarks look favorable given that Objeck is an interpreted language.  Runtime performance, for the majority of the tests, is significantly faster than popular languages like as Ruby, Perl and Python.
 
 Highlights of this specific release include the following:
 * Support for dynamic class loading (new)
 * In some cases, the compiler wasn't linking unused class libraries references (high - fixed)
 * Memory allocated using the C/C++ APIs might collected before valid references were stored (hight - fixed)
 * Int to String API now handles negative numbers (high - fixed)
-* Strength reduction optimization bug was resoloved (high - fixed)
+* Strength reduction optimization bug was resolved (high - fixed)
 * Implicit casting for basic types was passed as parameters was fixed (high - fixed)
-* Improved error handling for Objeck APIs that levergae native function calls (high - fixed)
+* Improved error handling for Objeck APIs that leverage native function calls (high - fixed)
 * Compiler bug related to operator assignment statements with lvalues that were array elements was resolved (high - fixed)
 * Garbage collection stability bug was resolved Windows (high - fixed)
 * A class cast bug was resolved (med - fixed)
