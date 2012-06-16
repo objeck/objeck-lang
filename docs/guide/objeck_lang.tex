@@ -191,13 +191,13 @@ one of the source programs.  \textit{If a class is derived from a
   class declared in a shared library then that class cannot access
   it's parents variables, unless an accessor method is provided.}
 Local variables can be declared without specifying their data type,
-such variables are bound to the right-hand side of their first
-assignment. Three different declaration styles are shown below:
+such variables are bound to the type defined by their first right-hand
+side assignment. Three different declaration styles are shown below:
 
 \begin{verbatim}
 a : Int;
 b : Int := 13;
-c := 7;
+c := 7; # implicit deceleration 
 \end{verbatim}
 
 Types that are not initialized at declaration time are initialized
@@ -235,8 +235,8 @@ bundle Default {
   class Test {
     function : Main() ~ Nil {
       42->PrintLine();
-      eight := 8;
-      (eight * 7)->PrintLine();
+      eiht := 8;
+      (eiht * 7)->PrintLine();
     }
   }
 }
@@ -342,7 +342,7 @@ class MakeWidgets {
 
 \subsubsection{Conditional Expressions}
 There's also support for ternary conditional expressions.  For example
-the following statement prints the value \texttt{false}. 
+the following statement prints the value \texttt{false} after two logical comparisons. 
 
 \begin{verbatim}
 a := 7;
@@ -401,6 +401,10 @@ select(v) {
 
    label 27: {
       (3 * 9)->PrintLine();
+   }
+  
+   other: {
+     "some rather another"->PrintLine();
    }
 };
 \end{verbatim}
@@ -522,7 +526,8 @@ also supports virtual classes, which assures that derived classes have
 been defined for all required operations declared in the base class.
 Virtual classes also allow the programmer to define non-virtual
 methods that contain program behavior.  Virtual classes are
-dynamically bound to implementation classes at runtime.
+dynamically 
+ to implementation classes at runtime.
 \begin{verbatim}
 class Foo {
   @lhs : Int;
@@ -701,8 +706,8 @@ method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
 
 \section{Native Shared Library Support}
 The Objeck Language has the ability to interact with native C/C++
-shared libraries (shared libraries/DLLs) via runtime 
-extensions.  The APIs allow a programmer to load a shared libraries and invoke native C
+shared libraries via runtime 
+extensions.  The APIs allows a programmer to load a shared libraries and invoke native C
 functions.  Data is passed between the two layers via
 \texttt{Object[]}.  Basic objects such as \texttt{Int} and
 \texttt{Float} types must be wrapped in \texttt{IntHolder} and
@@ -720,7 +725,7 @@ A native function signature looks likes like the following:
 The \texttt{VMContext} structure contains pointers to the calculation
 stack as well as utility functions that allow programmers to 
 allocate VM objects and arrays.  In addition, this structure provides the
-ability to invoke VM functions and methods..  
+ability to invoke Objeck functions and methods..  
 
 \begin{verbatim}
 struct VMContext {
