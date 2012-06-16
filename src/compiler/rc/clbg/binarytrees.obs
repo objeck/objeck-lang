@@ -1,3 +1,10 @@
+#~ The Computer Language Shootout Benchmarks
+   http://shootout.alioth.debian.org/
+
+   contributed by Kevin Carson
+   translated by Randy Hollines
+~#
+
 bundle Default {
 	class BinaryTrees {
 		function : Main(args : String[]) ~ Nil {
