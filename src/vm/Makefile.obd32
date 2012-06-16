@@ -1,5 +1,5 @@
-ARGS=-g -D_DEBUG -D_DEBUGGER -pthread -Wall
-# ARGS=-O3 -D_DEBUG -D_DEBUGGER -pthread -Wall
+# ARGS=-g -D_DEBUG -D_DEBUGGER -pthread -Wall
+ARGS=-O3 -D_DEBUG -D_DEBUGGER -pthread -Wall
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
