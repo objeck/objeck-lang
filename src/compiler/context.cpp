@@ -1663,7 +1663,7 @@ bool ContextAnalyzer::Analyze()
 	}
 	// check cast
 	AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
-			 expressions[i], IsScalar(expressions[i]), depth + 1);	
+			 expression, IsScalar(expression), depth + 1);	
       }
       
       // public/private check
