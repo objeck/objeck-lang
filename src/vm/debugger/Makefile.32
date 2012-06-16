@@ -1,20 +1,5 @@
-##############
-# For OSX only
-##############
-# ARGS=-pthread -mstackrealign -O3
-# ARGS=-pthread -D_TIMING -mstackrealign -O3
-# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
-# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
-ARGS=-O3 -D_DEBUGGER -Wunused -pthread
-
-##############
-# For Linux
-##############
-# ARGS=-g -Wunused -pthread
-# ARGS=-g -D_DEBUG -D_DEBUGGER -Wunused -pthread
-# ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
-# ARGS=-O3 -pthread
+ARGS=-g -D_DEBUGGER -Wall -pthread
+# ARGS=-O3 -D_DEBUGGER -Wall -pthread
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
@@ -25,7 +10,7 @@ JIT_PATH=../jit/ia32
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread 
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
