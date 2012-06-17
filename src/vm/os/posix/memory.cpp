@@ -34,7 +34,7 @@
 
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
-set<ClassMethodId*> MemoryManager::jit_roots;
+map<long*, ClassMethodId*> MemoryManager::jit_roots;
 set<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 set<long*> MemoryManager::allocated_int_obj_array;
@@ -188,7 +188,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  jit_roots.insert(mthd_info);
+  jit_roots.insert(pair<long*, ClassMethodId*>(mem, mthd_info));
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
@@ -196,41 +196,30 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
-  // find
-  ClassMethodId* found = NULL;
+  ClassMethodId* id;
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
-#endif
-  set<ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); jit_iter++) {
-    ClassMethodId* id = (*jit_iter);
-    if(id->mem == mem) {
-      found = id;
-    }
-  }
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
-#endif
-
-#ifdef _DEBUG
-  cout << "removing JIT method: mem=" << found->mem << ", self=" 
-       << found->self << "(" << (long)found->self << ")" << endl;
-#endif
-
-#ifdef _DEBUG
-  assert(found);
 #endif
   
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
+  map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
+  if(found == jit_roots.end()) {
+    cerr << "Unable to find JIT root!" << endl;
+    exit(-1);
+  }
+  id = found->second;
+  
+#ifdef _DEBUG  
+  cout << "removing JIT method: mem=" << id->mem << ", self=" 
+       << id->self << "(" << (long)id->self << ")" << endl;
 #endif
   jit_roots.erase(found);
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
   
-  delete found;
-  found = NULL;
+  delete id;;
+  id = NULL;
 }
 
 long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, 
@@ -434,6 +423,10 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
 
 void* MemoryManager::CollectMemory(void* arg)
 {
+#ifdef _TIMING
+  clock_t start = clock();
+#endif
+  
   CollectionInfo* info = (CollectionInfo*)arg;
   
 #ifdef _DEBUG
@@ -503,6 +496,15 @@ void* MemoryManager::CollectMemory(void* arg)
   CheckPdaRoots(NULL);
   CheckJitRoots(NULL);
 #endif
+
+#ifdef _TIMING
+  clock_t end = clock();
+  cout << dec << endl << "=========================================" << endl;
+  cout << "Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
+       << " second(s)." << endl;
+  cout << "=========================================" << endl;
+  start = clock();
+#endif
   
   // sweep memory
 #ifdef _DEBUG
@@ -560,7 +562,7 @@ void* MemoryManager::CollectMemory(void* arg)
       
 #ifdef _DEBUG
       cout << "# releasing memory: addr=" << iter->first << "(" << (long)iter->first
-           << "), size=" << mem_size << " byte(s) #" << endl;
+           << "), size=" << dec << mem_size << " byte(s) #" << endl;
 #endif
       
       // account for deallocated memory
@@ -615,7 +617,15 @@ void* MemoryManager::CollectMemory(void* arg)
        << "%" << endl;
   cout << "===============================================================" << endl;
 #endif
-  
+
+#ifdef _TIMING
+  end = clock();
+  cout << dec << endl << "=========================================" << endl;
+  cout << "Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
+       << " second(s)." << endl;
+  cout << "=========================================" << endl;
+#endif
+
 #ifndef _GC_SERIAL
   pthread_exit(NULL);
 #endif
@@ -668,9 +678,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
   cout << "memory types: " << endl;
 #endif
   
-  set<ClassMethodId*>::iterator jit_iter;
+  map<long*, ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
-    ClassMethodId* id = (*jit_iter);
+    ClassMethodId* id = jit_iter->second;
     long* mem = id->mem;
     StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
     const long dclrs_num = mthd->GetNumberDeclarations();
