@@ -34,7 +34,7 @@
 
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
-set<ClassMethodId*> MemoryManager::jit_roots;
+map<long*, ClassMethodId*> MemoryManager::jit_roots;
 set<StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 set<long*> MemoryManager::allocated_int_obj_array;
@@ -193,7 +193,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #ifndef _SERIAL
   EnterCriticalSection(&jit_cs);
 #endif
-  jit_roots.insert(mthd_info);
+  jit_roots.insert(pair<long*, ClassMethodId*>(mem, mthd_info));
 #ifndef _SERIAL
   LeaveCriticalSection(&jit_cs);
 #endif
@@ -201,42 +201,30 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
-  // find
-  ClassMethodId* found = NULL;
-#ifndef _SERIAL
+  ClassMethodId* id;
+#ifndef _GC_SERIAL
   EnterCriticalSection(&jit_cs);
 #endif
-  set<ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); !found && jit_iter != jit_roots.end(); ++jit_iter) {
-    ClassMethodId* id = (*jit_iter);
-    if(id->mem == mem) {
-      found = id;
-    }
+  
+  map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
+  if(found == jit_roots.end()) {
+    cerr << "Unable to find JIT root!" << endl;
+    exit(-1);
   }
-#ifndef _SERIAL
-  LeaveCriticalSection(&jit_cs);
-#endif
-
-#ifdef _DEBUG
-  assert(found);
-  cout << "removing JIT method: mem=" << found->mem << ", self=" 
-    << found->self << "(" << (long)found->self << ")" << endl;
-#endif
-
-#ifdef _DEBUG
-  assert(found);
-#endif
-
-#ifndef _SERIAL
-  EnterCriticalSection(&jit_cs);
+  id = found->second;
+  
+#ifdef _DEBUG  
+  cout << "removing JIT method: mem=" << id->mem << ", self=" 
+       << id->self << "(" << (long)id->self << ")" << endl;
 #endif
   jit_roots.erase(found);
-#ifndef _SERIAL
+  
+#ifndef _GC_SERIAL
   LeaveCriticalSection(&jit_cs);
 #endif
-
-  delete found;
-  found = NULL;
+  
+  delete id;;
+  id = NULL;
 }
 
 long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos, bool collect)
@@ -630,9 +618,9 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
   cout << "memory types: " << endl;
 #endif
 
-  set<ClassMethodId*>::iterator jit_iter;
+  map<long*, ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
-    ClassMethodId* id = (*jit_iter);
+    ClassMethodId* id = jit_iter->second;
     long* mem = id->mem;
     StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
     const long dclrs_num = mthd->GetNumberDeclarations();
