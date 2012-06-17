@@ -110,7 +110,7 @@ IO.Console->PrintLine("### Path=")->Print(lib_path)->PrintLine( " ###");
 					}
 
 					label ':': {
-						buffer->Append("%3B");
+						buffer->Append("%3A");
 					}
 
 					label '/': {
