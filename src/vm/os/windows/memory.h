@@ -56,7 +56,7 @@ class MemoryManager {
   static MemoryManager* instance;
   static StackProgram* prgm;
   
-  static set<ClassMethodId*> jit_roots;
+  static map<long*, ClassMethodId*> jit_roots;
   static set<StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> static_memory;
   static map<long*, long> allocated_memory;
@@ -117,9 +117,9 @@ public:
   static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
   
   static void Clear() {
-    set<ClassMethodId*>::iterator id_iter;
+    map<long*, ClassMethodId*>::iterator id_iter;
     for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); id_iter++) {
-      ClassMethodId* tmp = *id_iter;
+      ClassMethodId* tmp = id_iter->second;
       // delete
       delete tmp;
       tmp = NULL;
