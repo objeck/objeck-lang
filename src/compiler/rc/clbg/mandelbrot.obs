@@ -1,0 +1,144 @@
+use Concurrency;
+
+bundle Default {
+	class MyThread from Thread {
+#~
+		inc_mutex : static : ThreadMutex;
+    n : static : Int;
+    data : static : Byte[,];
+    lineCount : static : Int;
+    xa : static : Float[];
+~#
+
+		function : Init(n : Int) ~ Nil {
+#~
+      inc_mutex := ThreadMutex->New("inc");
+
+      lineCount := -1;
+
+      lineLen := (n-1)/8 + 1;
+      data := Byte->New[n,lineLen];
+
+      xa := Float->New[n];
+      for(x := 0; x < n; x+=1;) {
+        xa[x] := x * 2.0/n - 1.5;
+      };
+~#
+    }
+
+    New(name : String) {
+      Parent(name);
+    }
+
+    method : public : Run(param : Base) ~ Nil {
+			i += 1;
+			i->PrintLine();
+    }
+
+    function : native : DoStuff() ~ Nil {
+    }
+  }
+
+	class MandelBrot {
+		function : Main(args : String[]) ~ Nil {
+			n := 200;
+			if (args->Size() > 0) {
+        n := args[0]->ToInt();
+      };
+
+#			MyThread->Init(n);
+
+			threads := Thread->New[10];
+      each(i : threads) {
+#        threads[i] := CaculateThread->New(i->ToString());
+        threads[i] := MyThread->New(i->ToString());
+      };
+
+      each(i : threads) {
+        threads[i]->Execute(Nil);
+      };
+
+      each(i : threads) {
+        threads[i]->Join();
+      };
+"Fin."->PrintLine();
+		}
+	}
+
+	class CaculateThread from Thread {
+		inc_mutex : static : ThreadMutex;
+    n : static : Int;
+    data : static : Byte[,];
+    lineCount : static : Int;
+    xa : static : Float[];
+
+		New(id : String) {
+			Parent(id);
+		}
+
+		function : Init(n : Int) ~ Nil {
+			inc_mutex := ThreadMutex->New("inc");
+	
+			lineCount := -1;
+
+			lineLen := (n-1)/8 + 1;
+			data := Byte->New[n,lineLen];
+
+			xa := Float->New[n];
+			for(x := 0; x < n; x+=1;) {
+				xa[x] := x * 2.0/n - 1.5;		
+			};
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+"xxxx"->PrintLine();
+#      Caculate();
+    }
+
+		method : native : Caculate() ~ Nil {
+			y : Int;
+			critical(inc_mutex) {
+				y := lineCount;
+        lineCount+=1;
+			};
+			
+			while(y < n) {
+#				line = data[y];
+				xbyte := 0; bits := 1;
+				ci := y * 2.0/n - 1.0;
+
+				for(x := 0; x < n; x+=1;) {
+					cr := xa[x];
+					if(bits > 0xfff) {
+						data[xbyte,y]:=bits; 
+						xbyte+=1;
+						bits:=1; 
+					};
+
+					zr := cr; zi := ci; tr := cr * cr; ti := ci * ci;  
+
+					done := false;
+					i := 50;
+					do {
+						zi := zr * zi + zr * zi + ci; 
+						zr := tr - ti + cr;
+						tr := zr * zr; 
+						ti := zi * zi;
+		
+						if(tr + ti <= 4.0) {
+							i -= 1;
+							if(i > 0) {
+								done := true;
+							};
+						};
+					} 
+					while(done = false);
+
+					bits := bits << 1;
+					if(i = 0) { bits+=1; };
+
+				};
+			};	
+		}
+	}
+}
