@@ -1,144 +1,64 @@
 use Concurrency;
 
 bundle Default {
-	class MyThread from Thread {
-#~
-		inc_mutex : static : ThreadMutex;
-    n : static : Int;
-    data : static : Byte[,];
-    lineCount : static : Int;
-    xa : static : Float[];
-~#
-
-		function : Init(n : Int) ~ Nil {
-#~
-      inc_mutex := ThreadMutex->New("inc");
-
-      lineCount := -1;
-
-      lineLen := (n-1)/8 + 1;
-      data := Byte->New[n,lineLen];
-
-      xa := Float->New[n];
-      for(x := 0; x < n; x+=1;) {
-        xa[x] := x * 2.0/n - 1.5;
-      };
-~#
-    }
-
-    New(name : String) {
-      Parent(name);
-    }
-
-    method : public : Run(param : Base) ~ Nil {
-			i += 1;
-			i->PrintLine();
-    }
-
-    function : native : DoStuff() ~ Nil {
-    }
-  }
 
 	class MandelBrot {
 		function : Main(args : String[]) ~ Nil {
 			n := 200;
-			if (args->Size() > 0) {
-        n := args[0]->ToInt();
-      };
+         if (args->Size() > 0) {
+            n := args[0]->ToInt();
+         };
 
-#			MyThread->Init(n);
+			CaculateThread->Init(n);
 
-			threads := Thread->New[10];
-      each(i : threads) {
-#        threads[i] := CaculateThread->New(i->ToString());
-        threads[i] := MyThread->New(i->ToString());
-      };
-
-      each(i : threads) {
-        threads[i]->Execute(Nil);
-      };
-
-      each(i : threads) {
-        threads[i]->Join();
-      };
+			threads := Thread->New[3];
+			each(i : threads) {
+				threads[i] := CaculateThread->New(i->ToString());
+			};
+			each(i : threads) {
+				threads[i]->Execute(Nil);
+			};
+			each(i : threads) {
+				threads[i]->Join();
+			};
 "Fin."->PrintLine();
 		}
 	}
 
 	class CaculateThread from Thread {
-		inc_mutex : static : ThreadMutex;
-    n : static : Int;
-    data : static : Byte[,];
-    lineCount : static : Int;
-    xa : static : Float[];
+		@size : static : Int;
+		@output_data : static : Byte[,];
+		@bytes_per_line : static : Int[];
+		@inverse_N : static : Float;
+		@current_line : static : Int;
+		@inc_mutex : static : ThreadMutex;
 
 		New(id : String) {
 			Parent(id);
 		}
 
-		function : Init(n : Int) ~ Nil {
-			inc_mutex := ThreadMutex->New("inc");
-	
-			lineCount := -1;
+		function : Init(size : Int) ~ Nil {
+			@size := size;
+			width_bytes := size/8+1;
+			@output_data := Byte->New[size, width_bytes];
+			bytes_per_line := Int->New[size];
+			@inverse_N := 2.0 / size;
+			@current_line := 0;
+			@inc_mutex := ThreadMutex->New("inc_mutex");
 
-			lineLen := (n-1)/8 + 1;
-			data := Byte->New[n,lineLen];
-
-			xa := Float->New[n];
-			for(x := 0; x < n; x+=1;) {
-				xa[x] := x * 2.0/n - 1.5;		
-			};
+#			Compute(size, output_data, bytes_per_line);
 		}
 
 		method : public : Run(param : System.Base) ~ Nil {
-"xxxx"->PrintLine();
-#      Caculate();
-    }
+		}
 
-		method : native : Caculate() ~ Nil {
+		method : public : Compute() ~ Nil {
 			y : Int;
-			critical(inc_mutex) {
-				y := lineCount;
-        lineCount+=1;
+			critical(@inc_mutex) {
+				y := @current_line;
+				@current_line+=1;
 			};
 			
-			while(y < n) {
-#				line = data[y];
-				xbyte := 0; bits := 1;
-				ci := y * 2.0/n - 1.0;
-
-				for(x := 0; x < n; x+=1;) {
-					cr := xa[x];
-					if(bits > 0xfff) {
-						data[xbyte,y]:=bits; 
-						xbyte+=1;
-						bits:=1; 
-					};
-
-					zr := cr; zi := ci; tr := cr * cr; ti := ci * ci;  
-
-					done := false;
-					i := 50;
-					do {
-						zi := zr * zi + zr * zi + ci; 
-						zr := tr - ti + cr;
-						tr := zr * zr; 
-						ti := zi * zi;
-		
-						if(tr + ti <= 4.0) {
-							i -= 1;
-							if(i > 0) {
-								done := true;
-							};
-						};
-					} 
-					while(done = false);
-
-					bits := bits << 1;
-					if(i = 0) { bits+=1; };
-
-				};
-			};	
 		}
 	}
 }
