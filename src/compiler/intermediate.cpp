@@ -1065,7 +1065,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
         
   case ASYNC_MTHD_CALL:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ASYNC_MTHD_CALL, -1, 1L, 1L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ASYNC_MTHD_CALL, -1, 1L, -1L));
     break;
     
   case DLL_LOAD:
