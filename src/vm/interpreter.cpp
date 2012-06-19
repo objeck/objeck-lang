@@ -648,9 +648,10 @@ void StackInterpreter::Execute()
 #ifdef _DEBUG
       assert(impl_class);
 #endif
-
-      StackMethod* called = impl_class->GetMethod(instr->GetOperand2());
+      const string& mthd_name = impl_class->GetName() + ":Run:o.System.Base,";
+      StackMethod* called = impl_class->GetMethod(mthd_name);
 #ifdef _DEBUG
+      assert(called);
       cout << "=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
 	   << called->GetId() << "; name='" << called->GetName() 
 	   << "'; param=" << param << " ===" << endl;
