@@ -2245,7 +2245,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     break;
 
   case STD_OUT_BYTE:
-    cout << (void*)PopInt();
+    cout << (unsigned char)PopInt();
     break;
 
   case STD_OUT_CHAR:

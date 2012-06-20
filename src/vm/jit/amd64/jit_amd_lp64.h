@@ -1325,7 +1325,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	  cout << "  STD_OUT_BYTE" << endl;
 #endif
-	  cout <<  (void*)PopInt(op_stack, stack_pos);
+	  cout <<  (unsigned char)PopInt(op_stack, stack_pos);
 	  break;
 
 	case STD_OUT_CHAR:
