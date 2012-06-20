@@ -28,7 +28,7 @@ bundle Default {
 
 			IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
 
-			threads := Thread->New[1];
+			threads := Thread->New[3];
 			each(i : threads) {
 				threads[i] := CaculateThread->New(i->ToString());
 			};
@@ -38,7 +38,17 @@ bundle Default {
 			each(i : threads) {
 				threads[i]->Join();
 			};
+			
+			# Print(output_data, bytes_per_line, n);
+	
+			for(i := 0; i < n; i+=1;) {
+				for(j := 0; j < bytes_per_line[i]; j+=1;) {
+					output_data[i,j]->Print();
+				};
+			};
+		}
 
+		function : native : Print(output_data : Byte[,], bytes_per_line : Int[], n : Int) ~ Nil {
 			for(i := 0; i < n; i+=1;) {
 				for(j := 0; j < bytes_per_line[i]; j+=1;) {
 					output_data[i,j]->Print();

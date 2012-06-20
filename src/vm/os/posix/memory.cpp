@@ -652,7 +652,7 @@ void* MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
-  cout << "----- Sweeping Stack: stack: pos=" << info->stack_pos 
+  cout << "----- Marking Stack: stack: pos=" << info->stack_pos 
        << "; thread=" << pthread_self() << " -----" << endl;
 #endif
   while(info->stack_pos > -1) {
@@ -673,7 +673,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif  
   
 #ifdef _DEBUG
-  cout << "---- Sweeping JIT method root(s): num=" << jit_roots.size() 
+  cout << "---- Marking JIT method root(s): num=" << jit_roots.size() 
        << "; thread=" << pthread_self() << " ------" << endl;
   cout << "memory types: " << endl;
 #endif
