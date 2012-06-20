@@ -25,6 +25,7 @@ bundle Default {
 				threads[i]->Join();
 			};
 
+			IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
 			for(i := 0; i < n; i+=1;) {
 				for(j := 0; j < width_bytes; j+=1;) {
 					output_data[i,j]->Print();
@@ -75,9 +76,6 @@ bundle Default {
 					return;
 				};
 
-IO.Console->Print(y)->Print(", ");
-
-#				byte[] pdata = output[y];
 				bit_num := 0;
 				byte_count := 0;
 				byte_accumulate := 0;
