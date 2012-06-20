@@ -4,7 +4,8 @@ bundle Default {
 
 	class MandelBrot {
 		function : Main(args : String[]) ~ Nil {
-			n := 200;
+#			n := 200;
+			n := 100;
          if (args->Size() > 0) {
             n := args[0]->ToInt();
          };
@@ -14,7 +15,7 @@ bundle Default {
 
 			CaculateThread->Init(n, output_data);
 
-			threads := Thread->New[3];
+			threads := Thread->New[1];
 			each(i : threads) {
 				threads[i] := CaculateThread->New(i->ToString());
 			};
