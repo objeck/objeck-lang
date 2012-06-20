@@ -9,7 +9,10 @@ bundle Default {
             n := args[0]->ToInt();
          };
 
-			CaculateThread->Init(n);
+			width_bytes := n/8+1;
+			output_data := Byte->New[n, width_bytes];
+
+			CaculateThread->Init(n, output_data);
 
 			threads := Thread->New[3];
 			each(i : threads) {
@@ -21,7 +24,12 @@ bundle Default {
 			each(i : threads) {
 				threads[i]->Join();
 			};
-"Fin."->PrintLine();
+
+			for(i := 0; i < n; i+=1;) {
+				for(j := 0; j < width_bytes; j+=1;) {
+					output_data[i,j]->Print();
+				};
+			};
 		}
 	}
 
@@ -37,10 +45,11 @@ bundle Default {
 			Parent(id);
 		}
 
-		function : Init(size : Int) ~ Nil {
+		function : Init(size : Int, output_data : Byte[,]) ~ Nil {
 			@size := size;
-			width_bytes := size/8+1;
-			@output_data := Byte->New[size, width_bytes];
+			@output_data := output_data;
+#			width_bytes := size/8+1;
+#			@output_data := Byte->New[size, width_bytes];
 			bytes_per_line := Int->New[size];
 			@inverse_N := 2.0 / size;
 			@current_line := 0;
@@ -50,21 +59,72 @@ bundle Default {
 		}
 
 		method : public : Run(param : System.Base) ~ Nil {
+			Compute();
 		}
 
-		method : public : Compute() ~ Nil {
+		method : native : Compute() ~ Nil {
 			y : Int;
-			critical(@inc_mutex) {
-				y := @current_line;
-				@current_line+=1;
+
+			while(true) {
+				critical(@inc_mutex) {
+					y := @current_line;
+					@current_line+=1;
+				};
+
+				if(y >= @size) {
+					return;
+				};
+
+IO.Console->Print(y)->Print(", ");
+
+#				byte[] pdata = output[y];
+				bit_num := 0;
+				byte_count := 0;
+				byte_accumulate := 0;
+									
+				Civ := y->As(Float) * @inverse_N - 1.0;
+
+				for(x := 0; x < @size; x+=1;) {
+					Crv := x->As(Float) * @inverse_N - 1.5;
+                            
+					Zrv := Crv;
+					Ziv := Civ;
+
+					Trv := Crv * Crv;
+					Tiv := Civ * Civ;
+                            
+					i := 49;
+					do {
+						Ziv := (Zrv * Ziv) + (Zrv * Ziv) + Civ;
+                  Zrv := Trv - Tiv + Crv;
+
+						Trv := Zrv * Zrv;
+						Tiv := Ziv * Ziv;
+
+						i -= 1;
+					}
+					while(((Trv + Tiv) <= 4.0) & (i > 0));
+
+					byte_accumulate := byte_accumulate << 1;	
+					if(i = 0) {
+						byte_accumulate+=1;
+					};
+
+					bit_num += 1;
+					if(bit_num = 8) {					
+						@output_data[y, byte_count] := byte_accumulate->As(Byte);
+						byte_count += 1;
+						bit_num := 0;
+						byte_accumulate := 0;
+					};
+				};
+
+				if(bit_num <> 0) {
+					byte_accumulate := byte_accumulate << (8 - (@size and 7));
+					@output_data[y, byte_count] := byte_accumulate->As(Byte);
+					byte_count += 1;
+				};	
 			};
-			
-#			byte[] pdata = output[y];
-			bit_num := 0;
-			byte_count := 0;
-			byte_accumulate := 0;
-                        
-			Civ := y->As(Float) * @inverse_N - 1.0;
 		}
 	}
 }
