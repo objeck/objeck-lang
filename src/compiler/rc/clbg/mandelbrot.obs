@@ -104,7 +104,7 @@ bundle Default {
 					i := 49;
 					do {
 						Ziv := (Zrv * Ziv) + (Zrv * Ziv) + Civ;
-                  Zrv := Trv - Tiv + Crv;
+						Zrv := Trv - Tiv + Crv;
 
 						Trv := Zrv * Zrv;
 						Tiv := Ziv * Ziv;
