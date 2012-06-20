@@ -2,6 +2,12 @@ bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
 			"Hello World!"->PrintLine();
+
+			n := 8;
+			n := n << 2;
+n->PrintLine();
+			n := n << 2;
+n->PrintLine();
 		}
 	}
 }
