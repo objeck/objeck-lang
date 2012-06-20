@@ -6,14 +6,16 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 #			n := 200;
 			n := 100;
-         if (args->Size() > 0) {
-            n := args[0]->ToInt();
-         };
+			if (args->Size() > 0) {
+				n := args[0]->ToInt();
+			};
 
 			width_bytes := n/8+1;
 			output_data := Byte->New[n, width_bytes];
 
 			CaculateThread->Init(n, output_data);
+
+			IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
 
 			threads := Thread->New[1];
 			each(i : threads) {
@@ -26,12 +28,13 @@ bundle Default {
 				threads[i]->Join();
 			};
 
-			IO.Console->Print("P4\n")->Print(n)->Print(' ')->Print(n)->Print('\n');
+#~
 			for(i := 0; i < n; i+=1;) {
 				for(j := 0; j < width_bytes; j+=1;) {
 					output_data[i,j]->Print();
 				};
 			};
+~#
 		}
 	}
 
@@ -53,7 +56,7 @@ bundle Default {
 #			width_bytes := size/8+1;
 #			@output_data := Byte->New[size, width_bytes];
 			bytes_per_line := Int->New[size];
-			@inverse_N := 2.0 / size;
+			@inverse_N := 2.0 / size->As(Float);
 			@current_line := 0;
 			@inc_mutex := ThreadMutex->New("inc_mutex");
 
@@ -64,7 +67,8 @@ bundle Default {
 			Compute();
 		}
 
-		method : native : Compute() ~ Nil {
+#		method : native : Compute() ~ Nil {
+		method : Compute() ~ Nil {
 			y : Int;
 
 			while(true) {
@@ -100,11 +104,17 @@ bundle Default {
 						Trv := Zrv * Zrv;
 						Tiv := Ziv * Ziv;
 
+# IO.Console->Print("-3: ")->PrintLine(Trv);
+# IO.Console->Print("-2: ")->PrintLine(Tiv);
+						
 						i -= 1;
 					}
 					while(((Trv + Tiv) <= 4.0) & (i > 0));
 
 					byte_accumulate := byte_accumulate << 1;	
+
+IO.Console->Print("-1: ")->PrintLine(byte_accumulate);
+
 					if(i = 0) {
 						byte_accumulate+=1;
 					};
@@ -112,6 +122,7 @@ bundle Default {
 					bit_num += 1;
 					if(bit_num = 8) {					
 						@output_data[y, byte_count] := byte_accumulate->As(Byte);
+# IO.Console->Print("0: ")->PrintLine(byte_accumulate);
 						byte_count += 1;
 						bit_num := 0;
 						byte_accumulate := 0;
@@ -119,7 +130,10 @@ bundle Default {
 				};
 
 				if(bit_num <> 0) {
+#					ll := 8 - (@size and 7);
+#					byte_accumulate := byte_accumulate << ll;
 					byte_accumulate := byte_accumulate << (8 - (@size and 7));
+# IO.Console->Print("1: ")->PrintLine(byte_accumulate);
 					@output_data[y, byte_count] := byte_accumulate->As(Byte);
 					byte_count += 1;
 				};	
