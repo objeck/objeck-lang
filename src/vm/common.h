@@ -249,7 +249,8 @@ class StackMethod {
   string name;
   bool is_virtual;
   bool has_and_or;
-  vector<StackInstr*> instrs;
+  StackInstr** instrs;  
+  int instr_count;  
   unordered_map<long, long> jump_table;
   long param_count;
   long mem_size;
@@ -463,6 +464,8 @@ class StackMethod {
     mem_size = m;
     rtrn_type = r;
     cls = k;
+    instrs = NULL;
+    instr_count = 0;
   }
   
   ~StackMethod() {
@@ -488,13 +491,13 @@ class StackMethod {
     }
     
     // clean up
-    while(!instrs.empty()) {
-      StackInstr* tmp = instrs.front();
-      instrs.erase(instrs.begin());
-      // delete
+    for(int i = 0; i < instr_count; i++) {
+      StackInstr* tmp = instrs[i];
       delete tmp;
       tmp = NULL;
     }
+    delete[] instrs;
+    instrs = NULL;
   }
   
   inline const string& GetName() {
@@ -571,14 +574,11 @@ class StackMethod {
     return -1;
   }
   
-  void SetInstructions(vector<StackInstr*> i) {
-    instrs = i;
+  void SetInstructions(StackInstr** ii, int ic) {
+    instrs = ii;
+    instr_count = ic;
   }
-
-  void AddInstruction(StackInstr* i) {
-    instrs.push_back(i);
-  }
-
+  
   long GetId() const {
     return id;
   }
@@ -591,7 +591,7 @@ class StackMethod {
     param_count = c;
   }
 
-  long* NewMemory() {
+  inline long* NewMemory() {
     // +1 is for instance variable
     const long size = mem_size + 2;
     long* mem = new long[size];
@@ -600,16 +600,20 @@ class StackMethod {
     return mem;
   }
 
-  long GetMemorySize() const {
+  inline long GetMemorySize() const {
     return mem_size;
   }
-
-  long GetInstructionCount() const {
-    return instrs.size();
+  
+  inline long GetInstructionCount() const {
+    return instr_count;
   }
 
-  StackInstr* GetInstruction(long i) const {
+  inline StackInstr* GetInstruction(long i) const {
     return instrs[i];
+  }
+
+  StackInstr** GetInstructions() const {
+    return instrs;
   }
 
 #ifdef _WIN32

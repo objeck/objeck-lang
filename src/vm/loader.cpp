@@ -375,16 +375,15 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     }
 
     StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
-                                        num_dclrs, params, mem_size, rtrn_type, cls);
-
-#ifdef _DEBUG
-    cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" << rtrn_name
-         << "'; params=" << params << "; bytes=" << mem_size << endl;
-#endif
-
+                                        num_dclrs, params, mem_size, rtrn_type, cls);    
     // load statements
+#ifdef _DEBUG
+    cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" 
+	 << rtrn_name << "'; params=" << "; stmts=" << stmt_num << params << "; bytes=" 
+	 << mem_size << endl;
+#endif    
     LoadStatements(mthd, is_debug);
-
+    
     // add method
 #ifdef _DEBUG
     assert(id < number);
@@ -396,34 +395,44 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
 void Loader::LoadInitializationCode(StackMethod* method)
 {
-  method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
-  method->AddInstruction(new StackInstr(-1, NEW_INT_ARY, (long)1));
-  method->AddInstruction(new StackInstr(-1, STOR_INT_VAR, 0L, LOCL));
+  vector<StackInstr*> instrs;
+  
+  instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
+  instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
+  instrs.push_back(new StackInstr(-1, STOR_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); i++) {
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
-    method->AddInstruction(new StackInstr(-1, NEW_BYTE_ARY, 1L));
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
-    method->AddInstruction(new StackInstr(-1, TRAP_RTRN, 3L));
+    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
+    instrs.push_back(new StackInstr(-1, NEW_BYTE_ARY, 1L));
+    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
+    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
+    instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
 
-    method->AddInstruction(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
+    instrs.push_back(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
     // note: method ID is position dependant
-    method->AddInstruction(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
+    instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_LIT, (long)i));
-    method->AddInstruction(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
-    method->AddInstruction(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
+    instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)i));
+    instrs.push_back(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+    instrs.push_back(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
   }
 
-  method->AddInstruction(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
-  method->AddInstruction (new StackInstr(-1, LOAD_INST_MEM));
-  method->AddInstruction(new StackInstr(-1, MTHD_CALL, (long)start_class_id, (long)start_method_id, 0L));
-  method->AddInstruction(new StackInstr(-1, RTRN));
+  instrs.push_back(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+  instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
+  instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, 
+				  (long)start_method_id, 0L));
+  instrs.push_back(new StackInstr(-1, RTRN));
+
+  // copy and set instructions
+  StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
+  copy(instrs.begin(), instrs.end(), mthd_instrs);
+  method->SetInstructions(mthd_instrs, instrs.size());
 }
 
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
+  vector<StackInstr*> instrs;
+  
   int index = 0;
   int type = ReadByte();
   int line_num = -1;
@@ -433,144 +442,144 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
     switch(type) {
     case LOAD_INT_LIT:
-      method->AddInstruction(new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt()));
+      instrs.push_back(new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt()));
       break;
 
     case SHL_INT:
-      method->AddInstruction(new StackInstr(line_num, SHL_INT));
+      instrs.push_back(new StackInstr(line_num, SHL_INT));
       break;
 
     case SHR_INT:
-      method->AddInstruction(new StackInstr(line_num, SHR_INT));
+      instrs.push_back(new StackInstr(line_num, SHR_INT));
       break;
 
     case LOAD_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
       break;
 
     case LOAD_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
     }
       break;
       
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
       break;
 
     case STOR_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
     }
       break;
       
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, COPY_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, COPY_INT_VAR, id, mem_context));
     }
       break;
 
     case COPY_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       long mem_context = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
+      instrs.push_back(new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case NEW_FLOAT_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, NEW_FLOAT_ARY, dim));
+      instrs.push_back(new StackInstr(line_num, NEW_FLOAT_ARY, dim));
     }
       break;
 
     case NEW_INT_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, NEW_INT_ARY, dim));
+      instrs.push_back(new StackInstr(line_num, NEW_INT_ARY, dim));
     }
       break;
 
     case NEW_BYTE_ARY: {
       long dim = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, NEW_BYTE_ARY, dim));
+      instrs.push_back(new StackInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
       break;
 
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
+      instrs.push_back(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
       
     case DYN_MTHD_CALL: {
       long num_params = ReadInt();
       long rtrn_type = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
+      instrs.push_back(new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
     }
       break;
       
@@ -578,7 +587,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
+      instrs.push_back(new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
 
@@ -586,7 +595,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+      instrs.push_back(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
       
@@ -605,276 +614,276 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case JMP: {
       long label = ReadInt();
       long cond = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, JMP, label, cond));
+      instrs.push_back(new StackInstr(line_num, JMP, label, cond));
     }
       break;
 
     case LBL: {
       long id = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, LBL, id));
+      instrs.push_back(new StackInstr(line_num, LBL, id));
       method->AddLabel(id, index);
     }
       break;
 
     case OBJ_INST_CAST: {
       long to = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, OBJ_INST_CAST, to));
+      instrs.push_back(new StackInstr(line_num, OBJ_INST_CAST, to));
     }
       break;
       
     case OBJ_TYPE_OF: {
       long check = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, OBJ_TYPE_OF, check));
+      instrs.push_back(new StackInstr(line_num, OBJ_TYPE_OF, check));
     }
       break;
       
     case OR_INT:
-      method->AddInstruction(new StackInstr(line_num, OR_INT));
+      instrs.push_back(new StackInstr(line_num, OR_INT));
       break;
 
     case AND_INT:
-      method->AddInstruction(new StackInstr(line_num, AND_INT));
+      instrs.push_back(new StackInstr(line_num, AND_INT));
       break;
 
     case ADD_INT:
-      method->AddInstruction(new StackInstr(line_num, ADD_INT));
+      instrs.push_back(new StackInstr(line_num, ADD_INT));
       break;
 
     case CEIL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, CEIL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, CEIL_FLOAT));
       break;
 
     case CPY_BYTE_ARY:
-      method->AddInstruction(new StackInstr(line_num, CPY_BYTE_ARY));
+      instrs.push_back(new StackInstr(line_num, CPY_BYTE_ARY));
       break;
       
     case CPY_INT_ARY:
-      method->AddInstruction(new StackInstr(line_num, CPY_INT_ARY));
+      instrs.push_back(new StackInstr(line_num, CPY_INT_ARY));
       break;
       
     case CPY_FLOAT_ARY:
-      method->AddInstruction(new StackInstr(line_num, CPY_FLOAT_ARY));
+      instrs.push_back(new StackInstr(line_num, CPY_FLOAT_ARY));
       break;
       
     case FLOR_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, FLOR_FLOAT));
+      instrs.push_back(new StackInstr(line_num, FLOR_FLOAT));
       break;
       
     case SIN_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, SIN_FLOAT));
+      instrs.push_back(new StackInstr(line_num, SIN_FLOAT));
       break;
       
     case COS_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, COS_FLOAT));
+      instrs.push_back(new StackInstr(line_num, COS_FLOAT));
       break;
       
     case TAN_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, TAN_FLOAT));
+      instrs.push_back(new StackInstr(line_num, TAN_FLOAT));
       break;
       
     case ASIN_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, ASIN_FLOAT));
+      instrs.push_back(new StackInstr(line_num, ASIN_FLOAT));
       break;
       
     case ACOS_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, ACOS_FLOAT));
+      instrs.push_back(new StackInstr(line_num, ACOS_FLOAT));
       break;
       
     case ATAN_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, ATAN_FLOAT));
+      instrs.push_back(new StackInstr(line_num, ATAN_FLOAT));
       break;
       
     case LOG_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, LOG_FLOAT));
+      instrs.push_back(new StackInstr(line_num, LOG_FLOAT));
       break;
 
     case POW_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, POW_FLOAT));
+      instrs.push_back(new StackInstr(line_num, POW_FLOAT));
       break;
 
     case SQRT_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, SQRT_FLOAT));
+      instrs.push_back(new StackInstr(line_num, SQRT_FLOAT));
       break;
 
     case RAND_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, RAND_FLOAT));
+      instrs.push_back(new StackInstr(line_num, RAND_FLOAT));
       break;
       
     case F2I:
-      method->AddInstruction(new StackInstr(line_num, F2I));
+      instrs.push_back(new StackInstr(line_num, F2I));
       break;
 
     case I2F:
-      method->AddInstruction(new StackInstr(line_num, I2F));
+      instrs.push_back(new StackInstr(line_num, I2F));
       break;
 
     case SWAP_INT:
-      method->AddInstruction(new StackInstr(line_num, SWAP_INT));
+      instrs.push_back(new StackInstr(line_num, SWAP_INT));
       break;
 
     case POP_INT:
-      method->AddInstruction(new StackInstr(line_num, POP_INT));
+      instrs.push_back(new StackInstr(line_num, POP_INT));
       break;
 
     case POP_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, POP_FLOAT));
+      instrs.push_back(new StackInstr(line_num, POP_FLOAT));
       break;
 
     case LOAD_CLS_MEM:
-      method->AddInstruction(new StackInstr(line_num, LOAD_CLS_MEM));
+      instrs.push_back(new StackInstr(line_num, LOAD_CLS_MEM));
       break;
 
     case LOAD_INST_MEM:
-      method->AddInstruction (new StackInstr(line_num, LOAD_INST_MEM));
+      instrs.push_back(new StackInstr(line_num, LOAD_INST_MEM));
       break;
-
+      
     case SUB_INT:
-      method->AddInstruction(new StackInstr(line_num, SUB_INT));
+      instrs.push_back(new StackInstr(line_num, SUB_INT));
       break;
 
     case MUL_INT:
-      method->AddInstruction(new StackInstr(line_num, MUL_INT));
+      instrs.push_back(new StackInstr(line_num, MUL_INT));
       break;
 
     case DIV_INT:
-      method->AddInstruction(new StackInstr(line_num, DIV_INT));
+      instrs.push_back(new StackInstr(line_num, DIV_INT));
       break;
 
     case MOD_INT:
-      method->AddInstruction(new StackInstr(line_num, MOD_INT));
+      instrs.push_back(new StackInstr(line_num, MOD_INT));
       break;
 
     case BIT_AND_INT:
-      method->AddInstruction(new StackInstr(line_num, BIT_AND_INT));
+      instrs.push_back(new StackInstr(line_num, BIT_AND_INT));
       break;
       
     case BIT_OR_INT:
-      method->AddInstruction(new StackInstr(line_num, BIT_OR_INT));
+      instrs.push_back(new StackInstr(line_num, BIT_OR_INT));
       break;
       
     case BIT_XOR_INT:
-      method->AddInstruction(new StackInstr(line_num, BIT_XOR_INT));
+      instrs.push_back(new StackInstr(line_num, BIT_XOR_INT));
       break;
       
     case EQL_INT:
-      method->AddInstruction(new StackInstr(line_num, EQL_INT));
+      instrs.push_back(new StackInstr(line_num, EQL_INT));
       break;
 
     case NEQL_INT:
-      method->AddInstruction(new StackInstr(line_num, NEQL_INT));
+      instrs.push_back(new StackInstr(line_num, NEQL_INT));
       break;
 
     case LES_INT:
-      method->AddInstruction(new StackInstr(line_num, LES_INT));
+      instrs.push_back(new StackInstr(line_num, LES_INT));
       break;
 
     case GTR_INT:
-      method->AddInstruction(new StackInstr(line_num, GTR_INT));
+      instrs.push_back(new StackInstr(line_num, GTR_INT));
       break;
 
     case LES_EQL_INT:
-      method->AddInstruction(new StackInstr(line_num, LES_EQL_INT));
+      instrs.push_back(new StackInstr(line_num, LES_EQL_INT));
       break;
 
     case LES_EQL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, LES_EQL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, LES_EQL_FLOAT));
       break;
 
     case GTR_EQL_INT:
-      method->AddInstruction(new StackInstr(line_num, GTR_EQL_INT));
+      instrs.push_back(new StackInstr(line_num, GTR_EQL_INT));
       break;
 
     case GTR_EQL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, GTR_EQL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, GTR_EQL_FLOAT));
       break;
 
     case ADD_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, ADD_FLOAT));
+      instrs.push_back(new StackInstr(line_num, ADD_FLOAT));
       break;
 
     case SUB_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, SUB_FLOAT));
+      instrs.push_back(new StackInstr(line_num, SUB_FLOAT));
       break;
 
     case MUL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, MUL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, MUL_FLOAT));
       break;
 
     case DIV_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, DIV_FLOAT));
+      instrs.push_back(new StackInstr(line_num, DIV_FLOAT));
       break;
 
     case EQL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, EQL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, EQL_FLOAT));
       break;
 
     case NEQL_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, NEQL_FLOAT));
+      instrs.push_back(new StackInstr(line_num, NEQL_FLOAT));
       break;
 
     case LES_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, LES_FLOAT));
+      instrs.push_back(new StackInstr(line_num, LES_FLOAT));
       break;
 
     case GTR_FLOAT:
-      method->AddInstruction(new StackInstr(line_num, GTR_FLOAT));
+      instrs.push_back(new StackInstr(line_num, GTR_FLOAT));
       break;
 
     case LOAD_FLOAT_LIT:
-      method->AddInstruction(new StackInstr(line_num, LOAD_FLOAT_LIT,
+      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_LIT,
                                             ReadDouble()));
       break;
       
     case RTRN:
       if(is_debug) {
-	method->AddInstruction(new StackInstr(line_num + 1, RTRN));
+	instrs.push_back(new StackInstr(line_num + 1, RTRN));
       }
       else {
-	method->AddInstruction(new StackInstr(line_num, RTRN));
+	instrs.push_back(new StackInstr(line_num, RTRN));
       }
       break;
       
     case DLL_LOAD:
-      method->AddInstruction(new StackInstr(line_num, DLL_LOAD));
+      instrs.push_back(new StackInstr(line_num, DLL_LOAD));
       break;
       
     case DLL_UNLOAD:
-      method->AddInstruction(new StackInstr(line_num, DLL_UNLOAD));
+      instrs.push_back(new StackInstr(line_num, DLL_UNLOAD));
       break;
       
     case DLL_FUNC_CALL:
-      method->AddInstruction(new StackInstr(line_num, DLL_FUNC_CALL));
+      instrs.push_back(new StackInstr(line_num, DLL_FUNC_CALL));
       break;
       
     case THREAD_JOIN:
-      method->AddInstruction(new StackInstr(line_num, THREAD_JOIN));
+      instrs.push_back(new StackInstr(line_num, THREAD_JOIN));
       break;
       
     case THREAD_SLEEP:
-      method->AddInstruction(new StackInstr(line_num, THREAD_SLEEP));
+      instrs.push_back(new StackInstr(line_num, THREAD_SLEEP));
       break;
 
     case THREAD_MUTEX:
-      method->AddInstruction(new StackInstr(line_num, THREAD_MUTEX));
+      instrs.push_back(new StackInstr(line_num, THREAD_MUTEX));
       break;
       
     case CRITICAL_START:
-      method->AddInstruction(new StackInstr(line_num, CRITICAL_START));
+      instrs.push_back(new StackInstr(line_num, CRITICAL_START));
       break;
 
     case CRITICAL_END:
-      method->AddInstruction(new StackInstr(line_num, CRITICAL_END));
+      instrs.push_back(new StackInstr(line_num, CRITICAL_END));
       break;
 
     case TRAP: {
       long args = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, TRAP, args));
+      instrs.push_back(new StackInstr(line_num, TRAP, args));
     }
       break;
 
     case TRAP_RTRN: {
       long args = ReadInt();
-      method->AddInstruction(new StackInstr(line_num, TRAP_RTRN, args));
+      instrs.push_back(new StackInstr(line_num, TRAP_RTRN, args));
     }
       break;
 
@@ -892,4 +901,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     type = ReadByte();
     index++;
   }
+
+  // copy and set instructions
+  StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
+  copy(instrs.begin(), instrs.end(), mthd_instrs);
+  method->SetInstructions(mthd_instrs, instrs.size());
 }
