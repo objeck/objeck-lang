@@ -74,6 +74,10 @@ int APITools_GetArgumentCount(VMContext &context) {
 }
 
 long APITools_GetIntArrayElement(long* array, int index) {
+  if(!array) {
+    return 0;
+  }
+  
   const long src_array_len = array[0];
   if(index < src_array_len) {
     long* src_array_ptr = array + 3;
@@ -83,6 +87,10 @@ long APITools_GetIntArrayElement(long* array, int index) {
 }
 
 void APITools_SetIntArrayElement(long* array, int index, long value) {
+  if(!array) {
+    return;
+  }
+  
   const long src_array_len = array[0];
   if(index < src_array_len) {
     long* src_array_ptr = array + 3;
@@ -91,6 +99,10 @@ void APITools_SetIntArrayElement(long* array, int index, long value) {
 }
 
 double APITools_GetFloatArrayElement(long* array, int index) {
+  if(!array) {
+    return 0.0;
+  }
+  
   const long src_array_len = array[0];
   if(index < src_array_len) {
     long* src_array_ptr = array + 3;
@@ -108,13 +120,17 @@ double APITools_GetFloatArrayElement(long* array, int index) {
 
 char* APITools_GetCharArray(long* array) {
   if(array) {
-  	return (char*)(array + 3);
+    return (char*)(array + 3);
   }
-	
+  
   return NULL;
 }
 
 void APITools_SetFloatArrayElement(long* array, int index, double value) {
+  if(!array) {
+    return;
+  }
+  
   const long src_array_len = array[0];
   if(index < src_array_len) {
     long* src_array_ptr = array + 3;
