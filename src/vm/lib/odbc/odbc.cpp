@@ -72,6 +72,10 @@ extern "C" {
     const char* username = APITools_GetStringValue(context, 2);
     const char* password = APITools_GetStringValue(context, 3);
     
+    if(!ds || !username || !password) {
+      return;
+    }
+    
 #ifdef _DEBUG
     cout << "### connect: " << "ds=" << ds << ", username=" 
 	 << username << ", password=" << password << " ###" << endl;
@@ -159,7 +163,7 @@ extern "C" {
 #endif
   void odbc_stmt_select_statement(VMContext& context) {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
-
+    
 #ifdef _DEBUG
     cout << "### stmt_select_update: stmt=" << stmt << " ###" << endl;
 #endif
@@ -880,7 +884,7 @@ extern "C" {
 				  sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      long* ts_obj = context.alloc_obj("ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos);
+      long* ts_obj = context.alloc_obj("ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[0] = value.year;
       ts_obj[1] = value.month;
       ts_obj[2] = value.day;
@@ -937,7 +941,7 @@ extern "C" {
 				  sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      long* ts_obj = context.alloc_obj("ODBC.Date", (long*)context.op_stack, *context.stack_pos);
+      long* ts_obj = context.alloc_obj("ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[0] = value.year;
       ts_obj[1] = value.month;
       ts_obj[2] = value.day;
