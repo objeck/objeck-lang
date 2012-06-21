@@ -7,12 +7,12 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "");	
+			conn := Connection->New("test", "root", "helloworld");	
 			if(conn <> Nil) {
 				rs := conn->Select("select * from test.student");
 				i := 0;	
 				while(rs->Next()) {
-					rs->GetVarchar("last_name")->PrintLine();
+					rs->GetVarchar("lname")->PrintLine();
 				};
 				rs->Close();
 				conn->Close();
