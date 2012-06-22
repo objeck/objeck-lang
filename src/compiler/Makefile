@@ -1,0 +1,15 @@
+CC=g++
+# ARGS=-g -D_SYSTEM -D_DEBUG -Wall
+ARGS=-g -D_DEBUG -Wall
+# ARGS=-O3 -Wall
+SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o target.o compiler.o posix_main.o
+EXE=obc
+
+$(EXE): $(SRC)
+	$(CC) -m64 -o $(EXE) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	rm -f $(EXE) *.o *~
