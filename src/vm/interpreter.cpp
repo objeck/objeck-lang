@@ -32,8 +32,6 @@
 #include "interpreter.h"
 #include "lib_api.h"
 
-
-
 #ifdef _X64
 #include "jit/amd64/jit_amd_lp64.h"
 #else
@@ -51,7 +49,6 @@
 #endif
 
 #include <math.h>
-// #include "strptime.h"
 
 using namespace Runtime;
 
@@ -111,8 +108,6 @@ void StackInterpreter::Initialize(StackProgram* p)
 void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
 			       long* instance, bool jit_called)
 {
-  // TODO: if JIT called envoke method do not go into loop
-
   // inital setup
   op_stack = stack;
   stack_pos = pos;
@@ -145,7 +140,7 @@ void StackInterpreter::Execute()
 {
   // execute
   halt = false;
-  while(!halt) {
+  do {
     StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
     
 #ifdef _DEBUGGER
@@ -859,6 +854,7 @@ void StackInterpreter::Execute()
       break;
     }
   }
+  while(!halt);
 }
 
 /********************************
