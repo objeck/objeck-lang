@@ -34,8 +34,8 @@
 
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
-map<long*, ClassMethodId*> MemoryManager::jit_roots;
-set<StackFrame*> MemoryManager::pda_roots;
+unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
+unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
 map<long*, long> MemoryManager::allocated_memory;
 set<long*> MemoryManager::allocated_int_obj_array;
 map<long*, long> MemoryManager::static_memory;
@@ -146,7 +146,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_mutex);
 #endif
-  pda_roots.insert(frame);
+  pda_roots.insert(pair<StackFrame*, StackFrame*>(frame, frame));
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_mutex);
 #endif
@@ -201,7 +201,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   pthread_mutex_lock(&jit_mutex);
 #endif
   
-  map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
+  unordered_map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
   if(found == jit_roots.end()) {
     cerr << "Unable to find JIT root!" << endl;
     exit(-1);
@@ -678,7 +678,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
   cout << "memory types: " << endl;
 #endif
   
-  map<long*, ClassMethodId*>::iterator jit_iter;
+  unordered_map<long*, ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = jit_iter->second;
     long* mem = id->mem;
@@ -843,10 +843,10 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
-  set<StackFrame*>::iterator pda_iter;
+  unordered_map<StackFrame*, StackFrame*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
-    StackMethod* mthd = (*pda_iter)->GetMethod();
-    long* mem = (*pda_iter)->GetMemory();
+    StackMethod* mthd = pda_iter->second->GetMethod();
+    long* mem = pda_iter->second->GetMemory();
 
 #ifdef _DEBUG
     cout << "\t===== PDA method: name=" << mthd->GetName() << ", addr="
