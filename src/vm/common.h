@@ -233,9 +233,11 @@ class NativeCode
   BYTE_VALUE* GetCode() const {
     return code;
   }
+
   long GetSize() {
     return size;
   }
+  
   FLOAT_VALUE* GetFloats() const {
     return floats;
   }
@@ -1248,7 +1250,7 @@ class StackFrame {
     ip = i;
   }
 
-  inline long GetIp() const {
+  inline long GetIp() {
     return ip;
   }
 
