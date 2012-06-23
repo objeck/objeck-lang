@@ -56,8 +56,8 @@ class MemoryManager {
   static MemoryManager* instance;
   static StackProgram* prgm;
   
-  static map<long*, ClassMethodId*> jit_roots;
-  static set<StackFrame*> pda_roots; // deleted elsewhere
+  static unordered_map<long*, ClassMethodId*> jit_roots;
+  static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
   static map<long*, long> allocated_memory;
   static set<long*> allocated_int_obj_array;
   static map<long*, long> static_memory;
@@ -118,7 +118,7 @@ public:
   static MemoryManager* Instance();
 
   static void Clear() {
-    map<long*, ClassMethodId*>::iterator id_iter;
+    unordered_map<long*, ClassMethodId*>::iterator id_iter;
     for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); id_iter++) {
       ClassMethodId* tmp = id_iter->second;
       // delete
