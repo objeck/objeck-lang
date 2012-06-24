@@ -379,7 +379,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // load statements
 #ifdef _DEBUG
     cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" 
-	 << rtrn_name << "'; params=" << "; stmts=" << stmt_num << params << "; bytes=" 
+	 << rtrn_name << "'; params=" << params << "; bytes=" 
 	 << mem_size << endl;
 #endif    
     LoadStatements(mthd, is_debug);
