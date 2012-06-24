@@ -1184,11 +1184,18 @@ namespace Runtime {
 	case STD_OUT_CHAR_ARY: {
 	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
 	  if(array) {
-	    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
 #ifdef _DEBUG
 	    cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
 #endif
+	    char* str = (char*)(array + 3);
+#ifdef _WIN32
+      const size_t str_len = strlen(str);
+      wchar_t* buffer = new wchar_t[str_len + 1];
+      MultiByteToWideChar(CP_UTF8, 0, str, -1, buffer, str_len);
+      cout << buffer << endl;
+#else
 	    cout << str;
+#endif
 	  }
 	}
 	  break;
