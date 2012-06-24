@@ -356,6 +356,7 @@ private:
   size_t buffer_size;
   // input buffer position
   size_t buffer_pos;
+  bool is_first_token;
   // start marker position
   int start_pos;
   // end marker position
