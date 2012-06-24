@@ -50,6 +50,7 @@ Scanner::Scanner(string f, bool p)
   // read file into memory
   if(p) {
     buffer_pos = 0;
+	is_first_token = true;
     buffer_size = f.size();
     buffer = (char*)calloc(buffer_size, sizeof(char));
     strcpy(buffer, f.c_str());
@@ -399,7 +400,12 @@ void Scanner::CheckIdentifier(int index)
 void Scanner::ReadFile()
 {
   buffer_pos = 0;
+  is_first_token = true;
   buffer = LoadFileBuffer(filename, buffer_size);
+
+  if(buffer_size > 2 && buffer[0] == -17 && buffer[1] == -69 && buffer[2] == -65) {
+    buffer_pos = 3;
+  }
 #ifdef _DEBUG
   cout << "---------- Source ---------" << endl;
   cout << buffer << endl;
@@ -411,12 +417,14 @@ void Scanner::ReadFile()
 ****************************/
 void Scanner::NextToken()
 {
-  if(buffer_pos == 0) {
+  if(is_first_token) {
     NextChar();
     for(int i = 0; i < LOOK_AHEAD; i++) {
       ParseToken(i);
     }
-  } else {
+	is_first_token = false;
+  } 
+  else {
     int i = 1;
     for(; i < LOOK_AHEAD; i++) {
       tokens[i - 1]->Copy(tokens[i]);
