@@ -182,6 +182,9 @@
     <ClInclude Include="..\jit\ia32\jit_intel_lp32.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
+    <ClInclude Include="..\os\stx\btree.h" />
+    <ClInclude Include="..\os\stx\btree_map.h" />
+    <ClInclude Include="..\os\stx\btree_set.h" />
     <ClInclude Include="..\os\windows\memory.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\vm.h" />
