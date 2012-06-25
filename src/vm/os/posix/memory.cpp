@@ -36,9 +36,9 @@ MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
-map<long*, long> MemoryManager::allocated_memory;
-set<long*> MemoryManager::allocated_int_obj_array;
-map<long*, long> MemoryManager::static_memory;
+btree_map<long*, long> MemoryManager::allocated_memory;
+btree_set<long*> MemoryManager::allocated_int_obj_array;
+btree_map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
@@ -78,10 +78,10 @@ void MemoryManager::AddStaticMemory(long* mem)
 #endif
   
   // only add static references that don't exist
-  map<long*, long>::iterator exists = static_memory.find(mem);
+  btree_map<long*, long>::iterator exists = static_memory.find(mem);
   if(exists == static_memory.end()) {
     // ensure that this is an object or array instance
-    map<long*, long>::iterator result = allocated_memory.find(mem);
+    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
 #ifdef _DEBUG
       cout << "### adding static reference: " << mem << " ###" << endl;
@@ -103,7 +103,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
-    map<long*, long>::iterator result = allocated_memory.find(mem);
+    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       // check if memory has been marked
       if(mem[-1]) {
@@ -326,7 +326,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 #endif
   
   long id;  
-  map<long*, long>::iterator result = allocated_memory.find(mem);
+  btree_map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
     id = -result->second;
   } 
@@ -524,7 +524,7 @@ void* MemoryManager::CollectMemory(void* arg)
   cout << "-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
-  map<long*, long>::iterator iter;
+  btree_map<long*, long>::iterator iter;
 
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
@@ -602,8 +602,9 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // remove references from allocated pool
   for(size_t i = 0; i < erased_memory.size(); i++) {
-    allocated_memory.erase(erased_memory[i]);
-    allocated_int_obj_array.erase(erased_memory[i]);
+    if(!allocated_memory.erase(erased_memory[i])) {
+      allocated_int_obj_array.erase(erased_memory[i]);
+    }
   }
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
@@ -637,7 +638,7 @@ void* MemoryManager::CheckStatic(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&static_mutex);
 #endif
-  map<long*, long>::iterator static_iter;
+  btree_map<long*, long>::iterator static_iter;
   for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
     CheckObject(static_iter->first, false, 1);	
   }
@@ -704,7 +705,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG
       // get memory size
       long array_size = 0;
-      map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+      btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
@@ -882,7 +883,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifdef _DEBUG
     // get memory size
     long array_size = 0;
-    map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+    btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
@@ -1032,7 +1033,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkMemory(mem)) {
 	// ensure we're only checking int and obj arrays
-	set<long*>::iterator result = allocated_int_obj_array.find(mem);
+	btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
       	if(result != allocated_int_obj_array.end()) {
 	  long* array = mem;
 	  const long size = array[0];
