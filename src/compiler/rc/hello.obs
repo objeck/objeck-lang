@@ -1,8 +1,7 @@
 ﻿bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			"εσκεπάζω την ψυχοφθόρα βδελυγμία -"->PrintLine();
-#			"beat bang loud -"->PrintLine();
+			"Hello World!"->PrintLine();
 		}
 	}
 }

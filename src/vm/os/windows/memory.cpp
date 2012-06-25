@@ -35,10 +35,10 @@
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
-unordered_map<StackFrame*> MemoryManager::pda_roots;
-btree_map<long*, long> MemoryManager::allocated_memory;
+unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
+stx::btree_map<long*, long> MemoryManager::allocated_memory;
 btree_set<long*> MemoryManager::allocated_int_obj_array;
-btree_map<long*, long> MemoryManager::static_memory;
+stx::btree_map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
@@ -83,10 +83,10 @@ void MemoryManager::AddStaticMemory(long* mem)
 #endif
 
   // only add static references that don't exist
-  btree_map<long*, long>::iterator exists = static_memory.find(mem);
+  stx::btree_map<long*, long>::iterator exists = static_memory.find(mem);
   if(exists == static_memory.end()) {
     // ensure that this is an object or array instance
-    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
+    stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
 #ifdef _DEBUG
       cout << "### adding static reference: " << mem << " ###" << endl;
@@ -108,7 +108,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
 #ifndef _SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
-    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
+    stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       // check if memory has been marked
       if(mem[-1]) {
@@ -151,7 +151,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 #ifndef _SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
-  pda_roots.insert(frame);
+  pda_roots.insert(pair<StackFrame*, StackFrame*>(frame, frame));
 #ifndef _SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
@@ -324,7 +324,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 #endif
 
   long id;  
-  btree_map<long*, long>::iterator result = allocated_memory.find(mem);
+  stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
     id = -result->second;
   } 
@@ -482,7 +482,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 #ifndef _SERIAL
   
 #endif
-  btree_map<long*, long>::iterator iter;
+  stx::btree_map<long*, long>::iterator iter;
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
@@ -578,7 +578,7 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
 #ifndef _GC_SERIAL
   EnterCriticalSection(&static_cs);
 #endif
-  btree_map<long*, long>::iterator static_iter;
+  stx::btree_map<long*, long>::iterator static_iter;
   for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
     CheckObject(static_iter->first, false, 1);	
   }
@@ -642,7 +642,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG
       // get memory size
       long array_size = 0;
-      btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+      stx::btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
@@ -777,10 +777,10 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
-  unordered_map<StackFrame*>::iterator pda_iter;
+  unordered_map<StackFrame*, StackFrame*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
-    StackMethod* mthd = (*pda_iter)->GetMethod();
-    long* mem = (*pda_iter)->GetMemory();
+    StackMethod* mthd = pda_iter->second->GetMethod();
+    long* mem = pda_iter->second->GetMemory();
     
 #ifdef _DEBUG
     cout << "\t===== PDA method: name=" << mthd->GetName() << ", addr="
@@ -817,7 +817,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifdef _DEBUG
     // get memory size
     long array_size = 0;
-    btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+    stx::btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }

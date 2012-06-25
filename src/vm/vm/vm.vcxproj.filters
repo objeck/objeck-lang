@@ -51,6 +51,15 @@
     <ClInclude Include="..\lib_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\os\stx\btree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\os\stx\btree_map.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\os\stx\btree_set.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
