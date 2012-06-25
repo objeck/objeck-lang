@@ -33,12 +33,16 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
+#include "../stx/btree_map.h"
+#include "../stx/btree_set.h"
 
 // basic vm tuning parameters
 #define MEM_MAX 1024 * 512
 // #define MEM_MAX 1024
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
+
+using namespace stx;
 
 struct CollectionInfo {
   long* op_stack;
@@ -58,9 +62,9 @@ class MemoryManager {
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
-  static map<long*, long> allocated_memory;
-  static set<long*> allocated_int_obj_array;
-  static map<long*, long> static_memory;
+  static btree_map<long*, long> allocated_memory;
+  static btree_set<long*> allocated_int_obj_array;
+  static btree_map<long*, long> static_memory;
   static vector<long*> marked_memory;
   
 #ifndef _GC_SERIAL
@@ -99,7 +103,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
-      map<long*, long>::iterator result = allocated_memory.find(mem);
+      btree_map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
 #ifndef _GC_SERIAL
 	pthread_mutex_unlock(&allocated_mutex);
@@ -126,7 +130,7 @@ public:
       tmp = NULL;
     }
     
-    map<long*, long>::iterator iter;
+    btree_map<long*, long>::iterator iter;
     for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
       long* temp = iter->first;
       
