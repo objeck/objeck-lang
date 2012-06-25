@@ -33,6 +33,8 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
+#include "../stx/btree_map.h"
+#include "../stx/btree_set.h"
 #include <process.h>
 
 // basic vm tuning parameters
@@ -56,11 +58,11 @@ class MemoryManager {
   static MemoryManager* instance;
   static StackProgram* prgm;
   
-  static map<long*, ClassMethodId*> jit_roots;
-  static set<StackFrame*> pda_roots; // deleted elsewhere
-  static map<long*, long> static_memory;
-  static map<long*, long> allocated_memory;
-  static set<long*> allocated_int_obj_array;
+  static unordered_map<long*, ClassMethodId*> jit_roots;
+  static unordered_map<StackFrame*> pda_roots; // deleted elsewhere
+  static btree_map<long*, long> static_memory;
+  static btree_map<long*, long> allocated_memory;
+  static btree_set<long*> allocated_int_obj_array;
   static vector<long*> marked_memory;
   
   static CRITICAL_SECTION static_cs;
@@ -87,7 +89,7 @@ class MemoryManager {
     EnterCriticalSection(&allocated_cs);
 #endif
     if(mem) {
-      map<long*, long>::iterator result = allocated_memory.find(mem);
+      btree_map<long*, long>::iterator result = allocated_memory.find(mem);
       if(result != allocated_memory.end()) {
 #ifndef _SERIAL
 	      LeaveCriticalSection(&allocated_cs);
@@ -117,7 +119,7 @@ public:
   static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
   
   static void Clear() {
-    map<long*, ClassMethodId*>::iterator id_iter;
+    unordered_map<long*, ClassMethodId*>::iterator id_iter;
     for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); id_iter++) {
       ClassMethodId* tmp = id_iter->second;
       // delete
@@ -125,7 +127,7 @@ public:
       tmp = NULL;
     }
 
-    map<long*, long>::iterator iter;
+    btree_map<long*, long>::iterator iter;
     for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
       long* temp = iter->first;
 

@@ -34,11 +34,11 @@
 
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
-map<long*, ClassMethodId*> MemoryManager::jit_roots;
-set<StackFrame*> MemoryManager::pda_roots;
-map<long*, long> MemoryManager::allocated_memory;
-set<long*> MemoryManager::allocated_int_obj_array;
-map<long*, long> MemoryManager::static_memory;
+unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
+unordered_map<StackFrame*> MemoryManager::pda_roots;
+btree_map<long*, long> MemoryManager::allocated_memory;
+btree_set<long*> MemoryManager::allocated_int_obj_array;
+btree_map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
@@ -83,10 +83,10 @@ void MemoryManager::AddStaticMemory(long* mem)
 #endif
 
   // only add static references that don't exist
-  map<long*, long>::iterator exists = static_memory.find(mem);
+  btree_map<long*, long>::iterator exists = static_memory.find(mem);
   if(exists == static_memory.end()) {
     // ensure that this is an object or array instance
-    map<long*, long>::iterator result = allocated_memory.find(mem);
+    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
 #ifdef _DEBUG
       cout << "### adding static reference: " << mem << " ###" << endl;
@@ -108,7 +108,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
 #ifndef _SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
-    map<long*, long>::iterator result = allocated_memory.find(mem);
+    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
     if(result != allocated_memory.end()) {
       // check if memory has been marked
       if(mem[-1]) {
@@ -206,7 +206,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   EnterCriticalSection(&jit_cs);
 #endif
   
-  map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
+  unordered_map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
   if(found == jit_roots.end()) {
     cerr << "Unable to find JIT root!" << endl;
     exit(-1);
@@ -324,7 +324,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 #endif
 
   long id;  
-  map<long*, long>::iterator result = allocated_memory.find(mem);
+  btree_map<long*, long>::iterator result = allocated_memory.find(mem);
   if(result != allocated_memory.end()) {
     id = -result->second;
   } 
@@ -479,11 +479,10 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   cout << "-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
-  map<long*, long>::iterator iter;
-
 #ifndef _SERIAL
-
+  
 #endif
+  btree_map<long*, long>::iterator iter;
   for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
@@ -579,7 +578,7 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
 #ifndef _GC_SERIAL
   EnterCriticalSection(&static_cs);
 #endif
-  map<long*, long>::iterator static_iter;
+  btree_map<long*, long>::iterator static_iter;
   for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
     CheckObject(static_iter->first, false, 1);	
   }
@@ -618,7 +617,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
   cout << "memory types: " << endl;
 #endif
 
-  map<long*, ClassMethodId*>::iterator jit_iter;
+  unordered_map<long*, ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
     ClassMethodId* id = jit_iter->second;
     long* mem = id->mem;
@@ -643,7 +642,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG
       // get memory size
       long array_size = 0;
-      map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+      btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
@@ -778,7 +777,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   cout << "memory types:" <<  endl;
 #endif
   // look at pda methods
-  set<StackFrame*>::iterator pda_iter;
+  unordered_map<StackFrame*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
     StackMethod* mthd = (*pda_iter)->GetMethod();
     long* mem = (*pda_iter)->GetMemory();
@@ -818,7 +817,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifdef _DEBUG
     // get memory size
     long array_size = 0;
-    map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
+    btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
@@ -968,7 +967,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkMemory(mem)) {
         // ensure we're only checking int and obj arrays
-        set<long*>::iterator result = allocated_int_obj_array.find(mem);
+        btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
         if(result != allocated_int_obj_array.end()) {
           long* array = mem;
           const long size = array[0];
