@@ -2260,14 +2260,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr)
     long* array = (long*)PopInt();
     if(array) {
       char* str = (char*)(array + 3);
-#ifdef _WIN32
-      const size_t str_len = strlen(str);
-      wchar_t* buffer = new wchar_t[str_len + 1];
-      MultiByteToWideChar(CP_UTF8, 0, str, -1, buffer, str_len);
-      cout << buffer << endl;
-#else
       cout << str;
-#endif
     }
   }
     break;

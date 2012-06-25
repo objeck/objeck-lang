@@ -221,7 +221,7 @@ public:
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
 
-    if(bind(server, (struct sockaddr *)&sin, sizeof(sin)) ==  SOCKET_ERROR) {
+    if(::bind(server, (SOCKADDR*)&sin, sizeof(sin)) ==  SOCKET_ERROR) {
       closesocket(server);
       return -1;
     }
