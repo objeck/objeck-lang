@@ -37,6 +37,8 @@
 #include "../stx/btree_set.h"
 #include <process.h>
 
+using namespace stx;
+
 // basic vm tuning parameters
 #define MEM_MAX 1024 * 512
 #define UNCOLLECTED_COUNT 4
@@ -59,7 +61,7 @@ class MemoryManager {
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static unordered_map<StackFrame*> pda_roots; // deleted elsewhere
+  static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
   static btree_map<long*, long> static_memory;
   static btree_map<long*, long> allocated_memory;
   static btree_set<long*> allocated_int_obj_array;
