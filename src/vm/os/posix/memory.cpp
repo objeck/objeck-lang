@@ -602,8 +602,8 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // remove references from allocated pool
   for(size_t i = 0; i < erased_memory.size(); i++) {
-    if(!allocated_memory.erase(erased_memory[i])) {
-      allocated_int_obj_array.erase(erased_memory[i]);
+    if(!allocated_int_obj_array.erase(erased_memory[i])) {
+      allocated_memory.erase(erased_memory[i]);
     }
   }
 #ifndef _GC_SERIAL
