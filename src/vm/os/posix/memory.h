@@ -38,9 +38,10 @@
 
 // basic vm tuning parameters
 #define MEM_MAX 1024 * 512
+// #define MEM_MAX 1024 * 32
 // #define MEM_MAX 1024
-#define UNCOLLECTED_COUNT 4
-#define COLLECTED_COUNT 8
+#define UNCOLLECTED_COUNT 3
+#define COLLECTED_COUNT 9
 
 using namespace stx;
 
