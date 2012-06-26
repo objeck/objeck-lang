@@ -144,10 +144,7 @@ void StackInterpreter::Execute()
   // execute
   halt = false;
   do {
-    // StackInstr* instr = frame->GetMethod()->GetInstruction(ip++);
-    // instrs = frame->GetMethod()->GetInstructions();
     StackInstr* instr = instrs[ip++];
-
     
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
