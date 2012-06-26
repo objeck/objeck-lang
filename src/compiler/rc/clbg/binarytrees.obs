@@ -58,8 +58,7 @@ bundle Default {
 		
 		function : BottomUpTree(item : Int, depth : Int) ~ TreeNode {
 			if(depth > 0) {
-				return TreeNode->New(BottomUpTree(2*item-1, depth-1), BottomUpTree(2*item, depth-1), item
-				);
+					return TreeNode->New(BottomUpTree(2*item-1, depth-1), BottomUpTree(2*item, depth-1), item);
 			};
 			
 			return TreeNode->New(item);

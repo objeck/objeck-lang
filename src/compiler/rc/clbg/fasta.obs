@@ -101,7 +101,7 @@ bundle Default {
 			descStr->Append(desc);
 			descStr->Append('\n');
 
-        		descStr->Print();
+			descStr->Print();
 			while (n > 0) {
 				if (n < LINE_LENGTH) {
 					m := n;
@@ -131,16 +131,16 @@ bundle Default {
 
 		function : native : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
 			index := 0;
-      m := 0;
+			m := 0;
 			k := 0;
 			kn := ALUB->Size();
 			
-      descStr := ">";
+			descStr := ">";
 			descStr->Append(id);
 			descStr->Append(" ");
 			descStr->Append(desc);
 			descStr->Append('\n');
-      descStr->Print();
+			descStr->Print();
 
 			while (n > 0) {
 				if (n < LINE_LENGTH) {
@@ -178,7 +178,7 @@ bundle Default {
 			MakeCumulative(HomoSapiens);
 			MakeCumulative(IUB);
 
-			n := 2500000;
+			n := 25000000;
 			if (args->Size() > 0) {
 				n := args[0]->ToInt();
       };
