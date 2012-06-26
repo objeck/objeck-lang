@@ -75,32 +75,6 @@ MemoryManager* MemoryManager::Instance()
   return instance;
 }
 
-void MemoryManager::AddStaticMemory(long* mem)
-{
-#ifndef _GC_SERIAL
-  EnterCriticalSection(&static_cs);
-  EnterCriticalSection(&allocated_cs);
-#endif
-
-  // only add static references that don't exist
-  stx::btree_map<long*, long>::iterator exists = static_memory.find(mem);
-  if(exists == static_memory.end()) {
-    // ensure that this is an object or array instance
-    stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
-#ifdef _DEBUG
-      cout << "### adding static reference: " << mem << " ###" << endl;
-#endif
-      static_memory.insert(pair<long*, long>(mem, result->second));
-    }
-  }
-
-#ifndef _GC_SERIAL
-  LeaveCriticalSection(&static_cs);
-  LeaveCriticalSection(&allocated_cs);
-#endif
-}
-
 // if return true, trace memory otherwise do not
 inline bool MemoryManager::MarkMemory(long* mem)
 {
@@ -574,17 +548,14 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 
 size_t WINAPI MemoryManager::CheckStatic(void* arg)
 {
-  // check static memory
-#ifndef _GC_SERIAL
-  EnterCriticalSection(&static_cs);
-#endif
-  stx::btree_map<long*, long>::iterator static_iter;
-  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
-    CheckObject(static_iter->first, false, 1);	
+  StackClass** clss = prgm->GetClasses();
+  int cls_num = prgm->GetClassNumber();
+  
+  for(int i = 0; i < cls_num; i++) {
+    StackClass* cls = clss[i];
+    CheckMemory(cls->GetClassMemory(), cls->GetDeclarations(), 
+		cls->GetNumberDeclarations(), 0);
   }
-#ifndef _GC_SERIAL
-  LeaveCriticalSection(&static_cs);
-#endif
 
   return 0;
 }
