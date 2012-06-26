@@ -1194,10 +1194,12 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
     }
     else {      
       move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
+      /*
       // mark static reference
       if(instr->GetOperand2() == CLS) {
 	ProcessAddStaticMemory(holder->GetRegister());
       }
+      */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);
@@ -1219,10 +1221,12 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
       left2 = NULL;
     }
     else {
+      /*
       // mark static reference
       if(instr->GetOperand2() == CLS) {
 	ProcessAddStaticMemory(holder->GetRegister());
       }
+      */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
     ReleaseRegister(holder);

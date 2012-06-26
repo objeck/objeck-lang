@@ -1202,6 +1202,14 @@ class StackProgram {
     return NULL;
   }
 
+  inline StackClass** GetClasses() const {
+    return classes;
+  }
+  
+  inline int GetClassNumber() const {  
+    return class_num;
+  }
+  
 #ifdef _DEBUGGER
   bool HasFile(const string &fn) {
     for(int i = 0; i < class_num; i++) {

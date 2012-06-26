@@ -64,11 +64,9 @@ class MemoryManager {
   static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
   static btree_map<long*, long> allocated_memory;
   static btree_set<long*> allocated_int_obj_array;
-  static btree_map<long*, long> static_memory;
   static vector<long*> marked_memory;
   
 #ifndef _GC_SERIAL
-  static pthread_mutex_t static_mutex;
   static pthread_mutex_t jit_mutex;
   static pthread_mutex_t pda_mutex;
   static pthread_mutex_t allocated_mutex;

@@ -38,14 +38,12 @@ unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
 btree_map<long*, long> MemoryManager::allocated_memory;
 btree_set<long*> MemoryManager::allocated_int_obj_array;
-btree_map<long*, long> MemoryManager::static_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 #ifndef _GC_SERIAL
-pthread_mutex_t MemoryManager::static_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -68,32 +66,6 @@ MemoryManager* MemoryManager::Instance()
   }
 
   return instance;
-}
-
-void MemoryManager::AddStaticMemory(long* mem)
-{
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&allocated_mutex);
-  pthread_mutex_lock(&static_mutex);
-#endif
-  
-  // only add static references that don't exist
-  btree_map<long*, long>::iterator exists = static_memory.find(mem);
-  if(exists == static_memory.end()) {
-    // ensure that this is an object or array instance
-    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
-#ifdef _DEBUG
-      cout << "### adding static reference: " << mem << " ###" << endl;
-#endif
-      static_memory.insert(pair<long*, long>(mem, result->second));
-    }
-  }
-  
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&static_mutex);
-  pthread_mutex_unlock(&allocated_mutex);
-#endif
 }
 
 // if return true, trace memory otherwise do not
@@ -634,18 +606,15 @@ void* MemoryManager::CollectMemory(void* arg)
 
 void* MemoryManager::CheckStatic(void* arg)
 {
-  // check static memory
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&static_mutex);
-#endif
-  btree_map<long*, long>::iterator static_iter;
-  for(static_iter = static_memory.begin(); static_iter != static_memory.end(); ++static_iter) {
-    CheckObject(static_iter->first, false, 1);	
+  StackClass** clss = prgm->GetClasses();
+  int cls_num = prgm->GetClassNumber();
+  
+  for(int i = 0; i < cls_num; i++) {
+    StackClass* cls = clss[i];
+    CheckMemory(cls->GetClassMemory(), cls->GetDeclarations(), 
+		cls->GetNumberDeclarations(), 0);
   }
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&static_mutex);
-#endif
-
+  
   return NULL;
 }
 
