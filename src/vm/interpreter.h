@@ -45,6 +45,10 @@
 #include "debugger/debugger.h"
 #endif
 
+#define POP_INT() (op_stack[--(*stack_pos)])
+#define PUSH_INT(v) (op_stack[(*stack_pos)++] = v)
+#define TOP_INT() (op_stack[(*stack_pos) - 1])
+
 using namespace std;
 
 namespace Runtime {
@@ -77,6 +81,7 @@ namespace Runtime {
     long call_stack_pos;
     // current frame
     StackFrame* frame;
+    StackInstr** instrs;
     long ip;
     // halt
     bool halt;
@@ -184,6 +189,9 @@ namespace Runtime {
       op_stack[(*stack_pos) - 1] = v;
     }
 
+
+    /*
+
     inline long PopInt() {
       long v = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
@@ -192,6 +200,8 @@ namespace Runtime {
 #endif
       return v;
     }
+
+    */
 
     inline FLOAT_VALUE PopFloat() {
       FLOAT_VALUE v;
@@ -243,12 +253,12 @@ namespace Runtime {
     //
     inline long ArrayIndex(StackInstr* instr, long* array, const long size) {
       // generate index
-      long index = PopInt();
+      long index = POP_INT();
       const long dim = instr->GetOperand();
 
       for(long i = 1; i < dim; i++) {
 	index *= array[i];
-	index += PopInt();
+	index += POP_INT();
       }
 
 #ifdef _DEBUG
