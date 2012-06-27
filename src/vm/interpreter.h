@@ -96,6 +96,9 @@ namespace Runtime {
     static void* CompileMethod(void* arg);
 #endif
   
+    //
+    // push call frame
+    //
     inline void PushFrame(StackFrame* f) {
       if(call_stack_pos >= STACK_SIZE) {
         cerr << ">>> call stack bounds have been exceeded! <<<" << endl;
@@ -105,6 +108,9 @@ namespace Runtime {
       call_stack[call_stack_pos++] = f;
     }
 
+    //
+    // pop call frame
+    //
     inline StackFrame* PopFrame() {
       if(call_stack_pos <= 0) {
         cerr << ">>> call stack bounds have been exceeded! <<<" << endl;
@@ -114,6 +120,9 @@ namespace Runtime {
       return call_stack[--call_stack_pos];
     }
     
+    //
+    // generates a stack dump if an error occurs
+    //
     inline void StackErrorUnwind() {
       long pos = call_stack_pos;
 #ifdef _DEBUGGER
@@ -143,6 +152,9 @@ namespace Runtime {
 #endif
     }
     
+    //
+    // generates a stack dump if an error occurs
+    //
     inline void StackErrorUnwind(StackMethod* method) {
       long pos = call_stack_pos;
       cerr << "Unwinding local stack (" << this << "):" << endl;
@@ -157,10 +169,17 @@ namespace Runtime {
       cerr << "  ..." << endl;
     }
     
+    //
+    // is call stack empty?
+    //
     inline bool StackEmpty() {
       return call_stack_pos == 0;
     }
 
+    //
+    // pushes an integer onto the calculation stack.  this code
+    // in normally inlined and there's a macro version available.
+    //
     inline void PushInt(long v) {
 #ifdef _DEBUG
       cout << "  [push_i: stack_pos=" << (*stack_pos) << "; value=" << v << "("
@@ -169,6 +188,9 @@ namespace Runtime {
       op_stack[(*stack_pos)++] = v;
     }
 
+    //
+    // pushes an double onto the calculation stack.
+    //
     inline void PushFloat(FLOAT_VALUE v) {
 #ifdef _DEBUG
       cout << "  [push_f: stack_pos=" << (*stack_pos) << "; value=" << v
@@ -183,12 +205,18 @@ namespace Runtime {
 #endif
     }
   
+    //
+    // swaps two integers on the calculation stack
+    //
     inline void SwapInt() {
       long v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
     
+    //
+    // pops a double from the calculation stack
+    //
     inline FLOAT_VALUE PopFloat() {
       FLOAT_VALUE v;
 
@@ -207,6 +235,10 @@ namespace Runtime {
       return v;
     }
     
+    //
+    // peeks at the integer on the top of the
+    // execution stack.
+    //
     inline long TopInt() {
       long v = op_stack[(*stack_pos) - 1];
 #ifdef _DEBUG
@@ -216,6 +248,10 @@ namespace Runtime {
       return v;
     }
 
+    //
+    // peeks at the double on the top of the
+    // execution stack.
+    //
     inline FLOAT_VALUE TopFloat() {
       FLOAT_VALUE v;
 
@@ -307,6 +343,9 @@ namespace Runtime {
       cls_obj[1] = (long)mthd_obj_array;
     }
     
+    //
+    // creates an instance of the 'Method' class
+    //
     long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
 								 (long*)op_stack, *stack_pos,

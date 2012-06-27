@@ -103,7 +103,9 @@ void StackInterpreter::Initialize(StackProgram* p)
 }
 
 /********************************
- * Main VM execution method
+ * Main VM execution method. This
+ * funciton is used by callbacks 
+ * from native code for the C API
  ********************************/
 void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* method,
 			       long* instance, bool jit_called)
@@ -137,6 +139,9 @@ void StackInterpreter::Execute(long* stack, long* pos, long i, StackMethod* meth
   Execute();
 }
 
+/********************************
+ * Main execution loop.
+ ********************************/
 void StackInterpreter::Execute()
 {
   long right, left;
