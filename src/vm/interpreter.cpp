@@ -1766,8 +1766,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
       }
       program->AddThread(jit_thread);
       pthread_attr_destroy(&attrs);
-      //      pthread_detach(jit_thread);
-
+      
       // execute code in parallel
       ProcessInterpretedMethodCall(called, instance);
     }
