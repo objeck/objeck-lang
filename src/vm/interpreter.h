@@ -188,21 +188,7 @@ namespace Runtime {
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
-
-
-    /*
-
-    inline long PopInt() {
-      long v = op_stack[--(*stack_pos)];
-#ifdef _DEBUG
-      cout << "  [pop_i: stack_pos=" << (*stack_pos) << "; value=" << v << "("
-	   << (void*)v << ")]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
-#endif
-      return v;
-    }
-
-    */
-
+    
     inline FLOAT_VALUE PopFloat() {
       FLOAT_VALUE v;
 
@@ -220,7 +206,7 @@ namespace Runtime {
 
       return v;
     }
-
+    
     inline long TopInt() {
       long v = op_stack[(*stack_pos) - 1];
 #ifdef _DEBUG
@@ -800,13 +786,10 @@ namespace Runtime {
     inline void ProcessStoreFloatArrayElement(StackInstr* instr);
     inline void ProcessLoadByteArrayElement(StackInstr* instr);
     inline void ProcessStoreByteArrayElement(StackInstr* instr);
-    inline void ProcessStoreInt(StackInstr* instr);
     inline void ProcessStoreFunction(StackInstr* instr);
-    inline void ProcessLoadInt(StackInstr* instr);
     inline void ProcessLoadFunction(StackInstr* instr);
     inline void ProcessStoreFloat(StackInstr* instr);
     inline void ProcessLoadFloat(StackInstr* instr);
-    inline void ProcessCopyInt(StackInstr* instr);
     inline void ProcessCopyFloat(StackInstr* instr);
     inline void ProcessCurrentTime(bool is_gmt);
     inline void ProcessSetTime1();
