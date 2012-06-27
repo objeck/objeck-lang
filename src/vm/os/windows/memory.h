@@ -40,7 +40,8 @@
 using namespace stx;
 
 // basic vm tuning parameters
-#define MEM_MAX 1024 * 512
+// #define MEM_MAX 1024 * 512
+#define MEM_MAX 1048576 * 8
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
@@ -175,7 +176,9 @@ public:
   // object verification
   long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
+  //
   // returns the class reference for an object instance
+  //
   static inline StackClass* GetClass(long* mem) {
     if(mem) {
       return (StackClass*)*(mem - 2);
@@ -183,7 +186,9 @@ public:
     return NULL;
   }
 
+  //
   // returns a unique object id for an instance
+  //
   static inline long GetObjectID(long* mem) {
     StackClass* klass = GetClass(mem);
     if(klass) {
