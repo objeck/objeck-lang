@@ -4042,7 +4042,7 @@
 		<row><td>ID_STRING3</td><td>1033</td><td>Randy Hollines</td><td>0</td><td/><td>-627035475</td></row>
 		<row><td>ID_STRING30</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-2095029140</td></row>
 		<row><td>ID_STRING31</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-2094998420</td></row>
-		<row><td>ID_STRING4</td><td>1033</td><td>OBJECK~1|Objeck Programming Language</td><td>0</td><td/><td>-199313356</td></row>
+		<row><td>ID_STRING4</td><td>1033</td><td>Objeck</td><td>0</td><td/><td>-618621971</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
 		<row><td>ID_STRING7</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-736210891</td></row>
@@ -4685,7 +4685,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck Programming Language</td><td/></row>
-		<row><td>ProductVersion</td><td>3.1.1.1</td><td/></row>
+		<row><td>ProductVersion</td><td>3.1.2.0</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
