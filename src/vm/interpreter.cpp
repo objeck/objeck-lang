@@ -149,10 +149,28 @@ void StackInterpreter::Execute()
 #ifdef _DEBUGGER
     debugger->ProcessInstruction(instr, ip, call_stack, call_stack_pos, frame);
 #endif
-
+    
     switch(instr->GetType()) {
-    case STOR_INT_VAR:
-      ProcessStoreInt(instr);
+    case STOR_INT_VAR: {
+#ifdef _DEBUG
+      cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand()
+	   << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+#endif
+      if(instr->GetOperand2() == LOCL) {
+	long* mem = frame->GetMemory();
+	mem[instr->GetOperand() + 1] = POP_INT();
+      } 
+      else {
+	long* cls_inst_mem = (long*)POP_INT();
+	if(!cls_inst_mem) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  StackErrorUnwind();
+	  exit(1);
+	}
+	long mem = POP_INT();
+	cls_inst_mem[instr->GetOperand()] = mem;
+      }
+    }
       break;
 
     case STOR_FUNC_VAR:
@@ -163,8 +181,24 @@ void StackInterpreter::Execute()
       ProcessStoreFloat(instr);
       break;
 
-    case COPY_INT_VAR:
-      ProcessCopyInt(instr);
+    case COPY_INT_VAR: {
+#ifdef _DEBUG
+      cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
+	   << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+#endif
+      if(instr->GetOperand2() == LOCL) {
+	long* mem = frame->GetMemory();
+	mem[instr->GetOperand() + 1] = TOP_INT();
+      } else {
+	long* cls_inst_mem = (long*)POP_INT();
+	if(!cls_inst_mem) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  StackErrorUnwind();
+	  exit(1);
+	}
+	cls_inst_mem[instr->GetOperand()] = TOP_INT();
+      }
+    }
       break;
 
     case COPY_FLOAT_VAR:
@@ -205,8 +239,25 @@ void StackInterpreter::Execute()
       PushFloat(instr->GetFloatOperand());
       break;
 
-    case LOAD_INT_VAR:
-      ProcessLoadInt(instr);
+    case LOAD_INT_VAR: {
+#ifdef _DEBUG
+      cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand()
+	   << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+#endif
+      if(instr->GetOperand2() == LOCL) {
+	long* mem = frame->GetMemory();
+	PUSH_INT(mem[instr->GetOperand() + 1]);
+      } 
+      else {
+	long* cls_inst_mem = (long*)POP_INT();
+	if(!cls_inst_mem) {
+	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  StackErrorUnwind();
+	  exit(1);
+	}
+	PUSH_INT(cls_inst_mem[instr->GetOperand()]);
+      }
+    }
       break;
 
     case LOAD_FUNC_VAR:
@@ -1150,31 +1201,6 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr)
 }
 
 /********************************
- * Processes a load integer
- * variable instruction.
- ********************************/
-void StackInterpreter::ProcessLoadInt(StackInstr* instr)
-{
-#ifdef _DEBUG
-  cout << "stack oper: LOAD_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
-#endif
-  if(instr->GetOperand2() == LOCL) {
-    long* mem = frame->GetMemory();
-    PUSH_INT(mem[instr->GetOperand() + 1]);
-  } 
-  else {
-    long* cls_inst_mem = (long*)POP_INT();
-    if(!cls_inst_mem) {
-      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-    PUSH_INT(cls_inst_mem[instr->GetOperand()]);
-  }
-}
-
-/********************************
  * Processes a load float
  * variable instruction.
  ********************************/
@@ -1228,32 +1254,6 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr)
 }
 
 /********************************
- * Processes a store integer
- * variable instruction.
- ********************************/
-void StackInterpreter::ProcessStoreInt(StackInstr* instr)
-{
-#ifdef _DEBUG
-  cout << "stack oper: STOR_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
-#endif
-  if(instr->GetOperand2() == LOCL) {
-    long* mem = frame->GetMemory();
-    mem[instr->GetOperand() + 1] = POP_INT();
-  } 
-  else {
-    long* cls_inst_mem = (long*)POP_INT();
-    if(!cls_inst_mem) {
-      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-    long mem = POP_INT();
-    cls_inst_mem[instr->GetOperand()] = mem;
-  }
-}
-
-/********************************
  * Processes a store float
  * variable instruction.
  ********************************/
@@ -1276,30 +1276,6 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr)
     }
     FLOAT_VALUE value = PopFloat();
     memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
-  }
-}
-
-/********************************
- * Processes a copy integer
- * variable instruction.
- ********************************/
-void StackInterpreter::ProcessCopyInt(StackInstr* instr)
-{
-#ifdef _DEBUG
-  cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
-#endif
-  if(instr->GetOperand2() == LOCL) {
-    long* mem = frame->GetMemory();
-    mem[instr->GetOperand() + 1] = TOP_INT();
-  } else {
-    long* cls_inst_mem = (long*)POP_INT();
-    if(!cls_inst_mem) {
-      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-      StackErrorUnwind();
-      exit(1);
-    }
-    cls_inst_mem[instr->GetOperand()] = TOP_INT();
   }
 }
 
