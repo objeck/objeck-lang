@@ -169,8 +169,10 @@ namespace Runtime {
 	operand = INSTANCE_MEM;
 	break;
 
-      case LOAD_INT_VAR:
-      case STOR_INT_VAR:
+      case LOAD_LOCL_INT_VAR:
+      case LOAD_CLS_INST_INT_VAR:
+      case STOR_LOCL_INT_VAR:
+      case STOR_CLS_INST_INT_VAR:
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
       case COPY_INT_VAR:
@@ -2047,8 +2049,10 @@ namespace Runtime {
       for(int32_t i = 0; i < method->GetInstructionCount(); i++) {
 	StackInstr* instr = method->GetInstruction(i);
 	switch(instr->GetType()) {
-	case LOAD_INT_VAR:
-	case STOR_INT_VAR:
+	case LOAD_LOCL_INT_VAR:
+	case LOAD_CLS_INST_INT_VAR:
+	case STOR_LOCL_INT_VAR:
+	case STOR_CLS_INST_INT_VAR:
 	case LOAD_FUNC_VAR:
 	case STOR_FUNC_VAR:
 	case COPY_INT_VAR:
@@ -2080,8 +2084,10 @@ namespace Runtime {
 	  // note: all local variables are allocted in 4 or 8 bytes ` 
 	  // blocks depending upon type
 	  if(last_id != id) {
-	    if(instr->GetType() == LOAD_INT_VAR || 
-	       instr->GetType() == STOR_INT_VAR ||
+	    if(instr->GetType() == LOAD_LOCL_INT_VAR || 
+	       instr->GetType() == LOAD_CLS_INST_INT_VAR || 
+	       instr->GetType() == STOR_LOCL_INT_VAR ||
+	       instr->GetType() == STOR_CLS_INST_INT_VAR ||
 	       instr->GetType() == COPY_INT_VAR) {
 	      index -= sizeof(int32_t);
 	    }
