@@ -127,14 +127,6 @@ void StackInterpreter::Execute()
 #endif
     
     switch(instr->GetType()) {
-
-
-
-
-
-
-
-      
     case STOR_LOCL_INT_VAR: {
 #ifdef _DEBUG
       cout << "stack oper: STOR_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -159,17 +151,6 @@ void StackInterpreter::Execute()
     }    
       break;
       
-
-
-
-
-
-
-
-
-
-
-
     case STOR_FUNC_VAR:
       ProcessStoreFunction(instr);
       break;
@@ -177,31 +158,35 @@ void StackInterpreter::Execute()
     case STOR_FLOAT_VAR:
       ProcessStoreFloat(instr);
       break;
-
-    case COPY_INT_VAR: {
+      
+    case COPY_LOCL_INT_VAR: {
 #ifdef _DEBUG
-      cout << "stack oper: COPY_INT_VAR; index=" << instr->GetOperand()
-	   << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+      cout << "stack oper: COPY_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
-      if(instr->GetOperand2() == LOCL) {
-	long* mem = frame->GetMemory();
-	mem[instr->GetOperand() + 1] = TOP_INT();
-      } else {
-	long* cls_inst_mem = (long*)POP_INT();
-	if(!cls_inst_mem) {
-	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	  StackErrorUnwind();
-	  exit(1);
-	}
-	cls_inst_mem[instr->GetOperand()] = TOP_INT();
+      long* mem = frame->GetMemory();
+      mem[instr->GetOperand() + 1] = TOP_INT();
+    } 
+      break;
+      
+    case COPY_CLS_INST_INT_VAR: {
+#ifdef _DEBUG
+      cout << "stack oper: COPY_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
+#endif
+      
+      long* cls_inst_mem = (long*)POP_INT();
+      if(!cls_inst_mem) {
+	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	StackErrorUnwind();
+	exit(1);
       }
+      cls_inst_mem[instr->GetOperand()] = TOP_INT();
     }
       break;
-
+      
     case COPY_FLOAT_VAR:
       ProcessCopyFloat(instr);
       break;
-
+      
     case LOAD_INT_LIT:
 #ifdef _DEBUG
       cout << "stack oper: LOAD_INT_LIT; call_pos=" << call_stack_pos << endl;
@@ -236,12 +221,6 @@ void StackInterpreter::Execute()
       PushFloat(instr->GetFloatOperand());
       break;
 
-
-
-
-
-
-
     case LOAD_LOCL_INT_VAR: {
 #ifdef _DEBUG
       cout << "stack oper: LOAD_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -265,14 +244,6 @@ void StackInterpreter::Execute()
     }
       break;
       
-
-
-
-
-
-
-
-
     case LOAD_FUNC_VAR:
       ProcessLoadFunction(instr);
       break;
