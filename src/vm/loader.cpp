@@ -399,7 +399,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
   
   instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
   instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
-  instrs.push_back(new StackInstr(-1, STOR_INT_VAR, 0L, LOCL));
+  instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); i++) {
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
@@ -413,11 +413,11 @@ void Loader::LoadInitializationCode(StackMethod* method)
     instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
 
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)i));
-    instrs.push_back(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+    instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
     instrs.push_back(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
   }
 
-  instrs.push_back(new StackInstr(-1, LOAD_INT_VAR, 0L, LOCL));
+  instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
   instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
   instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, 
 				  (long)start_method_id, 0L));
@@ -456,7 +456,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, 
+				      mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
+				      id, mem_context));
     }
       break;
 
@@ -477,7 +479,9 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, 
+				      mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
+				      id, mem_context));
     }
       break;
 
