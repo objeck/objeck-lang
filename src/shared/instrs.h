@@ -38,13 +38,25 @@ namespace instructions {
     // loads operations
     LOAD_INT_LIT  = 0,
     LOAD_FLOAT_LIT,
+
+
     LOAD_INT_VAR,
+    LOAD_LOCL_INT_VAR, 
+	 LOAD_CLS_INST_INT_VAR,
+
+
     LOAD_FLOAT_VAR,
     LOAD_FUNC_VAR,
     LOAD_CLS_MEM,
     LOAD_INST_MEM,
     // stores operations
+
+
     STOR_INT_VAR,
+    STOR_LOCL_INT_VAR, 
+	 STOR_CLS_INST_INT_VAR,
+
+
     STOR_FLOAT_VAR,
     STOR_FUNC_VAR,
     // copy operations

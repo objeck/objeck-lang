@@ -154,7 +154,8 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
       
-    if(instr->GetType() == STOR_INT_VAR) {
+    if(instr->GetType() == STOR_LOCL_INT_VAR || 
+       instr->GetType() == STOR_CLS_INST_INT_VAR) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
@@ -329,7 +330,8 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
       // load variable
-    case LOAD_INT_VAR:
+    case LOAD_LOCL_INT_VAR:
+    case LOAD_CLS_INST_INT_VAR:
     case LOAD_FLOAT_VAR:
     case LOAD_FUNC_VAR:
 #ifdef _DEBUG
@@ -340,7 +342,8 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
     
       // store value
-    case STOR_INT_VAR:
+    case STOR_LOCL_INT_VAR:
+    case STOR_CLS_INST_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
 #ifdef _DEBUG
@@ -754,7 +757,8 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
     CheckNilDereference(holder->GetRegister());
     
     // int value
-    if(instr->GetType() == LOAD_INT_VAR) {
+    if(instr->GetType() == LOAD_LOCL_INT_VAR || 
+       instr->GetType() == LOAD_CLS_INST_INT_VAR) {
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
     }
