@@ -55,35 +55,6 @@ using namespace Runtime;
 StackProgram* StackInterpreter::program;
 
 /********************************
- * JIT compiler thread
- ********************************/
-#ifdef _WIN32
-uintptr_t WINAPI StackInterpreter::CompileMethod(LPVOID arg)
-{
-  StackMethod* method = (StackMethod*)arg;
-  JitCompilerIA32 jit_compiler;
-  jit_compiler.Compile(method);
-
-  return 0;
-}
-#else
-void* StackInterpreter::CompileMethod(void* arg) 
-{
-  StackMethod* method = (StackMethod*)arg;
-#ifdef _X64
-  JitCompilerIA64 jit_compiler;
-#else
-  JitCompilerIA32 jit_compiler;
-#endif
-  jit_compiler.Compile(method);
-
-  // clean up
-  program->RemoveThread(pthread_self());
-  return NULL;
-}
-#endif
-
-/********************************
  * VM initialization
  ********************************/
 void StackInterpreter::Initialize(StackProgram* p)
@@ -1695,7 +1666,6 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     ip = frame->GetIp();
   } 
   else {
-#ifdef _JIT_SERIAL
     // compile
 #ifdef _X64
     JitCompilerIA64 jit_compiler;
@@ -1730,50 +1700,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     frame = PopFrame();
     instrs = frame->GetMethod()->GetInstructions();
     ip = frame->GetIp();
-#else
-#ifdef _WIN32
-    // 
-    // Windows: lock this section while we compile...
-    //
-    if(!TryEnterCriticalSection(&called->jit_cs)) {
-      ProcessInterpretedMethodCall(called, instance);
-    }
-    else { 
-      HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CompileMethod, called, 0, NULL);
-      if(!thread_id) {
-        cerr << ">>> Unable to create thread to compile method! <<<" << endl;
-        exit(-1);
-      }
-      program->AddThread(thread_id);
-      ProcessInterpretedMethodCall(called, instance);
-    }
-#else
-    // 
-    // Linux and OS X: lock this section while we compile...
-    //
-    if(pthread_mutex_trylock(&called->jit_mutex)) {
-      ProcessInterpretedMethodCall(called, instance);
-    }
-    else {     
-      pthread_attr_t attrs;
-      pthread_attr_init(&attrs);
-      pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
-
-      pthread_t jit_thread;
-      if(pthread_create(&jit_thread, &attrs, CompileMethod, (void*)called)) {
-        cerr << ">>> Unable to create thread to compile method! <<<" << endl;
-        exit(-1);
-      }
-      program->AddThread(jit_thread);
-      pthread_attr_destroy(&attrs);
-      
-      // execute code in parallel
-      ProcessInterpretedMethodCall(called, instance);
-    }
-#endif
 #endif
   }
-#endif
 }
 
 /********************************
