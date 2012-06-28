@@ -175,7 +175,8 @@ namespace Runtime {
       case STOR_CLS_INST_INT_VAR:
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
-      case COPY_INT_VAR:
+      case COPY_LOCL_INT_VAR: 
+      case COPY_CLS_INST_INT_VAR:
 	type = MEM_INT;
 	operand = si->GetOperand3();
 	break;
@@ -2055,7 +2056,8 @@ namespace Runtime {
 	case STOR_CLS_INST_INT_VAR:
 	case LOAD_FUNC_VAR:
 	case STOR_FUNC_VAR:
-	case COPY_INT_VAR:
+	case COPY_LOCL_INT_VAR: 
+	case COPY_CLS_INST_INT_VAR:
 	case LOAD_FLOAT_VAR:
 	case STOR_FLOAT_VAR:
 	case COPY_FLOAT_VAR:
@@ -2088,7 +2090,8 @@ namespace Runtime {
 	       instr->GetType() == LOAD_CLS_INST_INT_VAR || 
 	       instr->GetType() == STOR_LOCL_INT_VAR ||
 	       instr->GetType() == STOR_CLS_INST_INT_VAR ||
-	       instr->GetType() == COPY_INT_VAR) {
+	       instr->GetType() == COPY_LOCL_INT_VAR ||
+	       instr->GetType() == COPY_CLS_INST_INT_VAR) {
 	      index -= sizeof(int32_t);
 	    }
 	    else if(instr->GetType() == LOAD_FUNC_VAR || 

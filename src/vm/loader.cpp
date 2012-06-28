@@ -498,11 +498,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
-
+      
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, COPY_INT_VAR, id, mem_context));
+      instrs.push_back(new StackInstr(line_num, 
+				      mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
+				      id, mem_context));
     }
       break;
 
