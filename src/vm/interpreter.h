@@ -89,13 +89,6 @@ namespace Runtime {
     Debugger* debugger;
 #endif
   
-    // JIT compiler thread handles
-#ifdef _WIN32
-    static uintptr_t WINAPI CompileMethod(LPVOID arg);
-#else
-    static void* CompileMethod(void* arg);
-#endif
-  
     //
     // push call frame
     //
