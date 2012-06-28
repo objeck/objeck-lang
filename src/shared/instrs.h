@@ -38,29 +38,23 @@ namespace instructions {
     // loads operations
     LOAD_INT_LIT  = 0,
     LOAD_FLOAT_LIT,
-
-
     LOAD_INT_VAR,
-    LOAD_LOCL_INT_VAR, 
-	 LOAD_CLS_INST_INT_VAR,
-
-
+    LOAD_LOCL_INT_VAR, // only used by the VM
+    LOAD_CLS_INST_INT_VAR, // only used by the VM
     LOAD_FLOAT_VAR,
     LOAD_FUNC_VAR,
     LOAD_CLS_MEM,
     LOAD_INST_MEM,
     // stores operations
-
-
     STOR_INT_VAR,
-    STOR_LOCL_INT_VAR, 
-	 STOR_CLS_INST_INT_VAR,
-
-
+    STOR_LOCL_INT_VAR, // only used by the VM
+    STOR_CLS_INST_INT_VAR, // only used by the VM
     STOR_FLOAT_VAR,
     STOR_FUNC_VAR,
     // copy operations
     COPY_INT_VAR,
+    COPY_LOCL_INT_VAR, // only used by the VM
+    COPY_CLS_INST_INT_VAR, // only used by the VM
     COPY_FLOAT_VAR,
     COPY_FUNC_VAR,
     // array operations

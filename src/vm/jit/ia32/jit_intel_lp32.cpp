@@ -354,7 +354,8 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
 
       // copy value
-    case COPY_INT_VAR:
+    case COPY_LOCL_INT_VAR: 
+    case COPY_CLS_INST_INT_VAR:
     case COPY_FLOAT_VAR:
 #ifdef _DEBUG
       cout << "COPY_INT_VAR/COPY_FLOAT_VAR: id=" << instr->GetOperand() 
