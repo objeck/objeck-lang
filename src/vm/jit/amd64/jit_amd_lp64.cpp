@@ -214,7 +214,8 @@ void JitCompilerIA64::ProcessParameters(long params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
     
-    if(instr->GetType() == STOR_INT_VAR) {
+    if(instr->GetType() == STOR_LOCL_INT_VAR ||
+       instr->GetType() == STOR_CLS_INST_INT_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
@@ -389,7 +390,8 @@ void JitCompilerIA64::ProcessInstructions() {
       break;
       
       // load variable
-    case LOAD_INT_VAR:
+    case LOAD_LOCL_INT_VAR:
+    case LOAD_CLS_INST_INT_VAR:   
     case LOAD_FLOAT_VAR:
     case LOAD_FUNC_VAR:
 #ifdef _DEBUG
@@ -400,7 +402,8 @@ void JitCompilerIA64::ProcessInstructions() {
       break;
     
       // store value
-    case STOR_INT_VAR:
+    case STOR_LOCL_INT_VAR:
+    case STOR_CLS_INST_INT_VAR:
     case STOR_FLOAT_VAR:
     case STOR_FUNC_VAR:
 #ifdef _DEBUG
@@ -411,7 +414,8 @@ void JitCompilerIA64::ProcessInstructions() {
       break;
 
       // copy value
-    case COPY_INT_VAR:
+    case COPY_LOCL_INT_VAR:
+    case COPY_CLS_INST_INT_VAR:
     case COPY_FLOAT_VAR:
 #ifdef _DEBUG
       cout << "COPY_INT_VAR/COPY_FLOAT_VAR: id=" << instr->GetOperand() 
@@ -815,7 +819,8 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
     CheckNilDereference(holder->GetRegister());
 
     // long value
-    if(instr->GetType() == LOAD_INT_VAR) {
+    if(instr->GetType() == LOAD_LOCL_INT_VAR ||
+       instr->GetType() == LOAD_CLS_INST_INT_VAR) {
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
     }
