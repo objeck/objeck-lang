@@ -64,8 +64,8 @@ bundle Default {
 		}
 
 		# pseudo-random number generator
-#		function : native : Random(max : Float) ~ Float {
-		function : Random(max : Float) ~ Float {
+		function : native : Random(max : Float) ~ Float {
+#		function : Random(max : Float) ~ Float {
 			last := (last * IA + IC) % IM;
 			return max * last / IM;
 		}
@@ -81,8 +81,8 @@ bundle Default {
 
             
 		# naive
-#		function : native : SelectRandom(a : Frequency[]) ~ Char {
-		function : SelectRandom(a : Frequency[]) ~ Char {
+		function : native : SelectRandom(a : Frequency[]) ~ Char {
+#		function : SelectRandom(a : Frequency[]) ~ Char {
 			len := a->Size();
 			r := Random(1.0);
 			for(i := 0; i < len; i+=1;) {
@@ -94,8 +94,8 @@ bundle Default {
 			return a[len - 1]->GetC();
 		}
 
-#		function : native : MakeRandomFasta(id :String, desc : String, a : Frequency[], n : Int) ~ Nil {
-		function : MakeRandomFasta(id :String, desc : String, a : Frequency[], n : Int) ~ Nil {
+		function : native : MakeRandomFasta(id :String, desc : String, a : Frequency[], n : Int) ~ Nil {
+#		function : MakeRandomFasta(id :String, desc : String, a : Frequency[], n : Int) ~ Nil {
 			index := 0;
 			m := 0;
 
@@ -133,8 +133,8 @@ bundle Default {
 			};	
 		}
 
-#		function : native : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
-		function : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
+		function : native : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
+#		function : MakeRepeatFasta(id : String, desc : String, alu : String, n : Int) ~ Nil {
 			index := 0;
 			m := 0;
 			k := 0;
