@@ -180,11 +180,14 @@ namespace Runtime {
 	operand = INSTANCE_MEM;
 	break;
 
-      case LOAD_INT_VAR:
-      case STOR_INT_VAR:
+      case LOAD_LOCL_INT_VAR:
+      case LOAD_CLS_INST_INT_VAR:
+      case STOR_LOCL_INT_VAR:
+      case STOR_CLS_INST_INT_VAR:
       case LOAD_FUNC_VAR:
       case STOR_FUNC_VAR:
-      case COPY_INT_VAR:
+      case COPY_LOCL_INT_VAR:
+      case COPY_CLS_INST_INT_VAR:
 	type = MEM_INT;
 	operand = si->GetOperand3();
 	break;
@@ -2113,11 +2116,14 @@ namespace Runtime {
       for(long i = 0; i < method->GetInstructionCount(); i++) {
 	StackInstr* instr = method->GetInstruction(i);
 	switch(instr->GetType()) {
-	case LOAD_INT_VAR:
-	case STOR_INT_VAR:
+	case LOAD_LOCL_INT_VAR:
+	case LOAD_CLS_INST_INT_VAR:	
+	case STOR_LOCL_INT_VAR:
+	case STOR_CLS_INST_INT_VAR:
 	case LOAD_FUNC_VAR:
 	case STOR_FUNC_VAR:
-	case COPY_INT_VAR:
+	case COPY_LOCL_INT_VAR:
+	case COPY_CLS_INST_INT_VAR:
 	case LOAD_FLOAT_VAR:
 	case STOR_FLOAT_VAR:
 	case COPY_FLOAT_VAR:
@@ -2146,9 +2152,12 @@ namespace Runtime {
 	  // note: all local variables are allocted in 4 or 8 bytes ` 
 	  // blocks depending upon type
 	  if(last_id != id) {
-	    if(instr->GetType() == LOAD_INT_VAR || 
-	       instr->GetType() == STOR_INT_VAR ||
-	       instr->GetType() == COPY_INT_VAR) {
+	    if(instr->GetType() == LOAD_LOCL_INT_VAR || 
+	       instr->GetType() == LOAD_CLS_INST_INT_VAR || 
+	       instr->GetType() == STOR_LOCL_INT_VAR ||
+	       instr->GetType() == STOR_CLS_INST_INT_VAR ||
+	       instr->GetType() == COPY_LOCL_INT_VAR ||
+	       instr->GetType() == COPY_CLS_INST_INT_VAR) {
 	      index -= sizeof(long);
 	    }
 	    else if(instr->GetType() == LOAD_FUNC_VAR || 
@@ -2399,18 +2408,26 @@ namespace Runtime {
       long cls_id = method->GetClass()->GetId();
       long mthd_id = method->GetId();
       
-#ifdef _DEBUG
-      cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
-	   << "; name='" << method->GetName() << "'; self=" << inst << "(" << (long)inst 
-	   << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
-	   << method->GetParamCount() << " ===" << endl;
-      assert((*stack_pos) >= method->GetParamCount());
-#endif
 
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
       floats = native_code->GetFloats();
+      
+#ifdef _DEBUG
+      cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
+	   << "; name='" << method->GetName() << "'; self=" << inst << "(" << (long)inst 
+	   << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
+	   << method->GetParamCount() << "; code=" << (void*)code << "; code_index=" 
+	   << code_index << " ===" << endl;
+      assert((*stack_pos) >= method->GetParamCount());
+
+      if(method->GetName() == "System.String:Append:c*,") {
+	cout << "..." << endl;
+      }
+#endif
+
+      
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, (long*)inst, code, code_index, 
