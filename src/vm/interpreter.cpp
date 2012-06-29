@@ -1458,7 +1458,7 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  long* thread_op_stack = new long[STACK_SIZE];
+  long* thread_op_stack = new long[CALC_STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
 
@@ -1503,7 +1503,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  long* thread_op_stack = new long[STACK_SIZE];
+  long* thread_op_stack = new long[CALC_STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
 
