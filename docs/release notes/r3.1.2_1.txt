@@ -1,0 +1,12 @@
+Objeck v3.1.2_1
+
+--------------
+Release Notes
+--------------
+The focus of this release was runtime performance.  Both the interpreter and GC were refactored to improve overall performance.
+
+Highlights of this specific release include the following:
+* Inlining support for method setters (new)
+* VM performance tweaks (new)
+* Resolved a compiler bug related to the generation of invalid code for classes that were derived from the Thread class (high - fixed)
+* Modified the size of the execution and call stacks to help prevent rare stack overflows (low - fixed)
