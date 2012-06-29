@@ -177,7 +177,7 @@ void Runtime::Debugger::ProcessRun() {
     cur_program = loader.GetProgram();
 
     // execute
-    op_stack = new long[STACK_SIZE];
+    op_stack = new long[CALC_STACK_SIZE];
     stack_pos = new long;
     (*stack_pos) = 0;
 
