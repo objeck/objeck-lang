@@ -311,6 +311,13 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 	outputs->AddInstruction(instrs[2]);
 	outputs->AddInstruction(instrs[3]);
       }
+      else if(status == 3) {
+	cout << "****** Found Setter id=" << instr->GetOperand() << "," << instr->GetOperand2() << " ******" << endl;
+
+	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+	outputs->AddInstruction(instrs[3]);
+      }
       else {
 	outputs->AddInstruction(instr);
       }
@@ -548,7 +555,8 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test,
     // shift left or right
     if(instr->GetType() == MUL_INT) {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, shift));
-    } else {
+    } 
+    else {
       rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHR_INT, shift));
     }
   }
@@ -688,7 +696,8 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
     default:
       break;
     }
-  } else {
+  } 
+  else {
     outputs->AddInstruction(instr);
   }
 }
@@ -741,7 +750,8 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
     outputs->AddInstruction(working_stack.front());
     working_stack.pop_front();
     outputs->AddInstruction(instr);
-  } else if(working_stack.size() > 1) {
+  } 
+  else if(working_stack.size() > 1) {
     IntermediateInstruction* left = working_stack.front();
     working_stack.pop_front();
 
@@ -776,7 +786,8 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
     default:
       break;
     }
-  } else {
+  } 
+  else {
     outputs->AddInstruction(instr);
   }
 }

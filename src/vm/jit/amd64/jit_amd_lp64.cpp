@@ -1214,10 +1214,16 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
 
-    addr_holder = GetRegister();
-    move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
-    CheckNilDereference(addr_holder->GetRegister());
-    dest = addr_holder->GetRegister();
+    if(left->GetRegister()) {
+      dest = left->GetRegister()->GetRegister();
+      ReleaseRegister(left->GetRegister());
+    }
+    else {
+      addr_holder = GetRegister();
+      move_mem_reg(left->GetOperand(), RBP, addr_holder->GetRegister());
+      dest = addr_holder->GetRegister();
+    }
+    CheckNilDereference(dest);
     
     delete left;
     left = NULL;
