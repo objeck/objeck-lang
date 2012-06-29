@@ -312,8 +312,6 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
 	outputs->AddInstruction(instrs[3]);
       }
       else if(status == 3) {
-	cout << "****** Found Setter id=" << instr->GetOperand() << "," << instr->GetOperand2() << " ******" << endl;
-
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
 	outputs->AddInstruction(instrs[3]);
