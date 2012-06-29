@@ -55,8 +55,9 @@ namespace Runtime {
 #ifdef _DEBUGGER
   class Debugger;
 #endif
-
-#define STACK_SIZE 4096
+  
+#define CALC_STACK_SIZE 1048576 * 4
+#define CALL_STACK_SIZE 1024
   
   enum TimeInterval {
     DAY_TIME,
@@ -77,7 +78,7 @@ namespace Runtime {
     long* op_stack;
     long* stack_pos;
     // call stack
-    StackFrame* call_stack[STACK_SIZE];
+    StackFrame* call_stack[CALL_STACK_SIZE];
     long call_stack_pos;
     // current frame
     StackFrame* frame;
@@ -93,7 +94,7 @@ namespace Runtime {
     // push call frame
     //
     inline void PushFrame(StackFrame* f) {
-      if(call_stack_pos >= STACK_SIZE) {
+      if(call_stack_pos >= CALL_STACK_SIZE) {
         cerr << ">>> call stack bounds have been exceeded! <<<" << endl;
         exit(1);
       }

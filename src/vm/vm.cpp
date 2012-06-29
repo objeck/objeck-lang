@@ -44,7 +44,7 @@ int Execute(const int argc, const char* argv[])
     loader.Load();
 
     // execute
-    long* op_stack = new long[STACK_SIZE];
+    long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
     (*stack_pos) = 0;
 
