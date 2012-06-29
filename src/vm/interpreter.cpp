@@ -1708,8 +1708,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance)
     frame = PopFrame();
     instrs = frame->GetMethod()->GetInstructions();
     ip = frame->GetIp();
-#endif
   }
+#endif
 }
 
 /********************************
