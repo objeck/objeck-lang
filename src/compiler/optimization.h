@@ -134,11 +134,18 @@ class ItermediateOptimizer {
       //
       if(instrs.size() == 5) {
       	if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-		instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-		instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
-		instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
-		instrs[4]->GetType() == RTRN) {
+	   instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+	   instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
+	   instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
+	   instrs[4]->GetType() == RTRN) {
 	  return 2;
+	}
+	else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+		instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+		instrs[2]->GetType() == LOAD_INST_MEM &&
+		instrs[3]->GetType() == STOR_INT_VAR /*&& instrs[3]->GetOperand() == 0*/ && instrs[3]->GetOperand2() == INST &&
+		instrs[4]->GetType() == RTRN) {
+	  return 3;
 	}
 	return -1;
       }

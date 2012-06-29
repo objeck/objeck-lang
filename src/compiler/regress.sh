@@ -1,7 +1,7 @@
 #!/bin/bash 
 # i=90
 # i=104
-# i=44
+# i=33
 i=84
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------

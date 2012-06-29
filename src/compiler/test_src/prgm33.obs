@@ -29,7 +29,7 @@ bundle Default {
 				list->Get()->PrintLine();
 				list->Previous();
 			};
-			
+
 			"size: "->Print();
 			list->Size()->PrintLine();
 		}		
