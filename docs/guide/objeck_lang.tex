@@ -904,16 +904,22 @@ Base class for all objects.
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Byte) \textasciitilde Byte
+  \item method : native : Min(r : Int) \textasciitilde Int
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Byte) \textasciitilde Byte
+  \item method : native : Max(r : Int) \textasciitilde Int
   \end{itemize}
+
+\item \texttt{MaxSize} - maximum size of an integer
+  \begin{itemize}
+  \item method : native : MaxSize() \textasciitilde Int
+  \end{itemize}
+
 \item \texttt{Abs} - returns the absolute value of the current number
   \begin{itemize}
-  \item method : native : Abs() \textasciitilde Byte
+  \item method : native : Abs() \textasciitilde Int
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
@@ -941,12 +947,12 @@ Base class for all objects.
 \item \texttt{Min} - returns the smallest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Min(r : Byte) \textasciitilde Float
+  \item method : native : Min(r : Float) \textasciitilde Float
   \end{itemize}
 \item \texttt{Max} - returns the largest of the two numbers; returns
   the same number if they are equal
   \begin{itemize}
-  \item method : native : Max(r : Byte) \textasciitilde Float
+  \item method : native : Max(r : Float) \textasciitilde Float
   \end{itemize}
 \item \texttt{Abs} - returns the absolute value of the current number
   \begin{itemize}
@@ -995,6 +1001,10 @@ Base class for all objects.
 \item \texttt{Pi} - returns the value of Pi
   \begin{itemize}
   \item function : Pi() \textasciitilde Float
+  \end{itemize}
+\item \texttt{E} - returns the value of E
+  \begin{itemize}
+  \item function : E() \textasciitilde Float
   \end{itemize}
 \item \texttt{Power} - returns the exponential power value
   \begin{itemize}
