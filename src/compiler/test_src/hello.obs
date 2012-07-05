@@ -1,30 +1,19 @@
-use Introspection;
-
 bundle Default {
-  class Foo {
-    New() {
-    }
-
-		method : public : Bar() ~ String {
-			return "Bar";
+	class Test {
+		function : Main(a : String[]) ~ Nil {
+			Run()->PrintLine();
 		}
-  }
-  
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-#			f := Foo->New();
-#			f := Class->NewInstance("Foo");
-			f := Class->NewInstance("Foo")->As(Foo);
-			if(f <> Nil) {
-				f->Bar()->PrintLine();
+
+		function : Run() ~ Int {
+#		function : native : Run() ~ Int {
+			x : Int;
+			for(i := 0; i < 10000;  i+= 1;) {
+				for(j := 0; j < 10000; j += 1;) {
+					x += i * j;
+				};
 			};
-#			f->Bar();
-#			t := Boo("jimi")->As(String);
-#			t := Boo(10);
-		}
 
-		function : Boo(v : String) ~ Base {
-			return "hendrix";
+			return x;
 		}
 	}
 }

@@ -53,18 +53,6 @@ int Execute(const int argc, const char* argv[])
 #endif
     Runtime::StackInterpreter intpr(Loader::GetProgram());
     intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
-#ifdef _TIMING
-    clock_t end = clock();
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
-    if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); i++) {
-	cout << "dump: value=" << (void*)(*stack_pos) << endl;
-      } 
-    }
-    cout << "---------------------------" << endl;
-    cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
-         << " second(s)." << endl;
-#endif
 
 #ifdef _DEBUG
     cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
@@ -99,6 +87,15 @@ int Execute(const int argc, const char* argv[])
     }
 #endif
 
+#ifdef _TIMING
+    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
+#endif
+
     // clean up
     delete[] op_stack;
     op_stack = NULL;
@@ -106,7 +103,14 @@ int Execute(const int argc, const char* argv[])
     delete stack_pos;
     stack_pos = NULL;
 
-    MemoryManager::Instance()->Clear(); 
+    MemoryManager::Instance()->Clear();
+
+#ifdef _TIMING
+    clock_t end = clock();
+    cout << "---------------------------" << endl;
+    cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
+         << " second(s)." << endl;
+#endif
 
     return SUCCESS;
   } 
