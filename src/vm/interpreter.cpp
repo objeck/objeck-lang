@@ -913,11 +913,24 @@ void StackInterpreter::Execute()
 #ifdef _DEBUG
       cout << "stack oper: JMP; call_pos=" << call_stack_pos << endl;
 #endif
-      if(instr->GetOperand2() < 0) {
-        ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
-      } else if(POP_INT() == instr->GetOperand2()) {
-        ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
-      }
+	  if(!instr->GetOperand3()) {
+		  if(instr->GetOperand2() < 0) {
+			ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+			instr->SetOperand3(ip);
+		  } 
+		  else if(POP_INT() == instr->GetOperand2()) {
+			ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+			instr->SetOperand3(ip);
+		  }
+	  }
+	  else {
+		  if(instr->GetOperand2() < 0) {
+			ip = instr->GetOperand3();
+		  } 
+		  else if(POP_INT() == instr->GetOperand2()) {
+			ip = instr->GetOperand3();
+		  }
+	  }
       break;
 
       // note: just for debugger
