@@ -115,7 +115,7 @@ class StackInstr
     line_num = l;
     type = t;
     operand = o;
-    native_offset = operand3 = 0;
+    operand3 = native_offset = 0;
   }
 
   StackInstr(int l, InstructionType t, FLOAT_VALUE fo) {
