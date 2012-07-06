@@ -45,10 +45,6 @@
 #include "debugger/debugger.h"
 #endif
 
-#define POP_INT() (op_stack[--(*stack_pos)])
-#define PUSH_INT(v) (op_stack[(*stack_pos)++] = v)
-#define TOP_INT() (op_stack[(*stack_pos) - 1])
-
 using namespace std;
 
 namespace Runtime {
@@ -74,16 +70,10 @@ namespace Runtime {
   class StackInterpreter {
     // program
     static StackProgram* program;
-    // calculation stack
-    long* op_stack;
-    long* stack_pos;
-    // call stack
+    // call stack and current frame pointer
     StackFrame* call_stack[CALL_STACK_SIZE];
     long call_stack_pos;
-    // current frame
     StackFrame* frame;
-    StackInstr** instrs;
-    long ip;
     // halt
     bool halt;
 #ifdef _DEBUGGER
@@ -171,10 +161,25 @@ namespace Runtime {
     }
 
     //
+    // pops an integer from the calculation stack.  this code
+    // in normally inlined and there's a macro version available.
+    //
+    inline long PopInt(long* op_stack, long* stack_pos) {    
+#ifdef _DEBUG
+      long v = op_stack[--(*stack_pos)];
+      cout << "  [pop_i: stack_pos=" << (*stack_pos) << "; value=" << v << "("
+	   << (void*)v << ")]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
+      return v;
+#else
+      return op_stack[--(*stack_pos)];
+#endif
+    }
+    
+    //
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(long v) {
+    inline void PushInt(long v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       cout << "  [push_i: stack_pos=" << (*stack_pos) << "; value=" << v << "("
 	   << (void*)v << ")]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
@@ -185,7 +190,7 @@ namespace Runtime {
     //
     // pushes an double onto the calculation stack.
     //
-    inline void PushFloat(FLOAT_VALUE v) {
+    inline void PushFloat(FLOAT_VALUE v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       cout << "  [push_f: stack_pos=" << (*stack_pos) << "; value=" << v
 	   << "]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
@@ -202,7 +207,7 @@ namespace Runtime {
     //
     // swaps two integers on the calculation stack
     //
-    inline void SwapInt() {
+    inline void SwapInt(long* op_stack, long* stack_pos) {
       long v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
@@ -211,7 +216,7 @@ namespace Runtime {
     //
     // pops a double from the calculation stack
     //
-    inline FLOAT_VALUE PopFloat() {
+    inline FLOAT_VALUE PopFloat(long* op_stack, long* stack_pos) {
       FLOAT_VALUE v;
 
 #ifdef _X64
@@ -233,20 +238,22 @@ namespace Runtime {
     // peeks at the integer on the top of the
     // execution stack.
     //
-    inline long TopInt() {
-      long v = op_stack[(*stack_pos) - 1];
+    inline long TopInt(long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
+      long v = op_stack[(*stack_pos) - 1];
       cout << "  [top_i: stack_pos=" << (*stack_pos) << "; value=" << v << "(" << (void*)v
 	   << ")]; frame=" << frame << "; frame_pos=" << call_stack_pos << endl;
-#endif
       return v;
+#else
+      return op_stack[(*stack_pos) - 1];
+#endif
     }
-
+    
     //
     // peeks at the double on the top of the
     // execution stack.
     //
-    inline FLOAT_VALUE TopFloat() {
+    inline FLOAT_VALUE TopFloat(long* op_stack, long* stack_pos) {
       FLOAT_VALUE v;
 
 #ifdef _X64
@@ -267,14 +274,14 @@ namespace Runtime {
     //
     // calculates an array offset
     //
-    inline long ArrayIndex(StackInstr* instr, long* array, const long size) {
+    inline long ArrayIndex(StackInstr* instr, long* array, const long size, long* &op_stack, long* &stack_pos) {
       // generate index
-      long index = POP_INT();
+      long index = PopInt(op_stack, stack_pos);
       const long dim = instr->GetOperand();
 
       for(long i = 1; i < dim; i++) {
 	index *= array[i];
-	index += POP_INT();
+	index += PopInt(op_stack, stack_pos);
       }
 
 #ifdef _DEBUG
@@ -315,7 +322,7 @@ namespace Runtime {
     //
     // creates a new class instance
     //
-    void CreateClassObject(StackClass* cls, long* cls_obj) {
+    void CreateClassObject(StackClass* cls, long* cls_obj, long* &op_stack, long* &stack_pos) {
       // create and set methods
       const long mthd_obj_array_size = cls->GetMethodCount();
       const long mthd_obj_array_dim = 1;
@@ -331,7 +338,7 @@ namespace Runtime {
       StackMethod** methods = cls->GetMethods();
       long* mthd_obj_array_ptr = mthd_obj_array + 3;
       for(int i = 0; i < mthd_obj_array_size; i++) {
-	long* mthd_obj = CreateMethodObject(cls_obj, methods[i]);
+	long* mthd_obj = CreateMethodObject(cls_obj, methods[i], op_stack, stack_pos);
 	mthd_obj_array_ptr[i] = (long)mthd_obj;
       }
       cls_obj[1] = (long)mthd_obj_array;
@@ -340,7 +347,7 @@ namespace Runtime {
     //
     // creates an instance of the 'Method' class
     //
-    long* CreateMethodObject(long* cls_obj, StackMethod* mthd) {
+    long* CreateMethodObject(long* cls_obj, StackMethod* mthd, long* &op_stack, long* &stack_pos) {
       long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
 								 (long*)op_stack, *stack_pos,
 								 false);
@@ -365,7 +372,7 @@ namespace Runtime {
 	exit(1);
       }
       const string &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
-      mthd_obj[2] = (long)CreateStringObject(mthd_string);
+      mthd_obj[2] = (long)CreateStringObject(mthd_string, op_stack, stack_pos);
 
       // parse parameter string      
       int index = 0;
@@ -410,7 +417,7 @@ namespace Runtime {
           while(index < (int)params_string.size() && params_string[index] != ',') {
             index++;
           }
-	  data_type_obj[1] = (long)CreateStringObject(params_string.substr(start_index, index - 2));
+	  data_type_obj[1] = (long)CreateStringObject(params_string.substr(start_index, index - 2), op_stack, stack_pos);
 	}
           break;
 	  
@@ -468,7 +475,7 @@ namespace Runtime {
     //
     // creates a string object instance
     // 
-    inline long* CreateStringObject(const string &value_str) {
+    inline long* CreateStringObject(const string &value_str, long* &op_stack, long* &stack_pos) {
       // create character array
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
@@ -500,7 +507,7 @@ namespace Runtime {
     //
     // creates new object and call default constructor
     // 
-    inline void CreateNewObject(const string &cls_id) {
+    inline void CreateNewObject(const string &cls_id, long* &op_stack, long* &stack_pos) {
       long* obj = MemoryManager::Instance()->AllocateObject(cls_id.c_str(), 
 							    (long*)op_stack, *stack_pos, false);
       if(obj) {
@@ -509,20 +516,20 @@ namespace Runtime {
         APITools_MethodCall((long*)op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
       }
       else {
-	PushInt(0);
+	PushInt(0, op_stack, stack_pos);
       }
     }
     
     //
     // writes out serialized objects
     // 
-    inline void WriteSerializedBytes(const BYTE_VALUE* array, const long src_buffer_size) {
+    inline void WriteSerializedBytes(const BYTE_VALUE* array, const long src_buffer_size, long* &op_stack, long* &stack_pos) {
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
       const long dest_pos = inst[1];
   
       // expand buffer, if needed
-      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
       inst[0] = (long)dest_buffer;
   
       // copy content
@@ -534,28 +541,28 @@ namespace Runtime {
     //
     // serializes an array
     // 
-    inline void SerializeArray(const long* array, ParamType type) {
+    inline void SerializeArray(const long* array, ParamType type, long* &op_stack, long* &stack_pos) {
       if(array) {
-	SerializeByte(1);
+	SerializeByte(1, op_stack, stack_pos);
 	const long array_size = array[0];
 	// write metadata
-	SerializeInt(array[0]);
-	SerializeInt(array[1]);
-	SerializeInt(array[2]);
+	SerializeInt(array[0], op_stack, stack_pos);
+	SerializeInt(array[1], op_stack, stack_pos);
+	SerializeInt(array[2], op_stack, stack_pos);
 	BYTE_VALUE* array_ptr = (BYTE_VALUE*)(array + 3);
       
 	// write values
 	switch(type) {
 	case BYTE_ARY_PARM:
-	  WriteSerializedBytes(array_ptr, array_size);
+	  WriteSerializedBytes(array_ptr, array_size, op_stack, stack_pos);
 	  break;
 	    
 	case INT_ARY_PARM:
-	  WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE));
+	  WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), op_stack, stack_pos);
 	  break;
 	  
 	case FLOAT_ARY_PARM:
-	  WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+	  WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), op_stack, stack_pos);
 	  break;
 
 	default:
@@ -563,7 +570,7 @@ namespace Runtime {
 	}
       }
       else {
-	SerializeByte(0);
+	SerializeByte(0, op_stack, stack_pos);
       }
     }
 
@@ -604,7 +611,7 @@ namespace Runtime {
     //
     // deserializes an array of objects
     // 
-    inline long* DeserializeArray(ParamType type) {
+    inline long* DeserializeArray(ParamType type, long* &op_stack, long* &stack_pos) {
       if(!DeserializeByte()) {
 	return NULL;
       }
@@ -652,7 +659,7 @@ namespace Runtime {
     //
     // expand buffer
     //
-    long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst) {
+    long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst, long* &op_stack, long* &stack_pos) {
       long dest_buffer_size = dest_buffer[2];
       const long dest_pos = inst[1];      
       const long calc_offset = src_buffer_size + dest_pos;
@@ -689,14 +696,14 @@ namespace Runtime {
     // 
     // serializes a byte
     // 
-    void SerializeByte(BYTE_VALUE value) {
+    void SerializeByte(BYTE_VALUE value, long* &op_stack, long* &stack_pos) {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
       const long dest_pos = inst[1];
   
       // expand buffer, if needed
-      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
       inst[0] = (long)dest_buffer;
   
       // copy content
@@ -728,14 +735,14 @@ namespace Runtime {
     // 
     // serializes an int
     // 
-    void SerializeInt(INT_VALUE value) {
+    void SerializeInt(INT_VALUE value, long* &op_stack, long* &stack_pos) {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
       const long dest_pos = inst[1];
   
       // expand buffer, if needed
-      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
       inst[0] = (long)dest_buffer;
   
       // copy content
@@ -767,14 +774,14 @@ namespace Runtime {
     // 
     // serializes a float
     // 
-    void SerializeFloat(FLOAT_VALUE value) {  
+    void SerializeFloat(FLOAT_VALUE value, long* &op_stack, long* &stack_pos) {
       const long src_buffer_size = sizeof(value);
       long* inst = (long*)frame->GetMemory()[0];
       long* dest_buffer = (long*)inst[0];
       const long dest_pos = inst[1];
   
       // expand buffer, if needed
-      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst);
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
       inst[0] = (long)dest_buffer;
   
       // copy content
@@ -802,40 +809,40 @@ namespace Runtime {
       return 0.0;
     }
 
-    inline void ProcessNewArray(StackInstr* instr, bool is_float = false);
-    inline void ProcessNewByteArray(StackInstr* instr);
-    inline void ProcessNewObjectInstance(StackInstr* instr);
-    inline void ProcessReturn();
+    inline void ProcessNewArray(StackInstr* instr, long* &op_stack, long* &stack_pos, bool is_float = false);
+    inline void ProcessNewByteArray(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessNewObjectInstance(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessReturn(StackInstr** &instrs, long &ip);
 
-    inline void ProcessMethodCall(StackInstr* instr);
-    inline void ProcessDynamicMethodCall(StackInstr* instr);
-    inline void ProcessJitMethodCall(StackMethod* called, long* instance);
+    inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos);
+    inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos);
+    inline void ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos);
     inline void ProcessAsyncMethodCall(StackMethod* called, long* param);
 
-    inline void ProcessInterpretedMethodCall(StackMethod* called, long* instance);
-    inline void ProcessLoadIntArrayElement(StackInstr* instr);
-    inline void ProcessStoreIntArrayElement(StackInstr* instr);
-    inline void ProcessLoadFloatArrayElement(StackInstr* instr);
-    inline void ProcessStoreFloatArrayElement(StackInstr* instr);
-    inline void ProcessLoadByteArrayElement(StackInstr* instr);
-    inline void ProcessStoreByteArrayElement(StackInstr* instr);
-    inline void ProcessStoreFunction(StackInstr* instr);
-    inline void ProcessLoadFunction(StackInstr* instr);
-    inline void ProcessStoreFloat(StackInstr* instr);
-    inline void ProcessLoadFloat(StackInstr* instr);
-    inline void ProcessCopyFloat(StackInstr* instr);
+    inline void ProcessInterpretedMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip);
+    inline void ProcessLoadIntArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessStoreIntArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessLoadFloatArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessStoreFloatArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessLoadByteArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessStoreByteArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessStoreFunction(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessLoadFunction(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessStoreFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessLoadFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void ProcessCopyFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
     inline void ProcessCurrentTime(bool is_gmt);
-    inline void ProcessSetTime1();
-    inline void ProcessSetTime2();
-    inline void ProcessSetTime3();
-    inline void ProcessAddTime(TimeInterval t);
-    inline void ProcessPlatform();
-    inline void ProcessTrap(StackInstr* instr);    
-    inline void SerializeObject();
-    inline void DeserializeObject();
+    inline void ProcessSetTime1(long* &op_stack, long* &stack_pos);
+    inline void ProcessSetTime2(long* &op_stack, long* &stack_pos);
+    inline void ProcessSetTime3(long* &op_stack, long* &stack_pos);
+    inline void ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos);
+    inline void ProcessPlatform(long* &op_stack, long* &stack_pos);
+    inline void ProcessTrap(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    inline void SerializeObject(long* &op_stack, long* &stack_pos);
+    inline void DeserializeObject(long* &op_stack, long* &stack_pos);
     inline void ProcessDllLoad(StackInstr* instr);
     inline void ProcessDllUnload(StackInstr* instr);
-    inline void ProcessDllCall(StackInstr* instr);
+    inline void ProcessDllCall(StackInstr* instr, long* &op_stack, long* &stack_pos);
     
   public:
     static void Initialize(StackProgram* p);
@@ -868,9 +875,7 @@ namespace Runtime {
     }
 
     // execute method
-    void Execute(long* stack, long* pos, long i, StackMethod* method, 
-		 long* instance, bool jit_called);
-    void Execute();
+    void Execute(long* op_stack, long* stack_pos, long i, StackMethod* method, long* instance, bool jit_called);
   };
 }
 #endif
