@@ -1662,7 +1662,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUGGER
-  ProcessInterpretedMethodCall(called, instance);
+  ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   // TODO: don't try and re-compile code that doesn't compile the first time
   // execute method if it's been compiled
