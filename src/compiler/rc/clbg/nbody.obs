@@ -1,0 +1,109 @@
+﻿bundle Default {
+	class NBody {
+		function : Main(args : String[]) ~ Nil {
+		}
+	}
+
+	class Body {
+		DAYS_PER_YEAR : static : Float;
+		PI : static : Float;
+		SOLAR_MASS : static : Float;
+		@x : Float;
+		@y : Float;
+		@z : Float; 
+		@vx : Float; 
+		@vy : Float;
+		@vz : Float;
+		@mass : Float;
+
+		function : Init() ~ Nil {
+			PI := 3.141592653589793;
+			DAYS_PER_YEAR := 365.24;
+			SOLAR_MASS := 4 * PI * PI;
+		}
+
+		New() {}
+
+		method : public : SetX(x : Float) ~ Nil {	
+			@x := x;
+		}
+
+		method : public : GetX() ~ Float {	
+			return @x;
+		}
+
+		method : public : SetY(y : Float) ~ Nil {	
+			@y := y;
+		}
+
+		method : public : GetY() ~ Float {	
+			return @y;
+		}
+
+		method : public : SetZ(z : Float) ~ Nil {	
+			@z := z;
+		}
+
+		method : public : GetZ() ~ Float {	
+			return @z;
+		}
+
+		method : public : SetVx(vx : Float) ~ Nil {	
+			@vx := vx;
+		}
+
+		method : public : GetVx() ~ Float {	
+			return @vx;
+		}
+
+		method : public : SetVy(vy : Float) ~ Nil {	
+			@vy := vy;
+		}
+
+		method : public : GetVy() ~ Float {	
+			return @vy;
+		}
+
+		method : public : SetVz(vz : Float) ~ Nil {	
+			@vz := vz;
+		}
+
+		method : public : GetVz() ~ Float {	
+			return @vz;
+		}
+
+		method : public : SetMass(mass : Float) ~ Nil {	
+			@mass := mass;
+		}
+
+		method : public : GetMass() ~ Float {	
+			return @mass;
+		}
+
+		function : Jupiter() ~ Body {
+			p := Body->New();
+			p->SetX(4.84143144246472090e+00);
+			p->SetY(-1.16032004402742839e+00);
+			p->SetZ(-1.03622044471123109e-01);
+			p->SetVx(1.66007664274403694e-03 * DAYS_PER_YEAR);
+			p->SetVy(7.69901118419740425e-03 * DAYS_PER_YEAR);
+			p->SetVz(-6.90460016972063023e-05 * DAYS_PER_YEAR);
+			p->SetMass(9.54791938424326609e-04 * SOLAR_MASS);
+	
+			return p;	
+		}
+			
+		function : Saturn() ~ Body {
+			p := Body->New();
+			p->SetX(8.34336671824457987e+00);
+			p->SetY(4.12479856412430479e+00);
+			p->SetZ(-4.03523417114321381e-01);
+			p->SetVx(-2.76742510726862411e-03 * DAYS_PER_YEAR);
+			p->SetVy(4.99852801234917238e-03 * DAYS_PER_YEAR);
+			p->SetVz(2.30417297573763929e-05 * DAYS_PER_YEAR);
+			p->SetMass(2.85885980666130812e-04 * SOLAR_MASS);
+	
+			return p;
+		}
+	}
+}
