@@ -128,11 +128,11 @@ class ItermediateOptimizer {
       }
     }
     else if(mthd_called->GetNumParams() == 1) {
-      vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-      //
-      // character print pattern
-      //
+      vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();      
       if(instrs.size() == 5) {
+	//
+	// character print pattern
+	//
       	if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
 	   instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
 	   instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
@@ -140,13 +140,24 @@ class ItermediateOptimizer {
 	   instrs[4]->GetType() == RTRN) {
 	  return 2;
 	}
+	//
+	// setter instance pattern
+	//
 	else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
 		instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
 		instrs[2]->GetType() == LOAD_INST_MEM &&
-		instrs[3]->GetType() == STOR_INT_VAR /*&& instrs[3]->GetOperand() == 0*/ && instrs[3]->GetOperand2() == INST &&
+		instrs[3]->GetType() == STOR_INT_VAR && instrs[3]->GetOperand2() == INST &&
 		instrs[4]->GetType() == RTRN) {
 	  return 3;
 	}
+	else if(instrs[0]->GetType() == STOR_FLOAT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+		instrs[1]->GetType() == LOAD_FLOAT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+		instrs[2]->GetType() == LOAD_INST_MEM &&
+		instrs[3]->GetType() == STOR_FLOAT_VAR && instrs[3]->GetOperand2() == INST &&
+		instrs[4]->GetType() == RTRN) {
+	  return 3;
+	}
+
 	return -1;
       }
     }
