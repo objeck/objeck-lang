@@ -181,7 +181,7 @@ bundle Default {
 			n := 25000000;
 			if (args->Size() > 0) {
 				n := args[0]->ToInt();
-      };
+			};
 			
 			MakeRepeatFasta("ONE", "Homo sapiens alu", ALU, n * 2);
 			MakeRandomFasta("TWO", "IUB ambiguity codes", IUB, n * 3);
