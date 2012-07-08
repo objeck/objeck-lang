@@ -2223,6 +2223,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     break;
 
   case STD_OUT_FLOAT:
+    cout.precision(9);
     cout << PopFloat(op_stack, stack_pos);
     break;
 
