@@ -707,7 +707,7 @@ extern "C" {
 #ifdef _DEBUG
     cout << "### set_timestamp: stmt=" << stmt << ", column=" << i 
 	 << ", value=" << value[1] << "-" << value[2] << "-" << value[2] << " " 
-	 << value[4] << ":" <<  value[5] << ":" <<  value[5]  value[6] << "." 
+	 << value[4] << ":" <<  value[5] << ":" <<  value[5] << value[6] << "." 
 	 << value[7] << " ###" << endl;
 #endif
     
