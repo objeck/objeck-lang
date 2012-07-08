@@ -1,11 +1,23 @@
 ﻿bundle Default {
 	class NBody {
 		function : Main(args : String[]) ~ Nil {
+			n := 50000000;
+			if(args->Size() > 0) {
+				n := args[0]->ToInt();
+			};
+
+			Body->Init();
+			bodies := NBodySystem->New();
+			bodies->Energy()->PrintLine();
+			for(i:=0; i<n; i+=1;) {
+           bodies->Advance(0.01);
+			};
+			bodies->Energy()->PrintLine();
 		}
 	}
 
 	class NBodySystem {
-		bodies : Body[];
+		@bodies : Body[];
 
 		New() {
 			@bodies := Body->New[5];
@@ -18,22 +30,72 @@
 			px := 0.0;
       	py := 0.0;
 			pz := 0.0;
-			for(i:=0; i < bodies->Size(); i += 1;) {
-				px += bodies[i]->GetVx() * bodies[i]->GetMass();
-				py += bodies[i]->GetVy() * bodies[i]->GetMass();
-				pz += bodies[i]->GetVz() * bodies[i]->GetMass();
+			for(i:=0; i < @bodies->Size(); i += 1;) {
+				px += @bodies[i]->GetVx() * @bodies[i]->GetMass();
+				py += @bodies[i]->GetVy() * @bodies[i]->GetMass();
+				pz += @bodies[i]->GetVz() * @bodies[i]->GetMass();
 			};
-			bodies[0]->OffsetMomentum(px, py, pz);
+			@bodies[0]->OffsetMomentum(px, py, pz);
 		}
 
-		method : Advance(dt : Float) ~ Nil {
+		method : public : native : Advance(dt : Float) ~ Nil {
+			for(i:=0; i < @bodies->Size(); i+=1;) {
+				iBody := @bodies[i];
+				for(j:=i+1; j < @bodies->Size(); j+=1;) {
+					dx := iBody->GetX() - @bodies[j]->GetX();
+					dy := iBody->GetY() - @bodies[j]->GetY();
+					dz := iBody->GetZ() - @bodies[j]->GetZ();
+
+					dSquared := dx * dx + dy * dy + dz * dz;
+					distance := dSquared->SquareRoot();
+					mag := dt / (dSquared * distance);
+
+					iBody->SetVx(iBody->GetVx() - dx * @bodies[j]->GetMass() * mag);
+					iBody->SetVy(iBody->GetVy() - dy * @bodies[j]->GetMass() * mag);
+					iBody->SetVz(iBody->GetVz() - dz * @bodies[j]->GetMass() * mag);
+			
+					@bodies[j]->SetVx(@bodies[j]->GetVx() + dx * iBody->GetMass() * mag);
+					@bodies[j]->SetVy(@bodies[j]->GetVy() + dy * iBody->GetMass() * mag);
+					@bodies[j]->SetVz(@bodies[j]->GetVz() + dz * iBody->GetMass() * mag);
+					
+				};
+			};
+
+			each(i : @bodies) {
+				body := @bodies[i];
+				body->SetX(body->GetX() + dt * body->GetVx());
+				body->SetY(body->GetY() + dt * body->GetVy());
+				body->SetZ(body->GetZ() + dt * body->GetVz());
+			};
 		}
 
-		method : Energy() ~ Float {
-			return 0.0;
+		method : public : native : Energy() ~ Float {
+			dx : Float;
+			dy : Float;
+			dz : Float;
+			distance : Float;
+			e := 0.0;
+	
+			for(i:=0; i < @bodies->Size(); i+=1;) {
+            iBody := @bodies[i];	
+				e += 0.5 * iBody->GetMass() * (iBody->GetVx() * iBody->GetVx()
+					+ iBody->GetVy() * iBody->GetVy()
+					+ iBody->GetVz() * iBody->GetVz());
+	
+				for(j:=i+1; j < @bodies->Size(); j+=1;) { 
+					jBody := @bodies[j];
+					dx := iBody->GetX() - jBody->GetX();
+					dy := iBody->GetY() - jBody->GetY();
+					dz := iBody->GetZ() - jBody->GetZ();					
+
+					distance := (dx*dx + dy*dy + dz*dz)->SquareRoot();
+					e -= (iBody->GetMass() * jBody->GetMass()) / distance;
+				};
+			};
+			
+			return e;
 		}
 	}
-
 
 	class Body {
 		DAYS_PER_YEAR : static : Float;
@@ -119,7 +181,7 @@
 			return @self;
 		}
 
-		function : Jupiter() ~ Body {
+		function : native : Jupiter() ~ Body {
 			p := Body->New();
 			p->SetX(4.84143144246472090e+00);
 			p->SetY(-1.16032004402742839e+00);
@@ -132,7 +194,7 @@
 			return p;	
 		}
 			
-		function : Saturn() ~ Body {
+		function : native : Saturn() ~ Body {
 			p := Body->New();
 			p->SetX(8.34336671824457987e+00);
 			p->SetY(4.12479856412430479e+00);
@@ -145,7 +207,7 @@
 			return p;
 		}
 
-		function : Uranus() ~ Body {
+		function : native : Uranus() ~ Body {
 			p := Body->New();
 			p->SetX(1.28943695621391310e+01);
 			p->SetY(-1.51111514016986312e+01);
@@ -158,7 +220,7 @@
 			return p;
 		}
 
-		function : Neptune() ~ Body {
+		function : native : Neptune() ~ Body {
 			p := Body->New();
 			p->SetX(1.53796971148509165e+01);
 			p->SetY(-2.59193146099879641e+01);
