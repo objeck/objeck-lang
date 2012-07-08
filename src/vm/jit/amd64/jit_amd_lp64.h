@@ -1352,6 +1352,7 @@ namespace Runtime {
 	  double value = 0.0;
 	  --(*stack_pos);	  
 	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
+     cout.precision(9);
 	  cout << value;
 	  break;
 	}

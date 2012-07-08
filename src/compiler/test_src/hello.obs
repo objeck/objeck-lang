@@ -1,19 +1,21 @@
 bundle Default {
 	class Test {
+		@x : Float;
+
 		function : Main(a : String[]) ~ Nil {
-			Run()->PrintLine();
+			test := Test->New();
+			test->SetX(3.145);
+			test->GetX()->PrintLine();
 		}
 
-		function : Run() ~ Int {
-#		function : native : Run() ~ Int {
-			x : Int;
-			for(i := 0; i < 10000;  i+= 1;) {
-				for(j := 0; j < 10000; j += 1;) {
-					x += i * j;
-				};
-			};
+		New() {}
 
-			return x;
+		method : SetX(x : Float) ~ Nil {
+			@x := x;
+		}	
+
+		method : GetX() ~ Float {
+			return @x;
 		}
 	}
 }
