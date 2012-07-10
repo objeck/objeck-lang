@@ -81,7 +81,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMethod* method,
 			       long* instance, bool jit_called)
 {
-	long right, left;
+  long right, left;
 
 #ifdef _TIMING
   clock_t start = clock();
@@ -909,24 +909,24 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: JMP; call_pos=" << call_stack_pos << endl;
 #endif
-	  if(!instr->GetOperand3()) {
-		  if(instr->GetOperand2() < 0) {
-			ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
-			instr->SetOperand3(ip);
-		  } 
-		  else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
-			ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
-			instr->SetOperand3(ip);
-		  }
-	  }
-	  else {
-		  if(instr->GetOperand2() < 0) {
-			ip = instr->GetOperand3();
-		  } 
-		  else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
-			ip = instr->GetOperand3();
-		  }
-	  }
+      if(!instr->GetOperand3()) {
+	if(instr->GetOperand2() < 0) {
+	  ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+	  instr->SetOperand3(ip);
+	} 
+	else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+	  ip = frame->GetMethod()->GetLabelIndex(instr->GetOperand()) + 1;
+	  instr->SetOperand3(ip);
+	}
+      }
+      else {
+	if(instr->GetOperand2() < 0) {
+	  ip = instr->GetOperand3();
+	} 
+	else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+	  ip = instr->GetOperand3();
+	}
+      }
       break;
 
       // note: just for debugger

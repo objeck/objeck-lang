@@ -1179,7 +1179,7 @@ namespace Runtime {
 	  double value;      
 	  (*stack_pos) -= 2;
 	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
-     cout.precision(9);
+	  cout.precision(9);
 	  cout << value;
 	  break;
 	}
@@ -1254,7 +1254,7 @@ namespace Runtime {
 	  if(instance && (SOCKET)instance[0] >= 0) {
 	    SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
-	  cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
+	    cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
 #endif
 	    instance[0] = (long)NULL;
 	    IPSocket::Close(sock);

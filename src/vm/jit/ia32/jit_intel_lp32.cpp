@@ -1206,7 +1206,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
       /*
       // mark static reference
       if(instr->GetOperand2() == CLS) {
-	ProcessAddStaticMemory(holder->GetRegister());
+      ProcessAddStaticMemory(holder->GetRegister());
       }
       */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
@@ -1233,7 +1233,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
       /*
       // mark static reference
       if(instr->GetOperand2() == CLS) {
-	ProcessAddStaticMemory(holder->GetRegister());
+      ProcessAddStaticMemory(holder->GetRegister());
       }
       */
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
