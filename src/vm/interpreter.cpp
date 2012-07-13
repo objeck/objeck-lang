@@ -82,7 +82,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 			       long* instance, bool jit_called)
 {
   long right, left;
-
+  double right_double, left_double;
+  
 #ifdef _TIMING
   clock_t start = clock();
 #endif
@@ -282,7 +283,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: ADD; call_pos=" << call_stack_pos << endl;
 #endif
-      PushFloat(PopFloat(op_stack, stack_pos) + PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushFloat(right_double + left_double, op_stack, stack_pos);
       break;
 
     case SUB_INT:
@@ -298,7 +301,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: SUB; call_pos=" << call_stack_pos << endl;
 #endif
-      PushFloat(PopFloat(op_stack, stack_pos) - PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushFloat(right_double - left_double, op_stack, stack_pos);
       break;
 
     case MUL_INT:
@@ -323,14 +328,18 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: MUL; call_pos=" << call_stack_pos << endl;
 #endif
-      PushFloat(PopFloat(op_stack, stack_pos) * PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushFloat(right_double * left_double, op_stack, stack_pos);
       break;
 
     case DIV_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: DIV; call_pos=" << call_stack_pos << endl;
 #endif
-      PushFloat(PopFloat(op_stack, stack_pos) / PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushFloat(right_double / left_double, op_stack, stack_pos);
       break;
 
     case MOD_INT:
@@ -391,18 +400,18 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: LES_EQL; call_pos=" << call_stack_pos << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
-      left = PopInt(op_stack, stack_pos);
-      PushInt(right <= left, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double <= left_double, op_stack, stack_pos);
       break;
 
     case GTR_EQL_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: GTR_EQL; call_pos=" << call_stack_pos << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
-      left = PopInt(op_stack, stack_pos);
-      PushInt(right >= left, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double >= left_double, op_stack, stack_pos);
       break;
 
     case EQL_INT:
@@ -445,28 +454,36 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       cout << "stack oper: EQL; call_pos=" << call_stack_pos << endl;
 #endif
-      PushInt(PopFloat(op_stack, stack_pos) == PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double == left_double, op_stack, stack_pos);
       break;
 
     case NEQL_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: NEQL; call_pos=" << call_stack_pos << endl;
 #endif
-      PushInt(PopFloat(op_stack, stack_pos) != PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double != left_double, op_stack, stack_pos);
       break;
 
     case LES_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: LES; call_pos=" << call_stack_pos << endl;
 #endif
-      PushInt(PopFloat(op_stack, stack_pos) < PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double < left_double, op_stack, stack_pos);
       break;
 
     case GTR_FLOAT:
 #ifdef _DEBUG
       cout << "stack oper: GTR; call_pos=" << call_stack_pos << endl;
 #endif
-      PushInt(PopFloat(op_stack, stack_pos) > PopFloat(op_stack, stack_pos), op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushInt(right_double > left_double, op_stack, stack_pos);
       break;
 
     case CPY_BYTE_ARY: {
