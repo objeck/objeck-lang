@@ -490,6 +490,10 @@ public:
       cout << "NEQL_FLOAT" << endl;
       break;
 
+    case LES_EQL_FLOAT:
+      cout << "LES_EQL_FLOAT" << endl;
+      break;
+      
     case LES_FLOAT:
       cout << "LES_FLOAT" << endl;
       break;
@@ -498,6 +502,10 @@ public:
       cout << "GTR_FLOAT" << endl;
       break;
 
+    case GTR_EQL_FLOAT:
+      cout << "LES_EQL_FLOAT" << endl;
+      break;
+      
     case instructions::FLOR_FLOAT:
       cout << "FLOR_FLOAT" << endl;
       break;
