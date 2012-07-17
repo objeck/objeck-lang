@@ -131,7 +131,7 @@
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);_MBCS;_CRT_SECURE_NO_WARNINGS;_TIMING</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);_MBCS;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)obr.exe</OutputFile>
