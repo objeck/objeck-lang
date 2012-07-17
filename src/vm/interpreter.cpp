@@ -286,8 +286,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
       PushFloat(right_double + left_double, op_stack, stack_pos);
-      break;
-
+      break; 
     case SUB_INT:
 #ifdef _DEBUG
       cout << "stack oper: SUB; call_pos=" << call_stack_pos << endl;
