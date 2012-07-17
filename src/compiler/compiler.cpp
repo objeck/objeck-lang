@@ -127,7 +127,7 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), arguments["opt"]);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments["opt"]);
       optimizer.Optimize();
       // emit target code
       TargetEmitter target(optimizer.GetProgram(), is_lib, arguments["dest"]);;

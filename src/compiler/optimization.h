@@ -37,34 +37,35 @@
 
 using namespace backend;
 
+#define LOCL_INLINE_MEM_MAX 128
+
 /****************************
- * Performs basic-block
- * optimizations on
+ * Performs optimizations on
  * intermediate code.
  *
  * Order of 4 optimizations:
- * 0 - clean up jumps (always happens)
- * 1 - method inlining
- * 2 - constant folding
- * 3 - strength reduction
- * 4 - replace store/load with copy instruction
+ * 0 - clean up jumps and other unneeded instructions (always happens)
+ * 1 - setter and getter inlining / advanced method inlining / constant folding
+ * 2 - strength reduction
+ * 3 - replace store/load with copy instruction
  ****************************/
 class ItermediateOptimizer {
   IntermediateProgram* program;
   int optimization_level;
-  int inline_end;
+  int unconditional_label;
   IntermediateMethod* current_method;
   bool merge_blocks;
   int cur_line_num;
-  map<int, int> inline_lbls;
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
-
-  // inline method calls
-  IntermediateBlock* InlineMethodCall(IntermediateBlock* inputs);
+  vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
+  // inline setters/getters
+  IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
   // cleans up jumps and remove useless instructions
   IntermediateBlock* CleanJumps(IntermediateBlock* inputs);
   IntermediateBlock* RemoveUselessInstructions(IntermediateBlock* inputs);
+  // advanced method inlining
+  IntermediateBlock* InlineMethod(IntermediateBlock* inputs);
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
@@ -93,11 +94,162 @@ class ItermediateOptimizer {
   void ReplacementInstruction(IntermediateInstruction* instr,
                               deque<IntermediateInstruction*> &calc_stack,
                               IntermediateBlock* outputs);
+
+
+  //
+  // TOOD: need final method identifier
+  //
+  // TODO: ensure we don't have duplicate labels, including the label we're adding
+  bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets) {
+    // don't inline the same method more then once, since you'll have label/jump conflicts
+    set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
+    if(found != inlined_mthds.end()) {
+      return false;
+    }
+    
+    // don't inline recursive calls
+    if(mthd_called == current_method) {
+      return false;
+    }
+    
+    // don't inline method calls for primitive objects
+    const string called_cls_name = mthd_called->GetClass()->GetName();
+    if(called_cls_name.find('$') != string::npos) {
+      return false;
+    }
+    
+    // methods are in the same class, such that instance and class
+    // offset will not have to be ajusted 
+    if(mthd_called->GetClass() != current_method->GetClass()) {
+      return false;
+    }
+
+    if(current_method->GetSpace() + mthd_called->GetSpace() > LOCL_INLINE_MEM_MAX) {
+      return false;
+    }
+    
+    // ignore constructors
+    const string called_mthd_name = mthd_called->GetName();
+    if(called_mthd_name.find(":New:") != string::npos) {
+      return false;
+    }
+
+    // const string curr_mthd_name = current_method->GetName();
+    // don't inline into "main" since it's not JTI compiled
+    const string curr_mthd_name = current_method->GetName();
+    if(curr_mthd_name.find(":Main:o.System.String*,") != string::npos) {
+      return false;
+    }
+    
+    // check instructions
+    vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
+    vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
+
+    // must have at least an instruction, non-virtual
+    if(mthd_called_instrs.size() < 2) {
+      return false;
+    }
+
+    bool found_rtrn = false;
+    for(size_t j = 0; j < mthd_called_instrs.size(); j++) {
+      IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
+      switch(mthd_called_instr->GetType()) {
+      case instructions::LOAD_INT_VAR:
+      case instructions::STOR_INT_VAR:
+      case instructions::COPY_INT_VAR:
+      case instructions::LOAD_FLOAT_VAR:
+      case instructions::STOR_FLOAT_VAR:
+      case instructions::COPY_FLOAT_VAR:
+	// if the method/function is in another class it must only have local references
+	if(mthd_called_instr->GetOperand2() != LOCL) {
+	  return false;
+	}
+	break;
+
+	// ignore special instructions
+      case instructions::TRAP:
+      case instructions::TRAP_RTRN:
+      case instructions::CPY_BYTE_ARY:
+      case instructions::CPY_INT_ARY:
+      case instructions::CPY_FLOAT_ARY:
+      case instructions::DLL_LOAD:
+      case instructions::DLL_UNLOAD:
+      case instructions::DLL_FUNC_CALL:
+      case instructions::THREAD_JOIN:
+      case instructions::THREAD_SLEEP:
+      case instructions::THREAD_MUTEX:
+      case instructions::CRITICAL_START:
+      case instructions::CRITICAL_END:
+      case instructions::LIB_NEW_OBJ_INST:
+      case instructions::LIB_MTHD_CALL:
+      case instructions::LIB_OBJ_INST_CAST:
+      case instructions::LIB_FUNC_DEF:
+	return false;
+
+      case instructions::LOAD_CLS_MEM:
+	if(mthd_called->GetClass() != current_method->GetClass()) {
+	  return false;
+	}
+	break;
+	
+	// look for conflicting jump offsets
+      case instructions::LBL:
+      case instructions::JMP:
+	if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
+	  return false;
+	}
+	break;
+
+      case instructions::RTRN:
+	if(found_rtrn) {
+	  return false;
+	}
+	found_rtrn = true;
+	break;
+	
+      default:
+	break;
+      }
+    }
+    
+    return true;
+  }
+  
+  //
+  // TODO: have final classes for hidden local fields
+  // calculate the local offset for inlined variables
+  // 
+  int GetLastLocalOffset(IntermediateMethod* mthd) {
+    vector<IntermediateBlock*> blocks = mthd->GetBlocks();
+    vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+    
+    int offset = 0;
+    for(size_t i = 0; i < instrs.size(); i++) {
+      IntermediateInstruction* instr = instrs[i];
+      switch(instr->GetType()) {
+      case LOAD_INT_VAR:
+      case STOR_INT_VAR:
+      case COPY_INT_VAR:
+      case LOAD_FLOAT_VAR:
+      case STOR_FLOAT_VAR:
+      case COPY_FLOAT_VAR:
+	if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
+	  offset = instr->GetOperand();
+	}
+	break;
+
+      default:
+	break;
+      }
+    }
+
+    return offset;
+  }
   
   //
   // atempts to inline a method
   //
-  inline int CanInline(IntermediateMethod* mthd_called) {
+  inline int CanInlineSetterGetter(IntermediateMethod* mthd_called) {
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
 #ifdef _DEBUG
     assert(blocks.size() == 1);
@@ -166,19 +318,19 @@ class ItermediateOptimizer {
   }
   
  public:
-  ItermediateOptimizer(IntermediateProgram* p, string optimize) {
+  ItermediateOptimizer(IntermediateProgram* p, int u, string o) {
     program = p;
-    inline_end = -1;
     cur_line_num = -1;
     merge_blocks = false;
+    unconditional_label = u; 
 
-    if(optimize == "s1") {
+    if(o == "s1") {
       optimization_level = 1;
     } 
-    else if(optimize == "s2") {
+    else if(o == "s2") {
       optimization_level = 2;
     } 
-    else if(optimize == "s3") {
+    else if(o == "s3") {
       optimization_level = 3;
     } 
     else {

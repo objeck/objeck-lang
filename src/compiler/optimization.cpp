@@ -47,10 +47,42 @@ void ItermediateOptimizer::Optimize()
     for(size_t j = 0; j < methods.size(); j++) {
       current_method = methods[j];
 #ifdef _DEBUG
-      cout << "Optimizing method: name='" << current_method->GetName() << "'" << endl;
+      cout << "Optimizing method, pass 1: name='" << current_method->GetName() << "'" << endl;
 #endif
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
+    
+    for(size_t j = 0; j < methods.size(); j++) {
+      current_method = methods[j];
+#ifdef _DEBUG
+      cout << "Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
+#endif
+      current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
+    }
+  }
+}
+
+vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<IntermediateBlock*> inputs)
+{
+  if(optimization_level > 2) {
+  // inline methods
+#ifdef _DEBUG
+    cout << "  Method inlining..." << endl;
+#endif
+    vector<IntermediateBlock*> outputs;
+    while(!inputs.empty()) {
+      IntermediateBlock* tmp = inputs.front();
+      outputs.push_back(InlineMethod(tmp));
+      // delete old block
+      inputs.erase(inputs.begin());
+      delete tmp;
+      tmp = NULL;
+    }
+
+    return outputs;
+  }
+  else {
+    return inputs;
   }
 }
 
@@ -75,7 +107,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   vector<IntermediateBlock*> useless_instrs_blocks;
   // remove useless instructions
 #ifdef _DEBUG
-  cout << "  Method inlining..." << endl;
+  cout << "  Clean up Instructions..." << endl;
 #endif
   while(!jump_blocks.empty()) {
     IntermediateBlock* tmp = jump_blocks.front();
@@ -88,34 +120,34 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   
   vector<IntermediateBlock*> folded_float_blocks;
   if(optimization_level > 0) {
-    vector<IntermediateBlock*> method_inlined_blocks;
-    // method inlining
+    vector<IntermediateBlock*> getter_setter_blocks;
+    // getter/setter inlining
 #ifdef _DEBUG
-    cout << "  Method inlining..." << endl;
+    cout << "  Getter/setter inlining..." << endl;
 #endif
     while(!useless_instrs_blocks.empty()) {
       IntermediateBlock* tmp = useless_instrs_blocks.front();
-      method_inlined_blocks.push_back(InlineMethodCall(tmp));
+      getter_setter_blocks.push_back(InlineSettersGetters(tmp));
       // delete old block
       useless_instrs_blocks.erase(useless_instrs_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
-    
+        
     // fold integers
 #ifdef _DEBUG
     cout << "  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
-    while(!method_inlined_blocks.empty()) {
-      IntermediateBlock* tmp = method_inlined_blocks.front();
+    while(!getter_setter_blocks.empty()) {
+      IntermediateBlock* tmp = getter_setter_blocks.front();
       folded_int_blocks.push_back(FoldIntConstants(tmp));
       // delete old block
-      method_inlined_blocks.erase(method_inlined_blocks.begin());
+      getter_setter_blocks.erase(getter_setter_blocks.begin());
       delete tmp;
       tmp = NULL;
     }
-
+    
     // fold floats
 #ifdef _DEBUG
     cout << "  Folding floats..." << endl;
@@ -280,7 +312,7 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
   return outputs;
 }
 
-IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inputs)
+IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
   
@@ -289,7 +321,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethodCall(IntermediateBlock* inp
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
-      int status = CanInline(mthd_called);
+      int status = CanInlineSetterGetter(mthd_called);
       //  getter instance pattern
       if(status == 0) {
 	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
@@ -581,6 +613,113 @@ void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, Inte
   }
   outputs->AddInstruction(top_instr);
   outputs->AddInstruction(instr);
+}
+
+IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
+{
+  set<IntermediateMethod*> inlined_mthds;
+  IntermediateBlock* outputs = new IntermediateBlock;
+  vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
+
+  set<int> lbl_jmp_offsets;
+  for(size_t i = 0; i < input_instrs.size(); i++) {
+    IntermediateInstruction* instr = input_instrs[i];
+    switch(instr->GetType()) {
+    case LBL:
+    case JMP:
+      lbl_jmp_offsets.insert(instr->GetOperand());
+      break;
+
+    default:
+      break;
+    }
+  }
+  lbl_jmp_offsets.insert(unconditional_label + 1);
+  
+  for(size_t i = 0; i < input_instrs.size(); i++) {
+    IntermediateInstruction* instr = input_instrs[i];
+
+    if(instr->GetType() == MTHD_CALL) {
+      IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      // checked called method to determine if it can be inlined
+      if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
+	// calculate local offset, +2 in case last variable is a double 
+	int local_instr_offset = GetLastLocalOffset(current_method) + 2;
+	
+	// ajust local space
+	current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
+	
+	// fetch inline instructions for called method
+	// vector<IntermediateBlock*> mthd_called_blocks = OptimizeMethod(mthd_called->GetBlocks());
+  vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
+	vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
+	
+	// handle the storing of local instance
+	// TODO: might be a better way to do this given the constrains
+	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
+										 local_instr_offset, LOCL));
+	
+	// inline instructions
+	// TODO: inline methods with multiple return values
+	// bool found_rtrn = false;
+	// int end = ++unconditional_label;
+	for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
+	  IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
+	  switch(mthd_called_instr->GetType()) {
+	  case LOAD_INT_VAR:
+	  case STOR_INT_VAR:
+	  case COPY_INT_VAR:
+	  case LOAD_FLOAT_VAR:
+	  case STOR_FLOAT_VAR:
+	  case COPY_FLOAT_VAR:
+	    if(mthd_called_instr->GetOperand2() == LOCL) {
+	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+										       mthd_called_instr->GetOperand() + local_instr_offset + 1,  
+										       LOCL));
+	    }
+	    else if(mthd_called_instr->GetOperand2() == INST) {
+	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+										       mthd_called_instr->GetOperand(), INST));	      
+	    }
+	    else {
+	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+										       mthd_called_instr->GetOperand(), CLS));
+	    }
+	    break;
+
+	  case LOAD_INST_MEM:
+	    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset, LOCL));
+	    break;
+	    
+	    /*
+	  case RTRN:
+	    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end, -1));
+	    found_rtrn = true;
+	    break;
+	    */
+
+	  default:
+	    outputs->AddInstruction(mthd_called_instr);
+	    break;
+	  }
+	}
+	/*
+	if(found_rtrn) {
+	  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end));
+	}
+	*/
+	inlined_mthds.insert(mthd_called);
+      }	
+      else {
+	outputs->AddInstruction(instr);
+      }
+    }
+    else {
+      outputs->AddInstruction(instr);
+    }
+  }
+  
+  return outputs;
 }
 
 IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inputs)
