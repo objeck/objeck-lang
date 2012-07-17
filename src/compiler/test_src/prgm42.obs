@@ -19,7 +19,7 @@ bundle Default {
 				s->Append((i + 2)->ToString()->ToCharArray());
 				tree->Insert(v->As(System.Compare), s->As(System.Base));
 			};
-
+#~
 			v : Vector := tree->GetKeys();
 			for(i : Int := 0; i < v->Size(); i := i + 1;) {
 				h : IntHolder := v->Get(i)->As( Struct.IntHolder);
@@ -31,6 +31,7 @@ bundle Default {
 				s := v->Get(i)->As(System.String);
 				s->PrintLine();
 			};		
+~#
 		}
 	}
 }
