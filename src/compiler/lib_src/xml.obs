@@ -1231,6 +1231,7 @@ bundle XML {
 							
 							if(i < max & in->Get(i) = ';') {
 								out->Append(str_num->ToInt()->As(Char));
+								i += 1;
 							}
 							else {
 								out->Append(str_num);
