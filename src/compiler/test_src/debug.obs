@@ -1,72 +1,21 @@
 bundle Default {
-	interface Fee {
-		method : virtual : public : Who() ~ Nil;
-	}
-	
-	class Test {
-		@called : (String) ~ Nil;
-
-		New(called : (String)~ Nil) {
-			@called := called;
-		}
-
-		method : public : Foo() ~ Nil {
-			"fee, fie, foo, fum"->PrintLine();
-			@called("do that!");
-		}
-	}
-
-	class Fie implements Fee {
-		New() {}
-		method : public : Who() ~ Nil {
-			"Fie"->PrintLine();
-		}
-
-		method : public : Call(called : (String)~Nil) ~ Nil {
-			t := Test->New(called);
-			t->Foo();
-		}
-	}
-
-	class Foo from Fie implements Fee {
-		New() { 
-			Parent(); 
-		}
-
-		method : public : Who() ~ Nil {
-			"Foo"->PrintLine();
-		}
-	}
-
 	class Fum {
-		New() {}
 		function : Main(args : String[]) ~ Nil {
-#~
-			f : Fee := Foo->New();
-			f->Who();
-			f->Who();
-~#
+			a := ""->Trim();
+			IO.Console->Print("'")->Print(a)->PrintLine("'");
 
-			ff := Foo->New();
-			ff->Call(Fum->Callee(String) ~ Nil);
+			a := "  "->Trim();
+			IO.Console->Print("'")->Print(a)->PrintLine("'");
 
-#			i := 5;
-#			5->Times(PrintHello() ~ Nil);
+			a := "abc	"->Trim();
+			a := "	abc"->Trim();
+			IO.Console->Print("'")->Print(a)->PrintLine("'");
 
-			i := 15;
-			10->Max(i)->PrintLine();
-		}
+			a := "abc	"->Trim();
+			IO.Console->Print("'")->Print(a)->PrintLine("'");
 
-		function : public : PrintHello() ~ Nil {
-			"hello"->PrintLine();
-		}
-
-		function : public : Callee(value : String) ~ Nil {
-			value->PrintLine();
-		}
-
-		method : public : Who() ~ Nil {
-			"Foo"->PrintLine();
+			a := "abc"->Trim();
+			IO.Console->Print("'")->Print(a)->PrintLine("'");
 		}
 	}
 }

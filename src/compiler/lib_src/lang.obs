@@ -986,28 +986,34 @@ bundle System {
 		}
 		
 		method : public : native : Trim() ~ String {
-			# copy elements
-
-			i := 0;	
-			c : Char := @string[i];
-			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & i < @string->Size()) {
-				i += 1;
-				c := @string[i];
+			if(@pos = 0) {
+				return "";
 			};
 
-			j := @pos - 1;
-			c := @string[j];
-			while((c = ' ' | c = '\r' | c = '\n' | c = '\t') & j > -1) {
-				j -= 1;
-				c := @string[j];
+			i := 0;
+			c := @string[i];
+			while(i < @pos & (c = ' ' | c = '\t' | c = '\n' | c = '\n')) {
+				i += 1;
+				c := @string[i];
 			};	
-		
-			tmp := "";
+
+			j := @pos - 1;
+			if(j < 0) {
+				return "";
+			};
+
+			c := @string[j];
+			while(j > -1 & (c = ' ' | c = '\t' | c = '\n' | c = '\n')) {
+				j -= 1;
+				c := @string[i];
+			};	
+
+			tmp := String->New();
 			while(i <= j) {
 				tmp->Append(@string[i]);
 				i += 1;
 			};
-            
+
 			return tmp;
 		}
 		

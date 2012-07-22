@@ -1,0 +1,55 @@
+use IO;
+use Struct;
+
+bundle Default {  
+	class DocParser {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				Parse(args[0]);
+			};
+		}
+    
+		function : native : PrintComments(comments : Vector) ~ Nil {
+			each(i : comments) {
+				comment := comments->Get(i)->As(String);
+				comment->PrintLine();
+			};
+		}
+		
+		function : native : Parse(file : String) ~ Nil {
+			reader := FileReader->New(file);
+			line_num := 0;
+			comment_start := 0;
+			comment_end := 0;
+			comments := Vector->New();
+			while(reader->IsEOF() <> true) {
+				line := reader->ReadString()->Trim();
+				line_num += 1;
+
+				is_start := line->StartsWith("#~");	is_end := line->EndsWith("~#");
+				if(is_start | is_end) {
+					if(is_start) {
+						comment_start := line_num;
+					};
+
+					if(is_end) {
+						comment_end := line_num;
+IO.Console->Print("comment block: start=")->Print(comment_start)->Print(", end=")->PrintLine(comment_end);
+						comments->AddBack(line);
+						comment_start := 0;
+						PrintComments(comments);
+					};
+				}
+				else {
+					# consider parsing the line, what if the function/method spans multiple lines?
+				};
+
+				if(comment_start <> 0) {
+					comments->AddBack(line);
+				};
+
+#				line->PrintLine();
+			};
+		}
+	}
+}
