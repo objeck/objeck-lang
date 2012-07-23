@@ -262,7 +262,7 @@ void Parser::ParseBundle(int depth)
       ProcessError("Unexpected tokens (likely related to other errors)");
     }    
   }
-  program->SetUses(uses);
+  program->AddUses(uses);
 }
 
 /****************************

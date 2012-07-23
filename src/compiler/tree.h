@@ -2811,9 +2811,14 @@ namespace frontend {
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();
     }
-
-    void SetUses(vector<string> u) {
-      uses = u;
+    
+    void AddUses(vector<string> u) {
+      for(size_t i = 0; i < u.size(); i++) {
+	vector<string>::iterator found = find(uses.begin(), uses.end(), u[i]);
+	if(found == uses.end()) {
+	  uses.push_back(u[i]);
+	}
+      }
     }
 
     bool HasBundleName(const string& name) {
