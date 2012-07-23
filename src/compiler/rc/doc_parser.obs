@@ -1,14 +1,21 @@
 use IO;
 use Struct;
 
-bundle Default {  
+bundle Default {
 	class DocParser {
+		classes : Vector;
+
+		New() {
+			classes := Vector->New();
+		}
+		
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
-				Parse(args[0]);
+				parser := DocParser->New();
+				parser->ParseFile(args[0]);
 			};
 		}
-    
+    	
 		function : native : PrintComments(comments : Vector) ~ Nil {
 			each(i : comments) {
 				comment := comments->Get(i)->As(String);
@@ -16,12 +23,20 @@ bundle Default {
 			};
 		}
 		
-		function : native : Parse(file : String) ~ Nil {
-			reader := FileReader->New(file);
+		method : native : ParseClass() ~ DocClass {
+			return Nil;
+		}
+
+		method : native : ParseMethod() ~ DocMethod {
+			return Nil;
+		}
+
+		method : public : native : ParseFile(file : String) ~ Nil {
+			comments : Vector;
 			line_num := 0;
-			comment_start := 0;
-			comment_end := 0;
-			comments := Vector->New();
+			comment_start := 0;	comment_end := 0;
+			
+			reader := FileReader->New(file);			
 			while(reader->IsEOF() <> true) {
 				line := reader->ReadString()->Trim();
 				line_num += 1;
@@ -29,6 +44,7 @@ bundle Default {
 				is_start := line->StartsWith("#~");	is_end := line->EndsWith("~#");
 				if(is_start | is_end) {
 					if(is_start) {
+						comments := Vector->New();
 						comment_start := line_num;
 					};
 
@@ -40,16 +56,18 @@ IO.Console->Print("comment block: start=")->Print(comment_start)->Print(", end="
 						PrintComments(comments);
 					};
 				}
-				else {
+				else if(line->StartsWith("class")) {
+IO.Console->Print("class: line=")->Print(line_num)->Print(", line=")->PrintLine(line);
+				}
+				else if(line->StartsWith("function") | line->StartsWith("method")) {
+IO.Console->Print("function/method: line=")->Print(line_num)->Print(", line=")->PrintLine(line);
 					# consider parsing the line, what if the function/method spans multiple lines?
 				};
 
 				if(comment_start <> 0) {
 					comments->AddBack(line);
 				};
-
-#				line->PrintLine();
 			};
 		}
-	}
+	}	
 }

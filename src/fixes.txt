@@ -1,3 +1,8 @@
+7/23/12 - now
+* fix to xml paring of hex chars (low)
+* fix to the string->trim method (med)
+* fixed bug related to resolving "use" scope across multpile files, in certain instances
+
 6/5/12 - now
 -----
 * compiler bug related to linking library classes that aren't referenced

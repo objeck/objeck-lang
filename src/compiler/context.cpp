@@ -4,7 +4,7 @@
  * Copyright (c) 2008-2012, Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or ywithout
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -1144,13 +1144,16 @@ bool ContextAnalyzer::Analyze()
 	// check method call
 	if(klass) {
 	  AnalyzeMethodCall(klass, method_call, false, encoding, depth);
-	} else if(lib_klass) {
+	} 
+	else if(lib_klass) {
 	  AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
-	} else {
+	} 
+	else {
 	  ProcessError(static_cast<Expression*>(method_call),
 		       "Undefined class: '" + variable_name + "'");
 	}
-      } else {
+      } 
+      else {
 	ProcessError(static_cast<Expression*>(method_call),
 		     "Undefined class: '" + variable_name + "'");
       }
