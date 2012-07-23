@@ -3,10 +3,10 @@ use Struct;
 
 bundle Default {
 	class DocParser {
-		classes : Vector;
+		@classes : Vector;
 
 		New() {
-			classes := Vector->New();
+			@classes := Vector->New();
 		}
 		
 		function : Main(args : String[]) ~ Nil {
@@ -23,19 +23,20 @@ bundle Default {
 			};
 		}
 		
-		method : native : ParseClass() ~ DocClass {
+		method : native : ParseClass(line : String) ~ DocClass {
 			return Nil;
 		}
 
-		method : native : ParseMethod() ~ DocMethod {
+		method : native : ParseMethod(line : String) ~ DocMethod {
 			return Nil;
 		}
 
 		method : public : native : ParseFile(file : String) ~ Nil {
-			comments : Vector;
-			line_num := 0;
-			comment_start := 0;	comment_end := 0;
+			current_comments : Vector;
+			current_class : DocClass;
+			current_method : DocMethod;
 			
+			line_num := 0; comment_start := 0;	comment_end := 0;
 			reader := FileReader->New(file);			
 			while(reader->IsEOF() <> true) {
 				line := reader->ReadString()->Trim();
@@ -44,28 +45,36 @@ bundle Default {
 				is_start := line->StartsWith("#~");	is_end := line->EndsWith("~#");
 				if(is_start | is_end) {
 					if(is_start) {
-						comments := Vector->New();
+						current_comments := Vector->New();
 						comment_start := line_num;
 					};
 
 					if(is_end) {
 						comment_end := line_num;
 IO.Console->Print("comment block: start=")->Print(comment_start)->Print(", end=")->PrintLine(comment_end);
-						comments->AddBack(line);
+						current_comments->AddBack(line);
 						comment_start := 0;
-						PrintComments(comments);
+						PrintComments(current_comments);
 					};
 				}
 				else if(line->StartsWith("class")) {
+					current_class := ParseClass(line);
+					if(current_class <> Nil) {
+						@classes->AddBack(current_class);
+					};
 IO.Console->Print("class: line=")->Print(line_num)->Print(", line=")->PrintLine(line);
 				}
 				else if(line->StartsWith("function") | line->StartsWith("method")) {
+					current_method := ParseMethod(line);
+					if(current_method <> Nil & current_class <> Nil) {
+						
+					};
 IO.Console->Print("function/method: line=")->Print(line_num)->Print(", line=")->PrintLine(line);
 					# consider parsing the line, what if the function/method spans multiple lines?
 				};
 
 				if(comment_start <> 0) {
-					comments->AddBack(line);
+					current_comments->AddBack(line);
 				};
 			};
 		}
