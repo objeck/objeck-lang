@@ -23,7 +23,16 @@ bundle Default {
 			};
 		}
 		
-		method : native : ParseClass(line : String) ~ DocClass {
+		method : ParseClass(line : String) ~ DocClass {
+#		method : native : ParseClass(line : String) ~ DocClass {
+			parser := Parser->New(line);
+#~
+			
+			tokens := parser->Parse();
+~#
+			tokens := Vector->New();
+			IO.Console->Print("string: token count=")->PrintLine(tokens->Size());
+			
 			return Nil;
 		}
 

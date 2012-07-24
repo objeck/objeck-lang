@@ -43,6 +43,7 @@ int Execute(const int argc, const char* argv[])
     Loader loader(argc, argv);
     loader.Load();
 
+    /*
     // execute
     long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
@@ -111,6 +112,7 @@ int Execute(const int argc, const char* argv[])
     cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
          << " second(s)." << endl;
 #endif
+    */
 
     return SUCCESS;
   } 
