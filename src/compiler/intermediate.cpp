@@ -219,9 +219,7 @@ void IntermediateEmitter::Translate()
   for(size_t i = 0; i < bundles.size(); i++) {
     vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); j++) {
-      if(is_lib || classes[i]->GetCalled()) {
-        classes[j]->SetId(class_id++);
-      }
+      classes[j]->SetId(class_id++);
     }
   }
   
