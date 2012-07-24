@@ -1,7 +1,8 @@
 7/23/12 - now
 * fix to xml paring of hex chars (low)
 * fix to the string->trim method (med)
-* fixed bug related to resolving "use" scope across multpile files, in certain instances
+* fixed bug related to resolving "use" scope across multpile files, in certain instances (med)
+* fixed a compiler bug that caused a crash (low)
 
 6/5/12 - now
 -----

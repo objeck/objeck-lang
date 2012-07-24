@@ -644,6 +644,7 @@ bool ContextAnalyzer::Analyze()
 	if(main_found) {
 	  ProcessError(current_method, "The 'Main(args)' function has already been defined");
 	} else {
+	  current_class->SetCalled(true);
 	  program->SetStart(current_class, current_method);
 	  main_found = true;
 	}
@@ -1649,9 +1650,9 @@ bool ContextAnalyzer::Analyze()
       vector<Expression*> expressions = call_params->GetExpressions();
       
 #ifndef _SYSTEM
-#ifdef _DEBUG
-      assert(mthd_params.size() == expressions.size());
-#endif
+      if(mthd_params.size() != expressions.size()) {
+	ProcessError(static_cast<Expression*>(method_call), "Invalid method call context");
+      }
 #endif
       
       Expression* expression;
@@ -1663,8 +1664,10 @@ bool ContextAnalyzer::Analyze()
 	  expression = expression->GetMethodCall();
 	}
 	// check cast
-	AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
-			 expression, IsScalar(expression), depth + 1);	
+	if(mthd_params[i]->GetEntry()) {
+	  AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
+			   expression, IsScalar(expression), depth + 1);	
+	}
       }
       
       // public/private check

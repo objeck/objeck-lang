@@ -1,21 +1,14 @@
 bundle Default {
-	class Fum {
+	class Test {
 		function : Main(args : String[]) ~ Nil {
-			a := ""->Trim();
-			IO.Console->Print("'")->Print(a)->PrintLine("'");
+			Run();
+		}
 
-			a := "  "->Trim();
-			IO.Console->Print("'")->Print(a)->PrintLine("'");
-
-			a := "abc	"->Trim();
-			a := "	abc"->Trim();
-			IO.Console->Print("'")->Print(a)->PrintLine("'");
-
-			a := "abc	"->Trim();
-			IO.Console->Print("'")->Print(a)->PrintLine("'");
-
-			a := "abc"->Trim();
-			IO.Console->Print("'")->Print(a)->PrintLine("'");
+		function : Run() ~ Nil {
+			v := Struct.Vector->New();
+			v->AddBack("foo");
+			v->AddBack("bar");
+			IO.Console->Print("string: token count=")->PrintLine(v->Size());
 		}
 	}
 }
