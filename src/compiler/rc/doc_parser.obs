@@ -27,12 +27,36 @@ bundle Default {
 			parser := Parser->New(line);
 			tokens := parser->Parse();
 
-IO.Console->Print("string: token count=")->PrintLine(tokens->Size());
-			
+			if(tokens->Size() = 3) {
+				token := tokens->Get(1)->As(Token);
+				if(token->GetType() = TokenType->IDENT) {
+IO.Console->Print("class=")->PrintLine(token->GetValue());
+					return DocClass->New(token->GetValue());
+				};
+			};
+
 			return Nil;
 		}
 
 		method : native : ParseMethod(line : String) ~ DocMethod {
+			parser := Parser->New(line);
+			tokens := parser->Parse();
+
+			i := 0;			
+			while(i < tokens->Size()) {
+				token := tokens->Get(i)->As(Token);
+				if(token->GetType() = TokenType->OPRN) {
+					break;
+				};
+				i += 1;
+			};
+
+			if(i < tokens->Size()) {
+				i -= 1;
+				token := tokens->Get(i)->As(Token);
+IO.Console->Print("function/method=")->PrintLine(token->GetType()->As(Int));				
+			};
+			
 			return Nil;
 		}
 
