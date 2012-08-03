@@ -207,13 +207,14 @@ class IntermediateEmitter {
   void EmitAssignment(Assignment* assignment);
   void EmitDeclaration(Declaration* declaration);
   void EmitMethodCallParameters(MethodCall* method_call);
-  void EmitMethodCallExpression(MethodCall* method_call);
+  void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
+  void EmitMethodCallStatement(MethodCall* method_call);
   void EmitSystemDirective(SystemStatement* statement);
   int CalculateEntrySpace(SymbolTable* table, int &index,
                           IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
-
+  
   int OrphanReturn(MethodCall* method_call) {
     if(!method_call) {
       return -1;
