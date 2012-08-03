@@ -1,4 +1,5 @@
 7/23/12 - now
+* added the ability to make method calls from casts
 * fix to xml paring of hex chars (low)
 * fix to the string->trim method (med)
 * fixed bug related to resolving "use" scope across multpile files, in certain instances (med)

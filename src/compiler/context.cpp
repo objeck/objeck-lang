@@ -1172,8 +1172,9 @@ bool ContextAnalyzer::Analyze()
     // data type call
     Type* type;
     if(expression->GetCastType()) {
-      ProcessError(expression, "Method call from element cast not allowed");
-      return false;
+      //      ProcessError(expression, "Method call from element cast not allowed");
+      // return false;
+      type = expression->GetCastType();
     }
     else {
       type = expression->GetEvalType();
@@ -1364,7 +1365,8 @@ bool ContextAnalyzer::Analyze()
       // TODO: fix need to change intermediate emit code so that element value
       // is loaded instead of instance
       if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {
-	ProcessError(expression, "Method call from element cast not allowed");
+	//	ProcessError(expression, "Method call from element cast not allowed");
+	AnalyzeClassCast(expression->GetCastType(), expression, depth + 1);
       }
 
       // check expression class

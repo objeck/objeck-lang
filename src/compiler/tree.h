@@ -39,6 +39,7 @@
 #include <iomanip>
 #include <set>
 #include <string>
+#include <list>
 #include <vector>
 #include <stack>
 #include <map>

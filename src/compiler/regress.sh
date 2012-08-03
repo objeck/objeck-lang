@@ -13,6 +13,9 @@ until [  $i -lt 1 ]; do
 #	./obc -src test_src/prgm$i.obs -lib xml.obl,struct.obl -opt s0 -dest a.obe
 	./obc -src test_src/prgm$i.obs -lib xml.obl,struct.obl -opt s3 -dest a.obe
 
+#	./obc -src test_src/prgm$i.obs -lib xml.obl,struct.obl -opt s0 -dest a.obe
+  ./obc -src test_src/prgm$i.obs -lib xml.obl,struct.obl -opt s3 -dest a.obe
+
 	cd ../vm
 	if [ $i = 41 ]; then
 		./obr ../compiler/a.obe 7
