@@ -1,173 +1,23 @@
-use API;
-use Struct;
+﻿bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			b : Base := "hello";
+#			b : String := "hello";
+			b->As(String)->Find(1, 'l')->PrintLine();
+#			x := b->Find(1, 'l');
+#			b->PrintLine();
 
-bundle Gtk2 {
-	# signals
-	enum Signal := -100 {
-		Destroy,
-		Clicked
-	}
- 
-	# callback method holder
-	class CallbackHolder {
-		@callback : (GtkWidget) ~ Nil;
 
-		New(callback : (GtkWidget) ~ Nil) {
-			@callback := callback;
-		}
 
-		method : public : Get() ~ (GtkWidget) ~ Nil {
-			return @callback;
-		}
-	}
 
-	# GtkWidget class
-	class GtkWidget {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
+#~
 
-		New() {
-		}
-
-		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/linux64/gtk2_objk.so.1.0.1");
-			};
-
-			return @lib_proxy;
-		}
-
-		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[3];
-			array_args[0] := @self;
-			array_args[1] := IntHolder->New(signal->As(Int));
-			array_args[2] := CallbackHolder->New(callback);
-			lib_proxy->CallFunction("og_signal_connect", array_args);
-		}
-				
-		method : public : SignalConnectSwapped(signal : Signal, widget : GtkWidget, 
-				callback : (GtkWidget) ~ Nil) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[4];
-			array_args[0] := @self;
-			array_args[1] := widget;
-			array_args[2] := IntHolder->New(signal->As(Int));
-			array_args[3] := CallbackHolder->New(callback);
-			lib_proxy->CallFunction("og_signal_connect_swapped", array_args);
-		}
-
-		method : public : Show() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_show", array_args);
-		}
-
-		method : public : Hide() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_hide", array_args);
-		}
-	}
-	
-	# GtkContainer class
-	class GtkContainer from GtkWidget {
-		New() {
-			Parent();
-		}
-
-		method : public : SetBorderWidth(width : Int) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := IntHolder->New(width);
-			lib_proxy->CallFunction("og_container_set_border_width", array_args);
-		}
-		
-		method : public : GetBorderWidth() ~ Int {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := IntHolder->New(0);
-			lib_proxy->CallFunction("og_container_get_border_width", array_args);
-			width := array_args[1]->As(IntHolder);
-			return width->Get();
-		}
-		
-		method : public : Add(widget : GtkWidget) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := widget;
-			lib_proxy->CallFunction("og_container_add", array_args);
-		}
-
-		method : public : Remove(widget : GtkWidget) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := widget;
-			lib_proxy->CallFunction("og_container_remove", array_args);
-		}
-	}
-
-	# GtkButton class
-	class GtkButton from GtkContainer {
-		New(name : String) {
-			Parent();
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(0);
-			array_args[1] := name;
-			lib_proxy->CallFunction("og_button_new_with_label", array_args);
-			ptr_holder := array_args[0]->As(IntHolder);
-			@native_ptr := ptr_holder->Get();
-		}
-	}	
-
-	# GtkWindow class
-	class GtkWindow from GtkContainer {
-		New() {
-			Parent();
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(0);
-			lib_proxy->CallFunction("og_window_new", array_args);
-			ptr_holder := array_args[0]->As(IntHolder);
-			@native_ptr := ptr_holder->Get();
-		}
-
-		method : public : SetTitle(title : String) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := title;
-			lib_proxy->CallFunction("og_window_set_title", array_args);
-		}
-	}
-
-	# Events class
-	class Events {
-		function : DeleteEvent(widget : GtkWidget) ~ Nil {
-			lib_proxy := GtkWidget->GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := widget;
-			lib_proxy->CallFunction("og_widget_destroy", array_args);
-		}
-	}
-
-	# Appliction class
-	class Appliction {
-		function : Main() ~ Nil {
-			lib_proxy := GtkWidget->GetDllProxy();
-			lib_proxy->CallFunction("og_main", Nil->As(Base[]));
-		}
-
-		function : MainQuit() ~ Nil {
-			lib_proxy := GtkWidget->GetDllProxy();
-			lib_proxy->CallFunction("og_main_quit", Nil->As(Base[]));
+#			ss : String[] := String->New[1];
+			ss : String[];
+			
+			ss[0] := "world";
+			ss[0]->PrintLine();
+~#
 		}
 	}
 }
