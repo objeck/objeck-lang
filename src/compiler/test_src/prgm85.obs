@@ -8,6 +8,10 @@
 #			b->PrintLine();
 
 
+			c : String := "hello";
+			y := c->Find(1, 'l');
+			y->PrintLine();
+			c->PrintLine();
 
 
 #~
