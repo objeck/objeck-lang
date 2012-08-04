@@ -1,0 +1,14 @@
+Objeck v3.1.2_1
+
+--------------
+Release Notes
+--------------
+The focus of this release was on adding back the ability to make nested method calls from direct right casts.  In addition, a number of bug fixes were made to compiler.
+
+Highlights of this specific release include the following:
+* Added the ability to make nested method calls directly from "As" casts (enhancement)
+* Added better exception handling for array dereferencing (high)
+* Refactored the "String->Trim" method (medium)
+* Fixed a bug related to resolving "use" scope across multiple files (medium)
+* Modified the XML paring library such that hex chars are properly parsed (low)
+* Fixed a crash related compiler bug (low)
