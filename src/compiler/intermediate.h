@@ -215,6 +215,24 @@ class IntermediateEmitter {
                           IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
   
+  void EmitClassCast(Expression* expression) {
+    // class cast
+    if(expression->GetToClass()) {
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
+      } else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
+      }
+    } 
+    else if(expression->GetToLibraryClass()) {
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
+      } else {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToLibraryClass()->GetId()));
+      }
+    }
+  }
+  
   int OrphanReturn(MethodCall* method_call) {
     if(!method_call) {
       return -1;

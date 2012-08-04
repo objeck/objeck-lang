@@ -45,7 +45,6 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-#~
 			c := C1->New();
 			x := c->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
 			y := Foo(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
@@ -59,7 +58,6 @@ bundle Default {
 			for(i := 0; i < 12; i += 1;) {
 				vv->Get(i)->As(C2)->GetValue()->PrintLine();
 			};
-~#
 
 
 
@@ -98,13 +96,13 @@ x->PrintLine();
 
 
 
-#~
 			y := vvv[1]->As(C1)->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
 y->PrintLine();
 			z := vvv[2]->As(C1)->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
 z->PrintLine();
+
+"---"->PrintLine();
 			(x * y * z)->PrintLine();
-~#
 
 
 			h := Vector->New();
@@ -117,6 +115,11 @@ z->PrintLine();
 				total += h->Get(i)->As(IntHolder)->Get();
 			};
 			total->PrintLine();
+			
+#			b : Base := "hello";
+			b : String := "hello";
+			b->As(String)->PrintLine();
+#			b->PrintLine();
 		}
 	}
 }

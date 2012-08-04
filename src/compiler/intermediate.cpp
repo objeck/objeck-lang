@@ -907,7 +907,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
     }
-
+    
     // emit parameters for nested call
     MethodCall* temp = tail;
     while(temp) {
@@ -960,19 +960,13 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else {
 	is_nested = false;
       }
-
+      
       // class cast
-      if(static_cast<Expression*>(method_call)->GetToClass()) {
-	Expression* expression = method_call;
-	if(is_lib) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, 
-										     expression->GetToClass()->GetName()));
-	} else {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, 
-										     expression->GetToClass()->GetId()));
-	}
-      } 
-
+      if(!method_call->GetVariable()) {
+	EmitClassCast(method_call);
+      }
+      
+      // update
       method_call = method_call->GetMethodCall();
     } 
     while(method_call);
@@ -1893,7 +1887,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
   case VAR_EXPR:
     EmitVariable(static_cast<Variable*>(expression));
-    EmitCast(expression);
     break;
 
   case AND_EXPR:
@@ -1921,23 +1914,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
   }
-
+  
   // class cast
-  if(expression->GetToClass()) {
-    if(is_lib) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
-    } else {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
-    }
-  } 
-  else if(expression->GetToLibraryClass()) {
-    if(is_lib) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
-    } else {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToLibraryClass()->GetId()));
-    }
-  }
-
+  // EmitClassCast(expression);
+  
   // note: all nested method calls of type METHOD_CALL_EXPR
   // are processed above
   if(expression->GetExpressionType() != METHOD_CALL_EXPR && expression->GetExpressionType() != VAR_EXPR) {
@@ -2627,6 +2607,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     
     // emit parameters last call
     EmitMethodCallParameters(variable->GetMethodCall());
+ 
   }
   
   // self
@@ -2720,6 +2701,9 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
+// class cast
+  EmitClassCast(variable);
+
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
   }
 }
@@ -3074,7 +3058,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     SymbolEntry* entry = method_call->GetEntry();
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
-      EmitVariable(variable);
+      // emit variable
+      EmitVariable(variable);            
+      EmitClassCast(method_call);
     }
     else if(entry) {
       // memory context
@@ -3216,7 +3202,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	  }
         }
         // TODO: this needs to be looked at... simpiler?
-        else if(!is_nested && (!variable || !variable->GetIndices() ||
+        else if(!is_nested && (!variable || /*!variable->GetIndices() ||*/
 			       variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
