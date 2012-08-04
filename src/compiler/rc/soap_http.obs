@@ -22,8 +22,7 @@ bundle Default {
         if(parser->Parse()) {
           results := parser->FindElements("/SOAP-ENV:Envelope/SOAP-ENV:Body/SOAP-ENV:countryInfoByIanaResponse/return/countryname");
         if(results->Size() > 0) {
-          element := results->Get(0)->As(XmlElement);
-          element->GetContent()->PrintLine();
+          results->Get(0)->As(XmlElement)->GetContent()->PrintLine();
         };
       };
     }

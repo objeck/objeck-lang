@@ -1,83 +1,125 @@
+﻿use Struct;
+
 bundle Default {
-	class Dog implements Inf {
-		New() {
+	class C2 {
+		@v : Int;
+		
+		New(v : Int) {
+			@v := v;
 		}
 
-		function : G() ~ Nil {
-			"Hello"->PrintLine();
-		}
-
-		method : public  : B1(s : String, b : Float) ~ Nil {
-			"Foo Bar!"->PrintLine();
+		method : public : GetValue() ~ Int {
+			return @v;
 		}
 	}
-
-	class Bar from Compare implements Inf, Inf2 {
+			
+	class C1 {
+		@v1 : Float;
 		New() {
-			Parent();
+			@v1 := 48.5;
+		}
+	
+		method : public : M1(v1 : Int, v2 : Float, v3 : Int) ~ Float {
+			return @v1 * v2 - v3;
+#			return @v1 * @v1;
+#			return @v1;
 		}
 
-		function : native : Main(args : System.String[]) ~ Nil {
-			x := Bar->New();
-			y : Inf := x->Foo();
-			w : Dog := y->As(Dog);
-			w->G();
-#~
-			r := x->TypeOf(Bar);
-			r->PrintLine();
-			r := x->TypeOf(Inf);
-			r->PrintLine();
-
-			d := Dog->New();
-			r := d->TypeOf(Inf2);
-			r->PrintLine();
-			r := d->TypeOf(Inf);
-			r->PrintLine();
-~#
-
-
-#			y->GetClass()->GetName();
-#			y->B1("xxx", 3.41);
+#		method : public : Foo2(a : Int, b : Float, c : Float) ~ Base {
+		method : public : Foo2(a : Int, b : Float, c : Float) ~ C1 {
+			return C1->New();
 		}
 
-		function : Run(x : Bar) ~ Nil {
-			Blah(x->As(Inf));
+		method : public : Say() ~ Float {
+			return @v1;
+		}
+	}
+		
+	class Hello {
+		function : Bar() ~ Int {
+			return 13;
 		}
 
-		function : native : Blah(x : Inf) ~ Nil {
-			x->As(Bar)->B1("yy", 3.4);
+		function : Foo(a : Int, b : Float, c : Float) ~ Base {
+			return C1->New();
 		}
 
-		function : Blah2(x : Bar) ~ Nil {
-			x->B1("x", 1.31);
-			x->HashID()->PrintLine();
-		}
+		function : Main(args : String[]) ~ Nil {
+			c := C1->New();
+			x := c->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+			y := Foo(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+			(x * y)->PrintLine();
 
-		method : public : Foo() ~ Inf {
-			return Dog->New()->As(Inf);
-		}
+			vv := Struct.Vector->New();
+			for(i := 0; i < 12; i += 1;) {
+				vv->AddBack(C2->New(i));
+			};
+			
+			for(i := 0; i < 12; i += 1;) {
+				vv->Get(i)->As(C2)->GetValue()->PrintLine();
+			};
 
-		method : public : Compare(rhs : System.Compare) ~ Int {
-			return -1;
-		}
 
-      method : public : HashID() ~ Int
-		{
-			return -1;
-		}
 
-		method : public :  B1(s : String, b : Float) ~ Nil {
-			"called"->PrintLine();
-		}
 
-		method : public : B2(a : Int, b : Float) ~ Nil {
-			"also again"->PrintLine();
-		}
 
-#~
-		method : Blsh(a : Int, b : Float) ~ Nil {
-			y := a * b;
+
+
+
+
+#			vvv := Base->New[3];
+			vvv := C1->New[3];
+			vvv[0] := C1->New();
+			vvv[1] := C1->New();
+			vvv[2] := C1->New();
+
+			u := vvv[0]->As(C1)->Foo2(3.14, Bar(), 77.3);
+			u := vvv[0]->Foo2(3.14, Bar(), 77.3);
+			x := u->As(C1)->M1(13, 55.5, 100);
+
+#			x := vvv[0]->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+x->PrintLine();
+
+
+			x := vvv[1]->Foo2(3.14, Bar(), 77.3)->M1(13, 55.5, 100);
+			x := vvv[1]->As(C1)->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+ x->PrintLine();
+
+
+
+
+			u := vvv[0]->Foo2(3.14, Bar(), 77.3);
+			vvv[1]->As(C1)->Foo2(1,2.2,3.3)->Say()->PrintLine();
+
+
+
+
+
+
+			y := vvv[1]->As(C1)->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+y->PrintLine();
+			z := vvv[2]->As(C1)->Foo2(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
+z->PrintLine();
+
+"---"->PrintLine();
+			(x * y * z)->PrintLine();
+
+
+			h := Vector->New();
+			h->AddBack(IntHolder->New(2));	
+			h->AddBack(IntHolder->New(4));	
+			h->AddBack(IntHolder->New(8));	
+
+			total := 0;
+			each(i : h) {
+				total += h->Get(i)->As(IntHolder)->Get();
+			};
+			total->PrintLine();
+			
+#			b : Base := "hello";
+			b : String := "hello";
+			b->As(String)->PrintLine();
+#			b->PrintLine();
 		}
-~#
 	}
 }

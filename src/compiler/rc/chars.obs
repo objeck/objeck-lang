@@ -7,8 +7,7 @@ bundle Default {
     function : native : Run() ~ Nil {
       i := 'a'->As(Int);
 		i->PrintLine();
-		c := i->As(Char);
-		c->PrintLine();
+		i->As(Char)->PrintLine();
     }
   }
 }
