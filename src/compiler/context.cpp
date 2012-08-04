@@ -1169,13 +1169,20 @@ bool ContextAnalyzer::Analyze()
 						    Class* &klass, LibraryClass* &lib_klass,
 						    bool &is_enum_call)
   {
-    // data type call
     Type* type;
+    // process cast
     if(expression->GetCastType()) {
-      //      ProcessError(expression, "Method call from element cast not allowed");
-      // return false;
-      type = expression->GetCastType();
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
+	while(expression->GetMethodCall()) {
+	  expression = expression->GetMethodCall();
+	}
+	type = expression->GetEvalType();	
+      }
+      else {
+	type = expression->GetCastType();
+      }
     }
+    // process non-cast
     else {
       type = expression->GetEvalType();
     }
@@ -1434,12 +1441,23 @@ bool ContextAnalyzer::Analyze()
     // external method
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+      // array type
       if(entry->GetType()->GetDimension() > 0 &&
 	 (!method_call->GetVariable() ||
 	  !method_call->GetVariable()->GetIndices())) {
+	
 	klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses());
 	encoding = "o.System.Base*,";
-      } else {
+      } 
+      // cast type
+      else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
+	      method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+	klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses());	
+	method_call->SetTypes(entry->GetType());
+	AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+      }
+      // base type
+      else {
 	klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses());
       }
     }
@@ -3401,7 +3419,7 @@ bool ContextAnalyzer::Analyze()
     Type* right = expression->GetEvalType();
 
     //
-    // program enum
+    // program enumt
     //
     if(left && right && SearchProgramEnums(left->GetClassName())) {
       Enum* left_enum = SearchProgramEnums(left->GetClassName());

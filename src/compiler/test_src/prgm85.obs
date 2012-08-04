@@ -1,9 +1,23 @@
-bundle Default {
-	interface Inf {
-		method : virtual : public  : B1(s : String, b : Float) ~ Nil;
-	}
+﻿bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			b : Base := "hello";
+#			b : String := "hello";
+			b->As(String)->Find(1, 'l')->PrintLine();
+#			x := b->Find(1, 'l');
+#			b->PrintLine();
 
-	interface Inf2 {
-		method : virtual : public : B2(a : Int, b : Float) ~ Nil;
+
+
+
+#~
+
+#			ss : String[] := String->New[1];
+			ss : String[];
+			
+			ss[0] := "world";
+			ss[0]->PrintLine();
+~#
+		}
 	}
 }

@@ -493,7 +493,6 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       const long dest_offset = PopInt(op_stack, stack_pos);
       long* dest_array = (long*)PopInt(op_stack, stack_pos);      
 
-
       if(!src_array || !dest_array) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
@@ -1793,8 +1792,14 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_
 #ifdef _DEBUG
   cout << "stack oper: STOR_INT_ARY_ELM; call_pos=" << call_stack_pos << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
 
+  long* array = (long*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
+    StackErrorUnwind();
+    exit(1);
+  }
+  
   const long size = array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
@@ -2224,31 +2229,54 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
     // ---------------- standard i/o ----------------
   case STD_OUT_BOOL:
+#ifdef _DEBUG
+    cout << "  STD_OUT_BOOL" << endl;
+#endif
     cout << ((PopInt(op_stack, stack_pos) == 0) ? "false" : "true");
     break;
-
+    
   case STD_OUT_BYTE:
+#ifdef _DEBUG
+    cout << "  STD_OUT_BYTE" << endl;
+#endif
     cout << (unsigned char)PopInt(op_stack, stack_pos);
     break;
 
   case STD_OUT_CHAR:
+#ifdef _DEBUG
+    cout << "  STD_OUT_CHAR" << endl;
+#endif
     cout << (char)PopInt(op_stack, stack_pos);
     break;
 
   case STD_OUT_INT:
+#ifdef _DEBUG
+    cout << "  STD_OUT_INT" << endl;
+#endif
     cout << PopInt(op_stack, stack_pos);
     break;
 
   case STD_OUT_FLOAT:
+#ifdef _DEBUG
+    cout << "  STD_OUT_FLOAT" << endl;
+#endif
     cout.precision(9);
     cout << PopFloat(op_stack, stack_pos);
     break;
-
+    
   case STD_OUT_CHAR_ARY: {
     long* array = (long*)PopInt(op_stack, stack_pos);
+    
+#ifdef _DEBUG
+    cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
+#endif
+    
     if(array) {
       char* str = (char*)(array + 3);
       cout << str;
+    }
+    else {
+      cout << "Nil";
     }
   }
     break;
@@ -2258,12 +2286,17 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
 
+#ifdef _DEBUG
+    cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
+#endif
+
     if(array && offset >= 0 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       cout.write(buffer + offset, num);
       PushInt(1, op_stack, stack_pos);
     } 
     else {
+      cout << "Nil";
       PushInt(0, op_stack, stack_pos);
     }
   }

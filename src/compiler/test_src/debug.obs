@@ -1,14 +1,23 @@
-bundle Default {
+﻿bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			Run();
-		}
+			b : Base := "hello";
+#			b : String := "hello";
+			b->As(String)->Find(1, 'l')->PrintLine();
+#			x := b->Find(1, 'l');
+#			b->PrintLine();
 
-		function : Run() ~ Nil {
-			v := Struct.Vector->New();
-			v->AddBack("foo");
-			v->AddBack("bar");
-			IO.Console->Print("string: token count=")->PrintLine(v->Size());
+
+
+
+#~
+
+#			ss : String[] := String->New[1];
+			ss : String[];
+			
+			ss[0] := "world";
+			ss[0]->PrintLine();
+~#
 		}
 	}
 }

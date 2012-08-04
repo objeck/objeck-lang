@@ -1056,8 +1056,7 @@ namespace Runtime {
 	long* src_array = (long*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
 	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
-	
-      
+	      
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1084,8 +1083,7 @@ namespace Runtime {
 	long* src_array = (long*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
 	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
-	
-      
+	      
 	if(!src_array || !dest_array) {
 	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1194,6 +1192,9 @@ namespace Runtime {
 	    char* str = (char*)(array + 3);
 	    cout << str;
 	  }
+	  else {
+	    cout << "Nil";
+	  }
 	}
 	  break;
 	  
@@ -1208,6 +1209,7 @@ namespace Runtime {
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
+	    cout << "Nil";
 	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
@@ -1512,7 +1514,6 @@ namespace Runtime {
 	  PushInt(op_stack, stack_pos, (long)array);
 	}
 	  break;
-
 	  
 	case STD_IN_STRING: {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
