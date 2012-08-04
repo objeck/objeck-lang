@@ -10,6 +10,10 @@ bundle Default {
 
 		function : native : Run(args : String[]) ~ Nil {		
 #		function : Run(args : String[]) ~ Nil {		
+			b : Int := 13;
+			(b-9.33)->PrintLine();
+
+#~
 			x := 1;
 			x += (8 * 2);
 			x->PrintLine();
@@ -38,12 +42,12 @@ bundle Default {
 			(a * 9)->PrintLine();
 			(9 % a)->PrintLine();
 			(a % 9)->PrintLine();
+
 			b : Int := 13;
 			(a-b)->PrintLine();
 			(b-a)->PrintLine();
 			(13.5 - 5.0)->PrintLine();
 			
-			(b-9.33)->PrintLine();
 			(9.33 - b)->PrintLine();
 
 			(b/9.33)->PrintLine();
@@ -63,6 +67,7 @@ bundle Default {
 
 			(g-h)->PrintLine();
 			(h-g)->PrintLine();		
+~#
 		}
 	}
 }
