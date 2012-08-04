@@ -572,15 +572,16 @@ down casting does not. If cross casting is detected then a compile
 time error will be generated.
 
 \begin{verbatim}
-method : public : Compare(right : Base) ~ Int {
-  if(right <> Nil) {
-    if(GetClassID() = right->GetClassID()) {
-      a := right->As(A);
+values := Vector->New();
+values->AddBack(IntHolder->New(2));
+values->AddBack(IntHolder->New(4));
+values->AddBack(IntHolder->New(8));
 
-      if(@value = a->Get()) {
-        return 0;
-      };
-    ...	
+total := 0;
+each(i : values) {
+  total += values->Get(i)->As(IntHolder)->Get();
+};
+total->PrintLine();
 \end{verbatim}
 
 To determine if an object instance is of a certain class type (object
