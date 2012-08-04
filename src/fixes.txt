@@ -1,11 +1,12 @@
 7/23/12 - now
-* added the ability to make method calls from casts
-* fix to xml paring of hex chars (low)
-* fix to the string->trim method (med)
-* fixed bug related to resolving "use" scope across multpile files, in certain instances (med)
-* fixed a compiler bug that caused a crash (low)
+* added the ability to make nested method calls directly from "As" casts (enhancement)
+* added better exception handling for array dereferencing (high)
+* fix refactored the "String->Trim" method (med)
+* fixed bug related to resolving "use" scope across multipile files, in certain instances (med)
+* fix the xml paring librar to such that  hex chars are better supported (low)
+* fixed a crash realted compiler bug (low)
 
-6/5/12 - now
+6/5/12 - 7/18/12
 -----
 * compiler bug related to linking library classes that aren't referenced
 * fixed bug in the native C API that could cause memory allocated using APIs to be collected
