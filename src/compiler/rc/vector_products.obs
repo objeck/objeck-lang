@@ -1,9 +1,9 @@
 ﻿bundle Default {
 	class VectorProduct {
 		function : Main(args : String[]) ~ Nil {
-			a := Vector3D->New(3, 4, 5);
-			b := Vector3D->New(4, 3, 5);
-			c := Vector3D->New(-5, -12, -13);
+			a := Vector3D->New(3.0, 4.0, 5.0);
+			b := Vector3D->New(4.0, 3.0, 5.0);
+			c := Vector3D->New(-5.0, -12.0, -13.0);
 
 			a->Dot(b)->Print();
 			a->Cross(b)->Print();
