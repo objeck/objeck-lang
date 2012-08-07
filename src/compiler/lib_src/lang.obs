@@ -1753,16 +1753,18 @@ bundle IO {
 		}
 		
 		function : ReadFile(name : String) ~ String {
-			len := File->Size(name);
-			buffer := Char->New[len];
-			in := FileReader->New(name);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
-				in->Close();
-				
-				return String->New(buffer);
+			len := File->Size(name) - 1;
+			if(len > 0) {
+				buffer := Char->New[len];
+				in := FileReader->New(name);
+				if(in->IsOpen()) {
+					in->ReadBuffer(0, len, buffer);
+					in->Close();
+					
+					return String->New(buffer);
+				};
 			};
-			
+	
 			return Nil;
 		}
 		
