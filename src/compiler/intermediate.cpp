@@ -881,7 +881,14 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
 	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -890,7 +897,14 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else if(method_call->GetLibraryMethod()) {
 	LibraryMethod* lib_method = method_call->GetLibraryMethod();
 	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -942,16 +956,30 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
 	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
 	}
-      } 
+      }
       else if(method_call->GetLibraryMethod()) {
 	LibraryMethod* lib_method = method_call->GetLibraryMethod();
 	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -1945,19 +1973,37 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // emit call
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          is_nested = true;
-        } else {
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
+        } 
+	else {
           is_nested = false;
         }
-      } else if(method_call->GetLibraryMethod()) {
+      }
+      else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          is_nested = true;
-        } else {
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
+        } 
+	else {
           is_nested = false;
         }
       } else {
@@ -2071,7 +2117,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
 	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -2080,7 +2133,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
 	LibraryMethod* lib_method = method_call->GetLibraryMethod();
 	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = true;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -2116,7 +2176,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
 	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
@@ -2125,7 +2192,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
 	LibraryMethod* lib_method = method_call->GetLibraryMethod();
 	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  is_nested = true;
+	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+	  if(!is_enum) {
+	    is_nested = true;
+	  }
+	  else {
+	    is_nested = false;
+	  }
 	} 
 	else {
 	  is_nested = false;
