@@ -959,6 +959,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
   clock_t end = clock();
   cout << "---------------------------" << endl;
   cout << "Dispatch method='" << mthd_name << "', time=" << (double)(end - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+
+cout << "@@@ " << call_stack_pos " @@@" << endl;
 #endif
 }
 

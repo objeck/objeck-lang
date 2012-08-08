@@ -67,23 +67,25 @@ DumpTokens(@tokens);
 				}
 
 				label TokenType->OCBR: {
+					ParseObject();
 "object"->PrintLine();
 				}
 
-				label TokenType->IDENT: {
+				label TokenType->IDENT:
+				label TokenType->INT_NUM:
+ 				label TokenType->FLOAT_NUM: {
 					element := JSONElement->New(@cur_token);
-"string"->PrintLine();
+"value"->PrintLine();
 					NextToken();
-				}
-
-				label TokenType->INT_NUM: {
-				}
-
-				label TokenType->FLOAT_NUM: {
 				}
 			};
 
 			return element;
+		}
+
+		# parse JSON array
+		method : public : ParseObject() ~ JSONElement {
+			return Nil;
 		}
 
 		# parse JSON array
@@ -98,7 +100,9 @@ DumpTokens(@tokens);
 				};
 				
 				if(Match(TokenType->COMMA) = false & Match(TokenType->CBR) = false) {
+@cur_token->GetType()->As(Int)->PrintLine();
 					"Expected ',' or ']'"->PrintLine();
+
 					return Nil;
 				};
 				NextToken();
@@ -127,9 +131,9 @@ DumpTokens(@tokens);
 					if(input->Get(index) = '"') {
 						index += 1;
 						offset := index;
-		        # TODO: support for '\"'
+						# TODO: support for '\"'
 						while(index < input->Size() & input->Get(index) <> '"') {
-		          # update
+							# update
 							index += 1;
 						};
 						len := index - offset;
@@ -147,44 +151,46 @@ DumpTokens(@tokens);
 							};
 						};
 						# update
-		        index += 1;
+						index += 1;
 					}
-		      # parse number
-		      else if(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.') {
-		        offset := index;
-		        minus_count := 0;
-		        dot_count := 0;
+					# parse number
+					else if(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.') {
+						offset := index;
+						minus_count := 0;
+						dot_count := 0;
+
 						# TODO: e digits
 						while(index < input->Size() & 
-		          (input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.')) {
-		          if(input->Get(index) = '-') {
-		            minus_count += 1;
-		          }
-		          else if(input->Get(index) = '.') {
-		            dot_count += 1;
-		          };
-		          # update
-		          index += 1;
+							(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.')) {
+							if(input->Get(index) = '-') {
+								minus_count += 1;
+							}
+							else if(input->Get(index) = '.') {
+								dot_count += 1;
+							};
+							# update
+							index += 1;
 						};
 						len := index - offset;
-		        if(len > 0) {
+
+						if(len > 0) {
 							string := input->SubString(offset, len);
-		          if(dot_count = 1 & minus_count < 2) {
-								tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
-		          }
-		          else if(dot_count = 0 & minus_count < 2) {
-		            tokens->AddBack(Token->New(TokenType->INT_NUM, string));
-		          }
-		          else {
-		            tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
-		          };
+						if(dot_count = 1 & minus_count < 2) {
+							tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
+						}
+						else if(dot_count = 0 & minus_count < 2) {
+							tokens->AddBack(Token->New(TokenType->INT_NUM, string));
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
 						};
-						# update
-		        index += 1;
-		      }
-					# parse characters
-					else {
-						select(input->Get(index)) {
+					};
+					# update
+					index += 1;
+				}
+				# parse characters
+				else {
+					select(input->Get(index)) {
 							label '[': {
 								tokens->AddBack(Token->New(TokenType->OBR));
 							}
@@ -205,7 +211,7 @@ DumpTokens(@tokens);
 								tokens->AddBack(Token->New(TokenType->COMMA));
 							}
 
-		          label ':': {
+							label ':': {
 								tokens->AddBack(Token->New(TokenType->COLON));
 							}
 
@@ -231,47 +237,47 @@ DumpTokens(@tokens);
 							IO.Console->Print("token=IDENT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
-		        label TokenType->INT_NUM: {
+						label TokenType->INT_NUM: {
 							IO.Console->Print("token=INTEGER, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
-		        label TokenType->FLOAT_NUM: {
+						label TokenType->FLOAT_NUM: {
 							IO.Console->Print("token=FLOAT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
 						}
 
-		        label TokenType->OBR: {
-		          "token='['"->PrintLine();
-		        }
+						label TokenType->OBR: {
+							"token='['"->PrintLine();
+						}
 
-		        label TokenType->CBR: {
-		          "token=']'"->PrintLine();
-		        }            
+						label TokenType->CBR: {
+							"token=']'"->PrintLine();
+						}            
 
-		        label TokenType->OCBR: {
-		          "token='{'"->PrintLine();
-		        }
+						label TokenType->OCBR: {
+							"token='{'"->PrintLine();
+						}
 
-		        label TokenType->CCBR: {
-		          "token='}'"->PrintLine();
-		        }
+						label TokenType->CCBR: {
+							"token='}'"->PrintLine();
+						}
 
-		        label TokenType->PREN: {
-		         "token='\"'"->PrintLine();
-		        }
+						label TokenType->PREN: {
+							"token='\"'"->PrintLine();
+						}
 
-		        label TokenType->COLON: {
-		         "token=':'"->PrintLine();
-		        }
+						label TokenType->COLON: {
+							"token=':'"->PrintLine();
+						}
 
-		        label TokenType->COMMA: {
-		         "token=','"->PrintLine();
-		        }
+						label TokenType->COMMA: {
+							"token=','"->PrintLine();
+						}
 
-		        label TokenType->OTHER: 
-		        label TokenType->BAD_NUM: {
-		         "token=OTHER"->PrintLine();
-		        }						
-		      };
+						label TokenType->OTHER: 
+						label TokenType->BAD_NUM: {
+							"token=OTHER"->PrintLine();
+						}						
+					};
 				};
 			};
 		}
@@ -325,9 +331,9 @@ DumpTokens(@tokens);
 	# token type
 	enum TokenType {
 		IDENT,
-    INT_NUM,
-    FLOAT_NUM,
-    BAD_NUM,
+		INT_NUM,
+		FLOAT_NUM,
+		BAD_NUM,
 		TRUE,
 		FALSE,
 		COMMA,
@@ -336,7 +342,7 @@ DumpTokens(@tokens);
 		OCBR,
 		CCBR,
 		PREN,
-    COLON,
+		COLON,
 		OTHER,
 		EOS
 	}
