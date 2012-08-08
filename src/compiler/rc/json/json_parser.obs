@@ -18,6 +18,18 @@ bundle Default {
 			parser := JSONParser->New(args[0]);
 			parser->Parse();
 		}
+		
+		method : GetToken(pos : Int) ~ Token {
+			if(pos < @tokens->Size()) {
+				return @tokens->Get(pos)->As(Token);
+			};
+			
+			return Token->New(TokenType->EOS);
+		}
+		
+		method : Match(token : TokenType) ~ Bool {
+			return @cur_token->GetType() = token;
+		}
 
 		# parse JSON elements
 		method : public : Parse() ~ JSONElement {
@@ -34,18 +46,6 @@ DumpTokens(@tokens);
 			
 			return Nil;
     	}
-
-		method : GetToken(pos : Int) ~ Token {
-			if(pos < @tokens->Size()) {
-				return @tokens->Get(pos)->As(Token);
-			};
-			
-			return Token->New(TokenType->EOS);
-		}
-		
-		method : Match(token : TokenType) ~ Bool {
-			return @cur_token->GetType() = token;
-		}
 		
 		method : NextToken() ~ Nil {
 			if(@token_pos < @tokens->Size()) {
@@ -71,11 +71,16 @@ DumpTokens(@tokens);
 					element := ParseObject();						
 				}
 
-				label TokenType->IDENT:
+				label TokenType->IDENT: {
+					element := JSONElement->New(JSONType->STRING, @cur_token);
+Console->Print("string=")->PrintLine(@cur_token->GetValue());
+					NextToken();
+					
+				}
 				label TokenType->INT_NUM:
 				label TokenType->FLOAT_NUM: {
-					element := JSONElement->New(@cur_token);
-Console->Print("value=")->PrintLine(@cur_token->GetValue());
+					element := JSONElement->New(JSONType->NUMBER, @cur_token);
+Console->Print("number=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
 				
@@ -205,6 +210,9 @@ Console->Print("value=")->PrintLine(@cur_token->GetValue());
 							else {							
 								tokens->AddBack(Token->New(TokenType->IDENT, string));
 							};
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->IDENT, ""));
 						};
 						# update
 						index += 1;
@@ -231,20 +239,23 @@ Console->Print("value=")->PrintLine(@cur_token->GetValue());
 
 						if(len > 0) {
 							string := input->SubString(offset, len);
-						if(dot_count = 1 & minus_count < 2) {
-							tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
-						}
-						else if(dot_count = 0 & minus_count < 2) {
-							tokens->AddBack(Token->New(TokenType->INT_NUM, string));
+							if(dot_count = 1 & minus_count < 2) {
+								tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
+							}
+							else if(dot_count = 0 & minus_count < 2) {
+								tokens->AddBack(Token->New(TokenType->INT_NUM, string));
+							}
+							else {
+								tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
+							};
 						}
 						else {
-							tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
+							tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
 						};
-					};
-				}
-				# parse characters
-				else {
-					select(input->Get(index)) {
+					}
+					# parse characters
+					else {
+						select(input->Get(index)) {
 							label '[': {
 								tokens->AddBack(Token->New(TokenType->OBR));
 							}
@@ -271,7 +282,7 @@ Console->Print("value=")->PrintLine(@cur_token->GetValue());
 
 							other: {
 								tokens->AddBack(Token->New(TokenType->OTHER));
-# input->Get(index)->As(Int)->PrintLine();
+IO.Console->Print("other=")->PrintLine(input->Get(index)->As(Int));
 							}
 						};
 						# update
@@ -339,28 +350,60 @@ Console->Print("value=")->PrintLine(@cur_token->GetValue());
 
 	# JSON element
 	class JSONElement {
+		@type : JSONType;
 		@token : Token;
 		@array_elems : Vector;
 		@map_elems : StringMap;
 		
-		New(token : Token) {
+		New(type : JSONType, token : Token) {
+			@type := type;
 			@token := token;
 		}
 
 		New(array_elems : Vector) {
+			@type := JSONType->ARRAY;
 			@array_elems := array_elems;
 		}
 		
 		New(map_elems : StringMap) {
+			@type := JSONType->OBJECT;
 			@map_elems := map_elems;
+		}
+		
+		method : public : GetType() ~ JSONType {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			if(@token <> Nil) {
+				return @token->GetValue();
+			};
+			
+			return "";
+		}
+		
+		method : public : GetValue(index : Int) ~ JSONElement {
+			if(@array_elems <> Nil & index < @array_elems->Size()) {
+				return @array_elems->Get(index);
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetValue(name : String) ~ JSONElement {
+			if(@array_elems <> Nil) {
+				return @map_elems->Find(name);
+			};
+			
+			return Nil;
 		}
 	}
 
 	enum JSONType {
 		STRING,
 		NUMBER,
-		OBJECT,
-		ARRAY
+		ARRAY,
+		OBJECT
 	}
 	
 	# token class

@@ -582,11 +582,6 @@ bundle System {
 				tmp : Char[] := Char->New[@max];
 				# copy elements				
 				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-#~
-				for(i : Int := 0; i < @string->Size(); i += 1;) {
-					tmp[i] := @string[i];	
-				};
-~#				
 				@string := tmp;
 			};
 			
@@ -604,11 +599,6 @@ bundle System {
 				tmp : Char[] := Char->New[@max];
 				# copy elements
 				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-#~				
-				for(i : Int := 0; i < @string->Size(); i += 1;) {
-					tmp[i] := @string[i];	
-				};
-~#				
 				@string := tmp;
 			};
 			
@@ -626,11 +616,6 @@ bundle System {
 				tmp : Char[] := Char->New[@max];
 				# copy elements
 				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-#~				
-				for(i : Int := 0; i < @string->Size(); i += 1;) {
-					tmp[i] := @string[i];
-				};
-~#				
 				@string := tmp;
 			};
 
@@ -645,11 +630,6 @@ bundle System {
 				tmp : Char[] := Char->New[@max];
 				# copy elements
 				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
-#~				
-				for(i : Int := 0; i < @string->Size(); i += 1;) {
-					tmp[i] := @string[i];
-				};
-~#				
 				@string := tmp;
 			};
 
@@ -1753,7 +1733,8 @@ bundle IO {
 		}
 		
 		function : ReadFile(name : String) ~ String {
-			len := File->Size(name) - 1;
+#			len := File->Size(name) - 1;
+			len := File->Size(name);
 			if(len > 0) {
 				buffer := Char->New[len];
 				in := FileReader->New(name);
