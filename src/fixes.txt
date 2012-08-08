@@ -1,5 +1,6 @@
 8/7/12 - now
 * fixed a bug related to casting an enum to an int and then calling an assoicated method
+* fixed a bug related to expressional comparsons betweeen some enums and classes
 * changed the FileReader->ReadFile function such that it doesn't read the EOS character
 
 7/23/12 - 8/7/12

@@ -1,23 +1,33 @@
 ﻿bundle Default {
+	enum Widget {
+		A, B, C
+	}
+
+	enum Car {
+		A, B, C
+	}
+
+	class Thingy {
+		New() {
+		}
+
+		method : public : GetThing() ~ Widget {
+			return Widget->A;
+		}
+	}
+
 	class Test {
+		function : MakeThingy() ~ Thingy {
+			return Thingy->New();
+		}
+
 		function : Main(args : String[]) ~ Nil {
-			b : Base := "hello";
-#			b : String := "hello";
-			b->As(String)->Find(1, 'l')->PrintLine();
-#			x := b->Find(1, 'l');
-#			b->PrintLine();
-
-
-
-
-#~
-
-#			ss : String[] := String->New[1];
-			ss : String[];
-			
-			ss[0] := "world";
-			ss[0]->PrintLine();
-~#
+			if(MakeThingy()->GetThing() = Widget->A) {
+				"is a"->PrintLine();
+			}
+			else {
+				"not a"->PrintLine();
+			};
 		}
 	}
 }
