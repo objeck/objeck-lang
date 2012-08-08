@@ -33,7 +33,7 @@ DumpTokens(@tokens);
 			};
 			
 			return Nil;
-    }
+    	}
 
 		method : GetToken(pos : Int) ~ Token {
 			if(pos < @tokens->Size()) {
@@ -63,23 +63,29 @@ DumpTokens(@tokens);
 			select(@cur_token->GetType()) {
 				label TokenType->OBR: {
 "array"->PrintLine();
-					ParseArray();
+					element := ParseArray();
 				}
 
 				label TokenType->OCBR: {
 "object"->PrintLine();				
-					ParseObject();
+					element := ParseObject();						
 				}
 
 				label TokenType->IDENT:
 				label TokenType->INT_NUM:
- 				label TokenType->FLOAT_NUM: {
+				label TokenType->FLOAT_NUM: {
 					element := JSONElement->New(@cur_token);
-"value"->PrintLine();
+Console->Print("value=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
+				
+				other: {
+					"*** Unexpected value *** "->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				}
 			};
-
+			
 			return element;
 		}
 
@@ -87,34 +93,14 @@ DumpTokens(@tokens);
 		method : public : ParseObject() ~ JSONElement {
 			elements := StringMap->New();
 			
-			obj_name : Token;
 			NextToken();
-			if(Match(TokenType->IDENT)) {				
-				obj_name := @cur_token;
-				NextToken();
-				
-				if(Match(TokenType->COLON) = false) {
-					"Expected ':'"->PrintLine();
-@cur_token->GetType()->As(Int)->PrintLine();				
-					return Nil;
-				};
-				NextToken();
-			};
-			
-			if(Match(TokenType->OCBR) = false) {
-				"Expected '{'"->PrintLine();
-@cur_token->GetType()->As(Int)->PrintLine();				
-				return Nil;
-			};
-			NextToken();
-			
 			while(@cur_token->GetType() <> TokenType->EOS & 
 				@cur_token->GetType() <> TokenType->CCBR) {
 				
 				# parse name
 				elem_name : Token;
 				if(Match(TokenType->IDENT) = false) {
-					"Expected identifier"->PrintLine();
+					"*** Expected identifier *** "->PrintLine();
 @cur_token->GetType()->As(Int)->PrintLine();				
 					return Nil;
 				};			
@@ -122,7 +108,7 @@ DumpTokens(@tokens);
 				NextToken();
 				
 				if(Match(TokenType->COLON) = false) {
-					"Expected ':'"->PrintLine();
+					"*** Expected ':' *** "->PrintLine();
 @cur_token->GetType()->As(Int)->PrintLine();				
 					return Nil;
 				};
@@ -130,21 +116,24 @@ DumpTokens(@tokens);
 				
 				# parse value
 				value := ParseValue();
-				if(value = Nil) {
-@cur_token->GetType()->As(Int)->PrintLine();				
+				if(value = Nil) {				
 					return Nil;
 				};
-				elements->Insert(elem_name->GetValue(), value);
+				elements->Insert(elem_name->GetValue(), value);				
 				
 				# update
-				if(Match(TokenType->COMMA) = false & Match(TokenType->CCBR) = false) {
-					"Expected ',' or '}'"->PrintLine();
-@cur_token->GetType()->As(Int)->PrintLine();					
-					return Nil;
-				};
-				NextToken();
+				if(Match(TokenType->COMMA)) {
+					NextToken();
 "comma"->PrintLine();
+				};
 			};
+			
+			if(Match(TokenType->CCBR) = false) {
+				"*** Expected '}' *** "->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+				return Nil;
+			};
+			NextToken();
 			
 			return JSONElement->New(elements);
 		}
@@ -163,13 +152,18 @@ DumpTokens(@tokens);
 				elements->AddBack(value);
 				
 				# update
-				if(Match(TokenType->COMMA) = false & Match(TokenType->CBR) = false) {
-					"Expected ',' or ']'"->PrintLine();
-					return Nil;
-				};
-				NextToken();
+				if(Match(TokenType->COMMA)) {
+					NextToken();
 "comma"->PrintLine();
+				};
 			};
+			
+			if(Match(TokenType->CBR) = false) {
+				"*** Expected ']' *** "->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+				return Nil;
+			};
+			NextToken();
 			
 			return JSONElement->New(elements);
 		}

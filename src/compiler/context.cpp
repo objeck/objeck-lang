@@ -2868,7 +2868,16 @@ bool ContextAnalyzer::Analyze()
 	  break;
 
 	case CLASS_TYPE:
-	  AnalyzeClassCast(left_expr->GetEvalType(), right_expr, depth + 1);
+	  if((SearchProgramEnums(left->GetClassName()) || linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) &&
+	     (SearchProgramEnums(right->GetClassName()) || linker->SearchEnumLibraries(right->GetClassName(), program->GetUses()))) {
+	    if(left->GetClassName() != right->GetClassName()) {
+	      ProcessError(left_expr, "Invalid operation between mixed enums");
+	    }
+	  }
+	  else if((!SearchProgramClasses(left->GetClassName()) && !linker->SearchClassLibraries(left->GetClassName(), program->GetUses())) ||
+		  (!SearchProgramClasses(right->GetClassName()) && !linker->SearchClassLibraries(right->GetClassName(), program->GetUses()))) {
+	    ProcessError(left_expr, "Invalid operation between classes or enums");
+	  }
 	  expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
 	  break;
 
