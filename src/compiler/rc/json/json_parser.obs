@@ -67,8 +67,8 @@ DumpTokens(@tokens);
 				}
 
 				label TokenType->OCBR: {
+"object"->PrintLine();				
 					ParseObject();
-"object"->PrintLine();
 				}
 
 				label TokenType->IDENT:
@@ -83,9 +83,70 @@ DumpTokens(@tokens);
 			return element;
 		}
 
-		# parse JSON array
+		# parse JSON object
 		method : public : ParseObject() ~ JSONElement {
-			return Nil;
+			elements := StringMap->New();
+			
+			obj_name : Token;
+			NextToken();
+			if(Match(TokenType->IDENT)) {				
+				obj_name := @cur_token;
+				NextToken();
+				
+				if(Match(TokenType->COLON) = false) {
+					"Expected ':'"->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};
+				NextToken();
+			};
+			
+			if(Match(TokenType->OCBR) = false) {
+				"Expected '{'"->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+				return Nil;
+			};
+			NextToken();
+			
+			while(@cur_token->GetType() <> TokenType->EOS & 
+				@cur_token->GetType() <> TokenType->CCBR) {
+				
+				# parse name
+				elem_name : Token;
+				if(Match(TokenType->IDENT) = false) {
+					"Expected identifier"->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};			
+				elem_name := @cur_token;
+				NextToken();
+				
+				if(Match(TokenType->COLON) = false) {
+					"Expected ':'"->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};
+				NextToken();
+				
+				# parse value
+				value := ParseValue();
+				if(value = Nil) {
+@cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};
+				elements->Insert(elem_name->GetValue(), value);
+				
+				# update
+				if(Match(TokenType->COMMA) = false & Match(TokenType->CCBR) = false) {
+					"Expected ',' or '}'"->PrintLine();
+@cur_token->GetType()->As(Int)->PrintLine();					
+					return Nil;
+				};
+				NextToken();
+"comma"->PrintLine();
+			};
+			
+			return JSONElement->New(elements);
 		}
 
 		# parse JSON array
@@ -93,16 +154,17 @@ DumpTokens(@tokens);
 			elements := Vector->New();
 			
 			NextToken();
-			while(@cur_token->GetType() <> TokenType->EOS & @cur_token->GetType() <> TokenType->CBR) {
+			while(@cur_token->GetType() <> TokenType->EOS & 
+				@cur_token->GetType() <> TokenType->CBR) {
 				value := ParseValue();
 				if(value = Nil) {
 					return Nil;
 				};
+				elements->AddBack(value);
 				
+				# update
 				if(Match(TokenType->COMMA) = false & Match(TokenType->CBR) = false) {
-@cur_token->GetType()->As(Int)->PrintLine();
 					"Expected ',' or ']'"->PrintLine();
-
 					return Nil;
 				};
 				NextToken();
@@ -215,7 +277,7 @@ DumpTokens(@tokens);
 
 							other: {
 								tokens->AddBack(Token->New(TokenType->OTHER));
-	# input->Get(index)->As(Int)->PrintLine();
+# input->Get(index)->As(Int)->PrintLine();
 							}
 						};
 						# update
@@ -284,14 +346,19 @@ DumpTokens(@tokens);
 	# JSON element
 	class JSONElement {
 		@token : Token;
-		@elements : Vector;
+		@array_elems : Vector;
+		@map_elems : StringMap;
 		
 		New(token : Token) {
 			@token := token;
 		}
 
-		New(elements : Vector) {
-			@elements := elements;
+		New(array_elems : Vector) {
+			@array_elems := array_elems;
+		}
+		
+		New(map_elems : StringMap) {
+			@map_elems := map_elems;
 		}
 	}
 
