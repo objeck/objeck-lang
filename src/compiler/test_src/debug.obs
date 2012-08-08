@@ -1,6 +1,25 @@
 ﻿bundle Default {
+	enum Foo {
+		fie,
+		fii,
+		foo,
+		fum
+	}
+
 	class Test {
+		function : Bar() ~ Foo {
+			return Foo->fum;
+		}
+
+		function : GGG() ~ Int {
+			return 13;
+		}
+
 		function : Main(args : String[]) ~ Nil {
+			Bar()->As(Int)->PrintLine();
+#			GGG()->As(Int)->PrintLine();
+
+#~
 			b : Base := "hello";
 #			b : String := "hello";
 			b->As(String)->Find(1, 'l')->PrintLine();
@@ -10,7 +29,6 @@
 
 
 
-#~
 
 #			ss : String[] := String->New[1];
 			ss : String[];

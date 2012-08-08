@@ -185,8 +185,6 @@ DumpTokens(@tokens);
 							tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
 						};
 					};
-					# update
-					index += 1;
 				}
 				# parse characters
 				else {
