@@ -16,7 +16,19 @@ bundle Default {
 
 		function : Main(args : String[]) ~ Nil {
 			parser := JSONParser->New(args[0]);
-			parser->Parse();
+			image_obj := parser->Parse();
+			if(image_obj <> Nil) {
+				image_name := image_obj->GetKeys();
+				if(image_name <> Nil & image_name->Size() > 0) {
+					image_pairs := image_obj->GetValue(image_name->Get(0)->As(String));
+					images_keys := image_pairs->GetKeys();
+					if(images_keys <> Nil) {
+						each(i : images_keys) {
+							images_keys->Get(i)->As(String)->PrintLine();
+						};
+					};
+				};
+			};
 		}
 		
 		method : GetToken(pos : Int) ~ Token {
@@ -37,11 +49,7 @@ bundle Default {
 			if(@tokens->Size() > 0) {
 DumpTokens(@tokens);
 				NextToken();
-				
-				while(@cur_token->GetType() <> TokenType->EOS) {
-					ParseValue();
-					NextToken();
-				};
+				return ParseValue();
 			};
 			
 			return Nil;
@@ -124,6 +132,7 @@ Console->Print("number=")->PrintLine(@cur_token->GetValue());
 				if(value = Nil) {				
 					return Nil;
 				};
+IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());		
 				elements->Insert(elem_name->GetValue(), value);				
 				
 				# update
@@ -391,11 +400,31 @@ IO.Console->Print("other=")->PrintLine(input->Get(index)->As(Int));
 		}
 		
 		method : public : GetValue(name : String) ~ JSONElement {
-			if(@array_elems <> Nil) {
+			if(@map_elems <> Nil) {
 				return @map_elems->Find(name);
 			};
 			
 			return Nil;
+		}
+		
+		method : public : GetKeys() ~ Vector {
+			if(@map_elems <> Nil) {
+				return @map_elems->GetKeys();
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Size() ~ Int {
+			if(@array_elems <> Nil) {
+				return @array_elems->Size();
+			};
+			
+			if(@map_elems <> Nil) {
+				return @map_elems->Size();
+			};
+			
+			return 0;
 		}
 	}
 
