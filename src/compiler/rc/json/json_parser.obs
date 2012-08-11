@@ -16,6 +16,19 @@ bundle Default {
 
 		function : Main(args : String[]) ~ Nil {
 			parser := JSONParser->New(args[0]);
+			root := parser->Parse();
+			if(root <> Nil) {
+				header := root->GetValue("header");
+				if(header <> Nil) {
+					version := header->GetValue("version");
+					version->GetValue()->PrintLine();
+					
+					format := header->GetValue("format");
+					format->GetValue()->PrintLine();
+				};
+			};
+#~		
+			parser := JSONParser->New(args[0]);
 			image_obj := parser->Parse();
 			if(image_obj <> Nil) {
 				image_name := image_obj->GetKeys();
@@ -29,6 +42,7 @@ bundle Default {
 					};
 				};
 			};
+~#			
 		}
 		
 		method : GetToken(pos : Int) ~ Token {
@@ -85,10 +99,23 @@ Console->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 					
 				}
+				
 				label TokenType->INT_NUM:
 				label TokenType->FLOAT_NUM: {
 					element := JSONElement->New(JSONType->NUMBER, @cur_token);
 Console->Print("number=")->PrintLine(@cur_token->GetValue());
+					NextToken();
+				}
+				
+				label TokenType->TRUE: {
+					element := JSONElement->New(JSONType->TRUE, @cur_token);
+"true"->PrintLine();
+					NextToken();
+				}
+				
+				label TokenType->FALSE: {
+					element := JSONElement->New(JSONType->FALSE, @cur_token);
+"true"->PrintLine();
 					NextToken();
 				}
 				
@@ -225,6 +252,31 @@ IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());
 						};
 						# update
 						index += 1;
+					}
+					# true
+					else if(input->Get(index) = 't' | input->Get(index) = 'f') {
+						offset := index;
+						while(index < input->Size() & input->Get(index)->IsChar()) {
+							# update
+							index += 1;
+						};
+						len := index - offset;
+						
+						if(len > 0) {
+							string := input->SubString(offset, len);
+							if(string->Equals("true")) {
+								tokens->AddBack(Token->New(TokenType->TRUE));
+							}
+							else if(string->Equals("false")) {
+								tokens->AddBack(Token->New(TokenType->FALSE));
+							}
+							else {
+								tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
+							};
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
+						};
 					}
 					# parse number
 					else if(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.') {
@@ -431,6 +483,8 @@ IO.Console->Print("other=")->PrintLine(input->Get(index)->As(Int));
 	enum JSONType {
 		STRING,
 		NUMBER,
+		TRUE,
+		FALSE,
 		ARRAY,
 		OBJECT
 	}
