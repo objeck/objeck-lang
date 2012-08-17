@@ -1,6 +1,7 @@
 #!/bin/sh
 ./obc -src lib_src/struct.obs -tar lib -opt s3 -dest struct.obl
 ./obc -src lib_src/xml.obs -lib struct.obl -tar lib -opt s3 -dest xml.obl
+./obc -src lib_src/json.obs -lib struct.obl -tar lib -opt s3 -dest json.obl
 ./obc -src lib_src/odbc.obs -lib struct.obl -tar lib -opt s3 -dest odbc.obl
 ./obc -src lib_src/regex.obs -lib struct.obl -tar lib -opt s3 -dest regex.obl
 ./obc -src lib_src/fcgi.obs -lib struct.obl,xml.obl -tar lib -opt s3 -dest fcgi.obl
