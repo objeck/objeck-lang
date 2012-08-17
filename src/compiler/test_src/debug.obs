@@ -1,33 +1,24 @@
 ﻿bundle Default {
-	enum Widget {
-		A, B, C
-	}
-
-	enum Car {
-		A, B, C
-	}
-
 	class Thingy {
+		a : Int;
+		b : static : Int;
+		c : Float;
+		
 		New() {
+			a := 13;
+			b := 7;
+			c := a / b;
 		}
 
-		method : public : GetThing() ~ Widget {
-			return Widget->A;
+		method : public : Get() ~ Int {
+			return b;
 		}
 	}
 
 	class Test {
-		function : MakeThingy() ~ Thingy {
-			return Thingy->New();
-		}
-
 		function : Main(args : String[]) ~ Nil {
-			if(MakeThingy()->GetThing() = Widget->A) {
-				"is a"->PrintLine();
-			}
-			else {
-				"not a"->PrintLine();
-			};
+			t := Thingy->New();
+			t->Get()->PrintLine();
 		}
 	}
 }
