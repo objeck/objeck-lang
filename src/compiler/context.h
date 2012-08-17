@@ -77,14 +77,6 @@ class LibraryMethodCallSelection {
   LibraryMethod* GetLibraryMethod() {
     return method;
   }
-
-  void Dump() {
-    cout << "@@@ [";
-    for(size_t i = 0; i < parm_matches.size(); i++) {
-      cout << parm_matches[i] << ",";
-    }
-    cout << "]" << endl;
-  }
 };
 
 class LibraryMethodCallSelector {
@@ -100,7 +92,6 @@ class LibraryMethodCallSelector {
     for(size_t i = 0; i < matches.size(); i++) {
       if(matches[i]->IsValid()) {
 	valid_matches.push_back(matches[i]);
-	// matches[i]->Dump();
       }
     }
   }
@@ -145,7 +136,6 @@ class LibraryMethodCallSelector {
 	match_index = i;
 	high_score = match_score;
       }
-      // cout << "@@@ method=" << matches[i]->GetLibraryMethod()->GetName() << ", score=" << match_score << endl;
     }
 
     if(match_index == -1) {
@@ -192,14 +182,6 @@ class MethodCallSelection {
 
   Method* GetMethod() {
     return method;
-  }
-
-  void Dump() {
-    cout << "@@@ method=" << method->GetEncodedName() << " [";
-    for(size_t i = 0; i < parm_matches.size(); i++) {
-      cout << parm_matches[i] << ",";
-    }
-    cout << "]" << endl;
   }
 };
 
