@@ -894,8 +894,8 @@ class StackClass {
     if(name.size() > 0) {
       // search for name
       int index = 0;
-      for(int i = 0; i < num_dclrs; i++, index++) {
-	StackDclr* dclr = dclrs[i];
+      for(int i = 0; i < inst_num_dclrs; i++, index++) {
+	StackDclr* dclr = inst_dclrs[i];
 	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
 	if(dclr_name == name) {
 	  found.name = dclr->name;
