@@ -1,0 +1,503 @@
+use IO;
+use Struct;
+
+bundle Default {
+	class JSONParser {
+		@file : String;
+		@tokens : Vector;
+		@token_pos : Int;
+		@cur_token : Token;
+		
+		New(file : String) {
+			@file := file;
+			@tokens : Nil;
+			@token_pos := 0;
+		}
+
+		method : GetToken(pos : Int) ~ Token {
+			if(pos < @tokens->Size()) {
+				return @tokens->Get(pos)->As(Token);
+			};
+			
+			return Token->New(TokenType->EOS);
+		}
+		
+		method : Match(token : TokenType) ~ Bool {
+			return @cur_token->GetType() = token;
+		}
+
+		# parse JSON elements
+		method : public : Parse() ~ JSONElement {
+			@tokens := Scan();
+			if(@tokens->Size() > 0) {
+# DumpTokens(@tokens);
+				NextToken();
+				return ParseValue();
+			};
+			
+			return Nil;
+    	}
+		
+		method : NextToken() ~ Nil {
+			if(@token_pos < @tokens->Size()) {
+				@cur_token := @tokens->Get(@token_pos)->As(Token);
+				@token_pos += 1;
+			}
+			else {
+				@cur_token := Token->New(TokenType->EOS);
+			};
+		}
+		
+		method : public : ParseValue() ~ JSONElement {
+			element : JSONElement;
+			
+			select(@cur_token->GetType()) {
+				label TokenType->OBR: {
+# "array"->PrintLine();
+					element := ParseArray();
+				}
+
+				label TokenType->OCBR: {
+# "object"->PrintLine();				
+					element := ParseObject();						
+				}
+
+				label TokenType->IDENT: {
+					element := JSONElement->New(JSONType->STRING, @cur_token);
+# Console->Print("string=")->PrintLine(@cur_token->GetValue());
+					NextToken();
+					
+				}
+				
+				label TokenType->INT_NUM:
+				label TokenType->FLOAT_NUM: {
+					element := JSONElement->New(JSONType->NUMBER, @cur_token);
+# Console->Print("number=")->PrintLine(@cur_token->GetValue());
+					NextToken();
+				}
+				
+				label TokenType->TRUE: {
+					element := JSONElement->New(JSONType->TRUE, @cur_token);
+# "true"->PrintLine();
+					NextToken();
+				}
+				
+				label TokenType->FALSE: {
+					element := JSONElement->New(JSONType->FALSE, @cur_token);
+# "false"->PrintLine();
+					NextToken();
+				}
+				
+				other: {
+					"*** Unexpected value *** "->PrintLine();
+# @cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				}
+			};
+			
+			return element;
+		}
+
+		# parse JSON object
+		method : public : ParseObject() ~ JSONElement {
+			elements := StringMap->New();
+			
+			NextToken();
+			while(@cur_token->GetType() <> TokenType->EOS & 
+				@cur_token->GetType() <> TokenType->CCBR) {
+				
+				# parse name
+				elem_name : Token;
+				if(Match(TokenType->IDENT) = false) {
+					"*** Expected identifier *** "->PrintLine();
+# @cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};			
+				elem_name := @cur_token;
+				NextToken();
+				
+				if(Match(TokenType->COLON) = false) {
+					"*** Expected ':' *** "->PrintLine();
+# @cur_token->GetType()->As(Int)->PrintLine();				
+					return Nil;
+				};
+				NextToken();
+				
+				# parse value
+				value := ParseValue();
+				if(value = Nil) {				
+					return Nil;
+				};
+# IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());		
+				elements->Insert(elem_name->GetValue(), value);				
+				
+				# update
+				if(Match(TokenType->COMMA)) {
+					NextToken();
+# "comma"->PrintLine();
+				};
+			};
+			
+			if(Match(TokenType->CCBR) = false) {
+				"*** Expected '}' *** "->PrintLine();
+# @cur_token->GetType()->As(Int)->PrintLine();				
+				return Nil;
+			};
+			NextToken();
+			
+			return JSONElement->New(elements);
+		}
+
+		# parse JSON array
+		method : public : ParseArray() ~ JSONElement {
+			elements := Vector->New();
+			
+			NextToken();
+			while(@cur_token->GetType() <> TokenType->EOS & 
+				@cur_token->GetType() <> TokenType->CBR) {
+				value := ParseValue();
+				if(value = Nil) {
+					return Nil;
+				};
+				elements->AddBack(value);
+				
+				# update
+				if(Match(TokenType->COMMA)) {
+					NextToken();
+# "comma"->PrintLine();
+				};
+			};
+			
+			if(Match(TokenType->CBR) = false) {
+				"*** Expected ']' *** "->PrintLine();
+# @cur_token->GetType()->As(Int)->PrintLine();				
+				return Nil;
+			};
+			NextToken();
+			
+			return JSONElement->New(elements);
+		}
+
+		# scan JSON tokens
+		method : native : Scan() ~ Vector {
+			tokens := Vector->New();
+						
+			input := FileReader->ReadFile(@file);
+			if(input <> Nil) {
+				index := 0;				
+				while(index < input->Size()) {
+					# skip whitespace
+					while(index < input->Size() & (input->Get(index) = '\r' | input->Get(index) = '\n' |
+						input->Get(index) = '\t' | input->Get(index) = ' ')) {
+						# update
+						index += 1;
+					};
+
+					# parse string
+					if(input->Get(index) = '"') {
+						index += 1;
+						offset := index;
+						# TODO: support for '\"'
+						while(index < input->Size() & input->Get(index) <> '"') {
+							# update
+							index += 1;
+						};
+						len := index - offset;
+						if(len > 0) {
+							string := input->SubString(offset, len);
+							if(string->Equals("true")) {
+								tokens->AddBack(Token->New(TokenType->TRUE));
+							}
+							else if(string->Equals("false")) {
+								tokens->AddBack(Token->New(TokenType->FALSE));
+							}
+							# TODO: translate escape characters
+							else {							
+								tokens->AddBack(Token->New(TokenType->IDENT, string));
+							};
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->IDENT, ""));
+						};
+						# update
+						index += 1;
+					}
+					# true
+					else if(input->Get(index) = 't' | input->Get(index) = 'f') {
+						offset := index;
+						while(index < input->Size() & input->Get(index)->IsChar()) {
+							# update
+							index += 1;
+						};
+						len := index - offset;
+						
+						if(len > 0) {
+							string := input->SubString(offset, len);
+							if(string->Equals("true")) {
+								tokens->AddBack(Token->New(TokenType->TRUE));
+							}
+							else if(string->Equals("false")) {
+								tokens->AddBack(Token->New(TokenType->FALSE));
+							}
+							else {
+								tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
+							};
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
+						};
+					}
+					# parse number
+					else if(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.') {
+						offset := index;
+						minus_count := 0;
+						dot_count := 0;
+
+						# TODO: e digits
+						while(index < input->Size() & 
+							(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.')) {
+							if(input->Get(index) = '-') {
+								minus_count += 1;
+							}
+							else if(input->Get(index) = '.') {
+								dot_count += 1;
+							};
+							# update
+							index += 1;
+						};
+						len := index - offset;
+
+						if(len > 0) {
+							string := input->SubString(offset, len);
+							if(dot_count = 1 & minus_count < 2) {
+								tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
+							}
+							else if(dot_count = 0 & minus_count < 2) {
+								tokens->AddBack(Token->New(TokenType->INT_NUM, string));
+							}
+							else {
+								tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
+							};
+						}
+						else {
+							tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
+						};
+					}
+					# parse characters
+					else {
+						select(input->Get(index)) {
+							label '[': {
+								tokens->AddBack(Token->New(TokenType->OBR));
+							}
+		
+							label ']': {
+								tokens->AddBack(Token->New(TokenType->CBR));
+							}
+
+							label '{': {
+								tokens->AddBack(Token->New(TokenType->OCBR));
+							}
+		
+							label '}': {
+								tokens->AddBack(Token->New(TokenType->CCBR));
+							}
+
+							label ',': {
+								tokens->AddBack(Token->New(TokenType->COMMA));
+							}
+
+							label ':': {
+								tokens->AddBack(Token->New(TokenType->COLON));
+							}
+
+							other: {
+								tokens->AddBack(Token->New(TokenType->OTHER));
+# IO.Console->Print("other=")->PrintLine(input->Get(index)->As(Int));
+							}
+						};
+						# update
+						index += 1;
+					};
+				};
+			};
+			
+			return tokens;
+	 	}
+
+		method : DumpTokens(tokens : Vector) ~ Nil {
+			if(tokens->Size() > 0) {
+				each(i : tokens) {
+					select(tokens->Get(i)->As(Token)->GetType()) {
+						label TokenType->IDENT: {
+							IO.Console->Print("token=IDENT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+						}
+
+						label TokenType->INT_NUM: {
+							IO.Console->Print("token=INTEGER, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+						}
+
+						label TokenType->FLOAT_NUM: {
+							IO.Console->Print("token=FLOAT, value=")->PrintLine(tokens->Get(i)->As(Token)->GetValue());
+						}
+
+						label TokenType->OBR: {
+							"token='['"->PrintLine();
+						}
+
+						label TokenType->CBR: {
+							"token=']'"->PrintLine();
+						}            
+
+						label TokenType->OCBR: {
+							"token='{'"->PrintLine();
+						}
+
+						label TokenType->CCBR: {
+							"token='}'"->PrintLine();
+						}
+
+						label TokenType->PREN: {
+							"token='\"'"->PrintLine();
+						}
+
+						label TokenType->COLON: {
+							"token=':'"->PrintLine();
+						}
+
+						label TokenType->COMMA: {
+							"token=','"->PrintLine();
+						}
+
+						label TokenType->OTHER: 
+						label TokenType->BAD_NUM: {
+							"token=OTHER"->PrintLine();
+						}						
+					};
+				};
+			};
+		}
+	}
+
+	# JSON element
+	class JSONElement {
+		@type : JSONType;
+		@token : Token;
+		@array_elems : Vector;
+		@map_elems : StringMap;
+		
+		New(type : JSONType, token : Token) {
+			@type := type;
+			@token := token;
+		}
+
+		New(array_elems : Vector) {
+			@type := JSONType->ARRAY;
+			@array_elems := array_elems;
+		}
+		
+		New(map_elems : StringMap) {
+			@type := JSONType->OBJECT;
+			@map_elems := map_elems;
+		}
+		
+		method : public : GetType() ~ JSONType {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			if(@token <> Nil) {
+				return @token->GetValue();
+			};
+			
+			return "";
+		}
+		
+		method : public : GetValue(index : Int) ~ JSONElement {
+			if(@array_elems <> Nil & index < @array_elems->Size()) {
+				return @array_elems->Get(index);
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetValue(name : String) ~ JSONElement {
+			if(@map_elems <> Nil) {
+				return @map_elems->Find(name);
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetKeys() ~ Vector {
+			if(@map_elems <> Nil) {
+				return @map_elems->GetKeys();
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Size() ~ Int {
+			if(@array_elems <> Nil) {
+				return @array_elems->Size();
+			};
+			
+			if(@map_elems <> Nil) {
+				return @map_elems->Size();
+			};
+			
+			return 0;
+		}
+	}
+
+	enum JSONType {
+		STRING,
+		NUMBER,
+		TRUE,
+		FALSE,
+		ARRAY,
+		OBJECT
+	}
+	
+	# token class
+	class Token {
+		@type : TokenType;
+		@value : String;
+		
+		New(type : TokenType, value : String) {
+			@type := type;
+			@value := value;
+		}
+			
+		New(type : TokenType) {
+			@type := type;
+			@value := Nil;
+		}
+
+		method : public : GetType() ~ TokenType {
+			return @type;
+		}
+
+		method : public : GetValue() ~ String {
+			return @value;
+		}
+	}
+	
+	# token type
+	enum TokenType {
+		IDENT,
+		INT_NUM,
+		FLOAT_NUM,
+		BAD_NUM,
+		TRUE,
+		FALSE,
+		COMMA,
+		OBR,
+		CBR,
+		OCBR,
+		CCBR,
+		PREN,
+		COLON,
+		OTHER,
+		EOS
+	}
+}

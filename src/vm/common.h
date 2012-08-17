@@ -282,6 +282,7 @@ class StackMethod {
 #endif
 	
         switch(params_name[index]) {
+	  // bool
         case 'l':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -290,6 +291,7 @@ class StackMethod {
           index++;
           break;
 
+	  // byte
         case 'b':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -298,6 +300,7 @@ class StackMethod {
           index++;
           break;
 
+	  // int
         case 'i':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -306,6 +309,7 @@ class StackMethod {
           index++;
           break;
 
+	  // float
         case 'f':
 #ifdef _DEBUG
           param = FLOAT_PARM;
@@ -314,6 +318,7 @@ class StackMethod {
           index++;
           break;
 
+	  // char
         case 'c':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -322,6 +327,7 @@ class StackMethod {
           index++;
           break;
 
+	  // obj
         case 'o':
 #ifdef _DEBUG
           param = OBJ_PARM;
@@ -333,6 +339,7 @@ class StackMethod {
           }
           break;
 
+	  // func
 	case 'm':
 #ifdef _DEBUG
           param = FUNC_PARM;
@@ -346,14 +353,14 @@ class StackMethod {
             index++;
           }
           break;
-
+	  
 	default:
 #ifdef _DEBUG
 	  assert(false);
 #endif
 	  break;
         }
-
+	
         // check array
         int dimension = 0;
         while(index < params_name.size() && params_name[index] == '*') {
@@ -390,7 +397,7 @@ class StackMethod {
             break;
           }
         }
-
+	
 #ifdef _DEBUG
         switch(param) {
         case INT_PARM:
