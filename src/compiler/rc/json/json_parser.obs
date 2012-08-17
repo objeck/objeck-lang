@@ -27,6 +27,8 @@ bundle Default {
 					format->GetValue()->PrintLine();
 				};
 			};
+      
+      "done."->PrintLine();
 #~		
 			parser := JSONParser->New(args[0]);
 			image_obj := parser->Parse();
