@@ -2,6 +2,7 @@
 * fixed a bug related to casting an enum to an int and then calling an assoicated method
 * fixed a bug related to expressional comparsons betweeen some enums and classes
 * changed the FileReader->ReadFile function such that it doesn't read the EOS character
+* refactored the memory manager to better handle statically allocated memory
 
 7/23/12 - 8/7/12
 * added the ability to make nested method calls directly from "As" casts (enhancement)
