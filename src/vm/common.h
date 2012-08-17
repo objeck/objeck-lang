@@ -720,28 +720,32 @@ class StackClass {
   bool is_virtual;
   long cls_space;
   long inst_space;
-  StackDclr** dclrs;
-  long num_dclrs;
+  StackDclr** cls_dclrs;
+  long cls_num_dclrs;
+  StackDclr** inst_dclrs;
+  long inst_num_dclrs;
   long* cls_mem;
   bool is_debug;
   
   long InitMemory(long size) {
     cls_mem = new long[size];
-    memset(cls_mem, 0, size * sizeof(long));
-    
+    memset(cls_mem, 0, size * sizeof(long));    
     return size;
   }
   
  public:
   StackClass(long i, const string &ne, const string &fn, long p, 
-	     bool v, StackDclr** d, long n, long cs, long is, bool b) {
+	     bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
+	     long cs, long is, bool b) {
     id = i;
     name = ne;
     file_name = fn;
     pid = p;
     is_virtual = v;
-    dclrs = d;
-    num_dclrs = n;
+    cls_dclrs = cdclr;
+    cls_num_dclrs = cn;
+    inst_dclrs = idclr;
+    inst_num_dclrs = in;
     cls_space = InitMemory(cs);
     inst_space  = is;
     is_debug = b;
@@ -749,14 +753,24 @@ class StackClass {
 
   ~StackClass() {
     // clean up
-    if(dclrs) {
-      for(int i = 0; i < num_dclrs; i++) {
-        StackDclr* tmp = dclrs[i];
+    if(cls_dclrs) {
+      for(int i = 0; i < cls_num_dclrs; i++) {
+        StackDclr* tmp = cls_dclrs[i];
         delete tmp;
         tmp = NULL;
       }
-      delete[] dclrs;
-      dclrs = NULL;
+      delete[] cls_dclrs;
+      cls_dclrs = NULL;
+    }
+    
+    if(inst_dclrs) {
+      for(int i = 0; i < inst_num_dclrs; i++) {
+        StackDclr* tmp = inst_dclrs[i];
+        delete tmp;
+        tmp = NULL;
+      }
+      delete[] inst_dclrs;
+      inst_dclrs = NULL;
     }
 
     for(int i = 0; i < method_num; i++) {
@@ -789,14 +803,22 @@ class StackClass {
     return file_name;
   }
 
-  inline StackDclr** GetDeclarations() const {
-    return dclrs;
+  inline StackDclr** GetClassDeclarations() const {
+    return cls_dclrs;
   }
 
-  inline int GetNumberDeclarations() const {
-    return num_dclrs;
+  inline int GetNumberClassDeclarations() const {
+    return cls_num_dclrs;
   }
 
+  inline StackDclr** GetInstanceDeclarations() const {
+    return inst_dclrs;
+  }
+
+  inline int GetNumberInstanceDeclarations() const {
+    return inst_num_dclrs;
+  }
+  
   inline long GetParentId() const {
     return pid;
   }

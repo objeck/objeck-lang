@@ -68,7 +68,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
 	cout << "\t----- SERIALIZING object: cls_id=" << cls->GetId() << ", mem_id=" 
 	     << cur_id << ", size=" << mem_size << " byte(s) -----" << endl;
 #endif
-	CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth + 1);
+	CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth + 1);
       } 
     }
     else {
@@ -270,8 +270,8 @@ long* ObjectDeserializer::DeserializeObject() {
   }
 
   long dclr_pos = 0;  
-  StackDclr** dclrs = cls->GetDeclarations();
-  const long dclr_num = cls->GetNumberDeclarations();
+  StackDclr** dclrs = cls->GetInstanceDeclarations();
+  const long dclr_num = cls->GetNumberInstanceDeclarations();
   while(dclr_pos < dclr_num && buffer_offset < buffer_array_size) {
     ParamType type = dclrs[dclr_pos++]->type;
     

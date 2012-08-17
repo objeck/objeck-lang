@@ -574,10 +574,10 @@ void* MemoryManager::CollectMemory(void* arg)
   
   // remove references from allocated pool
   for(size_t i = 0; i < erased_memory.size(); i++) {
-    if(!allocated_int_obj_array.erase(erased_memory[i])) {
-      allocated_memory.erase(erased_memory[i]);
-    }
+    allocated_int_obj_array.erase(erased_memory[i]);
+    allocated_memory.erase(erased_memory[i]);
   }
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -611,8 +611,8 @@ void* MemoryManager::CheckStatic(void* arg)
   
   for(int i = 0; i < cls_num; i++) {
     StackClass* cls = clss[i];
-    CheckMemory(cls->GetClassMemory(), cls->GetDeclarations(), 
-		cls->GetNumberDeclarations(), 0);
+    CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), 
+		cls->GetNumberClassDeclarations(), 0);
   }
   
   return NULL;
@@ -978,12 +978,12 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         cout << "\t";
       }
       cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
-           << cls->GetNumberDeclarations() << " -----" << endl;
+           << cls->GetNumberInstanceDeclarations() << " -----" << endl;
 #endif
 
       // mark data
       if(MarkMemory(mem)) {
-        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
       }
     } 
     else {

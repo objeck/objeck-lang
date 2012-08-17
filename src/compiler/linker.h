@@ -412,7 +412,7 @@ public:
   backend::IntermediateDeclarations* GetEntries() {
     return entries;
   }
-
+  
   bool IsNative() {
     return is_native;
   }
@@ -532,7 +532,8 @@ class LibraryClass {
   int inst_space;
   map<const string, LibraryMethod*> methods;
   multimap<const string, LibraryMethod*> unqualified_methods;
-  backend::IntermediateDeclarations* entries;
+  backend::IntermediateDeclarations* cls_entries;
+  backend::IntermediateDeclarations* inst_entries;
   bool is_interface;
   bool is_virtual;
   Library* library;
@@ -544,7 +545,8 @@ class LibraryClass {
   
 public:
   LibraryClass(const string &n, const string &p, vector<string> in, bool is_inf, bool is_vrtl, int cs, int is, 
-	       backend::IntermediateDeclarations* e, Library* l, const string &fn, bool d) {
+	       backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, Library* l, 
+	       const string &fn, bool d) {
     name = n;
     parent_name = p;
     interface_names = in;
@@ -552,7 +554,8 @@ public:
     is_virtual = is_vrtl;
     cls_space = cs;
     inst_space = is;
-    entries = e;
+    cls_entries = ce;
+    inst_entries = ie;
     library = l;
     
     // force runtime linking of these classes
@@ -577,13 +580,6 @@ public:
       tmp = NULL;
     }
     methods.clear();
-
-    /* deleted elsewhere
-    if(entries) {
-      delete entries;
-      entries = NULL;
-    }
-    */
     
     lib_children.clear();
   }
@@ -659,10 +655,14 @@ public:
     return inst_space;
   }
 
-  backend::IntermediateDeclarations* GetEntries() {
-    return entries;
+  backend::IntermediateDeclarations* GetClassEntries() {
+    return cls_entries;
   }
-
+  
+  backend::IntermediateDeclarations* GetInstanceEntries() {
+    return inst_entries;
+  }
+  
   LibraryMethod* GetMethod(const string &name) {
     map<const string, LibraryMethod*>::iterator result = methods.find(name);
     if(result != methods.end()) {
@@ -806,6 +806,22 @@ class Library {
     named_classes.insert(pair<string, LibraryClass*>(cls->GetName(), cls));
     class_list.push_back(cls);
   }
+
+  backend::IntermediateDeclarations* LoadEntries(bool is_debug) {
+    backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
+    int num_params = ReadInt();
+    for(int i = 0; i < num_params; i++) {
+      instructions::ParamType type = (instructions::ParamType)ReadInt();
+      string var_name;
+      if(is_debug) {
+	var_name = ReadString();
+      }
+      entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
+    }
+
+    return entries;
+  }
+
   
   // loading functions
   void LoadFile(const string &file_name);

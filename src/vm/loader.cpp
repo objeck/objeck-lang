@@ -251,13 +251,15 @@ void Loader::LoadClasses()
     if(is_debug) {
       file_name = ReadString();
     }
+    
     // space
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
-    // read type parameters
-    const int num_dclrs = ReadInt();
-    StackDclr** dclrs = new StackDclr*[num_dclrs];
-    for(int i = 0; i < num_dclrs; i++) {
+    
+    // read class types
+    const int cls_num_dclrs = ReadInt();
+    StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
+    for(int i = 0; i < cls_num_dclrs; i++) {
       // set type
       int type = ReadInt();
       // set name
@@ -265,14 +267,31 @@ void Loader::LoadClasses()
       if(is_debug) {
 	name = ReadString();
       }
-      dclrs[i] = new StackDclr;
-      dclrs[i]->name = name;
-      dclrs[i]->type = (ParamType)type;
+      cls_dclrs[i] = new StackDclr;
+      cls_dclrs[i]->name = name;
+      cls_dclrs[i]->type = (ParamType)type;
+    }
+
+    // read instance types
+    const int inst_num_dclrs = ReadInt();
+    StackDclr** inst_dclrs = new StackDclr*[inst_num_dclrs];
+    for(int i = 0; i < inst_num_dclrs; i++) {
+      // set type
+      int type = ReadInt();
+      // set name
+      string name;
+      if(is_debug) {
+	name = ReadString();
+      }
+      inst_dclrs[i] = new StackDclr;
+      inst_dclrs[i]->name = name;
+      inst_dclrs[i]->type = (ParamType)type;
     }
 
     cls_hierarchy[id] = pid;
-    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, dclrs,
-                                     num_dclrs, cls_space, inst_space, is_debug);
+    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, 
+				     cls_dclrs, cls_num_dclrs, inst_dclrs, 
+				     inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
     cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='"

@@ -380,7 +380,10 @@ namespace backend {
 	    break;	 
 	  }	 
 	}	 
-      }	 
+      }	
+      else {
+	cout << "memory types: none" << endl;
+      }
     }
     
     void Write(bool is_debug, ofstream* file_out) {

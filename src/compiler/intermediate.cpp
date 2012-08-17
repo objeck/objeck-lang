@@ -499,20 +499,21 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   current_class = klass;
   current_table = current_class->GetSymbolTable();
   current_method = NULL;
-
+  
   // entries
-  IntermediateDeclarations* entries = new IntermediateDeclarations;
 #ifdef _DEBUG
   cout << "---------- Intermediate ---------" << endl;
   cout << "Class variables (class): name=" << klass->GetName() << endl;
 #endif
-  int cls_space = CalculateEntrySpace(entries, true);
-
+  IntermediateDeclarations* cls_entries = new IntermediateDeclarations;
+  int cls_space = CalculateEntrySpace(cls_entries, true);
+  
 #ifdef _DEBUG
   cout << "Class variables (instance): name=" << klass->GetName() << endl;
 #endif
-  int inst_space = CalculateEntrySpace(entries, false);
-
+  IntermediateDeclarations* inst_entries = new IntermediateDeclarations;
+  int inst_space = CalculateEntrySpace(inst_entries, false);
+  
   // set parent id
   string parent_name;
   int pid = -1;
@@ -552,11 +553,10 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   }
   
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
-                                    pid, parent_name, 
-				    interface_ids, current_class->GetInterfaceNames(), 				   
+                                    pid, parent_name, interface_ids, current_class->GetInterfaceNames(),
 				    current_class->IsInterface(), current_class->IsVirtual(), 
-				    cls_space, inst_space, 
-				    entries, short_file_name, is_debug);
+				    cls_space, inst_space, cls_entries, inst_entries, 
+				    short_file_name, is_debug);
   // block
   NewBlock();
   
@@ -3354,17 +3354,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
             cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName()
                  << ", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3375,17 +3371,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             cout << "\t" << index << ": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3397,17 +3389,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
             cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName()
                  << ", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3418,16 +3406,12 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             cout << "\t" << index << ": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } else {
 #ifdef _DEBUG
             cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3440,33 +3424,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
 	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
 	    else {
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
           }
           // object
@@ -3475,33 +3451,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
 	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
 	    else {
 #ifdef _DEBUG
               cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-	      if(!is_static) {
-		declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
-	      }
+	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
           }
           entry->SetId(index++);
@@ -3513,9 +3481,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             cout << "\t" << index << ": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
             entry->SetId(index++);
             var_space++;
           } 
@@ -3523,9 +3489,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             cout << "\t" << index << ": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    if(!is_static) {
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
-	    }
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
             entry->SetId(index);
             index += 2;
             var_space += 2;
@@ -3536,9 +3500,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
 	  cout << "\t" << index << ": FUNC_PARM: name=" << entry->GetName() << endl;
 #endif
-	  if(!is_static) {
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
-	  }
+	  declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
 	  index += 2;
 	  var_space += 2;

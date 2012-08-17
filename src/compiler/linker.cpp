@@ -373,20 +373,12 @@ void Library::LoadClasses()
     }
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
-
+    
     // read type parameters
-    backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
-    int num_params = ReadInt();
-    for(int i = 0; i < num_params; i++) {
-      instructions::ParamType type = (instructions::ParamType)ReadInt();
-      string var_name;
-      if(is_debug) {
-	var_name = ReadString();
-      }
-      entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
-    }
+    backend::IntermediateDeclarations* cls_entries = LoadEntries(is_debug);
+    backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);      
     hierarchies.insert(pair<const string, const string>(name, parent_name));
-
+    
 #ifdef _DEBUG
     const string& msg = "[class: name=" + name + "; parent=" + parent_name + 
       "; interface=" + Linker::ToString(is_interface) +       
@@ -398,7 +390,8 @@ void Library::LoadClasses()
 #endif
     
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
-					 cls_space, inst_space, entries, this, file_name, is_debug);
+					 cls_space, inst_space, cls_entries, inst_entries, this, 
+					 file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class

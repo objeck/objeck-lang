@@ -957,7 +957,8 @@ class IntermediateClass : public Intermediate {
   vector<IntermediateBlock*> blocks;
   vector<IntermediateMethod*> methods;
   map<int, IntermediateMethod*> method_map;
-  IntermediateDeclarations* entries;
+  IntermediateDeclarations* cls_entries;
+  IntermediateDeclarations* inst_entries;
   bool is_lib;
   bool is_interface;
   bool is_virtual;
@@ -966,7 +967,8 @@ class IntermediateClass : public Intermediate {
   
 public:
   IntermediateClass(int i, const string &n, int pi, const string &p, vector<int> infs, vector<string> in, 
-		    bool is_inf, bool is_vrtl, int cs, int is, IntermediateDeclarations* e, const string &fn, bool d) {
+		    bool is_inf, bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
+		    IntermediateDeclarations* ie, const string &fn, bool d) {
     id = i;
     name = n;
     pid = pi;
@@ -977,7 +979,8 @@ public:
     is_virtual = is_vrtl;
     cls_space = cs;
     inst_space = is;
-    entries = e;
+    cls_entries = ce;
+    inst_entries = ie;
     is_lib = false;
     is_debug = d;
     file_name = fn;
@@ -995,7 +998,9 @@ public:
     is_debug = lib_klass->IsDebug();
     cls_space = lib_klass->GetClassSpace();
     inst_space = lib_klass->GetInstanceSpace();
-    entries = lib_klass->GetEntries();
+    cls_entries = lib_klass->GetClassEntries();
+    inst_entries = lib_klass->GetInstanceEntries();
+    
     // process methods
     map<const string, LibraryMethod*> lib_methods = lib_klass->GetMethods();
     map<const string, LibraryMethod*>::iterator mthd_iter;
@@ -1004,6 +1009,7 @@ public:
       IntermediateMethod* imm_method = new IntermediateMethod(lib_method, this);
       AddMethod(imm_method);
     }
+    
     file_name = lib_klass->GetFileName();
     is_lib = true;
   }
@@ -1025,13 +1031,19 @@ public:
       delete tmp;
       tmp = NULL;
     }
+    
     // clean up
-    if(entries) {
-      delete entries;
-      entries = NULL;
+    if(cls_entries) {
+      delete cls_entries;
+      cls_entries = NULL;
+    }
+
+    if(inst_entries) {
+      delete inst_entries;
+      inst_entries = NULL;
     }
   }
-
+  
   int GetId() {
     return id;
   }
@@ -1106,11 +1118,13 @@ public:
     if(is_debug) {
       WriteString(file_name, file_out);
     }
+    
     // write local space size
     WriteInt(cls_space, file_out);
     WriteInt(inst_space, file_out);
-    entries->Write(is_debug, file_out);
-
+    cls_entries->Write(is_debug, file_out);
+    inst_entries->Write(is_debug, file_out);
+    
     // write methods
     WriteInt((int)methods.size(), file_out);
     for(size_t i = 0; i < methods.size(); i++) {
@@ -1125,12 +1139,16 @@ public:
 	 << "; num_methods=" << methods.size() << "; class_mem_size=" << cls_space 
 	 << ";\n instance_mem_size=" << inst_space << "; is_debug=" << is_debug << endl;
     cout << "=========================================================" << endl;
-    entries->Debug();
+    cout << "class ";
+    cls_entries->Debug();
+    cout << "---------------------------------------------------------" << endl;
+    cout << "instance ";
+    inst_entries->Debug();
     cout << "=========================================================" << endl;
     for(size_t i = 0; i < blocks.size(); i++) {
       blocks[i]->Debug();
     }
-
+    
     for(size_t i = 0; i < methods.size(); i++) {
       methods[i]->Debug();
     }
