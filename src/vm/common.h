@@ -363,15 +363,15 @@ class StackMethod {
 
         if(dimension) {
           switch(state) {
+          case 0:
           case 1:
+          case 4:
 #ifdef _DEBUG
             param = BYTE_ARY_PARM;
 #endif
             break;
-
-          case 0:
+	    
           case 2:
-          case 4:
 #ifdef _DEBUG
             param = INT_ARY_PARM;
 #endif
