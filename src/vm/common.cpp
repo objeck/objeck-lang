@@ -254,7 +254,7 @@ long* ObjectDeserializer::DeserializeObject() {
   if(cls) {
     INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
-      instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos);
+      instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos, false);
       mem_cache[-mem_id] = instance;
     }
     else {
@@ -305,9 +305,8 @@ long* ObjectDeserializer::DeserializeObject() {
 	  const long byte_array_size_dim = DeserializeInt();
 	  long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
 								 ((byte_array_dim + 2) *
-								  sizeof(long)),
-								 BYTE_ARY_TYPE,
-								 op_stack, *stack_pos);
+								  sizeof(long)), BYTE_ARY_TYPE,
+								 op_stack, *stack_pos, false);
 	  BYTE_VALUE* byte_array_ptr = (BYTE_VALUE*)(byte_array + 3);
 	  byte_array[0] = byte_array_size;
 	  byte_array[1] = byte_array_dim;
@@ -343,8 +342,8 @@ long* ObjectDeserializer::DeserializeObject() {
 	  const long array_size = DeserializeInt();
 	  const long array_dim = DeserializeInt();
 	  const long array_size_dim = DeserializeInt();	
-	  long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, 
-							    INT_TYPE, op_stack, *stack_pos);
+	  long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE, 
+							    op_stack, *stack_pos, false);
 	  array[0] = array_size;
 	  array[1] = array_dim;
 	  array[2] = array_size_dim;
@@ -381,8 +380,8 @@ long* ObjectDeserializer::DeserializeObject() {
 	  const long array_size = DeserializeInt();
 	  const long array_dim = DeserializeInt();
 	  const long array_size_dim = DeserializeInt();
-	  long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, 
-							    INT_TYPE, op_stack, *stack_pos);
+	  long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE, 
+							    op_stack, *stack_pos, false);
 	
 	  array[0] = array_size;
 	  array[1] = array_dim;
