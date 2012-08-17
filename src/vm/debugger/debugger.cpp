@@ -1200,7 +1200,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 	cout << "  class: type=" << klass->GetName() << endl;
 	// print
 	cout << "  parameters:" << endl;
-	PrintDeclarations(klass->GetDeclarations(), klass->GetNumberDeclarations(), klass->GetName());
+	PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations(), klass->GetName());
       }
       else {
 	cout << "unable to find class." << endl;
