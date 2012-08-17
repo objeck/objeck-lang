@@ -553,8 +553,8 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
   
   for(int i = 0; i < cls_num; i++) {
     StackClass* cls = clss[i];
-    CheckMemory(cls->GetClassMemory(), cls->GetDeclarations(), 
-		cls->GetNumberDeclarations(), 0);
+    CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), 
+		cls->GetNumberClassDeclarations(), 0);
   }
 
   return 0;
@@ -919,7 +919,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 
       // mark data
       if(MarkMemory(mem)) {
-        CheckMemory(mem, cls->GetDeclarations(), cls->GetNumberDeclarations(), depth);
+        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
       }
     } 
     else {
