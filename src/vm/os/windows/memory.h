@@ -40,8 +40,8 @@
 using namespace stx;
 
 // basic vm tuning parameters
-#define MEM_MAX 1024
-// #define MEM_MAX 1048576 * 8
+// #define MEM_MAX 1024
+#define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 

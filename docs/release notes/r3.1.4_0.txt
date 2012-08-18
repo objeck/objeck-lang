@@ -1,0 +1,13 @@
+Objeck v3.1.4_0
+
+--------------
+Release Notes
+--------------
+The focus of this release was on initial JSON support and improved garbage collection.
+
+Highlights of this specific release include the following:
+* Initial JSON support (new)
+* Refactored the memory manager to better handle statically allocated memory (high)
+* Bug related to casting an enum to an Int and then calling an associated method (medium)
+* Fixed a bug related to expressional comparisons between some enums and class types (medium)
+
