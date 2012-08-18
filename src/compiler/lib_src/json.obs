@@ -1,15 +1,15 @@
 use IO;
 use Struct;
 
-bundle Default {
+bundle JSON {
 	class JSONParser {
-		@file : String;
+		@input : String;
 		@tokens : Vector;
 		@token_pos : Int;
 		@cur_token : Token;
 		
-		New(file : String) {
-			@file := file;
+		New(input : String) {
+			@input := input;
 			@tokens : Nil;
 			@token_pos := 0;
 		}
@@ -182,29 +182,29 @@ bundle Default {
 		method : native : Scan() ~ Vector {
 			tokens := Vector->New();
 						
-			input := FileReader->ReadFile(@file);
+			input := @input->ToCharArray();
 			if(input <> Nil) {
 				index := 0;				
 				while(index < input->Size()) {
 					# skip whitespace
-					while(index < input->Size() & (input->Get(index) = '\r' | input->Get(index) = '\n' |
-						input->Get(index) = '\t' | input->Get(index) = ' ')) {
+					while(index < input->Size() & (input[index] = '\r' | input[index] = '\n' |
+						input[index] = '\t' | input[index] = ' ')) {
 						# update
 						index += 1;
 					};
 
 					# parse string
-					if(input->Get(index) = '"') {
+					if(input[index] = '"') {
 						index += 1;
 						offset := index;
 						# TODO: support for '\"'
-						while(index < input->Size() & input->Get(index) <> '"') {
+						while(index < input->Size() & input[index] <> '"') {
 							# update
 							index += 1;
 						};
 						len := index - offset;
 						if(len > 0) {
-							string := input->SubString(offset, len);
+							string := @input->SubString(offset, len);
 							if(string->Equals("true")) {
 								tokens->AddBack(Token->New(TokenType->TRUE));
 							}
@@ -223,16 +223,16 @@ bundle Default {
 						index += 1;
 					}
 					# true
-					else if(input->Get(index) = 't' | input->Get(index) = 'f') {
+					else if(input[index] = 't' | input[index] = 'f') {
 						offset := index;
-						while(index < input->Size() & input->Get(index)->IsChar()) {
+						while(index < input->Size() & input[index]->IsChar()) {
 							# update
 							index += 1;
 						};
 						len := index - offset;
 						
 						if(len > 0) {
-							string := input->SubString(offset, len);
+							string := @input->SubString(offset, len);
 							if(string->Equals("true")) {
 								tokens->AddBack(Token->New(TokenType->TRUE));
 							}
@@ -248,18 +248,18 @@ bundle Default {
 						};
 					}
 					# parse number
-					else if(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.') {
+					else if(input[index]->IsDigit() | input[index] = '-' | input[index] = '.') {
 						offset := index;
 						minus_count := 0;
 						dot_count := 0;
 
 						# TODO: e digits
 						while(index < input->Size() & 
-							(input->Get(index)->IsDigit() | input->Get(index) = '-' | input->Get(index) = '.')) {
-							if(input->Get(index) = '-') {
+							(input[index]->IsDigit() | input[index] = '-' | input[index] = '.')) {
+							if(input[index] = '-') {
 								minus_count += 1;
 							}
-							else if(input->Get(index) = '.') {
+							else if(input[index] = '.') {
 								dot_count += 1;
 							};
 							# update
@@ -268,7 +268,7 @@ bundle Default {
 						len := index - offset;
 
 						if(len > 0) {
-							string := input->SubString(offset, len);
+							string := @input->SubString(offset, len);
 							if(dot_count = 1 & minus_count < 2) {
 								tokens->AddBack(Token->New(TokenType->FLOAT_NUM, string));
 							}
@@ -285,7 +285,7 @@ bundle Default {
 					}
 					# parse characters
 					else {
-						select(input->Get(index)) {
+						select(input[index]) {
 							label '[': {
 								tokens->AddBack(Token->New(TokenType->OBR));
 							}
@@ -312,7 +312,7 @@ bundle Default {
 
 							other: {
 								tokens->AddBack(Token->New(TokenType->OTHER));
-# IO.Console->Print("other=")->PrintLine(input->Get(index)->As(Int));
+# IO.Console->Print("other=")->PrintLine(input[index]->As(Int));
 							}
 						};
 						# update
@@ -412,7 +412,7 @@ bundle Default {
 			return "";
 		}
 		
-		method : public : GetValue(index : Int) ~ JSONElement {
+		method : public : Get(index : Int) ~ JSONElement {
 			if(@array_elems <> Nil & index < @array_elems->Size()) {
 				return @array_elems->Get(index);
 			};
@@ -420,7 +420,7 @@ bundle Default {
 			return Nil;
 		}
 		
-		method : public : GetValue(name : String) ~ JSONElement {
+		method : public : Get(name : String) ~ JSONElement {
 			if(@map_elems <> Nil) {
 				return @map_elems->Find(name);
 			};
