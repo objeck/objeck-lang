@@ -1965,6 +1965,7 @@
 		<row><td>int.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>int.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\examples\int.obs</td><td>1</td><td/></row>
 		<row><td>intro.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>intro.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\examples\intro.obs</td><td>1</td><td/></row>
 		<row><td>jensen.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>jensen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\examples\jensen.obs</td><td>1</td><td/></row>
+		<row><td>json.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>json.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\bin\json.obl</td><td>1</td><td/></row>
 		<row><td>lang.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>lang.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\bin\lang.obl</td><td>1</td><td/></row>
 		<row><td>leap.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>leap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\examples\leap.obs</td><td>1</td><td/></row>
 		<row><td>logic.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>logic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines (AW)\Desktop\objeck-lang\examples\logic.obs</td><td>1</td><td/></row>
