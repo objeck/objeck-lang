@@ -37,8 +37,8 @@
 #include "../stx/btree_set.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 1024
-// #define MEM_MAX 1048576 * 8
+// #define MEM_MAX 1024
+#define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 3
 #define COLLECTED_COUNT 9
 
