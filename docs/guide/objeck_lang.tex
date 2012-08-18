@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included as part of release 3.1.  For
+  functionality that is included as part of release 3.1.4.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck}, 
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
@@ -2160,6 +2160,52 @@ This class in the `Net' bundle:
   \begin{itemize}
   \item method : SetCookie(cookie : String) \textasciitilde Nil
   \end{itemize}
+\end{itemize}
+
+\subsection{JSON}
+These classes provide support for JSON parsing.
+
+\subsubsection{JSONParser}
+The JSONParser class allows programmers to parse and search JSON documents.
+\begin{itemize}
+  \item \texttt{New}
+    \begin{itemize}
+    \item New(buffer : String)
+    \end{itemize}
+  \item \texttt{Parse} - Parses a JSON stream into a graph of elements.
+    Returns true if successful; false otherwise.
+    \begin{itemize}
+    \item method : public : Parse() \textasciitilde JSONElement
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{JSONElement}
+JSON element that contains a root value or references to nested elements (i.e. array and objects). 
+\begin{itemize}
+  \item \texttt{GetType} - Returns the JSON element type.
+    \begin{itemize}
+    \item method : public : GetType() \textasciitilde JSONType
+    \end{itemize}
+  \item \texttt{GetValue} - Returns a JSON element value.
+    \begin{itemize}
+    \item method : public : GetValue() \textasciitilde String
+    \end{itemize}
+  \item \texttt{Get} - Returns a JSON element by index for array element types.
+    \begin{itemize}
+    \item method : public : Get(index : Int) \textasciitilde JSONElement
+    \end{itemize}
+  \item \texttt{Get} - Returns a JSON element by name for object elemet members.
+    \begin{itemize}
+    \item method : public : Get(key : String) \textasciitilde JSONElement
+    \end{itemize}
+  \item \texttt{GetKeys} - Returns a list of element keys corresponding to object elemet members.
+    \begin{itemize}
+    \item method : public : GetKeys() \textasciitilde Vector
+    \end{itemize}
+  \item \texttt{Size} - Returns number of sub-elements
+    \begin{itemize}
+    \item method : public : Size() \textasciitilde Int
+    \end{itemize}
 \end{itemize}
 
 \subsection{XML}
