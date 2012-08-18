@@ -1,4 +1,5 @@
 8/7/12 - now
+* JSON support
 * fixed a bug related to casting an enum to an int and then calling an assoicated method
 * fixed a bug related to expressional comparsons betweeen some enums and classes
 * changed the FileReader->ReadFile function such that it doesn't read the EOS character
