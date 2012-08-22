@@ -2863,7 +2863,7 @@ Select* Parser::ParseSelect(int depth)
         NextToken();
         labels->AddExpression(ParseSimpleExpression(depth + 1));
         if(!Match(TOKEN_COLON)) {
-          ProcessError("Expected ';'", TOKEN_COLON);
+          ProcessError("Expected ':'", TOKEN_COLON);
         }
         NextToken();
       } 
