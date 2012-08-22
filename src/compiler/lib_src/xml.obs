@@ -921,6 +921,20 @@ bundle XML {
 		}
 		
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		# parses element name
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		method : public : GetElementName(filter : String) ~ String {
+			name := String->New();
+			i := 0;
+			while(i < filter->Size() & filter->Get(i) <> '[') {
+				name->Append(filter->Get(i));
+				i += 1;
+			};
+			
+			return name;
+		}
+		
+		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element expression
 		# tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
@@ -952,19 +966,19 @@ bundle XML {
 			expr := GetElementExpression(filter);
 			if(expr <> Nil) {
 				if(expr->Equals("first()")) {
-					return element->GetFirstChild(filter);
+					return element->GetFirstChild(GetElementName(filter));
 				}
 				else if(expr->Equals("last()")) {
-					return element->GetLastChild(filter);
+					return element->GetLastChild(GetElementName(filter));
 				}
 				else {
 					if(expr->Size() > 0) {
 						if(expr->Get(0)->IsDigit()) {
 							max := expr->Trim()->ToInt();
-							return element->GetChildren(filter, max);
+							return element->GetChildren(GetElementName(filter), max);
 						} 
 						else if(expr->Get(0)->IsChar()) {
-							return element->GetChildren(filter, expr);
+							return element->GetChildren(GetElementName(filter), expr);
 						};
 					};
 				};
