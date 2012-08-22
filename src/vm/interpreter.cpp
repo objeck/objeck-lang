@@ -724,9 +724,12 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       long* param = (long*)frame->GetMemory()[1];
 
       StackClass* impl_class = MemoryManager::GetClass(instance);
-#ifdef _DEBUG
-      assert(impl_class);
-#endif
+	  if(!impl_class) {
+        cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
+      }
+	  
       const string& mthd_name = impl_class->GetName() + ":Run:o.System.Base,";
       StackMethod* called = impl_class->GetMethod(mthd_name);
 #ifdef _DEBUG
