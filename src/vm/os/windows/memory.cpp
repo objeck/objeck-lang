@@ -913,8 +913,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       for(int i = 0; i < depth; i++) {
         cout << "\t";
       }
-      cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
-        << cls->GetNumberDeclarations() << " -----" << endl;
+      cout << "\t----- object: addr=" << mem << "(" << (long)mem << ") -----" << endl;
 #endif
 
       // mark data
