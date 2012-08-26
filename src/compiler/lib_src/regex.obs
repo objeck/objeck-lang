@@ -456,7 +456,11 @@ bundle RegEx {
    		return @type;
    	}
    	
-		method : public : IsMatched() ~ Bool {  
+		method : public : IsMatched() ~ Bool {
+      if(@out1 <> Nil & @out1->GetValue() = '.') {    
+        return true;
+      };
+      
       return @type = 0;  
     }
     
