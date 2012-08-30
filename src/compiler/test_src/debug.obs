@@ -16,9 +16,39 @@
 	}
 
 	class Test {
+		function : DoStuff(postfix : String) ~ Nil {
+			stack := Struct.Stack->New();
+
+			each(i : postfix) {
+				char := postfix->Get(i);
+				select(char) {
+					other: {
+						if(char = '.') {
+							"is '.'"->PrintLine();
+						}
+						else {
+							"not '.'"->PrintLine();
+						};
+					}
+
+					label 'b': {  
+						"is 'b'"->PrintLine();
+					}
+
+					label 'c': {  
+						"is 'c'"->PrintLine();
+					}
+				};
+			};
+		}
+
+#~
 		function : Main(args : String[]) ~ Nil {
 			t := Thingy->New();
 			t->Get()->PrintLine();
+
+			DoStuff("ab.cd");
 		}
+~#
 	}
 }
