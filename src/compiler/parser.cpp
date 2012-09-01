@@ -2869,6 +2869,9 @@ Select* Parser::ParseSelect(int depth)
         NextToken();
       } 
       else {
+	if(is_other_label)  {
+	  ProcessError("Duplicate 'other' label", TOKEN_OTHER_ID);
+	}
         is_other_label = true;
         NextToken();
         if(!Match(TOKEN_COLON)) {
