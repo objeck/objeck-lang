@@ -193,7 +193,7 @@ bundle RegEx {
             if(char = '.') {
               t1 := Transition->New(-1);
               t2 := Transition->New(-1); 
-              t1->SetEnd(e->GetStart());
+#              t1->SetEnd(e->GetStart());
               
               s := State->New(t1, t2); 
               f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
