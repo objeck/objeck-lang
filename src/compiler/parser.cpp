@@ -2851,12 +2851,13 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
+
   StatementList* other = NULL;
   vector<StatementList*> statement_lists;
   map<ExpressionList*, StatementList*> statement_map;
   while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
-    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
     bool is_other_label = false;
+    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
     // parse labels
     while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
       if(Match(TOKEN_LABEL_ID)) {
@@ -2871,7 +2872,7 @@ Select* Parser::ParseSelect(int depth)
         is_other_label = true;
         NextToken();
         if(!Match(TOKEN_COLON)) {
-          ProcessError("Expected ';'", TOKEN_COLON);
+          ProcessError("Expected ':'", TOKEN_COLON);
         }
         NextToken();
       }
@@ -2882,15 +2883,23 @@ Select* Parser::ParseSelect(int depth)
     StatementList* statements =  ParseStatementList(depth + 1);
     symbol_table->CurrentParseScope()->PreviousParseScope();
     
+    // 'other' label
     if(is_other_label) {      
-      other = statements;      
-      is_other_label = false;
+      if(!other) {
+	other = statements;      
+      }
+      else {
+	ProcessError("Duplicate 'other' label", TOKEN_CLOSED_BRACE);
+      }
     } 
+    // named label
     else {
-      statement_lists.push_back(statements);
-      // note: order matters during contextual analysis
       statement_map.insert(pair<ExpressionList*, StatementList*>(labels, statements));
     }
+    
+    // note: order matters during contextual analysis due 
+    // to the way the nested symbol table manages scope
+    statement_lists.push_back(statements);
   }
 
   if(!Match(TOKEN_CLOSED_BRACE)) {
