@@ -1,3 +1,8 @@
+#~~
+# JSON parsing library
+# Copyright (c) 2012 Randy Hollines
+~~#
+
 use IO;
 use Struct;
 
@@ -63,7 +68,7 @@ bundle JSON {
 				}
 
 				label TokenType->IDENT: {
-					element := JSONElement->New(JSONType->STRING, @cur_token);
+					element := JSONElement->New(JSONType->STRING, @cur_token->GetValue());
 # Console->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 					
@@ -71,19 +76,19 @@ bundle JSON {
 				
 				label TokenType->INT_NUM:
 				label TokenType->FLOAT_NUM: {
-					element := JSONElement->New(JSONType->NUMBER, @cur_token);
+					element := JSONElement->New(JSONType->NUMBER, @cur_token->GetValue());
 # Console->Print("number=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 				}
 				
 				label TokenType->TRUE: {
-					element := JSONElement->New(JSONType->TRUE, @cur_token);
+					element := JSONElement->New(JSONType->TRUE);
 # "true"->PrintLine();
 					NextToken();
 				}
 				
 				label TokenType->FALSE: {
-					element := JSONElement->New(JSONType->FALSE, @cur_token);
+					element := JSONElement->New(JSONType->FALSE);
 # "false"->PrintLine();
 					NextToken();
 				}
@@ -381,13 +386,32 @@ bundle JSON {
 	# JSON element
 	class JSONElement {
 		@type : JSONType;
-		@token : Token;
+		@value : String;
 		@array_elems : Vector;
 		@map_elems : StringMap;
 		
-		New(type : JSONType, token : Token) {
-			@type := type;
-			@token := token;
+		New(type : JSONType) {
+			if(type = JSONType->TRUE) {
+				@type := type;	
+				@value := "true";
+			}
+			else if(type = JSONType->FALSE) {
+				@type := type;	
+				@value := "false";
+			}
+			else {
+				@type := JSONType->OTHER;
+			};
+		}
+		
+		New(type : JSONType, value : String) {
+			if(type = JSONType->STRING | type = JSONType->NUMBER) {
+				@type := type;	
+				@value := value;
+			}
+			else {
+				@type := JSONType->OTHER;
+			};
 		}
 
 		New(array_elems : Vector) {
@@ -405,8 +429,8 @@ bundle JSON {
 		}
 		
 		method : public : GetValue() ~ String {
-			if(@token <> Nil) {
-				return @token->GetValue();
+			if(@value <> Nil) {
+				return @value;
 			};
 			
 			return "";
@@ -455,7 +479,8 @@ bundle JSON {
 		TRUE,
 		FALSE,
 		ARRAY,
-		OBJECT
+		OBJECT,
+		OTHER
 	}
 	
 	# token class
