@@ -1,13 +1,13 @@
 use IO;
 use Struct;
 
- #~
- # Basic NFA based regex engine
- # R. Hollines (c) 2012
- # 
- # Based on an implementation by Russ Cox.
- # Copyright (c) 2007 Russ Cox.
- # Can be distributed under the MIT license, see bottom of file.
+#~
+# Basic NFA based regex engine
+# R. Hollines (c) 2012
+# 
+# Based on an implementation by Russ Cox.
+# Copyright (c) 2007 Russ Cox.
+# Can be distributed under the MIT license, see bottom of file.
 ~#
 
 bundle RegEx {
@@ -182,7 +182,7 @@ bundle RegEx {
 		
 		#~
 		# Create NFA for simulation
-	 ~#
+		~#
 		method : native : Postfix2Nfa(postfix : String) ~ State {
 			stack := Stack->New();
 			
@@ -190,21 +190,10 @@ bundle RegEx {
 				char := postfix->Get(i);
 				select(char) {
 					other: {
-            if(char = '.') {
-              t1 := Transition->New(-1);
-              t2 := Transition->New(-1); 
-#              t1->SetEnd(e->GetStart());
-              
-              s := State->New(t1, t2); 
-              f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
-              stack->Push(f);
-            } 
-            else {
-              t := Transition->New(char->As(Int));   
-              s := State->New(t, Transition->New(-1));
-              f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
-              stack->Push(f);
-            };
+						t := Transition->New(char->As(Int));   
+						s := State->New(t, Transition->New(-1));
+						f := Frame->New(s, ListUitls->NewList(s->GetOut1()));
+						stack->Push(f);
 					}
 					
 					label '\b': {  
@@ -274,69 +263,67 @@ bundle RegEx {
 				return Nil;
 			};
 
-	    end_state := State->New(Nil->As(Transition), Nil->As(Transition)); 
-    	end_state->SetType(0);
+			end_state := State->New(Nil->As(Transition), Nil->As(Transition)); 
+			end_state->SetType(0);
     
-    	outs := e->GetOuts();
-    	each(i : outs) {
-    		tran := outs->Get(i)->As(Transition);
-    		if(tran->GetValue() <> -1) {
-    			t1 := Transition->New(-1);  
-					t2 := Transition->New(-1);   
-					s := State->New(t1, t2);
-					tran->SetEnd(s);  
-					s->GetOut1()->SetEnd(end_state); 
-					s->GetOut2()->SetEnd(end_state);
-    		}
-    		else {
-    			tran->SetEnd(end_state);
-    		};
-    	};
+			outs := e->GetOuts();
+			each(i : outs) {
+				tran := outs->Get(i)->As(Transition);
+				if(tran->GetValue() <> -1) {
+					t1 := Transition->New(-1);  
+						t2 := Transition->New(-1);   
+						s := State->New(t1, t2);
+						tran->SetEnd(s);  
+						s->GetOut1()->SetEnd(end_state); 
+						s->GetOut2()->SetEnd(end_state);
+				}
+				else {
+					tran->SetEnd(end_state);
+				};
+			};
 
 			return e->GetStart();
 		}
 		
-		 #~
-		 # Match pattern
-	  ~#
+		#~
+		# Match pattern
+		~#
 		method : native : Step(clist : Vector, char : Char) ~ Vector { 
 			if(clist->Size() = 0) {
 				return clist;
 			};
 			
-      all_null := true;
-      matched := false;
+			all_null := true;
+			matched := false;
 			nlist := Vector->New();
 			
-      each(i : clist) {
-      	t := clist->Get(i)->As(Transition);
-    		if(t <> Nil) {
-    			check := t->GetValue();
-    			
+			each(i : clist) {
+				t := clist->Get(i)->As(Transition);
+				if(t <> Nil) {
+					check := t->GetValue();
+					
 					if(check <> -1) {
 						all_null := false;
 					};	
-					
-					if((check = char | check = '.') & t->GetEnd()->GetType() = 1) {
+				
+					if(check = '.'  | (check = char & t->GetEnd()->GetType() = 1)) {
 					  matched := true;
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
-"-0-"->PrintLine();            
 					  	nlist->AddBack(t->GetEnd()->GetOut1());
 					  };
 					  
 					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
-"-1-"->PrintLine();            
 					  	nlist->AddBack(t->GetEnd()->GetOut2());
 					  };
 					}
-					else if((check = char | check = '.') & t->GetEnd()->GetType() = 0) {          
-            matched := true;  
-            return ListUitls->NewList(t); 
-          }
-          else if(check = -1 & t->GetEnd() <> Nil) {
-            nlist->AddBack(t->GetEnd()->GetOut1());
-            nlist->AddBack(t->GetEnd()->GetOut2());
-          };
+					else if(check = char & t->GetEnd()->GetType() = 0) {          
+						matched := true;  
+						return ListUitls->NewList(t); 
+					}
+					else if(check = -1 & t->GetEnd() <> Nil) {
+						nlist->AddBack(t->GetEnd()->GetOut1());
+						nlist->AddBack(t->GetEnd()->GetOut2());
+					};
 				};
 			};
 			
@@ -345,52 +332,44 @@ bundle RegEx {
 			};
 			
 			if(matched = false) {
-      	return Step(nlist, char);
-      };
+				return Step(nlist, char);
+			};
 			
 			return nlist;
 		}
 		
 		method : IsMatch(clist : Vector) ~ Bool {
-    	each(i : clist) {
-    		t := clist->Get(i)->As(Transition);
-        
-(t <> Nil)->PrintLine(); # 1
-if(t <> Nil) {
-  (t->GetValue() = -1)->PrintLine(); # 2
-  (t->GetEnd() <> Nil)->PrintLine(); # 3
-  if(t->GetEnd() <> Nil) {
-    IO.Console->Print("is matched: ")->PrintLine(t->GetEnd()->IsMatched()); # 4 
-    IO.Console->Print("type: ")->PrintLine(t->GetEnd()->GetType()); # 4 
-  }; 
-};  
-"-----------"->PrintLine();
-    		if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
-    			return true;
-    		};
-    	};
-    	
-    	return false;
+			each(i : clist) {
+				t := clist->Get(i)->As(Transition);
+				if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
+					return true;
+				}
+				else if(t <> Nil & t->GetValue() = '.' & t->GetEnd() <> Nil) {
+					return true;
+				};
+			};
+			
+			return false;
 		}
 		
 		# match all
 		method : MatchAll(state : State, input : String) ~ Bool {
-      clist := Vector->New();
-      clist->AddBack(state->GetOut1());
-      clist->AddBack(state->GetOut2());
+			clist := Vector->New();
+			clist->AddBack(state->GetOut1());
+			clist->AddBack(state->GetOut2());
 
-      each(i : input) {
-        char := input->Get(i);
-        char := char and 0xff;
+			each(i : input) {
+				char := input->Get(i);
+				char := char and 0xff;
 
-        clist := Step(clist, char);
-        if(clist->Size() = 0) {
-          return false;
-        };
-      };
+				clist := Step(clist, char);
+				if(clist->Size() = 0) {
+					return false;
+				};
+ 			};
 
-      return IsMatch(clist);
-    }
+			return IsMatch(clist);
+ 		}
 		
 		method : public : MatchAll(input : String) ~ Bool {
 			if(@start <> Nil) {
@@ -422,7 +401,7 @@ if(t <> Nil) {
 			};
 						
 			return longest; 
-    }
+		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
 			if(@start <> Nil & offset < input->Size()) {
@@ -439,109 +418,96 @@ if(t <> Nil) {
 	
 	#~
 	# Supporting classes
-  ~#
+	~#
 	class Transition {
-    @value : Int;
-    @end : State;
+		@value : Int;
+		@end : State;
     
-    New(value : Int) {
-      @value := value;  
-    }
-    
-    method : public : GetValue() ~ Int {
-    	return @value;
-    }
-    
-    method : public : GetEnd() ~ State {
-    	return @end;
-    }
-    
-    method : public : SetEnd(end : State) ~ Nil {
-    	@end := end;
-    }
-  }
+		New(value : Int) {
+			@value := value;  
+		}
+		
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+		
+		method : public : GetEnd() ~ State {
+			return @end;
+		}
+		
+		method : public : SetEnd(end : State) ~ Nil {
+			@end := end;
+		}
+	}
 	
 	class State {
-    @out1 : Transition;
-    @out2 : Transition;
-    @type : Int;
-    
-    New(out1 : Transition, out2 : Transition) {
-      @out1 := out1;  
-      @out2 := out2;
-      @type := 1;
-    }
+		@out1 : Transition;
+		@out2 : Transition;
+		@type : Int;
+		
+		New(out1 : Transition, out2 : Transition) {
+			@out1 := out1;  
+			@out2 := out2;
+			@type := 1;
+		}
    
 		method : public : SetType(type : Int) ~ Nil {  
-   		@type := type;
-   	}
+			@type := type;
+		}
    	
-   	method : public : GetType() ~ Int {  
-   		return @type;
-   	}
+		method : public : GetType() ~ Int {  
+			return @type;
+		}
    	
 		method : public : IsMatched() ~ Bool { 
-if(@out1 <> Nil) {    
-  IO.Console->Print("\tvalue 1=")->PrintLine(@out1->GetValue());
-};     
-
-#~
-      if(@out1 <> Nil & @out1->GetValue() = '.') { 
-        return true;
-      };
-~#
-
-if(@out2 <> Nil) {    
-  IO.Console->Print("\tvalue 2=")->PrintLine(@out2->GetValue());
-}; 
-      return @type = 0;  
-    }
+			return @type = 0;  
+		}
     
-    method : public : GetOut1() ~ Transition {  
-      return @out1; 
-    }
+		method : public : GetOut1() ~ Transition {  
+			return @out1; 
+		}
     
-    method : public : GetOut2() ~ Transition {  
-      return @out2; 
-    }
+		method : public : GetOut2() ~ Transition {  
+			return @out2; 
+		}
 	} 
 	
-  class Frame {
-    @start : State;
-    @outs : Vector;
+	class Frame {
+		@start : State;
+		@outs : Vector;
     
-    New(start : State, outs : Vector) {
-      @start := start;  
-      @outs := outs;  
-  	}
+		New(start : State, outs : Vector) {
+			@start := start;  
+			@outs := outs;  
+		}
   	
-  	method : public : GetStart() ~ State {  
-      return @start;
-    }
-    
-  	method : public : GetOuts() ~ Vector {  
-      return @outs;
-    }
-  }
+		method : public : GetStart() ~ State {  
+			return @start;
+		}
+
+		method : public : GetOuts() ~ Vector {  
+			return @outs;
+		}
+	}
   
-  class ListUitls { 
-    function : Link(list : Vector, state : State) ~ Nil { 
-    	each(i : list) {
-    		t := list->Get(i)->As(Transition);
-    		t->SetEnd(state);
-    	};
-    }
+	class ListUitls { 
+		function : Link(list : Vector, state : State) ~ Nil { 
+			each(i : list) {
+				t := list->Get(i)->As(Transition);
+				t->SetEnd(state);
+			};
+		}
     
-    function : Append(list1 : Vector, list2 : Vector) ~ Vector {
-  		list1->AddBack(list2);
-  		return list1;
-    }
-    
-    function : NewList(out : Transition) ~ Vector {
-      result := Vector->New();
-      result->AddBack(out->As(Base)); 
-      return result;
-    }  
+		function : Append(list1 : Vector, list2 : Vector) ~ Vector {
+			list1->AddBack(list2);
+			return list1;
+		}
+
+		function : NewList(out : Transition) ~ Vector {
+			result := Vector->New();
+			result->AddBack(out->As(Base)); 
+			return result;
+		}  
 	}
 }
 

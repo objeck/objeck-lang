@@ -1,4 +1,9 @@
-8/7/12 - now
+8/18/12 - now
+* fixed a bug in the XML parser related to processing XPath-type parameters
+* fixed a bug related to 'other' labels in 'select' statements
+* fixed a bug in the regex library regarding support for ".*" wildcard expressions
+
+8/7/12 - 8/22/12
 * JSON support
 * fixed a bug related to casting an enum to an int and then calling an assoicated method
 * fixed a bug related to expressional comparsons betweeen some enums and classes
