@@ -1,54 +1,21 @@
-﻿bundle Default {
-	class Thingy {
-		a : Int;
-		b : static : Int;
-		c : Float;
-		
-		New() {
-			a := 13;
-			b := 7;
-			c := a / b;
-		}
+﻿use Struct;
 
-		method : public : Get() ~ Int {
-			return b;
-		}
+bundle Default {
+	class Foo {
+		New() {}
 	}
 
 	class Test {
-		function : DoStuff(postfix : String) ~ Nil {
-			stack := Struct.Stack->New();
+		function : Main(args : String[]) ~ Nil {
+			v := Vector->New();
+			v->AddBack("one");	
+			v->AddBack(Foo->New());
+			v->AddBack("three");	
 
-			each(i : postfix) {
-				char := postfix->Get(i);
-				select(char) {
-					other: {
-						if(char = '.') {
-							"is '.'"->PrintLine();
-						}
-						else {
-							"not '.'"->PrintLine();
-						};
-					}
-
-					label 'b': {  
-						"is 'b'"->PrintLine();
-					}
-
-					label 'c': {  
-						"is 'c'"->PrintLine();
-					}
-				};
+			each(i : v) {
+				s := v->Get(i)->As(String)->Size();
+				s->PrintLine();
 			};
 		}
-
-#~
-		function : Main(args : String[]) ~ Nil {
-			t := Thingy->New();
-			t->Get()->PrintLine();
-
-			DoStuff("ab.cd");
-		}
-~#
 	}
 }

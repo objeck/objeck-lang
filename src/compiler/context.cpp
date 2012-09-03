@@ -2047,14 +2047,18 @@ bool ContextAnalyzer::Analyze()
     // cast
     if(expression->GetCastType()) {
       Type* cast_type = expression->GetCastType();
-      Type* base_type = expression->GetBaseType();
+      Type* root_type = expression->GetBaseType();
+      if(!root_type) {
+	root_type = expression->GetEvalType();
+      }
+      
       // cannot cast across different dimensions
-      if(base_type && expression->GetExpressionType() == VAR_EXPR && 
+      if(root_type && expression->GetExpressionType() == VAR_EXPR && 
 	 !static_cast<Variable*>(expression)->GetIndices() &&
-	 cast_type->GetDimension() != base_type->GetDimension()) {
+	 cast_type->GetDimension() != root_type->GetDimension()) {
 	ProcessError(expression, "Dimension size mismatch");
       }
-      AnalyzeRightCast(cast_type, expression->GetBaseType(), expression, IsScalar(expression), depth + 1);
+      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
     }
     // typeof
     else if(expression->GetTypeOf()) {
@@ -3551,8 +3555,7 @@ bool ContextAnalyzer::Analyze()
 	}
 	// invalid cast
 	else {
-	  ProcessError(expression, "Invalid cast between classes: '" +
-		       left->GetClassName() + "' and '" +
+	  ProcessError(expression, "Invalid cast between classes: '" + left->GetClassName() + "' and '" +
 		       right->GetClassName() + "'");
 	}
       }
