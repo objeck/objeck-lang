@@ -68,7 +68,7 @@ bundle JSON {
 				}
 
 				label TokenType->IDENT: {
-					element := JSONElement->New(JSONType->STRING, @cur_token->GetValue());
+					element := JSONElement->New(@cur_token->GetValue());
 # Console->Print("string=")->PrintLine(@cur_token->GetValue());
 					NextToken();
 					
@@ -407,11 +407,26 @@ bundle JSON {
 		New(type : JSONType, value : String) {
 			if(type = JSONType->STRING | type = JSONType->NUMBER) {
 				@type := type;	
-				@value := value;
+				@value := value;				
 			}
 			else {
 				@type := JSONType->OTHER;
 			};
+		}
+
+		New(value : String) {
+			@type := JSONType->STRING;	
+			@value := value;
+		}
+		
+		New(value : Int) {
+			@type := JSONType->NUMBER;	
+			@value := value->ToString();
+		}
+
+		New(value : Float) {
+			@type := JSONType->NUMBER;	
+			@value := value->ToString();
 		}
 
 		New(array_elems : Vector) {
@@ -471,8 +486,64 @@ bundle JSON {
 			
 			return 0;
 		}
-	}
 
+		method : public : ToString() ~ String {
+			output := String->New();
+			Format(output);		
+			return output;
+		}
+		
+		method : Format(output : String) ~ Nil {
+			select(@type) {
+				label JSONType->STRING: 
+				label JSONType->NUMBER: {
+					if(@value <> Nil) {
+						output->Append('"');
+						output->Append(@value);
+						output->Append('"');
+					};
+				}
+				
+				label JSONType->TRUE: {
+					output->Append("\"true\"");
+				}
+
+				label JSONType->FALSE: {
+					output->Append("\"false\"");
+				}
+
+				label JSONType->ARRAY: {
+					if(@array_elems <> Nil) {
+						output->Append('[');
+						each(i : @array_elems) {
+							@array_elems->Get(i)->As(JSONElement)->Format(output);
+							if(i + 1 < @array_elems->Size()) {
+								output->Append(',');
+							};
+						};
+						output->Append(']');
+					};
+				}
+
+				label JSONType->OBJECT: {
+					if(@map_elems <> Nil) {
+						output->Append('{');
+						keys := @map_elems->GetKeys();
+						each(i : keys) {
+							key := keys->Get(i)->As(String);
+							value := @map_elems->Find(key);
+							output->Append('"');
+							output->Append(key);
+							output->Append("\":");
+							value->As(JSONElement)->Format(output);
+						};
+						output->Append('}');
+					};
+				}
+			};
+		}
+	}
+	
 	enum JSONType {
 		STRING,
 		NUMBER,
