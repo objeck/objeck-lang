@@ -1,0 +1,11 @@
+Objeck v3.1.4_1
+
+--------------
+Release Notes
+--------------
+The focus of this release was primarily on bug fixing.
+
+Highlights of this specific release include the following:
+* Bug in ‘select’ statements related to the location of the 'other' tag (high)
+* Fixed a bug in the XML parser related to processing XPath-type parameters (medium)
+* Fixed a bug in the RegEx library sounding support for wildcard expressions (medium)
