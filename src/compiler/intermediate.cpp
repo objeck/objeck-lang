@@ -860,6 +860,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      EmitClassCast(method_call);
+      
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
 	switch(OrphanReturn(method_call)) {
@@ -935,6 +937,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     do {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      EmitClassCast(method_call);
+      
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
 	switch(OrphanReturn(method_call)) {
@@ -1973,6 +1977,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // emit call
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      EmitClassCast(method_call);
       
       // next call
       if(method_call->GetMethod()) {
@@ -2113,6 +2118,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      EmitClassCast(method_call);
+      
       // next call
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
@@ -2172,6 +2179,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     do {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
+      EmitClassCast(method_call);
+      
       // next call
       if(method_call->GetMethod()) {
 	Method* method = method_call->GetMethod();
@@ -2654,7 +2663,6 @@ void IntermediateEmitter::EmitCast(Expression* expression)
 								 parsed_program->GetUses())->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
     }
-    
   }
 }
 
