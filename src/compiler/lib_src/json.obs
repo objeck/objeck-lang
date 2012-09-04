@@ -495,12 +495,17 @@ bundle JSON {
 		
 		method : Format(output : String) ~ Nil {
 			select(@type) {
-				label JSONType->STRING: 
-				label JSONType->NUMBER: {
+				label JSONType->STRING: {
 					if(@value <> Nil) {
 						output->Append('"');
 						output->Append(@value);
 						output->Append('"');
+					};
+				}
+
+				label JSONType->NUMBER: {
+					if(@value <> Nil) {
+						output->Append(@value);
 					};
 				}
 				
@@ -513,7 +518,6 @@ bundle JSON {
 				}
 
 				label JSONType->ARRAY: {
-"xxx"->PrintLine();				
 					if(@array_elems <> Nil) {
 						output->Append('[');
 						each(i : @array_elems) {
@@ -530,24 +534,18 @@ bundle JSON {
 					if(@map_elems <> Nil) {
 						output->Append('{');
 						keys := @map_elems->GetKeys();
-keys->Size()->PrintLine();						
 						each(i : keys) {
 							key := keys->Get(i)->As(String);
-key->PrintLine();							
-#							value : JSONElement := @map_elems->Find(key);
-							value := @map_elems->Find(key);
-							
+							value := @map_elems->Find(key);							
 							output->Append('"');
 							output->Append(key);
 							output->Append("\":");
-						
-							
-(value <> Nil)->PrintLine();							
 							value->As(JSONElement)->Format(output);
-# value->Format(output);
+							if(i + 1 < @map_elems->Size()) {
+								output->Append(',');
+							};
 						};
 						output->Append('}');
-"end"->PrintLine();						
 					};
 				}
 			};
