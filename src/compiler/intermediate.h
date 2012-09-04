@@ -218,6 +218,11 @@ class IntermediateEmitter {
   void EmitClassCast(Expression* expression) {
     // class cast
     if(expression->GetToClass()) {
+
+if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,") {
+  cout << "@@@@@@" << endl;
+}
+
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
       } else {
@@ -225,6 +230,11 @@ class IntermediateEmitter {
       }
     } 
     else if(expression->GetToLibraryClass()) {
+
+if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,") {
+  cout << "@@@@@@" << endl;
+}
+
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
       } else {
