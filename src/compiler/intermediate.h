@@ -215,14 +215,10 @@ class IntermediateEmitter {
                           IntermediateDeclarations* parameters, bool is_static);
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
   
+  // emits class cast checks
   void EmitClassCast(Expression* expression) {
     // class cast
     if(expression->GetToClass()) {
-
-if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,") {
-  cout << "@@@@@@" << endl;
-}
-
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
       } else {
@@ -230,11 +226,6 @@ if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,
       }
     } 
     else if(expression->GetToLibraryClass()) {
-
-if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,") {
-  cout << "@@@@@@" << endl;
-}
-
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
       } else {
@@ -243,6 +234,7 @@ if(current_method->GetEncodedName() == "JSON.JSONElement:Format:o.System.String,
     }
   }
   
+  // determines if a method call returns an unused value
   int OrphanReturn(MethodCall* method_call) {
     if(!method_call) {
       return -1;
