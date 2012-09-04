@@ -684,6 +684,7 @@ bool ContextAnalyzer::Analyze()
 
     case METHOD_CALL_STMT:
       AnalyzeMethodCall(static_cast<MethodCall*>(statement), depth);
+      AnalyzeCast(static_cast<MethodCall*>(statement), depth + 1);
       break;
 
 
@@ -2044,8 +2045,9 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
   {
-    // cast
+    // type cast
     if(expression->GetCastType()) {
+      // get cast and root types
       Type* cast_type = expression->GetCastType();
       Type* root_type = expression->GetBaseType();
       if(!root_type) {
@@ -2058,9 +2060,13 @@ bool ContextAnalyzer::Analyze()
 	 cast_type->GetDimension() != root_type->GetDimension()) {
 	ProcessError(expression, "Dimension size mismatch");
       }
-      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      
+      // casts for variables are handled elsewhere
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
+	AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      }
     }
-    // typeof
+    // typeof check
     else if(expression->GetTypeOf()) {
       if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
 	 expression->GetEvalType()->GetType() != CLASS_TYPE) {
