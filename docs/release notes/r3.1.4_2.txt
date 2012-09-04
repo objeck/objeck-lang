@@ -6,8 +6,8 @@ Release Notes
 The focus of this release was primarily on bug fixing.
 
 Highlights of this specific release include the following:
-* JSON ‘ToString’ sterilization support (new)
-* Resolved bug in ‘select’ statements related to the location of the ‘other’ tag (high)
+* JSON 'ToString' sterilization support (new)
+* Resolved bug in 'select' statements related to the location of the 'other' tag (high)
 * Improved error handling for runtime class cast exceptions (high)
 * Resolved bug in the XML parser related to processing XPath-type parameters (medium)
 * Fixed a bug in the RegEx library sounding support for wildcard expressions (medium)
