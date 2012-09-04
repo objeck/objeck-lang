@@ -3,18 +3,22 @@
 bundle Default {
 	class Foo {
 		New() {}
+	
+		method : public : Size() ~ Int {
+			return 13;
+		}
 	}
 
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			v := Vector->New();
-			v->AddBack("one");	
 			v->AddBack(Foo->New());
-			v->AddBack("three");	
+			v->AddBack(Foo->New());
+			v->AddBack(Foo->New());
 
 			each(i : v) {
-				s := v->Get(i)->As(String)->Size();
-				s->PrintLine();
+#				a := v->Get(i)->As(Foo)->Size();
+				v->Get(i)->As(Foo)->Size();
 			};
 		}
 	}
