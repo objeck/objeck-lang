@@ -860,7 +860,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
-      EmitClassCast(method_call);
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
@@ -937,7 +936,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     do {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
-      EmitClassCast(method_call);
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
@@ -1977,7 +1975,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // emit call
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
-      EmitClassCast(method_call);
+      if(!method_call->GetVariable()) {
+	EmitClassCast(method_call);
+      }
       
       // next call
       if(method_call->GetMethod()) {
@@ -2118,7 +2118,9 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
-      EmitClassCast(method_call);
+      if(!method_call->GetVariable()) {
+	EmitClassCast(method_call);
+      }
       
       // next call
       if(method_call->GetMethod()) {
@@ -2179,7 +2181,9 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     do {
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
-      EmitClassCast(method_call);
+      if(!method_call->GetVariable()) {
+	EmitClassCast(method_call);
+      }
       
       // next call
       if(method_call->GetMethod()) {
@@ -2471,8 +2475,6 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     EmitExpression(left);
     break;
   }
-
-  
   
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
@@ -2784,9 +2786,8 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
-// class cast
-  EmitClassCast(variable);
-
+    // class cast
+    EmitClassCast(variable);
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
   }
 }
