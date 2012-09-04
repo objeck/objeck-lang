@@ -5,11 +5,8 @@ bundle Default {
 	class Json {
 		function : Main(args : String[]) ~ Nil {
 			array_values := Vector->New();
-#			array_values->AddBack(JSONElement->New("hello"));
-			array_values->AddBack("yyy");
-			array_values->AddBack("yyy");
-			array_values->AddBack("yyy");
-#			array_values->AddBack(JSONElement->New("world"));
+			array_values->AddBack(JSONElement->New("hello"));
+			array_values->AddBack(JSONElement->New("world"));
 			root := JSONElement->New(array_values);	
 			root->ToString()->PrintLine();
 		}
