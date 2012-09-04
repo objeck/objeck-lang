@@ -8,7 +8,13 @@ bundle Default {
 			array_values->AddBack(JSONElement->New("hello"));
 			array_values->AddBack(JSONElement->New("world"));
 			root := JSONElement->New(array_values);	
-			root->ToString()->PrintLine();
+#			root->ToString()->PrintLine();
+
+			map_values := StringMap->New();
+			map_values->Insert("greetings", root);
+			x := JSONElement->New(map_values);	
+			x->ToString()->PrintLine();
+			
 		}
 	}
 }
