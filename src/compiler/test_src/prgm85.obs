@@ -3,8 +3,8 @@
 		function : Main(args : String[]) ~ Nil {
 #			b : Base := "hello";
 			x := Struct.Vector->New();
-			x->AddBack(Struct.IntHolder->New(13));
-			x->AddBack(Struct.IntHolder->New(7));
+#			x->AddBack(Struct.IntHolder->New(13));
+#			x->AddBack(Struct.IntHolder->New(7));
 			b : Base := x;
 #			b : String := "hello";
 			b->As(Struct.Vector)->Size()->PrintLine();
