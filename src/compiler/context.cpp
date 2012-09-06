@@ -901,26 +901,34 @@ bool ContextAnalyzer::Analyze()
   }
 
   void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
-    if(array->GetDimension() < 0) {
-      ProcessError(array, "Invalid static array definition.");
+    vector<int> sizes = array->GetSizes();
+    for(size_t i = 0; i < sizes.size(); i++) {
+      if(sizes[i] < 0) {
+	ProcessError(array, "Invalid static array definition.");
+      }
     }
-    else if(!array->IsMatchingTypes()) {
+    
+    if(!array->IsMatchingTypes()) {
       ProcessError(array, "Array element types do not match.");
     }
     else if(!array->IsMatchingLenghts()) {
       ProcessError(array, "Array dimension lenghts do not match.");
     }
     else {
-      Type* type = TypeFactory::Instance()->MakeType(array->GetType());
-      type->SetDimension(array->GetDimension());
+      size_t dim = array->GetSize(0);
+      array->SetDimension(dim);
+      Type* type = TypeFactory::Instance()->MakeType(array->GetType());      
+      type->SetDimension(dim);      
       if(type->GetType() == CLASS_TYPE) {
 	type->SetClassName("System.String");
       }
-      array->SetEvalType(type, false);
+      // array->SetEvalType(type, false);
 
       // ensure that element sizes match dimensions
       vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
-      size_t total_size = array->GetSize(0);
+      int total_size = all_elements.size();
+      
+      /*
       for(int i = 1; i < array->GetDimension(); i++) {
 	total_size *= array->GetSize(i);
       }
@@ -928,6 +936,7 @@ bool ContextAnalyzer::Analyze()
       if(all_elements.size() != total_size) {
 	ProcessError(array, "Element counts do not match dimension sizes");
       }
+      */
 
       switch(array->GetType()) {
       case INT_TYPE: {

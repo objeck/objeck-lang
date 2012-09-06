@@ -163,7 +163,6 @@ void StaticArray::Validate(StaticArray* array) {
   for(size_t i = 0; i < static_array.size(); i++) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-	dim = static_array.size();  
 	Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
