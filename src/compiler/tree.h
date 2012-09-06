@@ -593,14 +593,14 @@ namespace frontend {
     friend class TreeFactory;
     ExpressionList* elements;
     ExpressionList* all_elements;
+    vector<int> sizes;
     bool matching_types;
     ExpressionType cur_type;
     bool matching_lengths;
     int cur_length;
     int id;
     int dim;
-    vector<int> sizes;
-
+    
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
       for(size_t i = 0; i < static_array.size(); i++) { 
@@ -615,10 +615,22 @@ namespace frontend {
       } 
     }
 
+    void GetSizes(StaticArray* array, int &count) {
+      vector<Expression*> static_array = array->GetElements()->GetExpressions();
+      for(size_t i = 0; i < static_array.size(); i++) { 
+	if(static_array[i]) {
+	  if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	    count++;
+	    GetSizes(static_cast<StaticArray*>(static_array[i]), count);
+	  }
+	}
+      } 
+    }
+    
     void GetSize(StaticArray* array, int dim, int &size);
     
   public:
-  StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
+    StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
       elements = e;
       all_elements = NULL;
       matching_types = matching_lengths = true;
@@ -628,7 +640,7 @@ namespace frontend {
     
       Validate(this);
     }
-  
+    
     void Validate(StaticArray* array);
   
     ~StaticArray() {
@@ -644,25 +656,6 @@ namespace frontend {
 
     int GetId() {
       return id;
-    }
-    
-    vector<int> GetSizes() {
-      if(!sizes.size()) {
-	vector<Expression*> static_array = GetElements()->GetExpressions();
-	for(size_t i = 0; i < static_array.size(); i++) { 
-	  if(static_array[i]) {
-	    if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-	      sizes.push_back(GetSize());
-	    }
-	    else {
-	      elem_size = static_array.size();
-	    }
-	  }
-	} 
-	sizes.push_back(elem_size);
-      }
-      
-      return sizes;
     }
     
     void SetDimension(int d) {
@@ -697,8 +690,9 @@ namespace frontend {
     ExpressionList* GetElements() {
       return elements;
     }
-
+    
     ExpressionList* GetAllElements();
+    vector<int> GetSizes();
 
     int GetSize(int dim);
     
