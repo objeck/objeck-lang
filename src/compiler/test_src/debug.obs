@@ -1,25 +1,9 @@
-﻿use Struct;
-
-bundle Default {
-	class Foo {
-		New() {}
-	
-		method : public : Size() ~ Int {
-			return 13;
-		}
-	}
-
+﻿bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			v := Vector->New();
-			v->AddBack(Foo->New());
-			v->AddBack(Foo->New());
-			v->AddBack(Foo->New());
-
-			each(i : v) {
-#				a := v->Get(i)->As(Foo)->Size();
-				v->Get(i)->As(Foo)->Size();
-			};
+			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
+			aa[0,0]->PrintLine();
+			aa[1,3]->PrintLine();
 		}
 	}
 }

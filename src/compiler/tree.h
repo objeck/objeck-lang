@@ -599,6 +599,7 @@ namespace frontend {
     int cur_length;
     int id;
     int dim;
+    vector<int> sizes;
 
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
@@ -643,6 +644,29 @@ namespace frontend {
 
     int GetId() {
       return id;
+    }
+    
+    vector<int> GetSizes() {
+      if(!sizes.size()) {
+	vector<Expression*> static_array = GetElements()->GetExpressions();
+	for(size_t i = 0; i < static_array.size(); i++) { 
+	  if(static_array[i]) {
+	    if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	      sizes.push_back(GetSize());
+	    }
+	    else {
+	      elem_size = static_array.size();
+	    }
+	  }
+	} 
+	sizes.push_back(elem_size);
+      }
+      
+      return sizes;
+    }
+    
+    void SetDimension(int d) {
+      dim = d;
     }
 
     int GetDimension() {
