@@ -197,6 +197,19 @@ ExpressionList* StaticArray::GetAllElements() {
   return all_elements;
 }
 
+vector<int> StaticArray::GetSizes() {
+  if(!sizes.size()) {
+    int count = 0;
+    GetSizes(this, count);
+    if(count) {
+      sizes.push_back(count);
+    }
+    sizes.push_back(cur_length);
+  }
+  
+  return sizes;
+}
+
 int StaticArray::GetSize(int dim) {
   int size;
   GetSize(this, dim, size);
