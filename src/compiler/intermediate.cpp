@@ -2236,12 +2236,29 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
 void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   cur_line_num = array->GetLineNumber();
   
-  vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
   if(array->GetType() != frontend::CLASS_TYPE) {
+    /*
     // write array dimensions
     for(int i = 0; i < array->GetDimension(); i++) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetSize(i)));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetSize()));
+      int foo = array->GetSize(i);
+      cout << foo << endl;
     }
+    
+    vector<Expression*> ee = array->GetElements()->GetExpressions();
+    for(size_t x = 0; x < ee.size(); x++) {
+      Expression* e = ee[x];
+      cout << e << endl;
+    }
+    */
+    
+    vector<int> sizes = array->GetSizes();
+    for(size_t i = 0; i < sizes.size(); i++) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetDimension()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
+    }
+    
+
     // write copy instructions
     switch(array->GetType()) {
     case frontend::INT_TYPE:    
@@ -2272,6 +2289,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   else {
     // create string literals
     is_str_array = true;
+    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
     for(int i = all_elements.size() - 1; i > -1; i--) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
