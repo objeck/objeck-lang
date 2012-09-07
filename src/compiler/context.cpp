@@ -901,6 +901,11 @@ bool ContextAnalyzer::Analyze()
   }
 
   void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
+    if(array->GetDimension() > 2) {
+      ProcessError(array, "Invalid static array declaration.");
+      return;
+    }
+
     if(!array->IsMatchingTypes()) {
       ProcessError(array, "Array element types do not match.");
       return;

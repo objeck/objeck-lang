@@ -591,16 +591,16 @@ namespace frontend {
    ****************************/
   class StaticArray : public Expression {
     friend class TreeFactory;
+    int id;
+    int dim;
+    int cur_length;
     ExpressionList* elements;
     ExpressionList* all_elements;
     vector<int> sizes;
     bool matching_types;
     ExpressionType cur_type;
     bool matching_lengths;
-    int cur_length;
-    int id;
-    int dim;
-    
+        
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
       for(size_t i = 0; i < static_array.size(); i++) { 
