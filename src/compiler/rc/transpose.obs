@@ -1,23 +1,28 @@
 ﻿bundle Default {
-	class Hello {
+	class Transpose {
 		function : Main(args : String[]) ~ Nil {
+			x := 4; 
+			y := 5;
 			m := [[1, 1, 1, 1]
 				[2, 4, 8, 16]
 				[3, 9, 27, 81]
 				[4, 16, 64, 256]
 				[5, 25, 125, 625]];
 
-			ans := Int->New[4,5];
-		
-			for(i := 0; i < 4; i+=1;) {
-				for(j := 0; j < 5; j+=1;) {
-					ans[i,j] := m[i,j];
+			result := Int->New[x,y];
+			for(i := 0; i < x; i+=1;) {
+				for(j := 0; j < y; j+=1;) {
+					result[i,j] := m[i,j];
 				};
 			};	
 
-			for(i := 0; i < 4; i+=1;) {
-				for(j := 0; j < 5; j+=1;) {
-					IO.Console->Print(ans[i,j])->Print(',');
+			Print(result, x, y);
+		}
+
+		function : Print(matrix : Int[,], x : Int, y : Int) ~ Nil {
+			for(i := 0; i < x; i+=1;) {
+				for(j := 0; j < y; j+=1;) {
+					IO.Console->Print(matrix[i,j])->Print(',');
 				};
 				'\n'->Print();
 			};
