@@ -1,8 +1,7 @@
 ﻿bundle Default {
 	class Transpose {
 		function : Main(args : String[]) ~ Nil {
-			x := 4; 
-			y := 5;
+			x := 4; y := 5;
 			m := [[1, 1, 1, 1]
 				[2, 4, 8, 16]
 				[3, 9, 27, 81]
@@ -22,7 +21,7 @@
 		function : Print(matrix : Int[,], x : Int, y : Int) ~ Nil {
 			for(i := 0; i < x; i+=1;) {
 				for(j := 0; j < y; j+=1;) {
-					IO.Console->Print(matrix[i,j])->Print(',');
+					IO.Console->Print(matrix[i,j])->Print('\t');
 				};
 				'\n'->Print();
 			};
