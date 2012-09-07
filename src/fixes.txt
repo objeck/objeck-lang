@@ -1,4 +1,7 @@
-8/18/12 - now
+9/6/12 - now
+* changed the way static arrays are initilized
+
+8/18/12 - 9/4/12
 * fixed a bug in the XML parser related to processing XPath-type parameters
 * fixed a bug related to 'other' labels in 'select' statements
 * fixed a bug in the regex library regarding support for ".*" wildcard expressions
