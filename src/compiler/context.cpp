@@ -901,6 +901,7 @@ bool ContextAnalyzer::Analyze()
   }
 
   void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
+    // TOOD: support for 3d or 4d initialization
     if(array->GetDimension() > 2) {
       ProcessError(array, "Invalid static array declaration.");
       return;

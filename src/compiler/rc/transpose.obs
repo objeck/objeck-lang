@@ -1,0 +1,26 @@
+﻿bundle Default {
+	class Hello {
+		function : Main(args : String[]) ~ Nil {
+			m := [[1, 1, 1, 1]
+				[2, 4, 8, 16]
+				[3, 9, 27, 81]
+				[4, 16, 64, 256]
+				[5, 25, 125, 625]];
+
+			ans := Int->New[4,5];
+		
+			for(i := 0; i < 4; i+=1;) {
+				for(j := 0; j < 5; j+=1;) {
+					ans[i,j] := m[i,j];
+				};
+			};	
+
+			for(i := 0; i < 4; i+=1;) {
+				for(j := 0; j < 5; j+=1;) {
+					IO.Console->Print(ans[i,j])->Print(',');
+				};
+				'\n'->Print();
+			};
+		}
+	}
+}
