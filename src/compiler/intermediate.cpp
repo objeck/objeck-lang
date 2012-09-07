@@ -2237,28 +2237,12 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   cur_line_num = array->GetLineNumber();
   
   if(array->GetType() != frontend::CLASS_TYPE) {
-    /*
-    // write array dimensions
-    for(int i = 0; i < array->GetDimension(); i++) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetSize()));
-      int foo = array->GetSize(i);
-      cout << foo << endl;
-    }
-    
-    vector<Expression*> ee = array->GetElements()->GetExpressions();
-    for(size_t x = 0; x < ee.size(); x++) {
-      Expression* e = ee[x];
-      cout << e << endl;
-    }
-    */
-    
+    // emit dimensions
     vector<int> sizes = array->GetSizes();
-    for(size_t i = 0; i < sizes.size(); i++) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetDimension()));
+    for(size_t i = 0; i < sizes.size(); i++) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
     
-
     // write copy instructions
     switch(array->GetType()) {
     case frontend::INT_TYPE:    
@@ -2294,10 +2278,13 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
     is_str_array = false;
-    // write array dimensions
-    for(int i = 0; i < array->GetDimension(); i++) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetSize(i)));
+
+    // emit dimensions
+    vector<int> sizes = array->GetSizes();
+    for(size_t i = 0; i < sizes.size(); i++) {      
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
+    
     // create string array
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));        
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARYS));

@@ -901,99 +901,80 @@ bool ContextAnalyzer::Analyze()
   }
 
   void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
-    vector<int> sizes = array->GetSizes();
-    for(size_t i = 0; i < sizes.size(); i++) {
-      if(sizes[i] < 0) {
-	ProcessError(array, "Invalid static array definition.");
-      }
-    }
-    
     if(!array->IsMatchingTypes()) {
       ProcessError(array, "Array element types do not match.");
+      return;
     }
-    else if(!array->IsMatchingLenghts()) {
-      ProcessError(array, "Array dimension lenghts do not match.");
+   
+    if(!array->IsMatchingLenghts()) {
+      ProcessError(array, "Array dimension lengths do not match.");
+      return;
     }
-    else {
-      size_t dim = array->GetSize(0);
-      array->SetDimension(dim);
-      Type* type = TypeFactory::Instance()->MakeType(array->GetType());      
-      type->SetDimension(dim);      
-      if(type->GetType() == CLASS_TYPE) {
-	type->SetClassName("System.String");
-      }
-      // array->SetEvalType(type, false);
-
-      // ensure that element sizes match dimensions
-      vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
-      int total_size = all_elements.size();
+   
+    Type* type = TypeFactory::Instance()->MakeType(array->GetType());  
+    type->SetDimension(array->GetDimension());
+    if(type->GetType() == CLASS_TYPE) {
+      type->SetClassName("System.String");
+    }
+    array->SetEvalType(type, false);
       
-      /*
-      for(int i = 1; i < array->GetDimension(); i++) {
-	total_size *= array->GetSize(i);
+    // ensure that element sizes match dimensions
+    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+    switch(array->GetType()) {
+    case INT_TYPE: {
+      int id = program->GetIntStringId(all_elements);
+      if(id > -1) {
+	array->SetId(id);
       }
-
-      if(all_elements.size() != total_size) {
-	ProcessError(array, "Element counts do not match dimension sizes");
+      else {
+	array->SetId(int_str_index);
+	program->AddIntString(all_elements, int_str_index);
+	int_str_index++;
       }
-      */
+    }
+      break;
 
-      switch(array->GetType()) {
-      case INT_TYPE: {
-	int id = program->GetIntStringId(all_elements);
-	if(id > -1) {
-	  array->SetId(id);
-	}
-	else {
-	  array->SetId(int_str_index);
-	  program->AddIntString(all_elements, int_str_index);
-	  int_str_index++;
-	}
+    case FLOAT_TYPE: {
+      int id = program->GetFloatStringId(all_elements);
+      if(id > -1) {
+	array->SetId(id);
       }
-	break;
-
-      case FLOAT_TYPE: {
-	int id = program->GetFloatStringId(all_elements);
-	if(id > -1) {
-	  array->SetId(id);
-	}
-	else {
-	  array->SetId(float_str_index);
-	  program->AddFloatString(all_elements, float_str_index);
-	  float_str_index++;
-	}
+      else {
+	array->SetId(float_str_index);
+	program->AddFloatString(all_elements, float_str_index);
+	float_str_index++;
       }
-	break;
+    }
+      break;
 
-      case CHAR_TYPE: {
-	// copy string elements
-	string str;
-	for(size_t i = 0; i < all_elements.size(); i++) {
-	  str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
-	}
-	// associate char string
-	int id = program->GetCharStringId(str);
-	if(id > -1) {
-	  array->SetId(id);
-	}
-	else {
-	  array->SetId(char_str_index);
-	  program->AddCharString(str, char_str_index);
-	  char_str_index++;
-	}
+    case CHAR_TYPE: {
+      // copy string elements
+      string str;
+      for(size_t i = 0; i < all_elements.size(); i++) {
+	str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
       }
-	break;
-
-      case CLASS_TYPE:
-	for(size_t i = 0; i < all_elements.size(); i++) {
-	  AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
-	}
-	break;
-
-      default:
-	ProcessError(array, "Invalid type for static array.");
-	break;
+      // associate char string
+      int id = program->GetCharStringId(str);
+      if(id > -1) {
+	array->SetId(id);
       }
+      else {
+	array->SetId(char_str_index);
+	program->AddCharString(str, char_str_index);
+	char_str_index++;
+      }
+    }
+      break;
+
+    case CLASS_TYPE:
+      for(size_t i = 0; i < all_elements.size(); i++) {
+	AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
+      }
+      break;
+
+    default:
+      ProcessError(array, "Invalid type for static array.");
+      break;
     }
   }
 

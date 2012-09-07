@@ -163,6 +163,9 @@ void StaticArray::Validate(StaticArray* array) {
   for(size_t i = 0; i < static_array.size(); i++) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+	if(i == 0) {
+	  dim++;
+	}
 	Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
@@ -201,10 +204,11 @@ vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
     int count = 0;
     GetSizes(this, count);
+    
+    sizes.push_back(cur_length);
     if(count) {
       sizes.push_back(count);
     }
-    sizes.push_back(cur_length);
   }
   
   return sizes;
