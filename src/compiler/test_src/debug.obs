@@ -1,12 +1,27 @@
 ﻿bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			aa : Int[,] := [[[1,2][3,4][5,6][7,8]  [[1,2][3,4][5,6][7,8] ]]];
+#			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
+
 #~
+			a : Int[] := [1,2,3];
 			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
+			aaa : Int[,,] := [ [[1,2][3,4][5,6][7,8]]  [[1,2][3,4][5,6][7,8]] ];
+~#
+
+			aa := [[1,2][3,4][5,6][8]];
 			aa[0,0]->PrintLine();
 			aa[1,3]->PrintLine();
-~#
+
+			a : Int[] := [1,2,3];
+			a[0]->PrintLine();
+			a[2]->PrintLine();
+
+			ss : String[,]:= [["dog","cat"]["red","blue"]["white","black"]];
+			ss[0,0]->PrintLine();
+			ss[1,1]->PrintLine();
+			ss[1,2]->PrintLine();
+			
 		}
 	}
 }

@@ -531,7 +531,7 @@ namespace frontend {
     Type* GetEvalType() {
       return eval_type;
     }
-
+    
     void SetEvalType(Type* e, bool zd) {
       eval_type = TypeFactory::Instance()->MakeType(e);
 
@@ -658,10 +658,6 @@ namespace frontend {
       return id;
     }
     
-    void SetDimension(int d) {
-      dim = d;
-    }
-
     int GetDimension() {
       return dim;
     }

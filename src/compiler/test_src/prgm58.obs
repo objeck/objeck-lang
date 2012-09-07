@@ -9,7 +9,7 @@ bundle Default {
 			c : Char[] := ['N','e','o'];
 			c->PrintLine();
 
-			ff : Float[] := [[5.5,0.45]];
+			ff : Float[] := [5.5,0.45];
 			ff[0]->PrintLine();
 
 			xx : Int[,] := [[1,2][3,4][5,6]];
