@@ -23,6 +23,14 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Size(b : Bool[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(b : Bool[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		function : native : ToString(b : Bool) ~ String {
 			string : String;
 
@@ -76,6 +84,14 @@ bundle System {
 
 		function : Size(b : Byte[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Size(b : Byte[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(b : Byte[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
 		}
 
 		function : native : ToBinaryString(b : Int) ~ String {
@@ -202,6 +218,14 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Size(c : Char[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(c : Char[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		function : native : ToString(c : Char) ~ String {
 			string : String := String->New();
 			string->Append(c);
@@ -287,6 +311,14 @@ bundle System {
 
 		function : Size(i : Int[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Size(i : Int[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(i : Int[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
 		}
 
 		function : native : ToBinaryString(i : Int) ~ String {
@@ -410,6 +442,14 @@ bundle System {
 			LOAD_ARY_SIZE;
 		}
 
+		function : Size(f : Float[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(f : Float[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
 		function : native : ToString(f : Float) ~ String {
 			str := String->New();
 			remainder := f - f->Floor();
@@ -427,6 +467,14 @@ bundle System {
 	class $BaseArray {
 		function : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
+		}
+
+		function : Size(f : System.Base[,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
+		}
+
+		function : Size(f : System.Base[,,]) ~ Int[] {
+			LOAD_MULTI_ARY_SIZE;
 		}
 	}
 

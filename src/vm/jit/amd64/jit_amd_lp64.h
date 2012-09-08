@@ -1622,6 +1622,30 @@ namespace Runtime {
 	}  
 	  break;
 	  
+	case LOAD_MULTI_ARY_SIZE: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  if(!array) {
+	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
+	    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	    exit(1);
+	  }
+    
+	  // allocate 'size' array and copy metadata
+	  long size = array[1];
+	  long dim = 1;
+	  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+							  op_stack, *stack_pos);
+	  for(int i = 0; i < size; i++) {
+	    mem[i + 3] = array[i + 2];
+	  }    
+	  mem[0] = size;
+	  mem[1] = dim;
+	  mem[2] = size;
+
+	  PushInt(op_stack, stack_pos, (long)mem);
+	}
+	  break;
+	  
 	case CPY_CHAR_STR_ARY: {
  	  long index = PopInt(op_stack, stack_pos);
 	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
