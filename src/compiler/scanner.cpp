@@ -150,6 +150,7 @@ void Scanner::LoadKeywords()
   ident_map["LOAD_NEW_OBJ_INST"] = LOAD_NEW_OBJ_INST;
   ident_map["LOAD_INST_UID"] = LOAD_INST_UID;
   ident_map["LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
+  ident_map["LOAD_MULTI_ARY_SIZE"] = LOAD_MULTI_ARY_SIZE;
   // standard i/o
   ident_map["STD_IN_STRING"] = STD_IN_STRING;
   ident_map["STD_OUT_BOOL"] = STD_OUT_BOOL;
@@ -307,6 +308,7 @@ void Scanner::CheckIdentifier(int index)
   case LOAD_INST_UID:
   case STD_OUT_BOOL:
   case LOAD_ARY_SIZE:
+  case LOAD_MULTI_ARY_SIZE:
   case STD_OUT_CHAR_ARY:
   case STD_OUT_BYTE_ARY:
   case STD_IN_STRING:
