@@ -8,7 +8,7 @@ The focus of this release was primarily on bug fixing.
 Highlights of this specific release include the following:
 * JSON 'ToString' sterilization support (new)
 * The 'Size' method for multi-dimensional arrays returns an array of sizes for each dimensional (new)
-* Modified the syntax for 2D array initialization (enhancement)
+* Modified the syntax for 2D static array initialization (enhancement)
 * Resolved bug in 'select' statements related to the location of the 'other' tag (high)
 * Improved error handling for runtime class cast exceptions (high)
 * Resolved bug in the XML parser related to processing XPath-type parameters (medium)
