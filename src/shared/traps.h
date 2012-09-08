@@ -42,6 +42,7 @@ namespace instructions {
 		LOAD_NEW_OBJ_INST,
     LOAD_INST_UID,
     LOAD_ARY_SIZE,
+    LOAD_MULTI_ARY_SIZE,
     CPY_CHAR_STR_ARY,
     CPY_CHAR_STR_ARYS,
     CPY_INT_STR_ARY,
