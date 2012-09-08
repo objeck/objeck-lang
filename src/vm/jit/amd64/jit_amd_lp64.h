@@ -1635,9 +1635,10 @@ namespace Runtime {
 	  long dim = 1;
 	  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
 							  op_stack, *stack_pos);
-	  for(int i = 0; i < size; i++) {
-	    mem[i + 3] = array[i + 2];
-	  }    
+	  int i, j;
+	  for(i = 0, j = size + 2; i < size; i++) {
+	    mem[i + 3] = array[--j];
+	  }
 	  mem[0] = size;
 	  mem[1] = dim;
 	  mem[2] = size;

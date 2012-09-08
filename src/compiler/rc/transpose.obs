@@ -1,26 +1,30 @@
 ﻿bundle Default {
 	class Transpose {
 		function : Main(args : String[]) ~ Nil {
-			x := 4; y := 5;
-			m := [[1, 1, 1, 1]
+			input := [[1, 1, 1, 1]
 				[2, 4, 8, 16]
 				[3, 9, 27, 81]
 				[4, 16, 64, 256]
 				[5, 25, 125, 625]];
+			dim := input->Size();
 
-			result := Int->New[x,y];
-			for(i := 0; i < x; i+=1;) {
-				for(j := 0; j < y; j+=1;) {
-					result[i,j] := m[i,j];
+dim[0]->PrintLine();
+dim[1]->PrintLine();
+
+			output := Int->New[dim[0],dim[1]];
+			for(i := 0; i < dim[0]; i+=1;) {
+				for(j := 0; j < dim[1]; j+=1;) {
+					output[i,j] := input[i,j];
 				};
 			};	
 
-			Print(result, x, y);
+			Print(output);
 		}
 
-		function : Print(matrix : Int[,], x : Int, y : Int) ~ Nil {
-			for(i := 0; i < x; i+=1;) {
-				for(j := 0; j < y; j+=1;) {
+		function : Print(matrix : Int[,]) ~ Nil {
+			dim := matrix->Size();
+			for(i := 0; i < dim[0]; i+=1;) {
+				for(j := 0; j < dim[1]; j+=1;) {
 					IO.Console->Print(matrix[i,j])->Print('\t');
 				};
 				'\n'->Print();
