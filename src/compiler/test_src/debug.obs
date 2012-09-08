@@ -1,16 +1,37 @@
 ﻿bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
+			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
+			x := aa->Size();
+	
+			x->Size()->PrintLine();
+			x[0]->PrintLine();
+			x[1]->PrintLine();
+
+"----------"->PrintLine();
+			
+#			bb : Int[,,] := Int->New[3,2,1];
+			bb : Int[,,];
+			y := bb->Size();
+#			y->Size()->PrintLine();
+			y[0]->PrintLine();
+			y[1]->PrintLine();
+			y[2]->PrintLine();
+			
+#~
 			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
 
 			aa := [ [[1, 2, 3, 4][1, 2, 3, 4][1, 2, 3, 4]]
 				[ [1, 2, 3, 4][1, 2, 3, 4][1, 2, 3, 4]] ];
 
-#~
 			a : Int[] := [1,2,3];
 			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
 			aaa : Int[,,] := [ [[1,2][3,4][5,6][7,8]]  [[1,2][3,4][5,6][7,8]] ];
-~#
 
 			aa := [[1,2][3,4][5,6][7,8]];
 			aa[0,0]->PrintLine();
@@ -24,7 +45,7 @@
 			ss[0,0]->PrintLine();
 			ss[1,1]->PrintLine();
 			ss[1,2]->PrintLine();
-			
+~#
 		}
 	}
 }

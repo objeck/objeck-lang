@@ -2140,7 +2140,31 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     PushInt(array[2], op_stack, stack_pos);
   }
     break;
+    
+  case LOAD_MULTI_ARY_SIZE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(!array) {
+      cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+      StackErrorUnwind();
+      exit(1);
+    }
+    
+    // allocate 'size' array and copy metadata
+    long size = array[1];
+    long dim = 1;
+    long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+						    op_stack, *stack_pos);
+    for(int i = 0; i < size; i++) {
+      mem[i + 3] = array[i + 2];
+    }    
+    mem[0] = size;
+    mem[1] = dim;
+    mem[2] = size;
 
+    PushInt((long)mem, op_stack, stack_pos);
+  }
+    break;
+    
   case CPY_CHAR_STR_ARY: {
     long index = PopInt(op_stack, stack_pos);
     BYTE_VALUE* value_str = program->GetCharStrings()[index];
