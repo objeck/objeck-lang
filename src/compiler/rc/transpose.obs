@@ -8,9 +8,6 @@
 				[5, 25, 125, 625]];
 			dim := input->Size();
 
-dim[0]->PrintLine();
-dim[1]->PrintLine();
-
 			output := Int->New[dim[0],dim[1]];
 			for(i := 0; i < dim[0]; i+=1;) {
 				for(j := 0; j < dim[1]; j+=1;) {
