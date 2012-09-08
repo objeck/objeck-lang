@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
   usage += "  -src: input source files (separated by ',')\n";
   usage += "  -opt: source optimizations (s0-s3 being the most aggressive) default is s0\n";
   usage += "  -lib: input linked libraries (separated by ',')\n";
-  usage += "  -tar: output target (lib for linked library or exe for execute) default is exe\n";
+  usage += "  -tar: output target ('lib' for linked library or 'exe' for executable) default is 'exe'\n";
   usage += "  -dest: output file name\n";
   usage += "  -debug: compile with debug symbols (must be last argument)";
 
