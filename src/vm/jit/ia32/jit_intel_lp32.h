@@ -1442,7 +1442,7 @@ namespace Runtime {
 	  break;
 
 	case LOAD_MULTI_ARY_SIZE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
 	  if(!array) {
 	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
 	    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1450,18 +1450,19 @@ namespace Runtime {
 	  }
 	  
 	  // allocate 'size' array and copy metadata
-	  long size = array[1];
-	  long dim = 1;
-	  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-							  op_stack, *stack_pos);
-	  for(int i = 0; i < size; i++) {
-	    mem[i + 3] = array[i + 2];
-	  }    
+	  int32_t size = array[1];
+	  int32_t dim = 1;
+	  int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+								(long*)op_stack, *stack_pos);
+	  int i, j;
+	  for(i = 0, j = size + 2; i < size; i++) {
+	    mem[i + 3] = array[--j];
+	  }
 	  mem[0] = size;
 	  mem[1] = dim;
 	  mem[2] = size;
 	  
-	  PushInt(op_stack, stack_pos, (long)mem);
+	  PushInt(op_stack, stack_pos, (int32_t)mem);
 	}
 	  break;
 	  

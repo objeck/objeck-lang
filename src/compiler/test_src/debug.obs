@@ -4,8 +4,8 @@
 			Run();
 		}
 
-#		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {
+		function : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 			aa : Int[,] := [[1,2][3,4][5,6][7,8]];
 			x := aa->Size();
 	
@@ -15,10 +15,9 @@
 
 "----------"->PrintLine();
 			
-#			bb : Int[,,] := Int->New[3,2,1];
-			bb : Int[,,];
+			bb : Int[,,] := Int->New[3,2,1];
 			y := bb->Size();
-#			y->Size()->PrintLine();
+			y->Size()->PrintLine();
 			y[0]->PrintLine();
 			y[1]->PrintLine();
 			y[2]->PrintLine();
