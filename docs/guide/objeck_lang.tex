@@ -300,7 +300,6 @@ defined types) can be allocated as arrays.  The code example below
 shows how a two-dimensional array of type \texttt{Int} is allocated
 and dereferenced.
 
-
 \begin{verbatim}
 array := Int->New[2,3];
 array[0,2] := 13;
@@ -310,7 +309,7 @@ array[1,0] := 7;
 The size of an array can be obtained by calling the array's
 \texttt{Size()} method.  The \texttt{Size()} method will return the
 number of elements in a given array.  For a multi-dimensional array
-the size method returns the number of elements in the first dimension.
+the \texttt{Size()} method returns an array of sizes for each dimension.  
 Character array literals are allocated as \texttt{String} objects.
 The \texttt{String} class provides support for advanced string operations.
 
@@ -2439,6 +2438,8 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \end{itemize}
 \end{itemize}
 
+\newpage
+
 \section{Examples}
 \subsection{Prime Numbers}
 Demonstrates basic language features such as arithmetic and logical operations.
@@ -2477,6 +2478,43 @@ bundle Default {
 \end{verbatim}
 
 \newpage
+
+Demonstrates the use of arrays.
+\begin{verbatim}
+bundle Default {
+  class Transpose {
+    function : Main(args : String[]) ~ Nil {
+      input := [[1, 1, 1, 1]
+        [2, 4, 8, 16]
+        [3, 9, 27, 81]
+        [4, 16, 64, 256]
+        [5, 25, 125, 625]];
+      dim := input->Size();
+ 
+      output := Int->New[dim[0],dim[1]];
+      for(i := 0; i < dim[0]; i+=1;) {
+        for(j := 0; j < dim[1]; j+=1;) {
+          output[i,j] := input[i,j];
+        };
+      };
+ 
+      Print(output);
+    }
+ 
+    function : Print(matrix : Int[,]) ~ Nil {
+      dim := matrix->Size();
+      for(i := 0; i < dim[0]; i+=1;) {
+        for(j := 0; j < dim[1]; j+=1;) {
+          IO.Console->Print(matrix[i,j])->Print('\t');
+        };
+        '\n'->Print();
+      };
+    }
+  }
+}
+\end{verbatim}
+
+\newpage        
 
 \subsection{Simple HTTP client}
 Demonstrates HTTP access.
