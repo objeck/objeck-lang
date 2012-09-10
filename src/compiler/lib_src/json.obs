@@ -209,9 +209,23 @@ bundle JSON {
 						index += 1;
 						offset := index;
 						# TODO: support for '\"'
-						while(index < input->Size() & input[index] <> '"') {
-							# update
-							index += 1;
+						end := false;
+						escape := false;
+						while(index < input->Size() & end = false) {
+							if(input[index] = '"' & escape = false) {
+								# done
+								end := true;
+							}
+							else if(input[index] = '\\') {
+								escape := true;
+								# update
+								index += 1;
+							}
+							else {
+								escape := false;
+								# update
+								index += 1;
+							};
 						};
 						len := index - offset;
 						if(len > 0) {
@@ -413,7 +427,7 @@ bundle JSON {
 			}
 			else if(type = JSONType->NULL) {
 				@type := type;	
-				@value := "null";
+				@value := "";
 			}
 			else {
 				@type := JSONType->OTHER;

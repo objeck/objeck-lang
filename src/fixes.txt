@@ -1,4 +1,7 @@
-9/6/12 - now
+9/9/12 - now
+* added support for 'null' JSON types and escaped character values
+
+9/6/12 - 9/9/12
 * changed the way static arrays are initilized
 
 8/18/12 - 9/4/12
