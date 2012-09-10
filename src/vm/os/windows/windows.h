@@ -242,7 +242,7 @@ public:
     int addrlen = sizeof(pin);
 
     SOCKET client = accept(server, (struct sockaddr *)&pin, &addrlen);
-    if(client < 0) {
+    if(client == INVALID_SOCKET) {
       client_address[0] = '\0';
       client_port = -1;
       return -1;
