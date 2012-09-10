@@ -9,8 +9,8 @@ bundle Default {
 					parser := JSONParser->New(input);
 					root := parser->Parse();
 					if(root <> Nil) {
-						if(root->GetType() = JSONType->ARRAY) {
-							"array elements"->PrintLine();
+						if(root->GetType() = JSONType->OBJECT) {
+							"parsed"->PrintLine();
 						};	
 					};
 				};
