@@ -208,7 +208,6 @@ bundle JSON {
 					if(input[index] = '"') {
 						index += 1;
 						offset := index;
-						# TODO: support for '\"'
 						end := false;
 						escape := false;
 						while(index < input->Size() & end = false) {
@@ -239,7 +238,6 @@ bundle JSON {
 							else if(string->Equals("null")) {
 								tokens->AddBack(Token->New(TokenType->NULL));
 							}
-							# TODO: translate escape characters
 							else {							
 								tokens->AddBack(Token->New(TokenType->IDENT, string));
 							};
@@ -286,7 +284,7 @@ bundle JSON {
 
 						# TODO: e digits
 						while(index < input->Size() & 
-							(input[index]->IsDigit() | input[index] = '-' | input[index] = '.')) {
+							(input[index]->IsDigit() | input[index] = '-' | input[index] = '.' | input[index] = 'e' | input[index] = 'E')) {
 							if(input[index] = '-') {
 								minus_count += 1;
 							}
