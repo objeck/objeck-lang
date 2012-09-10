@@ -93,6 +93,12 @@ bundle JSON {
 					NextToken();
 				}
 				
+				label TokenType->NULL: {
+					element := JSONElement->New(JSONType->NULL);
+# "null"->PrintLine();
+					NextToken();
+				}
+				
 				other: {
 					"*** Unexpected value *** "->PrintLine();
 # @cur_token->GetType()->As(Int)->PrintLine();				
@@ -216,6 +222,9 @@ bundle JSON {
 							else if(string->Equals("false")) {
 								tokens->AddBack(Token->New(TokenType->FALSE));
 							}
+							else if(string->Equals("null")) {
+								tokens->AddBack(Token->New(TokenType->NULL));
+							}
 							# TODO: translate escape characters
 							else {							
 								tokens->AddBack(Token->New(TokenType->IDENT, string));
@@ -228,7 +237,7 @@ bundle JSON {
 						index += 1;
 					}
 					# true
-					else if(input[index] = 't' | input[index] = 'f') {
+					else if(input[index] = 't' | input[index] = 'f' | input[index] = 'n') {
 						offset := index;
 						while(index < input->Size() & input[index]->IsChar()) {
 							# update
@@ -243,6 +252,9 @@ bundle JSON {
 							}
 							else if(string->Equals("false")) {
 								tokens->AddBack(Token->New(TokenType->FALSE));
+							}
+							else if(string->Equals("null")) {
+								tokens->AddBack(Token->New(TokenType->NULL));
 							}
 							else {
 								tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
@@ -399,6 +411,10 @@ bundle JSON {
 				@type := type;	
 				@value := "false";
 			}
+			else if(type = JSONType->NULL) {
+				@type := type;	
+				@value := "null";
+			}
 			else {
 				@type := JSONType->OTHER;
 			};
@@ -516,6 +532,10 @@ bundle JSON {
 				label JSONType->FALSE: {
 					output->Append("\"false\"");
 				}
+				
+				label JSONType->NULL: {
+					output->Append("\"null\"");
+				}
 
 				label JSONType->ARRAY: {
 					if(@array_elems <> Nil) {
@@ -557,6 +577,7 @@ bundle JSON {
 		NUMBER,
 		TRUE,
 		FALSE,
+		NULL,
 		ARRAY,
 		OBJECT,
 		OTHER
@@ -594,6 +615,7 @@ bundle JSON {
 		BAD_NUM,
 		TRUE,
 		FALSE,
+		NULL,
 		COMMA,
 		OBR,
 		CBR,
