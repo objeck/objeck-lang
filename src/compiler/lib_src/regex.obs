@@ -381,34 +381,36 @@ bundle RegEx {
 		
 		# find longest match
 		method : Find(state : State, input : String, offset : Int) ~ Int {
-			longest := -1;
-			clist := Vector->New();  
-			clist->AddBack(state->GetOut1()->As(Base));  
-			clist->AddBack(state->GetOut2()->As(Base));
-			
+			clist := Vector->New();
+			clist->AddBack(state->GetOut1());
+			clist->AddBack(state->GetOut2());
+
+			i : Int;
 			for(i := offset; i < input->Size(); i += 1;) {
-				char := input->Get(i);  
+				char := input->Get(i);
 				char := char and 0xff;
-				
+
 				clist := Step(clist, char);
-				if(clist->Size() <> 0) {    		
-					if(IsMatch(clist)) {
-						if(i > longest) {
-							longest := i;
-						};
-					};
+				if(clist->Size() = 0) {
+					return i;
 				};
+ 			};
+			
+#~			
+			# longest not exact
+			if(IsMatch(clist)) {
+				return i;
 			};
-						
-			return longest; 
-		}
+~#			
+			return i;
+ 		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
-			if(@start <> Nil & offset < input->Size()) {
+			if(@start <> Nil) {
 				return Find(@start, input, offset);
 			};
 			
-			return -1;
+			return 0;
 		}
 		
 		method : public : Find(input : String) ~ Int {
