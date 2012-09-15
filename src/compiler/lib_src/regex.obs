@@ -288,7 +288,7 @@ bundle RegEx {
 		#~
 		# Match pattern
 		~#
-		method : native : Step(clist : Vector, char : Char) ~ Vector { 
+		method : native : Step(clist : Vector, char : Char, index : Int) ~ Vector { 
 			if(clist->Size() = 0) {
 				return clist;
 			};
@@ -328,11 +328,11 @@ bundle RegEx {
 			};
 			
 			if(all_null) {
-				return Step(nlist, char);
+				return Step(nlist, char, index);
 			};
 			
 			if(matched = false) {
-				return Step(nlist, char);
+				return Step(nlist, char, index);
 			};
 			
 			return nlist;
@@ -358,11 +358,11 @@ bundle RegEx {
 			clist->AddBack(state->GetOut1());
 			clist->AddBack(state->GetOut2());
 
-			each(i : input) {
+			each(index : input) {
 				char := input->Get(i);
 				char := char and 0xff;
 
-				clist := Step(clist, char);
+				clist := Step(clist, char, index);
 				if(clist->Size() = 0) {
 					return false;
 				};
@@ -386,11 +386,16 @@ bundle RegEx {
 			clist->AddBack(state->GetOut2());
 
 			i : Int;
+<<<<<<< .mine
+			for(index := offset; i < input->Size(); i += 1;) {
+				char := input->Get(index);  
+=======
 			for(i := offset; i < input->Size(); i += 1;) {
 				char := input->Get(i);
+>>>>>>> .r2682
 				char := char and 0xff;
 
-				clist := Step(clist, char);
+				clist := Step(clist, char, index);
 				if(clist->Size() = 0) {
 					return i;
 				};
