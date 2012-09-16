@@ -5,7 +5,8 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				regex := RegEx->New(args[0]);
-				regex->Find(args[1])->PrintLine();
+#				regex->Find(args[1])->PrintLine();
+				regex->MatchAll(args[1])->PrintLine();
 			};
 		}
 	}

@@ -289,6 +289,9 @@ bundle RegEx {
 		# Match pattern
 		~#
 		method : native : Step(clist : Vector, char : Char, index : Int) ~ Vector { 
+			left := -1;
+			right := -1;
+			
 			if(clist->Size() = 0) {
 				return clist;
 			};
@@ -309,10 +312,22 @@ bundle RegEx {
 					if(check = '.'  | (check = char & t->GetEnd()->GetType() = 1)) {
 					  matched := true;
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
+						left := index;
+# IO.Console->Print("left=")->PrintLine(index);
 					  	nlist->AddBack(t->GetEnd()->GetOut1());
 					  };
 					  
 					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
+						if(right = index) {
+IO.Console->Print("\tmatch=")->PrintLine(index);						
+						};
+
+						if(left = index) {
+IO.Console->Print("\tmatch=")->PrintLine(index);						
+						};
+						
+						right := index;
+# IO.Console->Print("right=")->PrintLine(index);
 					  	nlist->AddBack(t->GetEnd()->GetOut2());
 					  };
 					}
@@ -324,6 +339,7 @@ bundle RegEx {
 						nlist->AddBack(t->GetEnd()->GetOut1());
 						nlist->AddBack(t->GetEnd()->GetOut2());
 					};
+			
 				};
 			};
 			
@@ -359,7 +375,7 @@ bundle RegEx {
 			clist->AddBack(state->GetOut2());
 
 			each(index : input) {
-				char := input->Get(i);
+				char := input->Get(index);
 				char := char and 0xff;
 
 				clist := Step(clist, char, index);
@@ -385,29 +401,19 @@ bundle RegEx {
 			clist->AddBack(state->GetOut1());
 			clist->AddBack(state->GetOut2());
 
-			i : Int;
-<<<<<<< .mine
-			for(index := offset; i < input->Size(); i += 1;) {
-				char := input->Get(index);  
-=======
-			for(i := offset; i < input->Size(); i += 1;) {
-				char := input->Get(i);
->>>>>>> .r2682
+			for(index := offset; index < input->Size(); index += 1;) {
+				char := input->Get(index);
 				char := char and 0xff;
 
 				clist := Step(clist, char, index);
 				if(clist->Size() = 0) {
-					return i;
+					return -1;
 				};
  			};
-			
-#~			
-			# longest not exact
-			if(IsMatch(clist)) {
-				return i;
-			};
-~#			
-			return i;
+
+			IsMatch(clist);
+
+			return -1;
  		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
