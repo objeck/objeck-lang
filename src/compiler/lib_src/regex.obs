@@ -14,9 +14,11 @@ bundle RegEx {
 	class RegEx {
 		@input : String;
 		@start : State;
+		@longest : Int;
 		
 		New(input : String) {	
 			@input := input;
+			@longest := -1;
 			postfix := RegEx2Postfix(@input);
 			if(postfix <> Nil) {
 				@start := Postfix2Nfa(postfix);
@@ -313,21 +315,21 @@ bundle RegEx {
 					  matched := true;
 					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
 						left := index;
-# IO.Console->Print("left=")->PrintLine(index);
 					  	nlist->AddBack(t->GetEnd()->GetOut1());
 					  };
 					  
 					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
 						if(right = index) {
-IO.Console->Print("\tmatch=")->PrintLine(index);						
+# IO.Console->Print("\tmatch=")->PrintLine(index);
+							@longest := index;					
 						};
 
 						if(left = index) {
-IO.Console->Print("\tmatch=")->PrintLine(index);						
+# IO.Console->Print("\tmatch=")->PrintLine(index);
+							@longest := index;						
 						};
 						
 						right := index;
-# IO.Console->Print("right=")->PrintLine(index);
 					  	nlist->AddBack(t->GetEnd()->GetOut2());
 					  };
 					}
@@ -401,19 +403,17 @@ IO.Console->Print("\tmatch=")->PrintLine(index);
 			clist->AddBack(state->GetOut1());
 			clist->AddBack(state->GetOut2());
 
-			for(index := offset; index < input->Size(); index += 1;) {
+			each(index : input) {
 				char := input->Get(index);
 				char := char and 0xff;
 
 				clist := Step(clist, char, index);
 				if(clist->Size() = 0) {
-					return -1;
+					return @longest;
 				};
  			};
-
-			IsMatch(clist);
-
-			return -1;
+			
+			return @longest;
  		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
