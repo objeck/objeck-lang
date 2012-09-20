@@ -312,26 +312,29 @@ bundle RegEx {
 					};	
 				
 					if(check = '.'  | (check = char & t->GetEnd()->GetType() = 1)) {
-					  matched := true;
-					  if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
-						left := index;
-					  	nlist->AddBack(t->GetEnd()->GetOut1());
-					  };
-					  
-					  if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
-						if(right = index) {
-# IO.Console->Print("\tmatch=")->PrintLine(index);
-							@longest := index;					
-						};
-
-						if(left = index) {
-# IO.Console->Print("\tmatch=")->PrintLine(index);
-							@longest := index;						
-						};
+						matched := true;
 						
-						right := index;
-					  	nlist->AddBack(t->GetEnd()->GetOut2());
-					  };
+						if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
+							left := index;
+							t->GetEnd()->GetOut1()->SetIndex(@longest);
+							nlist->AddBack(t->GetEnd()->GetOut1());
+						};
+					  
+						if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
+							if(right = index) {
+# IO.Console->Print("\tmatch=")->PrintLine(index);
+								@longest := index;					
+							};
+
+							if(left = index) {
+# IO.Console->Print("\tmatch=")->PrintLine(index);
+								@longest := index;						
+							};
+						
+							right := index;
+							t->GetEnd()->GetOut2()->SetIndex(@longest);
+							nlist->AddBack(t->GetEnd()->GetOut2());
+						};
 					}
 					else if(check = char & t->GetEnd()->GetType() = 0) {          
 						matched := true;  
@@ -341,7 +344,6 @@ bundle RegEx {
 						nlist->AddBack(t->GetEnd()->GetOut1());
 						nlist->AddBack(t->GetEnd()->GetOut2());
 					};
-			
 				};
 			};
 			
@@ -368,6 +370,23 @@ bundle RegEx {
 			};
 			
 			return false;
+		}
+
+		method : IsFound(clist : Vector) ~ Int {
+			each(i : clist) {
+				t := clist->Get(i)->As(Transition);
+				if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
+"-2-"->PrintLine();
+					return t->GetIndex();
+				}
+				else if(t <> Nil & t->GetValue() = '.' & t->GetEnd() <> Nil) {
+"-3-"->PrintLine();
+					return t->GetIndex();
+				};
+			};
+"-4-"->PrintLine();			
+
+			return -1;
 		}
 		
 		# match all
@@ -409,11 +428,14 @@ bundle RegEx {
 
 				clist := Step(clist, char, index);
 				if(clist->Size() = 0) {
+"-0-"->PrintLine();
 					return @longest;
 				};
  			};
-			
-			return @longest;
+
+"-1-"->PrintLine();
+
+			return IsFound(clist);
  		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
@@ -435,9 +457,11 @@ bundle RegEx {
 	class Transition {
 		@value : Int;
 		@end : State;
+		@index : Int;
     
 		New(value : Int) {
 			@value := value;  
+			@index := -1;
 		}
 		
 		method : public : GetValue() ~ Int {
@@ -450,6 +474,14 @@ bundle RegEx {
 		
 		method : public : SetEnd(end : State) ~ Nil {
 			@end := end;
+		}
+
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		method : public : SetIndex(index : Int) ~ Nil {
+			@index := index;
 		}
 	}
 	
