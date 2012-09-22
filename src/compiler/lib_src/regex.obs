@@ -316,22 +316,23 @@ bundle RegEx {
 						
 						if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
 							left := index;
+IO.Console->Print("\tsetting 0=")->PrintLine(@longest);
 							t->GetEnd()->GetOut1()->SetIndex(@longest);
+
 							nlist->AddBack(t->GetEnd()->GetOut1());
 						};
 					  
 						if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
-							if(right = index) {
-# IO.Console->Print("\tmatch=")->PrintLine(index);
+							if(check <> '.' & right = index) {
 								@longest := index;					
 							};
 
-							if(left = index) {
-# IO.Console->Print("\tmatch=")->PrintLine(index);
+							if(check <> '.' & left = index) {
 								@longest := index;						
 							};
 						
 							right := index;
+IO.Console->Print("\tsetting 1=")->PrintLine(@longest);
 							t->GetEnd()->GetOut2()->SetIndex(@longest);
 							nlist->AddBack(t->GetEnd()->GetOut2());
 						};
@@ -380,13 +381,15 @@ bundle RegEx {
 					return t->GetIndex();
 				}
 				else if(t <> Nil & t->GetValue() = '.' & t->GetEnd() <> Nil) {
-"-3-"->PrintLine();
+IO.Console->Print("-3-: ")->PrintLine(@longest);
+"-4-"->PrintLine();
 					return t->GetIndex();
 				};
-			};
-"-4-"->PrintLine();			
 
-			return -1;
+IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());	
+			};		
+
+			return @longest;
 		}
 		
 		# match all
@@ -435,7 +438,11 @@ bundle RegEx {
 
 "-1-"->PrintLine();
 
-			return IsFound(clist);
+			if(IsMatch(clist)) {
+				return input->Size() - offset - 1;
+			};
+
+			return -1;
  		}
 		
 		method : public : Find(input : String, offset : Int) ~ Int {
