@@ -2404,7 +2404,7 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \end{itemize}
 
-\subsubsection{RegEx}
+\subsection{RegEx}
 The RegEx class provides support for regular expressions.  This class
 is in \textit{beta} status. This class in the `RegEx' bundle:
 
@@ -2421,20 +2421,26 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
 \end{itemize}
 
 \begin{itemize}
-\item \texttt{New} - Compilers the regular expression
+\item \texttt{New} - Compiles the regular expression
   \begin{itemize}
   \item New(pattern : String)
   \end{itemize}
 \item \texttt{Match} - Attempts to match input string using supplied pattern.
   Returns true if successful, false otherwise. 
   \begin{itemize}
-  \item method : public : MatchAll(input : String) \textasciitilde Bool
+  \item method : public : Match(input : String) \textasciitilde Bool
   \end{itemize}
-\item \texttt{Find} - Finds the last index of the matching pattern.
-  Return -1 if expression does not match.
+\item \texttt{FindIndex} - Finds the last index of the matching pattern.
+  Returns -1 if expression does not match.
   \begin{itemize}
-  \item method : public : Find(input : String) \textasciitilde Int
-  \item method : public : Find(input : String, offset : Int) \textasciitilde Int
+  \item method : public : FindIndex(input : String) \textasciitilde Int
+  \item method : public : FindIndex(input : String, offset : Int) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Find} - Finds the first matching substring for the pattern.
+  Returns an empty string if expression does not match.
+  \begin{itemize}
+  \item method : public : Find(input : String) \textasciitilde String
+  \item method : public : Find(input : String, offset : Int) \textasciitilde String
   \end{itemize}
 \end{itemize}
 
