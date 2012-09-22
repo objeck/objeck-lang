@@ -315,30 +315,33 @@ bundle RegEx {
 						matched := true;
 						
 						if(t->GetEnd()->GetOut1()->GetEnd() <> Nil) {
-							left := index;
-IO.Console->Print("\tsetting 0=")->PrintLine(@longest);
-							t->GetEnd()->GetOut1()->SetIndex(@longest);
+							if(check <> '.' & right < index) {
+								@longest := index;					
+							};
 
+							if(check <> '.' & left < index) {
+								@longest := index;						
+							};
+					
+							left := index;
 							nlist->AddBack(t->GetEnd()->GetOut1());
 						};
 					  
 						if(t->GetEnd()->GetOut2()->GetEnd() <> Nil) {
-							if(check <> '.' & right = index) {
+							if(check <> '.' & right < index) {
 								@longest := index;					
 							};
 
-							if(check <> '.' & left = index) {
+							if(check <> '.' & left < index) {
 								@longest := index;						
 							};
 						
 							right := index;
-IO.Console->Print("\tsetting 1=")->PrintLine(@longest);
-							t->GetEnd()->GetOut2()->SetIndex(@longest);
 							nlist->AddBack(t->GetEnd()->GetOut2());
 						};
 					}
 					else if(check = char & t->GetEnd()->GetType() = 0) {          
-						matched := true;  
+						matched := true;
 						return ListUitls->NewList(t); 
 					}
 					else if(check = -1 & t->GetEnd() <> Nil) {
@@ -372,28 +375,9 @@ IO.Console->Print("\tsetting 1=")->PrintLine(@longest);
 			
 			return false;
 		}
-
-		method : IsFound(clist : Vector) ~ Int {
-			each(i : clist) {
-				t := clist->Get(i)->As(Transition);
-				if(t <> Nil & t->GetValue() = -1 & t->GetEnd() <> Nil & t->GetEnd()->IsMatched()) {
-"-2-"->PrintLine();
-					return t->GetIndex();
-				}
-				else if(t <> Nil & t->GetValue() = '.' & t->GetEnd() <> Nil) {
-IO.Console->Print("-3-: ")->PrintLine(@longest);
-"-4-"->PrintLine();
-					return t->GetIndex();
-				};
-
-IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());	
-			};		
-
-			return @longest;
-		}
 		
 		# match all
-		method : MatchAll(state : State, input : String) ~ Bool {
+		method : Match(state : State, input : String) ~ Bool {
 			clist := Vector->New();
 			clist->AddBack(state->GetOut1());
 			clist->AddBack(state->GetOut2());
@@ -411,16 +395,20 @@ IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());
 			return IsMatch(clist);
  		}
 		
-		method : public : MatchAll(input : String) ~ Bool {
+		method : public : Match(input : String) ~ Bool {
 			if(@start <> Nil) {
-				return MatchAll(@start, input);
+				return Match(@start, input);
 			};
 			
 			return false;
 		}
 		
 		# find longest match
-		method : Find(state : State, input : String, offset : Int) ~ Int {
+		method : Find(state : State, input : String, offset : Int) ~ String {
+			if(offset >= input->Size()) {
+				return "";
+			};
+
 			clist := Vector->New();
 			clist->AddBack(state->GetOut1());
 			clist->AddBack(state->GetOut2());
@@ -430,31 +418,69 @@ IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());
 				char := char and 0xff;
 
 				clist := Step(clist, char, index);
-				if(clist->Size() = 0) {
-"-0-"->PrintLine();
-					return @longest;
+				if(clist->Size() = 0) {					
+					return input->SubString(offset, @longest + 1);
 				};
  			};
 
-"-1-"->PrintLine();
 
 			if(IsMatch(clist)) {
-				return input->Size() - offset - 1;
+				return input->SubString(offset, input->Size() - offset);
 			};
 
-			return -1;
+			return "";
  		}
 		
-		method : public : Find(input : String, offset : Int) ~ Int {
+		method : public : Find(input : String, offset : Int) ~ String {
 			if(@start <> Nil) {
 				return Find(@start, input, offset);
 			};
 			
-			return 0;
+			return "";
 		}
 		
-		method : public : Find(input : String) ~ Int {
+		method : public : Find(input : String) ~ String {
 			return Find(input, 0);
+		}
+
+		# find longest match
+		method : FindIndex(state : State, input : String, offset : Int) ~ Int {
+			if(offset >= input->Size()) {
+				return -1;
+			};
+
+			clist := Vector->New();
+			clist->AddBack(state->GetOut1());
+			clist->AddBack(state->GetOut2());
+
+			each(index : input) {
+				char := input->Get(index);
+				char := char and 0xff;
+
+				clist := Step(clist, char, index);
+				if(clist->Size() = 0) {					
+					return @longest;
+				};
+ 			};
+
+
+			if(IsMatch(clist)) {
+				return input->Size() - offset - 1;
+			};
+			
+			return -1;
+ 		}
+
+		method : public : FindIndex(input : String, offset : Int) ~ Int {
+			if(@start <> Nil) {
+				return FindIndex(@start, input, offset);
+			};
+			
+			return -1;
+		}
+		
+		method : public : FindIndex(input : String) ~ Int {
+			return FindIndex(input, 0);
 		}
 	}
 	
@@ -464,11 +490,9 @@ IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());
 	class Transition {
 		@value : Int;
 		@end : State;
-		@index : Int;
-    
+		
 		New(value : Int) {
 			@value := value;  
-			@index := -1;
 		}
 		
 		method : public : GetValue() ~ Int {
@@ -481,14 +505,6 @@ IO.Console->Print("-4-: ")->PrintLine(t->GetIndex());
 		
 		method : public : SetEnd(end : State) ~ Nil {
 			@end := end;
-		}
-
-		method : public : GetIndex() ~ Int {
-			return @index;
-		}
-
-		method : public : SetIndex(index : Int) ~ Nil {
-			@index := index;
 		}
 	}
 	
