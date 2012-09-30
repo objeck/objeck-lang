@@ -53,6 +53,7 @@ Dump();
 		}
 
 		method : private : Dump() ~ Nil {
+			"-------------"->PrintLine();
 			each(i : @expressions) {
 				select(@expressions->Get(i)->As(Expression)->GetType()) {
 					label ExpressionType->CHAR_MATCH: {
@@ -115,8 +116,6 @@ Dump();
 				if(@error <> Nil) {
 					return;
 				};
-
-@expressions->RemoveBack();
 
 				left := @expressions->RemoveBack()->As(Expression);
 				right := @expressions->RemoveBack()->As(Expression);
