@@ -30,21 +30,58 @@ bundle Default {
 			@left := left;
 			@right := right;
 		}
+
+		method : public : GetType() ~ ExpressionType {
+			return @type;
+		}
 	}
 	
 	class RegExParser {
 		@tokens : Char[];
 		@token : Char;
 		@token_pos : Int;
-		@expressions : Stack;
+		@expressions : Vector;
 		@error : String;
 		
 		New(input : String) {
 			@tokens := input->ToCharArray();
-			@expressions := Stack->New();
+			@expressions := Vector->New();
 			
 			NextToken();
 			Parse();
+Dump();
+		}
+
+		method : private : Dump() ~ Nil {
+			each(i : @expressions) {
+				select(@expressions->Get(i)->As(Expression)->GetType()) {
+					label ExpressionType->CHAR_MATCH: {
+						"-match-"->PrintLine();
+					}
+
+					label ExpressionType->ANY_MATCH: {
+						"-any-"->PrintLine();
+					}
+
+					label ExpressionType->OR_MATCH: {
+						"-or-"->PrintLine();
+					}
+
+					label ExpressionType->ZERO_MORE: {
+						"-0 or more-"->PrintLine();
+					}
+
+					label ExpressionType->ONE_MORE: {
+						"-1 or more-"->PrintLine();
+					}
+				};
+			};
+		}
+		
+		method : private : Compile() ~ Nil {
+			if(@expressions->Size() > 0) {
+
+			};
 		}
 
 		method : private : NextToken() ~ Nil {
@@ -79,9 +116,11 @@ bundle Default {
 					return;
 				};
 
-				left := @expressions->Pop()->As(Expression);
-				right := @expressions->Pop()->As(Expression);
-				@expressions->Push(Expression->New(left, right));
+@expressions->RemoveBack();
+
+				left := @expressions->RemoveBack()->As(Expression);
+				right := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(left, right));
 IO.Console->PrintLine("match: or_match");
 			};
 		}
@@ -94,8 +133,8 @@ IO.Console->PrintLine("match: or_match");
 
 			if(@token = '*') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->Pop()->As(Expression);
-					@expressions->Push(Expression->New(ExpressionType->ZERO_MORE, expression));
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
 IO.Console->PrintLine("match: zero_or_more");
 					NextToken();
 				}
@@ -106,8 +145,8 @@ IO.Console->PrintLine("match: zero_or_more");
 			}
 			else if(@token = '+') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->Pop()->As(Expression);
-					@expressions->Push(Expression->New(ExpressionType->ONE_MORE, expression));
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(ExpressionType->ONE_MORE, expression));
 IO.Console->PrintLine("match: one_or_more");
 					NextToken();
 				}
@@ -120,7 +159,7 @@ IO.Console->PrintLine("match: one_or_more");
 
 		method : private : Value() ~ Nil {
 			if(@token->IsChar() | @token->IsDigit()) {
-				@expressions->Push(Expression->New(@token));
+				@expressions->AddBack(Expression->New(@token));
 IO.Console->Print("match: char=")->PrintLine(@token);
 				NextToken();
 			}
