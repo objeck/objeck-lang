@@ -60,10 +60,13 @@ bundle Struct {
 			@size := @size + 1;
 		}
 
-		method : public : RemoveBack() ~ Nil {
+		method : public : RemoveBack() ~ Int {
 			if(@size > 0) {
-				@size := @size - 1;
+				@size -= 1;
+				return @values[@size];
 			};
+	
+			return 0;
 		}
 
 		method : public : Get(index : Int) ~ Int {
@@ -296,10 +299,13 @@ bundle Struct {
 			@size := @size + 1;
 		}
 
-		method : public : RemoveBack() ~ Nil {
+		method : public : RemoveBack() ~ Float {
 			if(@size > 0) {
-				@size := @size - 1;
+				@size -= 1;
+				return @values[@size];
 			};
+	
+			return 0.0;
 		}
 
 		method : public : Get(index : Int) ~ Float {
@@ -530,10 +536,13 @@ bundle Struct {
 			@size := @size + 1;
 		}
 
-		method : public : RemoveBack() ~ Nil {
+		method : public : RemoveBack() ~ Compare {
 			if(@size > 0) {
-				@size := @size - 1;
+				@size -= 1;
+				return @values[@size];
 			};
+	
+			return Nil;
 		}
 
 		method : public : Get(index : Int) ~ Compare {
@@ -702,10 +711,13 @@ bundle Struct {
 			@size := @size + 1;
 		}
 
-		method : public : RemoveBack() ~ Nil {
+		method : public : RemoveBack() ~ Base {
 			if(@size > 0) {
-				@size := @size - 1;
+				@size -= 1;
+				return @values[@size];
 			};
+	
+			return Nil;
 		}
 
 		method : public : Get(index : Int) ~ Base {
@@ -1158,7 +1170,8 @@ bundle Struct {
 			};
 			@size := @size + 1;
 		}
-		
+	
+		# TODO: add Back() and Front()	
 		method : public : RemoveBack() ~ Nil {
 			Forward();
 			Remove();
