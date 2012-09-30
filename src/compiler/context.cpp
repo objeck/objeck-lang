@@ -3505,7 +3505,7 @@ bool ContextAnalyzer::Analyze()
 		       right->GetClassName() + "'");
 	}
       } else {
-	ProcessError(expression, "Invalid cast between class and enum");
+	ProcessError(expression, "Invalid cast between class, enum or Nil");
       }
     }
     //
@@ -3586,7 +3586,7 @@ bool ContextAnalyzer::Analyze()
 	}
       } 
       else {
-	ProcessError(expression, "Invalid cast between class and enum");
+	ProcessError(expression, "Invalid cast between class, enum or Nil");
       }
     }
     else {
