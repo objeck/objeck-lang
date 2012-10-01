@@ -53,28 +53,33 @@ Dump();
 		}
 
 		method : private : Dump() ~ Nil {
-			"-------------"->PrintLine();
-			each(i : @expressions) {
-				select(@expressions->Get(i)->As(Expression)->GetType()) {
-					label ExpressionType->CHAR_MATCH: {
-						"-match-"->PrintLine();
-					}
-
-					label ExpressionType->ANY_MATCH: {
-						"-any-"->PrintLine();
-					}
-
-					label ExpressionType->OR_MATCH: {
-						"-or-"->PrintLine();
-					}
-
-					label ExpressionType->ZERO_MORE: {
-						"-0 or more-"->PrintLine();
-					}
-
-					label ExpressionType->ONE_MORE: {
-						"-1 or more-"->PrintLine();
-					}
+			if(@error <> Nil) {
+				@error->PrintLine();
+			}
+			else {
+				"-------------"->PrintLine();
+				each(i : @expressions) {
+					select(@expressions->Get(i)->As(Expression)->GetType()) {
+						label ExpressionType->CHAR_MATCH: {
+							"-match-"->PrintLine();
+						}
+	
+						label ExpressionType->ANY_MATCH: {
+							"-any-"->PrintLine();
+						}
+	
+						label ExpressionType->OR_MATCH: {
+							"-or-"->PrintLine();
+						}
+	
+						label ExpressionType->ZERO_MORE: {
+							"-0 or more-"->PrintLine();
+						}
+	
+						label ExpressionType->ONE_MORE: {
+							"-1 or more-"->PrintLine();
+						}
+					};
 				};
 			};
 		}
@@ -96,31 +101,30 @@ Dump();
 		}
 
 		method : private : Parse() ~ Nil {
-			while(@token <> '\0') {			
-				Binary();
-				if(@error <> Nil) {
-					return;
-				};
-			};
+			Binary();
 		}		
 		
 		method : private : Binary() ~ Nil {
-			Unary();
-			if(@error <> Nil) {
-				return;
-			};
-
-			if(@token = '|') {
-				NextToken();
-				Binary();
-				if(@error <> Nil) {
-					return;
+			while(@token <> '\0') {
+				while(@token <> '\0' & @token <> '|') {
+					Unary();		
+					if(@error <> Nil) {
+						return;
+					};
 				};
-
-				left := @expressions->RemoveBack()->As(Expression);
-				right := @expressions->RemoveBack()->As(Expression);
-				@expressions->AddBack(Expression->New(left, right));
+				
+				if(@token = '|') {
+					NextToken();
+					Unary();
+					if(@error <> Nil) {
+						return;
+					};
+	
+					left := @expressions->RemoveBack()->As(Expression);
+					right := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(left, right));
 IO.Console->PrintLine("match: or_match");
+				};
 			};
 		}
 
@@ -163,20 +167,32 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 				NextToken();
 			}
 			else if(@token = '(') {
-IO.Console->PrintLine("parentheses");
-				NextToken();
-				Binary();
-				if(@token <> ')') {
-					@error := "expected ')'";
-					return;
-				};
-				NextToken();
+				Parentheses();				
 			}
 			else {
 				@error := "invalid value";
 				return;
 			};
 		}
+	
+		method : private : Parentheses() ~ Nil {
+			NextToken();
+"@@ 0 @"->PrintLine();						
+			Binary();
+			if(@error <> Nil) {
+				return;
+			};
+		
+			if(@token <> ')') {
+				@error := "expected ')'";
+				return;
+			};
+			NextToken();
+			
+"@@ 1 @"->PrintLine();					
+			
+IO.Console->PrintLine("parentheses");		
+		}	
 	}
 	
 	class Test {
