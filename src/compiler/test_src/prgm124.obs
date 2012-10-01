@@ -105,30 +105,26 @@ Dump();
 		}		
 		
 		method : private : Binary() ~ Nil {
-			while(@token <> '\0' & @token <> ')') {
-				while(@token <> '\0' & @token <> ')' & @token <> '|') {
-					Unary();		
-					if(@error <> Nil) {
-						return;
-					};
-				};
-				
-				if(@token = '|') {
-					NextToken();
-IO.Console->PrintLine("match: or_match");					
-					
-					while(@token <> '\0' & @token <> ')' & @token <> '|') {
-						Unary();						
-						if(@error <> Nil) {
-							return;
-						};
-					};
-					
-					left := @expressions->RemoveBack()->As(Expression);
-					right := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(left, right));
+			while(@token <> '\0' & @token <> ')' & @token <> '|') {
+				Unary();		
+				if(@error <> Nil) {
+					return;
 				};
 			};
+			
+			if(@token = '|') {
+				NextToken();				
+				
+				Binary();
+				if(@error <> Nil) {
+					return;
+				};
+				
+				left := @expressions->RemoveBack()->As(Expression);
+				right := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(left, right));
+IO.Console->PrintLine("match: or_match");					
+			};			
 		}
 
 		method : private : Unary() ~ Nil {
@@ -141,8 +137,8 @@ IO.Console->PrintLine("match: or_match");
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
-IO.Console->PrintLine("match: zero_or_more");
 					NextToken();
+IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -153,8 +149,8 @@ IO.Console->PrintLine("match: zero_or_more");
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ONE_MORE, expression));
-IO.Console->PrintLine("match: one_or_more");
 					NextToken();
+IO.Console->PrintLine("match: one_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -166,8 +162,8 @@ IO.Console->PrintLine("match: one_or_more");
 		method : private : Value() ~ Nil {
 			if(@token->IsChar() | @token->IsDigit()) {
 				@expressions->AddBack(Expression->New(@token));
-IO.Console->Print("match: char=")->PrintLine(@token);
 				NextToken();
+IO.Console->Print("match: char=")->PrintLine(@token);				
 			}
 			else if(@token = '(') {
 				Parentheses();				
