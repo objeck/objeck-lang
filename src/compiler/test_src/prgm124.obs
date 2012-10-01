@@ -6,26 +6,37 @@ bundle Default {
 		ANY_MATCH,
 		OR_MATCH,
 		ZERO_MORE,
-		ONE_MORE
+		ONE_MORE,
+		LIST
 	}
 	
 	class Expression {
 		@type : ExpressionType;
 		@value : Char;
-		@left : Expression;
-		@right : Expression;
+		@expression : Expression;
+		@left : Vector;
+		@right : Vector;
+		
+		New() {
+			@type := ExpressionType->ANY_MATCH;
+		}
 
 		New(value : Char) {
 			@type := ExpressionType->CHAR_MATCH;
 			@value := value;
 		}
-
-		New(type : ExpressionType, left : Expression) {
-			@type := type;
+		
+		New(left : Vector) {
+			@type := ExpressionType->LIST;
 			@left := left;
 		}
+		
+		New(type : ExpressionType, expression : Expression) {
+			@type := type;
+			@expression := expression;
+		}
 
-		New(left : Expression, right : Expression) {
+		New(left : Vector, right : Vector) {
 			@type := ExpressionType->OR_MATCH;
 			@left := left;
 			@right := right;
@@ -33,6 +44,22 @@ bundle Default {
 
 		method : public : GetType() ~ ExpressionType {
 			return @type;
+		}
+		
+		method : public : GetValue() ~ Char {
+			return @value;
+		}
+		
+		method : public : GetLeft() ~ Vector {
+			return @left;
+		}
+		
+		method : public : GetRight() ~ Vector {
+			return @right;
+		}
+		
+		method : public : GetExpression() ~ Expression {
+			return @expression;
 		}
 	}
 	
@@ -51,36 +78,66 @@ bundle Default {
 			Parse();
 Dump();
 		}
+		
+		method : private : PrintSpace(depth : Int) ~ Nil {
+			for(i := 0; i < depth; i += 1;) {
+				"  "->Print();
+			};
+		}
 
+		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
+			if(expression <> Nil) {
+				if(expression->GetType() = ExpressionType->LIST) {
+					Dump(expression->GetLeft(), depth + 1);
+				}
+				else {
+					PrintSpace(depth);
+					
+					select(expression->GetType()) {
+						label ExpressionType->CHAR_MATCH: {
+							IO.Console->Print("[=== match: token='")->Print(expression->GetValue())->PrintLine("' ===]");
+						}
+		
+						label ExpressionType->ANY_MATCH: {
+							"[=== match: any"->PrintLine();
+						}
+		
+						label ExpressionType->OR_MATCH: {
+							"[=== or ===]"->PrintLine();
+							
+							PrintSpace(depth + 1); "[--- left ---]"->PrintLine();
+							Dump(expression->GetLeft(), depth + 2);
+							
+							PrintSpace(depth + 1); "[--- right ---]"->PrintLine();
+							Dump(expression->GetRight(), depth + 2);
+						}
+		
+						label ExpressionType->ZERO_MORE: {
+							"[=== zero or more ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+		
+						label ExpressionType->ONE_MORE: {
+							"[=== one or more ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+					};
+				};
+			};	
+		}
+		
 		method : private : Dump() ~ Nil {
 			if(@error <> Nil) {
 				@error->PrintLine();
 			}
 			else {
-				"-------------"->PrintLine();
-				each(i : @expressions) {
-					select(@expressions->Get(i)->As(Expression)->GetType()) {
-						label ExpressionType->CHAR_MATCH: {
-							"-match-"->PrintLine();
-						}
-	
-						label ExpressionType->ANY_MATCH: {
-							"-any-"->PrintLine();
-						}
-	
-						label ExpressionType->OR_MATCH: {
-							"-or-"->PrintLine();
-						}
-	
-						label ExpressionType->ZERO_MORE: {
-							"-0 or more-"->PrintLine();
-						}
-	
-						label ExpressionType->ONE_MORE: {
-							"-1 or more-"->PrintLine();
-						}
-					};
-				};
+				Dump(@expressions, -1);
+			};
+		}
+		
+		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
+			each(i : expressions) {
+				Dump(expressions->Get(i)->As(Expression), depth);
 			};
 		}
 		
@@ -113,15 +170,20 @@ Dump();
 			};
 			
 			if(@token = '|') {
+"--- DIVIDE ---"->PrintLine();			
 				NextToken();				
+				
+				left := @expressions;
+				@expressions := Vector->New();
 				
 				Binary();
 				if(@error <> Nil) {
 					return;
 				};
 				
-				left := @expressions->RemoveBack()->As(Expression);
-				right := @expressions->RemoveBack()->As(Expression);
+				right := @expressions;
+				@expressions := Vector->New();
+				
 				@expressions->AddBack(Expression->New(left, right));
 IO.Console->PrintLine("match: or_match");					
 			};			
@@ -162,12 +224,17 @@ IO.Console->PrintLine("match: one_or_more");
 		method : private : Value() ~ Nil {
 			if(@token->IsChar() | @token->IsDigit()) {
 				@expressions->AddBack(Expression->New(@token));
-				NextToken();
 IO.Console->Print("match: char=")->PrintLine(@token);				
+				NextToken();
 			}
 			else if(@token = '(') {
 				Parentheses();				
 			}
+			else if(@token = '.') {
+				@expressions->AddBack(Expression->New());
+"match: any"->PrintLine();			
+				NextToken();
+			}			
 			else {
 				@error := "invalid value";
 				return;
@@ -186,6 +253,11 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 				return;
 			};
 			NextToken();
+			
+			expressions := @expressions;
+			@expressions := Vector->New();
+			@expressions->AddBack(Expression->New(expressions));
+			
 IO.Console->PrintLine("parentheses");		
 		}	
 	}
