@@ -3427,8 +3427,11 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int depth)
   {
-    Type* right = expression->GetEvalType();
-
+    Type* right = expression->GetCastType();
+    if(!right) {
+      right = expression->GetEvalType();
+    }
+    
     //
     // program enumt
     //
