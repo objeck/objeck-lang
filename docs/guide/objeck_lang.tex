@@ -1289,15 +1289,25 @@ supports the following operations:
   \begin{itemize}
   \item method : public : Rewind() \textasciitilde Nil
   \end{itemize}
-\item \texttt{IsStart} - returns true if cursor is at the start of the
+\item \texttt{IsFront} - returns true if cursor is at the front of the
   list
   \begin{itemize}
-  \item method : public : IsStart() \textasciitilde Bool
+  \item method : public : IsFront() \textasciitilde Bool
   \end{itemize}
-\item \texttt{IsEnd} - returns true if cursor is at the end of the
+\item \texttt{IsBack} - returns true if cursor is at the back of the
   list
   \begin{itemize}
-  \item method : public : IsEnd() \textasciitilde Bool
+  \item method : public : IsBack() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Front} - returns the item at the front of the list
+  list
+  \begin{itemize}
+  \item method : public : Front() \textasciitilde Compare
+  \end{itemize}
+\item \texttt{IsBack} - returns the item at the back of the list
+  list
+  \begin{itemize}
+  \item method : public : Back() \textasciitilde Compare
   \end{itemize}
 \item \texttt{Size} - returns the size of the list
 \end{itemize}
