@@ -929,14 +929,32 @@ bundle Struct {
 			@list->Remove();
 		}
 		
-		method : public : IsStart() ~ Bool {
-			return @list->IsStart();
+		method : public : IsFront() ~ Bool {
+			return @list->IsFront();
 		}	
 		
-		method : public : IsEnd() ~ Bool {
-			return @list->IsEnd();
+		method : public : IsBack() ~ Bool {
+			return @list->IsBack();
 		}
-		
+
+		method : public : Front() ~ Int {
+			holder : IntHolder := @list->Front()->As(IntHolder);
+			if(holder <> Nil) {
+				return holder->Get();
+			};
+
+			return 0;
+	    	}
+
+		method : public : Back() ~ Int {
+			holder : IntHolder := @list->Back()->As(IntHolder);
+			if(holder <> Nil) {
+				return holder->Get();
+			};
+
+			return 0;
+		}
+				
 		method : public : Size() ~ Int {
 			return @list->Size();
 		}
@@ -1062,12 +1080,30 @@ bundle Struct {
 			@list->Remove();
 		}
 		
-		method : public : IsStart() ~ Bool {
-			return @list->IsStart();
+		method : public : IsFront() ~ Bool {
+			return @list->IsFront();
 		}	
 		
-		method : public : IsEnd() ~ Bool {
-			return @list->IsEnd();
+		method : public : IsBack() ~ Bool {
+			return @list->IsBack();
+		}
+
+		method : public : Front() ~ Int {
+			holder : FloatHolder := @list->Front()->As(FloatHolder);
+			if(holder <> Nil) {
+				return holder->Get();
+			};
+
+			return 0.0;
+		}	
+
+		method : public : Back() ~ Int {
+			holder : FloatHolder := @list->Back()->As(FloatHolder);
+			if(holder <> Nil) {
+				return holder->Get();
+			};
+
+			return 0.0;
 		}
 		
 		method : public : Size() ~ Int {
@@ -1171,7 +1207,6 @@ bundle Struct {
 			@size := @size + 1;
 		}
 	
-		# TODO: add Back() and Front()	
 		method : public : RemoveBack() ~ Nil {
 			Forward();
 			Remove();
@@ -1315,14 +1350,30 @@ bundle Struct {
 			};
 		}
 
-		method : public : IsStart() ~ Bool {
-			return @cursor = Nil;
+		method : public : IsFront() ~ Bool {
+			return @cursor = @head;
 		}		
 		
-		method : public : IsEnd() ~ Bool {
-			return @cursor = Nil;
+		method : public : IsBack() ~ Bool {
+			return @cursor = @tail;
 		}		
 
+		method : public : Front() ~ Compare {
+			if(@head <> Nil) {
+				return @head->Get();
+			};
+
+			return Nil;
+		}
+
+		method : public : Back() ~ Compare {
+			if(@tail <> Nil) {
+				return @tail->Get();
+			};
+
+			return Nil;
+		}
+		
 		method : public : Size() ~ Int {
 			return @size;
 		}
@@ -1863,7 +1914,7 @@ bundle Struct {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->IsEnd() = false) {
+				while(list->IsBack() = false) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						return pair->Get();
@@ -1887,7 +1938,7 @@ bundle Struct {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->IsEnd() = false) {
+				while(list->IsBack() = false) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						list->Remove();
@@ -1909,7 +1960,7 @@ bundle Struct {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->IsEnd() = false) {
+					while(list->IsBack() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
 						keys->AddBack(pair->GetKey());
 						list->Next();
@@ -1926,7 +1977,7 @@ bundle Struct {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->IsEnd() = false) {
+					while(list->IsBack() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
 						values->AddBack(pair->Get());
 						list->Next();
