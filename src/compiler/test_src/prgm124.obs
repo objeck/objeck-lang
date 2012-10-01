@@ -2,12 +2,13 @@
 
 bundle Default {
 	enum ExpressionType := -100 {
-		CHAR_MATCH,
-		ANY_MATCH,
-		OR_MATCH,
+		CHAR,
+		ANY,
+		OPTIONAL,
 		ZERO_MORE,
-		ONE_MORE,
-		LIST
+		ONE_MORE,		
+		OR,
+		SUB
 	}
 	
 	class Expression {
@@ -18,16 +19,16 @@ bundle Default {
 		@right : Vector;
 		
 		New() {
-			@type := ExpressionType->ANY_MATCH;
+			@type := ExpressionType->ANY;
 		}
 
 		New(value : Char) {
-			@type := ExpressionType->CHAR_MATCH;
+			@type := ExpressionType->CHAR;
 			@value := value;
 		}
 		
 		New(left : Vector) {
-			@type := ExpressionType->LIST;
+			@type := ExpressionType->SUB;
 			@left := left;
 		}
 		
@@ -37,7 +38,7 @@ bundle Default {
 		}
 
 		New(left : Vector, right : Vector) {
-			@type := ExpressionType->OR_MATCH;
+			@type := ExpressionType->OR;
 			@left := left;
 			@right := right;
 		}
@@ -87,38 +88,44 @@ Dump();
 
 		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
 			if(expression <> Nil) {
-				if(expression->GetType() = ExpressionType->LIST) {
+				if(expression->GetType() = ExpressionType->SUB) {
 					Dump(expression->GetLeft(), depth + 1);
 				}
 				else {
-					PrintSpace(depth);
+					
 					
 					select(expression->GetType()) {
-						label ExpressionType->CHAR_MATCH: {
-							IO.Console->Print("[=== match: token='")->Print(expression->GetValue())->PrintLine("' ===]");
+						label ExpressionType->CHAR: {
+							PrintSpace(depth); IO.Console->Print("[=== match: token='")
+								->Print(expression->GetValue())->PrintLine("' ===]");
 						}
 		
-						label ExpressionType->ANY_MATCH: {
-							"[=== match: any"->PrintLine();
+						label ExpressionType->ANY: {
+							PrintSpace(depth); "[=== match: any"->PrintLine();
 						}
-		
-						label ExpressionType->OR_MATCH: {
-							"[=== or ===]"->PrintLine();
+
+						label ExpressionType->OR: {
+							PrintSpace(depth); "[=== or ===]"->PrintLine();
 							
-							PrintSpace(depth + 1); "[--- left ---]"->PrintLine();
-							Dump(expression->GetLeft(), depth + 2);
+							PrintSpace(depth + 2); "[--- left ---]"->PrintLine();
+							Dump(expression->GetLeft(), depth + 3);
 							
-							PrintSpace(depth + 1); "[--- right ---]"->PrintLine();
-							Dump(expression->GetRight(), depth + 2);
+							PrintSpace(depth + 2); "[--- right ---]"->PrintLine();
+							Dump(expression->GetRight(), depth + 3);
 						}
 		
 						label ExpressionType->ZERO_MORE: {
-							"[=== zero or more ===]"->PrintLine();
+							PrintSpace(depth); "[=== zero or more ===]"->PrintLine();
 							Dump(expression->GetExpression(), depth + 2);
 						}
 		
 						label ExpressionType->ONE_MORE: {
-							"[=== one or more ===]"->PrintLine();
+							PrintSpace(depth); "[=== one or more ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+
+						label ExpressionType->OPTIONAL: {
+							PrintSpace(depth); "[=== optional ===]"->PrintLine();
 							Dump(expression->GetExpression(), depth + 2);
 						}
 					};
@@ -126,7 +133,14 @@ Dump();
 			};	
 		}
 		
+		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
+			each(i : expressions) {
+				Dump(expressions->Get(i)->As(Expression), depth);
+			};
+		}
+
 		method : private : Dump() ~ Nil {
+			"-------------------"->PrintLine();
 			if(@error <> Nil) {
 				@error->PrintLine();
 			}
@@ -134,13 +148,7 @@ Dump();
 				Dump(@expressions, -1);
 			};
 		}
-		
-		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
-			each(i : expressions) {
-				Dump(expressions->Get(i)->As(Expression), depth);
-			};
-		}
-		
+				
 		method : private : Compile() ~ Nil {
 			if(@expressions->Size() > 0) {
 
@@ -170,7 +178,6 @@ Dump();
 			};
 			
 			if(@token = '|') {
-"--- DIVIDE ---"->PrintLine();			
 				NextToken();				
 				
 				left := @expressions;
@@ -218,6 +225,18 @@ IO.Console->PrintLine("match: one_or_more");
 					@error := "missing left-hand side operand";
 					return;
 				};
+			}
+			else if(@token = '?') {
+				if(@expressions->Size() > 0) {
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(ExpressionType->OPTIONAL, expression));
+					NextToken();
+IO.Console->PrintLine("match: optional");					
+				}
+				else {
+					@error := "missing left-hand side operand";
+					return;
+				};
 			};
 		}
 
@@ -242,7 +261,13 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 		}
 	
 		method : private : Parentheses() ~ Nil {
-			NextToken();					
+			NextToken();
+
+@expressions->Size()->PrintLine();
+
+			left := @expressions;
+			@expressions := Vector->New();
+				
 			Binary();
 			if(@error <> Nil) {
 				return;
@@ -254,9 +279,9 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 			};
 			NextToken();
 			
-			expressions := @expressions;
-			@expressions := Vector->New();
-			@expressions->AddBack(Expression->New(expressions));
+			# combine lists			
+			left->AddBack(@expressions);
+			@expressions := left;
 			
 IO.Console->PrintLine("parentheses");		
 		}	
