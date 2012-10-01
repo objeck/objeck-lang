@@ -1,0 +1,19 @@
+﻿bundle Default {
+	class Foo {
+		New() {}
+	}
+	
+	class Bar {
+		New() {}
+	}
+
+	class Hello {
+		function : GetBase() ~ Base {
+			return Nil;
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			foo_bar : Foo := GetBase()->As(Foo);
+		}
+	}
+}

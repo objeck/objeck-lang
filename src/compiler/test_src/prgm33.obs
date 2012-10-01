@@ -18,20 +18,21 @@ bundle Default {
 			list->AddBack(18);
 			list->AddFront(1);
 
-			while(list->IsEnd() <> true) {
+			while(list->IsBack() <> true) {
 				list->Get()->PrintLine();
 #				list->Get();
 				list->Next();
 			};
 
 			list->Forward();
-			while(list->IsStart() <> true) {
+			while(list->IsFront() <> true) {
 				list->Get()->PrintLine();
 				list->Previous();
 			};
 
-			"size: "->Print();
-			list->Size()->PrintLine();
+			IO.Console->Print("size: ")->PrintLine(list->Size());
+			list->Front()->PrintLine();
+			list->Back()->PrintLine();
 		}		
 	}
 }
