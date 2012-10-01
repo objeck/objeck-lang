@@ -105,8 +105,8 @@ Dump();
 		}		
 		
 		method : private : Binary() ~ Nil {
-			while(@token <> '\0') {
-				while(@token <> '\0' & @token <> '|') {
+			while(@token <> '\0' & @token <> ')') {
+				while(@token <> '\0' & @token <> ')' & @token <> '|') {
 					Unary();		
 					if(@error <> Nil) {
 						return;
@@ -115,15 +115,18 @@ Dump();
 				
 				if(@token = '|') {
 					NextToken();
-					Unary();
-					if(@error <> Nil) {
-						return;
+IO.Console->PrintLine("match: or_match");					
+					
+					while(@token <> '\0' & @token <> ')' & @token <> '|') {
+						Unary();						
+						if(@error <> Nil) {
+							return;
+						};
 					};
-	
+					
 					left := @expressions->RemoveBack()->As(Expression);
 					right := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(left, right));
-IO.Console->PrintLine("match: or_match");
 				};
 			};
 		}
@@ -176,8 +179,7 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 		}
 	
 		method : private : Parentheses() ~ Nil {
-			NextToken();
-"@@ 0 @"->PrintLine();						
+			NextToken();					
 			Binary();
 			if(@error <> Nil) {
 				return;
@@ -188,9 +190,6 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 				return;
 			};
 			NextToken();
-			
-"@@ 1 @"->PrintLine();					
-			
 IO.Console->PrintLine("parentheses");		
 		}	
 	}
