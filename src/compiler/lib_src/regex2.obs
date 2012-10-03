@@ -109,17 +109,21 @@ bundle RegEx2 {
 			return "";
 		}
 
-		method : public : Search(input : String) ~ Nil {
+		method : public : Search(input : String) ~ Vector {
+			matches := Vector->New();
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-					right -= 1;
+#					right -= 1;
 IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
-					left += right;
+					matches->AddBack(input->SubString(left, right - left));
+					left += right - 1;
 				};
 				left += 1;
 			};
+
+			return matches;
 		}
 
 		method : public : Evaluate(input : String, offset : Int) ~ Int {
