@@ -5,7 +5,7 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				regex := RegExParser->New(args[0]);
-				regex->Evaluate(args[1])->PrintLine();
+				regex->Search(args[1]);
 			};
 		}
 	}
@@ -80,103 +80,68 @@ bundle Default {
 	}
 	
 	class RegExParser {
-		# parser variables
+		# parser
 		@tokens : Char[];
 		@token_pos : Int;
 		@token : Char;		
 		@expressions : Vector;
 		@error : String;
-		# evaluation variables
+		# evaluation
 		@input : Char[];
 		@input_pos : Int;
 		@input_char : Char;
+		@is_exact : Bool;
 		
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
 			
-			NextToken();
 			Parse();
-# Dump();
-		}
-		
-		method : private : PrintSpace(depth : Int) ~ Nil {
-			for(i := 0; i < depth; i += 1;) {
-				"  "->Print();
-			};
 		}
 
-		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
-			if(expression <> Nil) {
-				if(expression->GetType() = ExpressionType->SUB) {
-					Dump(expression->GetLeft(), depth + 1);
-				}
-				else {
-					
-					
-					select(expression->GetType()) {
-						label ExpressionType->CHAR: {
-							PrintSpace(depth); IO.Console->Print("[=== match: token='")
-								->Print(expression->GetValue())->PrintLine("' ===]");
-						}
+		# ---------- Evaluation ----------
 		
-						label ExpressionType->ANY: {
-							PrintSpace(depth); "[=== match: any"->PrintLine();
-						}
-
-						label ExpressionType->OR: {
-							PrintSpace(depth); "[=== or ===]"->PrintLine();
-							
-							PrintSpace(depth + 2); "[--- left ---]"->PrintLine();
-							Dump(expression->GetLeft(), depth + 3);
-							
-							PrintSpace(depth + 2); "[--- right ---]"->PrintLine();
-							Dump(expression->GetRight(), depth + 3);
-						}
-		
-						label ExpressionType->ZERO_MORE: {
-							PrintSpace(depth); "[=== zero or more ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-		
-						label ExpressionType->ONE_MORE: {
-							PrintSpace(depth); "[=== one or more ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-
-						label ExpressionType->OPTIONAL: {
-							PrintSpace(depth); "[=== optional ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-					};
-				};
-			};	
-		}
-		
-		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
-			each(i : expressions) {
-				Dump(expressions->Get(i)->As(Expression), depth);
-			};
+		method : public : MatchExact(input : String) ~ Bool {
+			return Evaluate(input, 0) > -1 & @is_exact;
 		}
 
-		method : private : Dump() ~ Nil {
-			"-------------------"->PrintLine();
-			if(@error <> Nil) {
-				@error->PrintLine();
-			}
-			else {
-				Dump(@expressions, -1);
-			};
+		method : public : Match(input : String) ~ String {
+			return Match(input, 0);
 		}
-
-		# ----------------------
-				
-		method : public : Evaluate(input : String) ~ Bool {
-			if(@error <> Nil) {
-				@error->PrintLine();
-				return false;
+		
+		method : public : Match(input : String, offset : Int) ~ String {
+			right := Evaluate(input, 0);
+			if(right > -1) {
+				return input->SubString(offset, right - offset);
 			};
 			
+			return "";
+		}
+
+		method : public : Search(input : String) ~ Nil {
+			left := 0;
+			while(left < input->Size()) {
+				right := Evaluate(input, left);
+				if(right > -1) {
+					right -= 1;
+IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+					left += right;
+				};
+				left += 1;
+			};
+		}
+
+		method : public : Evaluate(input : String, offset : Int) ~ Int {
+			if(@error <> Nil) {
+				@error->PrintLine();
+				return -1;
+			};
+
+			if(offset >= input->Size()) {
+				return -1;
+			};
+			
+			@input_pos := offset;			
 			@input := input->ToCharArray();
 			NextInput();
 			
@@ -187,15 +152,14 @@ IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
 	->Print(match)->Print(", end=")->PrintLine(@input_char);
 
 			if(match & @input_char <> '\0') {
-(@input_pos - 1)->PrintLine();
-				return true;
+				return @input_pos - 1;
 			}
 			else if(match) {
-@input_pos->PrintLine();
-				return true;
+				@is_exact := true;
+				return @input_pos;
 			};
-
-			return false;
+			
+			return -1;
 		}
 		
 		method : private : NextInput() ~ Nil {
@@ -236,15 +200,15 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())
 						}
 		
 						label ExpressionType->ANY: {
+"[### any ###]"->PrintLine();
 							NextInput();
 							return true;							
 						}
 
 						label ExpressionType->OR: {
-"[### or ###"->PrintLine();
+"[### or ###]"->PrintLine();
 							last := @input_pos - 1;
 							if(Evaluate(expression->GetLeft()) = false) {
-"@@@ ALT @@@"->PrintLine();
 								@input_pos := last;
 								NextInput();
 								if(Evaluate(expression->GetRight())) {
@@ -304,9 +268,6 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 		}
 
 		#----------- Parsing -----------
-		method : private : Parse() ~ Nil {
-			Binary();
-		}	
 
 		method : private : NextToken() ~ Nil {
 			if(@token_pos < @tokens->Size()) {
@@ -316,6 +277,11 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 			else {
 				@token := '\0';
 			};
+		}	
+
+		method : private : Parse() ~ Nil {
+			NextToken();
+			Binary();
 		}	
 		
 		method : private : Binary() ~ Nil {
@@ -411,9 +377,7 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 	
 		method : private : Parentheses() ~ Nil {
 			NextToken();
-
-@expressions->Size()->PrintLine();
-
+			
 			left := @expressions;
 			@expressions := Vector->New();
 				
@@ -434,5 +398,77 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 			
 IO.Console->PrintLine("parentheses");		
 		}	
+
+		# ---------- Debug ----------
+		
+		method : private : PrintSpace(depth : Int) ~ Nil {
+			for(i := 0; i < depth; i += 1;) {
+				"  "->Print();
+			};
+		}
+
+		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
+			if(expression <> Nil) {
+				if(expression->GetType() = ExpressionType->SUB) {
+					Dump(expression->GetLeft(), depth + 1);
+				}
+				else {
+					
+					
+					select(expression->GetType()) {
+						label ExpressionType->CHAR: {
+							PrintSpace(depth); IO.Console->Print("[=== match: token='")
+								->Print(expression->GetValue())->PrintLine("' ===]");
+						}
+		
+						label ExpressionType->ANY: {
+							PrintSpace(depth); "[=== match: any"->PrintLine();
+						}
+
+						label ExpressionType->OR: {
+							PrintSpace(depth); "[=== or ===]"->PrintLine();
+							
+							PrintSpace(depth + 2); "[--- left ---]"->PrintLine();
+							Dump(expression->GetLeft(), depth + 3);
+							
+							PrintSpace(depth + 2); "[--- right ---]"->PrintLine();
+							Dump(expression->GetRight(), depth + 3);
+						}
+		
+						label ExpressionType->ZERO_MORE: {
+							PrintSpace(depth); "[=== zero or more ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+		
+						label ExpressionType->ONE_MORE: {
+							PrintSpace(depth); "[=== one or more ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+
+						label ExpressionType->OPTIONAL: {
+							PrintSpace(depth); "[=== optional ===]"->PrintLine();
+							Dump(expression->GetExpression(), depth + 2);
+						}
+					};
+				};
+			};	
+		}
+		
+		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
+			each(i : expressions) {
+				Dump(expressions->Get(i)->As(Expression), depth);
+			};
+		}
+
+		method : private : Dump() ~ Nil {
+			"-------------------"->PrintLine();
+			if(@error <> Nil) {
+				@error->PrintLine();
+			}
+			else {
+				Dump(@expressions, -1);
+			};
+		}
+
 	}
 }
