@@ -1,5 +1,5 @@
-﻿use Struct;
-use RegEx2;
+﻿use RegEx;
+use Struct;
 
 bundle Default {
 	class Test {
