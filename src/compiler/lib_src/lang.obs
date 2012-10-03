@@ -96,13 +96,13 @@ bundle System {
 
 		function : native : ToBinaryString(b : Int) ~ String {
 			out := String->New();
-      while(b > 0) {
-        v := b % 2;
-        out->Append(v);
-        b /= 2;
-      };
+			while(b > 0) {
+				v := b % 2;
+				out->Append(v);
+				b /= 2;
+			};
 
-      return out->Reverse();
+			return out->Reverse();
 		}
 
 		function : native : ToString(b : Byte) ~ String {
@@ -586,6 +586,22 @@ bundle System {
 			Append(array);
 		}
 		
+		New(array : Char[], offset : Int, max : Int) {
+			Parent();
+
+			if(array->Size() < 8) {
+				@max := 8;
+			}
+			else {
+				@max := array->Size();
+			};
+
+			@string := Char->New[@max];
+			@pos := 0;
+
+			Append(array, offset, max);
+		}
+		
 		New(array : Byte[]) {
 			Parent();
 
@@ -600,6 +616,22 @@ bundle System {
 			@pos := 0;
 
 			Append(array);
+		}
+
+		New(array : Byte[], offset : Int, max : Int) {
+			Parent();
+
+			if(array->Size() < 8) {
+				@max := 8;
+			}
+			else {
+				@max := array->Size();
+			};
+
+			@string := Char->New[@max];
+			@pos := 0;
+
+			Append(array, offset, max);
 		}
 
 		method : public : native : ToCharArray() ~ Char[] {
@@ -639,6 +671,27 @@ bundle System {
 				@pos += 1;
 			};
 		}
+
+		method : public : native : Append(array : Char[], offset : Int, max : Int) ~ Nil {
+			if(offset < 0) {
+				return;
+			};
+			
+			if(@pos + max >= @max) {
+				# expand string
+				@max := (@max + max) * 2;
+				tmp : Char[] := Char->New[@max];
+				# copy elements
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+				@string := tmp;
+			};
+
+			end := offset + max;
+			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
+				@string[@pos] := array[i];
+				@pos += 1;
+			};
+		}
 		
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
@@ -652,6 +705,27 @@ bundle System {
 			
 			max := array->Size();
 			for(i : Int := 0; i < max & array[i] <> '\0'; i += 1;) {
+				@string[@pos] := array[i];
+				@pos += 1;
+			};
+		}
+
+		method : public : native : Append(array : Byte[], offset : Int, max : Int) ~ Nil {
+			if(offset < 0) {
+				return;
+			};
+			
+			if(@pos + max >= @max) {
+				# expand string
+				@max := (@max + max) * 2;
+				tmp : Char[] := Char->New[@max];
+				# copy elements
+				Runtime->Copy(tmp, 0, @string, 0, @string->Size());
+				@string := tmp;
+			};
+
+			end := offset + max;
+			for(i : Int := offset; i < end & array[i] <> '\0'; i += 1;) {
 				@string[@pos] := array[i];
 				@pos += 1;
 			};

@@ -8,12 +8,15 @@ bundle RegEx2 {
 		ZERO_MORE,
 		ONE_MORE,		
 		OR,
-		SUB
+		CHAR_CLASS,
+		CHAR_CLASS_RANGE,
+		SUB_EXPR
 	}
 	
 	class Expression {
 		@type : ExpressionType;
 		@value : Char;
+		@char_class : String;
 		@expression : Expression;
 		@left : Vector;
 		@right : Vector;
@@ -26,9 +29,19 @@ bundle RegEx2 {
 			@type := ExpressionType->CHAR;
 			@value := value;
 		}
+
+		New(char_class : String, is_range : Bool) {
+			if(is_range) {
+				@type := ExpressionType->CHAR_CLASS_RANGE;
+			}
+			else {
+				@type := ExpressionType->CHAR_CLASS;
+			};
+			@char_class := char_class;
+		}
 		
 		New(left : Vector) {
-			@type := ExpressionType->SUB;
+			@type := ExpressionType->SUB_EXPR;
 			@left := left;
 		}
 		
@@ -49,6 +62,10 @@ bundle RegEx2 {
 		
 		method : public : GetValue() ~ Char {
 			return @value;
+		}
+
+		method : public : GetClass() ~ String {
+			return @char_class;
 		}
 		
 		method : public : GetLeft() ~ Vector {
@@ -109,13 +126,27 @@ bundle RegEx2 {
 			return "";
 		}
 
-		method : public : Search(input : String) ~ Vector {
+		method : public : FindFirst(input : String) ~ String {
 			matches := Vector->New();
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-#					right -= 1;
+IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+					return input->SubString(left, right - left);
+				};
+				left += 1;
+			};
+
+			return "";
+		}
+
+		method : public : Find(input : String) ~ Vector {
+			matches := Vector->New();
+			left := 0;
+			while(left < input->Size()) {
+				right := Evaluate(input, left);
+				if(right > -1) {
 IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					matches->AddBack(input->SubString(left, right - left));
 					left += right - 1;
@@ -136,6 +167,7 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 				return -1;
 			};
 			
+			@is_exact := false;
 			@input_pos := offset;			
 			@input := input->ToCharArray();
 			NextInput();
@@ -180,7 +212,7 @@ IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
 		
 		method : private : Evaluate(expression : Expression) ~ Bool {
 			if(expression <> Nil) {
-				if(expression->GetType() = ExpressionType->SUB) {
+				if(expression->GetType() = ExpressionType->SUB_EXPR) {
 					Evaluate(expression->GetLeft());
 				}
 				else {
@@ -198,6 +230,31 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())
 "[### any ###]"->PrintLine();
 							NextInput();
 							return true;							
+						}
+
+						label ExpressionType->CHAR_CLASS: {
+							char_class := expression->GetClass();
+IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+							found := false;
+							for(i := 0; i < char_class->Size() & found = false; i += 1;) {
+								if(char_class->Get(i) = @input_char) {
+									found := true;
+									NextInput();
+								};
+							};
+							
+							return found;
+						}
+
+						label ExpressionType->CHAR_CLASS_RANGE: {
+							char_class := expression->GetClass();
+IO.Console->Print("[### matching class: expr='")->Print(char_class)
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+							if(char_class->Get(0) <= @input_char & char_class->Get(2) >= @input_char) {
+								NextInput();
+								return true;
+							};
 						}
 
 						label ExpressionType->OR: {
@@ -351,25 +408,114 @@ IO.Console->PrintLine("match: optional");
 		}
 
 		method : private : Value() ~ Nil {
-			if(@token->IsChar() | @token->IsDigit()) {
-				@expressions->AddBack(Expression->New(@token));
-IO.Console->Print("match: char=")->PrintLine(@token);				
-				NextToken();
-			}
-			else if(@token = '(') {
+			if(@token = '(') {
 				Parentheses();				
 			}
+			else if(@token = '[') {
+				CharacterClass();
+			}
+			else if(@token = '\\') {
+				EscapeCharacter();
+"char: escaped"->PrintLine();
+			}			
 			else if(@token = '.') {
 				@expressions->AddBack(Expression->New());
 "match: any"->PrintLine();			
 				NextToken();
 			}			
 			else {
-				@error := "invalid value";
-				return;
+				@expressions->AddBack(Expression->New(@token));
+IO.Console->Print("match: char=")->PrintLine(@token);				
+				NextToken();
 			};
 		}
-	
+		
+		method : private : CharacterClass() ~ Nil {	
+			NextToken();
+
+			if(@token->IsChar() = false & @token->IsDigit() = false) {
+				@error := "invalid character class";
+			};
+			
+			start := @token_pos - 1;
+			hyphen_count := 0;
+			while(@token <> '\0' & @token <> ']' & (@token = '-' | @token->IsChar() | @token->IsDigit())) { 
+				if(@token = '-') {
+					hyphen_count += 1;
+				};
+				NextToken();
+			};
+			end := @token_pos - 1;
+			char_class := String->New(@tokens, start, end - start);
+
+			if(@token <> ']') {
+				@error := "expected ')'";
+				return;
+			};
+			NextToken();
+			
+			if(hyphen_count > 1) {
+				@error := "invalid character class";
+			};
+
+			is_range := false;
+			if(hyphen_count = 1) {
+				if(char_class->Size() <> 3) {
+					@error := "invalid character class";
+					return; # to avoid an issue with next statement
+				};
+				
+				if(char_class->Get(0) >= char_class->Get(2)) {
+					@error := "invalid character class";
+				};
+
+				is_range := true;				
+			};
+
+IO.Console->Print("match range: class=")->PrintLine(char_class);
+			
+			@expressions->AddBack(Expression->New(char_class, is_range));
+		}
+
+		method : private : EscapeCharacter() ~ Nil {
+			NextToken();
+			select(@token) {
+				label '|': 
+				label '.': 
+				label '?': 
+				label '*': 
+				label '+': {
+					@expressions->AddBack(Expression->New(@token));
+					NextToken();
+				}
+
+				label 'n': {
+					@expressions->AddBack(Expression->New('\n'));
+					NextToken();
+				}
+
+				label 'r': {
+					@expressions->AddBack(Expression->New('\r'));
+					NextToken();
+				}
+
+				label 'b': {
+					@expressions->AddBack(Expression->New('\b'));
+					NextToken();
+				}
+
+				label 't': {
+					@expressions->AddBack(Expression->New('\t'));
+					NextToken();
+				}
+
+				label '\\': {
+					@expressions->AddBack(Expression->New('\\'));
+					NextToken();
+				}
+			};
+		}
+
 		method : private : Parentheses() ~ Nil {
 			NextToken();
 			
@@ -404,7 +550,7 @@ IO.Console->PrintLine("parentheses");
 
 		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
 			if(expression <> Nil) {
-				if(expression->GetType() = ExpressionType->SUB) {
+				if(expression->GetType() = ExpressionType->SUB_EXPR) {
 					Dump(expression->GetLeft(), depth + 1);
 				}
 				else {
