@@ -5,9 +5,9 @@
 # New regular expression engine
 ~~#
 
-﻿use Struct;
+use Struct;
 
-bundle RegEx2 {
+bundle RegEx {
 	enum ExpressionType := -100 {
 		CHAR,
 		ANY,
