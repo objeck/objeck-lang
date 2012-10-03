@@ -188,9 +188,11 @@ IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
 
 			if(match & @input_char <> '\0') {
 (@input_pos - 1)->PrintLine();
+				return true;
 			}
 			else if(match) {
 @input_pos->PrintLine();
+				return true;
 			};
 
 			return false;
@@ -218,7 +220,6 @@ IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
 		}
 		
 		method : private : Evaluate(expression : Expression) ~ Bool {
-@input_char->PrintLine();
 			if(expression <> Nil) {
 				if(expression->GetType() = ExpressionType->SUB) {
 					Evaluate(expression->GetLeft());
@@ -268,10 +269,32 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 						}
 		
 						label ExpressionType->ONE_MORE: {
+							test := expression->GetExpression()->GetValue();
+IO.Console->Print("[### one_or_more: expr='")->Print(expression->GetValue())
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+							if(test = @input_char) {
+								NextInput();
+								while(test = @input_char) {
+IO.Console->Print("\t matching: expr='")->Print(test)
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+								NextInput();
+								};
+	
+								return true;
+							};
 						}
-
+						
 						label ExpressionType->OPTIONAL: {
-							Evaluate(expression->GetExpression());
+							test := expression->GetExpression()->GetValue();
+IO.Console->Print("[### optional: expr='")->Print(test)
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+							if(test = @input_char) {
+IO.Console->Print("\t matching: expr='")->Print(test)
+	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+								NextInput();
+							};
+
+							return true;
 						}
 					};
 				};
