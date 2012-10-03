@@ -17,6 +17,8 @@ bundle RegEx {
 		OR,
 		CHAR_CLASS,
 		CHAR_CLASS_RANGE,
+		ENDS_ANCHOR,
+		STARTS_ANCHOR,
 		SUB_EXPR
 	}
 	
@@ -50,6 +52,10 @@ bundle RegEx {
 		New(left : Vector) {
 			@type := ExpressionType->SUB_EXPR;
 			@left := left;
+		}
+		
+		New(type : ExpressionType) {
+			@type := type;
 		}
 		
 		New(type : ExpressionType, expression : Expression) {
@@ -101,6 +107,7 @@ bundle RegEx {
 		@token : Char;		
 		@expressions : Vector;
 		@error : String;
+		@starts_anchor : Bool;
 		# evaluation
 		@input : Char[];
 		@input_pos : Int;
@@ -223,20 +230,29 @@ bundle RegEx {
 				}
 				else {
 					select(expression->GetType()) {
+						#
+						# single character
+						#
 						label ExpressionType->CHAR: {
-# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(expression->GetValue() = @input_char) {
 								NextInput();
 								return true;
 							};
 						}
 		
+						#
+						# any character
+						#
 						label ExpressionType->ANY: {
 # "[### any ###]"->PrintLine();
 							NextInput();
 							return true;							
 						}
 
+						#
+						# class of characters
+						#
 						label ExpressionType->CHAR_CLASS: {
 							char_class := expression->GetClass();
 # IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -251,6 +267,9 @@ bundle RegEx {
 							return found;
 						}
 
+						#
+						# range of characters
+						#
 						label ExpressionType->CHAR_CLASS_RANGE: {
 							char_class := expression->GetClass();
 # IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -260,6 +279,9 @@ bundle RegEx {
 							};
 						}
 
+						#
+						# logical OR
+						#
 						label ExpressionType->OR: {
 # "[### or ###]"->PrintLine();
 							last := @input_pos - 1;
@@ -274,6 +296,9 @@ bundle RegEx {
 							return true;
 						}
 		
+						#
+						# zero or more
+						#
 						label ExpressionType->ZERO_MORE: {
 							test := expression->GetExpression()->GetValue();
 # IO.Console->Print("[### zero_or_more: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -285,6 +310,9 @@ bundle RegEx {
 							return true;
 						}
 		
+						#
+						# one or more
+						#
 						label ExpressionType->ONE_MORE: {
 							test := expression->GetExpression()->GetValue();
 # IO.Console->Print("[### one_or_more: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -299,6 +327,9 @@ bundle RegEx {
 							};
 						}
 						
+						#
+						# single optional
+						#
 						label ExpressionType->OPTIONAL: {
 							test := expression->GetExpression()->GetValue();
 # IO.Console->Print("[### optional: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -309,6 +340,20 @@ bundle RegEx {
 
 							return true;
 						}
+						
+						#
+						# starts anchor
+						#
+						label ExpressionType->STARTS_ANCHOR: {
+"[### starts anchor ###]"->PrintLine();
+						}
+						
+						#
+						# ends anchor
+						#
+						label ExpressionType->ENDS_ANCHOR: {
+"[### ends anchor ###]"->PrintLine();
+						}
 					};
 				};
 			};
@@ -316,7 +361,7 @@ bundle RegEx {
 			return false;
 		}
 
-		#----------- Parsing -----------
+		#----------- expression parsing -----------
 
 		method : private : NextToken() ~ Nil {
 			if(@token_pos < @tokens->Size()) {
@@ -331,6 +376,10 @@ bundle RegEx {
 		method : private : Parse() ~ Nil {
 			NextToken();
 			Binary();
+			
+			if(@starts_anchor) {
+				@error := "orphan anchor token";
+			};
 		}	
 		
 		method : private : Binary() ~ Nil {
@@ -338,6 +387,13 @@ bundle RegEx {
 				Unary();		
 				if(@error <> Nil) {
 					return;
+				};
+
+				if(@starts_anchor & @expressions->Size() > 0) {
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+					@starts_anchor := false;
+IO.Console->PrintLine("match: starts anchor");	
 				};
 			};
 			
@@ -357,7 +413,7 @@ bundle RegEx {
 				
 				@expressions->AddBack(Expression->New(left, right));
 # IO.Console->PrintLine("match: or_match");					
-			};			
+			};
 		}
 
 		method : private : Unary() ~ Nil {
@@ -401,6 +457,18 @@ bundle RegEx {
 					@error := "missing left-hand side operand";
 					return;
 				};
+			}
+			else if(@token = '$') {
+				if(@expressions->Size() > 0) {
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(ExpressionType->ENDS_ANCHOR, expression));
+					NextToken();
+IO.Console->PrintLine("match: ends anchor");				
+				}
+				else {
+					@error := "missing left-hand side operand";
+					return;
+				};
 			};
 		}
 
@@ -418,6 +486,10 @@ bundle RegEx {
 			else if(@token = '.') {
 				@expressions->AddBack(Expression->New());
 # "match: any"->PrintLine();			
+				NextToken();
+			}
+			else if(@token = '^') {
+				@starts_anchor := true;
 				NextToken();
 			}			
 			else {
@@ -477,10 +549,12 @@ bundle RegEx {
 		method : private : EscapeCharacter() ~ Nil {
 			NextToken();
 			select(@token) {
-				label '|': 
-				label '.': 
-				label '?': 
-				label '*': 
+				label '|':
+				label '.':
+				label '?':
+				label '^':
+				label '$': 
+				label '*':
 				label '+': {
 					@expressions->AddBack(Expression->New(@token));
 					NextToken();
