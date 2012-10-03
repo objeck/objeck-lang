@@ -181,9 +181,17 @@ bundle Default {
 			NextInput();
 			
 			# evaluate and check final position
-			result := Evaluate(@expressions);
+			match := Evaluate(@expressions);
 
-IO.Console->Print("@@@ end=")->Print(@input_pos)->Print(", exact=")->PrintLine(result);
+IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
+	->Print(match)->Print(", end=")->PrintLine(@input_char);
+
+			if(match & @input_char <> '\0') {
+(@input_pos - 1)->PrintLine();
+			}
+			else if(match) {
+@input_pos->PrintLine();
+			};
 
 			return false;
 		}
