@@ -5,8 +5,7 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 2) {
 				regex := RegExParser->New(args[0]);
-#				regex->Evaluate(args[1])->PrintLine();
-regex->Evaluate(args[1]);
+				regex->Evaluate(args[1])->PrintLine();
 			};
 		}
 	}
@@ -182,8 +181,9 @@ regex->Evaluate(args[1]);
 			NextInput();
 			
 			# evaluate and check final position
-			Evaluate(@expressions);
-# @input_pos->PrintLine();
+			result := Evaluate(@expressions);
+
+IO.Console->Print("@@@ end=")->Print(@input_pos)->Print(", exact=")->PrintLine(result);
 
 			return false;
 		}
@@ -200,19 +200,17 @@ regex->Evaluate(args[1]);
 		
 		method : private : Evaluate(expressions : Vector) ~ Bool {
 			each(i : expressions) {
-				if(Evaluate(expressions->Get(i)->As(Expression)) = false) {
+				result := Evaluate(expressions->Get(i)->As(Expression));
+				if(result = false) {
 					return false;
-				}
-				else if(result = EvalType->MATCH_NEXT) {
-					NextInput();
-				};		
+				};
 			};
 			
 			return true;
 		}
 		
 		method : private : Evaluate(expression : Expression) ~ Bool {
-# @input_char->PrintLine();
+@input_char->PrintLine();
 			if(expression <> Nil) {
 				if(expression->GetType() = ExpressionType->SUB) {
 					Evaluate(expression->GetLeft());
@@ -220,32 +218,35 @@ regex->Evaluate(args[1]);
 				else {
 					select(expression->GetType()) {
 						label ExpressionType->CHAR: {
-#~
 IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())
 	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							return expression->GetValue() = @input_char;
-#~
+							if(expression->GetValue() = @input_char) {
+								NextInput();
+								return true;
+							};
 						}
 		
-						label ExpressionType->ANY: {							
+						label ExpressionType->ANY: {
+							NextInput();
+							return true;							
 						}
 
 						label ExpressionType->OR: {
-#~
 "[### or ###"->PrintLine();
-							last := @input_pos;
+							last := @input_pos - 1;
 							if(Evaluate(expression->GetLeft()) = false) {
-								@input_pos := last - 1;
+"@@@ ALT @@@"->PrintLine();
+								@input_pos := last;
+								NextInput();
 								if(Evaluate(expression->GetRight())) {
 									return true;
 								};
 							};
-~#					
+
 							return true;
 						}
 		
 						label ExpressionType->ZERO_MORE: {
-#~
 							test := expression->GetExpression()->GetValue();
 IO.Console->Print("[### zero_or_more: expr='")->Print(test)
 	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
@@ -254,9 +255,8 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 								NextInput();
 							};
-@input_pos->PrintLine();
-~#
-#							return true;
+
+							return true;
 						}
 		
 						label ExpressionType->ONE_MORE: {
@@ -310,7 +310,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 				@expressions := Vector->New();
 				
 				@expressions->AddBack(Expression->New(left, right));
-# IO.Console->PrintLine("match: or_match");					
+IO.Console->PrintLine("match: or_match");					
 			};			
 		}
 
@@ -325,7 +325,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
 					NextToken();
-# IO.Console->PrintLine("match: zero_or_more");					
+IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -337,7 +337,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ONE_MORE, expression));
 					NextToken();
-# IO.Console->PrintLine("match: one_or_more");					
+IO.Console->PrintLine("match: one_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -349,7 +349,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->OPTIONAL, expression));
 					NextToken();
-# IO.Console->PrintLine("match: optional");					
+IO.Console->PrintLine("match: optional");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -361,7 +361,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 		method : private : Value() ~ Nil {
 			if(@token->IsChar() | @token->IsDigit()) {
 				@expressions->AddBack(Expression->New(@token));
-# IO.Console->Print("match: char=")->PrintLine(@token);				
+IO.Console->Print("match: char=")->PrintLine(@token);				
 				NextToken();
 			}
 			else if(@token = '(') {
@@ -369,7 +369,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 			}
 			else if(@token = '.') {
 				@expressions->AddBack(Expression->New());
-# "match: any"->PrintLine();			
+"match: any"->PrintLine();			
 				NextToken();
 			}			
 			else {
@@ -381,7 +381,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 		method : private : Parentheses() ~ Nil {
 			NextToken();
 
-# @expressions->Size()->PrintLine();
+@expressions->Size()->PrintLine();
 
 			left := @expressions;
 			@expressions := Vector->New();
@@ -401,7 +401,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 			left->AddBack(@expressions);
 			@expressions := left;
 			
-# IO.Console->PrintLine("parentheses");		
+IO.Console->PrintLine("parentheses");		
 		}	
 	}
 }
