@@ -139,7 +139,7 @@ bundle RegEx {
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					return input->SubString(left, right - left);
 				};
 				left += 1;
@@ -154,7 +154,7 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					matches->AddBack(input->SubString(left, right - left));
 					left += right - 1;
 				};
@@ -182,8 +182,7 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 			# evaluate and check final position
 			match := Evaluate(@expressions);
 
-IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
-	->Print(match)->Print(", end=")->PrintLine(@input_char);
+# IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")->Print(match)->Print(", end=")->PrintLine(@input_char);
 
 			if(match & @input_char <> '\0') {
 				return @input_pos - 1;
@@ -225,8 +224,7 @@ IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")
 				else {
 					select(expression->GetType()) {
 						label ExpressionType->CHAR: {
-IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(expression->GetValue() = @input_char) {
 								NextInput();
 								return true;
@@ -234,15 +232,14 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())
 						}
 		
 						label ExpressionType->ANY: {
-"[### any ###]"->PrintLine();
+# "[### any ###]"->PrintLine();
 							NextInput();
 							return true;							
 						}
 
 						label ExpressionType->CHAR_CLASS: {
 							char_class := expression->GetClass();
-IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							found := false;
 							for(i := 0; i < char_class->Size() & found = false; i += 1;) {
 								if(char_class->Get(i) = @input_char) {
@@ -256,8 +253,7 @@ IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())
 
 						label ExpressionType->CHAR_CLASS_RANGE: {
 							char_class := expression->GetClass();
-IO.Console->Print("[### matching class: expr='")->Print(char_class)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(char_class->Get(0) <= @input_char & char_class->Get(2) >= @input_char) {
 								NextInput();
 								return true;
@@ -265,7 +261,7 @@ IO.Console->Print("[### matching class: expr='")->Print(char_class)
 						}
 
 						label ExpressionType->OR: {
-"[### or ###]"->PrintLine();
+# "[### or ###]"->PrintLine();
 							last := @input_pos - 1;
 							if(Evaluate(expression->GetLeft()) = false) {
 								@input_pos := last;
@@ -280,11 +276,9 @@ IO.Console->Print("[### matching class: expr='")->Print(char_class)
 		
 						label ExpressionType->ZERO_MORE: {
 							test := expression->GetExpression()->GetValue();
-IO.Console->Print("[### zero_or_more: expr='")->Print(test)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### zero_or_more: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							while(test = @input_char) {
-IO.Console->Print("\t matching: expr='")->Print(test)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 								NextInput();
 							};
 
@@ -293,13 +287,11 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 		
 						label ExpressionType->ONE_MORE: {
 							test := expression->GetExpression()->GetValue();
-IO.Console->Print("[### one_or_more: expr='")->Print(expression->GetValue())
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### one_or_more: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(test = @input_char) {
 								NextInput();
 								while(test = @input_char) {
-IO.Console->Print("\t matching: expr='")->Print(test)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 								NextInput();
 								};
 	
@@ -309,11 +301,9 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 						
 						label ExpressionType->OPTIONAL: {
 							test := expression->GetExpression()->GetValue();
-IO.Console->Print("[### optional: expr='")->Print(test)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### optional: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(test = @input_char) {
-IO.Console->Print("\t matching: expr='")->Print(test)
-	->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 								NextInput();
 							};
 
@@ -366,7 +356,7 @@ IO.Console->Print("\t matching: expr='")->Print(test)
 				@expressions := Vector->New();
 				
 				@expressions->AddBack(Expression->New(left, right));
-IO.Console->PrintLine("match: or_match");					
+# IO.Console->PrintLine("match: or_match");					
 			};			
 		}
 
@@ -381,7 +371,7 @@ IO.Console->PrintLine("match: or_match");
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
 					NextToken();
-IO.Console->PrintLine("match: zero_or_more");					
+# IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -393,7 +383,7 @@ IO.Console->PrintLine("match: zero_or_more");
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ONE_MORE, expression));
 					NextToken();
-IO.Console->PrintLine("match: one_or_more");					
+# IO.Console->PrintLine("match: one_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -405,7 +395,7 @@ IO.Console->PrintLine("match: one_or_more");
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->OPTIONAL, expression));
 					NextToken();
-IO.Console->PrintLine("match: optional");					
+# IO.Console->PrintLine("match: optional");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -423,16 +413,16 @@ IO.Console->PrintLine("match: optional");
 			}
 			else if(@token = '\\') {
 				EscapeCharacter();
-"char: escaped"->PrintLine();
+# "char: escaped"->PrintLine();
 			}			
 			else if(@token = '.') {
 				@expressions->AddBack(Expression->New());
-"match: any"->PrintLine();			
+# "match: any"->PrintLine();			
 				NextToken();
 			}			
 			else {
 				@expressions->AddBack(Expression->New(@token));
-IO.Console->Print("match: char=")->PrintLine(@token);				
+# IO.Console->Print("match: char=")->PrintLine(@token);				
 				NextToken();
 			};
 		}
@@ -479,7 +469,7 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 				is_range := true;				
 			};
 
-IO.Console->Print("match range: class=")->PrintLine(char_class);
+# IO.Console->Print("match range: class=")->PrintLine(char_class);
 			
 			@expressions->AddBack(Expression->New(char_class, is_range));
 		}
@@ -544,10 +534,10 @@ IO.Console->Print("match range: class=")->PrintLine(char_class);
 			left->AddBack(@expressions);
 			@expressions := left;
 			
-IO.Console->PrintLine("parentheses");		
+# IO.Console->PrintLine("parentheses");		
 		}	
 
-		# ---------- Debug ----------
+		#~ ---------- Debug ----------
 		
 		method : private : PrintSpace(depth : Int) ~ Nil {
 			for(i := 0; i < depth; i += 1;) {
@@ -617,6 +607,6 @@ IO.Console->PrintLine("parentheses");
 				Dump(@expressions, -1);
 			};
 		}
-
+		-------------------------- ~#
 	}
 }
