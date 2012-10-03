@@ -837,7 +837,7 @@ Statement* Parser::ParseStatement(int depth)
       break;
       
     default:
-      ProcessError("Expected statement", TOKEN_CLOSED_PAREN);
+      ProcessError("Expected statement", TOKEN_SEMI_COLON);
       break;
     }
   }

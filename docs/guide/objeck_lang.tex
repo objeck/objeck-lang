@@ -1042,7 +1042,9 @@ Base class for all objects.
   \item New()
   \item New(s : String)
   \item New(a : Char[])
+  \item New(a : Char[], offset : Int, max : Int)   
   \item New(a : Byte[])
+  \item New(a : Byte[], offset : Int, max : Int) 
   \end{itemize}
 \item \texttt{Append} - Appends a \texttt{String}, \texttt{Char[]},
   \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String
@@ -1054,6 +1056,9 @@ Base class for all objects.
   \item method : public : native : Append(i : Int) \textasciitilde Nil
   \item method : public : native : Append(f : Float) \textasciitilde Nil
   \item method : public : native : Append(a : Char[]) \textasciitilde Nil
+  \item method : public : native : Append(a : Char[], offset : Int, max : Int) \textasciitilde Nil
+  \item method : public : native : Append(a : Byte[]) \textasciitilde Nil
+  \item method : public : native : Append(a : Byte[], offset : Int, max : Int) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given Character; -1 if not found
@@ -2423,8 +2428,9 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \item \texttt{?} match 0 or 1
   \item \texttt{*} match 0 or more
   \item \texttt{+} match 1 or more
+  \item \texttt{|} or
   \item \texttt{()} grouping
-  \item \texttt{|} or in grouping
+  \item \texttt{[]} character class
   \end{itemize}
 \end{itemize}
 
@@ -2433,22 +2439,26 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \begin{itemize}
   \item New(pattern : String)
   \end{itemize}
-\item \texttt{Match} - Attempts to match input string using supplied pattern.
+
+\item \texttt{MatchExact} - Attempts to match the exact input string using supplied pattern.
   Returns true if successful, false otherwise. 
   \begin{itemize}
-  \item method : public : Match(input : String) \textasciitilde Bool
+  \item method : public : MatchExact(input : String) \textasciitilde Bool
   \end{itemize}
-\item \texttt{FindIndex} - Finds the last index of the matching pattern.
-  Returns -1 if expression does not match.
+
+\item \texttt{Match} - Attempts to best match the input string using supplied pattern.
   \begin{itemize}
-  \item method : public : FindIndex(input : String) \textasciitilde Int
-  \item method : public : FindIndex(input : String, offset : Int) \textasciitilde Int
+  \item method : public : Match(input : String) \textasciitilde String
   \end{itemize}
-\item \texttt{Find} - Finds the first matching substring for the pattern.
-  Returns an empty string if expression does not match.
+
+\item \texttt{FindFirst} - Search the input string for the best match first match.
   \begin{itemize}
-  \item method : public : Find(input : String) \textasciitilde String
-  \item method : public : Find(input : String, offset : Int) \textasciitilde String
+  \item method : public : FindFirst(input : String) \textasciitilde String
+  \end{itemize}
+
+\item \texttt{Find} - Search the input string for all the best matchs. Returns a Vector of string matches.
+  \begin{itemize}
+  \item method : public : Find(input : String) \textasciitilde Vector
   \end{itemize}
 \end{itemize}
 

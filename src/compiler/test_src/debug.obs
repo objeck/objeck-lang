@@ -7,9 +7,8 @@
 		
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			if(v = Words->Fum) {
-				"ok"->PrintLine();
-			};
+			b := "Hello World!"->ToCharArray();
+			String->New(b, -1, 10)->PrintLine();
 		}
 	}
 }
