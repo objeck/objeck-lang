@@ -2638,8 +2638,11 @@ bool ContextAnalyzer::Analyze()
 	  break;
 
 	case CLASS_TYPE:
+	  if(SearchProgramEnums(right->GetClassName()) || linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
+	    ProcessError(left_expr, "Invalid operation using classes: Var and Enum");
+	  }
 	  break;
-
+	  
 	case BOOLEAN_TYPE:
 	  ProcessError(left_expr, "Invalid operation using classes: Var and Bool");
 	  break;
