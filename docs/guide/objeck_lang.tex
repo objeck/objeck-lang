@@ -2429,8 +2429,9 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \item \texttt{*} match 0 or more
   \item \texttt{+} match 1 or more
   \item \texttt{|} or
-  \item \texttt{()} grouping
-  \item \texttt{[abc]} or \texttt{[a-z]} character class
+  \item \texttt{(abc)} grouping
+  \item \texttt{[abc]} or \texttt{[a-z]} classes
+  \item \texttt{\^} or \texttt{\$} starts with and ends wtih anchors
   \end{itemize}
 \end{itemize}
 
@@ -2439,28 +2440,33 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \begin{itemize}
   \item New(pattern : String)
   \end{itemize}
-
 \item \texttt{MatchExact} - Attempts to match the exact input string using supplied pattern.
   Returns true if successful, false otherwise. 
   \begin{itemize}
   \item method : public : MatchExact(input : String) \textasciitilde Bool
   \end{itemize}
-
-\item \texttt{Match} - Attempts to best match the input string using supplied pattern.
+\item \texttt{Match} - Attempts to best match the input string using supplied pattern. Returns the index of the best match.
   \begin{itemize}
-  \item method : public : Match(input : String) \textasciitilde String
+  \item method : public : Match(input : String) \textasciitilde Int
   \end{itemize}
-
-\item \texttt{FindFirst} - Search the input string for the best match first match.
+\item \texttt{FindFirst} - Searches the input string for the best first match.
   \begin{itemize}
   \item method : public : FindFirst(input : String) \textasciitilde String
   \end{itemize}
-
-\item \texttt{Find} - Search the input string for all the best matchs. Returns a Vector of string matches.
+\item \texttt{Find} - Searches the input string for all the matches. Returns a Vector of string matches.
   \begin{itemize}
   \item method : public : Find(input : String) \textasciitilde Vector
   \end{itemize}
+\item \texttt{ReplaceFirst} - Searches and replaces the first best best match.
+  \begin{itemize}
+  \item method : public : ReplaceFirst(input : String, replace : String) \textasciitilde String
+  \end{itemize}
+\item \texttt{Replace} - Searches and replaces all best best matchs.
+  \begin{itemize}
+  \item method : public : Replace(input : String, replace : String) \textasciitilde String
+  \end{itemize}
 \end{itemize}
+
 
 \newpage
 
