@@ -1223,8 +1223,8 @@ bundle System {
 			return String->New(array);
 		}
 
-		method : public : SubString(offset : Int) ~ String {
-			return SubString(0, offset);
+		method : public : SubString(length : Int) ~ String {
+			return SubString(0, length);
 		}
 
 		method : public : native : SubString(offset : Int, length : Int) ~ String {
