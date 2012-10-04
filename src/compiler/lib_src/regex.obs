@@ -257,7 +257,12 @@ bundle RegEx {
 		
 		method : private : Evaluate(expressions : Vector) ~ Bool {
 			each(i : expressions) {
-				result := Evaluate(expressions->Get(i)->As(Expression));
+				next : Expression;
+				if(i + i < expressions->Size()) {
+					next := expressions->Get(i + 1);
+				};
+					
+				result := Evaluate(expressions->Get(i)->As(Expression), next);
 				if(result = false) {
 					return false;
 				};
@@ -280,7 +285,7 @@ bundle RegEx {
 			return false;
 		}
 		
-		method : native : Evaluate(expression : Expression) ~ Bool {
+		method : native : Evaluate(expression : Expression, next : Expression) ~ Bool {
 			if(expression <> Nil) {
 				if(expression->GetType() = ExpressionType->SUB_EXPR) {
 					Evaluate(expression->GetLeft());
@@ -374,8 +379,16 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 								};
 							}
 							else if(type = ExpressionType->ANY) {
-"--- ANY ---"->PrintLine();
-								while( Evaluate(expression->GetExpression())) {};
+								if(next = Nil) {
+									return false;
+								};
+								
+								while(@input_char <> '\0' & Evaluate(next, Nil) = false) {
+									NextInput();
+								};
+								# backup previous character
+								@input_pos -= 2;
+								NextInput();								
 							};	
 
 							return true;
@@ -419,6 +432,23 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 	
 									return true;
 								};
+							}
+							else if(type = ExpressionType->ANY) {
+								if(next = Nil) {
+									return false;
+								};
+								
+								if(@input_char <> '\0') {
+									NextInput();
+									while(@input_char <> '\0' & Evaluate(next, Nil) = false) {
+										NextInput();
+									};
+									# backup previous character
+									@input_pos -= 2;
+									NextInput();
+
+									return true;
+								};								
 							};
 						}
 						
@@ -459,7 +489,7 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						#
 						label ExpressionType->STARTS_ANCHOR: {
 # "[### starts anchor ###]"->PrintLine();							
-							if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression())) {
+							if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression(), Nil)) {
 								return true;				
 							};
 						}
@@ -469,7 +499,7 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						#
 						label ExpressionType->ENDS_ANCHOR: {
 # "[### ends anchor ###]"->PrintLine();
-							if(Evaluate(expression->GetExpression()) & @input_char = '\0') {
+							if(Evaluate(expression->GetExpression(), Nil) & @input_char = '\0') {
 								return true;				
 							};
 						}
