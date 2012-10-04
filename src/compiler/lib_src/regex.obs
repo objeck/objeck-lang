@@ -160,7 +160,7 @@ bundle RegEx {
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
-				if(right > -1) {
+				if(right > -1 & left <> right) {
 # IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					matches->AddBack(input->SubString(left, right - left));
 					left += right - 1;
@@ -222,6 +222,20 @@ bundle RegEx {
 			
 			return true;
 		}
+
+		method : private : InRange(char_class : String, check : Char) ~ Bool {
+			return char_class->Get(0) <= check & char_class->Get(2) >= check;
+		}
+
+		method : private : InClass(char_class : String, check : Char) ~ Bool {
+			for(i := 0; i < char_class->Size(); i += 1;) {
+				if(char_class->Get(i) = check) {
+					return true;
+				};
+			};
+			
+			return false;
+		}
 		
 		method : private : Evaluate(expression : Expression) ~ Bool {
 			if(expression <> Nil) {
@@ -234,7 +248,7 @@ bundle RegEx {
 						# single character
 						#
 						label ExpressionType->CHAR: {
-IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(expression->GetValue() = @input_char) {
 								NextInput();
 								return true;
@@ -256,15 +270,10 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						label ExpressionType->CHAR_CLASS: {
 							char_class := expression->GetClass();
 # IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							found := false;
-							for(i := 0; i < char_class->Size() & found = false; i += 1;) {
-								if(char_class->Get(i) = @input_char) {
-									found := true;
-									NextInput();
-								};
+							if(InClass(char_class, @input_char)) {
+								NextInput();
+								return true;
 							};
-							
-							return found;
 						}
 
 						#
@@ -272,8 +281,8 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						#
 						label ExpressionType->CHAR_CLASS_RANGE: {
 							char_class := expression->GetClass();
-# IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							if(char_class->Get(0) <= @input_char & char_class->Get(2) >= @input_char) {
+IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+							if(InRange(char_class, @input_char)) {
 								NextInput();
 								return true;
 							};
@@ -300,11 +309,27 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						# zero or more
 						#
 						label ExpressionType->ZERO_MORE: {
-							test := expression->GetExpression()->GetValue();
-# IO.Console->Print("[### zero_or_more: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							while(test = @input_char) {
-# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-								NextInput();
+# "[### zero_or_more ###]"->PrintLine();
+							type := expression->GetExpression()->GetType();
+							if(type = ExpressionType->CHAR) {
+								test := expression->GetExpression()->GetValue();
+								while(test = @input_char) {
+									NextInput();
+								};
+							}
+							else if(type = ExpressionType->CHAR_CLASS_RANGE) {
+								char_class := expression->GetExpression()->GetClass();
+# IO.Console->Print("[### matching zero_or_more: range='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+								while(InRange(char_class, @input_char)) {
+									NextInput();	
+								};
+							}
+							else if(type = ExpressionType->CHAR_CLASS) {
+								char_class := expression->GetExpression()->GetClass();
+# IO.Console->Print("[### matching zero_or_more: class='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+								while(InClass(char_class, @input_char)) {
+									NextInput();
+								};
 							};
 
 							return true;
@@ -345,14 +370,20 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 						# starts anchor
 						#
 						label ExpressionType->STARTS_ANCHOR: {
-"[### starts anchor ###]"->PrintLine();
+# "[### starts anchor ###]"->PrintLine();							
+							if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression())) {
+								return true;				
+							};
 						}
 						
 						#
 						# ends anchor
 						#
 						label ExpressionType->ENDS_ANCHOR: {
-"[### ends anchor ###]"->PrintLine();
+# "[### ends anchor ###]"->PrintLine();
+							if(Evaluate(expression->GetExpression()) & @input_char = '\0') {
+								return true;				
+							};
 						}
 					};
 				};
@@ -393,7 +424,7 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
 					@starts_anchor := false;
-IO.Console->PrintLine("match: starts anchor");	
+# IO.Console->PrintLine("match: starts anchor");	
 				};
 			};
 			
@@ -427,7 +458,7 @@ IO.Console->PrintLine("match: starts anchor");
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
 					NextToken();
-# IO.Console->PrintLine("match: zero_or_more");					
+IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -463,7 +494,7 @@ IO.Console->PrintLine("match: starts anchor");
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ENDS_ANCHOR, expression));
 					NextToken();
-IO.Console->PrintLine("match: ends anchor");				
+# IO.Console->PrintLine("match: ends anchor");				
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -494,7 +525,7 @@ IO.Console->PrintLine("match: ends anchor");
 			}			
 			else {
 				@expressions->AddBack(Expression->New(@token));
-# IO.Console->Print("match: char=")->PrintLine(@token);				
+IO.Console->Print("match: char=")->PrintLine(@token);				
 				NextToken();
 			};
 		}
@@ -541,7 +572,7 @@ IO.Console->PrintLine("match: ends anchor");
 				is_range := true;				
 			};
 
-# IO.Console->Print("match range: class=")->PrintLine(char_class);
+IO.Console->Print("match range: class=")->PrintLine(char_class);
 			
 			@expressions->AddBack(Expression->New(char_class, is_range));
 		}
