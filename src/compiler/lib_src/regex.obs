@@ -386,9 +386,12 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 								while(@input_char <> '\0' & Evaluate(next, Nil) = false) {
 									NextInput();
 								};
-								# backup previous character
-								@input_pos -= 2;
-								NextInput();								
+								
+								# backup to previous character, if we're not at the end
+								if(@input_char <> '\0') {
+									@input_pos -= 2;
+									NextInput();
+								};								
 							};	
 
 							return true;
@@ -443,9 +446,12 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 									while(@input_char <> '\0' & Evaluate(next, Nil) = false) {
 										NextInput();
 									};
-									# backup previous character
-									@input_pos -= 2;
-									NextInput();
+
+									# backup to previous character, if we're not at the end
+									if(@input_char <> '\0') {
+										@input_pos -= 2;
+										NextInput();
+									};
 
 									return true;
 								};								
