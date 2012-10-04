@@ -173,6 +173,28 @@ bundle RegEx {
 			return matches;
 		}
 
+		method : public : Replace(input : String, replace : String) ~ String {
+			left := 0;
+			while(left < input->Size()) {
+				right := Evaluate(input, left);
+				if(right > -1 & left <> right) {
+# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+					# identify start and end of input string
+					start := input->SubString(left);
+					end := input->SubString(right, input->Size() - right);
+					# insert the replacement string
+					input := String->New(start);
+					input->Append(replace);
+					input->Append(end);	
+					# update search index
+					left += replace->Size() - 1;
+				};
+				left += 1;
+			};
+
+			return input;
+		}
+
 		method : native : Evaluate(input : String, offset : Int) ~ Int {
 			if(@error <> Nil) {
 				@error->PrintLine();
