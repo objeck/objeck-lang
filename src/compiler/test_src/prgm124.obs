@@ -4,18 +4,17 @@ use Struct;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				regex := RegExParser->New(args[0]);
-				regex->Replace(args[1], "****")->PrintLine();
-args[1]->PrintLine();
+			test := RegExParser->New(args[0]);
+			test->Match(args[1])->PrintLine();
 #~
+				regex->ReplaceFirst(args[1], "****")->PrintLine();
+				regex->ReplaceAll(args[1], "****")->PrintLine();
 				regex->FindFirst(args[1])->PrintLine();
 				matches := regex->Find(args[1]);
 				each(i : matches) {
 					matches->Get(i)->As(String)->PrintLine();
 				};
 ~#
-			};
 		}
 	}
 }

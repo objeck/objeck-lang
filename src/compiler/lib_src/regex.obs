@@ -142,13 +142,12 @@ bundle RegEx {
 			return "";
 		}
 
-		method : public : FindFirst(input : String) ~ String {
+		method : public : native : FindFirst(input : String) ~ String {
 			matches := Vector->New();
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1) {
-# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					return input->SubString(left, right - left);
 				};
 				left += 1;
@@ -157,7 +156,7 @@ bundle RegEx {
 			return "";
 		}
 
-		method : public : Find(input : String) ~ Vector {
+		method : public : native : Find(input : String) ~ Vector {
 			matches := Vector->New();
 			left := 0;
 			while(left < input->Size()) {
@@ -173,12 +172,32 @@ bundle RegEx {
 			return matches;
 		}
 
-		method : public : Replace(input : String, replace : String) ~ String {
+		method : public : native : ReplaceFirst(input : String, replace : String) ~ String {
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1 & left <> right) {
-# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
+					# identify start and end of input string
+					start := input->SubString(left);
+					end := input->SubString(right, input->Size() - right);
+					# insert the replacement string
+					input := String->New(start);
+					input->Append(replace);
+					input->Append(end);	
+					
+					return input;
+				};
+				left += 1;
+			};
+
+			return input;
+		}
+
+		method : public : native : ReplaceAll(input : String, replace : String) ~ String {
+			left := 0;
+			while(left < input->Size()) {
+				right := Evaluate(input, left);
+				if(right > -1 & left <> right) {
 					# identify start and end of input string
 					start := input->SubString(left);
 					end := input->SubString(right, input->Size() - right);
@@ -272,7 +291,7 @@ bundle RegEx {
 						# single character
 						#
 						label ExpressionType->CHAR: {
-# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(expression->GetValue() = @input_char) {
 								NextInput();
 								return true;
@@ -283,7 +302,7 @@ bundle RegEx {
 						# any character
 						#
 						label ExpressionType->ANY: {
-# "[### any ###]"->PrintLine();
+"[### any ###]"->PrintLine();
 							NextInput();
 							return true;							
 						}
@@ -332,7 +351,7 @@ bundle RegEx {
 						# zero or more
 						#
 						label ExpressionType->ZERO_MORE: {
-# "[### zero_or_more ###]"->PrintLine();
+"[### zero_or_more ###]"->PrintLine();
 							type := expression->GetExpression()->GetType();
 							if(type = ExpressionType->CHAR) {
 								test := expression->GetExpression()->GetValue();
@@ -353,7 +372,11 @@ bundle RegEx {
 								while(InClass(char_class, @input_char)) {
 									NextInput();
 								};
-							};
+							}
+							else if(type = ExpressionType->ANY) {
+"--- ANY ---"->PrintLine();
+								while( Evaluate(expression->GetExpression())) {};
+							};	
 
 							return true;
 						}
