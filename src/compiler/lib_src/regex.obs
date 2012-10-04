@@ -8,20 +8,7 @@
 use Struct;
 
 bundle RegEx {
-	enum ExpressionType := -100 {
-		CHAR,
-		ANY,
-		OPTIONAL,
-		ZERO_MORE,
-		ONE_MORE,		
-		OR,
-		CHAR_CLASS,
-		CHAR_CLASS_RANGE,
-		ENDS_ANCHOR,
-		STARTS_ANCHOR,
-		SUB_EXPR
-	}
-	
+	# ---------- sub-expression ----------
 	class Expression {
 		@type : ExpressionType;
 		@value : Char;
@@ -93,7 +80,22 @@ bundle RegEx {
 			return @expression;
 		}
 	}
-	
+
+	enum ExpressionType := -100 {
+		CHAR,
+		ANY,
+		OPTIONAL,
+		ZERO_MORE,
+		ONE_MORE,		
+		OR,
+		CHAR_CLASS,
+		CHAR_CLASS_RANGE,
+		ENDS_ANCHOR,
+		STARTS_ANCHOR,
+		SUB_EXPR
+	}
+		
+	# ---------- match types ----------
 	enum EvalType := -200 {
 		MATCH,
 		MATCH_NEXT,
@@ -121,7 +123,7 @@ bundle RegEx {
 			Parse();
 		}
 
-		# ---------- Evaluation ----------
+		# ---------- regex evaluation ----------
 		
 		method : public : MatchExact(input : String) ~ Bool {
 			return Evaluate(input, 0) > -1 & @is_exact;
@@ -171,7 +173,7 @@ bundle RegEx {
 			return matches;
 		}
 
-		method : public : Evaluate(input : String, offset : Int) ~ Int {
+		method : native : Evaluate(input : String, offset : Int) ~ Int {
 			if(@error <> Nil) {
 				@error->PrintLine();
 				return -1;
@@ -237,7 +239,7 @@ bundle RegEx {
 			return false;
 		}
 		
-		method : private : Evaluate(expression : Expression) ~ Bool {
+		method : native : Evaluate(expression : Expression) ~ Bool {
 			if(expression <> Nil) {
 				if(expression->GetType() = ExpressionType->SUB_EXPR) {
 					Evaluate(expression->GetLeft());
@@ -281,7 +283,6 @@ bundle RegEx {
 						#
 						label ExpressionType->CHAR_CLASS_RANGE: {
 							char_class := expression->GetClass();
-IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 							if(InRange(char_class, @input_char)) {
 								NextInput();
 								return true;
@@ -339,16 +340,40 @@ IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', i
 						# one or more
 						#
 						label ExpressionType->ONE_MORE: {
-							test := expression->GetExpression()->GetValue();
-# IO.Console->Print("[### one_or_more: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							if(test = @input_char) {
-								NextInput();
-								while(test = @input_char) {
-# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-								NextInput();
-								};
+# "[### one_or_more ###]"->PrintLine();
+							type := expression->GetExpression()->GetType();
+							if(type = ExpressionType->CHAR) {
+								test := expression->GetExpression()->GetValue();
+								if(test = @input_char) {
+									NextInput();
+									while(test = @input_char) {
+										NextInput();
+									};
 	
-								return true;
+									return true;
+								};
+							}
+							else if(type = ExpressionType->CHAR_CLASS_RANGE) {
+								char_class := expression->GetExpression()->GetClass();
+								if(InRange(char_class, @input_char)) {
+									NextInput();
+									while(InRange(char_class, @input_char)) {
+										NextInput();
+									};
+	
+									return true;
+								};
+							}
+							else if(type = ExpressionType->CHAR_CLASS) {
+								char_class := expression->GetExpression()->GetClass();
+								if(InClass(char_class, @input_char)) {
+									NextInput();
+									while(InClass(char_class, @input_char)) {
+										NextInput();
+									};
+	
+									return true;
+								};
 							};
 						}
 						
@@ -356,14 +381,32 @@ IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', i
 						# single optional
 						#
 						label ExpressionType->OPTIONAL: {
-							test := expression->GetExpression()->GetValue();
-# IO.Console->Print("[### optional: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-							if(test = @input_char) {
-# IO.Console->Print("\t matching: expr='")->Print(test)->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-								NextInput();
-							};
+# "[### optional ###]"->PrintLine();
+							type := expression->GetExpression()->GetType();
+							if(type = ExpressionType->CHAR) {
+								test := expression->GetExpression()->GetValue();
+								if(test = @input_char) {
+									NextInput();
+								};
 
-							return true;
+								return true;
+							}
+							else if(type = ExpressionType->CHAR_CLASS_RANGE) {
+								char_class := expression->GetExpression()->GetClass();
+								if(InRange(char_class, @input_char)) {
+									NextInput();
+								};
+			
+								return true;
+							}
+							else if(type = ExpressionType->CHAR_CLASS) {
+								char_class := expression->GetExpression()->GetClass();
+								if(InClass(char_class, @input_char)) {
+									NextInput();
+								};
+			
+								return true;
+							};
 						}
 						
 						#
@@ -458,7 +501,7 @@ IO.Console->Print("[### matching class: expr='")->Print(char_class)->Print("', i
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
 					NextToken();
-IO.Console->PrintLine("match: zero_or_more");					
+# IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -525,7 +568,7 @@ IO.Console->PrintLine("match: zero_or_more");
 			}			
 			else {
 				@expressions->AddBack(Expression->New(@token));
-IO.Console->Print("match: char=")->PrintLine(@token);				
+# IO.Console->Print("match: char=")->PrintLine(@token);				
 				NextToken();
 			};
 		}
@@ -572,7 +615,7 @@ IO.Console->Print("match: char=")->PrintLine(@token);
 				is_range := true;				
 			};
 
-IO.Console->Print("match range: class=")->PrintLine(char_class);
+# IO.Console->Print("match range: class=")->PrintLine(char_class);
 			
 			@expressions->AddBack(Expression->New(char_class, is_range));
 		}
@@ -640,78 +683,6 @@ IO.Console->Print("match range: class=")->PrintLine(char_class);
 			@expressions := left;
 			
 # IO.Console->PrintLine("parentheses");		
-		}	
-
-		#~ ---------- Debug ----------
-		
-		method : private : PrintSpace(depth : Int) ~ Nil {
-			for(i := 0; i < depth; i += 1;) {
-				"  "->Print();
-			};
 		}
-
-		method : private : Dump(expression : Expression, depth : Int) ~ Nil {
-			if(expression <> Nil) {
-				if(expression->GetType() = ExpressionType->SUB_EXPR) {
-					Dump(expression->GetLeft(), depth + 1);
-				}
-				else {
-					
-					
-					select(expression->GetType()) {
-						label ExpressionType->CHAR: {
-							PrintSpace(depth); IO.Console->Print("[=== match: token='")
-								->Print(expression->GetValue())->PrintLine("' ===]");
-						}
-		
-						label ExpressionType->ANY: {
-							PrintSpace(depth); "[=== match: any"->PrintLine();
-						}
-
-						label ExpressionType->OR: {
-							PrintSpace(depth); "[=== or ===]"->PrintLine();
-							
-							PrintSpace(depth + 2); "[--- left ---]"->PrintLine();
-							Dump(expression->GetLeft(), depth + 3);
-							
-							PrintSpace(depth + 2); "[--- right ---]"->PrintLine();
-							Dump(expression->GetRight(), depth + 3);
-						}
-		
-						label ExpressionType->ZERO_MORE: {
-							PrintSpace(depth); "[=== zero or more ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-		
-						label ExpressionType->ONE_MORE: {
-							PrintSpace(depth); "[=== one or more ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-
-						label ExpressionType->OPTIONAL: {
-							PrintSpace(depth); "[=== optional ===]"->PrintLine();
-							Dump(expression->GetExpression(), depth + 2);
-						}
-					};
-				};
-			};	
-		}
-		
-		method : private : Dump(expressions : Vector, depth : Int) ~ Nil {
-			each(i : expressions) {
-				Dump(expressions->Get(i)->As(Expression), depth);
-			};
-		}
-
-		method : private : Dump() ~ Nil {
-			"-------------------"->PrintLine();
-			if(@error <> Nil) {
-				@error->PrintLine();
-			}
-			else {
-				Dump(@expressions, -1);
-			};
-		}
-		-------------------------- ~#
 	}
 }
