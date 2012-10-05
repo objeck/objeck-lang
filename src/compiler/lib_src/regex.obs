@@ -113,7 +113,6 @@ bundle RegEx {
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
-			
 			Parse();
 		}
 
@@ -249,22 +248,16 @@ bundle RegEx {
 			};
 		}	
 		
-		method : private : Evaluate(expressions : Vector) ~ Bool {
-			each(i : expressions) {
-				next : Expression;
-				if(i + i < expressions->Size()) {
-					next := expressions->Get(i + 1);
-				};
-					
-				result := Evaluate(expressions->Get(i)->As(Expression), next);
-				if(result = false) {
-					return false;
-				};
+		method : private : PreviousInput() ~ Nil {
+			if(@input_pos > 1) {
+				@input_pos -= 1;
+				@input_char := @input[@input_pos];
+			}
+			else {
+				@input_char := '\0';
 			};
-			
-			return true;
-		}
-
+		}	
+		
 		method : private : InRange(char_class : String, check : Char) ~ Bool {
 			return char_class->Get(0) <= check & char_class->Get(2) >= check;
 		}
@@ -279,118 +272,98 @@ bundle RegEx {
 			return false;
 		}
 		
-		method : native : Evaluate(expression : Expression, next : Expression) ~ Bool {
-			if(expression <> Nil) {				
-				select(expression->GetType()) {
-					#
+		method : private : Evaluate(expressions : Vector) ~ Bool {
+			next : Expression;
+			each(i : expressions) {
+				next := Nil;
+				if(i + i < expressions->Size()) {
+					next := expressions->Get(i + 1);
+				};	
+				
+				if(Evaluate(expressions->Get(i)->As(Expression), next) = false) {
+					return false;
+				};
+			};
+			
+			return true;
+		}
+		
+		method : native : Evaluate(current : Expression, next : Expression) ~ Bool {
+			if(current <> Nil) {				
+				select(current->GetType()) {
 					# single character
-					#
 					label ExpressionType->CHAR: {
-IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-						if(@input_char = expression->GetValue()) {
+"[### single match ###]"->PrintLine();
+IO.Console->Print("\t|check='")->Print(current->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("'|");
+						if(current->GetValue() = @input_char) {
 							NextInput();
 							return true;
-						};
+						};				
 					}
-	
-					#
+					
 					# any character
-					#
 					label ExpressionType->ANY: {
-"[### any ###]"->PrintLine();
-						NextInput();
-						return true;							
+"[### single any ###]"->PrintLine();
 					}
 
-					#
 					# class of characters
-					#
 					label ExpressionType->CHAR_CLASS: {
-						char_class := expression->GetClass();
-IO.Console->Print("[### matching class: class='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-						if(InClass(char_class, @input_char)) {
-							NextInput();
-							return true;
-						};
+"[### matching class ###]"->PrintLine();					
 					}
 
-					#
 					# range of characters
-					#
 					label ExpressionType->CHAR_CLASS_RANGE: {
-IO.Console->Print("[### matching range: range='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-						char_class := expression->GetClass();
-						if(InRange(char_class, @input_char)) {
-							NextInput();
-							return true;
-						};
+"[### matching range ###]"->PrintLine();
 					}
 
-					#
 					# logical OR
-					#
 					label ExpressionType->OR: {
 "[### or ###]"->PrintLine();
-						last := @input_pos - 1;
-						if(Evaluate(expression->GetLeft())) {
-							return true;
-						}
-						else {
-							@input_pos := last;
-							NextInput();
-							if(Evaluate(expression->GetRight())) {
-								
-								return true;
-							};
-						};
 					}
 	
-					#
 					# zero or more
-					#
-					label ExpressionType->ZERO_MORE: {
+					label ExpressionType->ZERO_MORE: {						
 "[### zero_or_more ###]"->PrintLine();
-						while(@input_char <> '\0' & Evaluate(expression->GetLeft())) {
-#							NextInput();
-						};				
+						match := true;
+						while(@input_char <> '\0' & match) {
+							match := Evaluate(current->GetLeft());
+						};
+						
 						return true;
 					}
 	
-					#
 					# one or more
-					#
 					label ExpressionType->ONE_MORE: {
+"[### one_or_more ###]"->PrintLine();
+						if(Evaluate(current->GetLeft())) {
+							match := true;			
+							while(@input_char <> '\0' & match) {
+								match := Evaluate(current->GetLeft());
+							};
+							
+							return true;
+						};					
 					}
 					
-					#
 					# single optional
-					#
 					label ExpressionType->OPTIONAL: {
 "[### optional ###]"->PrintLine();
+						Evaluate(current->GetLeft());
+						return true;
 					}
 					
-					#
 					# starts anchor
-					#
 					label ExpressionType->STARTS_ANCHOR: {
 "[### starts anchor ###]"->PrintLine();							
-						if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression(), Nil)) {
-							return true;				
-						};
 					}
 					
-					#
 					# ends anchor
-					#
 					label ExpressionType->ENDS_ANCHOR: {
 "[### ends anchor ###]"->PrintLine();
-						if(@input_char = '\0' & Evaluate(expression->GetExpression(), Nil)) {
-							return true;				
-						};
 					}
 				};
 			};
-
+			
 			return false;
 		}
 
