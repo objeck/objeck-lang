@@ -115,10 +115,12 @@ bundle RegEx {
 		@input_pos : Int;
 		@input_char : Char;
 		@is_exact : Bool;
+		@backtrack : IntStack;
 		
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
+			@backtrack := IntStack->New();
 			
 			Parse();
 		}
@@ -246,27 +248,48 @@ bundle RegEx {
 		}
 		
 		method : private : NextInput() ~ Nil {
-			if(@input_pos < @input->Size()) {
-				@input_char := @input[@input_pos];
-				@input_pos += 1;
+			if(@backtrack->Size() > 0 & @input_char = '\0') {
+				@input_char := @backtrack->Pop();
+				@input_pos -= 1;
+"@@@@"->PrintLine();
 			}
 			else {
-				@input_char := '\0';
+				if(@input_pos < @input->Size()) {
+					@input_char := @input[@input_pos];
+					@input_pos += 1;
+				}
+				else {
+					@input_char := '\0';
+				};
 			};
 		}	
 		
 		method : private : Evaluate(expressions : Vector) ~ Bool {
-			for(i := 0; @input_char <> '\0' & i < expressions->Size(); i += 1;) {
+			for(i := 0; i < expressions->Size(); i += 1;) {
 				next : Expression;
 				if(i + i < expressions->Size()) {
 					next := expressions->Get(i + 1);
 				};
 				
 				result := Evaluate(expressions->Get(i)->As(Expression), next);
+				if(@backtrack->Size() > 0 & @input_char = '\0') {
+					do {
+						NextInput();
+						result := Evaluate(expressions->Get(i)->As(Expression), next);
+					}
+					while(@backtrack->Size() > 0 & result = false);
+					if(@backtrack->Size() > 0) {
+						result := true;
+					};
+				};
+IO.Console->Print("\tbacklog=")->PrintLine(@backtrack->Size());
+
 				if(result = false) {
 					return false;
 				};
 			};
+
+			@backtrack := IntStack->New();
 			
 			return true;
 		}
@@ -300,6 +323,7 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 					# any character
 					label ExpressionType->ANY: {
 "[### any ###]"->PrintLine();
+						@backtrack->Push(@input_char);
 						NextInput();
 						return true;							
 					}
@@ -348,10 +372,16 @@ IO.Console->Print("\tpos 1=")->PrintLine(@input_pos);
 							while(@input_char <> '\0' & match);
 						}
 						else {
-							while(@input_char <> '\0' & Evaluate(expression->GetExpression(), next)) {
-								NextInput();
-							};
+IO.Console->Print("\tpos 0=")->PrintLine(@input_pos);
+							do {	
+								match := Evaluate(expression->GetExpression(), next);
+							}
+							while(@input_char <> '\0' & match);
+IO.Console->Print("\tpos 1=")->Print(@input_pos)->Print(", input=")->PrintLine(@input_char);	
 						};
+
+
+IO.Console->Print("\tbacklog=")->PrintLine(@backtrack->Size());
 						
 						return true;
 					}
@@ -572,7 +602,6 @@ IO.Console->Print("\tpos 1=")->PrintLine(@input_pos);
 
 				is_range := true;				
 			};
-
 # IO.Console->Print("match range: class=")->PrintLine(char_class);
 			
 			@expressions->AddBack(Expression->New(char_class, is_range));
