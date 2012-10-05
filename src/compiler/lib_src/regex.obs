@@ -360,9 +360,18 @@ IO.Console->Print("[### matching range: range='")->Print(expression->GetClass())
 						#
 						label ExpressionType->ZERO_MORE: {
 "[### zero_or_more ###]"->PrintLine();
-							while(@input_char <> '\0' & Evaluate(expression->GetExpression(), Nil)) {
-								NextToken();
-							};						
+							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+"-- ANY 0 --"->PrintLine();							
+								while(@input_char <> '\0' & Evaluate(next, Nil) = false) {
+									NextInput();
+								};
+"-- ANY 1 --"->PrintLine();								
+							}
+							else { 
+								while(@input_char <> '\0' & Evaluate(expression->GetExpression(), next)) {
+									NextInput();
+								};
+							};				
 							return true;
 						}
 		
@@ -371,13 +380,12 @@ IO.Console->Print("[### matching range: range='")->Print(expression->GetClass())
 						#
 						label ExpressionType->ONE_MORE: {
 "[### one_or_more ###]"->PrintLine();
-							if(Evaluate(expression->GetExpression(), Nil)) {
-								NextToken();
-								while(@input_char <> '\0' & Evaluate(expression->GetExpression(), Nil)) {
-								NextToken();
-								};						
-								return true;
-							};
+							if(@input_char <> '\0' & Evaluate(expression->GetExpression(), next)) {
+								NextInput();
+								while(@input_char <> '\0' & Evaluate(expression->GetExpression(), next)) {
+									NextInput();
+								};
+							};							
 						}
 						
 						#
@@ -385,10 +393,6 @@ IO.Console->Print("[### matching range: range='")->Print(expression->GetClass())
 						#
 						label ExpressionType->OPTIONAL: {
 "[### optional ###]"->PrintLine();
-							if(Evaluate(expression->GetExpression(), Nil)) {
-								NextToken();
-							};
-							return true;
 						}
 						
 						#
