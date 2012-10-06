@@ -89,6 +89,11 @@ bundle Struct {
 		method : public : Size() ~ Int {
 			return @size;
 		}
+
+		method : public : Empty() ~ Nil {
+			@values := Int->New[8];
+			@size := 0;
+		}
 		
 		method : public : native : Average() ~ Int {
 			if(@size <= 0) {
@@ -329,6 +334,11 @@ bundle Struct {
 			return @size;
 		}
 
+		method : public : Empty() ~ Nil {
+			@values := Float->New[8];
+			@size := 0;
+		}
+
 		method : public : native : Average() ~ Float {
 			if(@size <= 0) {
 				return 0.0;
@@ -561,6 +571,11 @@ bundle Struct {
 			
 			return false;
 		}
+
+		method : public : Empty() ~ Nil {
+			@values := Compare->New[8];
+			@size := 0;
+		}
 		
 		method : public : Size() ~ Int {
 			return @size;
@@ -741,6 +756,11 @@ bundle Struct {
 			return @size;
 		}
 
+		method : public : Empty() ~ Nil {
+			@values := Base->New[8];
+			@size := 0;
+		}
+
 		method : public : native : ToArray() ~ Base[] {
 			array : Base[] := Base->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
@@ -778,6 +798,10 @@ bundle Struct {
 			};
 			
 			return Nil;
+		}
+
+		method : public : Empty() ~ Nil {
+			@values->Empty();
 		}
 		
 		method : public: IsEmpty() ~ Bool {
@@ -820,6 +844,14 @@ bundle Struct {
 			
 			return 0;
 		}
+
+		method : public : Empty() ~ Nil {
+			@values->Empty();
+		}
+		
+		method : public: IsEmpty() ~ Bool {
+		  return @values->Size() = 0;
+		}
 		
 		method : public: Size() ~ Int {
 		  return @values->Size();
@@ -861,10 +893,14 @@ bundle Struct {
 		method : public: Size() ~ Int {
 		  return @values->Size();
 		}
+
+		method : public : Empty() ~ Nil {
+			@values->Empty();
+		}
 		
 		method : public: IsEmpty() ~ Bool {
 		  return @values->Size() = 0;
-	  }
+		}
 	}
 	
 	# Integer Linked List
@@ -954,7 +990,11 @@ bundle Struct {
 
 			return 0;
 		}
-				
+		
+		method : public : Empty() ~ Nil {
+			@list->Empty();
+		}
+		
 		method : public : Size() ~ Int {
 			return @list->Size();
 		}
@@ -1104,6 +1144,10 @@ bundle Struct {
 			};
 
 			return 0.0;
+		}
+
+		method : public : Empty() ~ Nil {
+			@list->Empty();
 		}
 		
 		method : public : Size() ~ Int {
@@ -1373,6 +1417,13 @@ bundle Struct {
 
 			return Nil;
 		}
+
+		method : public : Empty() ~ Nil {
+			@size := 0;
+			@head := Nil;
+			@tail := Nil;
+			@cursor := Nil;
+		}
 		
 		method : public : Size() ~ Int {
 			return @size;
@@ -1494,6 +1545,9 @@ bundle Struct {
 			return @map->GetValues();
 		}
 
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
@@ -1543,6 +1597,10 @@ bundle Struct {
 			return @map->GetValues();
 		}
 
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
@@ -1578,6 +1636,10 @@ bundle Struct {
 
 		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
+		}
+
+		method : public : native : Empty() ~ Nil {
+			@map->Empty();
 		}
 
 		method : public : native : Size() ~ Int {
@@ -1616,6 +1678,14 @@ bundle Struct {
 			return @size;
 		}
 
+		method : public : native : Empty() ~ Nil {
+			@root := Nil;
+			@last := Nil;
+			@Removed := Nil;
+			@size := 0;
+			@found := false;
+		}
+		
 		method : native : Split(node :  Struct.TreeNode) ~ TreeNode {
 			if(node = Nil | node->GetRight() = Nil | 
 					node->GetRight()->GetRight() = Nil) {
@@ -1857,6 +1927,10 @@ bundle Struct {
 			return @hash->GetValues();
 		}
 
+		method : public : native : Empty() ~ Nil {
+			@hash->Empty();
+		}
+
 		method : public : native : Size() ~ Int {
 			return @hash->Size();
 		}
@@ -1986,6 +2060,11 @@ bundle Struct {
 			};
 			
 			return values;
+		}
+
+		method : public : Empty() ~ Nil {
+			@buckets := List->New[337];
+			@size := 0;
 		}
 		
 		method : public : Size() ~ Int {
