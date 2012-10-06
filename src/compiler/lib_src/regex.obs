@@ -115,10 +115,13 @@ bundle RegEx {
 		@input_pos : Int;
 		@input_char : Char;
 		@is_exact : Bool;
+		@is_lazy_any : Bool;
+		@lazy_any_positions : IntVector();
 		
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
+			@lazy_any_positions := New->IntVector();
 			
 			Parse();
 		}
@@ -231,9 +234,7 @@ bundle RegEx {
 			
 			# evaluate and check final position
 			match := Evaluate(@expressions);
-
 # IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")->Print(match)->Print(", end=")->PrintLine(@input_char);
-
 			if(match & @input_char <> '\0') {
 				return @input_pos - 1;
 			}
@@ -287,6 +288,10 @@ bundle RegEx {
 		
 		method : native : Evaluate(expression : Expression, next : Expression) ~ Bool {
 			if(expression <> Nil) {
+				if(@is_lazy_any) {
+					@lazy_any_positions->AddBack(@char_pos);
+				};
+
 				select(expression->GetType()) {
 					# single character
 					label ExpressionType->CHAR: {
@@ -341,7 +346,10 @@ IO.Console->Print("\tpos 1=")->PrintLine(@input_pos);
 					# zero or more
 					label ExpressionType->ZERO_MORE: {
 "[### zero_or_more ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+						if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+							@is_lazy_any := true;
+						}
+						else if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							do {
 								match := Evaluate(expression->GetExpression()->GetLeft());
 							} 
@@ -355,9 +363,6 @@ IO.Console->Print("\tpos 0=")->PrintLine(@input_pos);
 							while(@input_char <> '\0' & match);
 IO.Console->Print("\tpos 1=")->Print(@input_pos)->Print(", input=")->PrintLine(@input_char);	
 						};
-
-
-IO.Console->Print("\tbacklog=")->PrintLine(@backtrack->Size());
 						
 						return true;
 					}
@@ -370,7 +375,6 @@ IO.Console->Print("\tbacklog=")->PrintLine(@backtrack->Size());
 					# one or more
 					label ExpressionType->ONE_MORE: {
 # "[### one_or_more ###]"->PrintLine();
-						
 					}
 					
 					# single optional
