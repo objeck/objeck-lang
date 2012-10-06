@@ -1312,7 +1312,14 @@ supports the following operations:
   \begin{itemize}
   \item method : public : Back() \textasciitilde Compare
   \end{itemize}
-\item \texttt{Size} - returns the size of the list
+\item \texttt{Empty} - clears the list
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Size} - returns the stack size
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
+  \end{itemize}
 \end{itemize}
 
 \subsubsection{Stack/IntStack/FloatStack}
@@ -1339,6 +1346,10 @@ operations:
 \item \texttt{IsEmpty} - returns true if stack is empty
   \begin{itemize}
   \item method : public : IsEmpty() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Empty} - clears the stack
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
   \end{itemize}
 \item \texttt{Size} - returns the stack size
   \begin{itemize}
@@ -1383,6 +1394,10 @@ following operations:
 \item \texttt{Size} - returns the size of the list
   \begin{itemize}
   \item method : public : Size() \textasciitilde Int
+  \end{itemize}
+\item \texttt{Empty} - clears the vector
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
   \end{itemize}
 \item \texttt{ToArray} - returns an array of elements
   \begin{itemize}
@@ -1453,17 +1468,18 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
   \begin{itemize}
   \item method : public : Has(value : Compare) \textasciitilde Bool
   \end{itemize}
-
 \item \texttt{GetKeys} - returns a vector of keys
   \begin{itemize}
   \item method : public : GetKeys() \textasciitilde Vector
   \end{itemize}
-
 \item \texttt{GetValues} - returns a vector of values
   \begin{itemize}
   \item method : public : GetValues() \textasciitilde Vector
   \end{itemize}
-
+\item \texttt{Empty} - clears the map
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
 \item \texttt{Size} - returns the size of the map
   \begin{itemize}
   \item method : public : Size() \textasciitilde Int
@@ -1500,7 +1516,10 @@ for larger sets):
   \begin{itemize}
   \item method : public : GetValues() \textasciitilde Vector
   \end{itemize}
-
+\item \texttt{Empty} - clears the hash table
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
 \item \texttt{Size} - returns the size of the Hash
   \begin{itemize}
   \item method : public : Size() \textasciitilde Int
