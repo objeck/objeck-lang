@@ -7,101 +7,6 @@
 use Struct;
 
 bundle RegEx {
-	# expression type
-	enum ExpressionType := -100 {
-		CHAR,
-		ANY,
-		OPTIONAL,
-		CHAR_CLASS,
-		CHAR_CLASS_RANGE,
-		ENDS_ANCHOR,
-		STARTS_ANCHOR,
-		OR,
-		ZERO_MORE,
-		ONE_MORE,		
-		SUB_EXPR
-	}
-	
-	# ---------- subexpression value object ----------
-	class Expression {
-		@type : ExpressionType;
-		@value : Char;
-		@char_class : String;
-		@expression : Expression;
-		@left : Vector;
-		@right : Vector;
-		
-		New() {
-			@type := ExpressionType->ANY;
-		}
-
-		New(value : Char) {
-			@type := ExpressionType->CHAR;
-			@value := value;
-		}
-
-		New(char_class : String, is_range : Bool) {
-			if(is_range) {
-				@type := ExpressionType->CHAR_CLASS_RANGE;
-			}
-			else {
-				@type := ExpressionType->CHAR_CLASS;
-			};
-			@char_class := char_class;
-		}
-		
-		New(left : Vector) {
-			@type := ExpressionType->SUB_EXPR;
-			@left := left;
-		}
-		
-		New(type : ExpressionType) {
-			@type := type;
-		}
-		
-		New(type : ExpressionType, expression : Expression) {
-			@type := type;
-			@expression := expression;
-		}
-
-		New(left : Vector, right : Vector) {
-			@type := ExpressionType->OR;
-			@left := left;
-			@right := right;
-		}
-
-		method : public : GetType() ~ ExpressionType {
-			return @type;
-		}
-		
-		method : public : GetValue() ~ Char {
-			return @value;
-		}
-
-		method : public : GetClass() ~ String {
-			return @char_class;
-		}
-		
-		method : public : GetLeft() ~ Vector {
-			return @left;
-		}
-		
-		method : public : GetRight() ~ Vector {
-			return @right;
-		}
-		
-		method : public : GetExpression() ~ Expression {
-			return @expression;
-		}
-	}
-	
-	# ---------- match types ----------
-	enum EvalType := -200 {
-		MATCH,
-		MATCH_NEXT,
-		NO_MATCH
-	}
-	
 	# ---------- regular expression matcher ----------
 	class RegExMatcher {
 		# parsing
@@ -256,17 +161,6 @@ bundle RegEx {
 			};
 		}	
 		
-		method : private : SetInput(pos : Int) ~ Nil {
-			@input_char := pos;	
-			if(@pos < @input->Size()) {
-				@input_char := @input[@input_pos];
-				@input_pos += 1;
-			}
-			else {
-				@input_char := '\0';
-			};
-		}	
-		
 		method : private : Evaluate(expressions : Vector, offset : Int) ~ Bool {
 			for(i := offset; i < expressions->Size(); i += 1;) {
 				next : Expression;
@@ -404,11 +298,6 @@ bundle RegEx {
 						return true;
 					}
 
-					# sub-expression
-					label ExpressionType->SUB_EXPR: {
-						return Evaluate(expression->GetLeft(), 0);						
-					}
-	
 					# one or more
 					label ExpressionType->ONE_MORE: {
 "[### one_or_more ###]"->PrintLine();
@@ -434,6 +323,41 @@ bundle RegEx {
 						};
 					}
 					
+					# repeat
+					label ExpressionType->REPEAT: {
+"[### repeat ###]"->PrintLine();
+						count := 0;
+						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+							do {
+								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
+								if(match) {
+									count += 1;
+								};
+							} 
+							while(@input_char <> '\0' & match);
+						}
+						else {
+							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+								@is_lazy_any := true;
+							};
+							
+							do {	
+								match := Evaluate(expression->GetExpression(), next);
+								if(match) {
+									count += 1;
+								};
+							}
+							while(@input_char <> '\0' & match);
+						};
+						
+						if(expression->GetMost() <> -1) {
+							return expression->GetLeast() >= count & expression->GetMost() <= count;
+						}
+						else {
+							return expression->GetLeast() >= count;
+						};
+					}
+					
 					# single optional
 					label ExpressionType->OPTIONAL: {
 "[### optional ###]"->PrintLine();
@@ -445,6 +369,11 @@ bundle RegEx {
 						};
 						
 						return true;
+					}
+					
+					# sub-expression
+					label ExpressionType->SUB_EXPR: {
+						return Evaluate(expression->GetLeft(), 0);						
 					}
 				};
 			};
@@ -559,7 +488,65 @@ bundle RegEx {
 					@error := "missing left-hand side operand";
 					return;
 				};
+			}	
+			else if(@token = '{') {
+				if(@expressions->Size() > 0) {
+					NextToken();
+					
+					Whitespace();
+					least := Number()->ToInt();
+					if(@error <> Nil) {
+						return;
+					};
+					
+					Whitespace();
+					most := -1;
+					if(@token = ',') {
+						NextToken();
+						Whitespace();
+						most := Number()->ToInt();
+						if(@error <> Nil) {
+							return;
+						};
+					};
+					
+					Whitespace();		
+					if(@token <> '}') {
+						@error := "expected '}'";
+						return;
+					};
+					NextToken();
+					
+IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(most)->PrintLine("'");										
+					
+					expression := @expressions->RemoveBack()->As(Expression);
+					@expressions->AddBack(Expression->New(least, most, expression));
+				}
+				else {
+					@error := "missing left-hand side operand";
+					return;
+				};
 			};
+		}
+		
+		method : private : Whitespace() ~ Nil {
+			while(@token <> '\0' & (@token = ' ' | @token = '\t' | @token = '\r' | @token = '\n')) {
+				NextToken();
+			};
+		}
+		
+		method : private : Number() ~ String {
+			start := @token_pos - 1;
+			while(@token <> '\0' & @token->IsDigit()) {
+				NextToken();
+			};
+			
+			if(start = @token_pos) {
+				@error := "invalid number";
+				return "";
+			};
+			
+			return String->New(@tokens, start, @token_pos - start - 1);
 		}
 		
 		method : private : Value() ~ Nil {
@@ -695,9 +682,121 @@ bundle RegEx {
 			
 			# combine lists			
 			left->AddBack(Expression->New(@expressions));
-			@expressions := left;
-			
+			@expressions := left;		
 # IO.Console->PrintLine("parentheses");		
 		}
+	}
+	
+	# expression type
+	enum ExpressionType := -100 {
+		CHAR,
+		ANY,
+		OPTIONAL,
+		CHAR_CLASS,
+		CHAR_CLASS_RANGE,
+		ENDS_ANCHOR,
+		STARTS_ANCHOR,
+		OR,
+		ZERO_MORE,
+		ONE_MORE,
+		REPEAT,
+		SUB_EXPR
+	}
+	
+	# ---------- subexpression value object ----------
+	class Expression {
+		@type : ExpressionType;
+		@value : Char;
+		@char_class : String;
+		@expression : Expression;
+		@left : Vector;
+		@right : Vector;
+		@least : Int;
+		@most : Int;
+		
+		New() {
+			@type := ExpressionType->ANY;
+		}
+
+		New(value : Char) {
+			@type := ExpressionType->CHAR;
+			@value := value;
+		}
+
+		New(least : Int, most : Int, expression : Expression) {
+			@type := ExpressionType->REPEAT;
+			@least := least;
+			@most := most;
+			@expression := expression;
+		}
+		
+		New(char_class : String, is_range : Bool) {
+			if(is_range) {
+				@type := ExpressionType->CHAR_CLASS_RANGE;
+			}
+			else {
+				@type := ExpressionType->CHAR_CLASS;
+			};
+			@char_class := char_class;
+		}
+		
+		New(left : Vector) {
+			@type := ExpressionType->SUB_EXPR;
+			@left := left;
+		}
+		
+		New(type : ExpressionType) {
+			@type := type;
+		}
+		
+		New(type : ExpressionType, expression : Expression) {
+			@type := type;
+			@expression := expression;
+		}
+
+		New(left : Vector, right : Vector) {
+			@type := ExpressionType->OR;
+			@left := left;
+			@right := right;
+		}
+
+		method : public : GetType() ~ ExpressionType {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ Char {
+			return @value;
+		}
+
+		method : public : GetClass() ~ String {
+			return @char_class;
+		}
+		
+		method : public : GetLeft() ~ Vector {
+			return @left;
+		}
+		
+		method : public : GetRight() ~ Vector {
+			return @right;
+		}
+			
+		method : public : GetLeast() ~ Int {
+			return @least;
+		}
+		
+		method : public : GetMost() ~ Int {
+			return @most;
+		}
+		
+		method : public : GetExpression() ~ Expression {
+			return @expression;
+		}
+	}
+	
+	# ---------- match types ----------
+	enum EvalType := -200 {
+		MATCH,
+		MATCH_NEXT,
+		NO_MATCH
 	}
 }
