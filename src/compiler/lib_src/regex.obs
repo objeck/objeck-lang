@@ -221,7 +221,7 @@ bundle RegEx {
 	
 					# any character
 					label ExpressionType->ANY: {
-"[### any ###]"->PrintLine();
+# "[### any ###]"->PrintLine();
 						NextInput();
 						return true;							
 					}
@@ -263,9 +263,7 @@ bundle RegEx {
 
 					# logical OR
 					label ExpressionType->OR: {
-"[### or ###]"->PrintLine();			
-						prev_pos := @input_pos;
-						if(Evaluate(expression->GetLeft(), 0)) {
+# if(Evaluate(expression->GetLeft(), 0)) {
 							return true;
 						}
 						else {
@@ -277,7 +275,7 @@ bundle RegEx {
 	
 					# zero or more
 					label ExpressionType->ZERO_MORE: {
-"[### zero_or_more ###]"->PrintLine();
+# "[### zero_or_more ###]"->PrintLine();
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							do {
 								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
@@ -300,7 +298,7 @@ bundle RegEx {
 
 					# one or more
 					label ExpressionType->ONE_MORE: {
-"[### one_or_more ###]"->PrintLine();
+# "[### one_or_more ###]"->PrintLine();
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							if(Evaluate(expression->GetExpression()->GetLeft(), 0)) {
 								do {
@@ -325,7 +323,7 @@ bundle RegEx {
 					
 					# repeat
 					label ExpressionType->REPEAT: {
-"[### repeat ###]"->PrintLine();
+# "[### repeat ###]"->PrintLine();
 						count := 0;
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							do {
@@ -349,18 +347,19 @@ bundle RegEx {
 							}
 							while(@input_char <> '\0' & match);
 						};
+# IO.Console->Print("\tleast=")->Print(expression->GetLeast())->Print(", most=")->Print(expression->GetMost())->Print(", count=")->PrintLine(count);
 						
-						if(expression->GetMost() <> -1) {
-							return expression->GetLeast() >= count & expression->GetMost() <= count;
+						if(expression->GetMost() = -1) {
+							return expression->GetLeast() >= count;
 						}
 						else {
-							return expression->GetLeast() >= count;
+							return expression->GetLeast() <= count & expression->GetMost() >= count;
 						};
 					}
 					
 					# single optional
 					label ExpressionType->OPTIONAL: {
-"[### optional ###]"->PrintLine();
+# "[### optional ###]"->PrintLine();
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							Evaluate(expression->GetExpression()->GetLeft(), 0);
 						}
@@ -625,6 +624,12 @@ IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(mos
 		method : private : EscapeCharacter() ~ Nil {
 			NextToken();
 			select(@token) {
+				label '(':
+				label ')':
+				label '[':
+				label ']':
+				label '}':
+				label '{':
 				label '|':
 				label '.':
 				label '?':

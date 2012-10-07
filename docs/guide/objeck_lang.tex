@@ -1316,6 +1316,10 @@ supports the following operations:
   \begin{itemize}
   \item method : public : Emtpy() \textasciitilde Nil
   \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
+  \end{itemize}
 \item \texttt{Size} - returns the stack size
   \begin{itemize}
   \item method : public : Size() \textasciitilde Int
@@ -1399,6 +1403,10 @@ following operations:
   \begin{itemize}
   \item method : public : Emtpy() \textasciitilde Nil
   \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
+  \end{itemize}
 \item \texttt{ToArray} - returns an array of elements
   \begin{itemize}
   \item method : public : ToArray() \textasciitilde Base
@@ -1480,6 +1488,10 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
   \begin{itemize}
   \item method : public : Emtpy() \textasciitilde Nil
   \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
+  \end{itemize}
 \item \texttt{Size} - returns the size of the map
   \begin{itemize}
   \item method : public : Size() \textasciitilde Int
@@ -1519,6 +1531,10 @@ for larger sets):
 \item \texttt{Empty} - clears the hash table
   \begin{itemize}
   \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Size} - returns the size of the Hash
   \begin{itemize}
@@ -2447,9 +2463,10 @@ is in \textit{beta} status. This class in the `RegEx' bundle:
   \item \texttt{?} optional 1
   \item \texttt{*} match 0 or more
   \item \texttt{+} match 1 or more
+  \item \texttt{a\{2,4\}} range
   \item \texttt{|} or
   \item \texttt{(abc)} grouping
-  \item \texttt{[abc]} or \texttt{[a-z]} classes
+  \item \texttt{[abc]}, \texttt{[0-9]} classes
   \item \texttt{\^} or \texttt{\$} starts with and ends wtih anchors
   \end{itemize}
 \end{itemize}
