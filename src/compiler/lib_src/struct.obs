@@ -89,6 +89,10 @@ bundle Struct {
 		method : public : Size() ~ Int {
 			return @size;
 		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
 
 		method : public : Empty() ~ Nil {
 			@values := Int->New[8];
@@ -580,6 +584,10 @@ bundle Struct {
 		method : public : Size() ~ Int {
 			return @size;
 		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
 				
 		method : public : native : Sort() ~ Nil {
 			a : Compare[] := @values;
@@ -754,6 +762,10 @@ bundle Struct {
 		
 		method : public : Size() ~ Int {
 			return @size;
+		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
 		}
 
 		method : public : Empty() ~ Nil {
@@ -995,6 +1007,10 @@ bundle Struct {
 			@list->Empty();
 		}
 		
+		method : public : IsEmpty() ~ Bool {
+			return @list->IsEmpty();
+		}
+		
 		method : public : Size() ~ Int {
 			return @list->Size();
 		}
@@ -1148,6 +1164,10 @@ bundle Struct {
 
 		method : public : Empty() ~ Nil {
 			@list->Empty();
+		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @list->IsEmpty();
 		}
 		
 		method : public : Size() ~ Int {
@@ -1425,6 +1445,10 @@ bundle Struct {
 			@cursor := Nil;
 		}
 		
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
 		method : public : Size() ~ Int {
 			return @size;
 		}
@@ -1548,6 +1572,11 @@ bundle Struct {
 		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
@@ -1600,6 +1629,10 @@ bundle Struct {
 		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
 
 		method : public : native : Size() ~ Int {
 			return @map->Size();
@@ -1642,6 +1675,10 @@ bundle Struct {
 			@map->Empty();
 		}
 
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
@@ -1676,6 +1713,10 @@ bundle Struct {
 
 		method : public : native : Size() ~ Int {
 			return @size;
+		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @size = 0;
 		}
 
 		method : public : native : Empty() ~ Nil {
