@@ -4,8 +4,8 @@ use Struct;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
-			test := RegExParser->New(args[0]);
-			test->MatchExact(args[1])->PrintLine();
+			test := RegExMatcher->New(args[0]);
+			test->FindFirst(args[1])->PrintLine();
 #~
 				regex->ReplaceFirst(args[1], "****")->PrintLine();
 				regex->ReplaceAll(args[1], "****")->PrintLine();

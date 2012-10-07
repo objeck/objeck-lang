@@ -1,14 +1,28 @@
 #~~
-# Objeck system classes.
-# Copyright (c) 2012 Randy Hollines
+# Regular expression engine
 #
-# New regular expression engine
+# Copyright (c) 2012 Randy Hollines
 ~~#
 
 use Struct;
 
 bundle RegEx {
-	# ---------- sub-expression ----------
+	# expression type
+	enum ExpressionType := -100 {
+		CHAR,
+		ANY,
+		OPTIONAL,
+		CHAR_CLASS,
+		CHAR_CLASS_RANGE,
+		ENDS_ANCHOR,
+		STARTS_ANCHOR,
+		OR,
+		ZERO_MORE,
+		ONE_MORE,		
+		SUB_EXPR
+	}
+	
+	# ---------- subexpression value object ----------
 	class Expression {
 		@type : ExpressionType;
 		@value : Char;
@@ -80,21 +94,7 @@ bundle RegEx {
 			return @expression;
 		}
 	}
-
-	enum ExpressionType := -100 {
-		CHAR,
-		ANY,
-		OPTIONAL,
-		ZERO_MORE,
-		ONE_MORE,		
-		OR,
-		CHAR_CLASS,
-		CHAR_CLASS_RANGE,
-		ENDS_ANCHOR,
-		STARTS_ANCHOR,
-		SUB_EXPR
-	}
-		
+	
 	# ---------- match types ----------
 	enum EvalType := -200 {
 		MATCH,
@@ -102,32 +102,32 @@ bundle RegEx {
 		NO_MATCH
 	}
 	
-	class RegExParser {
-		# parser
+	# ---------- regular expression matcher ----------
+	class RegExMatcher {
+		# parsing
 		@tokens : Char[];
 		@token_pos : Int;
 		@token : Char;		
 		@expressions : Vector;
 		@error : String;
 		@starts_anchor : Bool;
-		# evaluation
+		# matching
 		@input : Char[];
 		@input_pos : Int;
 		@input_char : Char;
 		@is_exact : Bool;
 		@is_lazy_any : Bool;
-		@lazy_any_positions : IntVector();
+		@lazy_any_positions : IntVector;
 		
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
-			@lazy_any_positions := New->IntVector();
+			@lazy_any_positions := IntVector->New();
 			
 			Parse();
 		}
 
-		# ---------- regex evaluation ----------
-		
+		# ---------- matching methods ----------
 		method : public : MatchExact(input : String) ~ Bool {
 			return Evaluate(input, 0) > -1 & @is_exact;
 		}
@@ -233,7 +233,7 @@ bundle RegEx {
 			NextInput();
 			
 			# evaluate and check final position
-			match := Evaluate(@expressions);
+			match := Evaluate(@expressions, 0);
 # IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")->Print(match)->Print(", end=")->PrintLine(@input_char);
 			if(match & @input_char <> '\0') {
 				return @input_pos - 1;
@@ -256,15 +256,38 @@ bundle RegEx {
 			};
 		}	
 		
-		method : private : Evaluate(expressions : Vector) ~ Bool {
-			for(i := 0; i < expressions->Size(); i += 1;) {
+		method : private : SetInput(pos : Int) ~ Nil {
+			@input_char := pos;	
+			if(@pos < @input->Size()) {
+				@input_char := @input[@input_pos];
+				@input_pos += 1;
+			}
+			else {
+				@input_char := '\0';
+			};
+		}	
+		
+		method : private : Evaluate(expressions : Vector, offset : Int) ~ Bool {
+			for(i := offset; i < expressions->Size(); i += 1;) {
 				next : Expression;
 				if(i + i < expressions->Size()) {
 					next := expressions->Get(i + 1);
 				};
 				
-				result := Evaluate(expressions->Get(i)->As(Expression), next);
-				if(result = false) {
+				if(Evaluate(expressions->Get(i)->As(Expression), next) = false) {
+					if(@is_lazy_any) {
+						@is_lazy_any := false;
+# IO.Console->Print("backtracking: token count=")->PrintLine(@lazy_any_positions->Size());
+						while(@lazy_any_positions->IsEmpty() = false) {							
+							@input_pos := @lazy_any_positions->RemoveBack() - 1;
+							NextInput();
+# IO.Console->Print("\tchecking char='")->Print(@input_char)->PrintLine("'");
+							if(Evaluate(expressions, offset + 1)) {
+								return true;
+							};
+						};
+					};
+					
 					return false;
 				};
 			};
@@ -288,14 +311,14 @@ bundle RegEx {
 		
 		method : native : Evaluate(expression : Expression, next : Expression) ~ Bool {
 			if(expression <> Nil) {
-				if(@is_lazy_any) {
-					@lazy_any_positions->AddBack(@char_pos);
+				if(@is_lazy_any & @input_char <> '\0') {
+					@lazy_any_positions->AddBack(@input_pos);
 				};
 
 				select(expression->GetType()) {
 					# single character
 					label ExpressionType->CHAR: {
-IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
+# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 						if(expression->GetValue() = @input_char) {
 							NextInput();
 							return true;
@@ -327,60 +350,6 @@ IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print
 							return true;
 						};
 					}
-
-					# logical OR
-					label ExpressionType->OR: {
-						prev_pos := @input_pos;
-IO.Console->Print("\tpos 0=")->PrintLine(@input_pos);	
-						if(Evaluate(expression->GetLeft())) {
-							return true;
-						}
-						else {
-							@input_pos := prev_pos - 1;
-							NextInput();
-IO.Console->Print("\tpos 1=")->PrintLine(@input_pos);	
-							return Evaluate(expression->GetRight());
-						};
-					}
-	
-					# zero or more
-					label ExpressionType->ZERO_MORE: {
-"[### zero_or_more ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
-							@is_lazy_any := true;
-						}
-						else if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
-							do {
-								match := Evaluate(expression->GetExpression()->GetLeft());
-							} 
-							while(@input_char <> '\0' & match);
-						}
-						else {
-IO.Console->Print("\tpos 0=")->PrintLine(@input_pos);
-							do {	
-								match := Evaluate(expression->GetExpression(), next);
-							}
-							while(@input_char <> '\0' & match);
-IO.Console->Print("\tpos 1=")->Print(@input_pos)->Print(", input=")->PrintLine(@input_char);	
-						};
-						
-						return true;
-					}
-
-					# sub-expression
-					label ExpressionType->SUB_EXPR: {
-						return Evaluate(expression->GetLeft());						
-					}
-	
-					# one or more
-					label ExpressionType->ONE_MORE: {
-# "[### one_or_more ###]"->PrintLine();
-					}
-					
-					# single optional
-					label ExpressionType->OPTIONAL: {
-# "[### optional ###]"->PrintLine();
-					}
 					
 					# starts anchor
 					label ExpressionType->STARTS_ANCHOR: {
@@ -397,14 +366,93 @@ IO.Console->Print("\tpos 1=")->Print(@input_pos)->Print(", input=")->PrintLine(@
 							return true;				
 						};
 					}
+
+					# logical OR
+					label ExpressionType->OR: {
+"[### or ###]"->PrintLine();			
+						prev_pos := @input_pos;
+						if(Evaluate(expression->GetLeft(), 0)) {
+							return true;
+						}
+						else {
+							@input_pos := prev_pos - 1;
+							NextInput();
+							return Evaluate(expression->GetRight(), 0);
+						};
+					}
+	
+					# zero or more
+					label ExpressionType->ZERO_MORE: {
+"[### zero_or_more ###]"->PrintLine();
+						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+							do {
+								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
+							} 
+							while(@input_char <> '\0' & match);
+						}
+						else {
+							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+								@is_lazy_any := true;
+							};
+							
+							do {	
+								match := Evaluate(expression->GetExpression(), next);
+							}
+							while(@input_char <> '\0' & match);
+						};
+						
+						return true;
+					}
+
+					# sub-expression
+					label ExpressionType->SUB_EXPR: {
+						return Evaluate(expression->GetLeft(), 0);						
+					}
+	
+					# one or more
+					label ExpressionType->ONE_MORE: {
+"[### one_or_more ###]"->PrintLine();
+						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+							if(Evaluate(expression->GetExpression()->GetLeft(), 0)) {
+								do {
+									match := Evaluate(expression->GetExpression()->GetLeft(), 0);
+								} 
+								while(@input_char <> '\0' & match);
+							};
+						}
+						else {
+							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+									@is_lazy_any := true;
+							};
+							
+							if(Evaluate(expression->GetExpression(), next)) {
+								do {	
+									match := Evaluate(expression->GetExpression(), next);
+								}
+								while(@input_char <> '\0' & match);
+							};
+						};
+					}
+					
+					# single optional
+					label ExpressionType->OPTIONAL: {
+"[### optional ###]"->PrintLine();
+						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+							Evaluate(expression->GetExpression()->GetLeft(), 0);
+						}
+						else {
+							Evaluate(expression->GetExpression(), next);
+						};
+						
+						return true;
+					}
 				};
 			};
 
 			return false;
 		}
 
-		#----------- expression parsing -----------
-
+		# ---------- parsing methods ----------
 		method : private : NextToken() ~ Nil {
 			if(@token_pos < @tokens->Size()) {
 				@token := @tokens[@token_pos];
@@ -513,7 +561,7 @@ IO.Console->Print("\tpos 1=")->Print(@input_pos)->Print(", input=")->PrintLine(@
 				};
 			};
 		}
-
+		
 		method : private : Value() ~ Nil {
 			if(@token = '(') {
 				Parentheses();				
