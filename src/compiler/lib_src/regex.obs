@@ -225,6 +225,33 @@ bundle RegEx {
 						NextInput();
 						return true;							
 					}
+					
+					# digit
+					label ExpressionType->DIGIT: {
+# "[### digit ###]"->PrintLine();
+						if(@input_char->IsDigit()) {
+							NextInput();
+							return true;
+						};
+					}
+					
+					# word
+					label ExpressionType->WORD: {
+# "[### word ###]"->PrintLine();
+						if(@input_char->IsDigit() | @input_char->IsChar() | @input_char = '_') {
+							NextInput();
+							return true;
+						};
+					}
+					
+					# whitespace
+					label ExpressionType->WHITESPACE: {
+# "[### whitespace ###]"->PrintLine();
+						if(@input_char = ' ' | @input_char = '\t' | @input_char = '\r' | @input_char = '\n') {
+							NextInput();
+							return true;
+						};
+					}
 
 					# class of characters
 					label ExpressionType->CHAR_CLASS: {
@@ -645,7 +672,22 @@ IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(mos
 					@expressions->AddBack(Expression->New(@token));
 					NextToken();
 				}
-
+				
+				label 'd': {
+					@expressions->AddBack(Expression->New(ExpressionType->DIGIT));
+					NextToken();
+				}
+				
+				label 'w': {
+					@expressions->AddBack(Expression->New(ExpressionType->WORD));
+					NextToken();
+				}
+				
+				label 's': {
+					@expressions->AddBack(Expression->New(ExpressionType->WHITESPACE));
+					NextToken();
+				}
+				
 				label 'n': {
 					@expressions->AddBack(Expression->New('\n'));
 					NextToken();
@@ -702,6 +744,9 @@ IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(mos
 		CHAR,
 		ANY,
 		OPTIONAL,
+		DIGIT,
+		WORD,
+		WHITESPACE,
 		CHAR_CLASS,
 		CHAR_CLASS_RANGE,
 		ENDS_ANCHOR,
