@@ -263,7 +263,8 @@ bundle RegEx {
 
 					# logical OR
 					label ExpressionType->OR: {
-# if(Evaluate(expression->GetLeft(), 0)) {
+						prev_pos := @input_pos;
+						if(Evaluate(expression->GetLeft(), 0)) {
 							return true;
 						}
 						else {
