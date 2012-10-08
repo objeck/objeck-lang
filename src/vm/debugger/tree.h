@@ -52,7 +52,7 @@ namespace frontend {
       is_error = false;
     }
     
-    ~ParseNode() {
+    virtual ~ParseNode() {
     }
 
     void SetError() {
@@ -107,7 +107,7 @@ namespace frontend {
       is_float_eval = false;
     }
 
-    ~Expression() {
+    virtual ~Expression() {
     }
 
   public:

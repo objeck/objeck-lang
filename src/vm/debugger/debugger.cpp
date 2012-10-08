@@ -1297,12 +1297,11 @@ void Runtime::Debugger::Debug() {
   }
 
   // enter feedback loop
-  Command* command;
   while(true) {
     cout << "> ";
     string line;
     getline(cin, line);
-    command = ProcessCommand(line);
+    ProcessCommand(line);
   }
 }
 
