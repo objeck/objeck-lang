@@ -306,18 +306,22 @@ bundle RegEx {
 									match := Evaluate(expression->GetExpression()->GetLeft(), 0);
 								} 
 								while(@input_char <> '\0' & match);
+
+								return true;
 							};
 						}
 						else {
-							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
-									@is_lazy_any := true;
-							};
-							
 							if(Evaluate(expression->GetExpression(), next)) {
+								if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+									@is_lazy_any := true;
+								};								
+
 								do {	
 									match := Evaluate(expression->GetExpression(), next);
 								}
 								while(@input_char <> '\0' & match);
+
+								return true;
 							};
 						};
 					}
