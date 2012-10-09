@@ -22,20 +22,21 @@ bundle RegEx {
 		@input_char : Char;
 		@is_exact : Bool;
 		@is_backtracking : Bool;
-		@backtracking_map : IntMap;
-		@lazy_any_positions : IntVector;
-		
+		@backtrack_map : IntMap;
+		@backtrack_positions : IntVector;
+        
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
-			@lazy_any_positions := IntVector->New();
-			@backtracking_map := IntMap->New();
+			@backtrack_positions := IntVector->New();
+			@backtrack_map := IntMap->New();
+
 			Parse();
 		}
 
 		# ---------- matching methods ----------
 		method : public : MatchExact(input : String) ~ Bool {
-			return Evaluate(input, 0) > -1 & @is_exact;
+            return Evaluate(input, 0) > -1 & @is_exact;
 		}
 
 		method : public : Match(input : String) ~ String {
@@ -71,13 +72,10 @@ bundle RegEx {
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
 				if(right > -1 & left <> right) {
-IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->Print(", pos=")->Print(@input_pos)->PrintLine(" ===");
+# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
 					if(left < right) {
 						matches->AddBack(input->SubString(left, right - left));
-						left += right - 1;
-					}
-					else {
-						# TODO: manage backtracking :)						
+						left := right - 1;
 					};
 				};
 				left += 1;
@@ -138,12 +136,19 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 				return -1;
 			};
 			
+            # reset everything
 			@is_exact := false;
-			@input_pos := offset;			
-			@input := input->ToCharArray();
-			NextInput();
+			@is_exact := false;
+		    @is_backtracking := false;
+		    @backtrack_map->Empty();
+		    @backtrack_positions->Empty();
+
+            # process string
+            @input_pos := offset;			
+			@input := input->ToCharArray();			
+            NextInput();
 			
-			# evaluate and check final position
+			# match with regex and check final position
 			match := Evaluate(@expressions, 0);
 # IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")->Print(match)->Print(", end=")->PrintLine(@input_char);
 			if(match & @input_char <> '\0') {
@@ -172,21 +177,22 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 				if(Evaluate(expressions->Get(i)->As(Expression)) = false) {
 					if(@is_backtracking) {
 						@is_backtracking := false;
-# IO.Console->Print("backtracking: token count=")->PrintLine(@lazy_any_positions->Size());
-						while(@lazy_any_positions->IsEmpty() = false) {							
-							@input_pos := @lazy_any_positions->RemoveBack() - 1;
+# IO.Console->Print("backtracking: token count=")->PrintLine(@backtrack_positions->Size());
+						while(@backtrack_positions->IsEmpty() = false) {							
+							@input_pos := @backtrack_positions->RemoveBack() - 1;
 							NextInput();
 							
-							check := @backtracking_map->Find(@input_pos);
-							if(offset + 1 < expressions->Size() & check = expressions->Get(offset + 1)) { 
-								return true; 
+                            start := @input_pos;
+							check := @backtrack_map->Find(@input_pos);
+							if(offset + 1 < expressions->Size() & check = expressions->Get(offset + 1)) {
+                                return true; 
 							};
 
 							if(Evaluate(expressions, offset + 1)) {
 								if(offset + 1 < expressions->Size()) {
-									@backtracking_map->Insert(@input_pos, expressions->Get(offset + 1));
+									@backtrack_map->Insert(@input_pos, expressions->Get(offset + 1));
 								};
-								return true;
+                                return true;
 							};
 						};
 					};
@@ -215,7 +221,7 @@ IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->
 		method : native : Evaluate(expression : Expression) ~ Bool {
 			if(expression <> Nil) {
 				if(@is_backtracking & @input_char <> '\0') {
-					@lazy_any_positions->AddBack(@input_pos);
+					@backtrack_positions->AddBack(@input_pos);
 				};
 
 				select(expression->GetType()) {
