@@ -8,7 +8,7 @@ use Struct;
 
 bundle RegEx {
 	# ---------- regular expression matcher ----------
-	class RegExMatcher {
+	class RegEx {
 		# parsing
 		@tokens : Char[];
 		@token_pos : Int;
