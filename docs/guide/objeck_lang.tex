@@ -1498,6 +1498,45 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
   \end{itemize}
 \end{itemize}
 
+\subsubsection{Set/IntSet/FloatSet/StringSet}
+The Set class supports the concept of an associative array with
+keys.  The class implements a balance binary tree algorithm
+such that inserts, deletes and searches are $O(\log_2 n)$.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Insert} - adds a new key to the tree
+  \begin{itemize}
+  \item method : public : Insert(key : Compare) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Remove} - removes a value from the tree
+  \begin{itemize}
+  \item method : public : Remove(key : Compare) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Has} - returns true if item is in map
+  \begin{itemize}
+  \item method : public : Has(value : Compare) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{GetKeys} - returns a vector of keys
+  \begin{itemize}
+  \item method : public : GetKeys() \textasciitilde Vector
+  \end{itemize}
+\item \texttt{Empty} - clears the map
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Size} - returns the size of the map
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
 \subsubsection{Hash/StringHash}
 The Hash class supports the concept of a hash table with key/value
 pairs.  The class implements a hashing algorithm that is optimized for
