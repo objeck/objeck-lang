@@ -1,30 +1,17 @@
 ﻿use RegEx;
-use Struct;
 
 bundle Default {
-	class Test {
+	class RegExTest {
 		function : Main(args : String[]) ~ Nil {
+			string := "I am a string";
 			# exact match
 			regex := RegEx->New(".*string");
-			regex->Match("I am a string");
 			if(regex->MatchExact(".*string")) {
 				"ends with 'string'"->PrintLine();
 			};
-
-			regex := RegEx->New("(aa)|(bad)");
-			regex->MatchExact("bad")->PrintLine();
-			regex->MatchExact("aa")->PrintLine();
-
-			# find all matches
-			regex := RegEx->New("a*b");
-			matches := regex->Find("aaababbbbcdeabbbbdefxyz");
-			each(i : matches) {
-				matches->Get(i)->As(String)->PrintLine();
-			};
-
 			# replace all
-			regex := RegEx->New("original");
-			regex->ReplaceAll("I am the original string", "modified")->PrintLine();
+			regex := RegEx->New(" a ");
+			regex->ReplaceAll(string, " another ")->PrintLine();
 		}
 	}
 }
