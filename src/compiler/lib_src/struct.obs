@@ -1582,6 +1582,50 @@ bundle Struct {
 		}
 	}
 
+	class IntSet {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Int) ~ Nil {
+			@map->Insert(IntHolder->New(key), Base->New());
+		}
+		
+		method : public : Remove(key : Int) ~ Nil {
+			@map->Remove(IntHolder->New(key));
+		}
+    
+		method : public : Has(key : Int) ~ Bool {
+			result : IntHolder := @map->Find(IntHolder->New(key))->As(IntHolder);
+			return result <> Nil;
+		}
+    
+		method : public : native : GetKeys() ~ IntVector {
+			keys := IntVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < keys->Size(); i += 1;) {
+				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
+				keys->AddBack(holder_value->Get());   
+			};
+
+			return keys;
+		}
+    
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+
 	class FloatMap {
 		@map : Map;
 
@@ -1606,6 +1650,54 @@ bundle Struct {
 			return 0.0;
 		}
 		
+		method : public : Has(key : Float) ~ Bool {
+			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
+			return result <> Nil;
+		}
+    
+		method : public: native : GetKeys() ~ FloatVector {
+			keys := FloatVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < keys->Size(); i += 1;) {
+				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
+				keys->AddBack(holder_value->Get());   
+			};
+
+			return keys;
+		}
+    
+		method : public : GetValues() ~ Vector {
+			return @map->GetValues();
+		}
+
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+
+	class FloatSet {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Float) ~ Nil {
+			@map->Insert(FloatHolder->New(key), Base->New());
+		}
+		
+		method : public : Remove(key : Float) ~ Nil {
+			@map->Remove(FloatHolder->New(key));
+		}
+    
 		method : public : Has(key : Float) ~ Bool {
 			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			return result <> Nil;
@@ -1669,6 +1761,80 @@ bundle Struct {
 
 		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
+		}
+
+		method : public : native : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+	
+	class StringSet {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : String) ~ Nil {
+			@map->Insert(key, Base->New());
+		}
+		
+		method : public : Remove(key : String) ~ Nil {
+			@map->Remove(key);
+		}
+    
+		method : public : Has(key : String) ~ Bool {
+			result := @map->Find(key);
+			return result <> Nil;
+		}
+    
+		method : public : GetKeys() ~ Vector {
+			return @map->GetKeys();
+		}
+
+		method : public : native : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+	
+	class Set {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Compare) ~ Nil {
+			@map->Insert(key, Base->New());
+		}
+		
+		method : public : Remove(key : Compare) ~ Nil {
+			@map->Remove(key);
+		}
+    
+		method : public : Has(key : Compare) ~ Bool {
+			result := @map->Find(key);
+			return result <> Nil;
+		}
+    
+		method : public : GetKeys() ~ Vector {
+			return @map->GetKeys();
 		}
 
 		method : public : native : Empty() ~ Nil {
