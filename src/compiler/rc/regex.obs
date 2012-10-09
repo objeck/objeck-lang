@@ -4,26 +4,27 @@ use Struct;
 bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
+			# exact match
 			regex := RegEx->New(".*string");
 			regex->Match("I am a string");
 			if(regex->MatchExact(".*string")) {
 				"ends with 'string'"->PrintLine();
 			};
 
+			regex := RegEx->New("(aa)|(bad)");
+			regex->MatchExact("bad")->PrintLine();
+			regex->MatchExact("aa")->PrintLine();
+
+			# find all matches
 			regex := RegEx->New("a*b");
 			matches := regex->Find("aaababbbbcdeabbbbdefxyz");
 			each(i : matches) {
 				matches->Get(i)->As(String)->PrintLine();
 			};
-#~
-				regex->ReplaceFirst(args[1], "****")->PrintLine();
-				regex->ReplaceAll(args[1], "****")->PrintLine();
-				regex->FindFirst(args[1])->PrintLine();
-				matches := regex->Find(args[1]);
-				each(i : matches) {
-					matches->Get(i)->As(String)->PrintLine();
-				};
-~#
+
+			# replace all
+			regex := RegEx->New("original");
+			regex->ReplaceAll("I am the original string", "modified")->PrintLine();
 		}
 	}
 }
