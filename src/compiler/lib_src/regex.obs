@@ -304,6 +304,7 @@ bundle RegEx {
 					# zero or more
 					label ExpressionType->ZERO_MORE: {
 # "[### zero_or_more ###]"->PrintLine();
+						@is_lazy_any := true;
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							do {
 								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
@@ -329,6 +330,8 @@ bundle RegEx {
 # "[### one_or_more ###]"->PrintLine();
 						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
 							if(Evaluate(expression->GetExpression()->GetLeft(), 0)) {
+								@is_lazy_any := true;
+
 								do {
 									match := Evaluate(expression->GetExpression()->GetLeft(), 0);
 								} 
@@ -339,10 +342,8 @@ bundle RegEx {
 						}
 						else {
 							if(Evaluate(expression->GetExpression(), next)) {
-								if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
-									@is_lazy_any := true;
-								};								
-
+								@is_lazy_any := true;
+								
 								do {	
 									match := Evaluate(expression->GetExpression(), next);
 								}
