@@ -9,6 +9,7 @@ bundle Default {
       client->CookiesEnabled(true);
       # request creates a cookie
       lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create", 80);
+lines->Size()->PrintLine();
       each(i : lines) {
         line := lines->Get(i)->As(String);
         line->PrintLine();

@@ -985,6 +985,10 @@ bundle Struct {
 			return @list->IsBack();
 		}
 
+		method : public : IsEnd()~ Bool {
+			return @list->IsEnd();
+		}
+
 		method : public : Front() ~ Int {
 			holder : IntHolder := @list->Front()->As(IntHolder);
 			if(holder <> Nil) {
@@ -1142,6 +1146,10 @@ bundle Struct {
 		
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
+		}
+
+		method : public : IsEnd() ~ Bool {
+			return @list->IsEnd();
 		}
 
 		method : public : Front() ~ Int {
@@ -1420,6 +1428,10 @@ bundle Struct {
 		
 		method : public : IsBack() ~ Bool {
 			return @cursor = @tail;
+		}
+
+		method : public : IsEnd() ~ Bool {
+			return @cursor = Nil;
 		}		
 
 		method : public : Front() ~ Compare {
@@ -2195,7 +2207,7 @@ bundle Struct {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->IsBack() = false) {
+				while(list->IsEnd() = false) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						return pair->Get();
@@ -2219,7 +2231,7 @@ bundle Struct {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->IsBack() = false) {
+				while(list->IsEnd() = false) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						list->Remove();
@@ -2241,7 +2253,7 @@ bundle Struct {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->IsBack() = false) {
+					while(list->IsEnd() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
 						keys->AddBack(pair->GetKey());
 						list->Next();
@@ -2258,7 +2270,7 @@ bundle Struct {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->IsBack() = false) {
+					while(list->IsEnd() = false) {
 						pair : HashPair := list->Get()->As(HashPair);
 						values->AddBack(pair->Get());
 						list->Next();
@@ -2476,7 +2488,7 @@ bundle Net {
 					};
 					
 					if(status_code <> 500) {
-					  # get @headers
+						# get @headers
 						do {
 							line := socket->ReadString();
 							if(line->Size() > 0) {
