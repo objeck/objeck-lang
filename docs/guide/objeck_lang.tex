@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that is included as part of release 3.1.5.  For
+  functionality that's part of v3.1.5.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck}, 
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
@@ -40,10 +40,10 @@ and \htmladdnormallink{support}{http://groups.google.com/group/objeck-lang} webs
 The Objeck program language is an object-oriented computer language
 with functional features.  The language was designed to be an easy to
 use general purpose programming system.  The Objeck language allows
-programmers to quickly create solutions by leveraging packaged class
-libraries.  The syntax for the language was designed with symmetry in
+programmers to quickly create solutions by leveraging existing class
+libraries and APIs.  The syntax for the language was designed with symmetry in
 mind and enforces the notion that there should one intuitive way to do
-things. Features of the include:
+things. Features include:
 \begin{itemize}
 \item Support for object-oriented programming (all data types are
   treated as objects)
@@ -59,8 +59,8 @@ things. Features of the include:
 \section{Getting Started}
 
 The Objeck distribution consists of a compiler, virtual machine,
-debugger and binary inspection tool.  The compiler binary is named
-\texttt{obc}, while the runtime virtual machine (VM) binary is named
+debugger and library inspection tool.  The compiler executable is named
+\texttt{obc}, while the runtime virtual machine (VM) executable is named
 \texttt{obr}.  Here is the world famous ``Hello World" program written
 in the Objeck language:
 
@@ -197,7 +197,7 @@ side assignment. Three different declaration styles are shown below:
 \begin{verbatim}
 a : Int;
 b : Int := 13;
-c := 7; # implicit deceleration 
+c := 7; # implicit type deceleration 
 \end{verbatim}
 
 Types that are not initialized at declaration time are initialized
@@ -270,7 +270,7 @@ The following bitwise operators are also supported for integer types:
 \end{itemize}
 
 The [\texttt{*}, \texttt{/}, \texttt{\%}] operators have a higher
-precedence than the [\texttt{+}, \texttt{-}] operators are naturally
+precedence than the [\texttt{+}, \texttt{-}] operators and are naturally
 enforced by the language. Operators of the same precedence are
 evaluated from left-to-right.  Logical operations are of lower
 precedence than mathematical operations. All logical operators are of
