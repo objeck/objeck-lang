@@ -1471,7 +1471,6 @@ bundle Struct {
 	#~~~~~~~~~~~~~~~~~~~~~~~
 	# queues
 	~~~~~~~~~~~~~~~~~~~~~~~#
-#~	
 	class FloatQueue {
 		@queue : FloatList;
 		
@@ -1485,10 +1484,12 @@ bundle Struct {
 		
 		method : public : native : Remove() ~ Float {
 			if(@queue->Size() > 0) {
-				return @queue->RemoveFront();
+                value := @queue->Front();
+				@queue->RemoveFront();
+                return value;
 			};
 			
-			return Nil;
+			return 0.0;
 		}
 		
 		method : public: native : Head() ~ Float {
@@ -1496,7 +1497,7 @@ bundle Struct {
 				return @queue->Front();
 			};
 			
-			return Nil;
+			return 0.0;
 		}
 		
 		method : public : Empty() ~ Nil {
@@ -1525,10 +1526,12 @@ bundle Struct {
 		
 		method : public : native : Remove() ~ Int {
 			if(@queue->Size() > 0) {
-				return @queue->RemoveFront();
+                value := @queue->Front();				
+                @queue->RemoveFront();
+                return value;
 			};
 			
-			return Nil;
+			return 0;
 		}
 		
 		method : public: native : Head() ~ Int {
@@ -1536,7 +1539,7 @@ bundle Struct {
 				return @queue->Front();
 			};
 			
-			return Nil;
+			return 0;
 		}
 		
 		method : public : Empty() ~ Nil {
@@ -1551,7 +1554,7 @@ bundle Struct {
 			return @queue->Size();
 		}
 	}
-~#	
+    
 	class Queue {
 		@queue : List;
 		
@@ -1563,12 +1566,11 @@ bundle Struct {
 			@queue->AddBack(value);
 		}
 		
-		# TODO: fix this compiler bug!
 		method : public : native : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
 				value := @queue->Front();
-				RemoveFront();
-				return falue;
+				@queue->RemoveFront();
+				return value;
 			};
 			
 			return Nil;
