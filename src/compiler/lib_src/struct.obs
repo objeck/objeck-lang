@@ -12,7 +12,9 @@ use Struct;
 use Net;
 
 bundle Struct {
-	# vectors
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Vectors
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class IntVector {
 		@values : Int[];
 		@size : Int;
@@ -777,51 +779,9 @@ bundle Struct {
 		}
 	}
 	
-	# stacks
-	class Stack {
-		@values : Vector;
-		
-		New() {
-			@values := Vector->New();
-		}
-		
-		method : public: native : Push(value : Base) ~ Nil {
-			v := value;
-			@values->AddBack(v);
-		}
-		
-		method : public : native : Pop() ~ Base {
-			if(@values->Size() > 0) {
-				value : Base := @values->Get(@values->Size() - 1);
-				@values->RemoveBack();
-				
-				return value;
-			};
-			
-			return Nil;
-		}
-		
-		method : public: native : Top() ~ Base {
-			if(@values->Size() > 0) {
-				return @values->Get(@values->Size() - 1);
-			};
-			
-			return Nil;
-		}
-
-		method : public : Empty() ~ Nil {
-			@values->Empty();
-		}
-		
-		method : public: IsEmpty() ~ Bool {
-		  return @values->Size() = 0;
-		}
-
-		method : public: Size() ~ Int {
-		  return @values->Size();
-		}
-	}
-
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Stacks
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class IntStack {
 		@values : IntVector;
 		
@@ -907,6 +867,51 @@ bundle Struct {
 		
 		method : public: IsEmpty() ~ Bool {
 		  return @values->Size() = 0;
+		}
+	}
+	
+	# stacks
+	class Stack {
+		@values : Vector;
+		
+		New() {
+			@values := Vector->New();
+		}
+		
+		method : public: native : Push(value : Base) ~ Nil {
+			v := value;
+			@values->AddBack(v);
+		}
+		
+		method : public : native : Pop() ~ Base {
+			if(@values->Size() > 0) {
+				value : Base := @values->Get(@values->Size() - 1);
+				@values->RemoveBack();
+				
+				return value;
+			};
+			
+			return Nil;
+		}
+		
+		method : public: native : Top() ~ Base {
+			if(@values->Size() > 0) {
+				return @values->Get(@values->Size() - 1);
+			};
+			
+			return Nil;
+		}
+
+		method : public : Empty() ~ Nil {
+			@values->Empty();
+		}
+		
+		method : public: IsEmpty() ~ Bool {
+		  return @values->Size() = 0;
+		}
+
+		method : public: Size() ~ Int {
+		  return @values->Size();
 		}
 	}
 	
@@ -1216,42 +1221,6 @@ bundle Struct {
 		}
 	}
 
-	# Linked List
-	class ListNode {
-		@value : Compare;
-		@next : ListNode;
-		@previous: ListNode;
-
-		New(value : Compare) {
-			@value := value;
-		}
-		
-		method : public : Set(value : Compare) ~ Nil {
-			@value := value;
-		}
-	
-		method : public : Get() ~ Compare {
-			return @value;
-		}
-
-		method : public : SetNext(next :  Struct.ListNode) ~ Nil {
-			@next := next;
-		}
-	
-		method : public : GetNext() ~ ListNode {
-			return @next;
-		}
-
-		method : public : SetPrevious(previous :  Struct.ListNode) ~ Nil {
-			@previous := previous;
-		}
-	
-		method : public : GetPrevious() ~ ListNode {
-			return @previous;
-		}
-	}
-
-	# Doubly linked-list
 	class List {
 		@size : Int;
 		@head : ListNode;
@@ -1465,77 +1434,170 @@ bundle Struct {
 		}
 	}
 	
-	# Tree
-	class TreeNode {
-		@key : Compare;
-		@value : Base;
-		@left : TreeNode;
-		@right : TreeNode;
-		@level : Int;
-		
-		New(key : Compare, value : Base, level : Int) {
-			@key := key;
-			@value := value;
-			@level := level;
-			@left := Nil;
-			@right := Nil;
-		}
+	class ListNode {
+		@value : Compare;
+		@next : ListNode;
+		@previous: ListNode;
 
-		method : public : SetKey(key : Compare) ~ Nil {
-			@key := key;
-		}
-		
-		method : public : GetKey() ~ Compare {
-			return @key;
-		}
-
-		method : public : Get() ~ Base {
-			return @value;
-		}
-		
-		method : public : GetLevel() ~ Int {
-			return @level;
-		}
-
-		method : public : SetLevel(level : Int) ~ Nil {
-			@level := level;
-		}
-
-		method : public : GetLeft() ~ TreeNode {
-			return @left;
-		}
-
-		method : public : SetLeft(left : TreeNode) ~ Nil {
-			@left := left;
-		}
-
-		method : public : GetRight() ~ TreeNode {
-			return @right;
-		}
-
-		method : public : SetRight(right : TreeNode) ~ Nil {
-			@right := right;
-		}
-	}
-
-	class Pair {
-		@key : Compare;
-		@value : Base;
-
-		New(key : Compare, value : Base) {
-			@key := key;
+		New(value : Compare) {
 			@value := value;
 		}
-
-		method : public : GetKey() ~ Compare {
-			return @key;
+		
+		method : public : Set(value : Compare) ~ Nil {
+			@value := value;
+		}
+	
+		method : public : Get() ~ Compare {
+			return @value;
 		}
 
-		method : public : Get() ~ Base {
-			return @value;
+		method : public : SetNext(next :  Struct.ListNode) ~ Nil {
+			@next := next;
+		}
+	
+		method : public : GetNext() ~ ListNode {
+			return @next;
+		}
+
+		method : public : SetPrevious(previous :  Struct.ListNode) ~ Nil {
+			@previous := previous;
+		}
+	
+		method : public : GetPrevious() ~ ListNode {
+			return @previous;
 		}
 	}
 	
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# queues
+	~~~~~~~~~~~~~~~~~~~~~~~#
+#~	
+	class FloatQueue {
+		@queue : FloatList;
+		
+		New() {
+			@queue := FloatList->New();
+		}
+		
+		method : public: native : Add(value : Float) ~ Nil {
+			@queue->AddBack(value);
+		}
+		
+		method : public : native : Remove() ~ Float {
+			if(@queue->Size() > 0) {
+				return @queue->RemoveFront();
+			};
+			
+			return Nil;
+		}
+		
+		method : public: native : Head() ~ Float {
+			if(@queue->Size() > 0) {
+				return @queue->Front();
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Empty() ~ Nil {
+			@queue->Empty();
+		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @queue->IsEmpty();
+		}
+		
+		method : public : Size() ~ Int {
+			return @queue->Size();
+		}
+	}
+	
+	class IntQueue {
+		@queue : IntList;
+		
+		New() {
+			@queue := IntList->New();
+		}
+		
+		method : public: native : Add(value : Int) ~ Nil {
+			@queue->AddBack(value);
+		}
+		
+		method : public : native : Remove() ~ Int {
+			if(@queue->Size() > 0) {
+				return @queue->RemoveFront();
+			};
+			
+			return Nil;
+		}
+		
+		method : public: native : Head() ~ Int {
+			if(@queue->Size() > 0) {
+				return @queue->Front();
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Empty() ~ Nil {
+			@queue->Empty();
+		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @queue->IsEmpty();
+		}
+		
+		method : public : Size() ~ Int {
+			return @queue->Size();
+		}
+	}
+~#	
+	class Queue {
+		@queue : List;
+		
+		New() {
+			@queue := List->New();
+		}
+		
+		method : public: native : Add(value : Compare) ~ Nil {
+			@queue->AddBack(value);
+		}
+		
+		# TODO: fix this compiler bug!
+		method : public : native : Remove() ~ Compare {
+			if(@queue->Size() > 0) {
+				value := @queue->Front();
+				RemoveFront();
+				return falue;
+			};
+			
+			return Nil;
+		}
+		
+		method : public: native : Head() ~ Compare {
+			if(@queue->Size() > 0) {
+				return @queue->Front();
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Empty() ~ Nil {
+			@queue->Empty();
+		}
+		
+		method : public : IsEmpty() ~ Bool {
+			return @queue->IsEmpty();
+		}
+		
+		method : public : Size() ~ Int {
+			return @queue->Size();
+		}
+	}
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Maps
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class IntMap {
 		@map : Map;
 
@@ -1693,52 +1755,74 @@ bundle Struct {
 			return @map->Size();
 		}
 	}
-
-	class FloatSet {
-		@map : Map;
-
-		New() {
-			@map := Map->New();
+	
+	class TreeNode {
+		@key : Compare;
+		@value : Base;
+		@left : TreeNode;
+		@right : TreeNode;
+		@level : Int;
+		
+		New(key : Compare, value : Base, level : Int) {
+			@key := key;
+			@value := value;
+			@level := level;
+			@left := Nil;
+			@right := Nil;
 		}
 
-		method : public : Insert(key : Float) ~ Nil {
-			@map->Insert(FloatHolder->New(key), Base->New());
+		method : public : SetKey(key : Compare) ~ Nil {
+			@key := key;
 		}
 		
-		method : public : Remove(key : Float) ~ Nil {
-			@map->Remove(FloatHolder->New(key));
-		}
-    
-		method : public : Has(key : Float) ~ Bool {
-			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
-			return result <> Nil;
-		}
-    
-		method : public: native : GetKeys() ~ FloatVector {
-			keys := FloatVector->New();
-			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i += 1;) {
-				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
-				keys->AddBack(holder_value->Get());   
-			};
-
-			return keys;
-		}
-    
-		method : public : GetValues() ~ Vector {
-			return @map->GetValues();
+		method : public : GetKey() ~ Compare {
+			return @key;
 		}
 
-		method : public : Empty() ~ Nil {
-			@map->Empty();
+		method : public : Get() ~ Base {
+			return @value;
 		}
 		
-		method : public : native : IsEmpty() ~ Bool {
-			return @map->IsEmpty();
+		method : public : GetLevel() ~ Int {
+			return @level;
 		}
 
-		method : public : native : Size() ~ Int {
-			return @map->Size();
+		method : public : SetLevel(level : Int) ~ Nil {
+			@level := level;
+		}
+
+		method : public : GetLeft() ~ TreeNode {
+			return @left;
+		}
+
+		method : public : SetLeft(left : TreeNode) ~ Nil {
+			@left := left;
+		}
+
+		method : public : GetRight() ~ TreeNode {
+			return @right;
+		}
+
+		method : public : SetRight(right : TreeNode) ~ Nil {
+			@right := right;
+		}
+	}
+
+	class Pair {
+		@key : Compare;
+		@value : Base;
+
+		New(key : Compare, value : Base) {
+			@key := key;
+			@value := value;
+		}
+
+		method : public : GetKey() ~ Compare {
+			return @key;
+		}
+
+		method : public : Get() ~ Base {
+			return @value;
 		}
 	}
 
@@ -1787,80 +1871,6 @@ bundle Struct {
 		}
 	}
 	
-	class StringSet {
-		@map : Map;
-
-		New() {
-			@map := Map->New();
-		}
-
-		method : public : Insert(key : String) ~ Nil {
-			@map->Insert(key, Base->New());
-		}
-		
-		method : public : Remove(key : String) ~ Nil {
-			@map->Remove(key);
-		}
-    
-		method : public : Has(key : String) ~ Bool {
-			result := @map->Find(key);
-			return result <> Nil;
-		}
-    
-		method : public : GetKeys() ~ Vector {
-			return @map->GetKeys();
-		}
-
-		method : public : native : Empty() ~ Nil {
-			@map->Empty();
-		}
-
-		method : public : native : IsEmpty() ~ Bool {
-			return @map->IsEmpty();
-		}
-		
-		method : public : native : Size() ~ Int {
-			return @map->Size();
-		}
-	}
-	
-	class Set {
-		@map : Map;
-
-		New() {
-			@map := Map->New();
-		}
-
-		method : public : Insert(key : Compare) ~ Nil {
-			@map->Insert(key, Base->New());
-		}
-		
-		method : public : Remove(key : Compare) ~ Nil {
-			@map->Remove(key);
-		}
-    
-		method : public : Has(key : Compare) ~ Bool {
-			result := @map->Find(key);
-			return result <> Nil;
-		}
-    
-		method : public : GetKeys() ~ Vector {
-			return @map->GetKeys();
-		}
-
-		method : public : native : Empty() ~ Nil {
-			@map->Empty();
-		}
-
-		method : public : native : IsEmpty() ~ Bool {
-			return @map->IsEmpty();
-		}
-		
-		method : public : native : Size() ~ Int {
-			return @map->Size();
-		}
-	}
-
 	class Map {
 		@root : TreeNode;
 		@last : TreeNode;
@@ -2111,8 +2121,135 @@ bundle Struct {
 			return node;
 		}
 	}
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Sets
+	~~~~~~~~~~~~~~~~~~~~~~~#
+	class FloatSet {
+		@map : Map;
 
-	# Hash table
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Float) ~ Nil {
+			@map->Insert(FloatHolder->New(key), Base->New());
+		}
+		
+		method : public : Remove(key : Float) ~ Nil {
+			@map->Remove(FloatHolder->New(key));
+		}
+    
+		method : public : Has(key : Float) ~ Bool {
+			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
+			return result <> Nil;
+		}
+    
+		method : public: native : GetKeys() ~ FloatVector {
+			keys := FloatVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < keys->Size(); i += 1;) {
+				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
+				keys->AddBack(holder_value->Get());   
+			};
+
+			return keys;
+		}
+    
+		method : public : GetValues() ~ Vector {
+			return @map->GetValues();
+		}
+
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+		
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+	
+	class StringSet {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : String) ~ Nil {
+			@map->Insert(key, Base->New());
+		}
+		
+		method : public : Remove(key : String) ~ Nil {
+			@map->Remove(key);
+		}
+    
+		method : public : Has(key : String) ~ Bool {
+			result := @map->Find(key);
+			return result <> Nil;
+		}
+    
+		method : public : GetKeys() ~ Vector {
+			return @map->GetKeys();
+		}
+
+		method : public : native : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+	
+	class Set {
+		@map : Map;
+
+		New() {
+			@map := Map->New();
+		}
+
+		method : public : Insert(key : Compare) ~ Nil {
+			@map->Insert(key, Base->New());
+		}
+		
+		method : public : Remove(key : Compare) ~ Nil {
+			@map->Remove(key);
+		}
+    
+		method : public : Has(key : Compare) ~ Bool {
+			result := @map->Find(key);
+			return result <> Nil;
+		}
+    
+		method : public : GetKeys() ~ Vector {
+			return @map->GetKeys();
+		}
+
+		method : public : native : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		method : public : native : Size() ~ Int {
+			return @map->Size();
+		}
+	}
+
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Hashes
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class StringHash {
 		@hash : Hash;
 
@@ -2154,33 +2291,6 @@ bundle Struct {
 		}
 	}
 
-	class HashPair implements Compare {
-		@key : Compare;
-		@value : Base;
-
-		New(key : Compare, value : Base) {
-			Parent();
-			@key := key;
-			@value := value;
-		}
-
-		method : public : native : Compare(rhs : Compare) ~ Int {		
-			return @key->Compare(rhs);
-		}
-
-		method : public : HashID() ~ Int {
-			return @key->HashID();
-		}
-		
-		method : public : native : GetKey() ~ Compare {
-			return @key;
-		}
-
-		method : public : native : Get() ~ Base {
-			return @value;
-		}
-	}
-	
 	class Hash {
 		@buckets : List[];
 		@size : Int;
@@ -2289,9 +2399,41 @@ bundle Struct {
 			return @size;
 		}
 	}
+	
+	class HashPair implements Compare {
+		@key : Compare;
+		@value : Base;
+
+		New(key : Compare, value : Base) {
+			Parent();
+			@key := key;
+			@value := value;
+		}
+
+		method : public : native : Compare(rhs : Compare) ~ Int {		
+			return @key->Compare(rhs);
+		}
+
+		method : public : HashID() ~ Int {
+			return @key->HashID();
+		}
+		
+		method : public : native : GetKey() ~ Compare {
+			return @key;
+		}
+
+		method : public : native : Get() ~ Base {
+			return @value;
+		}
+	}
+	
+	
 }
 
 bundle Net {
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# HTTP Client
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class HttpClient {
 		@headers : Hash;
 		@cookies_enabled : Bool;

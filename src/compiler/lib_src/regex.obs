@@ -564,7 +564,7 @@ bundle RegEx {
 					};
 					NextToken();
 					
-IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(most)->PrintLine("'");										
+# IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(most)->PrintLine("'");										
 					
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(least, most, expression));

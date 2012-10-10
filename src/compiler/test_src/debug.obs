@@ -1,14 +1,17 @@
 ﻿bundle Default {
-	enum Words {
-		Fie,
-		Foo,
-		Fum
-	}
-		
 	class Test {
+		function : Foo() ~ Nil {
+		}
+
+		function : Bar() ~ Compare {
+			if(false) {
+				return Foo();
+			};
+
+			return Nil;
+		}
+
 		function : Main(args : String[]) ~ Nil {
-			b := "Hello World!"->ToCharArray();
-			String->New(b, -1, 10)->PrintLine();
 		}
 	}
 }
