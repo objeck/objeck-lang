@@ -3265,6 +3265,9 @@ bool ContextAnalyzer::Analyze()
 	  break;
 
 	case NIL_TYPE:
+	  if(expression->GetExpressionType() != NIL_LIT_EXPR) {
+	    ProcessError(expression, "Invalid cast with classes: " + left->GetClassName() + " and Nil");
+	  }
 	  break;
 
 	case BYTE_TYPE:
