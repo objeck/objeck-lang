@@ -810,8 +810,9 @@ instance level variables the path must start with
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
-basic data structures like lists and vectors.  As new class libraries
-are added they will be documented in this section.
+data structures like vectors, lists and maps.  This section also provides 
+documentation on libraries that provided XML, JSON and regular expression 
+support. As new classes are added they'll be documented in this section.
 
 \subsection{Core}
 Class support for basic datatypes.
@@ -1301,18 +1302,50 @@ Basic implementation of \texttt{Compare} methods.
   \end{itemize}
 \end{itemize}
 
-\subsubsection{Holders}
-Collection holders for basic types.
-
+\subsubsection{Queue/QueueInt/QueueFloat}
+The Queue class support the concept of a growing queue and based upon a FIFO priority.
+There are two specialized version of this class:
+\texttt{IntQueue} and \texttt{FloatQueue}.  The \texttt{IntQueue} and
+\texttt{FloatQueue} classes use \texttt{Int} and \texttt{Float} types
+respectively instead of \texttt{Compare} type.  The general class
+supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+\item \texttt{Add} - adds a new value to the back of the list
+  \begin{itemize}
+  \item method : public Add(value : Compare) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Remove} - removes the first element in the list
+  \begin{itemize}
+  \item method : public : Remove() \textasciitilde Compare
+  \end{itemize}
+\item \texttt{Head} - returns the first element in the list
+  \begin{itemize}
+  \item method : public : Head() \textasciitilde Compare
+  \end{itemize}
+\item \texttt{Empty} - clears the list
+  \begin{itemize}
+  \item method : public : Emtpy() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{IsEmpty} - returns true if empty, false otherwise
+  \begin{itemize}
+  \item method : public : native : IsEmpty() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Size} - returns the size
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
 
 \subsubsection{List/IntList/FloatList}
-The List class allow values to be added, removed and deleted from a
+The List class allows values to be added, removed and deleted from a
 list.  There are two specialized version of this class:
 \texttt{IntList} and \texttt{FloatList}.  The \texttt{IntList} and
 \texttt{FloatList} classes use \texttt{Int} and \texttt{Float} types
 respectively instead of \texttt{Compare} type.  The general class
 supports the following operations:
 \begin{itemize}
+\item \texttt{New}
 \item \texttt{AddBack} - adds a new value to the back of the list
   \begin{itemize}
   \item method : public : native : AddBack(value : Compare) \textasciitilde Nil
@@ -1408,13 +1441,14 @@ supports the following operations:
 \end{itemize}
 
 \subsubsection{Stack/IntStack/FloatStack}
-The Stack class support the concept of a growing stack.  There are two
+The Stack class support the concept of a growing stack based upon a FILO priority.  There are two
 specialized version of this class: \texttt{IntStack} and
 \texttt{FloatStack}.  The \texttt{IntStack} and \texttt{FloatStack}
 classes use \texttt{Int} and \texttt{Float} types respectively instead
 of \texttt{Base} type.  The general class supports the following
 operations:
 \begin{itemize}
+\item \texttt{New}
 \item \texttt{Push} - pushes a new value onto the stack
   \begin{itemize}
   \item method : public : Push(value : Base) \textasciitilde Nil
@@ -1492,7 +1526,6 @@ following operations:
   \begin{itemize}
   \item method : public : ToArray() \textasciitilde Base
   \end{itemize}
-  Additional methods for CompareVector/IntVector/FloatVector
 \item \texttt{Sort} - sorts a vector of values using a merge sort
   algorithm in $O(n \log_2 n)$ time.
   \begin{itemize}
@@ -1504,7 +1537,6 @@ following operations:
   \begin{itemize}
   \item method : public : BinarySearch(v : Compare) \textasciitilde Nil
   \end{itemize}
-  Additional methods for IntVector/FloatVector
 \item \texttt{Min} - returns the smallest value in the vector
   \begin{itemize}
   \item method : public : native : Min() \textasciitilde Int/Float
@@ -1538,9 +1570,6 @@ key/value pairs.  The class implements a balance binary tree algorithm
 such that inserts, deletes and searches are $O(\log_2 n)$.
 \begin{itemize}
 \item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \end{itemize}
 \item \texttt{Insert} - adds a new value to the tree
   \begin{itemize}
   \item method : public : Insert(key : Compare, value : Base) \textasciitilde Nil
