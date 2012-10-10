@@ -12,7 +12,7 @@ use Struct;
 use Net;
 
 bundle Struct {
-	# Integer Vector
+	# vectors
 	class IntVector {
 		@values : Int[];
 		@size : Int;
@@ -260,7 +260,6 @@ bundle Struct {
 		}
 	}
 	
-	# Float Vector
 	class FloatVector {
 		@values : Float[];
 		@size : Int;
@@ -502,7 +501,6 @@ bundle Struct {
 		}
 	}
 	
-	# Compare Vector
 	class CompareVector {
 		@values : Compare[];
 		@size : Int;
@@ -686,7 +684,6 @@ bundle Struct {
 		}
 	}
 	
-	# Object Vector
 	class Vector {
 		@values : Base[];
 		@size : Int;
@@ -780,7 +777,7 @@ bundle Struct {
 		}
 	}
 	
-	# Stack
+	# stacks
 	class Stack {
 		@values : Vector;
 		
@@ -825,7 +822,6 @@ bundle Struct {
 		}
 	}
 
-	# Integer Stack
 	class IntStack {
 		@values : IntVector;
 		
@@ -869,8 +865,7 @@ bundle Struct {
 		  return @values->Size();
 		}
 	}
-	
-	# Float Stack
+
 	class FloatStack {
 		@values : FloatVector;
 		
@@ -915,7 +910,104 @@ bundle Struct {
 		}
 	}
 	
-	# Integer Linked List
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Holders
+	~~~~~~~~~~~~~~~~~~~~~~~#
+	class IntHolder implements Compare {
+		@value : Int;
+
+		New() {
+			Parent();
+			@value := 0;
+		}
+
+		New(value : Int) {
+			Parent();
+			@value := value;
+		}
+
+		method : public : Get() ~ Int {
+			return @value;
+		}
+
+		method : public : native : Compare(rhs : Compare) ~ Int {
+			right : IntHolder := rhs->As(IntHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		method : public : HashID() ~ Int {
+			return @value;
+		}
+	}
+
+	class IntArrayHolder {
+		@values : Int[];
+
+		New(values : Int[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Int[] {
+			return @values;
+		}
+	}
+
+	class FloatHolder implements Compare {
+		@value : Float;
+
+		New() {
+			Parent();
+			@value := 0.0;
+		}
+
+		New(value : Float) {
+			Parent();
+			@value := value;
+		}
+
+		method : public : Get() ~ Float {
+			return @value;
+		}
+
+		method : public : native : Compare(rhs : Compare) ~ Int {
+			right : FloatHolder := rhs->As(FloatHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+		
+		method : public : HashID() ~ Int {
+			return @value * 10000.0;
+		}
+	}
+	
+	class FloatArrayHolder {
+		@values : Float[];
+
+		New(values : Float[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Float[] {
+			return @values;
+		}
+	}
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# Lists
+	~~~~~~~~~~~~~~~~~~~~~~~#
 	class IntList {
 		@list : List;
 		
@@ -1020,65 +1112,6 @@ bundle Struct {
 		}
 	}
 
-	class IntArrayHolder {
-		@values : Int[];
-
-		New(values : Int[]) {
-			@values := values;
-		}
-
-		method : public : Get() ~ Int[] {
-			return @values;
-		}
-	}
-	
-	class FloatArrayHolder {
-		@values : Float[];
-
-		New(values : Float[]) {
-			@values := values;
-		}
-
-		method : public : Get() ~ Float[] {
-			return @values;
-		}
-	}
-	
-	class IntHolder implements Compare {
-		@value : Int;
-
-		New() {
-			Parent();
-			@value := 0;
-		}
-
-		New(value : Int) {
-			Parent();
-			@value := value;
-		}
-
-		method : public : Get() ~ Int {
-			return @value;
-		}
-
-		method : public : native : Compare(rhs : Compare) ~ Int {
-			right : IntHolder := rhs->As(IntHolder);
-			if(@value = right->Get()) {
-				return 0;
-			}
-			else if(@value < right->Get()) {
-				return -1;
-			};
-			
-			return 1;
-		}
-
-		method : public : HashID() ~ Int {
-			return @value;
-		}
-	}
-	
-	# Float Linked List
 	class FloatList {
 		@list : List;
 		
@@ -1180,40 +1213,6 @@ bundle Struct {
 		
 		method : public : Size() ~ Int {
 			return @list->Size();
-		}
-	}
-	
-	class FloatHolder implements Compare {
-		@value : Float;
-
-		New() {
-			Parent();
-			@value := 0.0;
-		}
-
-		New(value : Float) {
-			Parent();
-			@value := value;
-		}
-
-		method : public : Get() ~ Float {
-			return @value;
-		}
-
-		method : public : native : Compare(rhs : Compare) ~ Int {
-			right : FloatHolder := rhs->As(FloatHolder);
-			if(@value = right->Get()) {
-				return 0;
-			}
-			else if(@value < right->Get()) {
-				return -1;
-			};
-			
-			return 1;
-		}
-		
-		method : public : HashID() ~ Int {
-			return @value * 10000.0;
 		}
 	}
 
