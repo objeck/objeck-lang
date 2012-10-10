@@ -1192,12 +1192,86 @@ Base class for all objects.
   \item method : native : ToString() \textasciitilde String
   \end{itemize}
 \end{itemize}
+
+
+\subsection{Holders}
+Collection holders for basic types.
+
+\subsubsection{IntHolder}
+Holds an interger type.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(value : Int)
+  \end{itemize}
+\item \texttt{Get} - returns a value
+  \begin{itemize}
+  \item method : public : Get() \textasciitilde Int
+  \end{itemize}
+\item \texttt{Compare} - returns a value
+  \begin{itemize}
+  \item method : public : Compare(rhs : Compare) \textasciitilde Int
+  \end{itemize}
+\item \texttt{HashID} - returns a unique value for the given class
+  type
+  \begin{itemize}
+  \item method : public : HashID() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{IntArrayHolder}
+Holds an interger array.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(value : Int[])
+  \end{itemize}
+\item \texttt{Get} - returns a value
+  \begin{itemize}
+  \item method : public : Get() \textasciitilde Int[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{FloatHolder}
+Holds a float type.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(value : Float)
+  \end{itemize}
+\item \texttt{Get} - returns a value
+  \begin{itemize}
+  \item method : public : Get() \textasciitilde Float
+  \end{itemize}
+\item \texttt{Compare} - returns a value
+  \begin{itemize}
+  \item method : public : Compare(rhs : Compare) \textasciitilde Int
+  \end{itemize}
+\item \texttt{HashID} - returns a unique value for the given class
+  type
+  \begin{itemize}
+  \item method : public : HashID() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{FloatArrayHolder}
+Holds an interger array.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(value : Float[])
+  \end{itemize}
+\item \texttt{Get} - returns a value
+  \begin{itemize}
+  \item method : public : Get() \textasciitilde Float[]
+  \end{itemize}
+\end{itemize}
+
  
-\subsection{Data Structures}
+\subsection{Collections}
 Provides support for basic data structures such as vectors, lists,
 hashes, maps, etc.  These classes are located in the `Struct'
 bundle.
-
 \subsubsection{Compare}
 Interface for all objects that use comparative algorithms.
 \begin{itemize}
@@ -1226,6 +1300,10 @@ Basic implementation of \texttt{Compare} methods.
   \item method : public : HashID() \textasciitilde Int
   \end{itemize}
 \end{itemize}
+
+\subsubsection{Holders}
+Collection holders for basic types.
+
 
 \subsubsection{List/IntList/FloatList}
 The List class allow values to be added, removed and deleted from a
