@@ -618,10 +618,21 @@ bundle RegEx {
 				@starts_anchor := true;
 				NextToken();
 			}			
-			else if(@token <> '$' | @token <> '*' | @token <> '?' | @token <> '$' | @token <> '{') {
-				@expressions->AddBack(Expression->New(@token));
+			else {
+				select(@token) {
+					label '*':
+					label '+':
+					label '?':
+					label '$':
+					label '{': { # nop processed by unary method
+					}
+					
+					other: {
+						@expressions->AddBack(Expression->New(@token));
 # IO.Console->Print("match: char=")->PrintLine(@token);				
-				NextToken();
+						NextToken();
+					}
+				};
 			};
 		}
 		
