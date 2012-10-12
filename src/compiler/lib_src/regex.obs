@@ -224,7 +224,8 @@ bundle RegEx {
 				if(@is_backtracking & @input_char <> '\0') {
 					@backtrack_positions->AddBack(@input_pos);
 				};
-
+				
+# IO.Console->Print("--- type=")->Print(expression->GetType()->As(Int))->PrintLine(" ---"); 				
 				select(expression->GetType()) {
 					# single character
 					label ExpressionType->CHAR: {
@@ -530,7 +531,7 @@ bundle RegEx {
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ENDS_ANCHOR, expression));
 					NextToken();
-# IO.Console->PrintLine("match: ends anchor");				
+"match: ends anchor"->PrintLine();
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -617,7 +618,7 @@ bundle RegEx {
 				@starts_anchor := true;
 				NextToken();
 			}			
-			else {
+			else if(@token <> '$' | @token <> '*' | @token <> '?' | @token <> '$' | @token <> '{') {
 				@expressions->AddBack(Expression->New(@token));
 # IO.Console->Print("match: char=")->PrintLine(@token);				
 				NextToken();
