@@ -225,7 +225,8 @@ bundle RegEx {
 					@backtrack_positions->AddBack(@input_pos);
 				};
 				
-# IO.Console->Print("--- type=")->Print(expression->GetType()->As(Int))->PrintLine(" ---"); 				
+# IO.Console->Print("--- type=")->Print(expression->GetType()->As(Int))->PrintLine(" ---");
+ 				
 				select(expression->GetType()) {
 					# single character
 					label ExpressionType->CHAR: {
@@ -282,6 +283,7 @@ bundle RegEx {
 
 					# range of characters
 					label ExpressionType->CHAR_CLASS_RANGE: {
+# IO.Console->Print("[### matching: range='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");					
 						char_class := expression->GetClass();
 						if(InRange(char_class, @input_char)) {
 							NextInput();
@@ -291,7 +293,7 @@ bundle RegEx {
 					
 					# starts anchor
 					label ExpressionType->STARTS_ANCHOR: {
-# "[### starts anchor ###]"->PrintLine();							
+# IO.Console->Print("[### starts anchor: pos=")->Print(@input_pos - 1)->Print(", input='")->Print(@input_char)->PrintLine("' ###]");				
 						if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression())) {
 							return true;				
 						};
@@ -307,6 +309,7 @@ bundle RegEx {
 
 					# logical OR
 					label ExpressionType->OR: {
+# "[### or ###]"->PrintLine();					
 						prev_pos := @input_pos;
 						if(Evaluate(expression->GetLeft(), 0)) {
 							return true;
@@ -445,23 +448,28 @@ bundle RegEx {
 			NextToken();
 			Binary();
 			
-			if(@starts_anchor) {
-				@error := "orphan anchor token";
+			# consume starts with
+			if(@starts_anchor & @expressions->Size() > 0) {
+				expression := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@starts_anchor := false;
+# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};
-		}	
+		}
 		
 		method : private : Binary() ~ Nil {
+			# consume starts with
+			if(@starts_anchor & @expressions->Size() > 0) {
+				expression := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@starts_anchor := false;
+# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
+			};
+		
 			while(@token <> '\0' & @token <> ')' & @token <> '|') {
 				Unary();		
 				if(@error <> Nil) {
 					return;
-				};
-
-				if(@starts_anchor & @expressions->Size() > 0) {
-					expression := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
-					@starts_anchor := false;
-# IO.Console->PrintLine("match: starts anchor");	
 				};
 			};
 			
@@ -483,8 +491,16 @@ bundle RegEx {
 # IO.Console->PrintLine("match: or_match");					
 			};
 		}
-
+		
 		method : private : Unary() ~ Nil {
+			# consume starts with
+			if(@starts_anchor & @expressions->Size() > 0) {
+				expression := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@starts_anchor := false;
+# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
+			};
+			
 			Value();
 			if(@error <> Nil) {
 				return;
@@ -531,7 +547,7 @@ bundle RegEx {
 					expression := @expressions->RemoveBack()->As(Expression);
 					@expressions->AddBack(Expression->New(ExpressionType->ENDS_ANCHOR, expression));
 					NextToken();
-"match: ends anchor"->PrintLine();
+# "match: ends anchor"->PrintLine();
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -599,6 +615,14 @@ bundle RegEx {
 		}
 		
 		method : private : Value() ~ Nil {
+			# consume starts with
+			if(@starts_anchor & @expressions->Size() > 0) {
+				expression := @expressions->RemoveBack()->As(Expression);
+				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@starts_anchor := false;
+# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
+			};		
+		
 			if(@token = '(') {
 				Parentheses();				
 			}
@@ -678,7 +702,6 @@ bundle RegEx {
 				is_range := true;				
 			};
 # IO.Console->Print("match range: class=")->PrintLine(char_class);
-			
 			@expressions->AddBack(Expression->New(char_class, is_range));
 		}
 
@@ -763,7 +786,7 @@ bundle RegEx {
 			
 			# combine lists			
 			left->AddBack(Expression->New(@expressions));
-			@expressions := left;		
+			@expressions := left;
 # IO.Console->PrintLine("parentheses");		
 		}
 	}
