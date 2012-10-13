@@ -449,11 +449,8 @@ bundle RegEx {
 			Binary();
 			
 			# consume starts with
-			if(@starts_anchor & @expressions->Size() > 0) {
-				expression := @expressions->RemoveBack()->As(Expression);
-				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
-				@starts_anchor := false;
-# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
+			if(@starts_anchor) {
+				@error := "stray token";
 			};
 		}
 		
