@@ -1,0 +1,15 @@
+Objeck v3.1.5_0
+
+--------------
+Release Notes
+--------------
+For this release a new regular expression engine was developed.  Also added new classes and enhanced existing ones.
+
+Highlights of this release include the following:
+*  New regular expression engine with better expression support and more operations  (new)
+*  Added Queue classes to the ‘strut’ library (new)
+*  Added a ‘Clear’ method to all collections in the ‘strut’ library (enhancement)
+*  Fixed a minor contextual analysis bug that did not detect certain invalid return statements (minor)
+
+
+
