@@ -206,11 +206,8 @@ void Parser::ParseBundle(int depth)
 #endif
   }
 
-  // name space
-  if(!Match(TOKEN_BUNDLE_ID)) {
-    ProcessError("Expected 'bundle' or 'use'");
-  } 
-  else {
+  // parse bundle
+  if(Match(TOKEN_BUNDLE_ID)) {
     while(Match(TOKEN_BUNDLE_ID) && !Match(TOKEN_END_OF_STREAM)) {
       NextToken();
       
@@ -232,6 +229,7 @@ void Parser::ParseBundle(int depth)
 #ifdef _DEBUG
       Show("bundle: '" + current_bundle->GetName() + "'", depth);
 #endif
+      
       // parse classes, interfaces and enums
       while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
         if(Match(TOKEN_ENUM_ID)) {
@@ -260,9 +258,48 @@ void Parser::ParseBundle(int depth)
     // detect stray characters
     if(!Match(TOKEN_END_OF_STREAM)) {
       ProcessError("Unexpected tokens (likely related to other errors)");
-    }    
+    }
+    program->AddUses(uses);
   }
-  program->AddUses(uses);
+  // parse class
+  else if(Match(TOKEN_CLASS_ID)) {
+    string bundle_name = "";
+    symbol_table = new SymbolTableManager;
+    ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
+    
+    current_bundle = bundle;    
+#ifdef _DEBUG
+    Show("bundle: '" + current_bundle->GetName() + "'", depth);
+#endif
+
+    // parse classes, interfaces and enums
+    while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+      if(Match(TOKEN_ENUM_ID)) {
+	bundle->AddEnum(ParseEnum(depth + 1));
+      } 
+      else if(Match(TOKEN_CLASS_ID)) {
+	bundle->AddClass(ParseClass(bundle_name, depth + 1));
+      }
+      else if(Match(TOKEN_INTERFACE_ID)) {
+	bundle->AddClass(ParseInterface(bundle_name, depth + 1));
+      }
+      else {
+	ProcessError("Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
+	NextToken();
+      }
+    }
+    program->AddBundle(bundle);
+        
+    // detect stray characters
+    if(!Match(TOKEN_END_OF_STREAM)) {
+      ProcessError("Unexpected tokens (likely related to other errors)");
+    }
+    program->AddUses(uses);
+  }
+  // error
+  else {
+    ProcessError("Expected 'bundle', 'class' or 'use'");
+  }
 }
 
 /****************************
