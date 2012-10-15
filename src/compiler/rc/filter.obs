@@ -1,19 +1,17 @@
 use Struct;
 
-bundle Default {
-	class Evens {
-		function : Main(args : String[]) ~ Nil {
-			values := IntVector->New([1, 2, 3, 4, 5]);
-			f := Filter(Int) ~ Bool;
-			evens := values->Filter(f);
+class Evens {
+	function : Main(args : String[]) ~ Nil {
+		values := IntVector->New([1, 2, 3, 4, 5]);
+		f := Filter(Int) ~ Bool;
+		evens := values->Filter(f);
 
-			each(i : evens) {
-				evens->Get(i)->PrintLine();
-			};
-		}
+		each(i : evens) {
+			evens->Get(i)->PrintLine();
+		};
+	}
 
-		function : Filter(v : Int) ~ Bool {
-			return v % 2 = 0;	
-		}
+	function : Filter(v : Int) ~ Bool {
+		return v % 2 = 0;	
 	}
 }
