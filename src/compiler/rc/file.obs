@@ -1,24 +1,22 @@
 use IO;
 
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			len := File->Size("in.txt");
-			buffer : Byte[] := Byte->New[len];
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		len := File->Size("in.txt");
+		buffer : Byte[] := Byte->New[len];
 
-#			in := FileReader->New("in.txt");
-			in := FileReader->New(Nil);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
-				out := FileWriter->New("output.txt");
-				if(out->IsOpen()) {
-					out->WriteBuffer(0, len, buffer);
-					out->Close();
-					"done!"->PrintLine();
-				};
-				in->Close();
+#		in := FileReader->New("in.txt");
+		in := FileReader->New(Nil);
+		if(in->IsOpen()) {
+			in->ReadBuffer(0, len, buffer);
+			out := FileWriter->New("output.txt");
+			if(out->IsOpen()) {
+				out->WriteBuffer(0, len, buffer);
+				out->Close();
+				"done!"->PrintLine();
 			};
-		}
+			in->Close();
+		};
 	}
 }
 
