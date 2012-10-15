@@ -1,7 +1,5 @@
-﻿bundle Default {
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-			"Hello World!"->PrintLine();
-		}
+﻿class Hello {
+	function : Main(args : String[]) ~ Nil {
+		"Hello World!"->PrintLine();
 	}
 }
