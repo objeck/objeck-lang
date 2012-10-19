@@ -1253,7 +1253,12 @@ namespace Runtime {
     
 	case SOCK_TCP_CLOSE: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (SOCKET)instance[0] >= 0) {
+
+#ifdef _WIN32
+	  if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
+    if(instance && (SOCKET)instance[0] >= 0) {
+#endif
 	    SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
 	    cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
@@ -1268,7 +1273,11 @@ namespace Runtime {
 	  long* array = (long*)PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
+#ifdef _WIN32
+	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
 	  if(array && instance && (SOCKET)instance[0] >= 0) {
+#endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* data = (char*)(array + 3);
 	    IPSocket::WriteBytes(data, strlen(data), sock);
@@ -1576,7 +1585,12 @@ namespace Runtime {
 	  
 	case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
+
+#ifdef _WIN32
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
 	  if(instance && (SOCKET)instance[0] >= 0) {
+#endif
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
 	  else {
@@ -1604,7 +1618,11 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
     
+#ifdef _WIN32
+	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
 	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+#endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
@@ -1636,7 +1654,11 @@ namespace Runtime {
 	  const long offset = PopInt(op_stack, stack_pos);
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
 	  
+#ifdef _WIN32
+	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
 	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+#endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);
 	    PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
