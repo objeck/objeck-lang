@@ -1,40 +1,16 @@
 use FastCgi;
+use IO;
 
 class FastCgiModule {
 	function : Main(args : String[]) ~ Nil {}
 
 	function : Request(req : Request, res : Response) ~ Nil {
-		cmdx := req->GetQueryValue("lname");
-		if(cmdx <> Nil) {
+		cmd := req->GetQueryValue("cmd");
+		if(cmd <> Nil & cmd->Equals("ajax")) {
 			res->AddBody("<b>Called 1</b>");
 		}
 		else {
-			res->AddBody("<html><head>");
-			res->AddBody("<script type=\"text/javascript\">");
-			res->AddBody("function updateProfile(){");
-			res->AddBody("var xmlhttp;");    
-			res->AddBody("if (window.XMLHttpRequest){");
-			res->AddBody("xmlhttp=new XMLHttpRequest();");
-			res->AddBody("}else{");
-			res->AddBody("xmlhttp=new ActiveXObject(\"Microsoft.XMLHTTP\"");
-			res->AddBody("}");
-			res->AddBody("xmlhttp.onreadystatechange = function(){");
-			res->AddBody("if(ajaxRequest.readyState == 4){");
-			res->AddBody("document.getElementById(\"myData\").innerHTML=xmlhttp.responseText;");
-			res->AddBody("}");
-			res->AddBody("}");
-			res->AddBody("xmlhttp.open(\"GET\",\"c?cmd=ajax\",true);");
-			res->AddBody("xmlhttp.send();");
-			res->AddBody("}");
-			res->AddBody("</script>");
-			res->AddBody("</head>");
-			res->AddBody("<body>");
-			res->AddBody("<input name='firstName' onChange='updateProfile()' />");
-			res->AddBody("<div id=\"myData\"></div>");
-			res->AddBody("<!-- Our response will be placed into the div above,");
-			res->AddBody("    thanks to JavaScript's \"innerHTML\" property. -->");
-			res->AddBody("</body>");
-			res->AddBody("</html>");
+			res->AddBody(FileReader->ReadFile("/tmp/in.html"));
 		};
 		
 #~
