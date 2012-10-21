@@ -12,6 +12,7 @@
 		}
 
 		function : Main(args : String[]) ~ Nil {
+			"hello"->ErrorLine();
 		}
 	}
 }
