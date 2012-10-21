@@ -2339,7 +2339,82 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     }
   }
     break;
+    
+    // ---------------- standard error i/o ----------------
+  case STD_ERR_BOOL:
+#ifdef _DEBUG
+    cout << "  STD_ERR_BOOL" << endl;
+#endif
+    cerr << ((PopInt(op_stack, stack_pos) == 0) ? "false" : "true");
+    break;
+    
+  case STD_ERR_BYTE:
+#ifdef _DEBUG
+    cout << "  STD_ERR_BYTE" << endl;
+#endif
+    cerr << (unsigned char)PopInt(op_stack, stack_pos);
+    break;
 
+  case STD_ERR_CHAR:
+#ifdef _DEBUG
+    cout << "  STD_ERR_CHAR" << endl;
+#endif
+    cerr << (char)PopInt(op_stack, stack_pos);
+    break;
+
+  case STD_ERR_INT:
+#ifdef _DEBUG
+    cout << "  STD_ERR_INT" << endl;
+#endif
+    cerr << PopInt(op_stack, stack_pos);
+    break;
+
+  case STD_ERR_FLOAT:
+#ifdef _DEBUG
+    cout << "  STD_ERR_FLOAT" << endl;
+#endif
+    cerr.precision(9);
+    cerr << PopFloat(op_stack, stack_pos);
+    break;
+    
+  case STD_ERR_CHAR_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    
+#ifdef _DEBUG
+    cout << "  STD_ERR_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
+#endif
+    
+    if(array) {
+      char* str = (char*)(array + 3);
+      cerr << str;
+    }
+    else {
+      cerr << "Nil";
+    }
+  }
+    break;
+
+  case STD_ERR_BYTE_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+
+#ifdef _DEBUG
+    cout << "  STD_ERR_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
+#endif
+
+    if(array && offset >= 0 && offset + num < array[0]) {
+      char* buffer = (char*)(array + 3);
+      cerr.write(buffer + offset, num);
+      PushInt(1, op_stack, stack_pos);
+    } 
+    else {
+      cerr << "Nil";
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
     // ---------------- runtime ----------------
   case EXIT:
     exit(PopInt(op_stack, stack_pos));

@@ -160,6 +160,15 @@ void Scanner::LoadKeywords()
   ident_map["STD_OUT_FLOAT"] = STD_OUT_FLOAT;
   ident_map["STD_OUT_CHAR_ARY"] = STD_OUT_CHAR_ARY;
   ident_map["STD_OUT_BYTE_ARY"] = STD_OUT_BYTE_ARY;
+  // standard error i/o
+  ident_map["STD_ERR_BOOL"] = STD_ERR_BOOL;
+  ident_map["STD_ERR_BYTE"] = STD_ERR_BYTE;
+  ident_map["STD_ERR_CHAR"] = STD_ERR_CHAR;
+  ident_map["STD_ERR_INT"] = STD_ERR_INT;
+  ident_map["STD_ERR_FLOAT"] = STD_ERR_FLOAT;
+  ident_map["STD_ERR_CHAR_ARY"] = STD_ERR_CHAR_ARY;
+  ident_map["STD_ERR_BYTE_ARY"] = STD_ERR_BYTE_ARY;
+
   // file i/o
   ident_map["FILE_OPEN_READ"] = FILE_OPEN_READ;
   ident_map["FILE_CLOSE"] = FILE_CLOSE;
@@ -306,16 +315,23 @@ void Scanner::CheckIdentifier(int index)
   case LOAD_CLS_BY_INST:
   case LOAD_NEW_OBJ_INST:
   case LOAD_INST_UID:
-  case STD_OUT_BOOL:
   case LOAD_ARY_SIZE:
   case LOAD_MULTI_ARY_SIZE:
+  case STD_IN_STRING:
   case STD_OUT_CHAR_ARY:
   case STD_OUT_BYTE_ARY:
-  case STD_IN_STRING:
+  case STD_OUT_BOOL:
   case STD_OUT_BYTE:
   case STD_OUT_CHAR:
   case STD_OUT_INT:
   case STD_OUT_FLOAT:
+  case STD_ERR_CHAR_ARY:
+  case STD_ERR_BYTE_ARY:
+  case STD_ERR_BOOL:
+  case STD_ERR_BYTE:
+  case STD_ERR_CHAR:
+  case STD_ERR_INT:
+  case STD_ERR_FLOAT:
   case FILE_OPEN_READ:
   case FILE_CLOSE:
   case FILE_FLUSH:

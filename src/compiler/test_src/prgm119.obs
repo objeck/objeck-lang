@@ -1,71 +1,99 @@
 use FastCgi;
 
-bundle Default {
-	class FCGI { 
-		New() {
+class FastCgiModule {
+	function : Main(args : String[]) ~ Nil {}
+
+	function : Request(req : Request, res : Response) ~ Nil {
+		cmdx := req->GetQueryValue("lname");
+		if(cmdx <> Nil) {
+			res->AddBody("<b>Called 1</b>");
 		}
-	}
-
-	class FastCgiModule {
-		function : Main(args : String[]) ~ Nil {}
-
-		function : Request(req : Request, res : Response) ~ Nil {
-			res->AddBody("<html>");
-			res->AddBody("<form method=\"post\">");
-			res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
-			res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
-			res->AddBody("<input type=\"submit\" value=\"Submit\" />");
-			res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
-			res->AddBody("</form>"); 
-
-			res->AddBody("<i>name="); 
-			name := req->GetQueryValue("lname");
-			if(name <> Nil) {
-#				res->AddBody(name);
-			};
-			res->AddBody("</i><br/>"); 
-
-			res->AddBody("<i>cookie value="); 			
-			cookie := req->GetCookie("name3");
-			if(cookie <> Nil) {
-				res->AddBody(cookie);
-			};
-
-			cookie := req->GetCookie("name2");
-			if(cookie <> Nil) {
-				res->AddBody("; cookie value="); 			
-				res->AddBody(cookie);
-			};
-			res->AddBody("</i>"); 
-
-			res->AddBody("<p>"); 
-			res->AddBody(req->GetClientAddress());
-			res->AddBody("</br>"); 
-			res->AddBody(req->GetRequestMethod());
-			res->AddBody("<p/>"); 
-
-			name := req->GetDataValue("dog");
-			if(name <> Nil) {
-				res->AddBody("<pre>");
-				res->AddBody(UrlUtility->Decode(name));
-				res->AddBody("</pre>");
-			};
+		else {
+			res->AddBody("<html><head>");
+			res->AddBody("<script type=\"text/javascript\">");
+			res->AddBody("function updateProfile(){");
+			res->AddBody("var xmlhttp;");    
+			res->AddBody("if (window.XMLHttpRequest){");
+			res->AddBody("xmlhttp=new XMLHttpRequest();");
+			res->AddBody("}else{");
+			res->AddBody("xmlhttp=new ActiveXObject(\"Microsoft.XMLHTTP\"");
+			res->AddBody("}");
+			res->AddBody("xmlhttp.onreadystatechange = function(){");
+			res->AddBody("if(ajaxRequest.readyState == 4){");
+			res->AddBody("document.getElementById(\"myData\").innerHTML=xmlhttp.responseText;");
+			res->AddBody("}");
+			res->AddBody("}");
+			res->AddBody("xmlhttp.open(\"GET\",\"c?cmd=ajax\",true);");
+			res->AddBody("xmlhttp.send();");
+			res->AddBody("}");
+			res->AddBody("</script>");
+			res->AddBody("</head>");
+			res->AddBody("<body>");
+			res->AddBody("<input name='firstName' onChange='updateProfile()' />");
+			res->AddBody("<div id=\"myData\"></div>");
+			res->AddBody("<!-- Our response will be placed into the div above,");
+			res->AddBody("    thanks to JavaScript's \"innerHTML\" property. -->");
+			res->AddBody("</body>");
+			res->AddBody("</html>");
+		};
 		
+#~
+		res->AddBody("<html>");
+		res->AddBody("<form method=\"post\">");
+		res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
+		res->AddBody("Last name: <input type=\"text\" name=\"lname\" /><br />");
+		res->AddBody("<input type=\"submit\" value=\"Submit\" />");
+		res->AddBody("<textarea NAME=dog ROWS=13 COLS=13/></textarea>");
+		res->AddBody("</form>"); 
 
-			data := req->GetData();
-			if(data <> Nil) {
-				res->AddBody("<pre>");
-				res->AddBody(data);
-				res->AddBody("</pre>");	
-			};
+		res->AddBody("<i>name="); 
+		name := req->GetQueryValue("lname");
+		if(name <> Nil) {
+#				res->AddBody(name);
+		};
+		res->AddBody("</i><br/>"); 
 
-			res->AddBody("<html>");
+		res->AddBody("<i>cookie value="); 			
+		cookie := req->GetCookie("name3");
+		if(cookie <> Nil) {
+			res->AddBody(cookie);
+		};
 
-			future := Time.Date->New();
-			future->AddDays(1);
-			res->AddCookie("name3", "foo", future);
+		cookie := req->GetCookie("name2");
+		if(cookie <> Nil) {
+			res->AddBody("; cookie value="); 			
+			res->AddBody(cookie);
+		};
+		res->AddBody("</i>"); 
 
-			res->Submit();
-		}
+		res->AddBody("<p>"); 
+		res->AddBody(req->GetClientAddress());
+		res->AddBody("</br>"); 
+		res->AddBody(req->GetRequestMethod());
+		res->AddBody("<p/>"); 
+
+		name := req->GetDataValue("dog");
+		if(name <> Nil) {
+			res->AddBody("<pre>");
+			res->AddBody(UrlUtility->Decode(name));
+			res->AddBody("</pre>");
+		};
+	
+
+		data := req->GetData();
+		if(data <> Nil) {
+			res->AddBody("<pre>");
+			res->AddBody(data);
+			res->AddBody("</pre>");	
+		};
+
+		res->AddBody("<html>");
+
+		future := Time.Date->New();
+		future->AddDays(1);
+		res->AddCookie("name3", "foo", future);
+~#
+
+		res->Submit();
 	}
 }

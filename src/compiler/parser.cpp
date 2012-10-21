@@ -1163,6 +1163,60 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;
 
+    case STD_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_OUT_CHAR_ARY);
+      NextToken();
+      break;
+      
+    case STD_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_OUT_BYTE_ARY);
+      NextToken();
+      break;
+
+    case STD_ERR_BOOL:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_BOOL);
+      NextToken();
+      break;
+
+    case STD_ERR_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_BYTE);
+      NextToken();
+      break;
+
+    case STD_ERR_CHAR:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_CHAR);
+      NextToken();
+      break;
+
+    case STD_ERR_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_INT);
+      NextToken();
+      break;
+
+    case STD_ERR_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_FLOAT);
+      NextToken();
+      break;
+
+    case STD_ERR_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_CHAR_ARY);
+      NextToken();
+      break;
+      
+    case STD_ERR_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::STD_ERR_BYTE_ARY);
+      NextToken();
+      break;
+
     case LOAD_ARY_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::LOAD_ARY_SIZE);
@@ -1196,18 +1250,6 @@ Statement* Parser::ParseStatement(int depth)
     case LOAD_INST_UID:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::LOAD_INST_UID);
-      NextToken();
-      break;
-      
-    case STD_OUT_CHAR_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::STD_OUT_CHAR_ARY);
-      NextToken();
-      break;
-      
-    case STD_OUT_BYTE_ARY:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::STD_OUT_BYTE_ARY);
       NextToken();
       break;
       
