@@ -1215,6 +1215,82 @@ namespace Runtime {
 	}
 	  break;
 	  
+	  // ---------------- standard error i/o ----------------
+	case STD_ERR_BOOL: {
+#ifdef _DEBUG
+	  cout << "  STD_ERR_BOOL" << endl;
+#endif
+	  int32_t value = PopInt(op_stack, stack_pos);
+	  cerr << ((value == 0) ? "false" : "true");
+	}
+	  break;
+	  
+	case STD_ERR_BYTE:
+#ifdef _DEBUG
+	  cout << "  STD_ERR_BYTE" << endl;
+#endif
+	  cerr <<  (unsigned char)PopInt(op_stack, stack_pos);
+	  break;
+
+	case STD_ERR_CHAR:
+#ifdef _DEBUG
+	  cout << "  STD_ERR_CHAR" << endl;
+#endif
+	  cerr <<  (char)PopInt(op_stack, stack_pos);
+	  break;
+
+	case STD_ERR_INT:
+#ifdef _DEBUG
+	  cout << "  STD_ERR_INT" << endl;
+#endif
+	  cerr <<  PopInt(op_stack, stack_pos);
+	  break;
+
+	case STD_ERR_FLOAT: {
+#ifdef _DEBUG
+	  cout << "  STD_ERR_FLOAT" << endl;
+#endif
+	  double value;      
+	  (*stack_pos) -= 2;
+	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
+	  cerr.precision(9);
+	  cerr << value;
+	  break;
+	}
+	  break;
+
+	case STD_ERR_CHAR_ARY: {
+	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
+	  if(array) {
+#ifdef _DEBUG
+	    cout << "  STD_ERR_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
+#endif
+	    char* str = (char*)(array + 3);
+	    cerr << str;
+	  }
+	  else {
+	    cerr << "Nil";
+	  }
+	}
+	  break;
+	  
+	case STD_ERR_BYTE_ARY: {
+	  long* array = (long*)PopInt(op_stack, stack_pos);
+	  const long num = PopInt(op_stack, stack_pos);
+	  const long offset = PopInt(op_stack, stack_pos);
+	  
+	  if(array && offset >= 0 && offset + num < array[0]) {
+	    char* buffer = (char*)(array + 3);
+	    cerr.write(buffer + offset, num);
+	    PushInt(op_stack, stack_pos, 1);
+	  } 
+	  else {
+	    cerr << "Nil";
+	    PushInt(op_stack, stack_pos, 0);
+	  }
+	}
+	  break;
+	  
 	  // ---------------- system time ----------------
 	case SYS_TIME: {
 	  time_t raw_time;

@@ -86,7 +86,7 @@ int main(const int argc, const char* argv[])
   
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {    
     // execute method
-    long* op_stack = new long[STACK_SIZE];
+    long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
     
     // create request

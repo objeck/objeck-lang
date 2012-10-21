@@ -302,6 +302,7 @@ IO.Console->PrintLine("### Path=")->Print(lib_path)->PrintLine( " ###");
 		}
 
 		method : public : GetQueryValue(name : String) ~ String {
+"???"->PrintLine();
 			if(@query_values = Nil) {
 				@query_values := ParseNameValues(GetQuery());
 			};
@@ -338,6 +339,7 @@ IO.Console->PrintLine("### Path=")->Print(lib_path)->PrintLine( " ###");
 		}
 		
 		function : ParseNameValues(params : String) ~ StringMap {
+IO.Console->Error("### PARAMS: ")->ErrorLine(params);
 			parameters := StringMap->New();
 			if(params <> Nil & params->Size() > 0) {
 				name_values := params->Split("&");

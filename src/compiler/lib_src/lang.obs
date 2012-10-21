@@ -19,6 +19,15 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : Error(b : Bool) ~ Nil {
+			STD_ERR_BOOL;
+		}
+
+		function : ErrorLine(b : Bool) ~ Nil {
+			STD_ERR_BOOL;
+			'\n'->Print();
+		}
+
 		function : Size(b : Bool[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
@@ -79,6 +88,15 @@ bundle System {
 
 		function : PrintLine(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
+			'\n'->Print();
+		}
+
+		function : Error(b : Byte) ~ Nil {
+			STD_ERR_BYTE;
+		}
+
+		function : ErrorLine(b : Byte) ~ Nil {
+			STD_ERR_BYTE;
 			'\n'->Print();
 		}
 
@@ -214,6 +232,24 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : Error(c : Char) ~ Nil {
+			STD_ERR_CHAR;
+		}
+
+		function : ErrorLine(c : Char) ~ Nil {
+			STD_ERR_CHAR;
+			'\n'->Print();
+		}
+
+		function : native :  Error(c : Char[]) ~ Nil {
+			STD_ERR_CHAR_ARY;
+		}
+
+		function : native :  ErrorLine(c : Char[]) ~ Nil {
+			STD_ERR_CHAR_ARY;
+			'\n'->Print();
+		}
+		
 		function : Size(c : Char[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
@@ -306,6 +342,15 @@ bundle System {
 
 		function : PrintLine(i : Int) ~ Nil {
 			STD_OUT_INT;
+			'\n'->Print();
+		}
+		
+		function : Error(i : Int) ~ Nil {
+			STD_ERR_INT;
+		}
+
+		function : ErrorLine(i : Int) ~ Nil {
+			STD_ERR_INT;
 			'\n'->Print();
 		}
 
@@ -438,6 +483,15 @@ bundle System {
 			'\n'->Print();
 		}
 
+		function : Error(f : Float) ~ Nil {
+			STD_ERR_FLOAT;
+		}
+
+		function : ErrorLine(f : Float) ~ Nil {
+			STD_ERR_FLOAT;
+			'\n'->Print();
+		}
+		
 		function : Size(f : Float[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
@@ -1299,6 +1353,14 @@ bundle System {
 		method : public : native : PrintLine() ~ Nil {
 			@string->PrintLine();
 		}
+
+		method : public : native : Error() ~ Nil {
+			@string->Error();
+		}
+
+		method : public : native : ErrorLine() ~ Nil {
+			@string->ErrorLine();
+		}
 	}
 	
 	#~~
@@ -1602,12 +1664,20 @@ bundle IO {
 		}
 
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
-      STD_OUT_BYTE_ARY;
-    }
+			STD_OUT_BYTE_ARY;	
+		}
 
-    function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
-      STD_OUT_BYTE_ARY;
-    }
+		function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
+			STD_OUT_BYTE_ARY;
+		}
+
+		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
+			STD_ERR_BYTE_ARY;	
+		}
+
+		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
+			STD_ERR_BYTE_ARY;
+		}
 		
 		function : Print(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(b);
@@ -1667,6 +1737,66 @@ bundle IO {
 	
 		function : PrintLine() ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine();
+		}
+
+		function : Error(b : Bool) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(b);
+		}
+		
+		function : ErrorLine(b : Bool) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(b);
+		}
+	
+		function : Error(b : Byte) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(b);
+		}
+	
+		function : ErrorLine(b : Byte) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(b);
+		}
+		
+		function : Error(c : Char) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(c);
+		}
+	
+		function : ErrorLine(c : Char) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(c);
+		}
+	
+		function : Error(i : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(i);
+		}
+	
+		function : ErrorLine(i : Int) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(i);
+		}
+		
+		function : Error(f : Float) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(f);
+		}
+	
+		function : ErrorLine(f : Float) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(f);
+		}
+	
+		function : Error(cc : Char[]) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(cc);
+		}
+	
+		function : ErrorLine(cc : Char[]) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(cc);
+		}
+		
+		function : Error(s : System.String) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->Error(s);
+		}
+	
+		function : ErrorLine(s : System.String) ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine(s);
+		}
+	
+		function : ErrorLine() ~ ConsoleIO {
+			return IO.ConsoleIO->Instance()->ErrorLine();
 		}
 	}
  	
@@ -1772,6 +1902,82 @@ bundle IO {
 			'\n'->PrintLine();
 			return @console;
 		}
+		
+		method : public : Error(b : Bool) ~ ConsoleIO {
+			b->Error();
+			return @console;
+		}
+		
+		method : public : ErrorLine(b : Bool) ~ ConsoleIO {
+			b->ErrorLine();
+			return @console;
+		}
+
+		method : public : Error(b : Byte) ~ ConsoleIO {
+			b->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(b : Byte) ~ ConsoleIO {
+			b->ErrorLine();
+			return @console;
+		}
+		
+		method : public : Error(c : Char) ~ ConsoleIO {
+			c->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(c : Char) ~ ConsoleIO {
+			c->ErrorLine();
+			return @console;
+		}
+
+		method : public : Error(i : Int) ~ ConsoleIO {
+			i->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(i : Int) ~ ConsoleIO {
+			i->ErrorLine();
+			return @console;
+		}
+		
+		method : public : Error(f : Float) ~ ConsoleIO {
+			f->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(f : Float) ~ ConsoleIO {
+			f->ErrorLine();
+			return @console;
+		}
+
+		method : public : Error(cc : Char[]) ~ ConsoleIO {
+			cc->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(cc : Char[]) ~ ConsoleIO {
+			cc->ErrorLine();
+			return @console;
+		}
+		
+		method : public : Error(s : System.String) ~ ConsoleIO {
+			s->Error();
+			return @console;
+		}
+
+		method : public : ErrorLine(s : System.String) ~ ConsoleIO {
+			s->ErrorLine();
+			return @console;
+		}
+
+		method : public : ErrorLine() ~ ConsoleIO {
+			'\n'->ErrorLine();
+			return @console;
+		}
+
 	}
 	
 	class File {
