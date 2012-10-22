@@ -13,7 +13,7 @@ JIT_PATH=jit/ia32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread -pg
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread
 
 memory.a:
 	cd $(MEM_PATH); make	

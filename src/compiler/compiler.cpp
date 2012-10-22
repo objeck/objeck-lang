@@ -95,7 +95,7 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
   result = arguments.find("tar");
   if(result != arguments.end()) {
     target = result->second;
-    if(target != "lib" && target != "exe") {
+    if(target != "lib" && target != "web" && target != "exe") {
       cerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
@@ -118,10 +118,19 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
   // parse source code
   Parser parser(arguments["src"], run_string);
   if(parser.Parse()) {
-    bool is_lib = target == "lib";
+    bool is_lib = false;
+    bool is_web = false;
+    
+    if(target == "lib") {
+      is_lib = true;
+    }
+    else if(target == "web") {
+      is_web = true;
+    }
+    
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, libs_path, is_lib);
+    ContextAnalyzer analyzer(program, libs_path, is_lib, is_web);
     if(analyzer.Analyze()) {
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
@@ -130,7 +139,7 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments["opt"]);
       optimizer.Optimize();
       // emit target code
-      TargetEmitter target(optimizer.GetProgram(), is_lib, arguments["dest"]);;
+      TargetEmitter target(optimizer.GetProgram(), is_lib, is_web, arguments["dest"]);;
       target.Emit();
       
       return SUCCESS;

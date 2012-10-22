@@ -32,10 +32,11 @@
 #ifndef __VER_H__
 #define __VER_H__
 
+#define MAGIC_NUM_WEB 0xdddf
 #define MAGIC_NUM_LIB 0xddde
 #define MAGIC_NUM_EXE 0xdddd
-#define VER_NUM 3150
+#define VER_NUM 3160
 
-#define VERSION_STRING "v3.1.5_0"
+#define VERSION_STRING "v3.1.6_0"
 
 #endif
