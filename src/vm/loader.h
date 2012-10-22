@@ -53,6 +53,7 @@ class Loader {
   size_t buffer_pos;
   int start_class_id;
   int start_method_id;
+  bool is_web;
   map<const string, const int> params;
 
   int ReadInt() {
@@ -122,6 +123,7 @@ public:
   Loader(const char* arg) {
     filename = arg;
     string_cls_id = -1;
+    is_web = false;
     ReadFile();
     program = new StackProgram;
   }
@@ -132,6 +134,7 @@ public:
       arguments.push_back(argv[i]);
     }
     string_cls_id = -1;
+    is_web = false;
     ReadFile();
     program = new StackProgram;
   }
@@ -147,6 +150,15 @@ public:
   }
 
   static StackProgram* GetProgram();
+
+  StackMethod* GetStartMethod() {
+    StackClass* cls = program->GetClass(start_class_id);
+    if(cls) {
+      return cls->GetMethod(start_method_id);
+    }
+
+    return NULL;
+  }
   
   int GetConfigurationParameter(const string key) {
     map<const string, const int>::iterator result = params.find(key);
@@ -155,6 +167,10 @@ public:
     }
 
     return 0;
+  }
+  
+  inline bool IsWebApp() {
+    return is_web;
   }
   
   void Load();

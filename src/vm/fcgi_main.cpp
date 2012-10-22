@@ -46,37 +46,33 @@ void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 
 int main(const int argc, const char* argv[])
 {
-  const char* prgm_id = "../compiler/a.obe";
-  const char* cls_id = "FastCgiModule";
-  const char* mthd_id =  "FastCgiModule:Request:o.FastCgi.Request,o.FastCgi.Response,";
+  const char* prgm_id = "../compiler/a.obw";
   
   // load program
   srand(time(NULL)); rand();
   Loader loader(prgm_id);
   loader.Load();
+
+  // ignore web applications
+  if(!loader.IsWebApp()) {
+    cerr << "Please recompile the code to be a web application." << endl;
+    exit(1);
+  }
   
 #ifdef _TIMING
   clock_t start = clock();
 #endif
-
+  
   // locate starting class and method
-  StackMethod* mthd = NULL;  
+  StackMethod* mthd = loader.GetStartMethod();
+  if(!mthd) {
+    cerr << "Unable to locate the 'Request(args)' function." << endl;
+    exit(1);
+  }
+
+  cerr << "### Loaded method: " << mthd->GetName() << " ###" << endl;
+
   Runtime::StackInterpreter intpr(Loader::GetProgram());
-  StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-  if(cls) {
-    mthd = cls->GetMethod(mthd_id);
-    if(!mthd) {
-      cerr << ">>> DLL call: Unable to locate method; name=': " 
-	   << mthd_id << "' <<<" << endl;
-      // TODO: error
-      return 1;
-    }
-  }
-  else {
-    cerr << ">>> DLL call: Unable to locate class; name='" << cls_id << "' <<<" << endl;
-    // TODO: error
-    return 1;
-  }
 
   // go into accept loop...
   FCGX_Stream*in;

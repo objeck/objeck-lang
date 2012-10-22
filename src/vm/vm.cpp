@@ -43,6 +43,12 @@ int Execute(const int argc, const char* argv[])
     Loader loader(argc, argv);
     loader.Load();
 
+    // ignore web applications
+    if(loader.IsWebApp()) {
+      cerr << "Web applications must be executed in a FCGI environment." << endl;
+      exit(1);
+    }
+
     // execute
     long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;

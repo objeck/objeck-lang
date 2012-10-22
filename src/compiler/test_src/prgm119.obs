@@ -2,7 +2,7 @@ use FastCgi;
 use IO;
 
 class FastCgiModule {
-	function : Main(args : String[]) ~ Nil {}
+#	function : Main(args : String[]) ~ Nil {}
 
 	function : Request(req : Request, res : Response) ~ Nil {
 		cmd := req->GetQueryValue("cmd");
