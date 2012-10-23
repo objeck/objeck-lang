@@ -269,8 +269,8 @@ class ContextAnalyzer {
   map<const string, EntryType> type_map;
   bool main_found;
   bool web_found;
-  bool is_lib_target;
-  bool is_web_target;
+  bool is_lib;
+  bool is_web;
   int char_str_index;
   int int_str_index;
   int float_str_index;
@@ -969,8 +969,8 @@ class ContextAnalyzer {
 public:
   ContextAnalyzer(ParsedProgram* p, string lib_path, bool l, bool w) {
     program = p;
-    is_lib_target = l;
-    is_web_target = w;
+    is_lib = l;
+    is_web = w;
     main_found = web_found = false;
     // initialize linker
     linker = new Linker(lib_path);

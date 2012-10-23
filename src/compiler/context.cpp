@@ -181,11 +181,11 @@ bool ContextAnalyzer::Analyze()
       }
     }
   
-    if(!main_found && !is_lib_target && !is_web_target) {
+    if(!main_found && !is_lib && !is_web) {
       ProcessError("The 'Main(args)' function was not defined");
     }
     
-    if(is_web_target && !web_found) {
+    if(is_web && !web_found) {
       ProcessError("The 'Request(args)' function was not defined");
     } 
 
@@ -654,12 +654,12 @@ bool ContextAnalyzer::Analyze()
 	  main_found = true;
 	}
 
-	if(main_found && (is_lib_target | is_web_target)) {
+	if(main_found && (is_lib | is_web)) {
 	  ProcessError(current_method, "Libraries and web applications may not define a 'Main(args)' function");
 	}
       }
       // web program
-      else if(is_web_target) {
+      else if(is_web) {
 	const string web_str = current_class->GetName() + ":Request:o.FastCgi.Request,o.FastCgi.Response,";
 	if(current_method->GetEncodedName() ==  web_str) {	
 	  if(web_found) {
@@ -671,7 +671,7 @@ bool ContextAnalyzer::Analyze()
 	    web_found = true;
 	  }
 	
-	  if(web_found && (is_lib_target | main_found)) {
+	  if(web_found && (is_lib | main_found)) {
 	    ProcessError(current_method, "Web applications may not be define a 'Main(args)' function or be compiled as a library");
 	  }
 	}
