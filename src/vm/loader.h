@@ -169,7 +169,7 @@ public:
     return 0;
   }
   
-  inline bool IsWebApp() {
+  inline bool IsWeb() {
     return is_web;
   }
   

@@ -44,7 +44,7 @@ int Execute(const int argc, const char* argv[])
     loader.Load();
 
     // ignore web applications
-    if(loader.IsWebApp()) {
+    if(loader.IsWeb()) {
       cerr << "Web applications must be executed in a FCGI environment." << endl;
       exit(1);
     }

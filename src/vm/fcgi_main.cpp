@@ -54,7 +54,7 @@ int main(const int argc, const char* argv[])
   loader.Load();
 
   // ignore web applications
-  if(!loader.IsWebApp()) {
+  if(!loader.IsWeb()) {
     cerr << "Please recompile the code to be a web application." << endl;
     exit(1);
   }
