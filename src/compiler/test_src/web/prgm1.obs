@@ -1,9 +1,15 @@
 use FastCgi;
 use IO;
 
-class FastCgiModule {
-#	function : Main(args : String[]) ~ Nil {}
+class Foo implements FastCgi.Handler {
+	function : Foward(req : Request, res : Response) ~ Nil {
+	}
+}
 
+class Bar implements FastCgi.Handler {
+	function : Foward(req : Request, res : Response) ~ Nil {
+	}
+	
 	function : Request(req : Request, res : Response) ~ Nil {
 		cmd := req->GetQueryValue("cmd");
 		if(cmd <> Nil & cmd->Equals("ajax")) {

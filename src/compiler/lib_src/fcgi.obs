@@ -4,6 +4,10 @@ use XML;
 use IO;
 
 bundle FastCgi {
+	interface Handler {
+		function : virtual : Foward(req : Request, res : Response) ~ Nil;
+	}
+
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
