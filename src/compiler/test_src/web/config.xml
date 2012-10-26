@@ -1,0 +1,12 @@
+<fcgi>
+	<enviroment>
+		<controller>c.obw</controller>
+		<variables request="req" response="res"/>
+		<encoding>utf-8</encoding>
+	</enviroment>
+	<pages>
+		<page>p1.obw</page>
+		<page>p2.obw</page>
+		<page>p3.obw</page>
+	</pages>
+</fcgi>
