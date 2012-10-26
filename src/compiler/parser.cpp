@@ -262,7 +262,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_INTERFACE_ID)) {
     string bundle_name = "";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);

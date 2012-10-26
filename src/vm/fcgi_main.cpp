@@ -69,11 +69,13 @@ int main(const int argc, const char* argv[])
     cerr << "Unable to locate the 'Request(args)' function." << endl;
     exit(1);
   }
-
+  
+#ifdef _DEBUG
   cerr << "### Loaded method: " << mthd->GetName() << " ###" << endl;
-
+#endif
+  
   Runtime::StackInterpreter intpr(Loader::GetProgram());
-
+  
   // go into accept loop...
   FCGX_Stream*in;
   FCGX_Stream* out;
