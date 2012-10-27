@@ -69,7 +69,6 @@ bundle Default {
 					block := @blocks->Get(i)->As(Block);
 					if(block->GetType() = BlockType->HTML) {
 						output->Append("\nres->AddBody(\"");
-						# TODO strip and escape output
 						output->Append(Sanitize(block->GetText()));
 						output->Append("\");");
 					}
@@ -89,6 +88,7 @@ bundle Default {
 			output->PrintLine();
 		}
 
+		# TODO strip and escape output
 		method : Sanitize(input : String) ~ String {
 			output := String->New();
 			each(i : input) {
