@@ -16,7 +16,8 @@ class Bar implements FastCgi.Handler {
 			res->AddBody("<b>Called 1</b>");
 		}
 		else {
-			res->AddBody(FileReader->ReadFile("/tmp/in.html"));
+			res->AddBody("<b>Called 2</b>");
+#			res->AddBody(FileReader->ReadFile("/tmp/in.html"));
 		};
 		
 #~

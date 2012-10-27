@@ -13,30 +13,7 @@ bundle FastCgi {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				# load config file
-				file := FileReader->ReadFile("/var/lib/apache2/fastcgi/fcgi.xml");
-#				file := FileReader->ReadFile("fcgi.xml");
-				if(file <> Nil & file->Size() > 0) {
-					parser := XmlParser->New(file);
-		   			if(parser->Parse()) {
-		      			results := parser->FindElements("/fcgi/config");
-						if(results <> Nil & results->Size() = 1) {
-							element := results->Get(0)->As(XmlElement);
-		          			lib_path := element->GetAttribute("lib");
-IO.Console->PrintLine("### Path=")->Print(lib_path)->PrintLine( " ###");
-							@lib_proxy := DllProxy->New(lib_path);
-						}
-						else {
-							">>> Invalid XML tagging <<<"->PrintLine();
-						};
-					}
-					else {
-						">>> Unable to parse file <<<"->PrintLine();
-					};
-				}
- 				else {
-					">>> Unable to load file <<<"->PrintLine();
-				};
+				@lib_proxy := DllProxy->New("lib/fcgi/fcgi");
 			};
 
 			return @lib_proxy;
