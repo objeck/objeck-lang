@@ -1,7 +1,10 @@
 <fcgi>
-  <config lib="/var/lib/apache2/fastcgi/fcgi"/>
-  <pages>
-    <page uri-path="foo">FGGI.Foo</page>
-    <page uri-path="bar">FCGI.Bar</page>
-  </pages>
+	<enviroment>
+		<controller>c.obw</controller>
+	</enviroment>
+	<pages>
+		<page path="a/b">p1.obw</page>
+		<page path="c/d">p2.obw</page>
+		<page path="e/f">p3.obw</page>
+	</pages>
 </fcgi>
