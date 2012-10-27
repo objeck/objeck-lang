@@ -5,8 +5,8 @@
 		<encoding>utf-8</encoding>
 	</enviroment>
 	<pages>
-		<page>p1.obw</page>
-		<page>p2.obw</page>
-		<page>p3.obw</page>
+		<page path="a/b">p1.obw</page>
+		<page path="c/d">p2.obw</page>
+		<page path="e/f">p3.obw</page>
 	</pages>
 </fcgi>
