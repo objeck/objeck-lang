@@ -1,0 +1,27 @@
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DEBUG 
+# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING 
+ARGS=-O3 -Wall -pthread -D_X64
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o fcgi_main.o 
+OBJ_LIBS= jit_amd_lp64.a memory.a
+MEM_PATH= os/posix
+JIT_PATH= jit/amd64
+EXE=obr_fcgi
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lfcgi -pthread 
+
+memory.a:
+	cd $(MEM_PATH); make	
+	
+jit_amd_lp64.a:
+	cd $(JIT_PATH); make	
+	
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean
+	cd $(JIT_PATH); make clean
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
