@@ -16,6 +16,9 @@ configure apache:
   ScriptAlias /c /home/randy/Documents/Code/src/vm/obr_fcgi
 </IfModule>
 
+controller config file
+/var/lib/apache2/fastcgi/fcgi.so
+
 
 start apache and monitor log:
 * sudo /etc/init.d/apache2 restart
