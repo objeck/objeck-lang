@@ -1,16 +1,8 @@
 ###############
-# For OSX only
+# MinGW
 ###############
-# ARGS=-mstackrealign -O3
-# ARGS=-D_TIMING -mstackrealign -O3
-# ARGS=-mstackrealign -g -D_DEBUG -Wunused
-
-###############
-# For Linux
-###############
-# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
-# ARGS=-g -Wunused
-ARGS=-O3 -Wall
+# ARGS=-g -D_DEBUG  -Wall
+ARGS=-D_MINGW -O3 -Wall
 
 CC=g++
 AR=ar
