@@ -647,8 +647,8 @@ bool ContextAnalyzer::Analyze()
       if(current_method->GetEncodedName() ==  main_str) {
 	if(main_found) {
 	  ProcessError(current_method, "The 'Main(args)' function has already been defined");
-	} 
-	else {
+	}
+	else if(current_method->IsStatic()) {
 	  current_class->SetCalled(true);
 	  program->SetStart(current_class, current_method);
 	  main_found = true;
@@ -665,7 +665,7 @@ bool ContextAnalyzer::Analyze()
 	  if(web_found) {
 	    ProcessError(current_method, "The 'Request(args)' function has already been defined");
 	  } 
-	  else {
+	  else if(current_method->IsStatic()) {
 	    current_class->SetCalled(true);
 	    program->SetStart(current_class, current_method);
 	    web_found = true;
