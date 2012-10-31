@@ -3,6 +3,8 @@
 		function : Main(args : String[]) ~ Nil {
 			Runtime->SetProperty("Foo", "Bar");
 			Runtime->GetProperty("Foo")->PrintLine();
+			Runtime->GetProperty("Dog")->PrintLine();
+			Runtime->GetProperty("Blah")->PrintLine();
 		}
 	}
 }
