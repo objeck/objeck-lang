@@ -25,7 +25,7 @@ xmlhttp.onreadystatechange=function()
     document.getElementById("txtHint").innerHTML=xmlhttp.responseText;
     }
   }
-xmlhttp.open("GET","c?cmd=name&query="+str, true);
+xmlhttp.open("GET","fcgi?cmd=name&query="+str, true);
 xmlhttp.send();
 }
 </script>

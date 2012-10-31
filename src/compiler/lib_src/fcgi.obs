@@ -13,19 +13,13 @@ bundle FastCgi {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				lib_path := "/var/lib/apache2/fastcgi/fcgi";
-				doc := IO.FileReader->ReadFile("lib/fcgi/config.json");
-				if(doc <> Nil) {
-					config := JSONParser->New(doc)->Parse();
-					if(config <> Nil & config->GetType() = JSONType->OBJECT) {
-						lib_node := config->Get("lib-path");
-						if(lib_node <> Nil) {
-							lib_node->GetValue()->PrintLine();
-						};
-					};
-				};
-			
+				lib_path := Runtime->GetProperty("fcgi-lib-path");
+				if(lib_path = Nil | lib_path->Size() = 0) {
+					lib_path := "/var/lib/apache2/fastcgi/fcgi";
+				};				
+
 				Console->Error("### FCGI lib-path=")->Error(lib_path)->ErrorLine(" ###");
+
 				@lib_proxy := DllProxy->New(lib_path);
 			};
 
