@@ -61,6 +61,25 @@ void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
 
+  char buffer[81];
+  fstream in("config.prop", fstream::in);
+  in.getline(buffer, 80);
+  if(in.good()) {
+    while(strlen(buffer) > 0) {
+      // readline ane parse
+      string line(buffer);
+      size_t offset = line.find_first_of('=');
+      // set name/value pairs
+      string name = line.substr(0, offset);      
+      string value = line.substr(offset + 1);
+      if(name.size() > 0 && value.size() > 0) {
+	program->SetProperty(name, value);
+      }
+      // update
+      in.getline(buffer, 80);
+    }
+  }
+  
 #ifdef _WIN32
   StackMethod::InitVirtualEntry();
 #endif 
