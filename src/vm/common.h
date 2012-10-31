@@ -936,23 +936,26 @@ class StackProgram {
   int mthd_cls_id;
   int sock_cls_id;
   int data_type_cls_id;
+  StackMethod* init_method;
+  static map<string, string> properties_map;
   
   FLOAT_VALUE** float_strings;
   int num_float_strings;
-
+  
   INT_VALUE** int_strings;
   int num_int_strings;
   
   BYTE_VALUE** char_strings;
   int num_char_strings;
-
-  StackMethod* init_method;
+  
 #ifdef _WIN32
   static list<HANDLE> thread_ids;
   static CRITICAL_SECTION program_cs;
+  static CRITICAL_SECTION prop_cs;
 #else
   static list<pthread_t> thread_ids;
   static pthread_mutex_t program_mutex;
+  static pthread_mutex_t prop_mutex;
 #endif
 
  public:
@@ -964,6 +967,7 @@ class StackProgram {
     string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
+    InitializeCriticalSection(&prop_cs);
 #endif
   }
   
@@ -1029,6 +1033,7 @@ class StackProgram {
 
 #ifdef _WIN32
     DeleteCriticalSection(&program_cs);
+    DeleteCriticalSection(&prop_cs);
 #endif
   }
 
@@ -1053,6 +1058,26 @@ class StackProgram {
     
     return temp;
   }
+
+  static string GetProperty(string key) {
+    string value;
+    
+    EnterCriticalSection(&prop_cs);
+    map<string, string>::iterator find = properties_map.find(key);
+    if(find != properties_map.end()) {
+      value = find->second;
+    }
+    LeaveCriticalSection(&prop_cs);
+    
+    return value;
+  }
+
+  static void SetProperty(string key, string value) {
+    EnterCriticalSection(&prop_cs);
+    properties_map.insert(pair<string, string>(key, value));
+    LeaveCriticalSection(&prop_cs);
+  }
+
 #else
   static void AddThread(pthread_t t) {
     pthread_mutex_lock(&program_mutex);
@@ -1074,6 +1099,27 @@ class StackProgram {
     
     return temp;
   }
+
+
+  static string GetProperty(string key) {
+    string value;
+    
+    pthread_mutex_lock(&prop_mutex);
+    map<string, string>::iterator find = properties_map.find(key);
+    if(find != properties_map.end()) {
+      value = find->second;
+    }
+    pthread_mutex_unlock(&prop_mutex);
+    
+    return value;
+  }
+  
+  static void SetProperty(string key, string value) {
+    pthread_mutex_lock(&prop_mutex);
+    properties_map.insert(pair<string, string>(key, value));
+    pthread_mutex_unlock(&prop_mutex);
+  }
+
 #endif
   
   void SetInitializationMethod(StackMethod* i) {

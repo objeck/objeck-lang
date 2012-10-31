@@ -1024,7 +1024,19 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::PLTFRM);
       NextToken();
       break;
-
+      
+    case GET_SYS_PROP:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::GET_SYS_PROP);
+      NextToken();
+      break;
+      
+    case SET_SYS_PROP:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SET_SYS_PROP);
+      NextToken();
+      break;
+      
     case EXIT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::EXIT);

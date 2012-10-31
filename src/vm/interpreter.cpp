@@ -2462,6 +2462,36 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     ProcessPlatform(op_stack, stack_pos);
     break;
 
+  case GET_SYS_PROP: {
+    long* key_array = (long*)PopInt(op_stack, stack_pos);
+    if(key_array) {    
+      key_array = (long*)key_array[0];
+      const char* key = (char*)(key_array + 3);
+      long* value = CreateStringObject(program->GetProperty(key), op_stack, stack_pos);
+      PushInt((long)value, op_stack, stack_pos);
+    }
+    else {
+      long* value = CreateStringObject("", op_stack, stack_pos);
+      PushInt((long)value, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+  case SET_SYS_PROP: {
+    long* value_array = (long*)PopInt(op_stack, stack_pos);
+    long* key_array = (long*)PopInt(op_stack, stack_pos);
+    
+    if(key_array && value_array) {    
+      value_array = (long*)value_array[0];
+      key_array = (long*)key_array[0];
+      
+      const char* key = (char*)(key_array + 3);
+      const char* value = (char*)(value_array + 3);
+      program->SetProperty(key, value);
+    }
+  }
+    break;
+    
     // ---------------- ip socket i/o ----------------
   case SOCK_TCP_HOST_NAME: {
     long* array = (long*)PopInt(op_stack, stack_pos);

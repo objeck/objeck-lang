@@ -1,18 +1,8 @@
 ﻿bundle Default {
-	class Test {
-		function : Foo() ~ Nil {
-		}
-
-		function : Bar() ~ Compare {
-			if(false) {
-				return Foo();
-			};
-
-			return Nil;
-		}
-
+	class Json {
 		function : Main(args : String[]) ~ Nil {
-			"hello"->ErrorLine();
+			Runtime->SetProperty("Foo", "Bar");
+			Runtime->GetProperty("Foo")->PrintLine();
 		}
 	}
 }
