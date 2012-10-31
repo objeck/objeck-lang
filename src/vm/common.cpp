@@ -37,12 +37,15 @@
 list<HANDLE> StackProgram::thread_ids;
 CRITICAL_SECTION StackProgram::program_cs;
 CRITICAL_SECTION StackMethod::virutal_cs;
+CRITICAL_SECTION StackProgram::prop_cs;
 #else
 list<pthread_t> StackProgram::thread_ids;
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 unordered_map<string, StackMethod*> StackMethod::virutal_cache;
+map<string, string> StackProgram::properties_map;
 
 /********************************
  * ObjectSerializer struct
