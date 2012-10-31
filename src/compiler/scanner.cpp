@@ -211,6 +211,8 @@ void Scanner::LoadKeywords()
   ident_map["DATE_TIME_ADD_MINS"] = DATE_TIME_ADD_MINS;
   ident_map["DATE_TIME_ADD_SECS"] = DATE_TIME_ADD_SECS; 
   ident_map["PLTFRM"] = PLTFRM;
+  ident_map["GET_SYS_PROP"] = GET_SYS_PROP;
+  ident_map["SET_SYS_PROP"] = SET_SYS_PROP;
   ident_map["EXIT"] = EXIT;
   ident_map["TIMER_START"] = TIMER_START;
   ident_map["TIMER_END"] =  TIMER_END;
@@ -371,6 +373,8 @@ void Scanner::CheckIdentifier(int index)
   case DATE_TIME_ADD_MINS:
   case DATE_TIME_ADD_SECS:
   case PLTFRM:
+  case GET_SYS_PROP:
+  case SET_SYS_PROP:
   case EXIT:
   case TIMER_START:
   case TIMER_END:

@@ -130,6 +130,8 @@ namespace instructions {
     DESERL_FLOAT_ARY,
     // platform
     PLTFRM,
+		GET_SYS_PROP,
+		SET_SYS_PROP,
     EXIT,
   } 
   Traps;

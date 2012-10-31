@@ -1375,6 +1375,14 @@ bundle System {
 			PLTFRM;
 		}
 		
+		function : GetProperty(key : String) ~ String {
+			GET_SYS_PROP;
+		}
+		
+		function : SetProperty(key : String, value : String) ~ Nil {
+			SET_SYS_PROP;
+		}
+		
 		function : GetTime() ~ Time.Date {
 			return Time.Date->New();
 		}
@@ -1522,21 +1530,21 @@ bundle Time {
 			return @secs;
 		}
 
-    method : public : AddDays(value : Int) ~ Nil {
+		method : public : AddDays(value : Int) ~ Nil {
 			DATE_TIME_ADD_DAYS;
 		}
 
-    method : public : AddHours(value : Int) ~ Nil {
+		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
-    }
+		}
    
-    method : public : AddMinutes(value : Int) ~ Nil {
+		method : public : AddMinutes(value : Int) ~ Nil {
 			DATE_TIME_ADD_MINS;
-    }
+		}
 
-    method : public : AddSeconds(value : Int) ~ Nil {
+		method : public : AddSeconds(value : Int) ~ Nil {
 			DATE_TIME_ADD_SECS;
-    }
+		}
 
 		method : public : IsSavingsTime() ~ Bool {
 			return @is_savings;
