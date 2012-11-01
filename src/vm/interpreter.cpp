@@ -60,11 +60,11 @@ StackProgram* StackInterpreter::program;
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
-
+  
   char buffer[81];
-  fstream in("config.prop", fstream::in);
-  in.getline(buffer, 80);
-  if(in.good()) {
+  fstream config("config.prop", fstream::in);
+  config.getline(buffer, 80);
+  if(config.good()) {
     while(strlen(buffer) > 0) {
       // readline ane parse
       string line(buffer);
@@ -76,9 +76,10 @@ void StackInterpreter::Initialize(StackProgram* p)
 	program->SetProperty(name, value);
       }
       // update
-      in.getline(buffer, 80);
+      config.getline(buffer, 80);
     }
   }
+  config.close();
   
 #ifdef _WIN32
   StackMethod::InitVirtualEntry();
