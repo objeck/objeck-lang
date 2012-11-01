@@ -1,10 +1,10 @@
-install software Linux
+== Install web server software on Linux ==
 * apt-get update
 * sudo apt-get install libapache2-mod-fastcgi
 * suco apt-get install apache2-MPM-worker
 * sudo apt-get install libfcgi-dev
 
-configure apache:
+== Configure apache ==
 * modify /etc/apache2/mods-enabled/fastcgi.conf
 
 <IfModule mod_fastcgi.c>
@@ -13,8 +13,11 @@ configure apache:
   # objeck web executable
   FastCgiServer /home/randy/Documents/Code/src/vm/obr_fcgi -processes 5
   # objeck controller alias
-  ScriptAlias /c /home/randy/Documents/Code/src/vm/obr_fcgi
+  ScriptAlias /fcgi /home/randy/Documents/Code/src/vm/obr_fcgi
 </IfModule>
+
+== Copy the supporting library ==
+copy the fcgi.(so|dll|dylib) to the location specified in the vm/config.prop file.  For example /var/lib/apache2/fastcgi
 
 start apache and monitor log:
 * sudo /etc/init.d/apache2 restart
