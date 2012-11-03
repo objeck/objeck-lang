@@ -68,13 +68,15 @@ void StackInterpreter::Initialize(StackProgram* p)
     while(strlen(buffer) > 0) {
       // readline ane parse
       string line(buffer);
+	  if(line.size() > 0 && line[0] != '#') {
       size_t offset = line.find_first_of('=');
-      // set name/value pairs
-      string name = line.substr(0, offset);      
-      string value = line.substr(offset + 1);
-      if(name.size() > 0 && value.size() > 0) {
-	program->SetProperty(name, value);
-      }
+		  // set name/value pairs
+		  string name = line.substr(0, offset);      
+		  string value = line.substr(offset + 1);
+		  if(name.size() > 0 && value.size() > 0) {
+		program->SetProperty(name, value);
+		  }
+	  }
       // update
       config.getline(buffer, 80);
     }
