@@ -11,22 +11,22 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{2D853992-96F9-482B-92F2-700367E27AB1}</ProjectGuid>
-    <RootNamespace>utilities</RootNamespace>
+    <ProjectGuid>{449A6139-BC93-48D3-9B43-624F9ABD4B45}</ProjectGuid>
+    <RootNamespace>vm_fcgi</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -38,18 +38,16 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>obu</TargetName>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_UTILS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\..\lib\fcgi\windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\..\lib\fcgi\windows\lib\libfcgi.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -58,37 +56,36 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_UTILS</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <SubSystem>Console</SubSystem>
-      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\compiler\linker.cpp" />
-    <ClCompile Include="..\..\compiler\types.cpp" />
-    <ClCompile Include="..\..\vm\common.cpp" />
-    <ClCompile Include="..\..\vm\loader.cpp" />
-    <ClCompile Include="..\..\vm\os\windows\memory.cpp" />
-    <ClCompile Include="..\symbols.cpp" />
+    <ClInclude Include="..\..\..\shared\instrs.h" />
+    <ClInclude Include="..\..\..\shared\sys.h" />
+    <ClInclude Include="..\..\..\shared\traps.h" />
+    <ClInclude Include="..\..\..\shared\version.h" />
+    <ClInclude Include="..\..\common.h" />
+    <ClInclude Include="..\..\interpreter.h" />
+    <ClInclude Include="..\..\jit\ia32\jit_intel_lp32.h" />
+    <ClInclude Include="..\..\lib_api.h" />
+    <ClInclude Include="..\..\loader.h" />
+    <ClInclude Include="..\..\os\stx\btree_map.h" />
+    <ClInclude Include="..\..\os\windows\memory.h" />
+    <ClInclude Include="..\..\os\windows\windows.h" />
+    <ClInclude Include="..\..\vm.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\compiler\linker.h" />
-    <ClInclude Include="..\..\compiler\types.h" />
-    <ClInclude Include="..\..\vm\loader.h" />
-    <ClInclude Include="..\..\vm\os\windows\memory.h" />
-    <ClInclude Include="resource.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="objeck.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\images\Gear.ico" />
+    <ClCompile Include="..\..\common.cpp" />
+    <ClCompile Include="..\..\fcgi_main.cpp" />
+    <ClCompile Include="..\..\interpreter.cpp" />
+    <ClCompile Include="..\..\jit\ia32\jit_intel_lp32.cpp" />
+    <ClCompile Include="..\..\loader.cpp" />
+    <ClCompile Include="..\..\os\windows\memory.cpp" />
+    <ClCompile Include="..\..\vm.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
