@@ -49,7 +49,7 @@ int main(const int argc, const char* argv[])
   const char* prgm_id = "../compiler/a.obw";
   
   // load program
-  srand(time(NULL)); rand();
+//  srand(time(NULL)); rand();
   Loader loader(prgm_id);
   loader.Load();
 
