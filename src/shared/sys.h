@@ -34,9 +34,7 @@
 
 // define windows type
 #ifdef _WIN32
-#define uint8_t unsigned __int8
-#define int8_t __int8
-#define int32_t __int32
+#include <stdint.h>
 #endif
 
 #ifdef _MINGW
