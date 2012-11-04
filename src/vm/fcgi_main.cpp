@@ -46,11 +46,11 @@ void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 
 int main(const int argc, const char* argv[])
 {
-  const char* prgm_id = "../compiler/a.obw";
+  const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
   
   // load program
-//  srand(time(NULL)); rand();
-  Loader loader(prgm_id);
+  srand(time(NULL)); rand();
+  Loader loader(prgm_path);
   loader.Load();
 
   // ignore web applications

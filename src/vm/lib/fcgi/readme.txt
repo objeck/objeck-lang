@@ -11,9 +11,7 @@
 <IfModule mod_fastcgi.c>
   AddHandler fastcgi-script .fcgi
   FastCgiIpcDir /var/lib/apache2/fastcgi
-  # objeck web executable
-  FastCgiServer /home/randy/Documents/Code/src/vm/obr_fcgi -processes 5
-  # objeck controller alias
+  FastCgiServer /home/randy/Documents/Code/src/vm/obr_fcgi -initial-env PROGRAM_PATH=../compiler/a.obw -processes 5
   ScriptAlias /fcgi /home/randy/Documents/Code/src/vm/obr_fcgi
 </IfModule>
 
