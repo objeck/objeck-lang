@@ -1,0 +1,16 @@
+Objeck v3.1.6_0
+
+--------------
+Release Notes
+--------------
+Most of the work done for this release is in support of the forth coming roll out of the web frameworks.  Linux and Apache web support will be released with the next minor update.
+
+Highlights of this release include the following:
+* Specifying a program 'bundle' name is now optional  (enhancement)
+* Added the ability to set/get system properties using the 'Runtime' class.  Initialization properties can be set via a configuration file (new)
+* Added additional hooks for Fast CGI web support (enhancement)
+* Fixed a minor contextual analysis bug in the compiler (minor)
+
+
+
+
