@@ -29,13 +29,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "fcgi_stdio.h"
+#include <stdlib.h>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+extern char ** environ;
+#endif
+// #include "fcgi.h"
+#include "fcgio.h"
+#include "fcgi_config.h"  // HAVE_IOSTREAM_WITHASSIGN_STREAMBUF
+
+using namespace std;
+
+// Maximum number of bytes allowed to be read from stdin
+static const unsigned long STDIN_MAX = 1000000;
 
 #include "../../lib_api.h"
 
 extern "C" {
-  static void fcgi_get_env_value(const char* name, VMContext& context);
-    
+  #ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+void fcgi_get_env_value(const char* name, VMContext& context);
+
   //
   // initialize fcgi environment
   //
@@ -162,7 +179,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  static void fcgi_get_env_value(const char* name, VMContext& context) {
+void fcgi_get_env_value(const char* name, VMContext& context) {
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
     if(envp) {
       char* value = FCGX_GetParam(name, envp);
