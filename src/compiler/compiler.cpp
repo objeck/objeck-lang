@@ -71,10 +71,19 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
   argument_options.remove("dest");
   
   // check program libraries path
-  string libs_path = "lang.obl";
+  string sys_lib_path;
+  const char* sys_lib_env_path = getenv("OBJECK_LIBS");
+  if(sys_lib_env_path) {
+    sys_lib_path = sys_lib_env_path;
+    sys_lib_path += "/lang.obl";
+  }
+  else {
+    sys_lib_path = "lang.obl";
+  }
+  
   result = arguments.find("lib");
   if(result != arguments.end()) {
-    libs_path += "," + result->second;
+    sys_lib_path += "," + result->second;
     argument_options.remove("lib");
   }
   
@@ -130,7 +139,7 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
     
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, libs_path, is_lib, is_web);
+    ContextAnalyzer analyzer(program, sys_lib_path, is_lib, is_web);
     if(analyzer.Analyze()) {
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
