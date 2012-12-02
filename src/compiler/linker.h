@@ -65,7 +65,7 @@ class LibraryInstr {
   string operand6;
   int line_num;
 
-public:
+ public:
   LibraryInstr(int l, instructions::InstructionType t) {
     line_num = l;
     type = t;
@@ -271,7 +271,7 @@ class LibraryMethod {
 	}
 	
 	if(type) {
-      type->SetDimension(dimension);
+	  type->SetDimension(dimension);
 	}
 	
 	// add declaration
@@ -328,7 +328,7 @@ class LibraryMethod {
         index++;
       }
       rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE,
-                  rtrn_name.substr(2, index - 2));
+							      rtrn_name.substr(2, index - 2));
       break;
     }
 
@@ -341,7 +341,7 @@ class LibraryMethod {
     rtrn_type->SetDimension(dimension);
   }
   
-public:
+ public:
   LibraryMethod(int i, const string &n, const string &r, frontend::MethodType t, bool v,  bool h,
                 bool nt, bool s, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
     id = i;
@@ -446,7 +446,7 @@ class LibraryEnumItem {
   int id;
   LibraryEnum* lib_eenum;
 
-public:
+ public:
   LibraryEnumItem(const string &n, int i, LibraryEnum* e) {
     name = n;
     id = i;
@@ -477,7 +477,7 @@ class LibraryEnum {
   int offset;
   map<const string, LibraryEnumItem*> items;
 
-public:
+ public:
   LibraryEnum(const string &n, const int o) {
     name = n;
     offset = o;
@@ -543,7 +543,7 @@ class LibraryClass {
   bool is_debug;
   string file_name;
   
-public:
+ public:
   LibraryClass(const string &n, const string &p, vector<string> in, bool is_inf, bool is_vrtl, int cs, int is, 
 	       backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, Library* l, 
 	       const string &fn, bool d) {
@@ -830,7 +830,7 @@ class Library {
   void LoadMethods(LibraryClass* cls, bool is_debug);
   void LoadStatements(LibraryMethod* mthd, bool is_debug);
 
-public:
+ public:
   Library(const string &p) {
     lib_path = p;
     alloc_buffer = NULL;
@@ -956,7 +956,7 @@ class Linker {
   string master_path;
   vector<string> paths;
 
-public:
+ public:
   static void Show(const string &msg, const int line_num, int depth) {
     cout << setw(4) << line_num << ": ";
     for(int i = 0; i < depth; i++) {
@@ -971,7 +971,7 @@ public:
     return str.str();
   }
 
-public:
+ public:
   Linker(const string& p) {
     master_path = p;
   }
@@ -1109,21 +1109,21 @@ public:
     cout << "--------- Linking Libraries ---------" << endl;
 #endif
 
-	// set library path
-	string path;
-	const char* path_str = getenv ("OBJECK_LIB_PATH");
-	if(path_str != NULL && strlen(path_str) > 0) {
-		path = path_str;
+    // set library path
+    string path;
+    const char* path_str = getenv ("OBJECK_LIB_PATH");
+    if(path_str != NULL && strlen(path_str) > 0) {
+      path = path_str;
 #ifdef _WIN32
-		if(path[path.size() - 1] != '\\') {
-			path += "\\";
-		}
+      if(path[path.size() - 1] != '\\') {
+	path += "\\";
+      }
 #else
-		if(path[path.size() - 1] != '/') {
-			path += '/';
-		}
+      if(path[path.size() - 1] != '/') {
+	path += '/';
+      }
 #endif
-	}
+    }
 
     // parses library path
     if(master_path.size() > 0) {
@@ -1131,27 +1131,27 @@ public:
       size_t index = master_path.find(',');
       while(index != string::npos) {
         // load library
-        string &file_name = master_path.substr(offset, index - offset);
-		file_name = path + file_name;
-        Library* library = new Library(file_name);
+        const string &file = master_path.substr(offset, index - offset);
+	const string file_path = path + file;
+        Library* library = new Library(file_path);
         library->Load();
         // insert library
-        libraries.insert(pair<string, Library*>(file_name, library));
-        vector<string>::iterator found = find(paths.begin(), paths.end(), file_name);
+        libraries.insert(pair<string, Library*>(file_path, library));
+        vector<string>::iterator found = find(paths.begin(), paths.end(), file_path);
         if(found == paths.end()) {
-          paths.push_back(file_name);
+          paths.push_back(file_path);
         }
         // update
         offset = index + 1;
         index = master_path.find(',', offset);
       }
       // insert library
-      string &file_name = master_path.substr(offset, master_path.size());
-	  file_name = path + file_name;
-      Library* library = new Library(file_name);
+      const string &file = master_path.substr(offset, master_path.size());
+      const string file_path = path + file;
+      Library* library = new Library(file_path);
       library->Load();
-      libraries.insert(pair<string, Library*>(file_name, library));
-      paths.push_back(file_name);
+      libraries.insert(pair<string, Library*>(file_path, library));
+      paths.push_back(file_path);
 #ifdef _DEBUG
       cout << "--------- End Linking ---------" << endl;
 #endif
