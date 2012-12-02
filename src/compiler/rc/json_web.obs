@@ -4,6 +4,9 @@ use Net;
 bundle Default {
 	class JsonWeb {
 		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+		function : native : Run() ~ Nil {
 			url := "http://api.geonames.org/citiesJSON?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=demo";
 			lines := HttpClient->New()->Get(url, 80);
 			document := "";
@@ -24,9 +27,11 @@ bundle Default {
 								lng := geoname->Get("lng");
 								lat := geoname->Get("lat");
 								
-								toponymName->GetValue()->PrintLine();
-								IO.Console->Print("lat: ")->PrintLine(lng->GetValue());
-								IO.Console->Print("lon: ")->PrintLine(lat->GetValue());
+								if(toponymName <> Nil & lng <> Nil & lat <> Nil) {
+									toponymName->GetValue()->PrintLine();
+									IO.Console->Print("lat: ")->PrintLine(lng->GetValue());
+									IO.Console->Print("lon: ")->PrintLine(lat->GetValue());
+								};
 								"-------------"->PrintLine();
 							};
 						};
