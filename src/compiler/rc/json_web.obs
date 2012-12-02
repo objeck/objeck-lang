@@ -1,0 +1,41 @@
+﻿use JSON;
+use Net;
+
+bundle Default {
+	class Json {
+		function : Main(args : String[]) ~ Nil {
+			url := "http://api.geonames.org/citiesJSON?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=demo";
+			lines := HttpClient->New()->Get(url, 80);
+			document := "";
+			each(i : lines) {
+				document->Append(lines->Get(i)->As(String));
+			};
+			
+			parser := JSONParser->New(document);
+			root := parser->Parse();
+			if(root <> Nil & root->GetType() = JSONType->OBJECT) {
+				geonames := root->Get("geonames");
+				if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
+					if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
+						each(i : geonames) {
+							geoname := geonames->Get(i);
+							if(geoname <> Nil & geoname->GetType() = JSONType->OBJECT) {
+								toponymName := geoname->Get("toponymName");
+								lng := geoname->Get("lng");
+								lat := geoname->Get("lat");
+								
+								toponymName->GetValue()->PrintLine();
+								lng->GetValue()->PrintLine();
+								lat->GetValue()->PrintLine();
+								"-------------"->PrintLine();
+							};
+						};
+					};
+				};			
+			}
+			else {
+				document->PrintLine();
+			};
+		}
+	}
+}
