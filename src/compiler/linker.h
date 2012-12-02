@@ -1108,13 +1108,31 @@ public:
 #ifdef _DEBUG
     cout << "--------- Linking Libraries ---------" << endl;
 #endif
+
+	// set library path
+	string path;
+	const char* path_str = getenv ("OBJECK_LIB_PATH");
+	if(path_str != NULL && strlen(path_str) > 0) {
+		path = path_str;
+#ifdef _WIN32
+		if(path[path.size() - 1] != '\\') {
+			path += "\\";
+		}
+#else
+		if(path[path.size() - 1] != '/') {
+			path += '/';
+		}
+#endif
+	}
+
     // parses library path
     if(master_path.size() > 0) {
       size_t offset = 0;
       size_t index = master_path.find(',');
       while(index != string::npos) {
         // load library
-        const string &file_name = master_path.substr(offset, index - offset);
+        string &file_name = master_path.substr(offset, index - offset);
+		file_name = path + file_name;
         Library* library = new Library(file_name);
         library->Load();
         // insert library
@@ -1128,7 +1146,8 @@ public:
         index = master_path.find(',', offset);
       }
       // insert library
-      const string &file_name = master_path.substr(offset, master_path.size());
+      string &file_name = master_path.substr(offset, master_path.size());
+	  file_name = path + file_name;
       Library* library = new Library(file_name);
       library->Load();
       libraries.insert(pair<string, Library*>(file_name, library));
