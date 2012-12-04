@@ -2503,6 +2503,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(right));
     if(right->GetMethodCall()) {
       EmitMethodCall(right->GetMethodCall(), false);
+      EmitCast(right->GetMethodCall());
     }
     break;
     
@@ -2532,6 +2533,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(left));
     if(left->GetMethodCall()) {
       EmitMethodCall(left->GetMethodCall(), false);
+      EmitCast(left->GetMethodCall());
     }
     break;
     
