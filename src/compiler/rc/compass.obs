@@ -1,4 +1,4 @@
-﻿class Hello {
+﻿class BoxCompass {
 	function : Main(args : String[]) ~ Nil {
 		points := [
 			"North             ", "North by east     ", "North-northeast   ", 
@@ -21,14 +21,14 @@
 				label 2: {
 					heading -= 5.62;
 				}
-            };
+			};
 			
-			IO.Console->Print((i % 32) + 1)->Print('\t')->Print(points[GetPoint(heading)])->Print('\t')->PrintLine(heading);
-        };
+			IO.Console->Print((i % 32) + 1)->Print('\t')->Print(points[GetPoint(heading)])
+				->Print('\t')->PrintLine(heading);
+		};
 	}
 	
 	function : GetPoint(degrees : Float) ~ Int {
-		test := degrees / 11.25 + 0.5;
-        return test->Floor()->As(Int) % 32;
-    }
+		return (degrees / 11.25 + 0.5)->Floor()->As(Int) % 32;
+	}
 }
