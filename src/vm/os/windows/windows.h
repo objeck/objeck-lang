@@ -37,6 +37,8 @@
 #include "../../common.h"
 #include <windows.h>
 #include <tchar.h>
+#include <sys/stat.h>
+#include <stdio.h>
 
 #ifndef _MINGW
 #include <strsafe.h>
@@ -53,32 +55,37 @@ typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 class File {
 public:
   static long FileSize(const char* name) {
-    HANDLE file = CreateFile(name, GENERIC_READ,
-      FILE_SHARE_READ, NULL, OPEN_EXISTING,
-      FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if(file == INVALID_HANDLE_VALUE) {
+    struct _stat buf;
+    if(_stat(name, &buf)) {
       return -1;
     }
 
-    long size = GetFileSize(file, NULL);
-    CloseHandle(file);
-    if(size < 0) {
+    return buf.st_size;
+  }
+
+  static time_t FileCreatedTime(const char* name) {
+    struct _stat buf;
+    if(_stat(name, &buf)) {
       return -1;
     }
 
-    return size;
+    return buf.st_ctime;
+  }
+
+  static time_t FileModifiedTime(const char* name) {
+    struct _stat buf;
+    if(_stat(name, &buf)) {
+      return -1;
+    }
+
+    return buf.st_mtime;
   }
 
   static bool FileExists(const char* name) {
-    HANDLE file = CreateFile(name, GENERIC_READ,
-      FILE_SHARE_READ, NULL, OPEN_EXISTING,
-      FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if(file == INVALID_HANDLE_VALUE) {
+    struct _stat buf;
+    if(_stat(name, &buf)) {
       return false;
     }
-    CloseHandle(file);
 
     return true;
   }
