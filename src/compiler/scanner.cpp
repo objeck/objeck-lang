@@ -205,6 +205,7 @@ void Scanner::LoadKeywords()
   ident_map["GMT_TIME"] = GMT_TIME;
   ident_map["FILE_CREATE_TIME"] = FILE_CREATE_TIME;
   ident_map["FILE_MODIFIED_TIME"] = FILE_MODIFIED_TIME;
+  ident_map["FILE_ACCESSED_TIME"] = FILE_ACCESSED_TIME;
   ident_map["DATE_TIME_SET_1"] = DATE_TIME_SET_1;
   ident_map["DATE_TIME_SET_2"] = DATE_TIME_SET_2;
   ident_map["DATE_TIME_SET_3"] = DATE_TIME_SET_3;
@@ -369,6 +370,7 @@ void Scanner::CheckIdentifier(int index)
   case GMT_TIME:
   case FILE_CREATE_TIME:
   case FILE_MODIFIED_TIME:
+  case FILE_ACCESSED_TIME:
   case DATE_TIME_SET_1:
   case DATE_TIME_SET_2:
   case DATE_TIME_SET_3:
