@@ -88,6 +88,15 @@ class File {
     return buf.st_mtime;
   }
 
+  static time_t FileAccessedTime(const char* name) {
+    struct stat buf;
+    if(stat(name, &buf)) {
+      return -1;
+    }
+
+    return buf.st_atime;
+  }
+
   static FILE* FileOpen(const char* name, const char* mode) {
     FILE* file = fopen(name, mode);
     if(file < 0) {
