@@ -1,3 +1,6 @@
+* Test system time
+* Finish file dates
+
 == 4/2/11 ==
 * serial support for nested object
 * profile for bounds checks and leaks
