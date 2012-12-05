@@ -3239,6 +3239,40 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
   }
     break;
     
+  case FILE_ACCESSED_TIME: {
+    long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      
+      time_t raw_time = File::FileAccessedTime(name);      
+      if(raw_time > 0) {
+	struct tm* curr_time;
+	if(is_gmt) {
+	  curr_time = gmtime(&raw_time);
+	}
+	else {
+	  curr_time = localtime(&raw_time);
+	}
+	
+	frame->GetMemory()[3] = curr_time->tm_mday;          // day
+	frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+	frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+	frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+	frame->GetMemory()[7] = curr_time->tm_min;           // mins
+	frame->GetMemory()[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+	PushInt(0, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
     //----------- directory functions -----------
   case DIR_CREATE: {
     long* array = (long*)PopInt(op_stack, stack_pos);
