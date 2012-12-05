@@ -1507,7 +1507,7 @@ bundle Time {
 		
 		method : public : GetMonthName() ~ String {
 			days_of_month := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-			if(@month > -1 & @month < days_of_month->Size()) {
+			if(@month > -1 & @month - 1 < days_of_month->Size()) {
 				return days_of_month[@month - 1];
 			};
 
@@ -2022,7 +2022,16 @@ bundle IO {
 		}
 
 		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
+			day : Int; 
+			month : Int; 
+			year : Int; 
+			hours : Int; 
+			mins : Int; 
+			secs : Int; 
+
 			FILE_CREATE_TIME;
+
+			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}		
 		
 		function : ModifiedTime(n : System.String) ~ Date {
@@ -2030,7 +2039,16 @@ bundle IO {
 		}
 
 		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
+			day : Int; 
+			month : Int; 
+			year : Int; 
+			hours : Int; 
+			mins : Int; 
+			secs : Int; 
+
 			FILE_MODIFIED_TIME;
+
+			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}		
 		
 		function : Delete(n : System.String) ~ Bool {
