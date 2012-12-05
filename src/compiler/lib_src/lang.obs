@@ -1549,6 +1549,26 @@ bundle Time {
 		method : public : IsSavingsTime() ~ Bool {
 			return @is_savings;
 		}
+
+		method : public : ToString() ~ String {
+			out := String->New();
+
+			out->Append(GetDayName());
+			out->Append(", ");
+			out->Append(GetMonthName());
+			out->Append(" ");
+			out->Append(@day);
+			out->Append(", ");
+			out->Append(@year);
+			out->Append(", ");
+			out->Append(@hours);
+			out->Append(":");
+			out->Append(@mins);
+			out->Append(":");
+			out->Append(@secs);
+
+			return out;
+		}
 	}
 	
 	#~~
@@ -2050,6 +2070,23 @@ bundle IO {
 
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}		
+
+		function : AccessedTime(n : System.String) ~ Date {
+			return AccessedTime(n, false);
+		}
+
+		function : AccessedTime(n : System.String, gmt : Bool) ~ Date {
+      day : Int;
+      month : Int;
+      year : Int;
+      hours : Int;
+      mins : Int;
+      secs : Int;
+
+      FILE_ACCESSED_TIME;
+
+      return Date->New(day, month, year, hours, mins, secs, gmt);
+    }
 		
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;

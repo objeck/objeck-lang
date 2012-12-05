@@ -81,6 +81,15 @@ public:
     return buf.st_mtime;
   }
 
+  static time_t FileAccessedTime(const char* name) {
+    struct stat buf;
+    if(stat(name, &buf)) {
+      return -1;
+    }
+
+    return buf.st_atime;
+  }
+  
   static bool FileExists(const char* name) {
     struct _stat buf;
     if(_stat(name, &buf)) {
