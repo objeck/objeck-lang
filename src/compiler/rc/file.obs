@@ -5,8 +5,7 @@ class Test {
 		len := File->Size("in.txt");
 		buffer : Byte[] := Byte->New[len];
 
-#		in := FileReader->New("in.txt");
-		in := FileReader->New(Nil);
+		in := FileReader->New("in.txt");
 		if(in->IsOpen()) {
 			in->ReadBuffer(0, len, buffer);
 			out := FileWriter->New("output.txt");
