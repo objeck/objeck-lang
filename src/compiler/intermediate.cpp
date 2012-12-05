@@ -1178,12 +1178,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     
   case SYS_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SYS_TIME));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
 
   case GMT_TIME:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::GMT_TIME));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
     
   case instructions::DATE_TIME_SET_1:
@@ -1675,7 +1675,21 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::FILE_RENAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 3));
     break;
+    
+  case FILE_CREATE_TIME:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::FILE_CREATE_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 3));
+    break;
 
+case FILE_MODIFIED_TIME:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::FILE_MODIFIED_TIME));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 3));
+    break;
+    
     //----------- directory functions -----------
   case DIR_CREATE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));

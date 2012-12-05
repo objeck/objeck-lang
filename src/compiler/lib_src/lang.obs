@@ -2017,6 +2017,22 @@ bundle IO {
 			FILE_SIZE;
 		}		
 		
+		function : CreateTime(n : System.String) ~ Date {
+			return CreateTime(n, false);
+		}
+
+		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
+			FILE_CREATE_TIME;
+		}		
+		
+		function : ModifiedTime(n : System.String) ~ Date {
+			return ModifiedTime(n, false);
+		}
+
+		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
+			FILE_MODIFIED_TIME;
+		}		
+		
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
 		}
