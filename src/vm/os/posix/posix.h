@@ -53,29 +53,39 @@
 class File {
  public:
   static long FileSize(const char* name) {
-    int fd = open(name, O_RDONLY);
-    if(fd < 0) {
+    struct stat buf;
+    if(stat(name, &buf)) {
       return -1;
     }
-	  
-    struct stat info;
-    if(fstat(fd, &info) < 0) {
-      close(fd);
-      return -1;
-    }
-	  
-    close(fd);
-    return info.st_size;
+    
+    return buf.st_size;
   }
   
   static bool FileExists(const char* name) {
-    int fd = open(name, O_RDONLY);
-    if(fd < 0) {
+    struct stat buf;
+    if(stat(name, &buf)) {
       return false;
     }
     
-    close(fd);
     return true;
+  }
+
+  static time_t FileCreatedTime(const char* name) {
+    struct stat buf;
+    if(stat(name, &buf)) {
+      return -1;
+    }
+
+    return buf.st_ctime;
+  }
+
+  static time_t FileModifiedTime(const char* name) {
+    struct stat buf;
+    if(stat(name, &buf)) {
+      return -1;
+    }
+
+    return buf.st_mtime;
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
