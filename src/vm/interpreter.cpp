@@ -3170,7 +3170,26 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     }
   }
     break;
-
+    
+  case FILE_CREATE_TIME: {
+    long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      
+      cout << name << endl;
+      // PushInt(File::FileSize(name), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+  case FILE_MODIFIED_TIME:
+    break;
+    
     //----------- directory functions -----------
   case DIR_CREATE: {
     long* array = (long*)PopInt(op_stack, stack_pos);

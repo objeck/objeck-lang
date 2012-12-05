@@ -50,6 +50,8 @@ namespace instructions {
     // time
     SYS_TIME,
     GMT_TIME,
+    FILE_CREATE_TIME,
+    FILE_MODIFIED_TIME,
     DATE_TIME_SET_1,
     DATE_TIME_SET_2,
     DATE_TIME_SET_3,
