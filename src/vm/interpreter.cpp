@@ -1007,9 +1007,9 @@ void StackInterpreter::ProcessCurrentTime(bool is_gmt)
 
   long* instance = (long*)frame->GetMemory()[0];
   if(instance) {
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
+    instance[3] = curr_time->tm_mday;          // day
+    instance[4] = curr_time->tm_mon + 1;       // month
+    instance[5] = curr_time->tm_year + 1900;   // year
     instance[3] = curr_time->tm_hour;          // hours
     instance[4] = curr_time->tm_min;           // mins
     instance[5] = curr_time->tm_sec;           // secs
@@ -3177,9 +3177,27 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(array) {
       array = (long*)array[0];
       const char* name = (char*)(array + 3);
-      
-      cout << name << endl;
-      // PushInt(File::FileSize(name), op_stack, stack_pos);
+
+      time_t raw_time = File::FileCreatedTime(name);      
+      if(raw_time > 0) {
+	struct tm* curr_time;
+	if(is_gmt) {
+	  curr_time = gmtime(&raw_time);
+	}
+	else {
+	  curr_time = localtime(&raw_time);
+	}
+	
+	frame->GetMemory()[3] = curr_time->tm_mday;          // day
+	frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+	frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+	frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+	frame->GetMemory()[7] = curr_time->tm_min;           // mins
+	frame->GetMemory()[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+	PushInt(0, op_stack, stack_pos);
+      }
     }
     else {
       PushInt(0, op_stack, stack_pos);
@@ -3187,7 +3205,38 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
   }
     break;
     
-  case FILE_MODIFIED_TIME:
+  case FILE_MODIFIED_TIME: {
+    long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const char* name = (char*)(array + 3);
+      
+      time_t raw_time = File::FileModifiedTime(name);      
+      if(raw_time > 0) {
+	struct tm* curr_time;
+	if(is_gmt) {
+	  curr_time = gmtime(&raw_time);
+	}
+	else {
+	  curr_time = localtime(&raw_time);
+	}
+	
+	frame->GetMemory()[3] = curr_time->tm_mday;          // day
+	frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+	frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+	frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+	frame->GetMemory()[7] = curr_time->tm_min;           // mins
+	frame->GetMemory()[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+	PushInt(0, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
     break;
     
     //----------- directory functions -----------

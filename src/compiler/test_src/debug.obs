@@ -1,7 +1,11 @@
 ﻿bundle Default {
 	class Debug {
 		function : Main(args : String[]) ~ Nil {
-			t := IO.File->CreateTime("in.txt");
+			t := IO.File->CreateTime("in.txt", false);
+			IO.Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
+
+			t := IO.File->ModifiedTime("in.txt", false);
+			IO.Console->Print(t->GetDayName())->Print(", ")->Print(t->GetMonthName())->Print(" ")->Print(t->GetDay())->Print(", ")->Print(t->GetYear())->Print(", ")->Print(t->GetHours())->Print(":")->Print(t->GetMinutes())->Print(":")->PrintLine(t->GetSeconds());
 		}
 	}
 }
