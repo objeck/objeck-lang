@@ -2154,6 +2154,21 @@ is in the `IO' bundle.  The class supports the following operations:
   \begin{itemize}
   \item function : Exists(n : String) \textasciitilde Bool
   \end{itemize}
+\item \texttt{CreateTime} - returns the time in which the file was created
+  \begin{itemize}
+  \item function : CreateTime(n : String) \textasciitilde Date
+  \item function : CreateTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
+\item \texttt{ModifiedTime} - returns the time in which the file was last modifed
+  \begin{itemize}
+  \item function : ModifiedTime(n : String) \textasciitilde Date
+  \item function : ModifiedTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
+\item \texttt{AccessedTime} - returns the time in which the file was last modifed
+  \begin{itemize}
+  \item function : AccessedTime(n : String) \textasciitilde Date
+  \item function : AccessedTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
 \item \texttt{Rename} - renames a file
   \begin{itemize}
   \item function : Rename(from : String, to : String) \textasciitilde Bool
