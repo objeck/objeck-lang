@@ -1563,6 +1563,9 @@ bundle Time {
 			out->Append(", ");
 			out->Append(@hours);
 			out->Append(":");
+			if(@mins < 10) {
+				out->Append("0");
+			};
 			out->Append(@mins);
 			out->Append(":");
 			out->Append(@secs);

@@ -1,6 +1,7 @@
 ﻿bundle Default {
 	class Debug {
 		function : Main(args : String[]) ~ Nil {
+#~
 			name := "in.txt";
 
 			t := IO.File->CreateTime(name, false);
@@ -8,6 +9,9 @@
 
 			IO.File->ModifiedTime(name, false)->ToString()->PrintLine();
 			IO.File->AccessedTime(name)->ToString()->PrintLine();
+~#
+
+			Time.Date->New()->ToString()->PrintLine();
 		}
 	}
 }
