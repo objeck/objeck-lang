@@ -995,7 +995,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 void StackInterpreter::ProcessCurrentTime(bool is_gmt) 
 {
   time_t raw_time;
-  time(&raw_time);  
+  raw_time = time(NULL);
 
   struct tm* curr_time;
   if(is_gmt) {
@@ -1007,9 +1007,9 @@ void StackInterpreter::ProcessCurrentTime(bool is_gmt)
 
   long* instance = (long*)frame->GetMemory()[0];
   if(instance) {
-    instance[3] = curr_time->tm_mday;          // day
-    instance[4] = curr_time->tm_mon + 1;       // month
-    instance[5] = curr_time->tm_year + 1900;   // year
+    instance[0] = curr_time->tm_mday;          // day
+    instance[1] = curr_time->tm_mon + 1;       // month
+    instance[2] = curr_time->tm_year + 1900;   // year
     instance[3] = curr_time->tm_hour;          // hours
     instance[4] = curr_time->tm_min;           // mins
     instance[5] = curr_time->tm_sec;           // secs
