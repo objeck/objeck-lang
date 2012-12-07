@@ -1938,7 +1938,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   }
 
   long* str_obj = (long*)instance[0];
-  if(!str_obj && !(long*)str_obj[0]) {
+  if(!str_obj || !(long*)str_obj[0]) {
     cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
     exit(1);
   }
@@ -2341,7 +2341,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
 #endif
 
-    if(array && offset >= 0 && offset + num < array[0]) {
+    if(array && offset > -1 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       cout.write(buffer + offset, num);
       PushInt(1, op_stack, stack_pos);
@@ -2426,7 +2426,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     cout << "  STD_ERR_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
 #endif
 
-    if(array && offset >= 0 && offset + num < array[0]) {
+    if(array && offset > -1 && offset + num < array[0]) {
       char* buffer = (char*)(array + 3);
       cerr.write(buffer + offset, num);
       PushInt(1, op_stack, stack_pos);
@@ -2581,7 +2581,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     long backlog = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
 
-    if(instance && (SOCKET)instance[0] >= 0) {
+#ifdef _WIN32
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
+    if(instance && (SOCKET)instance[0] > -1) {
+#endif
       SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
       cout << "# socket listen: backlog=" << backlog << "'; instance=" << instance 
@@ -2603,7 +2607,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     
   case SOCK_TCP_ACCEPT: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance && (SOCKET)instance[0] >= 0) {
+    if(instance && (SOCKET)instance[0] > -1) {
       SOCKET server = (SOCKET)instance[0];
       char client_address[SMALL_BUFFER_MAX + 1];
       int client_port;
@@ -2627,7 +2631,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
   case SOCK_TCP_CLOSE: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance && (SOCKET)instance[0] >= 0) {
+    if(instance && (SOCKET)instance[0] > -1) {
       SOCKET sock = (SOCKET)instance[0];
 
 #ifdef _DEBUG
@@ -2647,7 +2651,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(array && instance) {
       SOCKET sock = (SOCKET)instance[0];
       char* data = (char*)(array + 3);      
-      if(sock >= 0) {
+      if(sock > -1) {
         IPSocket::WriteBytes(data, strlen(data), sock);
       }
     }
@@ -2663,7 +2667,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
       SOCKET sock = (SOCKET)instance[0];
 
       int status;
-      if(sock >= 0) {
+      if(sock > -1) {
 	int index = 0;
 	BYTE_VALUE value;
 	bool end_line = false;
@@ -2879,7 +2883,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
       if(file && fgets(buffer, num, file)) {
         long end_index = strlen(buffer) - 1;
-        if(end_index >= 0) {
+        if(end_index > -1) {
           if(buffer[end_index] == '\n') {
             buffer[end_index] = '\0';
           }
@@ -2919,7 +2923,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     // ---------------- socket i/o ----------------
   case SOCK_TCP_IS_CONNECTED: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance && (SOCKET)instance[0] >= 0) {
+    if(instance && (SOCKET)instance[0] > -1) {
       PushInt(1, op_stack, stack_pos);
     } 
     else {
@@ -2947,7 +2951,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -2978,7 +2982,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -3013,7 +3017,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (FILE*)instance[0] && offset >= 0 && offset + num < array[0]) {
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num < array[0]) {
       FILE* file = (FILE*)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);     
