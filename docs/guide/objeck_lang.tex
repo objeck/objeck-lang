@@ -65,11 +65,9 @@ debugger and library inspection tool.  The compiler executable is named
 in the Objeck language:
 
 \begin{verbatim}
-bundle Default {
-  class Hello {
-    function : Main(args : String[]) ~ Nil {
-      "Hello World!"->PrintLine();
-    }
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World!"->PrintLine();
   }
 }
 \end{verbatim}
@@ -231,13 +229,11 @@ method for the literal \texttt{42}.  The second prints the product of
 a variable and a literal.
 
 \begin{verbatim}
-bundle Default {
-  class Test {
-    function : Main() ~ Nil {
-      42->PrintLine();
-      eiht := 8;
-      (eiht * 7)->PrintLine();
-    }
+class Test {
+  function : Main() ~ Nil {
+    42->PrintLine();
+    eiht := 8;
+    (eiht * 7)->PrintLine();
   }
 }
 \end{verbatim}
@@ -2689,35 +2685,33 @@ Demonstrates basic language features such as arithmetic and logical operations.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-bundle Default {
-  class FindPrime {
-    function : Main() ~ Nil {
-      Run(1000000);
-    }
+class FindPrime {
+  function : Main() ~ Nil {
+    Run(1000000);
+  }
 
-    function : native : Run(topCandidate : Int)~ Nil {
-      candidate : Int := 2;
-      while(candidate <= topCandidate) {
-        trialDivisor : Int := 2;
-        prime : Int := 1;
+  function : native : Run(topCandidate : Int)~ Nil {
+    candidate : Int := 2;
+    while(candidate <= topCandidate) {
+      trialDivisor : Int := 2;
+      prime : Int := 1;
 
-        found : Bool := true;
-        while(trialDivisor * trialDivisor <= candidate & found) {
-          if(candidate % trialDivisor = 0) {
-            prime := 0;
-            found := false;
-          }
-          else {
-            trialDivisor := trialDivisor + 1;
-          };
+      found : Bool := true;
+      while(trialDivisor * trialDivisor <= candidate & found) {
+        if(candidate % trialDivisor = 0) {
+          prime := 0;
+          found := false;
+        }
+        else {
+          trialDivisor := trialDivisor + 1;
         };
-
-        if(found) {
-          candidate->PrintLine();
-        };
-        candidate := candidate + 1;
       };
-    }
+
+      if(found) {
+        candidate->PrintLine();
+      };
+      candidate := candidate + 1;
+    };
   }
 }
 \end{verbatim}
@@ -2727,35 +2721,33 @@ Demonstrates the use of arrays.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-bundle Default {
-  class Transpose {
-    function : Main(args : String[]) ~ Nil {
-      input := [[1, 1, 1, 1]
-        [2, 4, 8, 16]
-        [3, 9, 27, 81]
-        [4, 16, 64, 256]
-        [5, 25, 125, 625]];
-      dim := input->Size();
- 
-      output := Int->New[dim[0],dim[1]];
-      for(i := 0; i < dim[0]; i+=1;) {
-        for(j := 0; j < dim[1]; j+=1;) {
-          output[i,j] := input[i,j];
-        };
+class Transpose {
+  function : Main(args : String[]) ~ Nil {
+    input := [[1, 1, 1, 1]
+      [2, 4, 8, 16]
+      [3, 9, 27, 81]
+      [4, 16, 64, 256]
+      [5, 25, 125, 625]];
+    dim := input->Size();
+
+    output := Int->New[dim[0],dim[1]];
+    for(i := 0; i < dim[0]; i+=1;) {
+      for(j := 0; j < dim[1]; j+=1;) {
+        output[i,j] := input[i,j];
       };
- 
-      Print(output);
-    }
- 
-    function : Print(matrix : Int[,]) ~ Nil {
-      dim := matrix->Size();
-      for(i := 0; i < dim[0]; i+=1;) {
-        for(j := 0; j < dim[1]; j+=1;) {
-          IO.Console->Print(matrix[i,j])->Print('\t');
-        };
-        '\n'->Print();
+    };
+
+    Print(output);
+  }
+
+  function : Print(matrix : Int[,]) ~ Nil {
+    dim := matrix->Size();
+    for(i := 0; i < dim[0]; i+=1;) {
+      for(j := 0; j < dim[1]; j+=1;) {
+        IO.Console->Print(matrix[i,j])->Print('\t');
       };
-    }
+      '\n'->Print();
+    };
   }
 }
 \end{verbatim}
@@ -2766,21 +2758,17 @@ Demonstrates HTTP access.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-use Net;
-use IO;
 use Struct;
 
-bundle Default {
-  class HttpTest {
-    function : Main(args : String[]) ~ Nil {
-      if(args->Size() = 1) {
-        client := HttpClient->New();
-        lines := client->Get(args[0], 80);
-        for(i := 0; i < lines->Size(); i := i + 1;) {
-          lines->Get(i)->As(String)->PrintLine();
-        };
+class HttpTest {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() = 1) {
+      client := Net.HttpClient->New();
+      lines := client->Get(args[0], 80);
+      each(i : lines) {
+        lines->Get(i)->As(String)->PrintLine();
       };
-    }
+    };
   }
 }
 \end{verbatim}
@@ -2794,59 +2782,57 @@ Demonstrates simple XML parsing.
 use IO;
 use XML;
 
-bundle Default {
-  class Test {
-    function : Main(args : String[]) ~ Nil {
-      in := String->New();
-      in->Append("<inventory title=\"OmniCorp Store #45x10^3\">");
-      in->Append("<section name=\"health\">");
-      in->Append("<item upc=\"123456789\" stock=\"12\">");
-      in->Append("<name>Invisibility Cream</name>");
-      in->Append("<price>14.50</price>");
-      in->Append("<description>Makes you invisible</description>");
-      in->Append("</item>");
-      in->Append("<item upc=\"445322344\" stock=\"18\">");
-      in->Append("<name>Levitation Salve</name>");
-      in->Append("<price>23.99</price>");
-      in->Append("<description>Levitate yourself for up to 3 hours per application</description>");
-      in->Append("</item>");
-      in->Append("</section>");
-      in->Append("<section name=\"food\">");
-      in->Append("<item upc=\"485672034\" stock=\"653\">");
-      in->Append("<name>Blork and Freen Instameal</name>");
-      in->Append("<price>4.95</price>");
-      in->Append("<description>A tasty meal in a tablet; just add water</description>");
-      in->Append("</item>");
-      in->Append("<item upc=\"132957764\" stock=\"44\">");
-      in->Append("<name>Grob winglets</name>");
-      in->Append("<price>3.56</price>");
-      in->Append("<description>Tender winglets of Grob. Just add water</description>");
-      in->Append("</item>");
-      in->Append("</section>");
-      in->Append("</inventory>");
-    
-      parser := XmlParser->New(in);
-      if(parser->Parse()) {
-        # get first item
-        results := parser->FindElements("/inventory/section[1]/item[1]");
-        if(results <> Nil) {
-          Console->Print("items: ")->PrintLine(results->Size());
-        };
-        # get all prices
-        results := parser->FindElements("/inventory/section/item/price");
-        if(results <> Nil) {
-          each(i : results) {          
-            element := results->Get(i)->As(XmlElement);
-            element->GetContent()->PrintLine();
-          };
-        };
-        # get names
-        results := parser->FindElements("/inventory/section/item/name");
-        if(results <> Nil) {
-          Console->Print("names: ")->PrintLine(results->Size());
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    in := String->New();
+    in->Append("<inventory title=\"OmniCorp Store #45x10^3\">");
+    in->Append("<section name=\"health\">");
+    in->Append("<item upc=\"123456789\" stock=\"12\">");
+    in->Append("<name>Invisibility Cream</name>");
+    in->Append("<price>14.50</price>");
+    in->Append("<description>Makes you invisible</description>");
+    in->Append("</item>");
+    in->Append("<item upc=\"445322344\" stock=\"18\">");
+    in->Append("<name>Levitation Salve</name>");
+    in->Append("<price>23.99</price>");
+    in->Append("<description>Levitate yourself for up to 3 hours per application</description>");
+    in->Append("</item>");
+    in->Append("</section>");
+    in->Append("<section name=\"food\">");
+    in->Append("<item upc=\"485672034\" stock=\"653\">");
+    in->Append("<name>Blork and Freen Instameal</name>");
+    in->Append("<price>4.95</price>");
+    in->Append("<description>A tasty meal in a tablet; just add water</description>");
+    in->Append("</item>");
+    in->Append("<item upc=\"132957764\" stock=\"44\">");
+    in->Append("<name>Grob winglets</name>");
+    in->Append("<price>3.56</price>");
+    in->Append("<description>Tender winglets of Grob. Just add water</description>");
+    in->Append("</item>");
+    in->Append("</section>");
+    in->Append("</inventory>");
+  
+    parser := XmlParser->New(in);
+    if(parser->Parse()) {
+      # get first item
+      results := parser->FindElements("/inventory/section[1]/item[1]");
+      if(results <> Nil) {
+        Console->Print("items: ")->PrintLine(results->Size());
+      };
+      # get all prices
+      results := parser->FindElements("/inventory/section/item/price");
+      if(results <> Nil) {
+        each(i : results) {          
+          element := results->Get(i)->As(XmlElement);
+          element->GetContent()->PrintLine();
         };
       };
-    }
+      # get names
+      results := parser->FindElements("/inventory/section/item/name");
+      if(results <> Nil) {
+        Console->Print("names: ")->PrintLine(results->Size());
+      };
+    };
   }
 }
 \end{verbatim}
