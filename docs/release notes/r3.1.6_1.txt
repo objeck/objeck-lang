@@ -1,0 +1,13 @@
+Objeck v3.1.6_1
+
+--------------
+Release Notes
+--------------
+The focus of this release was on bug fixing and code refactoring.  In addition, some additional features were added.
+
+Highlights of this release include the following:
+* Added the capability to get date information for files (new)
+* The Date class now has a "ToString" method (new)
+* The "obr" compiler binary can now be executed from outside of the “bin”, please see below (new)
+* Fixed a bug in the Date class (moderate)
+* Resolved a compiler bug related to nested method calls with inline casts (minor)
