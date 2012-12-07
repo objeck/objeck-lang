@@ -1930,7 +1930,7 @@ bundle IO {
 		}
 
 		method : public : PrintLine() ~ ConsoleIO {
-			'\n'->PrintLine();
+			"\r\n"->Print();
 			return @console;
 		}
 		
