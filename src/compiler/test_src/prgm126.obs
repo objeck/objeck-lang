@@ -1,22 +1,14 @@
-﻿use Struct;
+﻿class Test {
+	function : Main(args : String[]) ~ Nil {
+		q := Struct.IntQueue->New();
+		q->Add(1);
+		q->Add(2);
+		q->Add(3);
 
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			q := IntQueue->New();
-			q->Add(1);
-			q->Add(2);
-			q->Add(3);
-			IO.Console->Print("size=")->PrintLine(q->Size());
+		q->Remove()->PrintLine();
+		q->Remove()->PrintLine();
+		q->Remove()->PrintLine();
 
-			q->Remove()->PrintLine();
-			IO.Console->Print("head=")->PrintLine(q->Head());
-			q->Remove()->PrintLine();
-
-			q->Add(4);
-
-			q->Remove()->PrintLine();
-			q->Remove()->PrintLine();
-		}
+		q->IsEmpty()->PrintLine();
 	}
 }

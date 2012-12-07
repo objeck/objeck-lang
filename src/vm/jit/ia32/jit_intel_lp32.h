@@ -1203,7 +1203,7 @@ namespace Runtime {
 	  const long num = PopInt(op_stack, stack_pos);
 	  const long offset = PopInt(op_stack, stack_pos);
 	  
-	  if(array && offset >= 0 && offset + num < array[0]) {
+	  if(array && offset > -1 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    cout.write(buffer + offset, num);
 	    PushInt(op_stack, stack_pos, 1);
@@ -1279,7 +1279,7 @@ namespace Runtime {
 	  const long num = PopInt(op_stack, stack_pos);
 	  const long offset = PopInt(op_stack, stack_pos);
 	  
-	  if(array && offset >= 0 && offset + num < array[0]) {
+	  if(array && offset > -1 && offset + num < array[0]) {
 	    char* buffer = (char*)(array + 3);
 	    cerr.write(buffer + offset, num);
 	    PushInt(op_stack, stack_pos, 1);
@@ -1333,7 +1333,7 @@ namespace Runtime {
 #ifdef _WIN32
 	  if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
 #else
-    if(instance && (SOCKET)instance[0] >= 0) {
+    if(instance && (SOCKET)instance[0] > -1) {
 #endif
 	    SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
@@ -1352,7 +1352,7 @@ namespace Runtime {
 #ifdef _WIN32
 	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET) {
 #else
-	  if(array && instance && (SOCKET)instance[0] >= 0) {
+	  if(array && instance && (SOCKET)instance[0] > -1) {
 #endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* data = (char*)(array + 3);
@@ -1369,7 +1369,11 @@ namespace Runtime {
 	  SOCKET sock = (SOCKET)instance[0];
 
 	  int status;
-	  if(sock >= 0) {
+#ifdef _WIN32
+	  if(sock != INVALID_SOCKET) {
+#else
+	  if(sock > -1) {
+#endif
 	    int index = 0;
 	    BYTE_VALUE value;
 	    bool end_line = false;
@@ -1456,7 +1460,7 @@ namespace Runtime {
 	  
 	    if(file && fgets(buffer, num, file)) {
 	      long end_index = strlen(buffer) - 1;
-	      if(end_index >= 0) {
+	      if(end_index > -1) {
 		if(buffer[end_index] == '\n') {
 		  buffer[end_index] = '\0';
 		}
@@ -1665,7 +1669,7 @@ namespace Runtime {
 #ifdef _WIN32
     if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
 #else
-	  if(instance && (SOCKET)instance[0] >= 0) {
+	  if(instance && (SOCKET)instance[0] > -1) {
 #endif
 	    PushInt(op_stack, stack_pos, 1);
 	  } 
@@ -1697,7 +1701,7 @@ namespace Runtime {
 #ifdef _WIN32
 	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
 #else
-	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+	  if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
 #endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);
@@ -1733,7 +1737,7 @@ namespace Runtime {
 #ifdef _WIN32
 	  if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
 #else
-	  if(array && instance && (SOCKET)instance[0] >= 0 && offset + num < array[0]) {
+	  if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
 #endif
 	    SOCKET sock = (SOCKET)instance[0];
 	    char* buffer = (char*)(array + 3);

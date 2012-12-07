@@ -701,6 +701,14 @@ class LibraryClass {
 	const string &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
 	unqualified_methods.insert(pair<string, LibraryMethod*>(unqualified_name, method));
       }
+      else {
+	delete method;
+	method = NULL;
+      }
+    }
+    else {
+      delete method;
+      method = NULL;
     }
   }
 };
