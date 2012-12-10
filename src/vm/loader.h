@@ -98,11 +98,12 @@ class Loader {
       in.read(buffer, buffer_size);
       // close file
       in.close();
-    } else {
-      cout << "Unable to open file: " << filename << endl;
+    } 
+    else {
+      cerr << "Unable to open file: " << filename << endl;
       exit(1);
     }
-
+    
     return buffer;
   }
 

@@ -42,6 +42,7 @@ void JitCompilerIA32::Initialize(StackProgram* p) {
   program = p;
 }
 
+// setup of stackframe
 void JitCompilerIA32::Prolog() {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [<prolog>]" << endl;
@@ -70,6 +71,7 @@ void JitCompilerIA32::Prolog() {
   }
 }
 
+// teardown of stackframe
 void JitCompilerIA32::Epilog(int32_t imm) {
 #ifdef _DEBUG
   cout << "  " << (++instr_count) << ": [<epilog>]" << endl;

@@ -404,8 +404,9 @@ private:
       in.read(buffer, buffer_size);
       // close file
       in.close();
-    } else {
-      cout << "Unable to open source file: " << filename << endl;
+    } 
+    else {
+      cerr << "Unable to open source file: " << filename << endl;
       exit(1);
     }
 
