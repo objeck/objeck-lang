@@ -5,7 +5,7 @@ use IO;
 
 bundle FastCgi {
 	interface Handler {
-		function : virtual : Foward(req : Request, res : Response) ~ Nil;
+		function : virtual : Forward(req : Request, res : Response) ~ Nil;
 	}
 
 	class Proxy {
