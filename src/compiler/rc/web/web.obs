@@ -2,7 +2,7 @@ use FastCgi;
 use IO;
 
 class FindName implements FastCgi.Handler {
-	function : Foward(req : Request, res : Response) ~ Nil {}
+	function : Forward(req : Request, res : Response) ~ Nil {}
 	
 	function : Request(req : Request, res : Response) ~ Nil {
 		res->AddBody("<html>");
