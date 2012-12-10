@@ -7,7 +7,7 @@ class FindName implements FastCgi.Handler {
 	function : Request(req : Request, res : Response) ~ Nil {
 		cmd := req->GetQueryValue("cmd");
 		if(cmd <> Nil & cmd->Equals("name")) {
-			names := String->New[30];
+			names := String->New[31];
 			names[0] := "Vicky";
 			names[1] := "Anna";
 			names[2] := "Brittany";
@@ -38,6 +38,7 @@ class FindName implements FastCgi.Handler {
 			names[27] := "Elizabeth";
 			names[28] := "Ellen";
 			names[29] := "Wenche";
+			names[30] := "Randy";
 			
 			match := "";
 			query := req->GetQueryValue("query");
