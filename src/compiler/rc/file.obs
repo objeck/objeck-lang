@@ -2,7 +2,8 @@ use IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		len := File->Size("in.txt");
+		len := File->Size("./in.txt");
+len->PrintLine();
 		buffer : Byte[] := Byte->New[len];
 
 		in := FileReader->New("in.txt");
