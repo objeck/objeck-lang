@@ -1,8 +1,8 @@
 use API;
 use Struct;
-use JSON;
 use IO;
-
+use Net;
+ 
 bundle FastCgi {
 	interface Handler {
 		function : virtual : Forward(req : Request, res : Response) ~ Nil;
@@ -24,144 +24,6 @@ bundle FastCgi {
 			};
 
 			return @lib_proxy;
-		}
-	}
-	
-	class UrlUtility {
-		function : native : Encode(str : String) ~ String {
-			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				select(c) {
-					label ' ': {
-						buffer->Append('+');
-					}
-
-					label ';': {
-						buffer->Append("%3B");
-					}
-
-					label '=': {
-						buffer->Append("%3D");
-					}
-
-					label '$': {
-						buffer->Append("%26");
-					}
-
-					label ',': {
-						buffer->Append("%2C");
-					}
-
-					label '<': {
-						buffer->Append("%3C");
-					}
-
-					label '>': {
-						buffer->Append("%3E");
-					}
-
-					label '^': {
-						buffer->Append("%5E");
-					}
-
-					label '`': {
-						buffer->Append("%60");
-					}
-
-					label '\\': {
-						buffer->Append("%5C");
-					}
-
-					label '[': {
-						buffer->Append("%5B");
-					}
-
-					label ']': {
-						buffer->Append("%5D");
-					}
-
-					label '{': {
-						buffer->Append("%7B");
-					}
-
-					label '}': {
-						buffer->Append("%7D");
-					}
-
-					label '|': {
-						buffer->Append("%7C");
-					}
-
-					label '"': {
-						buffer->Append("%22");
-					}
-
-					label ':': {
-						buffer->Append("%3A");
-					}
-
-					label '/': {
-						buffer->Append("%2F");
-					}
-
-					label '#': {
-						buffer->Append("%23");
-					}
-
-					label '?': {
-						buffer->Append("%3F");
-					}
-
-					label '&': {
-						buffer->Append("%24");
-					}
-
-					label '@': {
-						buffer->Append("%40");
-					}
-
-					label '%': {
-						buffer->Append("%25");
-					}
-
-					label '+': {
-						buffer->Append("%2B");
-					}
-
-					label '~': {
-						buffer->Append("%7E");
-					}
-
-					other: {
-						buffer->Append(c);
-					}
-				};
-			};
-			
-			return buffer;
-		}
-
-		function : native : Decode(str : String) ~ String {
-			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				if(c = '+') {
-					buffer->Append(' ');
-				}
-				else if(c = '%' & i + 2 < str->Size()) {
-					value := "0x";
-					value->Append(str->Get(i + 1));
-					value->Append(str->Get(i + 2));
-					buffer->Append(value->ToInt()->As(Char));
-					i += 2;
-				}
-				else {
-					buffer->Append(c);
-				};
-			};
-
-			return buffer;
 		}
 	}
 
