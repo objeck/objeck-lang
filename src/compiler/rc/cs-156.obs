@@ -28,6 +28,7 @@ bundle Default {
 			};
 			reader->Close();
 			
+			"Route is: "->Print();
 			airports := ParseAirports(IO.Console->ReadString());
 			if(airports <> Nil) {
 				depart := airports[0]->ToUpper();
