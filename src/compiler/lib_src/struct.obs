@@ -199,6 +199,16 @@ bundle Struct {
 			};
 		}
 		
+		method : public : native : Find(value : Int) ~ Int {
+			for(i := 0; i < @size; i += 1;) {
+				if(@values[i] = value) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
 		method : public : native : BinarySearch(value : Int) ~ Int {
 			low := 0;
 			high := @size - 1;
@@ -441,8 +451,18 @@ bundle Struct {
 				i += 1;
 			};
 		}
+
+		method : public : native : Find(value : Float) ~ Int {
+         for(i := 0; i < @size; i += 1;) {
+            if(@values[i] = value) {
+               return i;
+            };
+         };
+
+         return -1;
+      }
 		
-		method : public : native : BinarySearch(value : Float) ~ Float {
+		method : public : native : BinarySearch(value : Float) ~ Int {
 			low := 0;
 			high := @size - 1;
 
@@ -635,8 +655,18 @@ bundle Struct {
 				i += 1;
 			};
 		}
+
+		method : public : native : Find(value : Compare) ~ Int {
+         for(i := 0; i < @size; i += 1;) {
+            if(@values[i]->Compare(value) = 0) {
+               return i;
+            };
+         };
+
+         return -1;
+      }
 		
-		method : public : native : BinarySearch(value : Compare) ~ Float {
+		method : public : native : BinarySearch(value : Compare) ~ Int {
 			low := 0;
 			high := @size - 1;
 

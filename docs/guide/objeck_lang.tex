@@ -1529,9 +1529,14 @@ following operations:
   \end{itemize}
 \item \texttt{BinarySearch} - performs a binary search for an element
   in a \emph{sorted} vector using an iterative binary search algorithm
-  in $O(\log_2 n)$ time.
+  in $O(\log_2 n)$ time. Returns the index of element is returned, -1 otherwise.
   \begin{itemize}
-  \item method : public : BinarySearch(v : Compare) \textasciitilde Nil
+  \item method : public : BinarySearch(v : Compare) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Find} - search for an element in the array and reutrn
+  the index of the element found, -1 otherwise.
+  \begin{itemize}
+  \item method : public : Find(v : Compare) \textasciitilde Int
   \end{itemize}
 \item \texttt{Min} - returns the smallest value in the vector
   \begin{itemize}
