@@ -593,7 +593,8 @@ namespace frontend {
     friend class TreeFactory;
     int id;
     int dim;
-    int cur_length;
+    int cur_width;
+    int cur_height;
     ExpressionList* elements;
     ExpressionList* all_elements;
     vector<int> sizes;
@@ -607,6 +608,7 @@ namespace frontend {
 	if(static_array[i]) {
 	  if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	    GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
+	    cur_height++;
 	  }
 	  else {
 	    elems->AddExpression(static_array[i]);
@@ -627,17 +629,16 @@ namespace frontend {
       } 
     }
     
-    void GetSize(StaticArray* array, int dim, int &size);
-    
   public:
     StaticArray(const string &f, int l, ExpressionList* e) : Expression(f, l) {
       elements = e;
       all_elements = NULL;
       matching_types = matching_lengths = true;
       cur_type = VAR_EXPR;
-      cur_length = id = -1;
+      cur_width = id = -1;
+      cur_height = 0;
       dim = 1;
-    
+      
       Validate(this);
     }
     
@@ -688,14 +689,13 @@ namespace frontend {
     }
     
     ExpressionList* GetAllElements();
+    
     vector<int> GetSizes();
-
-    int GetSize(int dim);
     
     bool IsMatchingTypes() {
       return matching_types;
     }
-  
+    
     bool IsMatchingLenghts() {
       return matching_lengths;
     }
