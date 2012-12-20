@@ -5,51 +5,10 @@
 			[2, 3, -1, -11 ]
 			[-2, 0, -3,  22]
 		];
-		
-#~
-		matrix := [
-			[1, 2, -2 ]
-			[2, 3, 0]
-			[-1, -1, -3]
-			[-4, -11, 22]
-		];
-~#
-
-#~
-		matrix := Int->New[3, 4];
-		matrix[0,0] := 1;
-		matrix[0,1] := 2;
-		matrix[0,2] := -1;
-		matrix[0,3] := -4;
-
-		matrix[1,0] := 2;
-		matrix[1,1] := 3;
-		matrix[1,2] := -1;
-		matrix[1,3] := -11;
-		
-		matrix[2,0] := -2;
-		matrix[2,1] := 0;
-		matrix[2,2] := -3;
-		matrix[2,3] := 22;
-~#
-
-		sizes := matrix->Size();
-
-		for(i := 0; i < sizes[0]; i += 1;) {
-			for(j := 0; j < sizes[1]; j += 1;) {
-				IO.Console->Print(matrix[j,i])->Print(",");
-			};
-			IO.Console->PrintLine();
-		};
-
-
-		
+	
 		matrix := Rref(matrix);
-
 		
-	
-	
-		
+		sizes := matrix->Size();
 		for(i := 0; i < sizes[0]; i += 1;) {
 			for(j := 0; j < sizes[1]; j += 1;) {
 				IO.Console->Print(matrix[i,j])->Print(",");
@@ -63,10 +22,6 @@
 		sizes := matrix->Size();
 		rowCount := sizes[0];
 		columnCount := sizes[1];
-
-rowCount->PrintLine();
-columnCount->PrintLine();
-
 
 		for(r := 0; r < rowCount; r+=1;) {
 			if (columnCount <= lead) {

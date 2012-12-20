@@ -2319,18 +2319,9 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   if(array->GetType() != frontend::CLASS_TYPE) {
     // emit dimensions
     vector<int> sizes = array->GetSizes();
-
-    
     for(int i = sizes.size() - 1; i > -1; i--) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
-    
-
-    /*
-    for(size_t i = 0; i < sizes.size(); i++) {      
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
-    }
-    */
     
     // write copy instructions
     switch(array->GetType()) {

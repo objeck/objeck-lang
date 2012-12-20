@@ -170,10 +170,10 @@ void StaticArray::Validate(StaticArray* array) {
       }
       else {
 	// check lengths
-	if(cur_length == -1) {
-	  cur_length = static_array.size();
+	if(cur_width == -1) {
+	  cur_width = static_array.size();
 	}
-	if(cur_length != (int)static_array.size()) {
+	if(cur_width != (int)static_array.size()) {
 	  matching_lengths = false;
 	}      
 	// check types
@@ -195,6 +195,20 @@ ExpressionList* StaticArray::GetAllElements() {
   if(!all_elements) {
     all_elements = TreeFactory::Instance()->MakeExpressionList();  
     GetAllElements(this, all_elements);
+    
+    // change row/column order    
+    if(dim == 2) {
+      ExpressionList* temp = TreeFactory::Instance()->MakeExpressionList();
+      vector<Expression*> elements = all_elements->GetExpressions();
+      // update indices
+      for(int i = 0; i < cur_width; i++) {
+	for(int j = 0; j < cur_height; j++) {
+	  const int index = j * cur_width + i;
+	  temp->AddExpression(elements[index]);
+	}
+      }      
+      all_elements = temp;
+    }
   }
   
   return all_elements;
@@ -205,7 +219,7 @@ vector<int> StaticArray::GetSizes() {
     int count = 0;
     GetSizes(this, count);
     
-    sizes.push_back(cur_length);
+    sizes.push_back(cur_width);
     if(count) {
       sizes.push_back(count);
     }
@@ -214,21 +228,3 @@ vector<int> StaticArray::GetSizes() {
   return sizes;
 }
 
-int StaticArray::GetSize(int dim) {
-  int size;
-  GetSize(this, dim, size);
-  return size;
-}
-
-void StaticArray::GetSize(StaticArray* array, int dim, int &size) {
-  vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  if(static_array.size() == 1 && static_array[0]->GetExpressionType() == STAT_ARY_EXPR) {
-    GetSize(static_cast<StaticArray*>(static_array[0]), dim, size);
-  }
-  else if(dim < (int)static_array.size() && static_array[dim]->GetExpressionType() == STAT_ARY_EXPR) {
-    GetSize(static_cast<StaticArray*>(static_array[dim]), dim, size);
-  }
-  else {
-    size = static_array.size();
-  }
-}
