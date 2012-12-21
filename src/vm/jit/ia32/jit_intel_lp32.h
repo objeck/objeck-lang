@@ -2060,7 +2060,7 @@ namespace Runtime {
 	break;
       }
       
-      CheckNilDereference(array_holder->GetRegister());
+      // CheckNilDereference(array_holder->GetRegister());
       
       /* Algorithm:
 	 int32_t index = PopInt();
@@ -2155,7 +2155,7 @@ namespace Runtime {
       default:
 	break;
       }
-      CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+      // CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
       ReleaseRegister(bounds_holder);
 
       // skip first 2 integers (size and dimension) and all dimension indices
