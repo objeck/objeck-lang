@@ -757,7 +757,7 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
       holder = GetRegister();
       move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
     }
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
     
     // int value
     if(instr->GetType() == LOAD_LOCL_INT_VAR || 
@@ -1163,7 +1163,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
       move_mem_reg(left->GetOperand(), EBP, addr_holder->GetRegister());
     }
     dest = addr_holder->GetRegister();
-    // CheckNilDereference(dest);
+    CheckNilDereference(dest);
     
     delete left;
     left = NULL;
@@ -1285,7 +1285,7 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    // CheckNilDereference(holder->GetRegister());
+    CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
     
