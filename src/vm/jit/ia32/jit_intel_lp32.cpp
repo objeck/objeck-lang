@@ -757,7 +757,7 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
       holder = GetRegister();
       move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
     }
-    CheckNilDereference(holder->GetRegister());
+    // CheckNilDereference(holder->GetRegister());
     
     // int value
     if(instr->GetType() == LOAD_LOCL_INT_VAR || 
@@ -1163,7 +1163,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
       move_mem_reg(left->GetOperand(), EBP, addr_holder->GetRegister());
     }
     dest = addr_holder->GetRegister();
-    CheckNilDereference(dest);
+    // CheckNilDereference(dest);
     
     delete left;
     left = NULL;
@@ -1285,7 +1285,7 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
 
     RegisterHolder* holder = GetRegister();
     move_mem_reg(left->GetOperand(), EBP, holder->GetRegister());
-    CheckNilDereference(holder->GetRegister());
+    // CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     ReleaseRegister(holder);
     
@@ -2960,8 +2960,7 @@ void JitCompilerIA32::div_mem_reg(int32_t offset, Register src,
 
   // ============
   move_reg_reg(dest, EAX);
-  move_reg_reg(EAX, EDX);
-  shr_imm_reg(31, EDX);
+  AddMachineCode(0x99); // cdq
   
   // encode
   AddMachineCode(0xf7);
@@ -3019,9 +3018,8 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   
   // ============
   move_reg_reg(dest, EAX);
-  move_reg_reg(EAX, EDX);
-  shr_imm_reg(31, EDX);
-  
+  AddMachineCode(0x99); // cdq
+
   if(src != EAX && src != EDX) {
     // encode
     AddMachineCode(0xf7);
