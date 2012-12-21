@@ -2607,7 +2607,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     
   case SOCK_TCP_ACCEPT: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
+#ifdef _WIN32
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
     if(instance && (SOCKET)instance[0] > -1) {
+#endif
       SOCKET server = (SOCKET)instance[0];
       char client_address[SMALL_BUFFER_MAX + 1];
       int client_port;
@@ -2631,7 +2635,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
   case SOCK_TCP_CLOSE: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
+#ifdef _WIN32
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
     if(instance && (SOCKET)instance[0] > -1) {
+#endif
       SOCKET sock = (SOCKET)instance[0];
 
 #ifdef _DEBUG
@@ -2650,8 +2658,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(array && instance) {
       SOCKET sock = (SOCKET)instance[0];
-      char* data = (char*)(array + 3);      
+      char* data = (char*)(array + 3);    
+#ifdef _WIN32
+      if(sock != INVALID_SOCKET) {
+#else
       if(sock > -1) {
+#endif
         IPSocket::WriteBytes(data, strlen(data), sock);
       }
     }
@@ -2667,7 +2679,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
       SOCKET sock = (SOCKET)instance[0];
 
       int status;
+#ifdef _WIN32
+      if(sock != INVALID_SOCKET) {
+#else
       if(sock > -1) {
+#endif
 	int index = 0;
 	BYTE_VALUE value;
 	bool end_line = false;
@@ -2923,7 +2939,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     // ---------------- socket i/o ----------------
   case SOCK_TCP_IS_CONNECTED: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
+#ifdef _WIN32
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
     if(instance && (SOCKET)instance[0] > -1) {
+#endif
       PushInt(1, op_stack, stack_pos);
     } 
     else {
@@ -2950,8 +2970,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
-    
+
+#ifdef _WIN32    
+    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
     if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+#endif
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -2981,8 +3005,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
-    
+        
+#ifdef _WIN32
+    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
     if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+#endif
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
