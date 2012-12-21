@@ -17,7 +17,8 @@
 		};
 	}
 
-	function : Rref(matrix : Int[,]) ~ Int[,] {
+#	function : Rref(matrix : Int[,]) ~ Int[,] {
+	function : native : Rref(matrix : Int[,]) ~ Int[,] {
 		lead := 0;
 		sizes := matrix->Size();
 		rowCount := sizes[0];
