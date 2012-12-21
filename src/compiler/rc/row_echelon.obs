@@ -11,7 +11,7 @@
 		sizes := matrix->Size();
 		for(i := 0; i < sizes[0]; i += 1;) {
 			for(j := 0; j < sizes[1]; j += 1;) {
-				IO.Console->Print(matrix[i,j])->Print(",");
+				IO.Console->Print(matrix[i,j])->Print(",\t");
 			};
 			IO.Console->PrintLine();
 		};
