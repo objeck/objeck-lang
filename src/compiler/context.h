@@ -243,7 +243,6 @@ class MethodCallSelector {
 	match_index = i;
 	high_score = match_score;
       }
-      // cout << "@@@ method=" << matches[i]->GetMethod()->GetEncodedName() << ", score=" << match_score << endl;
     }
 
     if(match_index == -1) {
