@@ -3058,8 +3058,8 @@ void JitCompilerIA64::div_mem_reg(long offset, Register src,
 
   // ============
   move_reg_reg(dest, RAX);
-  move_reg_reg(RAX, RDX);
-  shr_imm_reg(31, RDX);
+  AddMachineCode(0x48); // cdq
+  AddMachineCode(0x99);
   
   // encode
   AddMachineCode(XB(src));
@@ -3118,8 +3118,8 @@ void JitCompilerIA64::div_reg_reg(Register src, Register dest, bool is_mod) {
   
   // ============
   move_reg_reg(dest, RAX);
-  move_reg_reg(RAX, RDX);
-  shr_imm_reg(31, RDX);
+  AddMachineCode(0x48); // cdq
+  AddMachineCode(0x99);
   
   if(src != RAX && src != RDX) {
     // encode
