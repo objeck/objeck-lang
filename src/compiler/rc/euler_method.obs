@@ -23,8 +23,8 @@ class EulerMethod {
 		return -1 * k * (t-TR);			
 	}
 	
-	function : Euler(f : (Float) ~ Float, y : Float, n : Int, h : Float) ~ Nil {
-#	function : native : Euler(f : (Float) ~ Float, y : Float, n : Int, h : Float) ~ Nil {
+#	function : Euler(f : (Float) ~ Float, y : Float, n : Int, h : Float) ~ Nil {
+	function : native : Euler(f : (Float) ~ Float, y : Float, n : Int, h : Float) ~ Nil {
 		for(x := 0; x<=n; x+=h;) {
 			IO.Console->Print("\t")->Print(x)->Print("\t")->PrintLine(y);
 			y += h * f(y);	
