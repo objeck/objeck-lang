@@ -176,14 +176,14 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
       dec_mem(0, stack_pos_holder->GetRegister());  
       move_mem_reg(0, stack_pos_holder->GetRegister(), 
 		   stack_pos_holder->GetRegister());
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
+      shl_imm_reg(2, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
 		  op_stack_holder->GetRegister());
       move_mem_reg(0, op_stack_holder->GetRegister(), 
 		   dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(sizeof(int32_t), op_stack_holder->GetRegister(), 
+      move_mem_reg(-sizeof(int32_t), op_stack_holder->GetRegister(), 
 		   dest_holder2->GetRegister());
       
       move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());
