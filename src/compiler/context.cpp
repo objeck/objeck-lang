@@ -3780,7 +3780,7 @@ bool ContextAnalyzer::Analyze()
     encoded_name += ")~";
     encoded_name += EncodeType(func_rtrn);
     // encode dimension
-    for(int i = 0; i < func_rtrn->GetDimension(); i++) {
+    for(int i = 0; func_rtrn && i < func_rtrn->GetDimension(); i++) {
       encoded_name += '*';
     }
 
