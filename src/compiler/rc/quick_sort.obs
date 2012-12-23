@@ -15,7 +15,7 @@
 		Sort(array, 0, size - 1);
 	}
 
-	function : Sort(array : Int[], low : Int, high : Int) ~ Nil {
+	function : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
 		i := low; j := high;
 		pivot := array[low + (high-low)/2];
 
