@@ -559,9 +559,9 @@ class LibraryClass {
     library = l;
     
     // force runtime linking of these classes
-    if(name == "Introspection.Class" || 
-       name == "Introspection.Method" || 
-       name == "Introspection.DataType") {
+    if(name == "System.Introspection.Class" || 
+       name == "System.Introspection.Method" || 
+       name == "System.Introspection.DataType") {
       was_called = true;
     }
     else {

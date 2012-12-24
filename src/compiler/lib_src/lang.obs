@@ -1414,7 +1414,7 @@ bundle System {
 }
 
 #------------ API ------------
-bundle API {	
+bundle System.API {	
   class DllProxy {
 		@name : String;
 		@ptr : Int;
@@ -1441,7 +1441,7 @@ bundle API {
 }
 
 #------------ Time ------------
-bundle Time {	
+bundle System.Time {	
   #~~
 	# Date class
 	~~#	
@@ -1599,7 +1599,7 @@ bundle Time {
 }
 
 #------------ Concurrency ------------
-bundle Concurrency {	
+bundle System.Concurrency {	
 	#~~
 	# System thread class
 	~~#	
@@ -1684,9 +1684,22 @@ bundle Concurrency {
 }
 
 #------------ I/O ------------
-bundle IO {
+bundle System.IO {
+	interface InputStream {
+		method : virtual : public : ReadByte() ~ Byte;
+		method : virtual : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
+		method : virtual : ReadString(buffer : Char[]) ~ Nil;
+	}
+	
+	interface OutputStream {
+		method : virtual : public : WriteByte(b : Int) ~ Bool;
+		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
+		method : virtual : public : WriteString(str : System.String) ~ Nil;
+		method : virtual : public : Flush() ~ Nil;
+	}
+	
  	#~~
-	# Returns the name
+	# Console class
 	~~#
 	class Console {
 		function : ReadString() ~ System.String {
@@ -2008,228 +2021,8 @@ bundle IO {
 			'\n'->ErrorLine();
 			return @console;
 		}
-
 	}
 	
-	class File {
-		@handle : Int;
-		@name : System.String;
-		
-		New(name : System.String) {
-			Parent();
-			@name := name;
-		}
-		
-		method : public : IsOpen() ~ Bool {
-			FILE_IS_OPEN;
-		}
-
-		method : public : Seek(p : Int) ~ Bool {
-			FILE_SEEK;
-		}
-		
-		method : public : Rewind() ~ Nil {
-			FILE_REWIND;
-		}
-
-		method : public : IsEOF() ~ Bool {
-			FILE_EOF;
-		}
-		
-		function : Size(n : System.String) ~ Int {
-			FILE_SIZE;
-		}		
-		
-		function : CreateTime(n : System.String) ~ Date {
-			return CreateTime(n, false);
-		}
-
-		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
-			day : Int; 
-			month : Int; 
-			year : Int; 
-			hours : Int; 
-			mins : Int; 
-			secs : Int; 
-
-			FILE_CREATE_TIME;
-
-			return Date->New(day, month, year, hours, mins, secs, gmt);
-		}		
-		
-		function : ModifiedTime(n : System.String) ~ Date {
-			return ModifiedTime(n, false);
-		}
-
-		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
-			day : Int; 
-			month : Int; 
-			year : Int; 
-			hours : Int; 
-			mins : Int; 
-			secs : Int; 
-
-			FILE_MODIFIED_TIME;
-
-			return Date->New(day, month, year, hours, mins, secs, gmt);
-		}		
-
-		function : AccessedTime(n : System.String) ~ Date {
-			return AccessedTime(n, false);
-		}
-
-		function : AccessedTime(n : System.String, gmt : Bool) ~ Date {
-      day : Int;
-      month : Int;
-      year : Int;
-      hours : Int;
-      mins : Int;
-      secs : Int;
-
-      FILE_ACCESSED_TIME;
-
-      return Date->New(day, month, year, hours, mins, secs, gmt);
-    }
-		
-		function : Delete(n : System.String) ~ Bool {
-			FILE_DELETE;
-		}
-		
-		function : Exists(n : System.String) ~ Bool {
-			FILE_EXISTS;
-		}
-		
-		function : Rename(o : System.String, n : System.String) ~ Bool {
-			FILE_RENAME;
-		}
-	}
-
-	interface InputStream {
-		method : virtual : public : ReadByte() ~ Byte;
-		method : virtual : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
-		method : virtual : ReadString(buffer : Char[]) ~ Nil;
-	}
-
-	class FileReader from File implements InputStream {
-		New(name : System.String) {
-			Parent(name);
-			FILE_OPEN_READ;
-		}	
-		
-		method : public : Close() ~ Nil {
-			FILE_CLOSE;
-		}
-
-		method : public : ReadByte() ~ Byte {
-			FILE_IN_BYTE;
-		}
-
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-			FILE_IN_BYTE_ARY;
-		}
-
-		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
-			FILE_IN_BYTE_ARY;
-		}
-
-		method : public : ReadString() ~ System.String {
-			buffer : Char[] := Char->New[256];
-			ReadString(buffer);
-			return System.String->New(buffer);
-		}
-
-		method : ReadString(buffer : Char[]) ~ Nil {
-			FILE_IN_STRING;
-		}
-		
-		function : ReadFile(name : String) ~ String {
-#			len := File->Size(name) - 1;
-			len := File->Size(name);
-			if(len > 0) {
-				buffer := Char->New[len];
-				in := FileReader->New(name);
-				if(in->IsOpen()) {
-					in->ReadBuffer(0, len, buffer);
-					in->Close();
-					
-					return String->New(buffer);
-				};
-			};
-	
-			return Nil;
-		}
-		
-		function : ReadBinaryFile(name : String) ~ Byte[] {
-			len := File->Size(name);
-			buffer := Byte->New[len];
-			in := FileReader->New(name);
-			if(in->IsOpen()) {
-				in->ReadBuffer(0, len, buffer);
-				in->Close();
-				
-				return buffer;
-			};
-			
-			return Nil;
-		}
-	}
-
-	interface OutputStream {
-		method : virtual : public : WriteByte(b : Int) ~ Bool;
-		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
-		method : virtual : public : WriteString(str : System.String) ~ Nil;
-		method : virtual : public : Flush() ~ Nil;
-	}
-	
-	class FileWriter from File implements OutputStream {
-		New(name : System.String) {
-			Parent(name);
-			FILE_OPEN_WRITE;
-		}	
-		
-		method : public : Close() ~ Nil {
-			FILE_CLOSE;
-		}
-
-		method : public : Flush() ~ Nil {
-			FILE_FLUSH;
-		}
-
-		method : public : WriteByte(b : Int) ~ Bool {
-			FILE_OUT_BYTE;
-		}
-
-		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
-			FILE_OUT_BYTE_ARY;
-		}
-
-		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
-			return WriteBuffer(0, buffer->Size(), buffer);
-		}
-		
-		method : public : WriteString(str : System.String) ~ Nil {
-			WriteString(str->ToCharArray());
-		}
-
-		method : WriteString(buffer : Char[]) ~ Nil {
-			FILE_OUT_STRING;
-		}
-	}
-	
-	class Directory {
-		function : Create(n : System.String) ~ Bool {
-			DIR_CREATE;
-		}
-		
-		function : Exists(n : System.String) ~ Bool {
-			DIR_EXISTS;
-		}
-		
-		function : List(n : System.String) ~ System.String[] {
-			DIR_LIST;
-		}
-	}
-
 	class Serializer  {
 		@buffer : Byte[];
 		@pos : Int;
@@ -2334,8 +2127,217 @@ bundle IO {
 	}
 }
 
-#------------ Socket ------------
-bundle Net {
+#------------ File I/O ------------
+bundle System.IO.File {	
+	class File {
+		@handle : Int;
+		@name : System.String;
+		
+		New(name : System.String) {
+			Parent();
+			@name := name;
+		}
+		
+		method : public : IsOpen() ~ Bool {
+			FILE_IS_OPEN;
+		}
+
+		method : public : Seek(p : Int) ~ Bool {
+			FILE_SEEK;
+		}
+		
+		method : public : Rewind() ~ Nil {
+			FILE_REWIND;
+		}
+
+		method : public : IsEOF() ~ Bool {
+			FILE_EOF;
+		}
+		
+		function : Size(n : System.String) ~ Int {
+			FILE_SIZE;
+		}		
+		
+		function : CreateTime(n : System.String) ~ Date {
+			return CreateTime(n, false);
+		}
+
+		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
+			day : Int; 
+			month : Int; 
+			year : Int; 
+			hours : Int; 
+			mins : Int; 
+			secs : Int; 
+
+			FILE_CREATE_TIME;
+
+			return Date->New(day, month, year, hours, mins, secs, gmt);
+		}		
+		
+		function : ModifiedTime(n : System.String) ~ Date {
+			return ModifiedTime(n, false);
+		}
+
+		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
+			day : Int; 
+			month : Int; 
+			year : Int; 
+			hours : Int; 
+			mins : Int; 
+			secs : Int; 
+
+			FILE_MODIFIED_TIME;
+
+			return Date->New(day, month, year, hours, mins, secs, gmt);
+		}		
+
+		function : AccessedTime(n : System.String) ~ Date {
+			return AccessedTime(n, false);
+		}
+
+		function : AccessedTime(n : System.String, gmt : Bool) ~ Date {
+			day : Int;
+			month : Int;
+			year : Int;
+			hours : Int;
+			mins : Int;
+			secs : Int;
+			
+			FILE_ACCESSED_TIME;
+			
+			return Date->New(day, month, year, hours, mins, secs, gmt);
+		}
+		
+		function : Delete(n : System.String) ~ Bool {
+			FILE_DELETE;
+		}
+		
+		function : Exists(n : System.String) ~ Bool {
+			FILE_EXISTS;
+		}
+		
+		function : Rename(o : System.String, n : System.String) ~ Bool {
+			FILE_RENAME;
+		}
+	}
+
+	class FileReader from File implements InputStream {
+		New(name : System.String) {
+			Parent(name);
+			FILE_OPEN_READ;
+		}	
+		
+		method : public : Close() ~ Nil {
+			FILE_CLOSE;
+		}
+
+		method : public : ReadByte() ~ Byte {
+			FILE_IN_BYTE;
+		}
+
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			FILE_IN_BYTE_ARY;
+		}
+
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			FILE_IN_BYTE_ARY;
+		}
+
+		method : public : ReadString() ~ System.String {
+			buffer : Char[] := Char->New[256];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
+			FILE_IN_STRING;
+		}
+		
+		function : ReadFile(name : String) ~ String {
+#			len := File->Size(name) - 1;
+			len := File->Size(name);
+			if(len > 0) {
+				buffer := Char->New[len];
+				in := FileReader->New(name);
+				if(in->IsOpen()) {
+					in->ReadBuffer(0, len, buffer);
+					in->Close();
+					
+					return String->New(buffer);
+				};
+			};
+	
+			return Nil;
+		}
+		
+		function : ReadBinaryFile(name : String) ~ Byte[] {
+			len := File->Size(name);
+			buffer := Byte->New[len];
+			in := FileReader->New(name);
+			if(in->IsOpen()) {
+				in->ReadBuffer(0, len, buffer);
+				in->Close();
+				
+				return buffer;
+			};
+			
+			return Nil;
+		}
+	}
+	
+	class FileWriter from File implements OutputStream {
+		New(name : System.String) {
+			Parent(name);
+			FILE_OPEN_WRITE;
+		}	
+		
+		method : public : Close() ~ Nil {
+			FILE_CLOSE;
+		}
+
+		method : public : Flush() ~ Nil {
+			FILE_FLUSH;
+		}
+
+		method : public : WriteByte(b : Int) ~ Bool {
+			FILE_OUT_BYTE;
+		}
+
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			FILE_OUT_BYTE_ARY;
+		}
+
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+		
+		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
+			FILE_OUT_STRING;
+		}
+	}
+	
+	class Directory {
+		function : Create(n : System.String) ~ Bool {
+			DIR_CREATE;
+		}
+		
+		function : Exists(n : System.String) ~ Bool {
+			DIR_EXISTS;
+		}
+		
+		function : List(n : System.String) ~ System.String[] {
+			DIR_LIST;
+		}
+	}
+}
+
+#------------ Socket I/O ------------
+bundle System.IO.Net {
 	class TCPSocket implements InputStream, OutputStream {
 		@handle : Int;
 		@address : System.String;
@@ -2434,7 +2436,7 @@ bundle Net {
 }
 
 #------------ Introspection ------------#
-bundle Introspection {
+bundle System.Introspection {
 	class Class {
 		@name : String;
 		@methods : Method[];
