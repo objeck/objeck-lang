@@ -1692,6 +1692,7 @@ bool ContextAnalyzer::Analyze()
 #ifndef _SYSTEM
       if(mthd_params.size() != expressions.size()) {
 	ProcessError(static_cast<Expression*>(method_call), "Invalid method call context");
+	return;
       }
 #endif
       
@@ -2276,7 +2277,7 @@ bool ContextAnalyzer::Analyze()
     Variable* variable = mutex->GetVariable();
     AnalyzeVariable(variable, depth + 1);
     if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
-      if(variable->GetEvalType()->GetClassName() != "Concurrency.ThreadMutex") {
+      if(variable->GetEvalType()->GetClassName() != "System.Concurrency.ThreadMutex") {
 	ProcessError(mutex, "Expected ThreadMutex type");
       }
     }

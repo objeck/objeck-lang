@@ -1,7 +1,7 @@
-use API;
-use Struct;
-use IO;
-use Net;
+use System.IO;
+use System.API;
+use Collection;
+use HTTP;
  
 bundle FastCgi {
 	interface Handler {

@@ -192,7 +192,7 @@ void Parser::ParseBundle(int depth)
   // uses
   vector<string> uses;
   uses.push_back("System");
-  uses.push_back("Introspection"); // always include the default system bundles
+  uses.push_back("System.Introspection"); // always include the default system bundles
   while(Match(TOKEN_USE_ID) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
     const string &ident = ParseBundleName();
