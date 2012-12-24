@@ -4,7 +4,7 @@
 # Copyright (c) 2012 Randy Hollines
 ~~#
 
-use Struct;
+use Collection;
 
 bundle RegEx {
 	# ---------- regular expression matcher ----------

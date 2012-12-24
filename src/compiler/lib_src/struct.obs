@@ -7,11 +7,10 @@
 # Map classes uses a red-black tree variant called an Arne Andersson tree
 ~~#	
 
-use IO; 
-use Struct; 
-use Net;
+use System.IO.Net; 
+use System.IO.File;
 
-bundle Struct {
+bundle Collection {
 	#~~~~~~~~~~~~~~~~~~~~~~~
 	# Vectors
 	~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1481,7 +1480,7 @@ bundle Struct {
 			return @value;
 		}
 
-		method : public : SetNext(next :  Struct.ListNode) ~ Nil {
+		method : public : SetNext(next :  Collection.ListNode) ~ Nil {
 			@next := next;
 		}
 	
@@ -1489,7 +1488,7 @@ bundle Struct {
 			return @next;
 		}
 
-		method : public : SetPrevious(previous :  Struct.ListNode) ~ Nil {
+		method : public : SetPrevious(previous :  Collection.ListNode) ~ Nil {
 			@previous := previous;
 		}
 	
@@ -1915,7 +1914,7 @@ bundle Struct {
 			@size := 0;	
 		}		
 
-		method : native : Skew(node :  Struct.TreeNode) ~ TreeNode {
+		method : native : Skew(node :  Collection.TreeNode) ~ TreeNode {
 			if(node = Nil | node->GetLeft() = Nil) {
 				return node;
 			};
@@ -1946,7 +1945,7 @@ bundle Struct {
 			@found := false;
 		}
 		
-		method : native : Split(node :  Struct.TreeNode) ~ TreeNode {
+		method : native : Split(node :  Collection.TreeNode) ~ TreeNode {
 			if(node = Nil | node->GetRight() = Nil | 
 					node->GetRight()->GetRight() = Nil) {
 				return node;
@@ -1973,7 +1972,7 @@ bundle Struct {
 			return result <> Nil;
 		}
 		
-		method : Find(key : Compare, node :  Struct.TreeNode) ~ Base {
+		method : Find(key : Compare, node :  Collection.TreeNode) ~ Base {
 			if(node <> Nil) {
 				if(key->Compare(node->GetKey()) < 0) {
 					return Find(key, node->GetLeft());
@@ -1989,14 +1988,14 @@ bundle Struct {
 			return Nil;
 		}
 		
-		method : public : GetKeys() ~  Struct.Vector {
+		method : public : GetKeys() ~  Collection.Vector {
 			vector : Vector := Vector->New();
 			GetKeys(@root, vector);
 
 			return vector;
 		}
 		
-		method : native : GetKeys(node :  Struct.TreeNode, vector :  Struct.Vector) ~ Nil {
+		method : native : GetKeys(node :  Collection.TreeNode, vector :  Collection.Vector) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetKeys(node->GetLeft(), vector);
@@ -2009,14 +2008,14 @@ bundle Struct {
 			};
 		}
 		
-		method : public : GetValues() ~  Struct.Vector {
+		method : public : GetValues() ~  Collection.Vector {
 			vector : Vector := Vector->New();
 			GetValues(@root, vector);
 
 			return vector;
 		}
 
-		method : native : GetValues(node :  Struct.TreeNode, vector :  Struct.Vector) ~ Nil {
+		method : native : GetValues(node :  Collection.TreeNode, vector :  Collection.Vector) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetValues(node->GetLeft(), vector);
@@ -2031,14 +2030,14 @@ bundle Struct {
 		
 		method : public : native : Insert(key : Compare, value : Base) ~ Nil {
 			if(@root = Nil) {
-				@root := Insert(key, value, Nil->As( Struct.TreeNode));
+				@root := Insert(key, value, Nil->As( Collection.TreeNode));
 			}
 			else {
 				@root := Insert(key, value, @root);
 			};
 		}
 		
-		method : native : Insert(key : Compare, value : Base, node :  Struct.TreeNode) ~  Struct.TreeNode {
+		method : native : Insert(key : Compare, value : Base, node :  Collection.TreeNode) ~  Collection.TreeNode {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1);
 				@size := @size + 1;
@@ -2068,7 +2067,7 @@ bundle Struct {
 			};
 		}
 		
-		method : native : Remove(key : Compare, node :  Struct.TreeNode) ~  Struct.TreeNode {
+		method : native : Remove(key : Compare, node :  Collection.TreeNode) ~  Collection.TreeNode {
 			if(node = Nil) {
 				@found := false;
 				return Nil;
@@ -2110,7 +2109,7 @@ bundle Struct {
 			return node;
 		}
 		
-		method : native : Predecessor(node :  Struct.TreeNode) ~ Compare {
+		method : native : Predecessor(node :  Collection.TreeNode) ~ Compare {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
@@ -2123,7 +2122,7 @@ bundle Struct {
 			return node->GetKey();
 		}
 
-		method : native : Successor(node :  Struct.TreeNode) ~ Compare {
+		method : native : Successor(node :  Collection.TreeNode) ~ Compare {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode := node->GetRight();
 				while(right->GetRight() <> Nil) {
@@ -2136,7 +2135,7 @@ bundle Struct {
 			return node->GetKey();
 		}
 
-		 method : native : DecreaseLevel(node :  Struct.TreeNode) ~ TreeNode {
+		 method : native : DecreaseLevel(node :  Collection.TreeNode) ~ TreeNode {
 			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
 				left : Int := node->GetLeft()->GetLevel();
 				right : Int := node->GetRight()->GetLevel();
@@ -2462,7 +2461,7 @@ bundle Struct {
 	
 }
 
-bundle Net {
+bundle HTTP {
 	#~~~~~~~~~~~~~~~~~~~~~~~
 	# HTTP Client
 	~~~~~~~~~~~~~~~~~~~~~~~#
