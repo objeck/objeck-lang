@@ -6,7 +6,7 @@ class MyThread from Thread {
 	}
 
 	method : public : Run(param : Base) ~ Nil {
-		param->As(System)->ToUpper();
+		param->As(String)->ToUpper();
 	}
 }
 
