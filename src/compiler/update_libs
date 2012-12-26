@@ -2,6 +2,7 @@
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest collect.obl
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest xml.obl
 ./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest json.obl
+./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest encrypt.obl
 ./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest odbc.obl
 ./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest regex.obl
 ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest fcgi.obl
