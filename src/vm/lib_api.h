@@ -118,14 +118,6 @@ double APITools_GetFloatArrayElement(long* array, int index) {
   return 0.0;
 }
 
-char* APITools_GetCharArray(long* array) {
-  if(array) {
-    return (char*)(array + 3);
-  }
-  
-  return NULL;
-}
-
 void APITools_SetFloatArrayElement(long* array, int index, double value) {
   if(!array) {
     return;
@@ -140,6 +132,37 @@ void APITools_SetFloatArrayElement(long* array, int index, double value) {
     memcpy(&src_array_ptr[index * 2], &value, sizeof(value));
 #endif
   }
+}
+
+char* APITools_GetCharArray(long* array) {
+  if(array) {
+    return (char*)(array + 3);
+  }
+  
+  return NULL;
+}
+
+int APITools_GetArraySize(long* array) {
+  if(array) {
+    return array[0];
+  }
+  
+  return -1;
+}
+
+long* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
+  // create character array
+  const long char_array_dim = 1;
+  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+						((char_array_dim + 2) *
+						 sizeof(long)),
+						BYTE_ARY_TYPE,
+						context.op_stack, *context.stack_pos, false);
+  char_array[0] = char_array_size + 1;
+  char_array[1] = char_array_dim;
+  char_array[2] = char_array_size;
+
+  return char_array;
 }
 
 // gets the requested function ID from an Object[]

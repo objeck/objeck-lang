@@ -7,7 +7,7 @@ bundle Encryption {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/odbc/odbc");
+				@lib_proxy := DllProxy->New("lib/openssl/openssl");
 			};
 
 			return @lib_proxy;
@@ -19,14 +19,15 @@ bundle Encryption {
 	~#
 	class Hash {
 		function : SHA256(input : Byte[]) ~ Byte[] {
-			if(@native_connection <> 0) {
+			if(input <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := IntHolder->New();
-				array_args[1] := input;
+				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayHolder->New(input);				
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("openssl_hash_sha256", array_args);
 				
-				return array_args[1]->As(Byte[]);
+				holder := array_args[0]->As(ByteArrayHolder);
+				return holder->Get();
 			};
 			
 			return Nil;
@@ -38,13 +39,6 @@ bundle Encryption {
 	~#
 	class Encrypt {
 		function : AES256(input : Byte[]) ~ Byte[] {
-			if(@native_connection <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@native_connection);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_disconnect", array_args);
-			};
-			
 			return Nil;
 		}
 	}
@@ -54,13 +48,6 @@ bundle Encryption {
 	~#
 	class Decrypt {
 		function : AES256(input : Byte[]) ~ Byte[] {
-			if(@native_connection <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@native_connection);
-				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_disconnect", array_args);
-			};
-			
 			return Nil;
 		}
 	}
