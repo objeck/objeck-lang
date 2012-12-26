@@ -1,0 +1,68 @@
+use Collection;
+use System.API;
+
+bundle Encryption {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/odbc/odbc");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	#~
+	# Hash class
+	~#
+	class Hash {
+		function : SHA256(input : Byte[]) ~ Byte[] {
+			if(@native_connection <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := input;
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("openssl_hash_sha256", array_args);
+				
+				return array_args[1]->As(Byte[]);
+			};
+			
+			return Nil;
+		}
+	}
+	
+	#~
+	# Encryption class
+	~#
+	class Encrypt {
+		function : AES256(input : Byte[]) ~ Byte[] {
+			if(@native_connection <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_disconnect", array_args);
+			};
+			
+			return Nil;
+		}
+	}
+	
+	#~
+	# Decryption class
+	~#
+	class Decrypt {
+		function : AES256(input : Byte[]) ~ Byte[] {
+			if(@native_connection <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_disconnect", array_args);
+			};
+			
+			return Nil;
+		}
+	}
+}
+
