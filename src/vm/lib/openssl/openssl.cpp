@@ -64,8 +64,14 @@ extern "C" {
     int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
     
-    // hash
-    unsigned char* hash = SHA256((unsigned char*)input, input_size, NULL);  
+    // hash the array values
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, input, input_size);
+    SHA256_Final(hash, &sha256);
+    
+    // copy hashed output
     long* output_byte_array = APITools_MakeCharArray(context, SHA256_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {

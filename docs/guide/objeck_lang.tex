@@ -807,15 +807,15 @@ instance level variables the path must start with
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
 data structures like vectors, lists and maps.  This section also provides 
-documentation on libraries that provided XML, JSON and regular expression 
+documentation on libraries that provided XML, JSON, encryption and regular expression 
 support. As new classes are added they'll be documented in this section.
 
 \vspace{5 mm}
 
 \includegraphics[scale=0.60]{../../images/classes.png}
 
-\subsection{Core}
-Class support for basic datatypes.
+\subsection{System}
+Class support for basic data types. These classes are located in the default `System' bundle.
 
 \subsubsection{Base}
 Base class for all objects.
@@ -1198,10 +1198,6 @@ Base class for all objects.
   \end{itemize}
 \end{itemize}
 
-
-\subsection{Holders}
-Collection holders for basic types.
-
 \subsubsection{IntHolder}
 Holds an interger type.
 \begin{itemize}
@@ -1273,7 +1269,7 @@ Holds an interger array.
 \end{itemize}
 
 \subsubsection{ByteArrayHolder}
-Holds an interger array.
+Holds a byte array.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1286,7 +1282,7 @@ Holds an interger array.
 \end{itemize}
 
 \subsubsection{CharArrayHolder}
-Holds an interger array.
+Holds a character array.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1298,10 +1294,661 @@ Holds an interger array.
   \end{itemize}
 \end{itemize}
 
- 
-\subsection{Collections}
+\subsubsection{Runtime}
+The Runtime class provides information about the runtime VM
+environment.
+\begin{itemize}
+\item \texttt{GetPlatform} - returns a string containing information
+  about the runtime environment
+  \begin{itemize}
+  \item function : GetPlatform() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetProperty} - returns the value for a given property
+  \begin{itemize}
+  \item function : GetProperty() \textasciitilde String
+  \end{itemize}
+\item \texttt{SetProperty} - sets the key/value pair for a given property. Properties can also be set via the `config.prop' configuration file, which must be located in the same directory as the VM.
+  \begin{itemize}
+  \item function : SetProperty(k : String, v : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{GetDate} - returns the current time
+  \begin{itemize}
+  \item function : public : GetDate() \textasciitilde Date
+  \end{itemize}
+\item \texttt{Exit} - exits the current running program
+  \begin{itemize}
+  \item function : public : Exit() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Copy} - copies a block of memory from one array to another
+  \begin{itemize}
+  \item function : Copy(dest : Char[], dest\_offset : Int, src : Char[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Float[], dest\_offset : Int, src : Float[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Base[], dest\_offset : Int, src : Base[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Compare[], dest\_offset : Int, src : Compare[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.Concurrency}
+Support for system concurrency. These classes are located in the default `System.concurrency' bundle.
+
+\subsubsection{Thread}
+The Thread class allows programmers to invoke a method in a separately
+running system thread.  This class is in the `System.Concurrency' bundle.  
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
+  thread's \texttt{Run()} method in a separate thread.
+  \begin{itemize}
+  \item method : public : Execute(param : System.Base) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Sleep} - Sleeps a given thread for a number of
+  milliseconds.
+  \begin{itemize}
+  \item function : Sleep(t : Int) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Join} - Joins a thread instance with the creating thread
+  \begin{itemize}
+  \item method : public : Join() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetRunID} - Returns running thread ID
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{Run} - Method that is executed by the new thread
+  \begin{itemize}
+  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{ThreadMutex}
+The ThreadMutex class is used for thread synchronization i.e. locking
+and unlocking running threads.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.IO}
+Supports system console I/O and general I/O interfaces.
+
+\subsubsection{InputStream}
+The InputStream interface defines input operations.
+\begin{itemize}
+\item \texttt{ReadByte} - reads a byte
+  \begin{itemize}
+  \item method : public : ReadByte() \textasciitilde Byte
+  \end{itemize}
+\item \texttt{ReadBuffer} - reads n number of bytes
+  \begin{itemize}
+  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
+    Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadString} - reads a line
+  \begin{itemize}
+  \item method : public : ReadString() \textasciitilde String
+  \end{itemize}
+\end{itemize}  
+
+\subsubsection{OutputStream}
+The OutputStream interface defines output operations.
+\begin{itemize}
+\item \texttt{WriteByte} - writes a byte
+  \begin{itemize}
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{WriteBuffer} - writes n number of bytes
+  \begin{itemize}
+  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
+    : Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{WriteString} - writes a string
+  \begin{itemize}
+  \item method : public : WriteString(s : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Flush} - flushes buffer
+  \begin{itemize}
+  \item method : public : Flush() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Console}
+The Console class allows programmers to read and write information to
+the system console.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{Print} - prints all basic types including
+  \texttt{String} and \texttt{Char[]} to standard out.
+  \begin{itemize}
+  \item function : Print(t : type) \textasciitilde ConsoleIO
+  \end{itemize}
+\item \texttt{PrintLine} - prints all basic types including
+  \texttt{String} and \texttt{Char[]} to standard out followed by a
+  newline.
+  \begin{itemize}
+  \item function : PrintLine(t : type) \textasciitilde ConsoleIO
+  \end{itemize}
+\item \texttt{WriteBuffer} - writes a buffer to standard out.
+  \begin{itemize}
+  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) \textasciitilde Bool
+  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{ReadString} - reads in a line of text as a
+  \texttt{Char[]} from standard in.
+  \begin{itemize}
+  \item method : public : ReadString() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Serializer}
+The Serializer class allows datatypes to be deflated into a byte
+array for storage or transmission.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Add} - deflates a datatype
+  \begin{itemize}
+  \item method : public : Write(b : Bool) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(i : Int) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(f : Float) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(o : Base) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Bool[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(b : Byte[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(c : Charl[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(i : Int[]) \textasciitilde Nil
+  \end{itemize}
+\begin{itemize}
+  \item method : public : Write(f : Float[]) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Serialize} - returns a byte stream of serialized data
+  \begin{itemize}
+  \item method : public : Serialize() \textasciitilde Byte[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Deserializer}
+The Deserializer class allows datatypes to be inflated from a byte
+array.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(b : Byte[])
+  \end{itemize}
+\item \texttt{ReadBool} - reads a boolean value
+  \begin{itemize}
+  \item method : public : ReadBool() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{ReadInt} - reads an integer value
+  \begin{itemize}
+  \item method : public : ReadInt() \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadFloat} - reads a float value
+  \begin{itemize}
+  \item method : public : ReadFloat() \textasciitilde Float
+  \end{itemize}
+\item \texttt{ReadObject} - reads an object
+  \begin{itemize}
+  \item method : public : ReadObject() \textasciitilde Float
+  \end{itemize}
+\item \texttt{ReadBoolArray} - reads a boolean array
+  \begin{itemize}
+  \item method : public : ReadBoolArray() \textasciitilde Bool[]
+  \end{itemize}
+\item \texttt{ReadByteArray} - reads a byte array
+  \begin{itemize}
+  \item method : public : ReadByteArray() \textasciitilde Byte[]
+  \end{itemize}
+\item \texttt{ReadCharArray} - reads a character array
+  \begin{itemize}
+  \item method : public : ReadCharArray() \textasciitilde Char[]
+  \end{itemize}
+\item \texttt{ReadIntArray} - reads an integer array
+  \begin{itemize}
+  \item method : public : ReadIntArray() \textasciitilde Byte[]
+  \end{itemize}
+\item \texttt{ReadFloatArray} - reads a float array
+  \begin{itemize}
+  \item method : public : ReadFloatArray() \textasciitilde Float[]
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.Time}
+Provides time and date operations.  These classes are located in the `System.Time'
+bundle.
+
+\subsubsection{Date}
+The Date class allows programmers gain access to the current system
+time.  This class is in the `Time' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \item New(gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
+  \end{itemize}
+\item \texttt{GetDay} - return the current day as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetDay() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetDayName} - return the current day of the week as a \texttt{String}.
+  \begin{itemize}
+  \item method : public : GetNameDay() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetMonth} - return the current month as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetMonth() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetMonthName} - return the current month as a \texttt{String}.
+  \begin{itemize}
+  \item method : public : GetMonthName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetYear} - return the current year as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetYear() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetHours() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetMinutes} - return the current minutes as an
+  \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetMinutes() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetSeconds} - return the current seconds as an
+  \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetSeconds() \textasciitilde Int
+  \end{itemize}
+\item \texttt{IsSavingsTime} - return true if daylights saving time,
+  false otherwise
+  \begin{itemize}
+  \item method : public : IsSavingsTime() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Add} - adds (or subtracts) time from a date
+  \begin{itemize}
+  \item method : public : AddDays(value : Int) \textasciitilde Nil
+  \item method : public : AddHours(value : Int) \textasciitilde Nil
+  \item method : public : AddMinutes(value : Int) \textasciitilde Nil
+  \item method : public : AddSeconds(value : Int) \textasciitilde Nil
+  \end{itemize}
+\item \texttt {ToString} - formats a date into a \texttt{String}.
+  \begin{itemize}
+  \item method : public : ToString() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Timer}
+The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Start} - Starts the timing
+  \begin{itemize}
+  \item method : public : Start() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Ends the timing
+  \begin{itemize}
+  \item method : public : End() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Returns the elapsed time in milliseconds
+  \begin{itemize}
+  \item  method : public : GetElapsedTime() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.Introspection}
+Supports the ability to access program information at runtime.
+
+\subsubsection{Class}
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(c : String)
+  \end{itemize}
+\item \texttt{IsLoaded} - returns true if this class has been loaded,
+  false otherwise
+  \begin{itemize}
+  \item method : public : IsLoaded() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Instance} - creates a new class instance and calls default constructor
+  \begin{itemize}
+  \item function : Instacne(name : String) \textasciitilde Base
+  \end{itemize}
+\item \texttt{GetName} - returns the name of the class
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetMethods} - returns an array of methods
+  \begin{itemize}
+  \item method : public : GetMethods() \textasciitilde GetMethods[]
+  \end{itemize}
+\item \texttt{GetMethodNumber} - returns the number of methods in the class
+  \begin{itemize}
+  \item method : public : GetMethodNumber() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Method}
+\begin{itemize}
+
+\item \texttt{GetClass} - returns class assoicated with the method
+  \begin{itemize}
+  \item method : public : GetClass() \textasciitilde Class
+  \end{itemize}
+
+\item \texttt{GetName} - returns the pretty name of the method
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+
+\item \texttt{GetParameters} - returns the datatypes of the parameters
+  \begin{itemize}
+  \item method : public : GetParameters() \textasciitilde DataType[]
+  \end{itemize}
+
+\item \texttt{GetReturn} - returns the datatype of the return
+  \begin{itemize}
+  \item method : public : GetReturn() \textasciitilde DataType
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{DataType}
+\begin{itemize}
+
+\item \texttt{GetType} - returns the type ID
+  \begin{itemize}
+  \item method : public : GetType() \textasciitilde TypeId
+  \end{itemize}
+
+\item \texttt{GetDimension} - returns dimensions of the datatype
+  \begin{itemize}
+  \item method : public : GetDimension() \textasciitilde Int
+  \end{itemize}
+
+\item \texttt{GetClassName} - returns string name of non-basic
+  objects, Nil otherwise
+  \begin{itemize}
+  \item method : public : GetClassName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TypeId}
+ \begin{itemize}
+ \item BOOL
+ \item BYTE
+ \item CHAR
+ \item INT
+ \item FLOAT
+ \item CLASS
+ \item FUNC
+ \end{itemize}
+
+\subsection{System.IO.File}
+Provides support for file and directory operations.
+
+\subsubsection{File}
+The File class allows programmers manipulate system files.  This class
+is in the `IO' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{IsOpen} - returns true if file is open.
+  \begin{itemize}
+  \item method : public : IsOpen() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{IsEOF} - returns true if the file pointer is at the EOF.
+  \begin{itemize}
+  \item method : public : IsEOF() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Seek} - seeks to a position in a file.
+  \begin{itemize}
+  \item method : public : Seek(p : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Rewind} - moves the file pointer to the beginning of a
+  file.
+  \begin{itemize}
+  \item method : public : Rewind() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Size} - returns the size of the file.
+  \begin{itemize}
+  \item function : Size(name : String) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Remove} - deletes a file.
+  \begin{itemize}
+  \item function : Remove(n : String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Exists} - returns true if the file exists.
+  \begin{itemize}
+  \item function : Exists(n : String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{CreateTime} - returns the time in which the file was created
+  \begin{itemize}
+  \item function : CreateTime(n : String) \textasciitilde Date
+  \item function : CreateTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
+\item \texttt{ModifiedTime} - returns the time in which the file was last modifed
+  \begin{itemize}
+  \item function : ModifiedTime(n : String) \textasciitilde Date
+  \item function : ModifiedTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
+\item \texttt{AccessedTime} - returns the time in which the file was last modifed
+  \begin{itemize}
+  \item function : AccessedTime(n : String) \textasciitilde Date
+  \item function : AccessedTime(n : String, gmt : Bool) \textasciitilde Date
+  \end{itemize}
+\item \texttt{Rename} - renames a file
+  \begin{itemize}
+  \item function : Rename(from : String, to : String) \textasciitilde Bool
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{FileReader}
+The FileReader is inherited from the File class implements InputStream and allows programmers
+read files.  This class is in the `IO' bundle.  The class supports the
+following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{Close} - closes a file.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{ReadByte} - reads a byte from a file.
+  \begin{itemize}
+  \item method : public : ReadByte() \textasciitilde Byte
+  \end{itemize}
+\item \texttt{ReadBinaryFile} - reads an entire file into a byte array.
+  \begin{itemize}
+  \item function : public : ReadBinaryFile(file : String) \textasciitilde Byte[]
+  \end{itemize}
+\item \texttt{ReadBuffer} - reads n number of bytes from a file.
+  \begin{itemize}
+  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
+    Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadString} - reads a line from a file.
+  \begin{itemize}
+  \item method : public : ReadString() \textasciitilde String
+  \end{itemize}
+\item \texttt{ReadFile} - reads an entire file.
+  \begin{itemize}
+  \item method : public : ReadFile() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{FileWriter}
+The FileReader is inherited from the File class implements OutputStream and allows programmers
+read files.  This class is in the `IO' bundle.  The class supports the
+following operations:
+\begin{itemize}
+\item \texttt{Close} - closes a file.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Flush} - flushes a file.
+  \begin{itemize}
+  \item method : public : Flush() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{WriteByte} - writes a byte to a file.
+  \begin{itemize}
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{WriteBuffer} - writes n number of bytes to a file.
+  \begin{itemize}
+  \item method : public : WriteBuffer(buffer : Byte[]) \textasciitilde Int
+  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
+    : Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{WriteString} - writes a string to a file.
+  \begin{itemize}
+  \item method : public : WriteString(s : String) \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Directory}
+The Directory class allows programmers manipulate file system
+directories.  This class is in the `IO' bundle.  The class supports
+the following operations:
+\begin{itemize}
+\item \texttt{Create} - creates a new directory.
+  \begin{itemize}
+  \item function : Create(n : String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Exists} - returns true if the directory exists.
+  \begin{itemize}
+  \item function : Exists(n : String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{List} - returns vector of file and directory names.
+  \begin{itemize}
+  \item function : List(n : String) \textasciitilde String[]
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.IO.Net}
+Provides support for TCP/IP client and server sockets.
+
+\subsubsection{TCPSocket}
+The TCPSocket class implements InputStream and OuptStream allows programmers connect to TCP/IP socket
+servers.  This class in the `Net' bundle.  The class supports the
+following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(address : String, port : Int)
+  \end{itemize}
+\item \texttt{IsOpen} - returns true if the socket is connected.
+  \begin{itemize}
+  \item method : public : IsOpen() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{GetAddress} - return the socket address
+  \begin{itemize}
+  \item method : public : GetAddress() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetPort} - return the socket port
+  \begin{itemize}
+  \item method : public : GetPort() \textasciitilde Int
+  \end{itemize}
+\item \texttt{Close} - closes a connected socket.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{WriteByte} - writes a byte to a socket.
+  \begin{itemize}
+  \item method : public : WriteByte(b : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{WriteBuffer} - writes n number of bytes to a socket.
+  \begin{itemize}
+  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
+    : Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{WriteString} - writes a string to a socket.
+  \begin{itemize}
+  \item method : public : WriteString(s : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{ReadByte} - reads a byte from a socket.
+  \begin{itemize}
+  \item method : public : ReadByte() \textasciitilde Byte
+  \end{itemize}
+\item \texttt{ReadBuffer} - reads n number of bytes from a socket.
+  \begin{itemize}
+  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
+    Byte[]) \textasciitilde Int
+  \end{itemize}
+\item \texttt{ReadString} - reads a line from a socket.
+  \begin{itemize}
+  \item method : public : ReadString() \textasciitilde String
+  \end{itemize}
+\item \texttt{HostName} - returns the host name
+  \begin{itemize}
+  \item function : HostName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TCPSocketServer}
+The TCPSocket class allows programmers develop TCP/IP socket servers. This class in the `Net' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(port : Int)
+  \end{itemize}
+\item \texttt{Listen} - listens for client connections
+  \begin{itemize}
+  \item method : public : Listen(backlog : Int) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Accept} - listens for client connections
+  \begin{itemize}
+  \item method : public : Accept() \textasciitilde TCPSocket
+  \end{itemize}
+\item \texttt{Close} - closes a connected socket.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsection{Collection}
 Provides support for basic data structures such as vectors, lists,
-hashes, maps, etc.  These classes are located in the `Struct'
+hashes, maps, etc.  These classes are located in the `Collection'
 bundle.
 \subsubsection{Compare}
 Interface for all objects that use comparative algorithms.
@@ -1726,654 +2373,8 @@ for larger sets):
   \end{itemize}
 \end{itemize}
 
-\subsection{System}
-These classes provide access to system resources such as threads,
-system time and standard I/O.
-
-\subsubsection{Runtime}
-The Runtime class provides information about the runtime VM
-environment.
-\begin{itemize}
-\item \texttt{GetPlatform} - returns a string containing information
-  about the runtime environment
-  \begin{itemize}
-  \item function : GetPlatform() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetProperty} - returns the value for a given property
-  \begin{itemize}
-  \item function : GetProperty() \textasciitilde String
-  \end{itemize}
-\item \texttt{SetProperty} - sets the key/value pair for a given property. Properties can also be set via the `config.prop' configuration file, which must be located in the same directory as the VM.
-  \begin{itemize}
-  \item function : SetProperty(k : String, v : String) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{GetDate} - returns the current time
-  \begin{itemize}
-  \item function : public : GetDate() \textasciitilde Date
-  \end{itemize}
-\item \texttt{Exit} - exits the current running program
-  \begin{itemize}
-  \item function : public : Exit() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Copy} - copies a block of memory from one array to another
-  \begin{itemize}
-  \item function : Copy(dest : Char[], dest\_offset : Int, src : Char[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Float[], dest\_offset : Int, src : Float[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Base[], dest\_offset : Int, src : Base[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Compare[], dest\_offset : Int, src : Compare[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Console}
-The Console class allows programmers to read and write information to
-the system console.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{Print} - prints all basic types including
-  \texttt{String} and \texttt{Char[]} to standard out.
-  \begin{itemize}
-  \item function : Print(t : type) \textasciitilde ConsoleIO
-  \end{itemize}
-\item \texttt{PrintLine} - prints all basic types including
-  \texttt{String} and \texttt{Char[]} to standard out followed by a
-  newline.
-  \begin{itemize}
-  \item function : PrintLine(t : type) \textasciitilde ConsoleIO
-  \end{itemize}
-\item \texttt{WriteBuffer} - writes a buffer to standard out.
-  \begin{itemize}
-  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) \textasciitilde Bool
-  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{ReadString} - reads in a line of text as a
-  \texttt{Char[]} from standard in.
-  \begin{itemize}
-  \item method : public : ReadString() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Thread}
-The Thread class allows programmers to invoke a method in a separately
-running system thread.  This class is in the `Concurrency' bundle.  
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(name : String)
-  \end{itemize}
-\item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
-  thread's \texttt{Run()} method in a separate thread.
-  \begin{itemize}
-  \item method : public : Execute(param : System.Base) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Sleep} - Sleeps a given thread for a number of
-  milliseconds.
-  \begin{itemize}
-  \item function : Sleep(t : Int) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Join} - Joins a thread instance with the creating thread
-  \begin{itemize}
-  \item method : public : Join() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{GetName} - Returns the name of the thread
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetRunID} - Returns running thread ID
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\item \texttt{Run} - Method that is executed by the new thread
-  \begin{itemize}
-  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{ThreadMutex}
-The ThreadMutex class is used for thread synchronization i.e. locking
-and unlocking running threads.
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(name : String)
-  \end{itemize}
-\item \texttt{GetName} - Returns the name of the thread
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Date}
-The Date class allows programmers gain access to the current system
-time.  This class is in the `Time' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \item New(gmt : Bool)
-  \item New(day : Int, month : Int, year : Int, gmt : Bool)
-  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
-  \end{itemize}
-\item \texttt{GetDay} - return the current day as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetDay() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetDayName} - return the current day of the week as a \texttt{String}.
-  \begin{itemize}
-  \item method : public : GetNameDay() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetMonth} - return the current month as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetMonth() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetMonthName} - return the current month as a \texttt{String}.
-  \begin{itemize}
-  \item method : public : GetMonthName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetYear} - return the current year as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetYear() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetHours() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetMinutes} - return the current minutes as an
-  \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetMinutes() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetSeconds} - return the current seconds as an
-  \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetSeconds() \textasciitilde Int
-  \end{itemize}
-\item \texttt{IsSavingsTime} - return true if daylights saving time,
-  false otherwise
-  \begin{itemize}
-  \item method : public : IsSavingsTime() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Add} - adds (or subtracts) time from a date
-  \begin{itemize}
-  \item method : public : AddDays(value : Int) \textasciitilde Nil
-  \item method : public : AddHours(value : Int) \textasciitilde Nil
-  \item method : public : AddMinutes(value : Int) \textasciitilde Nil
-  \item method : public : AddSeconds(value : Int) \textasciitilde Nil
-  \end{itemize}
-\item \texttt {ToString} - formats a date into a \texttt{String}.
-  \begin{itemize}
-  \item method : public : ToString() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Timer}
-The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \end{itemize}
-\item \texttt{Start} - Starts the timing
-  \begin{itemize}
-  \item method : public : Start() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{End} - Ends the timing
-  \begin{itemize}
-  \item method : public : End() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{End} - Returns the elapsed time in milliseconds
-  \begin{itemize}
-  \item  method : public : GetElapsedTime() \textasciitilde Int
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Serializer}
-The Serializer class allows datatypes to be deflated into a byte
-array for storage or transmission.  This class is in the `IO' bundle.  The class supports
-the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \end{itemize}
-\item \texttt{Add} - deflates a datatype
-  \begin{itemize}
-  \item method : public : Write(b : Bool) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(i : Int) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(f : Float) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(o : Base) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Bool[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Bool[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(b : Byte[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(c : Charl[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(i : Int[]) \textasciitilde Nil
-  \end{itemize}
-\begin{itemize}
-  \item method : public : Write(f : Float[]) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Serialize} - returns a byte stream of serialized data
-  \begin{itemize}
-  \item method : public : Serialize() \textasciitilde Byte[]
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Deserializer}
-The Deserializer class allows datatypes to be inflated from a byte
-array.  This class is in the `IO' bundle.  The class supports
-the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(b : Byte[])
-  \end{itemize}
-\item \texttt{ReadBool} - reads a boolean value
-  \begin{itemize}
-  \item method : public : ReadBool() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{ReadInt} - reads an integer value
-  \begin{itemize}
-  \item method : public : ReadInt() \textasciitilde Int
-  \end{itemize}
-\item \texttt{ReadFloat} - reads a float value
-  \begin{itemize}
-  \item method : public : ReadFloat() \textasciitilde Float
-  \end{itemize}
-\item \texttt{ReadObject} - reads an object
-  \begin{itemize}
-  \item method : public : ReadObject() \textasciitilde Float
-  \end{itemize}
-\item \texttt{ReadBoolArray} - reads a boolean array
-  \begin{itemize}
-  \item method : public : ReadBoolArray() \textasciitilde Bool[]
-  \end{itemize}
-\item \texttt{ReadByteArray} - reads a byte array
-  \begin{itemize}
-  \item method : public : ReadByteArray() \textasciitilde Byte[]
-  \end{itemize}
-\item \texttt{ReadCharArray} - reads a character array
-  \begin{itemize}
-  \item method : public : ReadCharArray() \textasciitilde Char[]
-  \end{itemize}
-\item \texttt{ReadIntArray} - reads an integer array
-  \begin{itemize}
-  \item method : public : ReadIntArray() \textasciitilde Byte[]
-  \end{itemize}
-\item \texttt{ReadFloatArray} - reads a float array
-  \begin{itemize}
-  \item method : public : ReadFloatArray() \textasciitilde Float[]
-  \end{itemize}
-\end{itemize}
-
-\subsection{Introspection}
-Supports the ability to access program information at runtime.
-
-\subsubsection{Class}
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(c : String)
-  \end{itemize}
-\item \texttt{IsLoaded} - returns true if this class has been loaded,
-  false otherwise
-  \begin{itemize}
-  \item method : public : IsLoaded() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Instance} - creates a new class instance and calls default constructor
-  \begin{itemize}
-  \item function : Instacne(name : String) \textasciitilde Base
-  \end{itemize}
-\item \texttt{GetName} - returns the name of the class
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetMethods} - returns an array of methods
-  \begin{itemize}
-  \item method : public : GetMethods() \textasciitilde GetMethods[]
-  \end{itemize}
-\item \texttt{GetMethodNumber} - returns the number of methods in the class
-  \begin{itemize}
-  \item method : public : GetMethodNumber() \textasciitilde Int
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Method}
-\begin{itemize}
-
-\item \texttt{GetClass} - returns class assoicated with the method
-  \begin{itemize}
-  \item method : public : GetClass() \textasciitilde Class
-  \end{itemize}
-
-\item \texttt{GetName} - returns the pretty name of the method
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-
-\item \texttt{GetParameters} - returns the datatypes of the parameters
-  \begin{itemize}
-  \item method : public : GetParameters() \textasciitilde DataType[]
-  \end{itemize}
-
-\item \texttt{GetReturn} - returns the datatype of the return
-  \begin{itemize}
-  \item method : public : GetReturn() \textasciitilde DataType
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{DataType}
-\begin{itemize}
-
-\item \texttt{GetType} - returns the type ID
-  \begin{itemize}
-  \item method : public : GetType() \textasciitilde TypeId
-  \end{itemize}
-
-\item \texttt{GetDimension} - returns dimensions of the datatype
-  \begin{itemize}
-  \item method : public : GetDimension() \textasciitilde Int
-  \end{itemize}
-
-\item \texttt{GetClassName} - returns string name of non-basic
-  objects, Nil otherwise
-  \begin{itemize}
-  \item method : public : GetClassName() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{TypeId}
- \begin{itemize}
- \item BOOL
- \item BYTE
- \item CHAR
- \item INT
- \item FLOAT
- \item CLASS
- \item FUNC
- \end{itemize}
-
-\subsection{Generic I/O}
-Provides support generic and buffered I/O operations.  
-
-\subsubsection{OutputStream}
-The OutputStream interface defines output operations.
-\begin{itemize}
-\item \texttt{WriteByte} - writes a byte
-  \begin{itemize}
-  \item method : public : WriteByte(b : Int) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{WriteBuffer} - writes n number of bytes
-  \begin{itemize}
-  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
-    : Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{WriteString} - writes a string
-  \begin{itemize}
-  \item method : public : WriteString(s : String) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Flush} - flushes buffer
-  \begin{itemize}
-  \item method : public : Flush() \textasciitilde Nil
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{InputStream}
-The InputStream interface defines input operations.
-\begin{itemize}
-\item \texttt{ReadByte} - reads a byte
-  \begin{itemize}
-  \item method : public : ReadByte() \textasciitilde Byte
-  \end{itemize}
-\item \texttt{ReadBuffer} - reads n number of bytes
-  \begin{itemize}
-  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
-    Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{ReadString} - reads a line
-  \begin{itemize}
-  \item method : public : ReadString() \textasciitilde String
-  \end{itemize}
-\end{itemize}  
-
-\subsection{Filesystem}
-Provides support for file and directory operations.
-
-\subsubsection{File}
-The File class allows programmers manipulate system files.  This class
-is in the `IO' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(name : String)
-  \end{itemize}
-\item \texttt{IsOpen} - returns true if file is open.
-  \begin{itemize}
-  \item method : public : IsOpen() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{IsEOF} - returns true if the file pointer is at the EOF.
-  \begin{itemize}
-  \item method : public : IsEOF() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Seek} - seeks to a position in a file.
-  \begin{itemize}
-  \item method : public : Seek(p : Int) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Rewind} - moves the file pointer to the beginning of a
-  file.
-  \begin{itemize}
-  \item method : public : Rewind() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Size} - returns the size of the file.
-  \begin{itemize}
-  \item function : Size(name : String) \textasciitilde Int
-  \end{itemize}
-\item \texttt{Remove} - deletes a file.
-  \begin{itemize}
-  \item function : Remove(n : String) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Exists} - returns true if the file exists.
-  \begin{itemize}
-  \item function : Exists(n : String) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{CreateTime} - returns the time in which the file was created
-  \begin{itemize}
-  \item function : CreateTime(n : String) \textasciitilde Date
-  \item function : CreateTime(n : String, gmt : Bool) \textasciitilde Date
-  \end{itemize}
-\item \texttt{ModifiedTime} - returns the time in which the file was last modifed
-  \begin{itemize}
-  \item function : ModifiedTime(n : String) \textasciitilde Date
-  \item function : ModifiedTime(n : String, gmt : Bool) \textasciitilde Date
-  \end{itemize}
-\item \texttt{AccessedTime} - returns the time in which the file was last modifed
-  \begin{itemize}
-  \item function : AccessedTime(n : String) \textasciitilde Date
-  \item function : AccessedTime(n : String, gmt : Bool) \textasciitilde Date
-  \end{itemize}
-\item \texttt{Rename} - renames a file
-  \begin{itemize}
-  \item function : Rename(from : String, to : String) \textasciitilde Bool
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{FileReader}
-The FileReader is inherited from the File class implements InputStream and allows programmers
-read files.  This class is in the `IO' bundle.  The class supports the
-following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(name : String)
-  \end{itemize}
-\item \texttt{Close} - closes a file.
-  \begin{itemize}
-  \item method : public : Close() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{ReadByte} - reads a byte from a file.
-  \begin{itemize}
-  \item method : public : ReadByte() \textasciitilde Byte
-  \end{itemize}
-\item \texttt{ReadBinaryFile} - reads an entire file into a byte array.
-  \begin{itemize}
-  \item function : public : ReadBinaryFile(file : String) \textasciitilde Byte[]
-  \end{itemize}
-\item \texttt{ReadBuffer} - reads n number of bytes from a file.
-  \begin{itemize}
-  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
-    Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{ReadString} - reads a line from a file.
-  \begin{itemize}
-  \item method : public : ReadString() \textasciitilde String
-  \end{itemize}
-\item \texttt{ReadFile} - reads an entire file.
-  \begin{itemize}
-  \item method : public : ReadFile() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{FileWriter}
-The FileReader is inherited from the File class implements OutputStream and allows programmers
-read files.  This class is in the `IO' bundle.  The class supports the
-following operations:
-\begin{itemize}
-\item \texttt{Close} - closes a file.
-  \begin{itemize}
-  \item method : public : Close() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{Flush} - flushes a file.
-  \begin{itemize}
-  \item method : public : Flush() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{WriteByte} - writes a byte to a file.
-  \begin{itemize}
-  \item method : public : WriteByte(b : Int) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{WriteBuffer} - writes n number of bytes to a file.
-  \begin{itemize}
-  \item method : public : WriteBuffer(buffer : Byte[]) \textasciitilde Int
-  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
-    : Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{WriteString} - writes a string to a file.
-  \begin{itemize}
-  \item method : public : WriteString(s : String) \textasciitilde Nil
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Directory}
-The Directory class allows programmers manipulate file system
-directories.  This class is in the `IO' bundle.  The class supports
-the following operations:
-\begin{itemize}
-\item \texttt{Create} - creates a new directory.
-  \begin{itemize}
-  \item function : Create(n : String) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Exists} - returns true if the directory exists.
-  \begin{itemize}
-  \item function : Exists(n : String) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{List} - returns vector of file and directory names.
-  \begin{itemize}
-  \item function : List(n : String) \textasciitilde String[]
-  \end{itemize}
-\end{itemize}
-
-\subsection{Networking}
-Provides support for TCP/IP client and server sockets as well as HTTP access.
-
-\subsubsection{TCPSocket}
-The TCPSocket class implements InputStream and OuptStream allows programmers connect to TCP/IP socket
-servers.  This class in the `Net' bundle.  The class supports the
-following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(address : String, port : Int)
-  \end{itemize}
-\item \texttt{IsOpen} - returns true if the socket is connected.
-  \begin{itemize}
-  \item method : public : IsOpen() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{GetAddress} - return the socket address
-  \begin{itemize}
-  \item method : public : GetAddress() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetPort} - return the socket port
-  \begin{itemize}
-  \item method : public : GetPort() \textasciitilde Int
-  \end{itemize}
-\item \texttt{Close} - closes a connected socket.
-  \begin{itemize}
-  \item method : public : Close() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{WriteByte} - writes a byte to a socket.
-  \begin{itemize}
-  \item method : public : WriteByte(b : Int) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{WriteBuffer} - writes n number of bytes to a socket.
-  \begin{itemize}
-  \item method : public : WriteBuffer(offset : Int, num : Int, buffer
-    : Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{WriteString} - writes a string to a socket.
-  \begin{itemize}
-  \item method : public : WriteString(s : String) \textasciitilde Nil
-  \end{itemize}
-\item \texttt{ReadByte} - reads a byte from a socket.
-  \begin{itemize}
-  \item method : public : ReadByte() \textasciitilde Byte
-  \end{itemize}
-\item \texttt{ReadBuffer} - reads n number of bytes from a socket.
-  \begin{itemize}
-  \item method : public : ReadBuffer(offset : Int, num : Int, buffer :
-    Byte[]) \textasciitilde Int
-  \end{itemize}
-\item \texttt{ReadString} - reads a line from a socket.
-  \begin{itemize}
-  \item method : public : ReadString() \textasciitilde String
-  \end{itemize}
-\item \texttt{HostName} - returns the host name
-  \begin{itemize}
-  \item function : HostName() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{TCPSocketServer}
-The TCPSocket class allows programmers develop TCP/IP socket servers. This class in the `Net' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(port : Int)
-  \end{itemize}
-\item \texttt{Listen} - listens for client connections
-  \begin{itemize}
-  \item method : public : Listen(backlog : Int) \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Accept} - listens for client connections
-  \begin{itemize}
-  \item method : public : Accept() \textasciitilde TCPSocket
-  \end{itemize}
-\item \texttt{Close} - closes a connected socket.
-  \begin{itemize}
-  \item method : public : Close() \textasciitilde Nil
-  \end{itemize}
-\end{itemize}
+\subsection{HTTP}
+These classes provide support for the HTTP and TAPAS web protocols.
 
 \subsubsection{HttpClient}
 The HttpClient class allows programmers access HTTP 1.1 websites.
@@ -2663,7 +2664,7 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \end{itemize}
 
-\subsection{Regular Expressions}
+\subsection{RegEx}
 \subsubsection{RegEx}
 The RegEx class provides support for regular expressions.  This class in the `RegEx' bundle:
 
