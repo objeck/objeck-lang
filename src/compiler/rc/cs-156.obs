@@ -1,5 +1,5 @@
-use IO;
-use Struct;
+use System.IO;
+use Collection;
 
 bundle Default {  
 	class Flights {
