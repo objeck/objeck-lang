@@ -1,4 +1,4 @@
-use IO;
+use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

@@ -1,4 +1,4 @@
-use IO;
+use System.IO;
 
 class Evolutionary {
 	target : static : String;

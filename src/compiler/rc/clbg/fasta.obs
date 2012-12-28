@@ -5,7 +5,7 @@
  modified by Randy Hollines
 ~#
 
-use IO;
+use System.IO;
 
 bundle Default {
 	class Fasta {
