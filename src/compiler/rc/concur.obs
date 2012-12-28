@@ -1,4 +1,4 @@
-use Concurrency;
+use System.Concurrency;
 
 class MyThread from Thread {
 	New(name : String) {
