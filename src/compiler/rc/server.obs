@@ -1,5 +1,5 @@
-use Net;
-use Concurrency;
+use System.IO.Net;
+use System.Concurrency;
 
 bundle Default {
 	class SocketServer {
