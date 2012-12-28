@@ -1,5 +1,5 @@
 use FastCgi;
-use IO;
+use System.IO;
 
 class FindName implements FastCgi.Handler {
 	function : Forward(req : Request, res : Response) ~ Nil {}

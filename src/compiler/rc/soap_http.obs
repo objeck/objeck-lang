@@ -1,6 +1,6 @@
 use Net;
 use XML;
-use Struct;
+use Collection;
 
 bundle Default {
   class HttpPostTest {
