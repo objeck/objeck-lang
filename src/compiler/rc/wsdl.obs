@@ -1,6 +1,6 @@
-use IO;
+use System.IO;
 use XML;
-use Struct;
+use Collection;
 
 bundle Default {
 	class Wsdl {
