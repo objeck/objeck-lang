@@ -1,5 +1,5 @@
 ﻿use JSON;
-use Net;
+use System.IO.Net;
 
 bundle Default {
 	class JsonWeb {
