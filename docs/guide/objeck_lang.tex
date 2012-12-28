@@ -24,7 +24,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that's part of v3.1.6.  For
+  functionality that's part of v3.1.7.  For
   additional information please refer to the
   \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck}, 
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
@@ -51,7 +51,7 @@ things. Features include:
 \item Cross platform (support for OS X, Linux and Windows)
 \item Concurrent runtime JIT support for Intel processors (x86 and x64)
 \item Multi-threaded memory management (garbage collector)
-\item Local optimizations and method inlining
+\item Local optimizations including method inlining
 \item Support for static libraries
 \item Command line debugger
 \end{itemize}
@@ -90,7 +90,7 @@ obc -src tests\hello.obs -dest hello.obe
 Here's a more advanced example of linking in two required class
 libraries to an executable.
 \begin{verbatim}
-obc -src examples\xml_parser.obs -lib struct.obl,xml.obl -dest a.obe
+obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
@@ -124,8 +124,7 @@ Now lets introduce the core features of the Objeck programming
 language.  \vspace{\baselineskip}
 
 Let's first start with a list of keywords that exist in language.
-These words are reserved for the language and may not be used as
-variable, class or enum identifiers.
+These words are reserved for the language and may not be used as identifiers.
 
 \begin{center}
   \begin{tabular}{ | c | c | c | c | c | }
@@ -177,9 +176,9 @@ Float->Pi()->PrintLine();
 \end{verbatim}
 
 \subsection{Variable Declarations}
-Variables can be declared for all of the basic types described above
-and for user defined objects. Variables can be declared anywhere in a
-program and are bound to traditional block scoping rules.  Variable
+Variables can be declared for all of the basic types (described above), 
+user defined objects and high-order functions. Variables can be declared 
+anywhere in a program and are bound to traditional block scoping rules.  Variable
 assignments can be made during a declaration or at any other point in
 a program. Variables may be declared as local, instance or class
 level scope.  Class level variables are declared using the
@@ -710,7 +709,7 @@ functions.  Data is passed between the two layers via
 \texttt{FloatHolder} classes respectively.  Please refer to the
 examples in the source code distribution for additional information.
 
-A native function signature looks likes like the following:
+A native function signature looks like the following:
 \begin{verbatim}
 #ifdef _WIN32
   __declspec(dllexport)
@@ -737,7 +736,7 @@ struct VMContext {
 
 The \texttt{lib\_api.h} header file also includes helper functions
 that allow programmers to access and set data that passed into the
-native C function.  The following functions are available: 
+native C function.  A subset of the available functions include the following:
 
 \begin{itemize}
 \item \begin{verbatim}APITools_GetFunctionValue\end{verbatim}
@@ -760,20 +759,12 @@ native C function.  The following functions are available:
 
 \section{Debugger}
 The Objeck compiler toolset contains a simple interactive read-only
-debugger, which allows programmers to inspect values within their
+debugger, which allows programmers to monitor the runtime behavior of their
 programs.  The debugger allows programmers to set breakpoints within
 methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
-\subsection{Starting the Debugger}
-The source program must be compiled with the \texttt{-debug} set. The
-command line debugger is started up running the \texttt{odb}
-executable. The \texttt{-exe} option must be present and specify the
-path to the executable.  The The \texttt{-src} option is optional and
-specifies the path to the program source.  Also note, to print
-instance level variables the path must start with
-\texttt{@self$\rightarrow$}.
 
 \subsection{Debugging Commands}
 \begin{center}
@@ -803,16 +794,25 @@ instance level variables the path must start with
   \end{tabular}
 \end{center}
 
+\subsection{Starting the Debugger}
+The source program must be compiled with the \texttt{-debug} set. The
+command line debugger is started up running the \texttt{odb}
+executable. The \texttt{-exe} option must be present and specify the
+path to the executable.  The The \texttt{-src} option is optional and
+specifies the path to the program source.  Also note, to print
+instance level variables the path must start with
+\texttt{@self$\rightarrow$}.
+
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
-data structures like vectors, lists and maps.  This section also provides 
-documentation on libraries that provided XML, JSON, encryption and regular expression 
-support. As new classes are added they'll be documented in this section.
+data structures like vectors, lists, queues, etc.  As new classes are 
+added they'll be documented in this section.  
+
+The diagram below outlines the available class bundles.
 
 \vspace{5 mm}
-
-\includegraphics{../../images/classes.png}
+\includegraphics[scale=0.60]{../../images/classes.png}
 
 \subsection{System}
 Class support for basic data types. These classes are located in the default `System' bundle.
@@ -1065,10 +1065,6 @@ Base class for all objects.
   given Character; -1 if not found
   \begin{itemize}
   \item method : public : native : Find(c : Char) \textasciitilde Int
-  \end{itemize}
-  \texttt{Find} - returns the index of the first occurrence of a given
-  Character; -1 if not found
-  \begin{itemize}
   \item method : public : native : Find(offset : Int, c : Char) \textasciitilde Int
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
@@ -1256,7 +1252,7 @@ Holds a float type.
 \end{itemize}
 
 \subsubsection{FloatArrayHolder}
-Holds an interger array.
+Holds a float array.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1330,7 +1326,7 @@ environment.
 \end{itemize}
 
 \subsection{System.Concurrency}
-Support for system concurrency. These classes are located in the default `System.concurrency' bundle.
+Support for system concurrency. These classes are located in the default `System.Concurrency' bundle.
 
 \subsubsection{Thread}
 The Thread class allows programmers to invoke a method in a separately
@@ -1383,7 +1379,7 @@ and unlocking running threads.
 \end{itemize}
 
 \subsection{System.IO}
-Supports system console I/O and general I/O interfaces.
+This bundle supports console I/O, object serialization and defines general I/O interfaces.
 
 \subsubsection{InputStream}
 The InputStream interface defines input operations.
@@ -1546,8 +1542,7 @@ the following operations:
 \end{itemize}
 
 \subsection{System.Time}
-Provides time and date operations.  These classes are located in the `System.Time'
-bundle.
+Provides time and date operations.
 
 \subsubsection{Date}
 The Date class allows programmers gain access to the current system
@@ -1634,7 +1629,7 @@ The Time class allows programmers perform simple timings.  This class is in the 
 \end{itemize}
 
 \subsection{System.Introspection}
-Supports the ability to access program information at runtime.
+Provides the ability to access program metadata at runtime.
 
 \subsubsection{Class}
 \begin{itemize}
@@ -1724,8 +1719,8 @@ Supports the ability to access program information at runtime.
 Provides support for file and directory operations.
 
 \subsubsection{File}
-The File class allows programmers manipulate system files.  This class
-is in the `IO' bundle.  The class supports the following operations:
+The File class allows programmers to access files.
+
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1783,8 +1778,7 @@ is in the `IO' bundle.  The class supports the following operations:
 
 \subsubsection{FileReader}
 The FileReader is inherited from the File class implements InputStream and allows programmers
-read files.  This class is in the `IO' bundle.  The class supports the
-following operations:
+read files.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1819,8 +1813,7 @@ following operations:
 
 \subsubsection{FileWriter}
 The FileReader is inherited from the File class implements OutputStream and allows programmers
-read files.  This class is in the `IO' bundle.  The class supports the
-following operations:
+to write to files.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{Close} - closes a file.
   \begin{itemize}
@@ -1848,8 +1841,7 @@ following operations:
 
 \subsubsection{Directory}
 The Directory class allows programmers manipulate file system
-directories.  This class is in the `IO' bundle.  The class supports
-the following operations:
+directories.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{Create} - creates a new directory.
   \begin{itemize}
@@ -1869,9 +1861,8 @@ the following operations:
 Provides support for TCP/IP client and server sockets.
 
 \subsubsection{TCPSocket}
-The TCPSocket class implements InputStream and OuptStream allows programmers connect to TCP/IP socket
-servers.  This class in the `Net' bundle.  The class supports the
-following operations:
+The TCPSocket class implements the InputStream and OuptStream interfaces and allows programmers to connect to TCP/IP socket
+servers.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1926,7 +1917,7 @@ following operations:
 \end{itemize}
 
 \subsubsection{TCPSocketServer}
-The TCPSocket class allows programmers develop TCP/IP socket servers. This class in the `Net' bundle.  The class supports the following operations:
+The TCPSocket class allows programmers develop TCP/IP socket servers. The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1948,8 +1939,8 @@ The TCPSocket class allows programmers develop TCP/IP socket servers. This class
 
 \subsection{Collection}
 Provides support for basic data structures such as vectors, lists,
-hashes, maps, etc.  These classes are located in the `Collection'
-bundle.
+hashes, maps, etc.
+
 \subsubsection{Compare}
 Interface for all objects that use comparative algorithms.
 \begin{itemize}
@@ -2374,11 +2365,10 @@ for larger sets):
 \end{itemize}
 
 \subsection{HTTP}
-These classes provide support for the HTTP and TAPAS web protocols.
+These classes provide support for the HTTP and HTTPS web protocols.
 
 \subsubsection{HttpClient}
-The HttpClient class allows programmers access HTTP 1.1 websites.
-This class in the `Net' bundle:
+The HttpClient class allows programmers access HTTP servers.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -2422,7 +2412,7 @@ This class in the `Net' bundle:
 \end{itemize}
 
 \subsection{JSON}
-These classes provide support for JSON parsing.
+These bundle provides for JSON parsing and document creation.
 
 \subsubsection{JSONParser}
 The JSONParser class allows programmers to parse and search JSON documents.
@@ -2482,7 +2472,7 @@ JSON element that contains a root value or references to nested elements (i.e. a
 \end{itemize}
 
 \subsection{XML}
-These classes provide support for XML parsing and document creation.
+These bundle provides support for XML parsing and document creation.
 
 \subsubsection{XMLParser}
 The XMLParser class allows programmers to parse and search XML
@@ -2665,8 +2655,10 @@ DOM. This class in the `XML' bundle:
 \end{itemize}
 
 \subsection{RegEx}
+Support for regular expressions.
+
 \subsubsection{RegEx}
-The RegEx class provides support for regular expressions.  This class in the `RegEx' bundle:
+The RegEx class provides support for regular expressions parsing.
 
 \begin{itemize}
 \item \textit{Expressions}
@@ -2763,11 +2755,13 @@ Demonstrates the use of arrays.
 \begin{verbatim}
 class Transpose {
   function : Main(args : String[]) ~ Nil {
-    input := [[1, 1, 1, 1]
+    input := [
+      [1, 1, 1, 1]
       [2, 4, 8, 16]
       [3, 9, 27, 81]
       [4, 16, 64, 256]
-      [5, 25, 125, 625]];
+      [5, 25, 125, 625]
+    ];
     dim := input->Size();
 
     output := Int->New[dim[0],dim[1]];
@@ -2798,7 +2792,7 @@ Demonstrates HTTP access.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-use Struct;
+use Collection;
 
 class HttpTest {
   function : Main(args : String[]) ~ Nil {
@@ -2819,7 +2813,7 @@ Demonstrates simple XML parsing.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-use IO;
+use System.IO;
 use XML;
 
 class Test {
@@ -2883,8 +2877,8 @@ Demonstrates usage of server sockets and threads.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
-use Net;
-use Concurrency;
+use System.IO.Net;
+use System.Concurrency;
  
 bundle Default {
   class SocketServer {
@@ -2925,8 +2919,8 @@ bundle Default {
 
 \newpage
 
-\section{Appendix A: Example Debugging Session}
-\subsection{Sample Source}
+\section{Appendix A: Sample Debugging Session}
+\subsection{Source for Example}
 \begin{verbatim}
 bundle Default {
   class Bar {
@@ -3056,10 +3050,10 @@ generates an abstract parser tree, which is passed to the Contextual
 Analyser for validation.
 
 \subsubsection{Contextual Analyser}
-The Contextual Analyser is responsible for ensuring that a source
-program is valid.  In addition, the context analyser also creates
+The Contextual Analyzer is responsible for ensuring that a source
+program is valid.  In addition, the context analyzer also creates
 relationships between contextually resolved entities (i.e. methods
-$\longleftrightarrow$ method calls).  The analyser accepts an abstract
+$\longleftrightarrow$ method calls).  The analyzer accepts an abstract
 parser tree and shared libraries as input and produces a decorated
 parse tree as output.  The decorated parse tree is then passed to the
 Intermediate Code Generator for the production of VM instructions.
@@ -3079,8 +3073,8 @@ component, which writes it to a file.
 The language VM is written in C/C++ and was designed to be highly
 portable.  The VM makes heavy use of operating system specific APIs
 (i.e. WIN32 and POSIX) but does so in an abstracted manner.  The JIT
-compiler is targeted to produce machine code for the IA-32 and AMD64
-(future) hardware architectures.
+compiler is targeted to produce machine code for the IA-32 and AMD64 
+hardware architectures.
 
 \subsubsection{Loader}
 The loader component allows the VM to read target code structures such
@@ -3098,27 +3092,24 @@ calculations.  The call stack is used to manage function/method calls
 and the states between those calls.
 
 \subsubsection{JIT Compiler}
-The JIT compiler translates stack based VM instruction into processor
-specific machine code (i.e. IA-32).  The JIT compiler is evoked by the
-interpreter and methods are translated in a separate execution thread.
-This process allow methods to be executed concurrently in an
-interpreted manner while they are being compiled into machine code.
-Note, methods are only converted into machine code once.
+The JIT compiler translates stack based VM instructions into processor
+specific machine code (i.e. IA-32 and AMD64).  The JIT compiler is evoked by the
+interpreter and methods are translated into machine code and cached for 
+subsequent calls.  
 
 \subsubsection{Memory Manager}
 The Memory Manager component allows the runtime system to manage the
 user allocation/deallocation of heap memory.  The memory mangers
-implementes a multi-thread ``mark and sweep'' algorithm.  The marking
+implements a multi-thread ``mark and sweep'' algorithm.  The marking
 stage of the process is multi-thread, such that, each root in scanned
 in a separate thread.  The sweeping stage is done in a single thread
-since the data structures that are needed to manage the state of the
-running program are modified.
+since runtime structures are modified.
 
 \section{Appendix C: VM Instruction Set}
 The appendix below lists the types of stack instructions that are
 executed by the Objeck VM.  The VM was designed to be portable and
 language independent.  Early development versions of the VM included
-an inline assembler, which may be re-added in future releases.
+an inline assembler, which may be re-added in a future release.
 
 \begin{center}
   \begin{tabular}{| l | l | p{6 cm} |}
