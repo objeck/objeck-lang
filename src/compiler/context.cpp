@@ -1198,6 +1198,12 @@ bool ContextAnalyzer::Analyze()
 	}
 	type = expression->GetEvalType();	
       }
+      else if(expression->GetExpressionType() == VAR_EXPR) {	
+	if(static_cast<Variable*>(expression)->GetIndices()) {
+	  ProcessError(expression, "Unable to make a method call from an indexed array element");
+	  return false;
+	}
+      }
       else {
 	type = expression->GetCastType();
       }
@@ -3623,8 +3629,8 @@ bool ContextAnalyzer::Analyze()
       }
     }
     else {
-      ProcessError(expression, "Invalid class or enum");
-    }
+      ProcessError(expression, "Invalid class, enum or method call context");
+    } 
   }
 
   /****************************

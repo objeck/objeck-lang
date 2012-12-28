@@ -38,7 +38,19 @@ bundle Encryption {
 	# Encryption class
 	~#
 	class Encrypt {
-		function : AES256(input : Byte[]) ~ Byte[] {
+		function : AES256(key : Byte[], input : Byte[]) ~ Byte[] {
+			if(key <> Nil & input <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayHolder->New(key);
+				array_args[2] := ByteArrayHolder->New(input);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("openssl_encrypt_aes256", array_args);
+				
+				holder := array_args[0]->As(ByteArrayHolder);
+				return holder->Get();
+			};
+			
 			return Nil;
 		}
 	}

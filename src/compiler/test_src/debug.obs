@@ -1,13 +1,32 @@
 ﻿class RowEchelon {
 	function : Main(args : String[]) ~ Nil {
+#~
 		in := "Rosetta code"->ToByteArray();
 #		in := Byte->New[3];
+#		out := Encryption.Hash->SHA256(Nil->As(Byte[]));
 		out := Encryption.Hash->SHA256(in);
 
-		a  := out[1]->As(Int);
-		a->PrintLine();
+		if(out <> Nil) {
+			a  := out[1]->As(Int);
+			a->PrintLine();
 
-		b := out[16]->As(Int);
-		b->PrintLine();
-	}
+			b := out[16]->As(Int);
+			b->PrintLine();
+		};
+~#
+			key := "Hello World!"->ToByteArray();
+			in := "Rosetta code"->ToByteArray();
+			out := Encryption.Encrypt->AES256(key, in);
+
+			a := out[1]->As(Int);
+			a->PrintLine();
+
+			a := out[8]->As(Int);
+			a->PrintLine();
+
+#~
+			out[1]->As(IntHolder)->Get()->PrintLine();
+			out[8]->As(IntHolder)->Get()->PrintLine();
+~#
+	}	
 }
