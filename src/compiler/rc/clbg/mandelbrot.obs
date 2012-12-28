@@ -10,7 +10,7 @@
 ~#
 
 
-use Concurrency;
+use System.Concurrency;
 
 bundle Default {
 	class MandelBrot {
