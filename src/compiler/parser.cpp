@@ -1571,12 +1571,6 @@ Statement* Parser::ParseStatement(int depth)
       NextToken();
       break;   
       
-    case SOCK_TCP_SSL_HOST_NAME:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-							       instructions::SOCK_TCP_SSL_HOST_NAME);
-      NextToken();
-      break;
-      
     case SERL_INT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
 							       instructions::SERL_INT);
