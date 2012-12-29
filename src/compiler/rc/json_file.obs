@@ -4,7 +4,7 @@ bundle Default {
 	class Json {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() = 1) {
-				input := IO.FileReader->ReadFile(args[0]);
+				input := IO.File.FileReader->ReadFile(args[0]);
 				if(input <> Nil) {
 					parser := JSONParser->New(input);
 					root := parser->Parse();

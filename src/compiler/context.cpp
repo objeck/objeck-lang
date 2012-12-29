@@ -1203,6 +1203,7 @@ bool ContextAnalyzer::Analyze()
 	  ProcessError(expression, "Unable to make a method call from an indexed array element");
 	  return false;
 	}
+	type = expression->GetCastType();
       }
       else {
 	type = expression->GetCastType();

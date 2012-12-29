@@ -1,4 +1,5 @@
 use System.IO;
+use System.IO.File;
 use XML;
 
 bundle Default {
