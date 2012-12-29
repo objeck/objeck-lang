@@ -231,7 +231,6 @@ class IPSocket {
   static char ReadByte(SOCKET sock, int &status) {
     char value;
     status = recv(sock, &value, 1, 0);
-
     return value;
   }
 
@@ -261,6 +260,11 @@ class IPSecureSocket {
     BIO_get_ssl(bio, &ssl);
     SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
     string ssl_address = address;
+    if(ssl_address.size() < 1 || port < 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }    
     ssl_address += ":";
     ssl_address += IntToString(port);
     BIO_set_conn_hostname(bio, ssl_address.c_str());
@@ -281,18 +285,21 @@ class IPSecureSocket {
   }
   
   static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
+    BIO_write(bio, &value, 1);
   }
 
   static int WriteBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return -1;
+    return BIO_write(bio, values, len);
   }
 
   static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
-    return '\0';
+    char value;
+    status = BIO_read(bio, &value, 1);
+    return value;
   }
-
+  
   static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return -1;
+    return BIO_read(bio, values, len);
   }
   
   static void Close(SSL_CTX* ctx, BIO* bio) {
