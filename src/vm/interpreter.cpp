@@ -2767,24 +2767,20 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 #endif
     
     IPSecureSocket::Close(ctx, bio);    
-    instance[0] = 0;
-    instance[1] = 0;
+    instance[0] = instance[1] = instance[2] = 0;
+
   }
     break;
     
-    /*
   case SOCK_TCP_SSL_OUT_STRING: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(array && instance) {
-      SOCKET sock = (SOCKET)instance[0];
-      char* data = (char*)(array + 3);    
-#ifdef _WIN32
-      if(sock != INVALID_SOCKET) {
-#else
-      if(sock > -1) {
-#endif
-        IPSecureSocket::WriteBytes(data, strlen(data), sock);
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];      
+      char* data = (char*)(array + 3);
+      if(instance[2]) {
+        IPSecureSocket::WriteBytes(data, strlen(data), ctx, bio);
       }
     }
   }
@@ -2796,19 +2792,15 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(array && instance) {
       char* buffer = (char*)(array + 3);
       const long num = array[0] - 1;
-      SOCKET sock = (SOCKET)instance[0];
-
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1]; 
       int status;
-#ifdef _WIN32
-      if(sock != INVALID_SOCKET) {
-#else
-      if(sock > -1) {
-#endif
+      if(instance[2]) {
 	int index = 0;
 	BYTE_VALUE value;
 	bool end_line = false;
 	do {
-	  value = IPSecureSocket::ReadByte(sock, status);
+	  value = IPSecureSocket::ReadByte(ctx, bio, status);
 	  if(value != '\r' && value != '\n' && index < num && status > 0) {
 	    buffer[index++] = value;
 	  }
@@ -2820,13 +2812,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
 	// assume LF
 	if(value == '\r') {
-	  IPSecureSocket::ReadByte(sock, status);
+	  IPSecureSocket::ReadByte(ctx, bio, status);
 	}
       }
     }
   }
     break;
-    */
 
 
 
@@ -3194,13 +3185,14 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
 
 
 
-    // ---------------- socket i/o ----------------
+    // ---------------- secure socket i/o ----------------
   case SOCK_TCP_SSL_IN_BYTE: {
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(instance) {
-      SOCKET sock = (SOCKET)instance[0];
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];      
       int status;
-      PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
+      PushInt(IPSecureSocket::ReadByte(ctx, bio, status), op_stack, stack_pos);
     }
     else {
       PushInt(0, op_stack, stack_pos);
@@ -3214,14 +3206,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
 
-#ifdef _WIN32    
-    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-      SOCKET sock = (SOCKET)instance[0];
+    if(array && instance && instance[2] && offset + num < array[0]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
       char* buffer = (char*)(array + 3);
-      PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
+      PushInt(IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
     }
     else {
       PushInt(-1, op_stack, stack_pos);
@@ -3233,8 +3222,9 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     long value = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(instance) {
-      SOCKET sock = (SOCKET)instance[0];
-      IPSocket::WriteByte((char)value, sock);
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      IPSecureSocket::WriteByte((char)value, ctx, bio);
       PushInt(1, op_stack, stack_pos);
     }
     else {
@@ -3248,15 +3238,12 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
-        
-#ifdef _WIN32
-    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-      SOCKET sock = (SOCKET)instance[0];
+    
+    if(array && instance && instance[2] && offset + num < array[0]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
       char* buffer = (char*)(array + 3);
-      PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
+      PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
     } 
     else {
       PushInt(-1, op_stack, stack_pos);
