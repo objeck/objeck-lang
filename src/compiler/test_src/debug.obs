@@ -2,8 +2,6 @@
 	function : Main(args : String[]) ~ Nil {
 #~
 		in := "Rosetta code"->ToByteArray();
-#		in := Byte->New[3];
-#		out := Encryption.Hash->SHA256(Nil->As(Byte[]));
 		out := Encryption.Hash->SHA256(in);
 
 		if(out <> Nil) {
@@ -24,9 +22,18 @@
 			a := out[8]->As(Int);
 			a->PrintLine();
 
-#~
-			out[1]->As(IntHolder)->Get()->PrintLine();
-			out[8]->As(IntHolder)->Get()->PrintLine();
-~#
+			out2 := Encryption.Decrypt->AES256(key, out);
+
+			c := out2[0]->As(Char);
+			c->PrintLine();
+
+			c := out2[1]->As(Char);
+			c->PrintLine();
+
+			c := out2[8]->As(Char);
+			c->PrintLine();
+
+			out3 := String->New(out2);
+			out3->PrintLine();
 	}	
 }

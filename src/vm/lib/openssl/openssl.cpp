@@ -56,23 +56,24 @@ extern "C" {
   }
   
   //
-  // set a date for a prepared statement
+  // SHA-256 hash
   //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
   void openssl_hash_sha256(VMContext& context) {
+    // get parameters
     long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
     
-    // hash the array values
+    // hash 
     unsigned char output[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, input, input_size);
     SHA256_Final(output, &sha256);
-    
+
     // copy output
     long* output_byte_array = APITools_MakeCharArray(context, SHA256_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
@@ -84,17 +85,23 @@ extern "C" {
     output_holder[0] = (long)output_byte_array;   
   }
 
+  //
+  // AES-256 encryption
+  //
   void openssl_encrypt_aes256(VMContext& context) {
+    // get parameters
     long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
-    int key_size =  APITools_GetArraySize(key_array) - 1;
+    const int key_size =  APITools_GetArraySize(key_array) - 1;
     const unsigned char* key =  (unsigned char*)APITools_GetCharArray(key_array);
     
     long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
-    int input_size =  APITools_GetArraySize(input_array) - 1;
+    const int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
-
-    unsigned char* salt = NULL; // TODO ?
-
+    
+    // TODO: add salt
+    unsigned char* salt = NULL;
+    
+    // encrypt
     EVP_CIPHER_CTX ctx;
     unsigned char iv[32];
     unsigned char key_out[32];
@@ -104,16 +111,31 @@ extern "C" {
       return;
     }
     
-    // encrypt
     int output_size = input_size + AES_BLOCK_SIZE;     
-    unsigned char* output = (unsigned char*)malloc(output_size);
-    
+    unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));    
     EVP_CIPHER_CTX_init(&ctx);
-    EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-    EVP_EncryptUpdate(&ctx, output, &output_size, input, input_size);
+    if(!EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      free(output);
+      output = NULL;
+      return;
+    }
+    
+    if(!EVP_EncryptUpdate(&ctx, output, &output_size, input, input_size)) {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      free(output);
+      output = NULL;
+      return;
+    }
     
     int final_size;
-    EVP_EncryptFinal_ex(&ctx, output + output_size, &final_size);
+    if(!EVP_EncryptFinal_ex(&ctx, output + output_size, &final_size)) {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      free(output);
+      output = NULL;
+      return;
+    }
+    
     EVP_CIPHER_CTX_cleanup(&ctx);
     
     // copy output
@@ -130,46 +152,69 @@ extern "C" {
     output_holder[0] = (long)output_byte_array;    
   }
   
-  /*
-    
   //
-  // gets a string from a result set
+  // AES-256 decryption
   //
-#ifdef _WIN32
-  __declspec(dllexport) 
-#endif
-  void odbc_result_get_varchar_by_id(VMContext& context) {
-    long i = APITools_GetIntValue(context, 2);
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-    map<const string, int>* names = (map<const string, int>*)APITools_GetIntValue(context, 4);
+  void openssl_decrypt_aes256(VMContext& context) {
+    // get parameters
+    long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    const int key_size =  APITools_GetArraySize(key_array) - 1;
+    const unsigned char* key =  (unsigned char*)APITools_GetCharArray(key_array);
     
-#ifdef _DEBUG
-    cout << "### get_varchar_by_id: stmt=" << stmt << ", column=" << i 
-	 << ", max=" << (long)names->size() << " ###" << endl;
-#endif  
+    long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
+    const int input_size =  APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
     
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
-      APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, NULL);
-      return;
-    }
-
-    SQLLEN is_null;
-    char value[VARCHAR_MAX];
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
-				  VARCHAR_MAX, &is_null);
-    if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      APITools_SetStringValue(context, 1, value);
-#ifdef _DEBUG
-      cout << "  " << value << endl;
-#endif
+    // TODO: add salt
+    unsigned char* salt = NULL;
+    
+    // decrypt
+    EVP_CIPHER_CTX ctx;
+    unsigned char iv[32];
+    unsigned char key_out[32];
+    int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key, key_size, 8, key_out, iv);
+    if (result != 32) {
+      EVP_CIPHER_CTX_cleanup(&ctx);
       return;
     }
     
-    APITools_SetIntValue(context, 0, 0);
-    APITools_SetObjectValue(context, 1, NULL);
-  }
+    EVP_CIPHER_CTX_init(&ctx);
+    
+    if(!EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      return;
+    }
+    
+    int output_size = input_size + AES_BLOCK_SIZE;   
+    unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));
+    if(!EVP_DecryptUpdate(&ctx, output, &output_size, input, input_size)) {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      free(output);
+      output = NULL;
+      return;
+    }
   
-  */
+    int final_size;
+    if(!EVP_DecryptFinal_ex(&ctx, output + output_size, &final_size))  {
+      EVP_CIPHER_CTX_cleanup(&ctx);      
+      free(output);
+      output = NULL;
+      return;
+    }
+    
+    EVP_CIPHER_CTX_cleanup(&ctx);
+    
+    // copy output
+    const int total_size = output_size + final_size;
+    long* output_byte_array = APITools_MakeCharArray(context, total_size);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(int i = 0; i < total_size; i++) {
+      output_byte_array_buffer[i] = output[i];
+    }
+    free(output);
+    output = NULL;
+    
+    long* output_holder = APITools_GetIntAddress(context, 0);
+    output_holder[0] = (long)output_byte_array;
+  }
 }
