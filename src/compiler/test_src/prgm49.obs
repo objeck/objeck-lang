@@ -1,7 +1,8 @@
 # simple parser of Objeck written in Objeck
 # R. Hollines
 
-use IO;
+use System.IO;
+use System.IO.File;
 use Collection;
 
 bundle Default {  
