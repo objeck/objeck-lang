@@ -12,28 +12,14 @@
 			b->PrintLine();
 		};
 ~#
-			key := "Hello World!"->ToByteArray();
-			in := "Rosetta code"->ToByteArray();
-			out := Encryption.Encrypt->AES256(key, in);
-
-			a := out[1]->As(Int);
-			a->PrintLine();
-
-			a := out[8]->As(Int);
-			a->PrintLine();
-
-			out2 := Encryption.Decrypt->AES256(key, out);
-
-			c := out2[0]->As(Char);
-			c->PrintLine();
-
-			c := out2[1]->As(Char);
-			c->PrintLine();
-
-			c := out2[8]->As(Char);
-			c->PrintLine();
-
-			out3 := String->New(out2);
-			out3->PrintLine();
+		key := "Forest Room 5"->ToByteArray();
+		in := "Eighteen carat gold pen when it hits the sheets / Words worth a million like I'm rapping 'em through platinum teeth."->ToByteArray();
+		encrypted := Encryption.Encrypt->AES256(key, in);
+		if(encrypted <> Nil) {
+			decprypted := Encryption.Decrypt->AES256(key, out);
+			if(decprypted <> Nil) {
+				String->New(decprypted)->PrintLine();
+			};
+		};
 	}	
 }
