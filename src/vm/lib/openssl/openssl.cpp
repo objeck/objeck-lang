@@ -88,6 +88,9 @@ extern "C" {
   //
   // AES-256 encryption
   //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
     long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
@@ -155,6 +158,9 @@ extern "C" {
   //
   // AES-256 decryption
   //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
     long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
