@@ -1498,6 +1498,84 @@ Statement* Parser::ParseStatement(int depth)
 							       instructions::SOCK_TCP_HOST_NAME);
       NextToken();
       break;
+
+    case SOCK_TCP_SSL_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_CONNECT);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_BIND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_BIND);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_LISTEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_LISTEN);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_ACCEPT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_ACCEPT);
+      NextToken();
+      break;      
+      
+    case SOCK_TCP_SSL_IS_CONNECTED:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_IS_CONNECTED);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_CLOSE);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_IN_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_IN_BYTE);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_IN_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_IN_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_OUT_STRING);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_IN_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_IN_STRING);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_OUT_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_OUT_BYTE);
+      NextToken();
+      break;
+      
+    case SOCK_TCP_SSL_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
+      NextToken();
+      break;   
+      
+    case SOCK_TCP_SSL_HOST_NAME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+							       instructions::SOCK_TCP_SSL_HOST_NAME);
+      NextToken();
+      break;
       
     case SERL_INT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
@@ -1953,7 +2031,7 @@ Expression* Parser::ParseExpression(int depth)
   //
   if(Match(TOKEN_QUESTION)) {
 #ifdef _DEBUG
-  Show("Ternary conditional", depth);
+    Show("Ternary conditional", depth);
 #endif   
     NextToken();
     Expression* if_expression = ParseLogic(depth + 1);
