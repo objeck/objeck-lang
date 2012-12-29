@@ -28,7 +28,7 @@ void openssltest() {
   // Set the SSL to automatically retry on failure.
   SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
   // We're connection to google.com on port 443.
-  BIO_set_conn_hostname(bio, "www.google.com:https");
+  BIO_set_conn_hostname(bio, "www.sourceforge.net:https");
 
   // Same as before, try to connect.
   if (BIO_do_connect(bio) <= 0) {

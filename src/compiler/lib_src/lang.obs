@@ -2546,6 +2546,7 @@ bundle System.IO.Net {
 	class TCPSecureSocket implements InputStream, OutputStream {
 		@ctx : Int;
 		@bio : Int;
+		@is_open : Bool;
 		@address : System.String;
 		@port : Int;
 		
@@ -2565,7 +2566,7 @@ bundle System.IO.Net {
 		}
 
 		method : public : IsOpen() ~ Bool {
-			SOCK_TCP_SSL_IS_CONNECTED;
+			return @is_open;		
 		}
 		
 		method : public : WriteByte(b : Int) ~ Bool {
@@ -2604,10 +2605,6 @@ bundle System.IO.Net {
 
 		method : ReadString(buffer : Char[]) ~ Nil {
 			SOCK_TCP_SSL_IN_STRING;
-		}
-
-		function : HostName() ~ String {
-			SOCK_TCP_SSL_HOST_NAME;
 		}
 
 		method : public : Flush() ~ Nil {}
