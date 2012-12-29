@@ -47,11 +47,14 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
-#include <openssl/bio.h>
-#include <openssl/ssl.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
+
+#ifndef _UTILS
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#endif
 
 #if defined(_WIN32) && !defined(_MINGW)
 #include <windows.h>
