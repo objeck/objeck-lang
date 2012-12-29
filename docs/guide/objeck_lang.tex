@@ -561,8 +561,7 @@ class Bar from Foo {
 \subsubsection{Class Casting and Identification}
 An object that is inherited from another object may be either upcasted
 or downcasted.  Object casting can be performed using the
-\texttt{As()} operator.  The Object language detects upcasting and
-downcastng at compile time. Upcasting requires a runtime check, while
+\texttt{As()} operator.  Upcasting requires a runtime check, while
 down casting does not. If cross casting is detected then a compile
 time error will be generated.
 
@@ -666,7 +665,7 @@ class Ufo implements Vehicle, Color {
 The Objeck language supports the notion of higher-order functions such
 that a given function may be bound to a variable at runtime.
 Variables are assigned based upon functional prototypes.  Prototypes
-enforce strong type checking by ensuring that a function parameters
+enforce strong type checking by ensuring that a function's parameters
 and return type are consistent between assignments.  Once a variable
 is bound, it may be assigned to other variables, passed to other
 functions/methods, returned from other functions/method or dynamically
@@ -690,7 +689,7 @@ size2 := EnvokeSize("Hello", s2);
 \end{verbatim}
 
 \subsubsection{Envoking Functions}
-The following example shows two ways that a function variable can be
+The following example shows how a function variable can be
 assigned and envoked:
 \begin{verbatim}
 ...
@@ -810,10 +809,9 @@ resources, such as files and sockets, while also providing support for
 data structures like vectors, lists, queues, etc.  As new classes are 
 added they'll be documented in this section.  
 
-The diagram below outlines the available class bundles.
+The diagram below outlines available class bundles:
 
 \begin{center}
-\vspace{5 mm}
 \includegraphics{../../images/classes.png}
 \end{center}
 
