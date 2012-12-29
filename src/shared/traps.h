@@ -131,7 +131,6 @@ namespace instructions {
     SOCK_TCP_SSL_OUT_BYTE_ARY,
     SOCK_TCP_SSL_IN_STRING,
     SOCK_TCP_SSL_OUT_STRING,
-    SOCK_TCP_SSL_HOST_NAME,
     // serialization
     SERL_INT,
     SERL_FLOAT,

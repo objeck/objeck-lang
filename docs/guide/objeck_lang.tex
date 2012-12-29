@@ -216,8 +216,8 @@ with the following default values:
 \end{center}
 
 \subsection{Expressions}
-The Objeck language supports various type of expressions.  Some of
-these expressions include mathematical, logical, arrays and method
+The Objeck language supports various types of expressions.  Some of
+these expressions include mathematical, logical, array and method
 calls.  The preceding sections describes some of the expressions
 that are supported in Objeck.
 
@@ -312,7 +312,9 @@ The \texttt{String} class provides support for advanced string operations.
 string := "Hello World!";
 string->Size()->PrintLine();
 strings := ["Hello","World!"];
-strings->Size()->PrintLine();
+sizes := strings->Size();
+sizes[0]->PrintLine();
+sizes[1]->PrintLine();
 \end{verbatim}
 
 The following example allocates an array of \texttt{Widget} objects.  An object must
@@ -520,8 +522,7 @@ also supports virtual classes, which assures that derived classes have
 been defined for all required operations declared in the base class.
 Virtual classes also allow the programmer to define non-virtual
 methods that contain program behavior.  Virtual classes are
-dynamically 
- to implementation classes at runtime.
+dynamically associated with implementation classes at runtime.
 \begin{verbatim}
 class Foo {
   @lhs : Int;
