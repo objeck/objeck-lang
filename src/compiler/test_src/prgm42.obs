@@ -2,7 +2,7 @@
 # AA binary balanced use tree
 
 use System;
-use Struct;
+use Collection;
 
 bundle Default {
 	class Test {

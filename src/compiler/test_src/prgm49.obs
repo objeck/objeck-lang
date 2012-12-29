@@ -2,7 +2,7 @@
 # R. Hollines
 
 use IO;
-use Struct;
+use Collection;
 
 bundle Default {  
   class Hello {

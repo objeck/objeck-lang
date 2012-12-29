@@ -1,5 +1,5 @@
 use Net;
-use Struct;
+use Collection;
 
 bundle Default {
 	class SocketTest {
