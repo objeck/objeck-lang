@@ -245,6 +245,63 @@ class IPSocket {
 };
 
 /****************************
+ * IP socket support class
+ ****************************/
+class IPSecureSocket {
+ public:
+  static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio) {
+    ctx = SSL_CTX_new(SSLv23_client_method());
+    bio = BIO_new_ssl_connect(ctx);
+    if(!bio) {
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
+    SSL* ssl;
+    BIO_get_ssl(bio, &ssl);
+    SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+    string ssl_address = address;
+    ssl_address += ":";
+    ssl_address += IntToString(port);
+    BIO_set_conn_hostname(bio, ssl_address.c_str());
+    
+    if(BIO_do_connect(bio) <= 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+
+    if(BIO_do_handshake(bio) <= 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
+  }
+
+  static int WriteBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
+    return -1;
+  }
+
+  static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
+    return '\0';
+  }
+
+  static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
+    return -1;
+  }
+  
+  static void Close(SSL_CTX* ctx, BIO* bio) {
+    BIO_free_all(bio);
+    SSL_CTX_free(ctx);
+  }
+};
+
+/****************************
  * System operations
  ****************************/
 class System {

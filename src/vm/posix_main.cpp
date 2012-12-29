@@ -39,6 +39,10 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    // Initialize OpenSSL
+    CRYPTO_malloc_init();
+    SSL_library_init();
+    
     return Execute(argc, argv);
   } 
   else {

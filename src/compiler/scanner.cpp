@@ -241,7 +241,6 @@ void Scanner::LoadKeywords()
   ident_map["SOCK_TCP_SSL_IN_STRING"] = SOCK_TCP_SSL_IN_STRING;
   ident_map["SOCK_TCP_SSL_OUT_BYTE"] = SOCK_TCP_SSL_OUT_BYTE;
   ident_map["SOCK_TCP_SSL_OUT_BYTE_ARY"] = SOCK_TCP_SSL_OUT_BYTE_ARY;
-  ident_map["SOCK_TCP_SSL_HOST_NAME"] = SOCK_TCP_SSL_HOST_NAME;
   ident_map["SOCK_TCP_SSL_BIND"] = SOCK_TCP_SSL_BIND;
   ident_map["SOCK_TCP_SSL_LISTEN"] = SOCK_TCP_SSL_LISTEN;
   ident_map["SOCK_TCP_SSL_ACCEPT"] = SOCK_TCP_SSL_ACCEPT;
@@ -419,7 +418,6 @@ void Scanner::CheckIdentifier(int index)
   case SOCK_TCP_SSL_OUT_STRING:
   case SOCK_TCP_SSL_OUT_BYTE:
   case SOCK_TCP_SSL_OUT_BYTE_ARY:
-  case SOCK_TCP_SSL_HOST_NAME:
   case SOCK_TCP_SSL_BIND:
   case SOCK_TCP_SSL_LISTEN:
   case SOCK_TCP_SSL_ACCEPT:

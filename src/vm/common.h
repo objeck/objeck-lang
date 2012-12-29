@@ -47,6 +47,8 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
