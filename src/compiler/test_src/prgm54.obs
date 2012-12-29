@@ -1,5 +1,6 @@
-use Net;
+use System.IO.Net;
 use Collection;
+use HTTP;
 
 bundle Default {
 	class HttpTest {

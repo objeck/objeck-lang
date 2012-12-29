@@ -50,7 +50,7 @@ bundle Default {
 			y := Foo(3.14, Bar(), 77.3)->As(C1)->M1(13, 55.5, 100);
 			(x * y)->PrintLine();
 
-			vv := Struct.Vector->New();
+			vv := Collection.Vector->New();
 			for(i := 0; i < 12; i += 1;) {
 				vv->AddBack(C2->New(i));
 			};
