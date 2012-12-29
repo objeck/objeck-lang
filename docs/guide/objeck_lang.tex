@@ -811,8 +811,10 @@ added they'll be documented in this section.
 
 The diagram below outlines the available class bundles.
 
+\begin{center}
 \vspace{5 mm}
-\includegraphics[scale=0.60]{../../images/classes.png}
+\includegraphics{../../images/classes.png}
+\end{center}
 
 \subsection{System}
 Class support for basic data types. These classes are located in the default `System' bundle.
@@ -1325,58 +1327,92 @@ environment.
   \end{itemize}
 \end{itemize}
 
-\subsection{System.Concurrency}
-Support for system concurrency. These classes are located in the default `System.Concurrency' bundle.
+\subsection{System.Introspection}
+Provides the ability to access program metadata at runtime.
 
-\subsubsection{Thread}
-The Thread class allows programmers to invoke a method in a separately
-running system thread.  This class is in the `System.Concurrency' bundle.  
+\subsubsection{Class}
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
-  \item New(name : String)
+  \item New(c : String)
   \end{itemize}
-\item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
-  thread's \texttt{Run()} method in a separate thread.
+\item \texttt{IsLoaded} - returns true if this class has been loaded,
+  false otherwise
   \begin{itemize}
-  \item method : public : Execute(param : System.Base) \textasciitilde Nil
+  \item method : public : IsLoaded() \textasciitilde Bool
   \end{itemize}
-\item \texttt{Sleep} - Sleeps a given thread for a number of
-  milliseconds.
+\item \texttt{Instance} - creates a new class instance and calls default constructor
   \begin{itemize}
-  \item function : Sleep(t : Int) \textasciitilde Nil
+  \item function : Instacne(name : String) \textasciitilde Base
   \end{itemize}
-\item \texttt{Join} - Joins a thread instance with the creating thread
-  \begin{itemize}
-  \item method : public : Join() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{GetName} - Returns the name of the thread
+\item \texttt{GetName} - returns the name of the class
   \begin{itemize}
   \item method : public : GetName() \textasciitilde String
   \end{itemize}
-\item \texttt{GetRunID} - Returns running thread ID
+\item \texttt{GetMethods} - returns an array of methods
   \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
+  \item method : public : GetMethods() \textasciitilde GetMethods[]
   \end{itemize}
-\item \texttt{Run} - Method that is executed by the new thread
+\item \texttt{GetMethodNumber} - returns the number of methods in the class
   \begin{itemize}
-  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
+  \item method : public : GetMethodNumber() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
-\subsubsection{ThreadMutex}
-The ThreadMutex class is used for thread synchronization i.e. locking
-and unlocking running threads.
+\subsubsection{Method}
 \begin{itemize}
-\item \texttt{New}
+
+\item \texttt{GetClass} - returns class assoicated with the method
   \begin{itemize}
-  \item New(name : String)
+  \item method : public : GetClass() \textasciitilde Class
   \end{itemize}
-\item \texttt{GetName} - Returns the name of the thread
+
+\item \texttt{GetName} - returns the pretty name of the method
   \begin{itemize}
   \item method : public : GetName() \textasciitilde String
   \end{itemize}
+
+\item \texttt{GetParameters} - returns the datatypes of the parameters
+  \begin{itemize}
+  \item method : public : GetParameters() \textasciitilde DataType[]
+  \end{itemize}
+
+\item \texttt{GetReturn} - returns the datatype of the return
+  \begin{itemize}
+  \item method : public : GetReturn() \textasciitilde DataType
+  \end{itemize}
 \end{itemize}
+
+\subsubsection{DataType}
+\begin{itemize}
+
+\item \texttt{GetType} - returns the type ID
+  \begin{itemize}
+  \item method : public : GetType() \textasciitilde TypeId
+  \end{itemize}
+
+\item \texttt{GetDimension} - returns dimensions of the datatype
+  \begin{itemize}
+  \item method : public : GetDimension() \textasciitilde Int
+  \end{itemize}
+
+\item \texttt{GetClassName} - returns string name of non-basic
+  objects, Nil otherwise
+  \begin{itemize}
+  \item method : public : GetClassName() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{TypeId}
+ \begin{itemize}
+ \item BOOL
+ \item BYTE
+ \item CHAR
+ \item INT
+ \item FLOAT
+ \item CLASS
+ \item FUNC
+ \end{itemize}
 
 \subsection{System.IO}
 This bundle supports console I/O, object serialization and defines general I/O interfaces.
@@ -1540,180 +1576,6 @@ the following operations:
   \item method : public : ReadFloatArray() \textasciitilde Float[]
   \end{itemize}
 \end{itemize}
-
-\subsection{System.Time}
-Provides time and date operations.
-
-\subsubsection{Date}
-The Date class allows programmers gain access to the current system
-time.  This class is in the `Time' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \item New(gmt : Bool)
-  \item New(day : Int, month : Int, year : Int, gmt : Bool)
-  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
-  \end{itemize}
-\item \texttt{GetDay} - return the current day as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetDay() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetDayName} - return the current day of the week as a \texttt{String}.
-  \begin{itemize}
-  \item method : public : GetNameDay() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetMonth} - return the current month as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetMonth() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetMonthName} - return the current month as a \texttt{String}.
-  \begin{itemize}
-  \item method : public : GetMonthName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetYear} - return the current year as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetYear() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetHours() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetMinutes} - return the current minutes as an
-  \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetMinutes() \textasciitilde Int
-  \end{itemize}
-\item \texttt{GetSeconds} - return the current seconds as an
-  \texttt{Int}.
-  \begin{itemize}
-  \item method : public : GetSeconds() \textasciitilde Int
-  \end{itemize}
-\item \texttt{IsSavingsTime} - return true if daylights saving time,
-  false otherwise
-  \begin{itemize}
-  \item method : public : IsSavingsTime() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Add} - adds (or subtracts) time from a date
-  \begin{itemize}
-  \item method : public : AddDays(value : Int) \textasciitilde Nil
-  \item method : public : AddHours(value : Int) \textasciitilde Nil
-  \item method : public : AddMinutes(value : Int) \textasciitilde Nil
-  \item method : public : AddSeconds(value : Int) \textasciitilde Nil
-  \end{itemize}
-\item \texttt {ToString} - formats a date into a \texttt{String}.
-  \begin{itemize}
-  \item method : public : ToString() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Timer}
-The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New()
-  \end{itemize}
-\item \texttt{Start} - Starts the timing
-  \begin{itemize}
-  \item method : public : Start() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{End} - Ends the timing
-  \begin{itemize}
-  \item method : public : End() \textasciitilde Nil
-  \end{itemize}
-\item \texttt{End} - Returns the elapsed time in milliseconds
-  \begin{itemize}
-  \item  method : public : GetElapsedTime() \textasciitilde Int
-  \end{itemize}
-\end{itemize}
-
-\subsection{System.Introspection}
-Provides the ability to access program metadata at runtime.
-
-\subsubsection{Class}
-\begin{itemize}
-\item \texttt{New}
-  \begin{itemize}
-  \item New(c : String)
-  \end{itemize}
-\item \texttt{IsLoaded} - returns true if this class has been loaded,
-  false otherwise
-  \begin{itemize}
-  \item method : public : IsLoaded() \textasciitilde Bool
-  \end{itemize}
-\item \texttt{Instance} - creates a new class instance and calls default constructor
-  \begin{itemize}
-  \item function : Instacne(name : String) \textasciitilde Base
-  \end{itemize}
-\item \texttt{GetName} - returns the name of the class
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-\item \texttt{GetMethods} - returns an array of methods
-  \begin{itemize}
-  \item method : public : GetMethods() \textasciitilde GetMethods[]
-  \end{itemize}
-\item \texttt{GetMethodNumber} - returns the number of methods in the class
-  \begin{itemize}
-  \item method : public : GetMethodNumber() \textasciitilde Int
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{Method}
-\begin{itemize}
-
-\item \texttt{GetClass} - returns class assoicated with the method
-  \begin{itemize}
-  \item method : public : GetClass() \textasciitilde Class
-  \end{itemize}
-
-\item \texttt{GetName} - returns the pretty name of the method
-  \begin{itemize}
-  \item method : public : GetName() \textasciitilde String
-  \end{itemize}
-
-\item \texttt{GetParameters} - returns the datatypes of the parameters
-  \begin{itemize}
-  \item method : public : GetParameters() \textasciitilde DataType[]
-  \end{itemize}
-
-\item \texttt{GetReturn} - returns the datatype of the return
-  \begin{itemize}
-  \item method : public : GetReturn() \textasciitilde DataType
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{DataType}
-\begin{itemize}
-
-\item \texttt{GetType} - returns the type ID
-  \begin{itemize}
-  \item method : public : GetType() \textasciitilde TypeId
-  \end{itemize}
-
-\item \texttt{GetDimension} - returns dimensions of the datatype
-  \begin{itemize}
-  \item method : public : GetDimension() \textasciitilde Int
-  \end{itemize}
-
-\item \texttt{GetClassName} - returns string name of non-basic
-  objects, Nil otherwise
-  \begin{itemize}
-  \item method : public : GetClassName() \textasciitilde String
-  \end{itemize}
-\end{itemize}
-
-\subsubsection{TypeId}
- \begin{itemize}
- \item BOOL
- \item BYTE
- \item CHAR
- \item INT
- \item FLOAT
- \item CLASS
- \item FUNC
- \end{itemize}
 
 \subsection{System.IO.File}
 Provides support for file and directory operations.
@@ -1934,6 +1796,146 @@ The TCPSocket class allows programmers develop TCP/IP socket servers. The class 
 \item \texttt{Close} - closes a connected socket.
   \begin{itemize}
   \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.Time}
+Provides time and date operations.
+
+\subsubsection{Date}
+The Date class allows programmers gain access to the current system
+time.  This class is in the `Time' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \item New(gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
+  \end{itemize}
+\item \texttt{GetDay} - return the current day as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetDay() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetDayName} - return the current day of the week as a \texttt{String}.
+  \begin{itemize}
+  \item method : public : GetNameDay() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetMonth} - return the current month as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetMonth() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetMonthName} - return the current month as a \texttt{String}.
+  \begin{itemize}
+  \item method : public : GetMonthName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetYear} - return the current year as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetYear() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetHours} - return the current hour as an \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetHours() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetMinutes} - return the current minutes as an
+  \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetMinutes() \textasciitilde Int
+  \end{itemize}
+\item \texttt{GetSeconds} - return the current seconds as an
+  \texttt{Int}.
+  \begin{itemize}
+  \item method : public : GetSeconds() \textasciitilde Int
+  \end{itemize}
+\item \texttt{IsSavingsTime} - return true if daylights saving time,
+  false otherwise
+  \begin{itemize}
+  \item method : public : IsSavingsTime() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Add} - adds (or subtracts) time from a date
+  \begin{itemize}
+  \item method : public : AddDays(value : Int) \textasciitilde Nil
+  \item method : public : AddHours(value : Int) \textasciitilde Nil
+  \item method : public : AddMinutes(value : Int) \textasciitilde Nil
+  \item method : public : AddSeconds(value : Int) \textasciitilde Nil
+  \end{itemize}
+\item \texttt {ToString} - formats a date into a \texttt{String}.
+  \begin{itemize}
+  \item method : public : ToString() \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Timer}
+The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New()
+  \end{itemize}
+\item \texttt{Start} - Starts the timing
+  \begin{itemize}
+  \item method : public : Start() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Ends the timing
+  \begin{itemize}
+  \item method : public : End() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{End} - Returns the elapsed time in milliseconds
+  \begin{itemize}
+  \item  method : public : GetElapsedTime() \textasciitilde Int
+  \end{itemize}
+\end{itemize}
+
+\subsection{System.Concurrency}
+Support for system concurrency. These classes are located in the default `System.Concurrency' bundle.
+
+\subsubsection{Thread}
+The Thread class allows programmers to invoke a method in a separately
+running system thread.  This class is in the `System.Concurrency' bundle.  
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
+  thread's \texttt{Run()} method in a separate thread.
+  \begin{itemize}
+  \item method : public : Execute(param : System.Base) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Sleep} - Sleeps a given thread for a number of
+  milliseconds.
+  \begin{itemize}
+  \item function : Sleep(t : Int) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Join} - Joins a thread instance with the creating thread
+  \begin{itemize}
+  \item method : public : Join() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{GetRunID} - Returns running thread ID
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{Run} - Method that is executed by the new thread
+  \begin{itemize}
+  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{ThreadMutex}
+The ThreadMutex class is used for thread synchronization i.e. locking
+and unlocking running threads.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String)
+  \end{itemize}
+\item \texttt{GetName} - Returns the name of the thread
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -2708,8 +2710,42 @@ The RegEx class provides support for regular expressions parsing.
   \end{itemize}
 \end{itemize}
 
+\subsection{Encryption}
+Support for encryption.
+
+\subsubsection{Hash}
+The Hash class provides support for one-way hashing.
+
+\begin{itemize}
+\item \texttt{SHA256} - SHA-256 hash
+  \begin{itemize}
+  \item function : SHA256(input : Byte[]) \textasciitilde Byte[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Encrypt}
+Provides support for encryption.
+
+\begin{itemize}
+\item \texttt{SHA256} - AES-256 encryption without ``salt''
+  \begin{itemize}
+  \item function : AES256(key : Byte[], input : Byte[]) \textasciitilde Byte[]
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Decrypt}
+Provides support for encryption.
+
+\begin{itemize}
+\item \texttt{SHA256} - AES-256 decryption without ``salt''
+  \begin{itemize}
+  \item function : AES256(key : Byte[], input : Byte[]) \textasciitilde Byte[]
+  \end{itemize}
+\end{itemize}
+
 
 \newpage
+
 
 \section{Examples}
 \subsection{Prime Numbers}
