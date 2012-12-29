@@ -271,6 +271,71 @@ class IPSocket {
 };
 
 /****************************
+ * IP socket support class
+ ****************************/
+class IPSecureSocket {
+ public:
+  static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio) {
+    ctx = SSL_CTX_new(SSLv23_client_method());
+    bio = BIO_new_ssl_connect(ctx);
+    if(!bio) {
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
+    SSL* ssl;
+    BIO_get_ssl(bio, &ssl);
+    SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+    string ssl_address = address;
+    if(ssl_address.size() < 1 || port < 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }    
+    ssl_address += ":";
+    ssl_address += IntToString(port);
+    BIO_set_conn_hostname(bio, ssl_address.c_str());
+    
+    if(BIO_do_connect(bio) <= 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+
+    if(BIO_do_handshake(bio) <= 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
+    BIO_write(bio, &value, 1);
+  }
+
+  static int WriteBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
+    return BIO_write(bio, values, len);
+  }
+
+  static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
+    char value;
+    status = BIO_read(bio, &value, 1);
+    return value;
+  }
+  
+  static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
+    return BIO_read(bio, values, len);
+  }
+  
+  static void Close(SSL_CTX* ctx, BIO* bio) {
+    BIO_free_all(bio);
+    SSL_CTX_free(ctx);
+  }
+};
+
+/****************************
  * System operations
  ****************************/
 class System {
