@@ -1324,6 +1324,15 @@ int main(int argc, char** argv)
   usage += "  -src: source directory path";
 
   if(argc >= 3) {
+    // Initialize OpenSSL
+    CRYPTO_malloc_init();
+    SSL_library_init();
+
+#ifdef _WIN32
+	WSADATA data;
+    int version = MAKEWORD(2, 2);
+#endif
+
     // reconstruct path
     string path;
     for(int i = 1; i < argc; i++) {
@@ -1419,10 +1428,16 @@ int main(int argc, char** argv)
     // go debugger
     Runtime::Debugger debugger(file_name, base_path);
     debugger.Debug();
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
     return 0;
   }
   else {
+#ifdef _WIN32
+	WSACleanup();
+#endif
     cerr << usage << endl << endl;
     return 1;
   }
