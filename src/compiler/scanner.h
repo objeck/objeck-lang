@@ -218,6 +218,23 @@ enum TokenType {
   SOCK_TCP_OUT_BYTE_ARY,
   SOCK_TCP_OUT_STRING,
   SOCK_TCP_HOST_NAME,
+  // secure socket operations
+  SOCK_TCP_SSL_CONNECT,
+  SOCK_TCP_SSL_IS_CONNECTED,
+  SOCK_TCP_SSL_CLOSE,
+  // secure socket server operations
+  SOCK_TCP_SSL_BIND,
+  SOCK_TCP_SSL_LISTEN,
+  SOCK_TCP_SSL_ACCEPT,
+  // secure socket-in
+  SOCK_TCP_SSL_IN_BYTE,
+  SOCK_TCP_SSL_IN_BYTE_ARY,
+  SOCK_TCP_SSL_IN_STRING,
+  // secure socket-out
+  SOCK_TCP_SSL_OUT_BYTE,
+  SOCK_TCP_SSL_OUT_BYTE_ARY,
+  SOCK_TCP_SSL_OUT_STRING,
+  SOCK_TCP_SSL_HOST_NAME,
   // serialization
   SERL_INT,
   SERL_FLOAT,
