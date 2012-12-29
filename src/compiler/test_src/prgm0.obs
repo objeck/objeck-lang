@@ -1,5 +1,5 @@
 use IO;
-use Struct;
+use Collection;
 
 #~
 # Basic NFA based regex engine

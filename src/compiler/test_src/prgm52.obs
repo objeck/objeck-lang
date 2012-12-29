@@ -1,5 +1,5 @@
 use IO;
-use Time;
+use System.Time;
 
 bundle Default {
 	class Hello {
