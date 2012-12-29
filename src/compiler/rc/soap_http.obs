@@ -1,4 +1,4 @@
-use System.IO.Net;
+use HTTP;
 use XML;
 use Collection;
 

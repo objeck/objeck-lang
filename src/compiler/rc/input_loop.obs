@@ -5,7 +5,7 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			f := IO.FileReader->New("in.txt");
+			f := IO.File.FileReader->New("in.txt");
 			if(f->IsOpen()) {
 				string := f->ReadString();
 				while(f->IsEOF() = false) {
