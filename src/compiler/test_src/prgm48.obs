@@ -1,4 +1,5 @@
-use IO;
+use System.IO;
+use System.IO.File;
 
 bundle Default {	
 	class Hello {

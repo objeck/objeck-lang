@@ -1,4 +1,5 @@
-use Net;
+use System.IO;
+use System.IO.Net;
 use Collection;
 
 bundle Default {
