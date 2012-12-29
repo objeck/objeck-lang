@@ -1369,7 +1369,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     //----------- ip socket methods -----------
   case instructions::SOCK_TCP_HOST_NAME: {
     // copy and create Char[]
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)255 + 1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)256 + 1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_TCP_HOST_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));

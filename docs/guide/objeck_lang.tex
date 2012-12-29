@@ -1719,9 +1719,9 @@ directories.  The class supports the following operations:
 \end{itemize}
 
 \subsection{System.IO.Net}
-Provides support for TCP/IP client and server sockets.
+Provides support for TCP/IP client and server sockets.  The TCPSecureSocket class provides SSL support for TCP/IP connections.
 
-\subsubsection{TCPSocket}
+\subsubsection{TCPSocket/TCPSecureSocket}
 The TCPSocket class implements the InputStream and OuptStream interfaces and allows programmers to connect to TCP/IP socket
 servers.  The class supports the following operations:
 \begin{itemize}
@@ -1771,7 +1771,7 @@ servers.  The class supports the following operations:
   \begin{itemize}
   \item method : public : ReadString() \textasciitilde String
   \end{itemize}
-\item \texttt{HostName} - returns the host name
+\item \texttt{HostName} - returns the host name (for TCPSocket only)
   \begin{itemize}
   \item function : HostName() \textasciitilde String
   \end{itemize}
@@ -2369,7 +2369,7 @@ for larger sets):
 These classes provide support for the HTTP and HTTPS web protocols.
 
 \subsubsection{HttpClient}
-The HttpClient class allows programmers access HTTP servers.
+The HttpClient class allows programmers access web servers via HTTP.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
