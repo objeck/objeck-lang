@@ -1,0 +1,18 @@
+﻿class Encryption {
+	function : Main(args : String[]) ~ Nil {
+		in := "Nas is like..."->ToByteArray();
+		hash := Encryption.Hash->SHA256(in);
+#		hash->PrintLine();
+		
+		key := "Forest Room 5"->ToByteArray();
+		in := "I switched my motto / Instead of saying f*ck tomorrow, that buck that bought a bottle could've struck the lotto."->ToByteArray();
+		encrypted := Encryption.Encrypt->AES256(key, in);
+		if(encrypted <> Nil) {
+#			encrypted->PrintLine();		
+			decprypted := Encryption.Decrypt->AES256(key, encrypted);
+			if(decprypted <> Nil) {
+				String->New(decprypted)->PrintLine();
+			};
+		};
+	}	
+}
