@@ -2636,7 +2636,277 @@ bundle HTTP {
 			return content;
 		}
 	}
-	
+
+	#~~~~~~~~~~~~~~~~~~~~~~~
+	# HTTPS Client - COMBINE WITH ABOVE!!
+	~~~~~~~~~~~~~~~~~~~~~~~#
+	class HttpsClient {
+		@headers : Hash;
+		@cookies_enabled : Bool;
+		@cookies: Vector;
+		
+		New() {
+			@cookies_enabled := false;
+			@cookies := Vector->New();
+		}
+		
+		method : GetHeaders() ~ Hash {
+			return @headers;
+		}
+		
+		method : public : CookiesEnabled(cookies_enabled : Bool) ~ Nil {
+			@cookies_enabled := cookies_enabled;
+		}	
+		
+		method : public : GetCookies() ~ Vector {
+			return @cookies;
+		}	
+		
+		method : public : SetCookie(cookie : String) ~ Nil {
+			@cookies->AddBack(cookie);
+		}	
+		
+		method : public : Post(url : String, port : Int, data : String) ~ Vector {
+			return Post(url, port, "text/plain", data);
+		}
+		
+		method : public : Post(url : String, port : Int, content_type : String, data : String) ~ Vector {
+			@headers := Hash->New();
+					
+			content := Vector->New();
+			if(url->StartsWith("http://")) {
+				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+				index := url->Find('/');
+				address := "";
+				location := "/";
+				if(index > -1) {
+					address := url->SubString(index);
+					location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				}
+				else {
+					address := url;
+				};
+				
+				socket := TCPSecureSocket->New(address, port);
+				if(socket->IsOpen()) {
+					post := "POST ";
+					post->Append(location);
+					post->Append(" HTTP/1.1\r\nHost: ");
+					post->Append(address);
+					post->Append("\r\nContent-Type: ");
+					post->Append(content_type);
+					post->Append("\r\nContent-Length: ");
+					post->Append(data->Size()->ToString());
+					post->Append("\r\n");
+					if(@cookies_enabled & @cookies->Size() > 0) {
+						post->Append("Cookie: ");
+						each(i : @cookies) {
+							post->Append(@cookies->Get(i)->As(String));
+							if(i + 1 < @cookies->Size()) {
+								post->Append("; ");
+							};
+						};
+						post->Append("\r\n");
+					};
+					post->Append("\r\n");					
+					post->Append(data);
+					socket->WriteString(post);
+					
+# post->PrintLine();					
+					
+					status_code := 500;
+					status_line := socket->ReadString();
+					if(status_line->StartsWith("HTTP/1.1")) {
+						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
+							status_line->Size() - "HTTP/1.1"->Size() - 1);
+						index := status_line->Find(' ');
+						status_code := status_line->SubString(index)->ToInt();
+					};
+					
+# status_line->PrintLine();
+					
+					if(status_code <> 500) {
+					  # get @headers
+						do {
+							line := socket->ReadString();
+							if(line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
+								@headers->Insert(name, value);
+# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+							};
+						}
+						while(line->Size() > 0);
+
+						# look for chunked blocks
+						encoding : String := @headers->Find("Transfer-Encoding")->As(String);
+						if(encoding <> Nil & encoding->Equals("chunked")) {
+							done := false;
+							do {
+								size_line := "0x";
+								size_line->Append(socket->ReadString());
+								chunk_size := size_line->ToInt();
+								line := "";
+								if(chunk_size > 0) {
+									for(i := 0; i < chunk_size; i += 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line);
+								}
+								else {
+									done := true;
+								};
+							}
+							while(done <> true);
+						}
+						else {
+							length_header : String := @headers->Find("Content-Length")->As(String);
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								buffer := Byte->New[length];
+								for(i := 0; i < length; i += 1;) {
+									buffer[i] := socket->ReadByte();
+								};
+								line := String->New(buffer);
+								content->AddBack(line);
+							};						
+						};
+					};
+					socket->Close();
+				};
+			};
+			
+			return content;
+		}
+		
+		method : public : Get(url : String, port : Int) ~ Vector {
+			return Get(url, port, "text/plain");
+		}
+		
+		method : public : Get(url : String, port : Int, content_type : String) ~ Vector {
+			@headers := Hash->New();
+			content := Vector->New();
+			
+			if(url->StartsWith("http://")) {
+				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+				index := url->Find('/');
+				address := "";
+				location := "/";
+				if(index > -1) {
+					address := url->SubString(index);
+					location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				}
+				else {
+					address := url;
+				};
+				
+				socket := TCPSecureSocket->New(address, port);
+				if(socket->IsOpen()) {
+					get := "GET ";
+					get->Append(location);
+					get->Append(" HTTP/1.1\r\nHost: ");
+					get->Append(address);
+					get->Append("\r\n");
+					if(@cookies_enabled & @cookies->Size() > 0) {
+						get->Append("Cookie: ");
+						each(i : @cookies) {
+							get->Append(@cookies->Get(i)->As(String));
+							if(i + 1 < @cookies->Size()) {
+								get->Append("; ");
+							};
+						};
+						get->Append("\r\n");
+					};					
+					get->Append("\r\n");		
+					
+# IO.Console->Print("Get: |")->Print(get)->PrintLine("|");
+					
+					socket->WriteString(get);
+					
+					status_code := 500;
+					status_line := socket->ReadString();
+					if(status_line->StartsWith("HTTP/1.1")) {
+						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
+							status_line->Size() - "HTTP/1.1"->Size() - 1);
+						index := status_line->Find(' ');
+						status_code := status_line->SubString(index)->ToInt();
+					};
+					
+					if(status_code <> 500) {
+						# get @headers
+						do {
+							line := socket->ReadString();
+							if(line->Size() > 0) {
+								index := line->Find(':');
+								name := line->SubString(index);
+								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+								
+# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+								if(@cookies_enabled & name->Equals("Set-Cookie")) {
+									offset := value->Find(';');
+									if(offset > -1) {
+										value := value->SubString(offset);
+									};
+									@cookies->AddBack(value);
+# IO.Console->Print("cookie=")->PrintLine(value);									
+								}
+								else {
+									@headers->Insert(name, value);
+								};
+							};
+						}
+						while(line->Size() > 0);
+						
+# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
+
+						# look for chunked blocks
+						encoding : String := @headers->Find("Transfer-Encoding")->As(String);
+						if(encoding <> Nil & encoding->Equals("chunked")) {
+							done := false;
+							do {
+								size_line := "0x";
+								size_line->Append(socket->ReadString());
+								chunk_size := size_line->ToInt();
+								line := "";
+								if(chunk_size > 0) {
+									for(i := 0; i < chunk_size; i += 1;) {
+										line->Append(socket->ReadByte());
+									};
+									socket->ReadString();
+									content->AddBack(line);
+								}
+								else {								
+									done := true;
+								};
+							}
+							while(done <> true);
+						}
+						else {
+							length_header : String := @headers->Find("Content-Length")->As(String);
+							if(length_header <> Nil) {
+								length := length_header->ToInt();
+								buffer := Byte->New[length];
+								for(i := 0; i < length; i += 1;) {
+									buffer[i] := socket->ReadByte();
+								};
+								line := String->New(buffer);
+								content->AddBack(line);
+							};						
+						};
+					};
+					socket->Close();
+				}
+				else {
+					return Nil;
+				};
+			};	
+			
+			return content;
+		}
+	}
+		
 	#~~~~~~~~~~~~~~~~~~~~~~~
 	# HTTP UrlUtility
 	~~~~~~~~~~~~~~~~~~~~~~~#
