@@ -1,15 +1,11 @@
-\title{The Objeck Programmer's Guide}
-\author{
-        Randy Hollines \\
-        objeck@gmail.com\\
-}
-\date{\today}
+\title{The Objeck Programmer's Guide} \author{
+  Randy Hollines \\
+  objeck@gmail.com\\
+} \date{\today}
 
 \documentclass[11pt]{article}
 
-\usepackage{aliascnt}
-\usepackage{hyperref}
-\usepackage{MnSymbol}
+\usepackage{aliascnt} \usepackage{hyperref} \usepackage{MnSymbol}
 \usepackage[pdftex]{graphicx}
 
 \begin{document}
@@ -24,11 +20,13 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that's part of v3.1.7.  For
-  additional information please refer to the
-  \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck}, 
+  functionality that's part of v3.1.7.  For additional information
+  please refer to the
+  \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck},
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
-and \htmladdnormallink{support}{http://groups.google.com/group/objeck-lang} websites.
+  and
+  \htmladdnormallink{support}{http://groups.google.com/group/objeck-lang}
+  websites.
 \end{abstract}
 
 \newpage
@@ -41,15 +39,16 @@ The Objeck program language is an object-oriented computer language
 with functional features.  The language was designed to be an easy to
 use general purpose programming system.  The Objeck language allows
 programmers to quickly create solutions by leveraging existing class
-libraries and APIs.  The syntax for the language was designed with symmetry in
-mind and enforces the notion that there should one intuitive way to do
-things. Features include:
+libraries and APIs.  The syntax for the language was designed with
+symmetry in mind and enforces the notion that there should one
+intuitive way to do things. Features include:
 \begin{itemize}
 \item Support for object-oriented programming (all data types are
   treated as objects)
 \item Functional support (higher-order functions)
 \item Cross platform (support for OS X, Linux and Windows)
-\item Concurrent runtime JIT support for Intel processors (x86 and x64)
+\item Concurrent runtime JIT support for Intel processors (x86 and
+  x64)
 \item Multi-threaded memory management (garbage collector)
 \item Local optimizations including method inlining
 \item Support for static libraries
@@ -59,10 +58,10 @@ things. Features include:
 \section{Getting Started}
 
 The Objeck distribution consists of a compiler, virtual machine,
-debugger and library inspection tool.  The compiler executable is named
-\texttt{obc}, while the runtime virtual machine (VM) executable is named
-\texttt{obr}.  Here is the world famous ``Hello World" program written
-in the Objeck language:
+debugger and library inspection tool.  The compiler executable is
+named \texttt{obc}, while the runtime virtual machine (VM) executable
+is named \texttt{obr}.  Here is the world famous ``Hello World"
+program written in the Objeck language:
 
 \begin{verbatim}
 class Hello {
@@ -77,10 +76,10 @@ The example below compiles the source program \texttt{hello.obs} into
 the target binary file \texttt{hello.obe}.  The two output file types
 that the compiler supports are executables and shared libraries.
 Shared libraries are binary files that contain all of the metadata
-needed by the compiler to relink them into executables.  Both executables
-and shared libraries contain enough metadata to support runtime
-introspection.  As a naming convention, executables must end in
-\texttt{*.obe} while shared libraries must end in \texttt{*.obl}.
+needed by the compiler to relink them into executables.  Both
+executables and shared libraries contain enough metadata to support
+runtime introspection.  As a naming convention, executables must end
+in \texttt{*.obe} while shared libraries must end in \texttt{*.obl}.
 
 Below is an example of compiling the ``Hello World" program:
 \begin{verbatim}
@@ -124,7 +123,8 @@ Now lets introduce the core features of the Objeck programming
 language.  \vspace{\baselineskip}
 
 Let's first start with a list of keywords that exist in language.
-These words are reserved for the language and may not be used as identifiers.
+These words are reserved for the language and may not be used as
+identifiers.
 
 \begin{center}
   \begin{tabular}{ | c | c | c | c | c | }
@@ -176,20 +176,21 @@ Float->Pi()->PrintLine();
 \end{verbatim}
 
 \subsection{Variable Declarations}
-Variables can be declared for all of the basic types (described above), 
-user defined objects and high-order functions. Variables can be declared 
-anywhere in a program and are bound to traditional block scoping rules.  Variable
-assignments can be made during a declaration or at any other point in
-a program. Variables may be declared as local, instance or class
-level scope.  Class level variables are declared using the
-\texttt{static} keyword. A class that is derived from another class
-may access it's parents variables if the parent class is declared in
-one of the source programs.  \textit{If a class is derived from a
-  class declared in a shared library then that class cannot access
-  it's parents variables, unless an accessor method is provided.}
-Local variables can be declared without specifying their data type,
-such variables are bound to the type defined by their first right-hand
-side assignment. Three different declaration styles are shown below:
+Variables can be declared for all of the basic types (described
+above), user defined objects and high-order functions. Variables can
+be declared anywhere in a program and are bound to traditional block
+scoping rules.  Variable assignments can be made during a declaration
+or at any other point in a program. Variables may be declared as
+local, instance or class level scope.  Class level variables are
+declared using the \texttt{static} keyword. A class that is derived
+from another class may access it's parents variables if the parent
+class is declared in one of the source programs.  \textit{If a class
+  is derived from a class declared in a shared library then that class
+  cannot access it's parents variables, unless an accessor method is
+  provided.}  Local variables can be declared without specifying their
+data type, such variables are bound to the type defined by their first
+right-hand side assignment. Three different declaration styles are
+shown below:
 
 \begin{verbatim}
 a : Int;
@@ -218,8 +219,8 @@ with the following default values:
 \subsection{Expressions}
 The Objeck language supports various types of expressions.  Some of
 these expressions include mathematical, logical, array and method
-calls.  The preceding sections describes some of the expressions
-that are supported in Objeck.
+calls.  The preceding sections describes some of the expressions that
+are supported in Objeck.
 
 \subsubsection{Mathematical and Logical Expressions}
 The following code example demonstrates two ways to printing the
@@ -265,9 +266,9 @@ The following bitwise operators are also supported for integer types:
 \end{itemize}
 
 The [\texttt{*}, \texttt{/}, \texttt{\%}] operators have a higher
-precedence than the [\texttt{+}, \texttt{-}] operators and are naturally
-enforced by the language. Operators of the same precedence are
-evaluated from left-to-right.  Logical operations are of lower
+precedence than the [\texttt{+}, \texttt{-}] operators and are
+naturally enforced by the language. Operators of the same precedence
+are evaluated from left-to-right.  Logical operations are of lower
 precedence than mathematical operations. All logical operators are of
 the same precedence and order is determined via left--to--right
 evaluation.  The [\texttt{\&}, \texttt{|}] logical operators use
@@ -304,9 +305,10 @@ array[1,0] := 7;
 The size of an array can be obtained by calling the array's
 \texttt{Size()} method.  The \texttt{Size()} method will return the
 number of elements in a given array.  For a multi-dimensional array
-the \texttt{Size()} method returns an array of sizes for each dimension.  
-Character array literals are allocated as \texttt{String} objects.
-The \texttt{String} class provides support for advanced string operations.
+the \texttt{Size()} method returns an array of sizes for each
+dimension.  Character array literals are allocated as \texttt{String}
+objects.  The \texttt{String} class provides support for advanced
+string operations.
 
 \begin{verbatim}
 string := "Hello World!";
@@ -317,8 +319,9 @@ sizes[0]->PrintLine();
 sizes[1]->PrintLine();
 \end{verbatim}
 
-The following example allocates an array of \texttt{Widget} objects.  An object must
-implment it's \texttt{New} method if it's going to be instnatanced.
+The following example allocates an array of \texttt{Widget} objects.
+An object must implment it's \texttt{New} method if it's going to be
+instnatanced.
 
 \begin{verbatim}
 class Widget {
@@ -338,7 +341,8 @@ class MakeWidgets {
 
 \subsubsection{Conditional Expressions}
 There's also support for ternary conditional expressions.  For example
-the following statement prints the value \texttt{false} after two logical comparisons. 
+the following statement prints the value \texttt{false} after two
+logical comparisons.
 
 \begin{verbatim}
 a := 7;
@@ -579,10 +583,10 @@ total->PrintLine();
 \end{verbatim}
 
 To determine if an object instance is of a certain class type (object
-or interface) it's \texttt{TypeOf} method can be invoked.  This method will return
-\texttt{true} if the instance is of the same or a derived type,
-\texttt{false} otherwise.  This method can be used to check a class
-instance type before casting it.
+or interface) it's \texttt{TypeOf} method can be invoked.  This method
+will return \texttt{true} if the instance is of the same or a derived
+type, \texttt{false} otherwise.  This method can be used to check a
+class instance type before casting it.
 
 \begin{verbatim}
 s := "FooBar";
@@ -597,16 +601,16 @@ used to determine if two object instances are of the same or different
 classes.
 
 \subsubsection{Methods and Functions}
-The Objeck language supports both methods and functions.  Functions are
-public static procedures that may be executed by any class.  Methods
-are operations that may be performed on an object instance.  Methods
-have \texttt{public} and \texttt{private} qualifiers.  Methods that
-are \texttt{private} may only be called from within the same class,
-while \texttt{public} methods may be called from other classes.  Note,
-methods are \texttt{private} by default. The Objeck language supports
-polymorphic methods and functions, meaning that there can be multiple
-methods with the same name within the same class as long as their
-declaration arguments vary.
+The Objeck language supports both methods and functions.  Functions
+are public static procedures that may be executed by any class.
+Methods are operations that may be performed on an object instance.
+Methods have \texttt{public} and \texttt{private} qualifiers.  Methods
+that are \texttt{private} may only be called from within the same
+class, while \texttt{public} methods may be called from other classes.
+Note, methods are \texttt{private} by default. The Objeck language
+supports polymorphic methods and functions, meaning that there can be
+multiple methods with the same name within the same class as long as
+their declaration arguments vary.
 
 Methods and functions can either be executed in an interpreted or JIT
 compiled mode. Interpreted execution mimics microprocessor functions
@@ -635,8 +639,8 @@ method : virtual : public : GetMake() ~ String;
 As a modern object-oriented language, Objeck supports interfaces.
 Interfaces define virtual methods that must be implemented by a given
 class.  A class may implement one or more interfaces.  Interface
-references may be passed, dereferenced and casted in a similar manner to class
-references.  Below is an example of an interface definition:
+references may be passed, dereferenced and casted in a similar manner
+to class references.  Below is an example of an interface definition:
 
 \begin{verbatim}
 interface Color {
@@ -689,8 +693,8 @@ size2 := EnvokeSize("Hello", s2);
 \end{verbatim}
 
 \subsubsection{Envoking Functions}
-The following example shows how a function variable can be
-assigned and envoked:
+The following example shows how a function variable can be assigned
+and envoked:
 \begin{verbatim}
 ...
 method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
@@ -701,13 +705,13 @@ method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
 
 \section{Native Shared Library Support}
 The Objeck Language has the ability to interact with native C/C++
-shared libraries via runtime 
-extensions.  The APIs allows a programmer to load a shared libraries and invoke native C
-functions.  Data is passed between the two layers via
-\texttt{Object[]}.  Basic objects such as \texttt{Int} and
-\texttt{Float} types must be wrapped in \texttt{IntHolder} and
-\texttt{FloatHolder} classes respectively.  Please refer to the
-examples in the source code distribution for additional information.
+shared libraries via runtime extensions.  The APIs allows a programmer
+to load a shared libraries and invoke native C functions.  Data is
+passed between the two layers via \texttt{Object[]}.  Basic objects
+such as \texttt{Int} and \texttt{Float} types must be wrapped in
+\texttt{IntHolder} and \texttt{FloatHolder} classes respectively.
+Please refer to the examples in the source code distribution for
+additional information.
 
 A native function signature looks like the following:
 \begin{verbatim}
@@ -718,9 +722,9 @@ A native function signature looks like the following:
 \end{verbatim}
 
 The \texttt{VMContext} structure contains pointers to the calculation
-stack as well as utility functions that allow programmers to 
-allocate VM objects and arrays.  In addition, this structure provides the
-ability to invoke Objeck functions and methods..  
+stack as well as utility functions that allow programmers to allocate
+VM objects and arrays.  In addition, this structure provides the
+ability to invoke Objeck functions and methods..
 
 \begin{verbatim}
 struct VMContext {
@@ -736,7 +740,8 @@ struct VMContext {
 
 The \texttt{lib\_api.h} header file also includes helper functions
 that allow programmers to access and set data that passed into the
-native C function.  A subset of the available functions include the following:
+native C function.  A subset of the available functions include the
+following:
 
 \begin{itemize}
 \item \begin{verbatim}APITools_GetFunctionValue\end{verbatim}
@@ -759,9 +764,9 @@ native C function.  A subset of the available functions include the following:
 
 \section{Debugger}
 The Objeck compiler toolset contains a simple interactive read-only
-debugger, which allows programmers to monitor the runtime behavior of their
-programs.  The debugger allows programmers to set breakpoints within
-methods based upon source line numbers.  The debugger can also
+debugger, which allows programmers to monitor the runtime behavior of
+their programs.  The debugger allows programmers to set breakpoints
+within methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
@@ -806,17 +811,18 @@ instance level variables the path must start with
 \section{Class Libraries}
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
-data structures like vectors, lists, queues, etc.  As new classes are 
-added they'll be documented in this section.  
+data structures like vectors, lists, queues, etc.  As new classes are
+added they'll be documented in this section.
 
 The diagram below outlines available class bundles:
 
 \begin{center}
-\includegraphics{../../images/classes.png}
+  \includegraphics{../../images/classes.png}
 \end{center}
 
 \subsection{System}
-Class support for basic data types. These classes are located in the default `System' bundle.
+Class support for basic data types. These classes are located in the
+default `System' bundle.
 
 \subsubsection{Base}
 Base class for all objects.
@@ -827,7 +833,8 @@ Base class for all objects.
   \end{itemize}
 \item \texttt{GetClassID} - returns the class ID
   \begin{itemize}
-  \item method : public : native : GetClassID() \textasciitilde ClassID
+  \item method : public : native : GetClassID() \textasciitilde
+    ClassID
   \end{itemize}
 \item \texttt{GetInstanceID} - returns a unique instance ID
   \begin{itemize}
@@ -855,13 +862,11 @@ Base class for all objects.
 
 \subsubsection{Char}
 \begin{itemize}
-\item \texttt{ToUpper} - coverts a character to a uppercase
-  character
+\item \texttt{ToUpper} - coverts a character to a uppercase character
   \begin{itemize}
   \item method : public : native : ToUpper() \textasciitilde Char
   \end{itemize}
-\item \texttt{ToLower} - coverts a character to a lowercase
-  character
+\item \texttt{ToLower} - coverts a character to a lowercase character
   \begin{itemize}
   \item method : public : native : ToLower() \textasciitilde Char
   \end{itemize}
@@ -993,7 +998,7 @@ Base class for all objects.
   \item method : ArcTan() \textasciitilde Float
   \end{itemize}
 \item \texttt{ToRadians} - converts degrees to radians
-   \begin{itemize}
+  \begin{itemize}
   \item method : ToRadians() \textasciitilde Float
   \end{itemize}
 \item \texttt{Log} - returns the natural log of the radian value
@@ -1044,43 +1049,56 @@ Base class for all objects.
   \item New()
   \item New(s : String)
   \item New(a : Char[])
-  \item New(a : Char[], offset : Int, max : Int)   
+  \item New(a : Char[], offset : Int, max : Int)
   \item New(a : Byte[])
-  \item New(a : Byte[], offset : Int, max : Int) 
+  \item New(a : Byte[], offset : Int, max : Int)
   \end{itemize}
 \item \texttt{Append} - Appends a \texttt{String}, \texttt{Char[]},
   \texttt{Char}, \texttt{Int} or \texttt{Float} to the current String
   instance
   \begin{itemize}
-  \item method : public : native : Append(s : String) \textasciitilde Nil
-  \item method : public : native : Append(c : Char) \textasciitilde Nil
-  \item method : public : native : Append(b : Byte) \textasciitilde Nil
+  \item method : public : native : Append(s : String) \textasciitilde
+    Nil
+  \item method : public : native : Append(c : Char) \textasciitilde
+    Nil
+  \item method : public : native : Append(b : Byte) \textasciitilde
+    Nil
   \item method : public : native : Append(i : Int) \textasciitilde Nil
-  \item method : public : native : Append(f : Float) \textasciitilde Nil
-  \item method : public : native : Append(a : Char[]) \textasciitilde Nil
-  \item method : public : native : Append(a : Char[], offset : Int, max : Int) \textasciitilde Nil
-  \item method : public : native : Append(a : Byte[]) \textasciitilde Nil
-  \item method : public : native : Append(a : Byte[], offset : Int, max : Int) \textasciitilde Nil
+  \item method : public : native : Append(f : Float) \textasciitilde
+    Nil
+  \item method : public : native : Append(a : Char[]) \textasciitilde
+    Nil
+  \item method : public : native : Append(a : Char[], offset : Int,
+    max : Int) \textasciitilde Nil
+  \item method : public : native : Append(a : Byte[]) \textasciitilde
+    Nil
+  \item method : public : native : Append(a : Byte[], offset : Int,
+    max : Int) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given Character; -1 if not found
   \begin{itemize}
   \item method : public : native : Find(c : Char) \textasciitilde Int
-  \item method : public : native : Find(offset : Int, c : Char) \textasciitilde Int
+  \item method : public : native : Find(offset : Int, c : Char)
+    \textasciitilde Int
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given String; -1 if not found
   \begin{itemize}
-  \item method : public : native : Find(s : String) \textasciitilde Int
-  \item method : public : native : Find(s : String, offfset : Int) \textasciitilde Int
+  \item method : public : native : Find(s : String) \textasciitilde
+    Int
+  \item method : public : native : Find(s : String, offfset : Int)
+    \textasciitilde Int
   \end{itemize}
 \item \texttt{Replace} - find and replace a single string instance.
   \begin{itemize}
-  \item method : public : native : Replace(find : String, replace : String) \textasciitilde String
-  \end{itemize}  
+  \item method : public : native : Replace(find : String, replace :
+    String) \textasciitilde String
+  \end{itemize}
 \item \texttt{ReplaceAll} - find and replace all string instances.
-  \begin{itemize}  
-  \item method : public : native : ReplaceAll(find : String, replace : String) \textasciitilde String
+  \begin{itemize}
+  \item method : public : native : ReplaceAll(find : String, replace :
+    String) \textasciitilde String
   \end{itemize}
 \item \texttt{Size} - returns the size of the String
   \begin{itemize}
@@ -1098,11 +1116,13 @@ Base class for all objects.
   \end{itemize}
 \item \texttt{ToCharArray} - converts a string to a \texttt{Char[]}
   \begin{itemize}
-  \item method : public : native : ToCharArray() \textasciitilde Char[]
+  \item method : public : native : ToCharArray() \textasciitilde
+    Char[]
   \end{itemize}
 \item \texttt{ToBytteArray} - converts a string to a \texttt{Bytte[]}
   \begin{itemize}
-  \item method : public : native : ToBytteArray() \textasciitilde Bytte[]
+  \item method : public : native : ToBytteArray() \textasciitilde
+    Bytte[]
   \end{itemize}
 \item \texttt{ToInt} - converts a string to a \texttt{Int}
   \begin{itemize}
@@ -1115,7 +1135,8 @@ Base class for all objects.
 \item \texttt{SubString} - creates a new string that contains a subset
   of the string's contents
   \begin{itemize}
-  \item method : public : native : SubString(offset : Int) \textasciitilde String
+  \item method : public : native : SubString(offset : Int)
+    \textasciitilde String
   \item method : public : native : SubString(offset : Int, length :
     Int) \textasciitilde String
   \end{itemize}
@@ -1123,7 +1144,7 @@ Base class for all objects.
   \begin{itemize}
   \item method : public : native : Trim() \textasciitilde String
   \end{itemize}
-\item \texttt{Pop} - removes the last character from a string 
+\item \texttt{Pop} - removes the last character from a string
   \begin{itemize}
   \item method : public : native : Pop() \textasciitilde Char
   \end{itemize}
@@ -1159,12 +1180,14 @@ Base class for all objects.
 \item \texttt{Compare} - compares two string returns 0 if they are
   equal
   \begin{itemize}
-  \item method : public : native : Compare(rhs : Compare) \textasciitilde Int
+  \item method : public : native : Compare(rhs : Compare)
+    \textasciitilde Int
   \end{itemize}
 \item \texttt{Split} - breaks a string into tokens based upon a given
   delimiter
   \begin{itemize}
-  \item method : public : native : Split(delim : String) \textasciitilde String[]
+  \item method : public : native : Split(delim : String)
+    \textasciitilde String[]
   \end{itemize}
 \item \texttt{Print} - prints the current value
   \begin{itemize}
@@ -1304,9 +1327,13 @@ environment.
   \begin{itemize}
   \item function : GetProperty() \textasciitilde String
   \end{itemize}
-\item \texttt{SetProperty} - sets the key/value pair for a given property. Properties can also be set via the `config.prop' configuration file, which must be located in the same directory as the VM.
+\item \texttt{SetProperty} - sets the key/value pair for a given
+  property. Properties can also be set via the `config.prop'
+  configuration file, which must be located in the same directory as
+  the VM.
   \begin{itemize}
-  \item function : SetProperty(k : String, v : String) \textasciitilde Nil
+  \item function : SetProperty(k : String, v : String) \textasciitilde
+    Nil
   \end{itemize}
 \item \texttt{GetDate} - returns the current time
   \begin{itemize}
@@ -1316,13 +1343,19 @@ environment.
   \begin{itemize}
   \item function : public : Exit() \textasciitilde Nil
   \end{itemize}
-\item \texttt{Copy} - copies a block of memory from one array to another
+\item \texttt{Copy} - copies a block of memory from one array to
+  another
   \begin{itemize}
-  \item function : Copy(dest : Char[], dest\_offset : Int, src : Char[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Float[], dest\_offset : Int, src : Float[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Base[], dest\_offset : Int, src : Base[], src\_offset : Int, len : Int) \textasciitilde Bool
-  \item function : Copy(dest : Compare[], dest\_offset : Int, src : Compare[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Char[], dest\_offset : Int, src :
+    Char[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Int[], dest\_offset : Int, src : Int[],
+    src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Float[], dest\_offset : Int, src :
+    Float[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Base[], dest\_offset : Int, src :
+    Base[], src\_offset : Int, len : Int) \textasciitilde Bool
+  \item function : Copy(dest : Compare[], dest\_offset : Int, src :
+    Compare[], src\_offset : Int, len : Int) \textasciitilde Bool
   \end{itemize}
 \end{itemize}
 
@@ -1340,7 +1373,8 @@ Provides the ability to access program metadata at runtime.
   \begin{itemize}
   \item method : public : IsLoaded() \textasciitilde Bool
   \end{itemize}
-\item \texttt{Instance} - creates a new class instance and calls default constructor
+\item \texttt{Instance} - creates a new class instance and calls
+  default constructor
   \begin{itemize}
   \item function : Instacne(name : String) \textasciitilde Base
   \end{itemize}
@@ -1352,7 +1386,8 @@ Provides the ability to access program metadata at runtime.
   \begin{itemize}
   \item method : public : GetMethods() \textasciitilde GetMethods[]
   \end{itemize}
-\item \texttt{GetMethodNumber} - returns the number of methods in the class
+\item \texttt{GetMethodNumber} - returns the number of methods in the
+  class
   \begin{itemize}
   \item method : public : GetMethodNumber() \textasciitilde Int
   \end{itemize}
@@ -1403,18 +1438,19 @@ Provides the ability to access program metadata at runtime.
 \end{itemize}
 
 \subsubsection{TypeId}
- \begin{itemize}
- \item BOOL
- \item BYTE
- \item CHAR
- \item INT
- \item FLOAT
- \item CLASS
- \item FUNC
- \end{itemize}
+\begin{itemize}
+\item BOOL
+\item BYTE
+\item CHAR
+\item INT
+\item FLOAT
+\item CLASS
+\item FUNC
+\end{itemize}
 
 \subsection{System.IO}
-This bundle supports console I/O, object serialization and defines general I/O interfaces.
+This bundle supports console I/O, object serialization and defines
+general I/O interfaces.
 
 \subsubsection{InputStream}
 The InputStream interface defines input operations.
@@ -1432,7 +1468,7 @@ The InputStream interface defines input operations.
   \begin{itemize}
   \item method : public : ReadString() \textasciitilde String
   \end{itemize}
-\end{itemize}  
+\end{itemize}
 
 \subsubsection{OutputStream}
 The OutputStream interface defines output operations.
@@ -1473,8 +1509,10 @@ the system console.  The class supports the following operations:
   \end{itemize}
 \item \texttt{WriteBuffer} - writes a buffer to standard out.
   \begin{itemize}
-  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) \textasciitilde Bool
-  \item function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) \textasciitilde Bool
+  \item function : public : WriteBuffer(offset : Int, num : Int,
+    buffer : Byte[]) \textasciitilde Bool
+  \item function : public : WriteBuffer(offset : Int, num : Int,
+    buffer : Char[]) \textasciitilde Bool
   \end{itemize}
 \item \texttt{ReadString} - reads in a line of text as a
   \texttt{Char[]} from standard in.
@@ -1484,9 +1522,9 @@ the system console.  The class supports the following operations:
 \end{itemize}
 
 \subsubsection{Serializer}
-The Serializer class allows datatypes to be deflated into a byte
-array for storage or transmission.  This class is in the `IO' bundle.  The class supports
-the following operations:
+The Serializer class allows datatypes to be deflated into a byte array
+for storage or transmission.  This class is in the `IO' bundle.  The
+class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1496,31 +1534,31 @@ the following operations:
   \begin{itemize}
   \item method : public : Write(b : Bool) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(i : Int) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(f : Float) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(o : Base) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(b : Bool[]) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(b : Bool[]) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(b : Byte[]) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(c : Charl[]) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(i : Int[]) \textasciitilde Nil
   \end{itemize}
-\begin{itemize}
+  \begin{itemize}
   \item method : public : Write(f : Float[]) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Serialize} - returns a byte stream of serialized data
@@ -1531,8 +1569,8 @@ the following operations:
 
 \subsubsection{Deserializer}
 The Deserializer class allows datatypes to be inflated from a byte
-array.  This class is in the `IO' bundle.  The class supports
-the following operations:
+array.  This class is in the `IO' bundle.  The class supports the
+following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1616,30 +1654,38 @@ The File class allows programmers to access files.
   \begin{itemize}
   \item function : Exists(n : String) \textasciitilde Bool
   \end{itemize}
-\item \texttt{CreateTime} - returns the time in which the file was created
+\item \texttt{CreateTime} - returns the time in which the file was
+  created
   \begin{itemize}
   \item function : CreateTime(n : String) \textasciitilde Date
-  \item function : CreateTime(n : String, gmt : Bool) \textasciitilde Date
+  \item function : CreateTime(n : String, gmt : Bool) \textasciitilde
+    Date
   \end{itemize}
-\item \texttt{ModifiedTime} - returns the time in which the file was last modifed
+\item \texttt{ModifiedTime} - returns the time in which the file was
+  last modifed
   \begin{itemize}
   \item function : ModifiedTime(n : String) \textasciitilde Date
-  \item function : ModifiedTime(n : String, gmt : Bool) \textasciitilde Date
+  \item function : ModifiedTime(n : String, gmt : Bool)
+    \textasciitilde Date
   \end{itemize}
-\item \texttt{AccessedTime} - returns the time in which the file was last modifed
+\item \texttt{AccessedTime} - returns the time in which the file was
+  last modifed
   \begin{itemize}
   \item function : AccessedTime(n : String) \textasciitilde Date
-  \item function : AccessedTime(n : String, gmt : Bool) \textasciitilde Date
+  \item function : AccessedTime(n : String, gmt : Bool)
+    \textasciitilde Date
   \end{itemize}
 \item \texttt{Rename} - renames a file
   \begin{itemize}
-  \item function : Rename(from : String, to : String) \textasciitilde Bool
+  \item function : Rename(from : String, to : String) \textasciitilde
+    Bool
   \end{itemize}
 \end{itemize}
 
 \subsubsection{FileReader}
-The FileReader is inherited from the File class implements InputStream and allows programmers
-read files.  The class supports the following operations:
+The FileReader is inherited from the File class implements InputStream
+and allows programmers read files.  The class supports the following
+operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1653,9 +1699,11 @@ read files.  The class supports the following operations:
   \begin{itemize}
   \item method : public : ReadByte() \textasciitilde Byte
   \end{itemize}
-\item \texttt{ReadBinaryFile} - reads an entire file into a byte array.
+\item \texttt{ReadBinaryFile} - reads an entire file into a byte
+  array.
   \begin{itemize}
-  \item function : public : ReadBinaryFile(file : String) \textasciitilde Byte[]
+  \item function : public : ReadBinaryFile(file : String)
+    \textasciitilde Byte[]
   \end{itemize}
 \item \texttt{ReadBuffer} - reads n number of bytes from a file.
   \begin{itemize}
@@ -1673,8 +1721,9 @@ read files.  The class supports the following operations:
 \end{itemize}
 
 \subsubsection{FileWriter}
-The FileReader is inherited from the File class implements OutputStream and allows programmers
-to write to files.  The class supports the following operations:
+The FileReader is inherited from the File class implements
+OutputStream and allows programmers to write to files.  The class
+supports the following operations:
 \begin{itemize}
 \item \texttt{Close} - closes a file.
   \begin{itemize}
@@ -1690,7 +1739,8 @@ to write to files.  The class supports the following operations:
   \end{itemize}
 \item \texttt{WriteBuffer} - writes n number of bytes to a file.
   \begin{itemize}
-  \item method : public : WriteBuffer(buffer : Byte[]) \textasciitilde Int
+  \item method : public : WriteBuffer(buffer : Byte[]) \textasciitilde
+    Int
   \item method : public : WriteBuffer(offset : Int, num : Int, buffer
     : Byte[]) \textasciitilde Int
   \end{itemize}
@@ -1719,11 +1769,13 @@ directories.  The class supports the following operations:
 \end{itemize}
 
 \subsection{System.IO.Net}
-Provides support for TCP/IP client and server sockets.  The TCPSecureSocket class provides SSL support for TCP/IP connections.
+Provides support for TCP/IP client and server sockets.  The
+TCPSecureSocket class provides SSL support for TCP/IP connections.
 
 \subsubsection{TCPSocket/TCPSecureSocket}
-The TCPSocket class implements the InputStream and OuptStream interfaces and allows programmers to connect to TCP/IP socket
-servers.  The class supports the following operations:
+The TCPSocket class implements the InputStream and OuptStream
+interfaces and allows programmers to connect to TCP/IP socket servers.
+The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1778,7 +1830,8 @@ servers.  The class supports the following operations:
 \end{itemize}
 
 \subsubsection{TCPSocketServer}
-The TCPSocket class allows programmers develop TCP/IP socket servers. The class supports the following operations:
+The TCPSocket class allows programmers develop TCP/IP socket
+servers. The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1803,20 +1856,23 @@ Provides time and date operations.
 
 \subsubsection{Date}
 The Date class allows programmers gain access to the current system
-time.  This class is in the `Time' bundle.  The class supports the following operations:
+time.  This class is in the `Time' bundle.  The class supports the
+following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
   \item New()
   \item New(gmt : Bool)
   \item New(day : Int, month : Int, year : Int, gmt : Bool)
-  \item New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)
+  \item New(day : Int, month : Int, year : Int, hours : Int, mins :
+    Int, secs : Int, gmt : Bool)
   \end{itemize}
 \item \texttt{GetDay} - return the current day as an \texttt{Int}.
   \begin{itemize}
   \item method : public : GetDay() \textasciitilde Int
   \end{itemize}
-\item \texttt{GetDayName} - return the current day of the week as a \texttt{String}.
+\item \texttt{GetDayName} - return the current day of the week as a
+  \texttt{String}.
   \begin{itemize}
   \item method : public : GetNameDay() \textasciitilde String
   \end{itemize}
@@ -1824,7 +1880,8 @@ time.  This class is in the `Time' bundle.  The class supports the following ope
   \begin{itemize}
   \item method : public : GetMonth() \textasciitilde Int
   \end{itemize}
-\item \texttt{GetMonthName} - return the current month as a \texttt{String}.
+\item \texttt{GetMonthName} - return the current month as a
+  \texttt{String}.
   \begin{itemize}
   \item method : public : GetMonthName() \textasciitilde String
   \end{itemize}
@@ -1865,7 +1922,8 @@ time.  This class is in the `Time' bundle.  The class supports the following ope
 \end{itemize}
 
 \subsubsection{Timer}
-The Time class allows programmers perform simple timings.  This class is in the `Time' bundle.  The class supports the following operations:
+The Time class allows programmers perform simple timings.  This class
+is in the `Time' bundle.  The class supports the following operations:
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1881,16 +1939,18 @@ The Time class allows programmers perform simple timings.  This class is in the 
   \end{itemize}
 \item \texttt{End} - Returns the elapsed time in milliseconds
   \begin{itemize}
-  \item  method : public : GetElapsedTime() \textasciitilde Int
+  \item method : public : GetElapsedTime() \textasciitilde Int
   \end{itemize}
 \end{itemize}
 
 \subsection{System.Concurrency}
-Support for system concurrency. These classes are located in the default `System.Concurrency' bundle.
+Support for system concurrency. These classes are located in the
+default `System.Concurrency' bundle.
 
 \subsubsection{Thread}
 The Thread class allows programmers to invoke a method in a separately
-running system thread.  This class is in the `System.Concurrency' bundle.  
+running system thread.  This class is in the `System.Concurrency'
+bundle.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -1899,7 +1959,8 @@ running system thread.  This class is in the `System.Concurrency' bundle.
 \item \texttt{Execute} - Execute a \texttt{Thread()} by calling the
   thread's \texttt{Run()} method in a separate thread.
   \begin{itemize}
-  \item method : public : Execute(param : System.Base) \textasciitilde Nil
+  \item method : public : Execute(param : System.Base) \textasciitilde
+    Nil
   \end{itemize}
 \item \texttt{Sleep} - Sleeps a given thread for a number of
   milliseconds.
@@ -1920,7 +1981,8 @@ running system thread.  This class is in the `System.Concurrency' bundle.
   \end{itemize}
 \item \texttt{Run} - Method that is executed by the new thread
   \begin{itemize}
-  \item method : virtual : public : Run(param : System.Base) \textasciitilde Nil
+  \item method : virtual : public : Run(param : System.Base)
+    \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
@@ -1948,7 +2010,8 @@ Interface for all objects that use comparative algorithms.
 \item \texttt{Compare} - compares two object instances; 0 if equal,
   less-then 0 if less and greater-then 0 if greater.
   \begin{itemize}
-  \item method : virtual : public : Compare(rhs : System.Compare) \textasciitilde Int
+  \item method : virtual : public : Compare(rhs : System.Compare)
+    \textasciitilde Int
   \end{itemize}
 \item \texttt{HashID} - returns a unique value for the given class
   type
@@ -1963,7 +2026,8 @@ Basic implementation of \texttt{Compare} methods.
 \item \texttt{Compare} - returns true if argument is the same
   instance, false otherwise.
   \begin{itemize}
-  \item method : public : Compare(rhs : System.Compare) \textasciitilde Int
+  \item method : public : Compare(rhs : System.Compare)
+    \textasciitilde Int
   \end{itemize}
 \item \texttt{HashID} - hash value based upon instance ID
   \begin{itemize}
@@ -1972,8 +2036,8 @@ Basic implementation of \texttt{Compare} methods.
 \end{itemize}
 
 \subsubsection{Queue/QueueInt/QueueFloat}
-The Queue class support the concept of a growing queue and based upon a FIFO priority.
-There are two specialized version of this class:
+The Queue class support the concept of a growing queue and based upon
+a FIFO priority.  There are two specialized version of this class:
 \texttt{IntQueue} and \texttt{FloatQueue}.  The \texttt{IntQueue} and
 \texttt{FloatQueue} classes use \texttt{Int} and \texttt{Float} types
 respectively instead of \texttt{Compare} type.  The general class
@@ -2017,7 +2081,8 @@ supports the following operations:
 \item \texttt{New}
 \item \texttt{AddBack} - adds a new value to the back of the list
   \begin{itemize}
-  \item method : public : native : AddBack(value : Compare) \textasciitilde Nil
+  \item method : public : native : AddBack(value : Compare)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{RemoveBack} - removes the last element in the list
   \begin{itemize}
@@ -2025,7 +2090,8 @@ supports the following operations:
   \end{itemize}
 \item \texttt{AddFront} - adds a new value to the front of the list
   \begin{itemize}
-  \item method : public : native : AddFront(value : Compare) \textasciitilde Nil
+  \item method : public : native : AddFront(value : Compare)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{RemoveFront} - removes the first element in the list
   \begin{itemize}
@@ -2079,11 +2145,13 @@ supports the following operations:
   \begin{itemize}
   \item method : public : IsFront() \textasciitilde Bool
   \end{itemize}
-\item \texttt{IsBack} - returns true if cursor is at the back of the list
+\item \texttt{IsBack} - returns true if cursor is at the back of the
+  list
   \begin{itemize}
   \item method : public : IsBack() \textasciitilde Bool
   \end{itemize}
-\item \texttt{IsEnd} - returns true if cursor is at the end of the list
+\item \texttt{IsEnd} - returns true if cursor is at the end of the
+  list
   \begin{itemize}
   \item method : public : IsEnd() \textasciitilde Bool
   \end{itemize}
@@ -2110,12 +2178,12 @@ supports the following operations:
 \end{itemize}
 
 \subsubsection{Stack/IntStack/FloatStack}
-The Stack class support the concept of a growing stack based upon a FILO priority.  There are two
-specialized version of this class: \texttt{IntStack} and
-\texttt{FloatStack}.  The \texttt{IntStack} and \texttt{FloatStack}
-classes use \texttt{Int} and \texttt{Float} types respectively instead
-of \texttt{Base} type.  The general class supports the following
-operations:
+The Stack class support the concept of a growing stack based upon a
+FILO priority.  There are two specialized version of this class:
+\texttt{IntStack} and \texttt{FloatStack}.  The \texttt{IntStack} and
+\texttt{FloatStack} classes use \texttt{Int} and \texttt{Float} types
+respectively instead of \texttt{Base} type.  The general class
+supports the following operations:
 \begin{itemize}
 \item \texttt{New}
 \item \texttt{Push} - pushes a new value onto the stack
@@ -2177,7 +2245,8 @@ following operations:
 \item \texttt{Set} - replaces the list value based upon the given
   index
   \begin{itemize}
-  \item method : public : Set(value : Base, index : Int) \textasciitilde Bool
+  \item method : public : Set(value : Base, index : Int)
+    \textasciitilde Bool
   \end{itemize}
 \item \texttt{Size} - returns the size of the list
   \begin{itemize}
@@ -2202,9 +2271,11 @@ following operations:
   \end{itemize}
 \item \texttt{BinarySearch} - performs a binary search for an element
   in a \emph{sorted} vector using an iterative binary search algorithm
-  in $O(\log_2 n)$ time. Returns the index of element is returned, -1 otherwise.
+  in $O(\log_2 n)$ time. Returns the index of element is returned, -1
+  otherwise.
   \begin{itemize}
-  \item method : public : BinarySearch(v : Compare) \textasciitilde Int
+  \item method : public : BinarySearch(v : Compare) \textasciitilde
+    Int
   \end{itemize}
 \item \texttt{Find} - search for an element in the array and reutrn
   the index of the element found, -1 otherwise.
@@ -2246,7 +2317,8 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
 \item \texttt{New}
 \item \texttt{Insert} - adds a new value to the tree
   \begin{itemize}
-  \item method : public : Insert(key : Compare, value : Base) \textasciitilde Nil
+  \item method : public : Insert(key : Compare, value : Base)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{Remove} - removes a value from the tree
   \begin{itemize}
@@ -2283,9 +2355,9 @@ such that inserts, deletes and searches are $O(\log_2 n)$.
 \end{itemize}
 
 \subsubsection{Set/IntSet/FloatSet/StringSet}
-The Set class supports the concept of an associative array with
-keys.  The class implements a balance binary tree algorithm
-such that inserts, deletes and searches are $O(\log_2 n)$.
+The Set class supports the concept of an associative array with keys.
+The class implements a balance binary tree algorithm such that
+inserts, deletes and searches are $O(\log_2 n)$.
 \begin{itemize}
 \item \texttt{New}
   \begin{itemize}
@@ -2329,7 +2401,8 @@ for larger sets):
 \begin{itemize}
 \item \texttt{Insert} - adds a new value to the hash table
   \begin{itemize}
-  \item method : public : Insert(key : Compare, value : Base) \textasciitilde Nil
+  \item method : public : Insert(key : Compare, value : Base)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{Remove} - removes a value from the hash table
   \begin{itemize}
@@ -2379,7 +2452,8 @@ The HttpClient class allows programmers access web servers via HTTP.
 \item \texttt{Post} - Performs a HTTP POST to the connected website,
   returns true is successful
   \begin{itemize}
-  \item method : public : Post(url : String, port : Int, content : String) \textasciitilde Vector
+  \item method : public : Post(url : String, port : Int, content :
+    String) \textasciitilde Vector
   \item method : public : Post(url : String, content\_type: String,
     port : Int, content : String) \textasciitilde Vector
   \end{itemize}
@@ -2387,13 +2461,15 @@ The HttpClient class allows programmers access web servers via HTTP.
 \item \texttt{Get} - Performs a HTTP GET from the connected website,
   returns a \texttt{Vector} of strings
   \begin{itemize}
-  \item method : public : Get(url : String, port : Int) \textasciitilde Vector
-  \item method : public : Get(url : String, content\_type: String, port : Int) \textasciitilde Vector
+  \item method : public : Get(url : String, port : Int)
+    \textasciitilde Vector
+  \item method : public : Get(url : String, content\_type: String,
+    port : Int) \textasciitilde Vector
   \end{itemize}
 
 \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers
-  information.  HTTP header information is populated after a GET and POST
-  requests.
+  information.  HTTP header information is populated after a GET and
+  POST requests.
   \begin{itemize}
   \item method : GetHeaders() \textasciitilde Map
   \end{itemize}
@@ -2416,60 +2492,66 @@ The HttpClient class allows programmers access web servers via HTTP.
 These bundle provides for JSON parsing and document creation.
 
 \subsubsection{JSONParser}
-The JSONParser class allows programmers to parse and search JSON documents.
+The JSONParser class allows programmers to parse and search JSON
+documents.
 \begin{itemize}
-  \item \texttt{New}
-    \begin{itemize}
-    \item New(buffer : String)
-    \end{itemize}
-  \item \texttt{Parse} - Parses a JSON stream into a graph of elements.
-    Returns true if successful; false otherwise.
-    \begin{itemize}
-    \item method : public : Parse() \textasciitilde JSONElement
-    \end{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(buffer : String)
+  \end{itemize}
+\item \texttt{Parse} - Parses a JSON stream into a graph of elements.
+  Returns true if successful; false otherwise.
+  \begin{itemize}
+  \item method : public : Parse() \textasciitilde JSONElement
+  \end{itemize}
 \end{itemize}
 
 \subsubsection{JSONElement}
-JSON element that contains a root value or references to nested elements (i.e. array and objects). 
+JSON element that contains a root value or references to nested
+elements (i.e. array and objects).
 \begin{itemize}
-  \item \texttt{GetType} - Returns the JSON element type.
-    \begin{itemize}
-    \item method : public : GetType() \textasciitilde JSONType
-    \end{itemize}
-  \item \texttt{GetValue} - Returns a JSON element value.
-    \begin{itemize}
-    \item method : public : GetValue() \textasciitilde String
-    \end{itemize}
-  \item \texttt{Get} - Returns a JSON element by index for array element types.
-    \begin{itemize}
-    \item method : public : Get(index : Int) \textasciitilde JSONElement
-    \end{itemize}
-  \item \texttt{Get} - Returns a JSON element by name for object elemet members.
-    \begin{itemize}
-    \item method : public : Get(key : String) \textasciitilde JSONElement
-    \end{itemize}
-  \item \texttt{GetKeys} - Returns a list of element keys corresponding to object elemet members.
-    \begin{itemize}
-    \item method : public : GetKeys() \textasciitilde Vector
-    \end{itemize}
-  \item \texttt{Size} - Returns number of sub-elements
-    \begin{itemize}
-    \item method : public : Size() \textasciitilde Int
-    \end{itemize}
-  \item \texttt{ToString} - serialize object into a String
-    \begin{itemize}
-    \item method : public : ToString() \textasciitilde String
-    \end{itemize}
+\item \texttt{GetType} - Returns the JSON element type.
+  \begin{itemize}
+  \item method : public : GetType() \textasciitilde JSONType
+  \end{itemize}
+\item \texttt{GetValue} - Returns a JSON element value.
+  \begin{itemize}
+  \item method : public : GetValue() \textasciitilde String
+  \end{itemize}
+\item \texttt{Get} - Returns a JSON element by index for array element
+  types.
+  \begin{itemize}
+  \item method : public : Get(index : Int) \textasciitilde JSONElement
+  \end{itemize}
+\item \texttt{Get} - Returns a JSON element by name for object elemet
+  members.
+  \begin{itemize}
+  \item method : public : Get(key : String) \textasciitilde
+    JSONElement
+  \end{itemize}
+\item \texttt{GetKeys} - Returns a list of element keys corresponding
+  to object elemet members.
+  \begin{itemize}
+  \item method : public : GetKeys() \textasciitilde Vector
+  \end{itemize}
+\item \texttt{Size} - Returns number of sub-elements
+  \begin{itemize}
+  \item method : public : Size() \textasciitilde Int
+  \end{itemize}
+\item \texttt{ToString} - serialize object into a String
+  \begin{itemize}
+  \item method : public : ToString() \textasciitilde String
+  \end{itemize}
 \end{itemize}
 
 \subsubsection{JSONType}
- \begin{itemize}
- \item STRING
- \item NUMBER
- \item TRUE
- \item FALSE
- \item ARRAY
- \item OBJECT
+\begin{itemize}
+\item STRING
+\item NUMBER
+\item TRUE
+\item FALSE
+\item ARRAY
+\item OBJECT
 \end{itemize}
 
 \subsection{XML}
@@ -2510,7 +2592,8 @@ bundle:
   given query string.  The following XPath expressions are supported
   num, attrib\_name\, first() and last().
   \begin{itemize}
-  \item method : public : FindElements(path : String) \textasciitilde Vector
+  \item method : public : FindElements(path : String) \textasciitilde
+    Vector
   \end{itemize}
 \item \texttt{GetError} - Returns the last parsing error; if one
   occurred.
@@ -2543,7 +2626,8 @@ a string. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{SetVersion} - Sets the version name.
   \begin{itemize}
-  \item method : public : SetVersion(name : String) \textasciitilde Nil
+  \item method : public : SetVersion(name : String) \textasciitilde
+    Nil
   \end{itemize}
 \item \texttt{GetEncoding} - Returns the encoding name.
   \begin{itemize}
@@ -2551,7 +2635,8 @@ a string. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{SetEncoding} - Sets the encoding name.
   \begin{itemize}
-  \item method : public : SetEncoding(name : String) \textasciitilde Nil
+  \item method : public : SetEncoding(name : String) \textasciitilde
+    Nil
   \end{itemize}
 \end{itemize}
 
@@ -2584,7 +2669,8 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{SetType} - Sets the element type.
   \begin{itemize}
-  \item method : public : SetType(type : XmlElementType) \textasciitilde Nil
+  \item method : public : SetType(type : XmlElementType)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetParent} - Gets the parent element
   \begin{itemize}
@@ -2592,7 +2678,8 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{SetParent} - Sets the parent element
   \begin{itemize}
-  \item method : public : SetParent(parent : XmlElement) \textasciitilde Nil
+  \item method : public : SetParent(parent : XmlElement)
+    \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetContent} - Returns the XML content between two tags.
   \begin{itemize}
@@ -2600,7 +2687,8 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{SetContent} - Sets the XML content between two tags.
   \begin{itemize}
-  \item method : public : SetContent(content : String) \textasciitilde Nil
+  \item method : public : SetContent(content : String) \textasciitilde
+    Nil
   \end{itemize}
 \item \texttt{GetChildCount} - Returns number of logical child
   elements.
@@ -2609,10 +2697,11 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{FindElements} - returns all elements that match the
   given query string.  The following XPath expressions are supported
-  num, attrib\_name, first() and last().  Note: current node name
-  must be part of the query.
+  num, attrib\_name, first() and last().  Note: current node name must
+  be part of the query.
   \begin{itemize}
-  \item method : public : FindElements(path : String) \textasciitilde Vector
+  \item method : public : FindElements(path : String) \textasciitilde
+    Vector
   \end{itemize}
 \item \texttt{GetChildren} - Returns all child elements.
   \begin{itemize}
@@ -2621,7 +2710,8 @@ DOM. This class in the `XML' bundle:
 \item \texttt{GetChildren} - Returns all child elements that match the
   given name.
   \begin{itemize}
-  \item method : public : GetChildren(name : String) \textasciitilde Vector
+  \item method : public : GetChildren(name : String) \textasciitilde
+    Vector
   \end{itemize}
 \item \texttt{GetChild} - Returns a child element.
   \begin{itemize}
@@ -2629,11 +2719,13 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \item \texttt{AddChild} - adds a child element.
   \begin{itemize}
-  \item method : public : AddChild(child : XmlElement) \textasciitilde Nil
+  \item method : public : AddChild(child : XmlElement) \textasciitilde
+    Nil
   \end{itemize}
 \item \texttt{GetAttribute} - Returns the value of a given attribute.
   \begin{itemize}
-  \item method : public : GetAttribute(name : String) \textasciitilde String
+  \item method : public : GetAttribute(name : String) \textasciitilde
+    String
   \end{itemize}
 \item \texttt{SetAttribute} - Sets the name/value of a given
   attribute.
@@ -2670,19 +2762,127 @@ The Connection class allow programmers to connect to ODBC sources.
   \begin{itemize}
   \item method : public : Close() \textasciitilde Nil
   \end{itemize}
-\item \texttt{Update} - Executes an SQL update statement returning status code
+\item \texttt{Update} - Executes an SQL update statement returning
+  status code
   \begin{itemize}
   \item method : public : Update(sql : String) \textasciitilde Int
   \end{itemize}
-\item \texttt{Select} - Executes an SQL select statement returning a result set	
+\item \texttt{Select} - Executes an SQL select statement returning a
+  result set
   \begin{itemize}
-  \item method : public : Select(sql : String) \textasciitilde ResultSet
+  \item method : public : Select(sql : String) \textasciitilde
+    ResultSet
   \end{itemize}
-\item \texttt{CreateParameterStatement} - Creates a prepared statements, which is used to pass parameters into SQL statements.	
+\item \texttt{CreateParameterStatement} - Creates a prepared
+  statements, which is used to pass parameters into SQL statements.
   \begin{itemize}
-  \item method : public : CreateParameterStatement(sql : String) \textasciitilde ParameterStatement
+  \item method : public : CreateParameterStatement(sql : String)
+    \textasciitilde ParameterStatement
   \end{itemize}
-\end{itemize}  
+\end{itemize}
+
+\subsubsection{ParameterStatement}
+The ParameterStatement class is used to set parameters for SQL
+queries.
+
+\begin{itemize}
+\item \texttt{Set} - Sets the values for various SQL data types.
+  Returns true if the value has been set, false otherwise.
+  \begin{itemize}
+  \item method : public : SetBit(pos : Int, value : Bool) \textasciitilde Bool
+  \item method : public : SetSmallInt(pos : Int, value : Int) \textasciitilde Bool
+  \item method : public : SetInt(pos : Int, value : Int) \textasciitilde Bool
+  \item method : public : SetDouble(pos : Int, value : Float) \textasciitilde Bool
+  \item method : public : SetReal(pos : Int, value : Float) \textasciitilde Bool
+  \item method : public : SetVarchar(pos : Int, value : String) \textasciitilde Bool
+  \item method : public : SetDate(pos : Int, value : Date) \textasciitilde Bool
+  \item method : public : SetTimestamp(pos : Int, value : Timestamp) \textasciitilde
+  \end{itemize}
+\item \texttt{Update} - Executes a SQL update statement that returns
+  a status code
+  \begin{itemize}
+  \item method : public : Update() \textasciitilde Int
+  \end{itemize}
+\item \texttt{Select} - Executes a SQL select statement that returns a
+  result set.
+  \begin{itemize}
+  \item method : public : Update() \textasciitilde Int
+  \end{itemize}
+\item \texttt{Close} - Closes the statement
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{ResultSet}
+The ResultSet class holds the results of a query statement.  A
+ResultSet contains 0 or more rows with column values that may be
+accessed via index or by name.  Column values may be `null'.
+
+\begin{itemize}
+\item \texttt{Next} - Moves the result set cursor to the next row.
+  \begin{itemize}
+  \item method : public : Next() \textasciitilde Bool
+  \end{itemize}
+\item \texttt{IsNull} - Returns true if the accessed column value is `null'.
+  \begin{itemize}
+  \item method : public : IsNull() \textasciitilde Bool
+  \end{itemize}
+
+\item \texttt{Get} - Returns the column value for the given row.
+  \begin{itemize}
+  \item method : public : GetInt(column : Int) \textasciitilde Int
+  \item method : public : GetSmallInt(column : Int) \textasciitilde Int
+  \item method : public : GetBit(column : Int) \textasciitilde Bool
+  \item method : public : GetDouble(column : Int) \textasciitilde Float
+  \item method : public : GetReal(column : Int) \textasciitilde Float
+  \item method : public : GetVarchar(column : Int) \textasciitilde String
+  \item method : public : GetVarchar(name : String) \textasciitilde String
+  \item method : public : GetDate(column : Int) \textasciitilde ODBC.Date
+  \item method : public : GetTimestamp(column : Int) \textasciitilde Timestamp 
+  \end{itemize}
+\item \texttt{Close} - Closes the result set.
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Date}
+The ODBC.Date class holds the values for a SQL date.
+
+\begin{itemize}
+\item \texttt{Get} - Gets various data values
+  \begin{itemize}
+  \item method : public : GetYear() \textasciitilde Int
+  \item method : public : SetYear(year : Int) \textasciitilde Nil
+  \item method : public : GetMonth() \textasciitilde Int
+  \item method : public : SetMonth(month : Int) \textasciitilde Nil
+  \item method : public : GetDay() \textasciitilde Int
+  \item method : public : SetDay(day : Int) \textasciitilde Nil
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{Timestamp}
+The ODBC.Timestamp class holds the values for a SQL timestamp.
+
+\begin{itemize}
+\item \texttt{Get} - Gets various data values
+  \begin{itemize}
+  \item method : public : GetYear() ~ Int 
+  \item method : public : SetYear(year : Int) ~ Nil 
+  \item method : public : GetMonth() ~ Int 
+  \item method : public : SetMonth(month : Int) ~ Nil 
+  \item method : public : GetDay() ~ Int 
+  \item method : public : SetDay(day : Int) ~ Nil 
+  \item method : public : GetHours() ~ Int 
+  \item method : public : SetHours(hours : Int) ~ Nil 
+  \item method : public : GetMinute() ~ Int 
+  \item method : public : SetMinute(minute : Int) ~ Nil 
+  \item method : public : GetSeconds() ~ Int 
+  \item method : public : SetSeconds(second : Int) ~ Nil 
+  \item method : public : GetFraction() ~ Int 
+  \end{itemize}
+\end{itemize}
 
 \subsection{RegEx}
 Support for regular expressions.
@@ -2693,7 +2893,8 @@ The RegEx class provides support for regular expressions parsing.
 \begin{itemize}
 \item \textit{Expressions}
   \begin{itemize}
-  \item \texttt{\char`\\d} \texttt{\char`\\w} \texttt{\char`\\s} digit, word or white space
+  \item \texttt{\char`\\d} \texttt{\char`\\w} \texttt{\char`\\s}
+    digit, word or white space
   \item \texttt{.} match any 1
   \item \texttt{?} optional 1
   \item \texttt{*} match 0 or more
@@ -2711,30 +2912,40 @@ The RegEx class provides support for regular expressions parsing.
   \begin{itemize}
   \item New(pattern : String)
   \end{itemize}
-\item \texttt{MatchExact} - Attempts to match the exact input string using supplied pattern.
-  Returns true if successful, false otherwise. 
+\item \texttt{MatchExact} - Attempts to match the exact input string
+  using supplied pattern.  Returns true if successful, false
+  otherwise.
   \begin{itemize}
-  \item method : public : MatchExact(input : String) \textasciitilde Bool
+  \item method : public : MatchExact(input : String) \textasciitilde
+    Bool
   \end{itemize}
-\item \texttt{Match} - Attempts to best match the input string using supplied pattern. Returns the index of the best match.
+\item \texttt{Match} - Attempts to best match the input string using
+  supplied pattern. Returns the index of the best match.
   \begin{itemize}
   \item method : public : Match(input : String) \textasciitilde Int
   \end{itemize}
-\item \texttt{FindFirst} - Searches the input string for the best first match.
+\item \texttt{FindFirst} - Searches the input string for the best
+  first match.
   \begin{itemize}
-  \item method : public : FindFirst(input : String) \textasciitilde String
+  \item method : public : FindFirst(input : String) \textasciitilde
+    String
   \end{itemize}
-\item \texttt{Find} - Searches the input string for all the matches. Returns a Vector of string matches.
+\item \texttt{Find} - Searches the input string for all the
+  matches. Returns a Vector of string matches.
   \begin{itemize}
   \item method : public : Find(input : String) \textasciitilde Vector
   \end{itemize}
-\item \texttt{ReplaceFirst} - Searches and replaces the first best best match.
+\item \texttt{ReplaceFirst} - Searches and replaces the first best
+  best match.
   \begin{itemize}
-  \item method : public : ReplaceFirst(input : String, replace : String) \textasciitilde String
+  \item method : public : ReplaceFirst(input : String, replace :
+    String) \textasciitilde String
   \end{itemize}
-\item \texttt{ReplaceAll} - Searches and replaces all best best matchs.
+\item \texttt{ReplaceAll} - Searches and replaces all best best
+  matchs.
   \begin{itemize}
-  \item method : public : ReplaceAll(input : String, replace : String) \textasciitilde String
+  \item method : public : ReplaceAll(input : String, replace : String)
+    \textasciitilde String
   \end{itemize}
 \end{itemize}
 
@@ -2757,7 +2968,8 @@ Provides support for encryption.
 \begin{itemize}
 \item \texttt{SHA256} - AES-256 encryption without ``salt''
   \begin{itemize}
-  \item function : AES256(key : Byte[], input : Byte[]) \textasciitilde Byte[]
+  \item function : AES256(key : Byte[], input : Byte[])
+    \textasciitilde Byte[]
   \end{itemize}
 \end{itemize}
 
@@ -2767,7 +2979,8 @@ Provides support for encryption.
 \begin{itemize}
 \item \texttt{SHA256} - AES-256 decryption without ``salt''
   \begin{itemize}
-  \item function : AES256(key : Byte[], input : Byte[]) \textasciitilde Byte[]
+  \item function : AES256(key : Byte[], input : Byte[])
+    \textasciitilde Byte[]
   \end{itemize}
 \end{itemize}
 
@@ -2777,7 +2990,8 @@ Provides support for encryption.
 
 \section{Examples}
 \subsection{Prime Numbers}
-Demonstrates basic language features such as arithmetic and logical operations.
+Demonstrates basic language features such as arithmetic and logical
+operations.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
 \begin{verbatim}
@@ -3137,7 +3351,7 @@ component, which writes it to a file.
 The language VM is written in C/C++ and was designed to be highly
 portable.  The VM makes heavy use of operating system specific APIs
 (i.e. WIN32 and POSIX) but does so in an abstracted manner.  The JIT
-compiler is targeted to produce machine code for the IA-32 and AMD64 
+compiler is targeted to produce machine code for the IA-32 and AMD64
 hardware architectures.
 
 \subsubsection{Loader}
@@ -3157,9 +3371,9 @@ and the states between those calls.
 
 \subsubsection{JIT Compiler}
 The JIT compiler translates stack based VM instructions into processor
-specific machine code (i.e. IA-32 and AMD64).  The JIT compiler is evoked by the
-interpreter and methods are translated into machine code and cached for 
-subsequent calls.  
+specific machine code (i.e. IA-32 and AMD64).  The JIT compiler is
+evoked by the interpreter and methods are translated into machine code
+and cached for subsequent calls.
 
 \subsubsection{Memory Manager}
 The Memory Manager component allows the runtime system to manage the
@@ -3267,9 +3481,9 @@ an inline assembler, which may be re-added in a future release.
     ASYNC\_MTHD\_CALL & integer values for class id and method id; pushes new thread id & asynchronous call to given method \\ \hline
     ASYNC\_JOIN & thread id & waits for identified thread to end execution \\ \hline
     LBL & label id & identifies a jump label \\ \hline
-\end{tabular}
+  \end{tabular}
 
-\vspace{\baselineskip}
+  \vspace{\baselineskip}
   \begin{tabular}{| l | p{4 cm} | p{6 cm} |}
     \hline
     \multicolumn{3}{|c|}{\textbf{Objects and Memory Operations}} \\
