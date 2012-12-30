@@ -7,9 +7,9 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "");	
+			conn := Connection->New("test", "root", "helloworld");
 			if(conn <> Nil) {
-				ps := conn->CreateParameterStatement("select * from test.student WHERE id=?");
+				ps := conn->CreateParameterStatement("SELECT * FROM world.city WHERE Population < ?");
 				ps->SetInt(1, IO.Console->ReadString()->ToInt());
 				result := ps->Select();
 				if(result <> Nil) {
