@@ -1,0 +1,12 @@
+use HTTP;
+
+class HttpsTest {
+	function : Main(args : String[]) ~ Nil {
+		client := HttpsClient->New();
+		lines := client->Get("http://www.google.com", 443);
+		each(i : lines) {
+			line := lines->Get(i)->As(String);
+			line->PrintLine();
+		};
+	}
+}
