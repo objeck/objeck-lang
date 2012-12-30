@@ -10,7 +10,7 @@ JIT_PATH=../jit/ia32
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread 
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread -lssl -lcrypto
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
