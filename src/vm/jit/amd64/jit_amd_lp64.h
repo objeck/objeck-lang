@@ -1895,175 +1895,174 @@ namespace Runtime {
 	}
 	  break;
 
-// ---------------- socket i/o ----------------
-  case SOCK_TCP_IS_CONNECTED: {
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-#ifdef _WIN32
-    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
-#else
-    if(instance && (SOCKET)instance[0] > -1) {
-#endif
-      PushInt(op_stack, stack_pos, 1);
-    } 
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
-  }
-    break;
-
-  case SOCK_TCP_IN_BYTE: {
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance) {
-      SOCKET sock = (SOCKET)instance[0];
-      int status;
-      PushInt(op_stack, stack_pos, IPSocket::ReadByte(sock, status));
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
-  }
-    break;
-
-  case SOCK_TCP_IN_BYTE_ARY: {
-    long* array = (long*)PopInt(op_stack, stack_pos);
-    const long num = PopInt(op_stack, stack_pos);
-    const long offset = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-
-#ifdef _WIN32    
-    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-      SOCKET sock = (SOCKET)instance[0];
-      char* buffer = (char*)(array + 3);
-      PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
-    }
-    else {
-      PushInt(op_stack, stack_pos, -1);
-    }
-  }
-    break;
-
-  case SOCK_TCP_OUT_BYTE: {
-    long value = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance) {
-      SOCKET sock = (SOCKET)instance[0];
-      IPSocket::WriteByte((char)value, sock);
-      PushInt(op_stack, stack_pos, 1);
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
-  }
-    break;
-
-  case SOCK_TCP_OUT_BYTE_ARY: {
-    long* array = (long*)PopInt(op_stack, stack_pos);
-    const long num = PopInt(op_stack, stack_pos);
-    const long offset = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-        
-#ifdef _WIN32
-    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-      SOCKET sock = (SOCKET)instance[0];
-      char* buffer = (char*)(array + 3);
-      PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
-    } 
-    else {
-      PushInt(op_stack, stack_pos, -1);
-    }
-  } 
-    break;
-
-// ---------------- secure socket i/o ----------------
-  case SOCK_TCP_SSL_IN_BYTE: {
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance) {
-      SSL_CTX* ctx = (SSL_CTX*)instance[0];
-      BIO* bio = (BIO*)instance[1];      
-      int status;
-      PushInt(op_stack, stack_pos, IPSecureSocket::ReadByte(ctx, bio, status));
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
-  }
-    break;
-
-  case SOCK_TCP_SSL_IN_BYTE_ARY: {
-    long* array = (long*)PopInt(op_stack, stack_pos);
-    const long num = PopInt(op_stack, stack_pos);
-    const long offset = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-
-    if(array && instance && instance[2] && offset + num < array[0]) {
-      SSL_CTX* ctx = (SSL_CTX*)instance[0];
-      BIO* bio = (BIO*)instance[1];
-      char* buffer = (char*)(array + 3);
-      PushInt(op_stack, stack_pos, IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio));
-    }
-    else {
-      PushInt(op_stack, stack_pos, -1);
-    }
-  }
-    break;
-
-  case SOCK_TCP_SSL_OUT_BYTE: {
-    long value = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-    if(instance) {
-      SSL_CTX* ctx = (SSL_CTX*)instance[0];
-      BIO* bio = (BIO*)instance[1];
-      IPSecureSocket::WriteByte((char)value, ctx, bio);
-      PushInt(op_stack, stack_pos, 1);
-    }
-    else {
-      PushInt(op_stack, stack_pos, 0);
-    }
-  }
-    break;
-
-  case SOCK_TCP_SSL_OUT_BYTE_ARY: {
-    long* array = (long*)PopInt(op_stack, stack_pos);
-    const long num = PopInt(op_stack, stack_pos);
-    const long offset = PopInt(op_stack, stack_pos);
-    long* instance = (long*)PopInt(op_stack, stack_pos);
-    
-    if(array && instance && instance[2] && offset + num < array[0]) {
-      SSL_CTX* ctx = (SSL_CTX*)instance[0];
-      BIO* bio = (BIO*)instance[1];
-      char* buffer = (char*)(array + 3);
-      PushInt(op_stack, stack_pos, IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio));
-    } 
-    else {
-      PushInt(op_stack, stack_pos, -1);
-    }
-  } 
-    break;
-
-	  
-	  // ---------------- file i/o ----------------
-	case FILE_IN_BYTE: {
+          // ---------------- socket i/o ----------------
+        case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];	  
-	    if(fgetc(file) == EOF) {
-	      PushInt(op_stack, stack_pos, 0);
-	    }
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
+#ifdef _WIN32
+	  if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+#else
+	  if(instance && (SOCKET)instance[0] > -1) {
+#endif
+	    PushInt(op_stack, stack_pos, 1);
+	  } 
 	  else {
 	    PushInt(op_stack, stack_pos, 0);
 	  }
 	}
 	  break;
+	  
+        case SOCK_TCP_IN_BYTE: {
+	  long* instance = (long*)PopInt(op_stack, stack_pos);
+	  if(instance) {
+	   SOCKET sock = (SOCKET)instance[0];
+	   int status;
+	   PushInt(op_stack, stack_pos, IPSocket::ReadByte(sock, status));
+	 }
+	 else {
+	   PushInt(op_stack, stack_pos, 0);
+	 }
+       }
+         break;
+
+       case SOCK_TCP_IN_BYTE_ARY: {
+	 long* array = (long*)PopInt(op_stack, stack_pos);
+	 const long num = PopInt(op_stack, stack_pos);
+	 const long offset = PopInt(op_stack, stack_pos);
+	 long* instance = (long*)PopInt(op_stack, stack_pos);
+	 
+#ifdef _WIN32    
+	 if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
+	 if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+#endif
+	   SOCKET sock = (SOCKET)instance[0];
+	   char* buffer = (char*)(array + 3);
+	   PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
+	 }
+	 else {
+	   PushInt(op_stack, stack_pos, -1);
+	 }
+      }
+        break;
+
+      case SOCK_TCP_OUT_BYTE: {
+	long value = PopInt(op_stack, stack_pos);
+	long* instance = (long*)PopInt(op_stack, stack_pos);
+	if(instance) {
+	  SOCKET sock = (SOCKET)instance[0];
+	  IPSocket::WriteByte((char)value, sock);
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
+
+     case SOCK_TCP_OUT_BYTE_ARY: {
+       long* array = (long*)PopInt(op_stack, stack_pos);
+       const long num = PopInt(op_stack, stack_pos);
+       const long offset = PopInt(op_stack, stack_pos);
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+        
+#ifdef _WIN32
+       if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+#else
+       if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+#endif
+	 SOCKET sock = (SOCKET)instance[0];
+	 char* buffer = (char*)(array + 3);
+	 PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
+       } 
+       else {
+	 PushInt(op_stack, stack_pos, -1);
+       }
+     } 
+       break;
+
+       // ---------------- secure socket i/o ----------------
+     case SOCK_TCP_SSL_IN_BYTE: {
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+       if(instance) {
+	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
+	 BIO* bio = (BIO*)instance[1];      
+	 int status;
+	 PushInt(op_stack, stack_pos, IPSecureSocket::ReadByte(ctx, bio, status));
+       }
+       else {
+	 PushInt(op_stack, stack_pos, 0);
+       }
+     }
+       break;
+
+     case SOCK_TCP_SSL_IN_BYTE_ARY: {
+       long* array = (long*)PopInt(op_stack, stack_pos);
+       const long num = PopInt(op_stack, stack_pos);
+       const long offset = PopInt(op_stack, stack_pos);
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+       
+       if(array && instance && instance[2] && offset + num < array[0]) {
+	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
+	 BIO* bio = (BIO*)instance[1];
+	 char* buffer = (char*)(array + 3);
+	 PushInt(op_stack, stack_pos, IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio));
+       }
+       else {
+	 PushInt(op_stack, stack_pos, -1);
+       }
+     }
+       break;
+
+     case SOCK_TCP_SSL_OUT_BYTE: {
+       long value = PopInt(op_stack, stack_pos);
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+       if(instance) {
+	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
+	 BIO* bio = (BIO*)instance[1];
+	 IPSecureSocket::WriteByte((char)value, ctx, bio);
+	 PushInt(op_stack, stack_pos, 1);
+       }
+       else {
+	 PushInt(op_stack, stack_pos, 0);
+       }
+     }
+       break;
+
+     case SOCK_TCP_SSL_OUT_BYTE_ARY: {
+       long* array = (long*)PopInt(op_stack, stack_pos);
+       const long num = PopInt(op_stack, stack_pos);
+       const long offset = PopInt(op_stack, stack_pos);
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+       
+       if(array && instance && instance[2] && offset + num < array[0]) {
+	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
+	 BIO* bio = (BIO*)instance[1];
+	 char* buffer = (char*)(array + 3);
+	 PushInt(op_stack, stack_pos, IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio));
+       } 
+       else {
+	 PushInt(op_stack, stack_pos, -1);
+       }
+     } 
+       break;
+       
+       // ---------------- file i/o ----------------
+     case FILE_IN_BYTE: {
+       long* instance = (long*)PopInt(op_stack, stack_pos);
+       if(instance && (FILE*)instance[0]) {
+	 FILE* file = (FILE*)instance[0];	  
+	 if(fgetc(file) == EOF) {
+	   PushInt(op_stack, stack_pos, 0);
+	 }
+	 else {
+	   PushInt(op_stack, stack_pos, 1);
+	 }
+       }
+       else {
+	 PushInt(op_stack, stack_pos, 0);
+       }
+     }
+       break;
 
 
 	case FILE_IN_BYTE_ARY: {
