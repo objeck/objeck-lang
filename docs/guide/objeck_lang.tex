@@ -2655,6 +2655,35 @@ DOM. This class in the `XML' bundle:
   \end{itemize}
 \end{itemize}
 
+\subsection{ODBC}
+Provides support for database access.
+
+\subsubsection{Connection}
+The Connection class allow programmers to connect to ODBC sources.
+
+\begin{itemize}
+\item \texttt{New} - Establishes a database connection
+  \begin{itemize}
+  \item New(ds : String, username : String, password : String)
+  \end{itemize}
+\item \texttt{Close} - Closes a database connection
+  \begin{itemize}
+  \item method : public : Close() \textasciitilde Nil
+  \end{itemize}
+\item \texttt{Update} - Executes an SQL update statement returning status code
+  \begin{itemize}
+  \item method : public : Update(sql : String) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Select} - Executes an SQL select statement returning a result set	
+  \begin{itemize}
+  \item method : public : Select(sql : String) \textasciitilde ResultSet
+  \end{itemize}
+\item \texttt{CreateParameterStatement} - Creates a prepared statements, which is used to pass parameters into SQL statements.	
+  \begin{itemize}
+  \item method : public : CreateParameterStatement(sql : String) \textasciitilde ParameterStatement
+  \end{itemize}
+\end{itemize}  
+
 \subsection{RegEx}
 Support for regular expressions.
 
