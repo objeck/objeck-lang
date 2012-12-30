@@ -1751,7 +1751,7 @@ namespace Runtime {
 	}
 	  break;
 	  // --- END TRAP --- //
-	}
+      }
 	break;
 	
 	////////////////////////
@@ -1894,7 +1894,7 @@ namespace Runtime {
 	  }
 	}
 	  break;
-
+	  
           // ---------------- socket i/o ----------------
         case SOCK_TCP_IS_CONNECTED: {
 	  long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2359,8 +2359,8 @@ namespace Runtime {
 	 const long dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	 index *= array[i];
-	 index += PopInt();
+	   index *= array[i];
+	   index += PopInt();
 	 }
       */
 
@@ -2759,7 +2759,6 @@ namespace Runtime {
       long cls_id = method->GetClass()->GetId();
       long mthd_id = method->GetId();
       
-
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
@@ -2777,8 +2776,6 @@ namespace Runtime {
 	cout << "..." << endl;
       }
 #endif
-
-      
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, (long*)inst, code, code_index, 
