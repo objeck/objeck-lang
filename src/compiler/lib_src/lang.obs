@@ -111,8 +111,8 @@ bundle System {
 		function : Size(b : Byte[,,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
-
-		function : native : ToBinaryString(b : Int) ~ String {
+		
+		function : native : ToBinaryString(b : Byte) ~ String {
 			out := String->New();
 			while(b > 0) {
 				v := b % 2;
@@ -123,42 +123,38 @@ bundle System {
 			return out->Reverse();
 		}
 
-		function : native : ToString(b : Byte) ~ String {
-			string : String := String->New();
-			
-			if(b = 0) {
-				string->Append(48->As(Char));
-				return string;
-			};
-
-			if(b < 0) {
-				string->Append(45->As(Char));
-				b := b * -1;
-			};		
+		function : native : ToHexString(b : Byte) ~ String {
+			str := String->New();
+			Number->IntToHexString(b->As(Int), str);
+			return str;
+		}
 		
-			result : Int := b / 100;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
+		function : native : ToHexString(b : Byte[]) ~ String {
+			out := "";
+			each(i : b) {
+				str := String->New();
+				Number->IntToHexString(b[i]->As(Int), str);
+				out->Append(str);
 			};
-			b := b % 100;
-			if(b = 0) {
-				string->Append(48->As(Char));
+			
+			return out;
+		}
+		
+		function : native : ToString(b : Byte) ~ String {
+			str := String->New();
+			Number->IntToString(b->As(Int), str);
+			return str;
+		}
+		
+		function : native : ToString(b : Byte[]) ~ String {
+			out := "";
+			each(i : b) {
+				str := String->New();
+				Number->IntToString(b[i]->As(Int), str);
+				out->Append(str);
 			};
-
-			result := b / 10;
-			if(result > 0 & result < 10) {
-				string->Append((result + 48)->As(Char));
-			};
-			b := b % 10;
-			if(b = 0) {
-				string->Append(48->As(Char));
-			};
-						
-			if(b <> 0) {
-				string->Append((b + 48)->As(Char));
-			};
-
-			return string;
+			
+			return out;
 		}
 	}
 
@@ -284,13 +280,43 @@ bundle System {
 				mod := value % 10;
 				values[i] := mod;
 				i += 1;
-				value := value / 10;
+				value /= 10;
 			};
 			values[i] := value;
             
 			while(i >= 0) {
 				string->Append((values[i] + 48)->As(Char));
-				i := i - 1;
+				i -= 1;
+			};     
+		}
+		
+		function : native : IntToHexString(value : Int, string : String) ~ Nil {
+			values := Int->New[16];
+			
+			i := 0;
+			if(value < 0) {
+				value *= -1;
+				string->Append('-');
+			};
+
+			while(value >= 16 & i < 16) {
+				mod := value % 16;
+				values[i] := mod;
+				i += 1;
+				value /= 16;
+			};
+			values[i] := value;
+            
+			while(i >= 0) {
+				value := values[i];
+				if(value > 9) {
+# value->PrintLine();				
+					string->Append((value + 55)->As(Char));
+				}
+				else {
+					string->Append((value + 48)->As(Char));
+				};
+				i -= 1;
 			};     
 		}
 	}
@@ -366,21 +392,49 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
-		function : native : ToBinaryString(i : Int) ~ String {
+		function : native : ToBinaryString(v : Int) ~ String {
 			out := String->New();
-      while(i > 0) {
-        v := i % 2;
-        out->Append(v);
-        i /= 2;
-      };
+			while(v > 0) {
+				v := v % 2;
+				out->Append(v);
+				v /= 2;
+			};
 
-      return out->Reverse();
+			return out->Reverse();
 		}
-
-		function : native : ToString(i : Int) ~ String {
+		
+		function : native : ToHexString(v : Int) ~ String {
 			str := String->New();
-			Number->IntToString(i, str);
+			Number->IntToHexString(v->As(Int), str);
 			return str;
+		}
+		
+		function : native : ToHexString(v : Int[]) ~ String {
+			out := "";
+			each(i : v) {
+				str := String->New();
+				Number->IntToHexString(v[i]->As(Int), str);
+				out->Append(str);
+			};
+			
+			return out;
+		}
+		
+		function : native : ToString(v : Int) ~ String {
+			str := String->New();
+			Number->IntToString(v->As(Int), str);
+			return str;
+		}
+		
+		function : native : ToString(v : Int[]) ~ String {
+			out := "";
+			each(i : v) {
+				str := String->New();
+				Number->IntToString(v[i]->As(Int), str);
+				out->Append(str);
+			};
+			
+			return out;
 		}
 	}
 
