@@ -1,4 +1,4 @@
-﻿class RowEchelon {
+﻿class ShaHash {
 	function : Main(args : String[]) ~ Nil {
 		hash:= Encryption.Hash->SHA256("Rosetta code"->ToByteArray());
 		out := hash->ToHexString()->ToLower();
