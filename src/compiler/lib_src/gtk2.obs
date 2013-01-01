@@ -1,5 +1,5 @@
-use Struct;
-use API;
+# use Collection;
+use System.API;
 
 bundle Gtk2 {
 	# signals
