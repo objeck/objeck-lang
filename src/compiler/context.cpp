@@ -1584,7 +1584,7 @@ bool ContextAnalyzer::Analyze()
 	  }
 	    
 	  case FUNC_TYPE: {
-	    const string &calling_type_name = "m." + calling_type->GetClassName();
+	    const string calling_type_name = calling_type->GetClassName();
 	    string method_type_name = method_type->GetClassName();
 	    if(method_type_name.size() == 0) {
 	      method_type_name = "m." + EncodeFunctionType(method_type->GetFunctionParameters(),
