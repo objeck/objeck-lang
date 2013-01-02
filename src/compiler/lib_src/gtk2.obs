@@ -46,14 +46,15 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_signal_handler_disconnect", array_args);
 		}
 
-		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil) ~ Int {
+		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil, callback_params : Base) ~ Int {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := @self;
+			array_args[1] := callback_params;
 			array_args[2] := IntHolder->New(signal->As(Int));
 			array_args[3] := CallbackHolder->New(callback);
 			lib_proxy->CallFunction("og_signal_connect", array_args);
+			
 			# get return value
 			id := array_args[0]->As(IntHolder);
 			return id->Get();
@@ -168,7 +169,7 @@ bundle Gtk2 {
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
 
-			SignalConnect(Signal->Clicked, ButtonHandle(GtkWidget) ~ Nil);
+			SignalConnect(Signal->Clicked, ButtonHandle(GtkWidget) ~ Nil, @self);
 		}
 
 		function : ButtonHandle(widget : GtkWidget) ~ Nil {

@@ -15,7 +15,7 @@ extern "C" {
     VMContext context;
     int cls_id;
     int mthd_id;
-    long* self;
+    long* callback_params;
     APITools_MethodCallId_Ptr callback;
   } callback_data;
   
@@ -110,21 +110,21 @@ extern "C" {
 
   void og_signal_connect(VMContext& context) {
     long* target = (long*)APITools_GetIntValue(context, 1);
-    long* self = (long*)APITools_GetObjectValue(context, 1);
+    long* callback_params = (long*)APITools_GetObjectValue(context, 1);
     int signal = APITools_GetIntValue(context, 2);
     int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID);
     int mthd_id = APITools_GetFunctionValue(context, 3, MTHD_ID);
     
     callback_data* data = new callback_data;
     data->context = context;
-    data->self = self;
+    data->callback_params = callback_params;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
     data->callback = context.call_method_by_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
-	 << ", signal=" << signal << ", self=" << data->self <<   " @@@" << endl;
+	 << ", signal=" << signal << ", callback_params=" << data->callback_params <<   " @@@" << endl;
 #endif
     
     // find right handler
@@ -150,7 +150,7 @@ extern "C" {
   }
   
   void og_signal_connect_swapped(VMContext& context) {
-    long* self = (long*)APITools_GetIntValue(context, 0);
+    long* callback_params = (long*)APITools_GetIntValue(context, 0);
     long* widget = (long*)APITools_GetIntValue(context, 1);
     int signal = APITools_GetIntValue(context, 2);
     int cls_id = APITools_GetIntValue(context, 3);
@@ -158,25 +158,25 @@ extern "C" {
     
     callback_data* data = new callback_data;
     data->context = context;
-    data->self = self;
+    data->callback_params = callback_params;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
     data->callback = context.call_method_by_id;
     
 #ifdef _DEBUG
     cout << "@@@ Handler: cls_id=" << cls_id << ", mthd_id=" << mthd_id 
-	 << ", signal=" << signal << ", self=" << data->self <<   " @@@" << endl;
+	 << ", signal=" << signal << ", callback_params=" << data->callback_params <<   " @@@" << endl;
 #endif
     
     // find right handler
     switch(signal) {
     case -100:
-      g_signal_connect((GtkWidget*)self, "destroy", 
+      g_signal_connect((GtkWidget*)callback_params, "destroy", 
 		       G_CALLBACK(callback_handler), data);
       break;
       
     case -99:
-      g_signal_connect((GtkWidget*)self, "clicked", 
+      g_signal_connect((GtkWidget*)callback_params, "clicked", 
 		       G_CALLBACK(callback_handler), data);
       break;
     }
@@ -234,10 +234,10 @@ extern "C" {
 
 #ifdef _DEBUG
     cout << "@@@ Delete callback: cls_id=" << data->cls_id << ", mthd_id=" 
-	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
+	 << data->mthd_id << ", callback_params=" << data->callback_params << " @@@" << endl;
 #endif
     
-    APITools_PushInt(data->context, (long)data->self);
+    APITools_PushInt(data->context, (long)data->callback_params);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     return TRUE;
@@ -249,10 +249,10 @@ extern "C" {
 
 #ifdef _DEBUG
     cout << "@@@ Callback: cls_id=" << data->cls_id << ", mthd_id=" 
-	 << data->mthd_id << ", self=" << data->self << " @@@" << endl;
+	 << data->mthd_id << ", callback_params=" << data->callback_params << " @@@" << endl;
 #endif
     
-    APITools_PushInt(data->context, (long)data->self);
+    APITools_PushInt(data->context, (long)data->callback_params);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     // TODO: "data" memory is freed when the application exits 
