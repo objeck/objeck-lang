@@ -38,10 +38,10 @@ bundle Default {
 			hbox->PackStart(button2->As(GtkWidget), true, true, 0);
 
 			window := GtkWindow->New();
-			window->SignalConnect(Signal->Destroy, test_callback);
+			window->SignalConnect(Signal->Destroy, test_callback, window);
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
-			button->SignalConnect(Signal->Clicked, button_callback);
+			button->SignalConnect(Signal->Clicked, button_callback, button);
 			window->Add(hbox->As(GtkWidget));
 			
 			# show
