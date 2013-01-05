@@ -2080,7 +2080,11 @@ bool ContextAnalyzer::Analyze()
       if(!root_type) {
 	root_type = expression->GetEvalType();
       }
-      
+
+      if(root_type && root_type->GetType() == VAR_TYPE) {
+	ProcessError(expression, "Cannot cast an uninitialized type");
+      }
+          
       // cannot cast across different dimensions
       if(root_type && expression->GetExpressionType() == VAR_EXPR && 
 	 !static_cast<Variable*>(expression)->GetIndices() &&
