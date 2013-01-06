@@ -11,13 +11,13 @@ bundle Gtk2 {
  
 	# callback method holder
 	class CallbackHolder {
-		@callback : (GtkWidget) ~ Nil;
+		@callback : (GtkWidget, Base) ~ Nil;
 
-		New(callback : (GtkWidget) ~ Nil) {
+		New(callback : (GtkWidget, Base) ~ Nil) {
 			@callback := callback;
 		}
 
-		method : public : Get() ~ (GtkWidget) ~ Nil {
+		method : public : Get() ~ (GtkWidget, Base) ~ Nil {
 			return @callback;
 		}
 	}
@@ -46,29 +46,19 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_signal_handler_disconnect", array_args);
 		}
 
-		method : public : SignalConnect(signal : Signal, callback : (GtkWidget) ~ Nil, callback_params : Base) ~ Int {
+		method : public : SignalConnect(name : String, callback : (GtkWidget, Base) ~ Nil, params : Base) ~ Int {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := callback_params;
-			array_args[2] := IntHolder->New(signal->As(Int));
-			array_args[3] := CallbackHolder->New(callback);
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New(); # return id
+			array_args[1] := @self; # widget
+			array_args[2] := name; # name
+			array_args[3] := CallbackHolder->New(callback); # function
+			array_args[4] := params; # function params
 			lib_proxy->CallFunction("og_signal_connect", array_args);
 			
 			# get return value
 			id := array_args[0]->As(IntHolder);
 			return id->Get();
-		}
-		
-		method : public : SignalConnectSwapped(signal : Signal, widget : GtkWidget, 
-				callback : (GtkWidget) ~ Nil) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[4];
-			array_args[0] := @self;
-			array_args[1] := widget;
-			array_args[2] := IntHolder->New(signal->As(Int));
-			array_args[3] := CallbackHolder->New(callback);
-			lib_proxy->CallFunction("og_signal_connect_swapped", array_args);
 		}
 
 		method : public : Show() ~ Nil {
@@ -168,16 +158,7 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_button_new_with_label", array_args);
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
-
-			SignalConnect(Signal->Clicked, ButtonHandle(GtkWidget) ~ Nil, @self);
 		}
-
-		function : ButtonHandle(widget : GtkWidget) ~ Nil {
-			button : GtkButton := widget;
-			button->Clicked();
-		}
-
-		method : virtual : public : Clicked() ~ Nil;
 	}	
 
 	# GtkWindow class
