@@ -126,9 +126,10 @@ extern "C" {
     
 #ifdef _DEBUG
     cout << "@@@ Handler: widget=" << widget << "; name=" << name << "; mthd=(" 
-	 << cls_id << "," << mthd_id << "); params=" << params << endl;
+	 << cls_id << "," << mthd_id << "); params=" << params << " @@@" << endl;
 #endif
     
+    // widget id
     glong id;
     if(strstr(name, "event")) {
       id = g_signal_connect(widget, name, G_CALLBACK(event_callback_handler), data);
@@ -136,27 +137,7 @@ extern "C" {
     else {
       id = g_signal_connect(widget, name, G_CALLBACK(signal_callback_handler), data);
     }
-
-    /*    
-    // find right handler
-    switch(signal) {
-    case -100:
-      id = g_signal_connect(GTK_OBJECT((GtkWidget*)target), "delete-event",
-			    G_CALLBACK(event_callback_handler), data);
-      break;
-      
-    case -99:
-      id = gtk_signal_connect(GTK_OBJECT((GtkWidget*)target), "destroy", 
-			      G_CALLBACK(gtk_main_quit), NULL);
-      break;
-
-    case -98:
-      id = g_signal_connect((GtkWidget*)target, "clicked", 
-			    G_CALLBACK(signal_callback_handler), data);
-      break;
-    }
-    */
-
+    
     // set return
     APITools_SetIntValue(context, 0, id);
   }
