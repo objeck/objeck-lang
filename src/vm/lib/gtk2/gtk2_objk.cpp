@@ -5,8 +5,8 @@
 using namespace std;
 
 extern "C" {
-  static gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args);
-  static void callback_handler(GtkWidget *widget, gpointer data);
+  static gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args);
+  static void signal_callback_handler(GtkWidget *widget, gpointer data);
   
   //
   // callback holder
@@ -130,11 +130,11 @@ extern "C" {
 #endif
     
     glong id;
-    if(strcmp(name, "delete-event") == 0) {
-      id = g_signal_connect(widget, name, G_CALLBACK(delete_callback_handler), data);
+    if(strstr(name, "event")) {
+      id = g_signal_connect(widget, name, G_CALLBACK(event_callback_handler), data);
     }
     else {
-      id = g_signal_connect(widget, name, G_CALLBACK(callback_handler), data);
+      id = g_signal_connect(widget, name, G_CALLBACK(signal_callback_handler), data);
     }
 
     /*    
@@ -142,7 +142,7 @@ extern "C" {
     switch(signal) {
     case -100:
       id = g_signal_connect(GTK_OBJECT((GtkWidget*)target), "delete-event",
-			    G_CALLBACK(delete_callback_handler), data);
+			    G_CALLBACK(event_callback_handler), data);
       break;
       
     case -99:
@@ -152,7 +152,7 @@ extern "C" {
 
     case -98:
       id = g_signal_connect((GtkWidget*)target, "clicked", 
-			    G_CALLBACK(callback_handler), data);
+			    G_CALLBACK(signal_callback_handler), data);
       break;
     }
     */
@@ -207,13 +207,13 @@ extern "C" {
   //
   // callbacks
   //
-  gboolean delete_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
+  gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
     callback_data* data = (callback_data*)args;
     APITools_MethodCallId_Ptr callback = data->callback;
-
+    
 #ifdef _DEBUG
-    cout << "@@@ Delete callback: cls_id=" << data->cls_id << ", mthd_id=" 
-	 << data->mthd_id << ", params=" << data->params << " @@@" << endl;
+    cout << "@@@ Event: cls_id=" << data->cls_id << ", mthd_id=" << data->mthd_id 
+	 << ", params=" << data->params << ", event=" << event << " @@@" << endl;
 #endif
     
     APITools_PushInt(data->context, (long)data->params);
@@ -225,12 +225,12 @@ extern "C" {
     return TRUE;
   }
 
-  void callback_handler(GtkWidget* widget, gpointer args) {
+  void signal_callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
     APITools_MethodCallId_Ptr callback = data->callback;
-
+    
 #ifdef _DEBUG
-    cout << "@@@ Callback: cls_id=" << data->cls_id << ", mthd_id=" 
+    cout << "@@@ Signal: cls_id=" << data->cls_id << ", mthd_id=" 
 	 << data->mthd_id << ", params=" << data->params << " @@@" << endl;
 #endif
     
