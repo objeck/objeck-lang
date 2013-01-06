@@ -1,14 +1,6 @@
-# use Collection;
 use System.API;
 
 bundle Gtk2 {
-	# signals
-	enum Signal := -100 {
-		Delete,
-		Destroy,
-		Clicked
-	}
- 
 	# callback method holder
 	class CallbackHolder {
 		@callback : (GtkWidget, Base) ~ Nil;
@@ -26,9 +18,8 @@ bundle Gtk2 {
 	class GtkWidget {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
-
-		New() {
-		}
+		
+		New() {}
 
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
@@ -41,24 +32,28 @@ bundle Gtk2 {
 		method : public : SignalHandlerDisconnect(id : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := IntHolder->New(id);
+			array_args[0] := IntHolder->New(@native_ptr);		# pointer
+			array_args[1] := IntHolder->New(id);				# widget id
 			lib_proxy->CallFunction("og_signal_handler_disconnect", array_args);
 		}
 
 		method : public : SignalConnect(name : String, callback : (GtkWidget, Base) ~ Nil, params : Base) ~ Int {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New(); # return id
-			array_args[1] := @self; # widget
-			array_args[2] := name; # name
-			array_args[3] := CallbackHolder->New(callback); # function
-			array_args[4] := params; # function params
-			lib_proxy->CallFunction("og_signal_connect", array_args);
-			
-			# get return value
-			id := array_args[0]->As(IntHolder);
-			return id->Get();
+			if(name <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();				# widget id
+				array_args[1] := @self;							# widget
+				array_args[2] := name;							# name
+				array_args[3] := CallbackHolder->New(callback);	# function
+				array_args[4] := params; 						# function params
+				lib_proxy->CallFunction("og_signal_connect", array_args);
+				
+				# get return value
+				id := array_args[0]->As(IntHolder);
+				return id->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : Show() ~ Nil {
@@ -78,10 +73,8 @@ bundle Gtk2 {
 	
 	# GtkContainer class
 	class GtkContainer from GtkWidget {
-		New() {
-			Parent();
-		}
-
+		New() { Parent(); }
+		
 		method : public : SetBorderWidth(width : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[2];
@@ -117,9 +110,10 @@ bundle Gtk2 {
 		}
 	}
 	
-	# GtkHBox class
+	# GtkBox class
 	class GtkBox from GtkContainer {
 		New() { Parent(); }
+		
 		method : public : PackStart(child : GtkWidget, expand : Bool, fill : Bool, padding : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[5];
@@ -174,21 +168,25 @@ bundle Gtk2 {
 		}
 
 		method : public : SetTitle(title : String) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := title;
-			lib_proxy->CallFunction("og_window_set_title", array_args);
+			if(title <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_ptr);
+				array_args[1] := title;
+				lib_proxy->CallFunction("og_window_set_title", array_args);
+			};
 		}
 	}
 
 	# Events class
 	class Events {
 		function : DeleteEvent(widget : GtkWidget) ~ Nil {
-			lib_proxy := GtkWidget->GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := widget;
-			lib_proxy->CallFunction("og_widget_destroy", array_args);
+			if(widget <> Nil) {
+				lib_proxy := GtkWidget->GetDllProxy();
+				array_args := Base->New[1];
+				array_args[0] := widget;
+				lib_proxy->CallFunction("og_widget_destroy", array_args);
+			};
 		}
 	}
 
