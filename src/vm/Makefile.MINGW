@@ -12,7 +12,7 @@ JIT_PATH=jit/ia32
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) -lws2_32
+	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) -L"lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
 
 memory.a:
 	cd $(MEM_PATH); make    
@@ -21,7 +21,7 @@ jit_intel_lp32.a:
 	cd $(JIT_PATH); make    
         
 %.o: %.cpp
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ $(ARGS) -c $< 
+	$(CC) -m32 -D_MINGW -I"lib/openssl/win32/include" -static -static-libstdc++ $(ARGS) -c $< 
 
 clean:
 	cd $(MEM_PATH); make clean

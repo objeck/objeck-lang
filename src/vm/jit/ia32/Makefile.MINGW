@@ -1,8 +1,16 @@
 ###############
-# MinGW
+# For OSX only
 ###############
-# ARGS=-g -D_DEBUG  -Wall
-ARGS=-D_MINGW -O3 -Wall
+# ARGS=-mstackrealign -O3
+# ARGS=-D_TIMING -mstackrealign -O3
+# ARGS=-mstackrealign -g -D_DEBUG -Wunused
+
+###############
+# For Linux
+###############
+# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
+# ARGS=-g -Wunused
+ARGS=-O3 -Wall
 
 CC=g++
 AR=ar
@@ -13,7 +21,7 @@ $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ $(ARGS) -c $< 
+	$(CC) -m32 -I"c:/Temp/openssl-1.0.1c/include" -D_MINGW -static -static-libstdc++ $(ARGS) -c $< 
 
 clean:
 	rm -f *.o *~ $(LIB)
