@@ -32,6 +32,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
+#include <openssl/md5.h>
 #include "../../../vm/lib_api.h"
 
 using namespace std;
@@ -78,6 +79,27 @@ extern "C" {
     long* output_byte_array = APITools_MakeCharArray(context, SHA256_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+      output_byte_array_buffer[i] = output[i];
+    }
+    
+    long* output_holder = APITools_GetIntAddress(context, 0);
+    output_holder[0] = (long)output_byte_array;   
+  }
+
+  void openssl_hash_md5(VMContext& context) {
+    // get parameters
+    long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    int input_size =  APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    
+    // hash 
+    unsigned char output[MD5_DIGEST_LENGTH];
+    MD5(input, input_size, output);
+    
+    // copy output
+    long* output_byte_array = APITools_MakeCharArray(context, MD5_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
     
