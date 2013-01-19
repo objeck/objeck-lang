@@ -32,6 +32,21 @@ bundle Encryption {
 			
 			return Nil;
 		}
+		
+		function : MD5(input : Byte[]) ~ Byte[] {
+			if(input <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
+				array_args[1] := ByteArrayHolder->New(input);				
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("openssl_hash_md5", array_args);
+				
+				holder := array_args[0]->As(ByteArrayHolder);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
 	}
 	
 	#~
