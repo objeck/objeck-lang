@@ -49,14 +49,14 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       #endif
     */
 
-    if(line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)  &&
-       // step command
-       (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos) ||
-	// next line
-	(is_next_line && (cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName()) ||
-	 (call_stack_pos < cur_call_stack_pos)) ||
-	// break command
-	FindBreak(line_num, file_name))) {
+    if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
+       // break point
+       (FindBreak(line_num, file_name) ||
+	// step command
+	(is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
+	 // next line
+	 (is_next_line && (cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName() ||
+			   (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
