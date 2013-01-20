@@ -883,9 +883,9 @@ bool ContextAnalyzer::Analyze()
       if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
 	AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
       }
-      else if(if_type->GetType() != else_type->GetType() ||
+      else if(else_type && (if_type->GetType() != else_type->GetType() ||
 	      if_type->GetType() == NIL_TYPE ||
-	      else_type->GetType() == NIL_TYPE) {
+	      else_type->GetType() == NIL_TYPE)) {
 	ProcessError(conditional, "'?' invalid type mismatch");
       }
       // set eval type
