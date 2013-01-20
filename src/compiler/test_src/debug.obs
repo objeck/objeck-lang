@@ -1,6 +1,18 @@
-﻿class RowEchelon {
+﻿class Hello {
+	function : F(args : String[]) ~ Int {
+		return n = 0 ? 1 : n - m(f(n - 1));
+	}
+	function : M(args : String[]) ~ Nil {
+		return n = 0 ? 0 : n - f(m(n - 1));
+	}
+	
 	function : Main(args : String[]) ~ Nil {
-		a := b->As(Int);
-		a->PrintLine();
+		for(i := 0; i < 20; i+=1;) {
+			f(i)->PrintLine();
+		};
+		"---"->PrintLine();
+		for (i := 0; i < 20; i+=1;) {
+			m(i)->PrintLine();
+		};
 	}
 }
