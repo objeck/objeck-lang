@@ -86,6 +86,9 @@ extern "C" {
     output_holder[0] = (long)output_byte_array;   
   }
 
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void openssl_hash_md5(VMContext& context) {
     // get parameters
     long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
