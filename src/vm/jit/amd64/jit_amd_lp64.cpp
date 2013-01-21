@@ -1048,7 +1048,8 @@ void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
     move_imm_memx(left, 0, elem_holder->GetRegister());
     break;
 
-  case MEM_FLOAT: {
+  case MEM_FLOAT: 
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     move_mem_xreg(left->GetOperand(), 
 		  RBP, holder->GetRegister());
@@ -1087,7 +1088,8 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
   }
     break;
     
-  case MEM_FLOAT: {
+  case MEM_FLOAT:
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
@@ -1121,7 +1123,8 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
   }
     break;
     
-  case MEM_FLOAT: {
+  case MEM_FLOAT:
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
@@ -1152,6 +1155,7 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
     break;
     
   case MEM_FLOAT:
+  case MEM_INT:
     cvt_mem_reg(left->GetOperand(), 
 		RBP, holder->GetRegister());
     break;
@@ -1580,7 +1584,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 	  add_imm_reg(sizeof(double), op_stack_holder->GetRegister()); 
 	  break;
 	
-	case MEM_FLOAT: {
+	case MEM_FLOAT: {       
 	  RegisterHolder* temp_holder = GetXmmRegister();
 	  move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
 	  move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
@@ -1866,7 +1870,8 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
 
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* holder = GetXmmRegister();
       move_mem_xreg(right->GetOperand(), RBP, holder->GetRegister());
 
@@ -1927,7 +1932,8 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
       
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* holder = left->GetRegister();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
 	RegisterHolder* right_holder = GetXmmRegister();
@@ -1950,6 +1956,7 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
 
     // memory
   case MEM_FLOAT:
+  case MEM_INT:
     switch(right->GetType()) {
     case IMM_FLOAT: {
       RegisterHolder* holder = GetXmmRegister();
@@ -1986,7 +1993,8 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
       
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* left_holder = GetXmmRegister();
       move_mem_xreg(left->GetOperand(), RBP, left_holder->GetRegister());
 

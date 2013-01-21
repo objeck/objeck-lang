@@ -23,7 +23,7 @@
 		};
 	}
 	
-	function : Cholesky(A : Float[], n : Int) ~ Float[] {
+	function : native : Cholesky(A : Float[], n : Int) ~ Float[] {
 		L := Float->New[n * n];
 		
 		for (i := 0; i < n; i+=1;) {
