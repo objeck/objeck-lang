@@ -23,8 +23,8 @@
 		};
 	}
 	
-	function : Cholesky(A : Float[], n : Int) ~ Float[] {
-#	function : native : Cholesky(A : Float[], n : Int) ~ Float[] {
+#	function : Cholesky(A : Float[], n : Int) ~ Float[] {
+	function : native : Cholesky(A : Float[], n : Int) ~ Float[] {
 		L := Float->New[n * n];
 		
 		for (i := 0; i < n; i+=1;) {
@@ -34,12 +34,11 @@
 					s += L[i * n + k] * L[j * n + k];
 				};
 
-#~				
 				L[i * n + j] := (i = j) ?
 					(A[i * n + i] - s)->SquareRoot() :
 					(1.0 / L[j * n + j] * (A[i * n + j] - s));	
-~#
 
+#~				
 				v : Float;
 				if(i = j) {
 					L[i * n + j] := (A[i * n + i] - s)->SquareRoot() ;
@@ -48,6 +47,7 @@
 					L[i * n + j] := 1.0 / L[j * n + j] * (A[i * n + j] - s);
 				};
 				L[i * n + j]->PrintLine();
+~#
 
 			};
 		};
