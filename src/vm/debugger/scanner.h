@@ -1,7 +1,7 @@
 /***************************************************************************
  * Debugger scanner.
  *
- * Copyright (c) 2010-2012 Randy Hollines
+ * Copyright (c) 2010-2013 Randy Hollines
  * All rights reserved.
  *
  * Reistribution and use in source and binary forms, with or without

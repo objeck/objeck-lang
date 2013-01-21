@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point of the language compiler
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

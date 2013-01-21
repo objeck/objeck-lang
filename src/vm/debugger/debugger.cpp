@@ -1,7 +1,7 @@
 /**************************************************************************
  * Runtime debugger
  *
- * Copyright (c) 2010-2012 Randy Hollines
+ * Copyright (c) 2010-2013 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1311,7 +1311,7 @@ void Runtime::Debugger::Debug() {
 int main(int argc, char** argv)
 {
   string usage;
-  usage += "Copyright (c) 2010-2012, Randy Hollines. All rights reserved.\n";
+  usage += "Copyright (c) 2010-2013, Randy Hollines. All rights reserved.\n";
   usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += "FOR MORE INFORMATION.\n\n";
