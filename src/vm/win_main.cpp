@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for the VM.
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,7 +65,7 @@ int main(const int argc, const char* argv[])
     return status;
   }
   else {
-    string usage = "Copyright (c) 2008-2012, Randy Hollines. All rights reserved.\n";
+    string usage = "Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
     usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += "FOR MORE INFORMATION.\n\n";
