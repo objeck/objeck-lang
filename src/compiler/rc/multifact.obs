@@ -1,10 +1,19 @@
 ﻿class Multifact {
+	function : MultiFact(n : Int, deg : Int) ~ Int {
+		result := n;
+		while (n >= deg + 1){
+			result *= (n - deg);
+			n -= deg;
+		};
+
+		return result;
+	}
+
 	function : Main(args : String[]) ~ Nil {
-		v := Int->New[12];
-		for(g := 1; g < 10; g+=1;) {
-			for (n := 1; n < 11; n+=1;) {
-				v[n] := (g < n)? v[n-g]*n : n;
-				IO.Console->Print(v[n])->Print(" ");
+		for (i := 1; i <= 5; i+=1;){
+			IO.Console->Print("Degree ")->Print(i)->Print(": ");
+			for (j := 1; j <= 10; j+=1;){
+				IO.Console->Print(' ')->Print(MultiFact(j, i));
 			};
 			IO.Console->PrintLine();
 		};
