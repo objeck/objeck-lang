@@ -989,7 +989,8 @@ void JitCompilerIA32::ProcessStoreFloatElement(StackInstr* instr) {
     move_imm_memx(left, 0, elem_holder->GetRegister());
     break;
 
-  case MEM_FLOAT: {
+  case MEM_FLOAT: 
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     move_mem_xreg(left->GetOperand(), 
 		  EBP, holder->GetRegister());
@@ -1028,7 +1029,8 @@ void JitCompilerIA32::ProcessFloor(StackInstr* instr) {
   }
     break;
     
-  case MEM_FLOAT: {
+  case MEM_FLOAT:
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     round_mem_xreg(left->GetOperand(), EBP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
@@ -1062,7 +1064,8 @@ void JitCompilerIA32::ProcessCeiling(StackInstr* instr) {
   }
     break;
     
-  case MEM_FLOAT: {
+  case MEM_FLOAT:
+  case MEM_INT: {
     RegisterHolder* holder = GetXmmRegister();
     round_mem_xreg(left->GetOperand(), EBP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
@@ -1093,6 +1096,7 @@ void JitCompilerIA32::ProcessFloatToInt(StackInstr* instr) {
     break;
     
   case MEM_FLOAT:
+  case MEM_INT:
     cvt_mem_reg(left->GetOperand(), 
 		EBP, holder->GetRegister());
     break;
@@ -1802,7 +1806,8 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
 
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* holder = GetXmmRegister();
       move_mem_xreg(right->GetOperand(), EBP, holder->GetRegister());
 
@@ -1863,7 +1868,8 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
       
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* holder = left->GetRegister();
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
 	RegisterHolder* right_holder = GetXmmRegister();
@@ -1922,7 +1928,8 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
     }
       break;
       
-    case MEM_FLOAT: {
+    case MEM_FLOAT:
+    case MEM_INT: {
       RegisterHolder* left_holder = GetXmmRegister();
       move_mem_xreg(left->GetOperand(), EBP, left_holder->GetRegister());
 
