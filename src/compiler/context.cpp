@@ -917,15 +917,29 @@ bool ContextAnalyzer::Analyze()
       
       if(var_start > -1) {
 	if(str[i] == ' ') {
-	  const string token = str.substr(var_start, i - var_start);
-	  cout << "### variable=|" << token << "| ###" << endl;
+	  const string token = str.substr(var_start + 1, i - var_start - 1);
+	  SymbolEntry* entry = GetEntry(token);
+	  if(entry) {
+	    cout << "### found variable=|" << entry->GetName() << "| ###" << endl;
+	  }
+	  else {
+	    cout << "### unresloved variable=|" << token << "| ###" << endl; 
+	  }
+	  
 	  // update
 	  var_start = -1;
 	  str_start = i;
 	}
 	else if(i + 1 == str.size()) {
-	  const string token = str.substr(var_start, i - var_start + 1);
-	  cout << "### variable=|" << token << "| ###" << endl;
+	  const string token = str.substr(var_start + 1, i - var_start);
+	  SymbolEntry* entry = GetEntry(token);
+	  if(entry) {
+	    cout << "### found variable=|" << entry->GetName() << "| ###" << endl;
+	  }
+	  else {
+	    cout << "### unresloved variable=|" << token << "| ###" << endl; 
+	  }
+	  
 	  // update
 	  var_start = -1;
 	  str_start = i;
