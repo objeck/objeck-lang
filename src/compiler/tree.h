@@ -587,7 +587,7 @@ namespace frontend {
   };
 
   /****************************
-   * CharacterString class
+   * StaticArray class
    ****************************/
   class StaticArray : public Expression {
     friend class TreeFactory;
@@ -708,7 +708,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
     string char_string;
-
+    
   CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
       int skip = 2;
