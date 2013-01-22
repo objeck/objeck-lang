@@ -901,7 +901,44 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
     Show("character string literal", char_str->GetLineNumber(), depth);
 #endif
-    const string &str = char_str->GetString();
+    
+    // parse strings and variables
+    int var_start = -1;
+    int str_start = 0;
+    const string &str = char_str->GetString();    
+    for(size_t i = 0; i < str.size(); i++) {
+      if(str[i] == '$') {      
+	var_start = i;
+	if(i - str_start) {
+	  const string token = str.substr(str_start, i - str_start);
+	  cout << "### string=|" << token << "| ###" << endl;	
+	}
+      }
+      
+      if(var_start > -1) {
+	if(str[i] == ' ') {
+	  const string token = str.substr(var_start, i - var_start);
+	  cout << "### variable=|" << token << "| ###" << endl;
+	  // update
+	  var_start = -1;
+	  str_start = i;
+	}
+	else if(i + 1 == str.size()) {
+	  const string token = str.substr(var_start, i - var_start + 1);
+	  cout << "### variable=|" << token << "| ###" << endl;
+	  // update
+	  var_start = -1;
+	  str_start = i;
+	}
+      }
+      else if(i + 1 == str.size()) {
+	var_start = i;
+	const string token = str.substr(str_start, i - str_start + 1);
+	cout << "### string=|" << token << "| ###" << endl;
+      }
+    }
+
+
     int id = program->GetCharStringId(str);
     if(id > -1) {
       char_str->SetId(id);
