@@ -962,6 +962,8 @@ bool ContextAnalyzer::Analyze()
       program->AddCharString(str, char_str_index);
       char_str_index++;
     }
+
+    AnalyzeCharacterStringParameters(char_str);
     
 #ifndef _SYSTEM
     LibraryClass* lib_klass = linker->SearchClassLibraries("System.String", program->GetUses());
