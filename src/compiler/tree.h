@@ -709,16 +709,30 @@ namespace frontend {
     VARIABLE
   };
   
-  struct CharacterStringSegment {
+  class CharacterStringSegment {
     CharacterStringSegmentType type;
     string str;
     SymbolEntry* var;
+
+  public:
+    CharacterStringSegment(const string &s) {
+      str = s;
+    }
+    
+    CharacterStringSegment(SymbolEntry* v) {
+      var = v;
+    }
+    
+    CharacterStringSegmentType GetType() {
+      return type;
+    }
   };
   
   class CharacterString : public Expression {
     friend class TreeFactory;
     int id;
     string char_string;
+    vector<CharacterStringSegment> segments;
     
   CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
@@ -815,6 +829,14 @@ namespace frontend {
 
     const string& GetString() const {
       return char_string;
+    }
+
+    void SetSegments(vector<CharacterStringSegment> &s) {
+      segments = s;
+    }
+    
+    vector<CharacterStringSegment> GetSegments() {
+      return segments;
     }
   };
 

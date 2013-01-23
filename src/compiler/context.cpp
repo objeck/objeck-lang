@@ -902,30 +902,40 @@ bool ContextAnalyzer::Analyze()
     Show("character string literal", char_str->GetLineNumber(), depth);
 #endif
     
-    // parse strings and variables
+    // parse variables and substrings
     int var_start = -1;
     int str_start = 0;
+    vector<CharacterStringSegment> segments;
     const string &str = char_str->GetString();    
     for(size_t i = 0; i < str.size(); i++) {
+      // variable start
       if(str[i] == '$') {      
 	var_start = i;
 	if(i - str_start) {
 	  const string token = str.substr(str_start, i - str_start);
-	  cout << "### string=|" << token << "| ###" << endl;	
+#ifdef _DEBUG
+	  Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	  CharacterStringSegment segment(token);
+	  segments.push_back(segment);
 	}
       }
       
+      // variable end
       if(var_start > -1) {
 	if(str[i] == ' ') {
 	  const string token = str.substr(var_start + 1, i - var_start - 1);
 	  SymbolEntry* entry = GetEntry(token);
 	  if(entry) {
-	    cout << "### found variable=|" << entry->GetName() << "| ###" << endl;
+#ifdef _DEBUG
+	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	    CharacterStringSegment segment(entry);
+	    segments.push_back(segment);
 	  }
 	  else {
-	    cout << "### unresloved variable=|" << token << "| ###" << endl; 
-	  }
-	  
+	    ProcessError(char_str, "Undefined variable: '" + token + "'");
+	  }	  
 	  // update
 	  var_start = -1;
 	  str_start = i;
@@ -934,12 +944,15 @@ bool ContextAnalyzer::Analyze()
 	  const string token = str.substr(var_start + 1, i - var_start);
 	  SymbolEntry* entry = GetEntry(token);
 	  if(entry) {
-	    cout << "### found variable=|" << entry->GetName() << "| ###" << endl;
+#ifdef _DEBUG
+	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	    CharacterStringSegment segment(entry);
+	    segments.push_back(segment);
 	  }
 	  else {
-	    cout << "### unresloved variable=|" << token << "| ###" << endl; 
-	  }
-	  
+	    ProcessError(char_str, "Undefined variable: '" + token + "'");
+	  }	  
 	  // update
 	  var_start = -1;
 	  str_start = i;
@@ -948,22 +961,29 @@ bool ContextAnalyzer::Analyze()
       else if(i + 1 == str.size()) {
 	var_start = i;
 	const string token = str.substr(str_start, i - str_start + 1);
-	cout << "### string=|" << token << "| ###" << endl;
+#ifdef _DEBUG
+	Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	CharacterStringSegment segment(token);
+	segments.push_back(segment);
       }
     }
-
-
-    int id = program->GetCharStringId(str);
-    if(id > -1) {
-      char_str->SetId(id);
+    char_str->SetSegments(segments);
+    
+    // tag literal strings
+    for(size_t i = 0; i < segments.size(); i++) {
+      if(segments[i].GetType() == STRING) {
+	int id = program->GetCharStringId(segments[i].GetString());
+	if(id > -1) {
+	  char_str->SetId(id);
+	}
+	else {
+	  char_str->SetId(char_str_index);
+	  program->AddCharString(str, char_str_index);
+	  char_str_index++;
+	}
+      }
     }
-    else {
-      char_str->SetId(char_str_index);
-      program->AddCharString(str, char_str_index);
-      char_str_index++;
-    }
-
-    AnalyzeCharacterStringParameters(char_str);
     
 #ifndef _SYSTEM
     LibraryClass* lib_klass = linker->SearchClassLibraries("System.String", program->GetUses());

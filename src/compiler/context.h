@@ -887,16 +887,6 @@ class ContextAnalyzer {
     
     return false;
   }
-  
-  // TODO:
-  void AnalyzeCharacterStringParameters(CharacterString* char_str) {
-    const string &str = char_str->GetString();
-    for(size_t i = 0; i < str.size(); i++) {
-      if(str[i] == '$' && (i + 1 < str.size() && str[i + 1] != '$')) {
-	cout << "## FOO ###" << endl;
-      }
-    }
-  }
 
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
