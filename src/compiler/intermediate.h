@@ -233,7 +233,7 @@ class IntermediateEmitter {
       }
     }
   }
-  
+
   // determines if a method call returns an unused value
   int OrphanReturn(MethodCall* method_call) {
     if(!method_call) {

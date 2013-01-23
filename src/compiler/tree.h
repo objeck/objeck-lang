@@ -704,6 +704,17 @@ namespace frontend {
   /****************************
    * CharacterString class
    ****************************/
+  enum CharacterStringSegmentType {
+    STRING,
+    VARIABLE
+  };
+  
+  struct CharacterStringSegment {
+    CharacterStringSegmentType type;
+    string str;
+    SymbolEntry* var;
+  };
+  
   class CharacterString : public Expression {
     friend class TreeFactory;
     int id;
