@@ -732,7 +732,10 @@ namespace frontend {
     CharacterStringSegmentType GetType() {
       return type;
     }
-
+    
+    ~CharacterStringSegment() {
+    }
+    
     const string GetString() {
       return str;
     }
