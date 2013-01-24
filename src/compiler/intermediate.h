@@ -175,6 +175,7 @@ class IntermediateEmitter {
   // method parameters
   int new_char_str_count; 
   int cur_line_num;
+  LibraryClass*  string_cls;
   int string_cls_id;
   stack<int> break_labels;
   bool is_str_array;
@@ -199,7 +200,8 @@ class IntermediateEmitter {
   void EmitExpression(Expression* expression);
   void EmitStaticArray(StaticArray* array);
   void EmitCharacterString(CharacterString* char_str);
-  void EmitCharacterStringSegment(CharacterStringSegment* segment);
+  void EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
+  void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitConditional(Cond* conditional);
   void EmitAndOr(CalculatedExpression* expression);
   void EmitCalculation(CalculatedExpression* expression);
@@ -453,6 +455,7 @@ class IntermediateEmitter {
     is_new_inst = false;
     new_char_str_count = 0;
     cur_line_num = -1;
+    string_cls = NULL;
     string_cls_id = -1;
     is_str_array = false;
   }
