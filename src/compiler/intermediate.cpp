@@ -2529,7 +2529,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 									       concat_entry->GetId(), LOCL));    
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										 "System.String,", 
+										 "System.String", 
 										 "System.String:Append:o.System.String,"));
       }
     else {
@@ -2569,7 +2569,6 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										   string_append_method->GetId(), 0L));
       }
       new_char_str_count = 0;
-
       break;
       
     case frontend::CHAR_TYPE:

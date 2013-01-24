@@ -964,7 +964,11 @@ bool ContextAnalyzer::Analyze()
 	char_str->AddSegment(token);
       }
     }
-    
+
+    if(!str.size()) {
+      char_str->AddSegment("");
+    }
+
     // tag literal strings
     vector<CharacterStringSegment*> segments = char_str->GetSegments();
     for(size_t i = 0; i < segments.size(); i++) {
