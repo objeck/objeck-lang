@@ -712,19 +712,27 @@ namespace frontend {
   class CharacterStringSegment {
     CharacterStringSegmentType type;
     string str;
-    SymbolEntry* var;
+    SymbolEntry* entry;
 
   public:
     CharacterStringSegment(const string &s) {
       str = s;
     }
     
-    CharacterStringSegment(SymbolEntry* v) {
-      var = v;
+    CharacterStringSegment(SymbolEntry* e) {
+      entry = e;
     }
     
     CharacterStringSegmentType GetType() {
       return type;
+    }
+
+    const string GetString() {
+      return str;
+    }
+    
+    SymbolEntry* GetEntry() {
+      return entry;
     }
   };
   
