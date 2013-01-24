@@ -2,10 +2,14 @@
 	function : Main(args : String[]) ~ Nil {
 		num := 3;
 		num2 := 17;
+		cc := 'd';
 #		str := "$hi The number is $foo $num the end $num2";
-		str := "$num2 there";
+		str := "$num2 there $cc";
 #		str := "hi The number is foo bar";
 #		str := "";
 		str->PrintLine();
+
+		num2 += 100;
+		"$num2 there $cc"->PrintLine();
 	}
 }
