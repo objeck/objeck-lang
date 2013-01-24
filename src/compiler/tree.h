@@ -758,6 +758,7 @@ namespace frontend {
     int id;
     string char_string;
     vector<CharacterStringSegment*> segments;
+    SymbolEntry* concat;
     
   CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
@@ -833,7 +834,8 @@ namespace frontend {
 	  skip++;
 	}
       }
-      id = -1;
+      
+      concat = NULL;
     }
     
     ~CharacterString() {      
@@ -851,12 +853,12 @@ namespace frontend {
       return CHAR_STR_EXPR;
     }
 
-    void SetId(int i) {
-      id = i;
+    void SetConcat(SymbolEntry* c) {
+      concat = c;
     }
 
-    int GetId() {
-      return id;
+    SymbolEntry* GetConcat() {
+      return concat;
     }
 
     const string& GetString() const {

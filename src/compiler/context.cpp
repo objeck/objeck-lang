@@ -902,6 +902,9 @@ bool ContextAnalyzer::Analyze()
     Show("character string literal", char_str->GetLineNumber(), depth);
 #endif
     
+    // TODO: CLASS_TYPE must be string 
+    // TODP: error BOOLEAN_TYPE and FUNC_TYPE
+
     // parse variables and substrings
     int var_start = -1;
     int str_start = 0;
@@ -910,13 +913,11 @@ bool ContextAnalyzer::Analyze()
       // variable start
       if(str[i] == '$') {      
 	var_start = i;
-	if(i - str_start) {
-	  const string token = str.substr(str_start, i - str_start);
+	const string token = str.substr(str_start, i - str_start);
 #ifdef _DEBUG
-	  Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
+	Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	  char_str->AddSegment(token);
-	}
+	char_str->AddSegment(token);	
       }
       
       // variable end
@@ -978,6 +979,17 @@ bool ContextAnalyzer::Analyze()
 	  char_str_index++;
 	}
       }
+    }
+    
+    // create temporary variable for concat of strings and variables
+    if(segments.size() > 1) {
+      Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, "System.String");
+      const string scope_name = current_method->GetName() + ":#concat#";
+      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
+								    char_str->GetLineNumber(),
+								    scope_name, type, false, true);
+      current_table->AddEntry(entry, true);
+      char_str->SetConcat(entry);
     }
     
 #ifndef _SYSTEM
