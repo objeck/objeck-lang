@@ -2,8 +2,8 @@
 	function : Main(args : String[]) ~ Nil {
 		num := 5;
 		num2 := 5;
-		str := "$hi The number is $foo $num the end $num2";
-#		str := "hi The number is foo bar";
+#		str := "$hi The number is $foo $num the end $num2";
+		str := "hi The number is foo bar";
 #		str := "";
 		str->PrintLine();
 	}
