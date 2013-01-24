@@ -867,6 +867,11 @@ namespace frontend {
 
 
     void AddSegment(const string &s) {
+      for(size_t i = 0; i < segments.size(); i++) {
+	if(segments[i]->GetType() == STRING && segments[i]->GetString() == s) {
+	  return;
+	}
+      }
       segments.push_back(new CharacterStringSegment(s));
     }
     
