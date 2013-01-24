@@ -706,21 +706,27 @@ namespace frontend {
    ****************************/
   enum CharacterStringSegmentType {
     STRING,
-    VARIABLE
+    ENTRY
   };
   
   class CharacterStringSegment {
     CharacterStringSegmentType type;
+    int id;
     string str;
     SymbolEntry* entry;
 
   public:
     CharacterStringSegment(const string &s) {
+      type = STRING;
       str = s;
+      entry = NULL;
+      id = -1;
     }
     
     CharacterStringSegment(SymbolEntry* e) {
+      type = ENTRY;
       entry = e;
+      id = -1;
     }
     
     CharacterStringSegmentType GetType() {
@@ -734,13 +740,21 @@ namespace frontend {
     SymbolEntry* GetEntry() {
       return entry;
     }
+
+    void SetId(int i) {
+      id = i;
+    }
+
+    int GetId() {
+      return id;
+    }
   };
   
   class CharacterString : public Expression {
     friend class TreeFactory;
     int id;
     string char_string;
-    vector<CharacterStringSegment> segments;
+    vector<CharacterStringSegment*> segments;
     
   CharacterString(const string &f, int l, const string &orig) :
     Expression(f, l, Type::CharStringType()) {
@@ -818,10 +832,17 @@ namespace frontend {
       }
       id = -1;
     }
-
-    ~CharacterString() {
+    
+    ~CharacterString() {      
+      while(!segments.empty()) {
+	CharacterStringSegment* tmp = segments.front();
+	segments.erase(segments.begin());
+	// delete
+	delete tmp;
+	tmp = NULL;
+      }
     }
-
+    
   public:
     const ExpressionType GetExpressionType() {
       return CHAR_STR_EXPR;
@@ -839,11 +860,16 @@ namespace frontend {
       return char_string;
     }
 
-    void SetSegments(vector<CharacterStringSegment> &s) {
-      segments = s;
+
+    void AddSegment(const string &s) {
+      segments.push_back(new CharacterStringSegment(s));
     }
     
-    vector<CharacterStringSegment> GetSegments() {
+    void AddSegment(SymbolEntry* e) {
+      segments.push_back(new CharacterStringSegment(e)); 
+    }
+    
+    vector<CharacterStringSegment*> GetSegments() {
       return segments;
     }
   };

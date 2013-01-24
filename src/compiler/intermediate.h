@@ -199,6 +199,7 @@ class IntermediateEmitter {
   void EmitExpression(Expression* expression);
   void EmitStaticArray(StaticArray* array);
   void EmitCharacterString(CharacterString* char_str);
+  void EmitCharacterStringSegment(CharacterStringSegment* segment);
   void EmitConditional(Cond* conditional);
   void EmitAndOr(CalculatedExpression* expression);
   void EmitCalculation(CalculatedExpression* expression);
