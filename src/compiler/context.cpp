@@ -905,7 +905,6 @@ bool ContextAnalyzer::Analyze()
     // parse variables and substrings
     int var_start = -1;
     int str_start = 0;
-    vector<CharacterStringSegment> segments;
     const string &str = char_str->GetString();    
     for(size_t i = 0; i < str.size(); i++) {
       // variable start
@@ -916,8 +915,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
 	  Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	  CharacterStringSegment segment(token);
-	  segments.push_back(segment);
+	  char_str->AddSegment(token);
 	}
       }
       
@@ -930,8 +928,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
 	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	    CharacterStringSegment segment(entry);
-	    segments.push_back(segment);
+	    char_str->AddSegment(entry);
 	  }
 	  else {
 	    ProcessError(char_str, "Undefined variable: '" + token + "'");
@@ -947,8 +944,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
 	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	    CharacterStringSegment segment(entry);
-	    segments.push_back(segment);
+	    char_str->AddSegment(entry);
 	  }
 	  else {
 	    ProcessError(char_str, "Undefined variable: '" + token + "'");
@@ -964,22 +960,21 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
 	Show("substring=|" + token + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	CharacterStringSegment segment(token);
-	segments.push_back(segment);
+	char_str->AddSegment(token);
       }
     }
-    char_str->SetSegments(segments);
     
     // tag literal strings
+    vector<CharacterStringSegment*> segments = char_str->GetSegments();
     for(size_t i = 0; i < segments.size(); i++) {
-      if(segments[i].GetType() == STRING) {
-	int id = program->GetCharStringId(segments[i].GetString());
+      if(segments[i]->GetType() == STRING) {
+	int id = program->GetCharStringId(segments[i]->GetString());
 	if(id > -1) {
-	  char_str->SetId(id);
+	  segments[i]->SetId(id);
 	}
 	else {
-	  char_str->SetId(char_str_index);
-	  program->AddCharString(str, char_str_index);
+	  segments[i]->SetId(char_str_index);
+	  program->AddCharString(segments[i]->GetString(), char_str_index);
 	  char_str_index++;
 	}
       }
