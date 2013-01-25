@@ -902,84 +902,65 @@ bool ContextAnalyzer::Analyze()
     Show("character string literal", char_str->GetLineNumber(), depth);
 #endif
     
-    // parse variables and substrings
     int var_start = -1;
     int str_start = 0;
-    const string &str = char_str->GetString();    
-    for(size_t i = 0; i < str.size(); i++) {
-      // variable start
-      if(str[i] == '{' && i + 1 < str.size() && str[i + 1] == '$') {      
-	var_start = i;
-	const string token = str.substr(str_start, i - str_start);
-#ifdef _DEBUG
-	Show("substring 0=|" + token + "|", char_str->GetLineNumber(), depth + 1);
-#endif
-	char_str->AddSegment(token);	
-      }
-      
-      // variable end
-      if(var_start > -1) {
-	if(str[i] == '}') {
-	  const string token = str.substr(var_start + 2, i - var_start - 2);
-	  SymbolEntry* entry = GetEntry(token);
-	  if(entry) {
-#ifdef _DEBUG
-	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
-#endif
-	    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() != "System.String") {
-	      ProcessError(char_str, "Invalid class/enum variable: '" + entry->GetName() + "'");
-	    }
-	    else if(entry->GetType()->GetType() == FUNC_TYPE) {
-	      ProcessError(char_str, "Invalid function variable type");
-	    }
-	    else {
-	      char_str->AddSegment(entry);
-	    }
-	  }
-	  else {
-	    ProcessError(char_str, "Undefined variable: '" + token + "'");
-	  }	  
-	  // update
-	  var_start = -1;
-	  str_start = i + 1;
-	}
-	else if(i + 1 == str.size()) {
-	  const string token = str.substr(var_start + 1, i - var_start);
-	  SymbolEntry* entry = GetEntry(token);
-	  if(entry) {
-#ifdef _DEBUG
-	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
-#endif	    
-	    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() != "System.String") {
-	      ProcessError(char_str, "Invalid class/enum variable: '" + entry->GetName() + "'");
-	    }
-	    else if(entry->GetType()->GetType() == FUNC_TYPE) {
-	      ProcessError(char_str, "Invalid function variable type");
-	    }
-	    else {
-	      char_str->AddSegment(entry);
-	    }
-	  }
-	  else {
-	    ProcessError(char_str, "Undefined variable: '" + token + "'");
-	  }	  
-	  // update
-	  var_start = -1;
-	  str_start = i + 1;
-	}
-      }
-      else if(i + 1 == str.size()) {
-	var_start = i;
-	const string token = str.substr(str_start, i - str_start + 1);
-#ifdef _DEBUG
-	Show("substring 1=|" + token + "|", char_str->GetLineNumber(), depth + 1);
-#endif
-	char_str->AddSegment(token);
-      }
-    }
+    const string &str = char_str->GetString(); 
 
+    // empty string segment
     if(!str.size()) {
       char_str->AddSegment("");
+    }
+    else {   
+      // process segment
+      for(size_t i = 0; i < str.size(); i++) {
+	// variable start
+	if(str[i] == '{' && i + 1 < str.size() && str[i + 1] == '$') {      
+	  var_start = i;
+	  const string token = str.substr(str_start, i - str_start);
+#ifdef _DEBUG
+	  Show("substring 0=|" + token + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	  char_str->AddSegment(token);	
+	}
+      
+	// variable end
+	if(var_start > -1) {
+	  if(str[i] == '}') {
+	    const string token = str.substr(var_start + 2, i - var_start - 2);
+	    SymbolEntry* entry = GetEntry(token);
+	    if(entry) {
+	      AnalyzeCharacterStringVariable(entry, char_str, depth);
+	    }
+	    else {
+	      ProcessError(char_str, "Undefined variable: '" + token + "'");
+	    }	  
+	    // update
+	    var_start = -1;
+	    str_start = i + 1;
+	  }
+	  else if(i + 1 == str.size()) {
+	    const string token = str.substr(var_start + 1, i - var_start);
+	    SymbolEntry* entry = GetEntry(token);
+	    if(entry) {
+	      AnalyzeCharacterStringVariable(entry, char_str, depth);
+	    }
+	    else {
+	      ProcessError(char_str, "Undefined variable: '" + token + "'");
+	    }	  
+	    // update
+	    var_start = -1;
+	    str_start = i + 1;
+	  }
+	}
+	else if(i + 1 == str.size()) {
+	  var_start = i;
+	  const string token = str.substr(str_start, i - str_start + 1);
+#ifdef _DEBUG
+	  Show("substring 1=|" + token + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+	  char_str->AddSegment(token);
+	}
+      }
     }
 
     // tag literal strings
