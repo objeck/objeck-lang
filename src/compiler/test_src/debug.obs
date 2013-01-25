@@ -13,5 +13,11 @@
 		bb := true;
 		str := "{$bb}.hello {$ss}-- {$ss3}|{$f}";
 		str->PrintLine();
+		
+		v1 := "def";
+		v2 := 'j';
+		v3 := 13;
+		v4 := 101.5;
+		"abc{$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
 	}
 }
