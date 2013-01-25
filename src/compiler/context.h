@@ -897,22 +897,22 @@ class ContextAnalyzer {
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
 	Method* method = klass->GetMethod(cls_name + ":ToString:");
-	if(method) {
+	if(method && method->GetMethodType() != PRIVATE_METHOD) {
 	  char_str->AddSegment(entry, method);
 	}
 	else {
-	  ProcessError(char_str, "Class/enum variable does not have a 'ToString' method");
+	  ProcessError(char_str, "Class/enum variable does not have a public 'ToString' method");
 	}
       }
       else {
 	LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
 	if(lib_klass) {
 	  LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + ":ToString:");
-	  if(lib_method) {
+	  if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
 	    char_str->AddSegment(entry, lib_method);
 	  }
 	  else {
-	    ProcessError(char_str, "Class/enum variable does not have a 'ToString' method");
+	    ProcessError(char_str, "Class/enum variable does not have a public 'ToString' method");
 	  }
 	}
 	else {
