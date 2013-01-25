@@ -2652,9 +2652,9 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       break;
       
     case frontend::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 
+										 var_entry->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
