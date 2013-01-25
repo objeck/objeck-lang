@@ -883,6 +883,15 @@ bundle System {
 			return array;
 		}
 		
+		method : public : native : Append(b : Bool) ~ Nil {
+			if(b) {
+				Append("true"->ToCharArray());
+			}
+			else {
+				Append("false"->ToCharArray());
+			};
+		}
+
 		method : public : native : Append(i : Int) ~ Nil {
 			Append(i->ToString()->ToCharArray());
 		}
