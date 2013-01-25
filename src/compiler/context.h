@@ -888,6 +888,46 @@ class ContextAnalyzer {
     return false;
   }
 
+  void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth) {
+#ifdef _DEBUG
+    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
+#endif
+    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() != "System.String") {
+      const string cls_name = entry->GetType()->GetClassName();
+      Class* klass = SearchProgramClasses(cls_name);
+      if(klass) {
+	Method* method = klass->GetMethod(cls_name + ":ToString:");
+	if(method) {
+	  char_str->AddSegment(entry, method);
+	}
+	else {
+	  ProcessError(char_str, "Class/enum variable does not have a 'ToString' method");
+	}
+      }
+      else {
+	LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+	if(lib_klass) {
+	  LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + ":ToString:");
+	  if(lib_method) {
+	    char_str->AddSegment(entry, lib_method);
+	  }
+	  else {
+	    ProcessError(char_str, "Class/enum variable does not have a 'ToString' method");
+	  }
+	}
+	else {
+	  ProcessError(char_str, "Class/enum variable does not have a 'ToString' method");
+	}
+      }
+    }
+    else if(entry->GetType()->GetType() == FUNC_TYPE) {
+      ProcessError(char_str, "Invalid function variable type");
+    }
+    else {
+      char_str->AddSegment(entry);
+    }
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
   void ProcessError(const string &msg);
