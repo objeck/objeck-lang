@@ -602,7 +602,10 @@ void Scanner::ParseToken(int index)
 
         case '0':
           break;
-
+	  
+	case '$':
+          break;
+	  
         default:
           tokens[index]->SetType(TOKEN_UNKNOWN);
           tokens[index]->SetLineNbr(line_nbr);
