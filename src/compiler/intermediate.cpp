@@ -2548,6 +2548,22 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
     case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 var_entry->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+										 concat_entry->GetId(), LOCL));     
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+										   "System.String", "System.String:Append:l,"));
+      }
+      else {
+	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:l,");
+#ifdef _DEBUG
+	assert(string_append_method);
+#endif
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+										   (INT_VALUE)string_cls->GetId(), 
+										   string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
       break;
       
     case frontend::BYTE_TYPE:
@@ -2614,26 +2630,52 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       break;
       
     case frontend::CLASS_TYPE:
-      // TODO: is string...
-      
-      // check for stack swap
-      new_char_str_count++;
-      if(!is_str_array && new_char_str_count >= 2) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
-	new_char_str_count = 0;
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+										 var_entry->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+										 concat_entry->GetId(), LOCL));     
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+										   "System.String", 
+										   "System.String:Append:o.System.String,"));
       }
-      
+      else {
+	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:o.System.String,");
+#ifdef _DEBUG
+	assert(string_append_method);
+#endif
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+										   (INT_VALUE)string_cls->GetId(), 
+										   string_append_method->GetId(), 0L));
+      }
+      new_char_str_count = 0;
       break;
       
     case frontend::FLOAT_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+										 var_entry->GetId(), LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 
+										 concat_entry->GetId(), LOCL));     
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+										   "System.String", "System.String:Append:f,"));
+      }
+      else {
+	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:f,");
+#ifdef _DEBUG
+	assert(string_append_method);
+#endif
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+										   (INT_VALUE)string_cls->GetId(), 
+										   string_append_method->GetId(), 0L)); 
+      }
+      new_char_str_count = 0;
       break;
       
     default:
       break;
     }
   }
-  
-  
 }
 
 void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str)
