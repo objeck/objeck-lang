@@ -448,7 +448,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 						    interface_names, false);
   current_class = klass;
 
-  // add '@this' entry
+  // add '@self' entry
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
 								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
