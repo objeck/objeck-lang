@@ -68,6 +68,7 @@ namespace frontend {
   class Variable;
   class MethodCall;
   class Class;
+  class Method;
   class Enum;
   class ParsedProgram;
 
@@ -714,18 +715,40 @@ namespace frontend {
     int id;
     string str;
     SymbolEntry* entry;
+    Method* method;
+    LibraryMethod* lib_method;
 
   public:
     CharacterStringSegment(const string &s) {
       type = STRING;
       str = s;
       entry = NULL;
+      method = NULL;
+      lib_method = NULL;
       id = -1;
     }
     
     CharacterStringSegment(SymbolEntry* e) {
       type = ENTRY;
       entry = e;
+      method = NULL;
+      lib_method = NULL;
+      id = -1;
+    }
+
+    CharacterStringSegment(SymbolEntry* e, Method* m) {
+      type = ENTRY;
+      entry = e;
+      method = m;
+      lib_method = NULL;
+      id = -1;
+    }
+
+    CharacterStringSegment(SymbolEntry* e, LibraryMethod* m) {
+      type = ENTRY;
+      entry = e;
+      method = NULL;
+      lib_method = m;
       id = -1;
     }
     
@@ -750,6 +773,14 @@ namespace frontend {
 
     int GetId() {
       return id;
+    }
+
+    Method* GetMethod() {
+      return method;
+    }
+    
+    LibraryMethod* GetLibraryMethod() {
+      return lib_method;
     }
   };
   
@@ -880,6 +911,14 @@ namespace frontend {
     
     void AddSegment(SymbolEntry* e) {
       segments.push_back(new CharacterStringSegment(e)); 
+    }
+
+    void AddSegment(SymbolEntry* e, Method* m) {
+      segments.push_back(new CharacterStringSegment(e, m)); 
+    }
+    
+    void AddSegment(SymbolEntry* e, LibraryMethod* m) {
+      segments.push_back(new CharacterStringSegment(e, m)); 
     }
     
     vector<CharacterStringSegment*> GetSegments() {

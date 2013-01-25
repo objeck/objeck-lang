@@ -1,11 +1,23 @@
 ﻿class Foo {
-	function : Bar() ~ Nil {
+	New() {
+	}
+	
+	method : ToString() ~ String {
+		return "Hi";
+	}
+}
+
+class Bar {
+#	function : Bar() ~ Nil {
+	function : Main(a : String[]) ~ Nil {
 		ss := "world ";
 		ss3 := " again!";
 		f := 3.51;
 		bb := true;
 		str := "{$bb}.hello {$ss}-- {$ss3}|{$f}";
 		str->PrintLine();
+
+		
 		
 		v1 := "def";
 		v2 := 'j';
@@ -14,5 +26,8 @@
 		"abc{\$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
 	
 		"{\\$\n\t."->PrintLine();
+
+		foo := Foo->New();
+		"array values: {$foo}"->PrintLine();
 	}
 }
