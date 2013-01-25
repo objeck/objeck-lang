@@ -760,81 +760,9 @@ namespace frontend {
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
     
-  CharacterString(const string &f, int l, const string &orig) :
+  CharacterString(const string &f, int l, const string &c) :
     Expression(f, l, Type::CharStringType()) {
-      int skip = 2;
-      for(size_t i = 0; i < orig.size(); i++) {
-	char c = orig[i];
-	if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
-	  char cc = orig[i + 1];
-	  switch(cc) {
-	  case '"':
-	    char_string += '\"';
-	    skip = 0;
-	    break;
-
-	  case '\\':
-	    char_string += '\\';
-	    skip = 0;
-	    break;
-
-	  case 'n':
-	    char_string += '\n';
-	    skip = 0;
-	    break;
-
-	  case 'r':
-	    char_string += '\r';
-	    skip = 0;
-	    break;
-
-	  case 't':
-	    char_string += '\t';
-	    skip = 0;
-	    break;
-
-	  case 'a':
-	    char_string += '\a';
-	    skip = 0;
-	    break;
-	    
-	  case 'b':
-	    char_string += '\b';
-	    skip = 0;
-	    break;
-
-#ifndef _WIN32
-	  case 'e':
-	    char_string += '\e';
-	    skip = 0;
-	    break;
-#endif
-
-	  case 'f':
-	    char_string += '\f';
-	    skip = 0;
-	    break;
-
-	  case '0':
-	    char_string += '\0';
-	    skip = 0;
-	    break;
-
-	  default:
-	    if(skip <= 1) {
-	      skip++;
-	    }
-	    break;
-	  }
-	}
-	
-	if(skip > 1) {
-	  char_string += c;
-	} else {
-	  skip++;
-	}
-      }
-      
+      char_string = c;
       is_processed = false;
       concat = NULL;
     }
@@ -869,11 +797,84 @@ namespace frontend {
     const string& GetString() const {
       return char_string;
     }
-
-
-    void AddSegment(const string &s) {
+    
+    void AddSegment(const string &orig) {
       if(!is_processed) {
-	segments.push_back(new CharacterStringSegment(s));
+	string escaped_str;	
+	int skip = 2;
+	for(size_t i = 0; i < orig.size(); i++) {
+	  char c = orig[i];
+	  if(skip > 1 && c == '\\' && i + 1 < orig.size()) {
+	    char cc = orig[i + 1];
+	    switch(cc) {
+	    case '"':
+	      escaped_str += '\"';
+	      skip = 0;
+	      break;
+
+	    case '\\':
+	      escaped_str += '\\';
+	      skip = 0;
+	      break;
+
+	    case 'n':
+	      escaped_str += '\n';
+	      skip = 0;
+	      break;
+
+	    case 'r':
+	      escaped_str += '\r';
+	      skip = 0;
+	      break;
+
+	    case 't':
+	      escaped_str += '\t';
+	      skip = 0;
+	      break;
+
+	    case 'a':
+	      escaped_str += '\a';
+	      skip = 0;
+	      break;
+	    
+	    case 'b':
+	      escaped_str += '\b';
+	      skip = 0;
+	      break;
+
+#ifndef _WIN32
+	    case 'e':
+	      escaped_str += '\e';
+	      skip = 0;
+	      break;
+#endif
+
+	    case 'f':
+	      escaped_str += '\f';
+	      skip = 0;
+	      break;
+
+	    case '0':
+	      escaped_str += '\0';
+	      skip = 0;
+	      break;
+
+	    default:
+	      if(skip <= 1) {
+		skip++;
+	      }
+	      break;
+	    }
+	  }
+	
+	  if(skip > 1) {
+	    escaped_str += c;
+	  } else {
+	    skip++;
+	  }
+	}
+	// set string
+	segments.push_back(new CharacterStringSegment(escaped_str));
       }
     }
     
