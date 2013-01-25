@@ -903,7 +903,7 @@ bool ContextAnalyzer::Analyze()
 #endif
     
     // TODO: CLASS_TYPE must be string 
-    // TODP: error BOOLEAN_TYPE and FUNC_TYPE
+    // TODO: error BOOLEAN_TYPE and FUNC_TYPE
 
     // parse variables and substrings
     int var_start = -1;
@@ -929,7 +929,15 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
 	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-	    char_str->AddSegment(entry);
+	    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() == "System.String") {
+	      ProcessError(char_str, "Invalid class/enum variable: '" + entry->GetName() + "'");
+	    }
+	    else if(entry->GetType()->GetType() == FUNC_TYPE) {
+	      ProcessError(char_str, "Invalid function variable type");
+	    }
+	    else {
+	      char_str->AddSegment(entry);
+	    }
 	  }
 	  else {
 	    ProcessError(char_str, "Undefined variable: '" + token + "'");
@@ -944,8 +952,16 @@ bool ContextAnalyzer::Analyze()
 	  if(entry) {
 #ifdef _DEBUG
 	    Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
-#endif
-	    char_str->AddSegment(entry);
+#endif	    
+	    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() == "System.String") {
+	      ProcessError(char_str, "Invalid class/enum variable: '" + entry->GetName() + "'");
+	    }
+	    else if(entry->GetType()->GetType() == FUNC_TYPE) {
+	      ProcessError(char_str, "Invalid function variable type");
+	    }
+	    else {
+	      char_str->AddSegment(entry);
+	    }
 	  }
 	  else {
 	    ProcessError(char_str, "Undefined variable: '" + token + "'");
@@ -1005,6 +1021,8 @@ bool ContextAnalyzer::Analyze()
       ProcessError(char_str, "Internal compiler error.");
     }
 #endif
+    
+    char_str->SetProcessed();
   }
 
   void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {

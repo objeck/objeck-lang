@@ -755,7 +755,7 @@ namespace frontend {
   
   class CharacterString : public Expression {
     friend class TreeFactory;
-    int id;
+    bool is_processed;
     string char_string;
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
@@ -835,6 +835,7 @@ namespace frontend {
 	}
       }
       
+      is_processed = false;
       concat = NULL;
     }
     
@@ -849,6 +850,10 @@ namespace frontend {
     }
     
   public:
+    void SetProcessed() {
+      is_processed = true;
+    }
+    
     const ExpressionType GetExpressionType() {
       return CHAR_STR_EXPR;
     }
@@ -867,12 +872,9 @@ namespace frontend {
 
 
     void AddSegment(const string &s) {
-      for(size_t i = 0; i < segments.size(); i++) {
-	if(segments[i]->GetType() == STRING && segments[i]->GetString() == s) {
-	  return;
-	}
+      if(!is_processed) {
+	segments.push_back(new CharacterStringSegment(s));
       }
-      segments.push_back(new CharacterStringSegment(s));
     }
     
     void AddSegment(SymbolEntry* e) {
