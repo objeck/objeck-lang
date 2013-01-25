@@ -1,14 +1,7 @@
-﻿class MutualRecursion {
-	function : Main(args : String[]) ~ Nil {
-#		num := 3;
-#		num2 := 17;
-#		cc := 'd';
+﻿class Foo {
+	function : Bar() ~ Nil {
 		ss := "world ";
 		ss3 := " again!";
-#		str := "$hi The number is $foo $num the end $num2";
-#		str := "$num2 there $cc";
-#		str := "hi The number is foo bar";
-#		str := "";
 		f := 3.51;
 		bb := true;
 		str := "{$bb}.hello {$ss}-- {$ss3}|{$f}";

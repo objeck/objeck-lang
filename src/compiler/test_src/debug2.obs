@@ -1,8 +1,6 @@
-﻿class RowEchelon {
+﻿class FooBar {
 	function : Main(args : String[]) ~ Nil {
-			out := Byte->New[1];
-#			a := out[0]->As(Int);
-#			a->PrintLine();
-			out[0]->As(Int)->PrintLine();
+		"using library..."->PrintLine();
+		Foo->Bar();
 	}	
 }
