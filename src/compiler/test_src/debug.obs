@@ -1,6 +1,6 @@
 ﻿class MutualRecursion {
 	function : Main(args : String[]) ~ Nil {
-#`		num := 3;
+#		num := 3;
 #		num2 := 17;
 #		cc := 'd';
 		ss := "world ";
@@ -18,6 +18,8 @@
 		v2 := 'j';
 		v3 := 13;
 		v4 := 101.5;
-		"abc{$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
+		"abc{\$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
+	
+		"{\\$\n\t."->PrintLine();
 	}
 }
