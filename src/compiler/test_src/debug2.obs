@@ -1,9 +1,8 @@
 ﻿class FooBar {
 	function : Main(args : String[]) ~ Nil {
-		a := [1, 2, 3];
+#		x : String[] := args;
+#		x[0]->PrintLine();
+		s := [1, 2, 3]->ToString();
 		a->ToString()->PrintLine();
-
-		"using library..."->PrintLine();
-		Foo->Bar();
 	}	
 }

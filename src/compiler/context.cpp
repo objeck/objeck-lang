@@ -128,7 +128,6 @@ bool ContextAnalyzer::Analyze()
     for(size_t j = 0; j < classes.size(); j++) {
       Class* klass = classes[j];
       string parent_name = klass->GetParentName();
-      // TODO: fix ulgy hack!!!
 #ifdef _SYSTEM
       if(parent_name.size() == 0 && klass->GetName() != SYSTEM_BASE_NAME) {
 #else
@@ -1475,14 +1474,15 @@ bool ContextAnalyzer::Analyze()
       string encoding;
       Class* klass = NULL;
       LibraryClass* lib_klass = NULL;
-
+      
+      /*
       // TODO: fix need to change intermediate emit code so that element value
-      // is loaded instead of instance
-      if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {
-	//	ProcessError(expression, "Method call from element cast not allowed");
-	AnalyzeClassCast(expression->GetCastType(), expression, depth + 1);
+      // is loaded instead of instance      
+      if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {      
+	AnalyzeClassCast(expression->GetEvalType(), expression, depth + 1);
       }
-
+      */
+      
       // check expression class
       bool is_enum_call = false;
       if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
@@ -1981,7 +1981,6 @@ bool ContextAnalyzer::Analyze()
 	}
       }
       else {
-	// TODO: hackish!
 	int start = dyn_func_params.find('(');
 	int end = dyn_func_params.find(')', start + 1);
 	if(start != (int)string::npos && end != (int)string::npos) {
@@ -2538,9 +2537,6 @@ bool ContextAnalyzer::Analyze()
 	 !method_call->IsFunctionDefinition()) {
 	ProcessError(expression, "Invalid assignment method '" + method_call->GetMethod()->GetName() + "(..)' does not return a value");
       }
-
-      // TODO: 'checked' return variable
-      //...
     }
   }
 
@@ -3703,10 +3699,8 @@ bool ContextAnalyzer::Analyze()
 	}
 	// downcast
 	else {
-	  // TODO: workaround for class cast issue
-	  ProcessError(expression, "Invalid cast between classes: '" +
-		       left_lib_class->GetName() + "' and '" +
-		       right_lib_class->GetName() + "'");        
+	  ProcessError(expression, "Invalid cast between classes: '" + left_lib_class->GetName() + "' and '" +
+		       right_lib_class->GetName() + "'");
 	}
       } 
       else {
@@ -3768,9 +3762,7 @@ bool ContextAnalyzer::Analyze()
    ********************************/
   string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, int depth)
   {
-    // TODO: return direct types vs. string literals
     string encoded_name;
-
     vector<Expression*> expressions = calling_params->GetExpressions();
     for(size_t i = 0; i < expressions.size(); i++) {
       if(expressions[i]->GetExpressionType() == VAR_EXPR) {
