@@ -3671,8 +3671,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
 	  }
         }
-        // TODO: this needs to be looked at... simpiler?
-        else if(!is_nested && (!variable || /* !variable->GetIndices() || */ variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
 	else if(method_call->IsEnumCall()) {
@@ -3708,9 +3707,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
 	  }
         }
-        // TODO: this needs to be looked at... simpiler?
-        else if(!is_nested && (!variable || /*!variable->GetIndices() ||*/
-			       variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
 	else if(method_call->IsEnumCall()) {
