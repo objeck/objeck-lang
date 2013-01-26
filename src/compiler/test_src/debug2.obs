@@ -2,7 +2,7 @@
 	function : Main(args : String[]) ~ Nil {
 #		x : String[] := args;
 #		x[0]->PrintLine();
-		s := [1, 2, 3]->ToString();
-		a->ToString()->PrintLine();
+		s := ["a", "bb", "ccc"]->Size();
+		s->PrintLine();
 	}	
 }
