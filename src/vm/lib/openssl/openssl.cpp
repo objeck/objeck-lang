@@ -33,6 +33,7 @@
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/md5.h>
+#include <openssl/ripemd.h>
 #include "../../../vm/lib_api.h"
 
 using namespace std;
@@ -85,7 +86,37 @@ extern "C" {
     long* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;   
   }
+  
+  //
+  // RIPEMD-160 hash
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void openssl_hash_ripemd160(VMContext& context) {
+    // get parameters
+    long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    int input_size =  APITools_GetArraySize(input_array) - 1;
+    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    
+    // hash 
+    unsigned char output[RIPEMD160_DIGEST_LENGTH];
+    RIPEMD160_CTX sha256;
+    RIPEMD160_Init(&sha256);
+    RIPEMD160_Update(&sha256, input, input_size);
+    RIPEMD160_Final(output, &sha256);
 
+    // copy output
+    long* output_byte_array = APITools_MakeCharArray(context, RIPEMD160_DIGEST_LENGTH);
+    unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
+    for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
+      output_byte_array_buffer[i] = output[i];
+    }
+    
+    long* output_holder = APITools_GetIntAddress(context, 0);
+    output_holder[0] = (long)output_byte_array;   
+  }
+  
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
