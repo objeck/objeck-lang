@@ -1,6 +1,6 @@
 #~~
 # Objeck system classes.
-# Copyright (c) 2008-2010 Randy Hollines
+# Copyright (c) 2008-2013 Randy Hollines
 #
 # note: this file is a system file and can only be compiled using -D_SYSTEM option
 ~~#	
@@ -51,6 +51,61 @@ bundle System {
 			};
 
 			return string;			
+		}
+	}
+	
+	class Number {
+		function : native : IntToString(value : Int, string : String) ~ Nil {
+			values := Int->New[16];
+
+			i := 0;
+			if(value < 0) {
+				value *= -1;
+				string->Append('-');
+			};
+
+			while(value >= 10 & i < 16) {
+				mod := value % 10;
+				values[i] := mod;
+				i += 1;
+				value /= 10;
+			};
+			values[i] := value;
+            
+			while(i >= 0) {
+				string->Append((values[i] + 48)->As(Char));
+				i -= 1;
+			};     
+		}
+		
+		function : native : IntToHexString(value : Int, string : String) ~ Nil {
+			values := Int->New[16];
+			
+			i := 0;
+			if(value < 0) {
+				value *= -1;
+				string->Append('-');
+			};
+
+			while(value >= 16 & i < 16) {
+				mod := value % 16;
+				values[i] := mod;
+				i += 1;
+				value /= 16;
+			};
+			values[i] := value;
+            
+			while(i >= 0) {
+				value := values[i];
+				if(value > 9) {
+# value->PrintLine();				
+					string->Append((value + 55)->As(Char));
+				}
+				else {
+					string->Append((value + 48)->As(Char));
+				};
+				i -= 1;
+			};     
 		}
 	}
 	
@@ -130,7 +185,7 @@ bundle System {
 		}
 		
 		function : native : ToHexString(b : Byte[]) ~ String {
-			out := "";
+			out := String->New();
 			each(i : b) {
 				str := String->New();
 				Number->IntToHexString(b[i]->As(Int), str);
@@ -147,11 +202,10 @@ bundle System {
 		}
 		
 		function : native : ToString(b : Byte[]) ~ String {
-			out := "";
+			out := String->New();
 			each(i : b) {
-				str := String->New();
-				Number->IntToString(b[i]->As(Int), str);
-				out->Append(str);
+				ToString(b[i]);
+				out->Append(ToString(b[i]));
 			};
 			
 			return out;
@@ -266,61 +320,6 @@ bundle System {
 		}
 	}
 	
-	class Number {
-		function : native : IntToString(value : Int, string : String) ~ Nil {
-			values := Int->New[16];
-
-			i := 0;
-			if(value < 0) {
-				value *= -1;
-				string->Append('-');
-			};
-
-			while(value >= 10 & i < 16) {
-				mod := value % 10;
-				values[i] := mod;
-				i += 1;
-				value /= 10;
-			};
-			values[i] := value;
-            
-			while(i >= 0) {
-				string->Append((values[i] + 48)->As(Char));
-				i -= 1;
-			};     
-		}
-		
-		function : native : IntToHexString(value : Int, string : String) ~ Nil {
-			values := Int->New[16];
-			
-			i := 0;
-			if(value < 0) {
-				value *= -1;
-				string->Append('-');
-			};
-
-			while(value >= 16 & i < 16) {
-				mod := value % 16;
-				values[i] := mod;
-				i += 1;
-				value /= 16;
-			};
-			values[i] := value;
-            
-			while(i >= 0) {
-				value := values[i];
-				if(value > 9) {
-# value->PrintLine();				
-					string->Append((value + 55)->As(Char));
-				}
-				else {
-					string->Append((value + 48)->As(Char));
-				};
-				i -= 1;
-			};     
-		}
-	}
-
 	#~~
 	# Int class support
 	~~#	
@@ -410,7 +409,7 @@ bundle System {
 		}
 		
 		function : native : ToHexString(v : Int[]) ~ String {
-			out := "";
+			out := String->New();
 			each(i : v) {
 				str := String->New();
 				Number->IntToHexString(v[i]->As(Int), str);
@@ -427,13 +426,16 @@ bundle System {
 		}
 		
 		function : native : ToString(v : Int[]) ~ String {
-			out := "";
+			out := "[";
 			each(i : v) {
 				str := String->New();
 				Number->IntToString(v[i]->As(Int), str);
 				out->Append(str);
+				if(i + i < v->Size()) {
+					out->Append(',');
+				};
 			};
-			
+			out->Append(']');
 			return out;
 		}
 	}
@@ -562,10 +564,22 @@ bundle System {
 			str := String->New();
 			remainder := f - f->Floor();
 			Number->IntToString(f->Floor()->As(Int), str);
-            str->Append('.');
-            Number->IntToString((1001.0 * remainder)->As(Int), str);
+			str->Append('.');
+			Number->IntToString((1001.0 * remainder)->As(Int), str);
 
 			return str;
+		}
+
+		function : native : ToString(v : Float[]) ~ String {
+			out := "[";
+			each(i : v) {
+				out->Append(ToString(v[i]));
+				if(i + i < v->Size()) {
+				  out->Append(',');
+				};
+			};
+			out->Append(']');
+			return out;
 		}
 	}
 

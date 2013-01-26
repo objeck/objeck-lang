@@ -15,9 +15,7 @@ class Foo implements Inf {
 }
 
 class Bar {
-#	function : Bar() ~ Nil {
 	function : Main(a : String[]) ~ Nil {
-#~
 		ss := "world ";
 		ss3 := " again!";
 		f := 3.51;
@@ -34,9 +32,11 @@ class Bar {
 		"abc{\$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
 	
 		"{\\$\n\t."->PrintLine();
-~#
 		foo := Foo->New();
 		"array values: {$foo}"->PrintLine();
 		foo->ToString2();
+
+		zz := [3, 6, 9];
+		zz->ToString()->PrintLine();
 	}
 }
