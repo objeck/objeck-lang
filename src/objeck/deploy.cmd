@@ -32,4 +32,8 @@ mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.rtf deploy
 REM finished
-cd deploy
+if [%1] NEQ [deploy] goto end
+	rmdir /s /q %HOMEPATH%\Desktop\objeck-lang
+	mkdir %HOMEPATH%\Desktop\objeck-lang
+	xcopy /e deploy %HOMEPATH%\Desktop\objeck-lang
+:end
