@@ -6,7 +6,7 @@
 # ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 # ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
 # ARGS=-O3 -D_DEBUGGER -Wunused -pthread
-ARGS=-O3 -Wunused -pthread -D_X64 -D_DEBUGGER
+ARGS=-O3 -Wall -pthread -D_X64 -D_DEBUGGER
 
 ##############
 # For Linux
@@ -26,7 +26,7 @@ JIT_PATH=../jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -ldl -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lcrypto -lssl
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
