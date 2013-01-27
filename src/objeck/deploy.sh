@@ -6,7 +6,6 @@ mkdir deploy
 mkdir deploy/bin
 mkdir deploy/bin/lib
 mkdir deploy/doc
-mkdir deploy/examples
 
 # build compiler
 cd ../compiler
@@ -88,7 +87,7 @@ cd ../../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
 cp docs/readme.rtf src/objeck/deploy
 # copy examples
-cp -rf src/compiler/rc/* src/objeck/deploy/examples
+svn export src/compiler/rc src/objeck/deploy/examples
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
