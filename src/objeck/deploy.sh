@@ -1,7 +1,5 @@
 #!/bin/sh
 
-
-
 # setup directories
 rm -rf deploy
 mkdir deploy
