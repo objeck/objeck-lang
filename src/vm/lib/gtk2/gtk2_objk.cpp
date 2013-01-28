@@ -13,7 +13,7 @@ extern "C" {
   //
   typedef struct _callback_data {
     VMContext context;
-    GtkWidget* widget;
+    long* widget;
     int cls_id;
     int mthd_id;
     long* params;
@@ -110,7 +110,8 @@ extern "C" {
   }
 
   void og_signal_connect(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1); // widget
+    GtkWidget* raw_widget = (GtkWidget*)APITools_GetIntValue(context, 1); // raw widget
+    long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
     const char* name = APITools_GetStringValue(context, 2); // name
     int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID); // function
     int mthd_id = APITools_GetFunctionValue(context, 3, MTHD_ID); // function
@@ -125,17 +126,17 @@ extern "C" {
     data->params = params;   
     
 #ifdef _DEBUG
-    cout << "@@@ Handler: widget=" << widget << "; name=" << name << "; mthd=(" 
+    cout << "@@@ Handler: data=" << data << "; raw_widget=" << raw_widget << "; name=" << name << "; mthd=(" 
 	 << cls_id << "," << mthd_id << "); params=" << params << " @@@" << endl;
 #endif
     
     // widget id
     glong id;
     if(strstr(name, "event")) {
-      id = g_signal_connect(widget, name, G_CALLBACK(event_callback_handler), data);
+      id = g_signal_connect(raw_widget, name, G_CALLBACK(event_callback_handler), data);
     }
     else {
-      id = g_signal_connect(widget, name, G_CALLBACK(signal_callback_handler), data);
+      id = g_signal_connect(raw_widget, name, G_CALLBACK(signal_callback_handler), data);
     }
     
     // set return
@@ -211,8 +212,9 @@ extern "C" {
     APITools_MethodCallId_Ptr callback = data->callback;
     
 #ifdef _DEBUG
-    cout << "@@@ Signal: cls_id=" << data->cls_id << ", mthd_id=" 
-	 << data->mthd_id << ", params=" << data->params << " @@@" << endl;
+    cout << "@@@ Signal: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params=" 
+	 << data->params << " @@@" << endl;
 #endif
     
     APITools_PushInt(data->context, (long)data->params);

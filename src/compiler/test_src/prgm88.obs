@@ -18,7 +18,8 @@ bundle Default {
 		}
 
 		function : ButtonHandle(widget : GtkWidget, param : Base) ~ Nil {
-			"FOO"->PrintLine();
+			widget->GetClass()->GetName()->PrintLine();
+			param->GetClass()->GetName()->PrintLine();
 		}
 
 		function : Main(args : String[]) ~ Nil {
@@ -39,6 +40,9 @@ bundle Default {
 			window->SignalConnect("delete-event", test_callback, window);
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
+
+button->GetClass()->GetName()->PrintLine();
+
 			button->SignalConnect("clicked", button_callback, button);
 			window->Add(hbox->As(GtkWidget));
 			
