@@ -75,6 +75,12 @@ extern "C" {
     GtkWidget* button = gtk_button_new_with_label(name);
     APITools_SetIntValue(context, 0, (long)button);
   }
+
+  void og_button_get_label(VMContext& context) {
+    GtkButton* button = (GtkButton*)APITools_GetIntValue(context, 1); // raw widget
+    const gchar* label = gtk_button_get_label(button);
+    APITools_SetStringValue(context, 0, (char*)label);
+  }
   
   //
   // window functions
@@ -104,13 +110,12 @@ extern "C" {
   }
   
   void og_signal_handler_disconnect(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
     glong id = APITools_GetIntValue(context, 1);
     g_signal_handler_disconnect(widget, id);
   }
 
   void og_signal_connect(VMContext& context) {
-    GtkWidget* raw_widget = (GtkWidget*)APITools_GetIntValue(context, 1); // raw widget
     long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
     const char* name = APITools_GetStringValue(context, 2); // name
     int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID); // function
@@ -126,17 +131,17 @@ extern "C" {
     data->params = params;   
     
 #ifdef _DEBUG
-    cout << "@@@ Handler: data=" << data << "; raw_widget=" << raw_widget << "; name=" << name << "; mthd=(" 
+    cout << "@@@ Handler: data=" << data << "; widget=" << widget << "; name=" << name << "; mthd=(" 
 	 << cls_id << "," << mthd_id << "); params=" << params << " @@@" << endl;
 #endif
     
     // widget id
     glong id;
     if(strstr(name, "event")) {
-      id = g_signal_connect(raw_widget, name, G_CALLBACK(event_callback_handler), data);
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(event_callback_handler), data);
     }
     else {
-      id = g_signal_connect(raw_widget, name, G_CALLBACK(signal_callback_handler), data);
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_handler), data);
     }
     
     // set return
