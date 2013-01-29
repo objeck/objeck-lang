@@ -43,7 +43,11 @@ bundle Default {
 
 button->GetClass()->GetName()->PrintLine();
 
-			button->SignalConnect("clicked", button_callback, button);
+			id := button->SignalConnect("clicked", button_callback, button);
+			button->SignalHandlerDisconnect(id);
+
+button->GetLabel()->PrintLine();
+
 			window->Add(hbox->As(GtkWidget));
 			
 			# show
