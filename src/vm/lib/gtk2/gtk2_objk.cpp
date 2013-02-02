@@ -104,6 +104,11 @@ extern "C" {
     gtk_widget_show(widget);
   }
 
+  void og_widget_show_all(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_show_all(widget);
+  }
+
   void og_widget_hide(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_hide(widget);

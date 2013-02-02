@@ -63,6 +63,13 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_widget_show", array_args);
 		}
 
+		method : public : ShowAll() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_show_all", array_args);
+		}
+
 		method : public : Hide() ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[1];
