@@ -49,6 +49,7 @@ button->GetClass()->GetName()->PrintLine();
 button->GetLabel()->PrintLine();
 
 			window->Add(hbox->As(GtkWidget));
+
 			
 			# show
 			button->Show();

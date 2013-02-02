@@ -63,6 +63,27 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_widget_show", array_args);
 		}
 
+		method : public : ShowNow() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_show_now", array_args);
+		}
+		
+		method : public : Destroy() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_destroy", array_args);
+		}
+
+		method : public : Unparent() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_unparent", array_args);
+		}
+		
 		method : public : ShowAll() ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[1];
@@ -75,6 +96,34 @@ bundle Gtk2 {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@native_ptr);
 			lib_proxy->CallFunction("og_widget_hide", array_args);
+		}
+
+		method : public : Map() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_map", array_args);
+		}
+
+		method : public : Unmap() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_unmap", array_args);
+		}
+
+		method : public : Realize() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_realize", array_args);
+		}
+
+		method : public : Unrealize() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@native_ptr);
+			lib_proxy->CallFunction("og_widget_unrealize", array_args);
 		}
 	}
 	
