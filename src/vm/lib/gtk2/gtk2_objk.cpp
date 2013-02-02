@@ -99,19 +99,52 @@ extern "C" {
   //
   // widget functions
   //
+
+  // TODO: void gtk_widget_draw(GtkWidget *widget, cairo_t *cr);
+
+  void og_widget_realize(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_realize(widget);
+  }
+
+  void  og_widget_unrealize(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_unrealize(widget);
+  }
+
+  void og_widget_map(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_map(widget);
+  }
+  
+  void og_widget_unmap(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_unmap(widget);
+  }
+  
+  void og_widget_unparent(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_unparent(widget);
+  }
+
   void og_widget_show(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_show(widget);
   }
 
+  void og_widget_show_now(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_show_now(widget);
+  }
+  
   void og_widget_show_all(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_show_all(widget);
   }
 
-  void og_widget_hide(VMContext& context) {
+  void og_widget_destroy(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_hide(widget);
+    gtk_widget_destroy(widget);
   }
   
   void og_signal_handler_disconnect(VMContext& context) {
@@ -190,18 +223,12 @@ extern "C" {
   void og_main_quit(VMContext& context) {
     gtk_main_quit();
   }  
-
-  void og_widget_destroy(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_destroy(widget);
-  }
   
   //
   // callbacks
   //
   gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
     callback_data* data = (callback_data*)args;
-    APITools_MethodCallId_Ptr callback = data->callback;
     
 #ifdef _DEBUG
     cout << "@@@ Event: cls_id=" << data->cls_id << ", mthd_id=" << data->mthd_id 
@@ -219,7 +246,6 @@ extern "C" {
 
   void signal_callback_handler(GtkWidget* widget, gpointer args) {
     callback_data* data = (callback_data*)args;
-    APITools_MethodCallId_Ptr callback = data->callback;
     
 #ifdef _DEBUG
     cout << "@@@ Signal: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
