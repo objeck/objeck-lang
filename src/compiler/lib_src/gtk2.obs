@@ -14,6 +14,14 @@ bundle Gtk2 {
 		}
 	}
 
+	# The cairo drawing context
+	class Rectangle {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		New() {}
+	}
+
 	# GtkWidget class
 	class GtkWidget {
 		@native_ptr : Int;
@@ -54,6 +62,14 @@ bundle Gtk2 {
 			};
 
 			return -1;
+		}
+
+		method : public : Draw(r : Rectangle) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New(@native_ptr);
+			array_args[1] := r;
+			lib_proxy->CallFunction("og_widget_draw", array_args);
 		}
 
 		method : public : Show() ~ Nil {
