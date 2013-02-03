@@ -140,6 +140,7 @@ class GtkParser {
 		reserved->Insert("#endif", IntHolder->New(TokenType->ENDIF->As(Int)));
 		reserved->Insert("#define", IntHolder->New(TokenType->DEFINE->As(Int)));
 		reserved->Insert("#error", IntHolder->New(TokenType->ERROR->As(Int)));
+		reserved->Insert("defined", IntHolder->New(TokenType->DEFINED->As(Int)));
 		reserved->Insert("const", IntHolder->New(TokenType->CONST->As(Int)));
 		reserved->Insert("typedef", IntHolder->New(TokenType->TYPEDEF->As(Int)));
 		reserved->Insert("void", IntHolder->New(TokenType->VOID->As(Int)));
@@ -171,6 +172,8 @@ class GtkParser {
 						if(cur_char = '#') {
 							string->Append(cur_char);
 							i += 1;
+							cur_char := line->Get(i);              
+							nxt_char := '\0';
 						};
 			
 						while(i < line->Size() & (cur_char->IsChar() = true | cur_char = '_' | cur_char = '.')) {
@@ -182,7 +185,8 @@ class GtkParser {
 								nxt_char := line->Get(i + 1);
 							};
 						};
-    
+# "### {$string} ###"->PrintLine();
+
 						result := reserved->Find(string)->As(IntHolder);
 						if(result <> Nil) {
 							if(comment = false) {
@@ -265,12 +269,6 @@ class GtkParser {
 							label ';': {
 								if(comment = false) {
 									tokens->AddBack(Token->New(TokenType->SEMI_COLON));
-								};
-							}
-
-							label '#': {
-								if(comment = false) {
-									tokens->AddBack(Token->New(TokenType->POUND));
 								};
 							}
 
@@ -479,11 +477,10 @@ enum TokenType {
 	COMMA,
 	COLON,
 	SEMI_COLON,
-	POUND,
 	BANG,
 	TILDE,
-	DOT, # 20
-	EQUAL,
+	DOT, 
+	EQUAL, # 20
 	BACK_SLASH,
 	AND,
 	MINUS,
@@ -492,12 +489,13 @@ enum TokenType {
 	GREATER,
 	QUOTE,
 	DIV,
-	MUL, # 30
-	INT,
+	MUL, 
+	INT, # 30
 	DEC,
 	IDENT,
 	PERCENT,
 	DBL_QUOTE,
+	DEFINED,
 	OTHER
 }
 
