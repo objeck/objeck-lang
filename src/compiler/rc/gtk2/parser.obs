@@ -1,0 +1,265 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+bundle Default {  
+  class Parser {
+    function : Main(args : String[]) ~ Nil {
+      if(args->Size() = 1) {
+        Parse(args[0]);
+      };
+    }
+    
+    function : native : Parse(file : String) ~ Nil {
+      reserved := StringMap->New();
+      reserved->Insert("if", "keyword: if");
+      reserved->Insert("defined", "keyword: defined");
+      reserved->Insert("ifndef", "keyword: ifndef");
+      reserved->Insert("endif", "keyword: endif");
+      reserved->Insert("error", "keyword: error");
+      reserved->Insert("include", "keyword: include");
+      reserved->Insert("typedef", "keyword: typedef");
+      reserved->Insert("void", "keyword: void");
+      
+      line_num := 0;
+      reader := FileReader->New(file);
+      comment := false;
+      while(reader->IsEOF() <> true) {
+        line := reader->ReadString();
+        line_num := line_num + 1;
+        
+    	i := 0;  
+        while(i < line->Size()) {    
+          # skip whitespace
+          while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+            i += 1;
+          };
+          
+          if(i < line->Size()) {
+          	cur_char := line->Get(i);
+          	nxt_char := '\0';
+          	if(i + 1 < line->Size()) {
+          		nxt_char := line->Get(i + 1);
+          	};
+          	
+            # word
+            if(cur_char->IsChar() = true | cur_char = '_') {
+              string := String->New();
+              while(cur_char->IsChar() = true | cur_char = '_' | cur_char = '.') {
+                string->Append(cur_char);
+                i += 1;  
+                cur_char := line->Get(i);              
+                nxt_char := '\0';
+				if(i + 1 < line->Size()) {
+					nxt_char := line->Get(i + 1);
+				};
+              };
+            
+              result := reserved->Find(string)->As(String);
+              if(result <> Nil) {
+              	if(comment = false) {
+                	Console->PrintLine(result);
+                };
+              }
+              else {
+              	if(comment = false) {
+                	Console->Print("string/var:'")->Print(string)->PrintLine("'");
+                };
+              };
+            }
+            # number
+            else if(cur_char->IsDigit() = true) {
+              number := String->New();
+              is_dec := false;
+              while(cur_char->IsDigit() = true | cur_char = '.') {
+                if(cur_char = '.') {
+                  is_dec := true;
+                };
+                number->Append(cur_char);
+                i += 1;
+                cur_char := line->Get(i);
+                nxt_char := '\0';
+				if(i + 1 < line->Size()) {
+					nxt_char := line->Get(i + 1);
+				};
+              };
+    
+              if(is_dec) {
+              	if(comment = false) {
+					Console->Print("decimal '")->Print(number)->PrintLine("'");
+                };
+              }
+              else {
+              	if(comment = false) {
+                	Console->Print("integer '")->Print(number)->PrintLine("'");
+                };
+              };
+            }
+            # other
+            else {
+              select(cur_char) {
+                label '(': {
+                  if(comment = false) {
+                    "opren"->PrintLine();
+                  };
+                }
+                
+                label ')': {
+                  if(comment = false) {
+                    "cpren"->PrintLine();
+                  };
+                }
+  
+                label '{': {
+                  if(comment = false) {
+                    "ocbrace"->PrintLine();
+                  };  
+                }
+        
+                label '}': {
+                  if(comment = false) {
+                    "ccbrace"->PrintLine();
+                  };
+                }
+                
+                label ',': {
+                  if(comment = false) {
+                    "comma"->PrintLine();
+                  };
+                }
+                
+                label ':': {
+                  if(comment = false) {
+                    "colon"->PrintLine();
+                  };
+                }
+                
+                label ';': {
+                  if(comment = false) {
+                    "semi-colon"->PrintLine();
+                  };
+                }
+                
+                label '#': {
+                  if(comment = false) {
+                    "pound"->PrintLine();
+                  };
+                }
+                
+                label '!': {
+                  if(comment = false) {
+                    "bang"->PrintLine();
+                  };
+                }
+                
+                label '~': {
+                  if(comment = false) {
+                    "tilde"->PrintLine();
+                  };
+                }
+                
+                label '.': {
+                  if(comment = false) {
+                    "dot"->PrintLine();
+                  };
+                }
+                
+                label '=': {
+                  if(comment = false) {
+                    "equal"->PrintLine();
+                  };
+                }
+                
+                label '\\': {
+                  if(comment = false) {
+                    "back-slash"->PrintLine();
+                  };
+                }
+                
+                label '&': {
+                  if(comment = false) {
+                    "and"->PrintLine();
+                  };
+                }
+                
+                label '-': {
+                  if(comment = false) {
+                    "minus"->PrintLine();
+                  };
+                }
+                
+                label '|': {
+                  if(comment = false) {
+                    "or"->PrintLine();
+                  };
+                }
+                
+                label '<': {
+                  if(comment = false) {
+                    "less"->PrintLine();
+                  };
+                }
+                
+                label '>': {
+                  if(comment = false) {
+                    "greater"->PrintLine();
+                  };
+                }
+                
+                label '"': {
+                  if(comment = false) {
+                    "quote"->PrintLine();
+                  };
+                }
+                
+                label '/': {
+                  if(nxt_char = '*') {
+                  	comment := true;
+                  	i += 1;
+					cur_char := line->Get(i);
+					nxt_char := '\0';
+					if(i + 1 < line->Size()) {
+						nxt_char := line->Get(i + 1);
+					};
+"### comment start ###"->PrintLine();
+                  }
+                  else {
+                    if(comment = false) {
+                  	  "div"->PrintLine();
+                  	};
+                  };
+                }
+                
+                label '*': {
+                  if(nxt_char = '/') {
+                  	comment := false;
+                  	i += 1;
+					cur_char := line->Get(i);
+					nxt_char := '\0';
+					if(i + 1 < line->Size()) {
+						nxt_char := line->Get(i + 1);
+					};
+"### comment end ###"->PrintLine();                  	
+                  }
+                  else {
+                    if(comment = false) {
+                  	  "mul"->PrintLine();
+                  	};
+                  };
+                }
+             
+                other: {
+                  if(comment = false) {
+                    Console->Print("char='")->Print(cur_char)->PrintLine("'");
+                  };
+                }
+              };
+              i += 1;
+            };  
+          };
+        };
+      };
+      reader->Close();
+    }
+  }
+}
