@@ -2,34 +2,84 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
-class Parser {
+class GtkParser {
+	@tokens : Vector;
+	@token_index : Int;
+
+	New(file : String) {
+		@tokens := Scan(file);
+		@token_index := 0;
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			tokens := Scan(args[0]);
-			Parse(tokens);
+			parser := GtkParser->New(args[0]);
+			parser->Parse();
 		};
 	}
 
-	function : Parse(tokens : Vector) ~ Nil {
-		each(i : tokens) {
-			token := tokens->Get(i)->As(Token);
-			if(token->GetType() = TokenType->VOID | token->GetType() = TokenType->IDENT) {
-				i += 1;
-				token := tokens->Get(i)->As(Token);
-				if(token->GetType() = TokenType->IDENT) {
-					fun_name := token->GetValue();
-					i += 1;
-					token := tokens->Get(i)->As(Token);
-					if(token->GetType() = TokenType->OPREN) {
-"fun_name='{$fun_name}'"->PrintLine();
-						
+	method : GetTokenType(i : Int) ~ TokenType {
+		if(i < @tokens->Size()) {
+			token := @tokens->Get(i)->As(Token);
+			return token->GetType();
+		};
+
+		return TokenType->OTHER;
+	}
+
+	method : GetTokenValue(i : Int) ~ String {
+		if(i < @tokens->Size()) {
+			token := @tokens->Get(i)->As(Token);
+			return token->GetValue();
+		};
+
+		return "";
+	}
+
+	method : native : Parse() ~ Nil {
+		each(i : @tokens) {
+			if((GetTokenType(i) = TokenType->VOID | GetTokenType(i) = TokenType->IDENT) & 
+					((GetTokenType(i + 1) = TokenType->MUL & GetTokenType(i + 2) = TokenType->IDENT) | (GetTokenType(i + 1) = TokenType->IDENT))) {
+				func_name : String;
+				is_ptr_rtrn := false;
+				rtrn := @tokens->Get(i)->As(Token);
+				if(GetTokenType(i + 1) = TokenType->MUL) {
+					is_ptr_rtrn := true;
+					func_name := GetTokenValue(i + 2);
+					i += 3;
+				}
+				else {
+					func_name := GetTokenValue(i + 1);
+					i += 2;
+				};
+
+				if(GetTokenType(i) = TokenType->OPREN) {
+					if(rtrn->GetType() = TokenType->VOID) {
+						"void "->Print();
+					}
+					else {
+						rtrn->GetValue()->Print();
+						' '->Print();
 					};
+
+					if(is_ptr_rtrn) {
+						'*'->Print();
+					};
+					func_name->PrintLine();
+					i += 1;
+
+								
+										
+					# to the end
+					while(i < @tokens->Size() & GetTokenType(i) <> TokenType->SEMI_COLON) {
+						i += 1;
+					};	
 				};
 			};
-		};
+		};	
 	}
 
-	function : Scan(file : String) ~ Vector {
+	method : Scan(file : String) ~ Vector {
 		tokens := Vector->New();
 
 		reserved := StringMap->New();
@@ -371,6 +421,7 @@ enum TokenType {
 	MUL,
 	INT,
 	DEC,
-	IDENT
+	IDENT,
+	OTHER
 }
 
