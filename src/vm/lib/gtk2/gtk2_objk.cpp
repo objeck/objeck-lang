@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <cairo.h>
 #include <iostream>
 #include "../../lib_api.h"
 
@@ -101,6 +102,13 @@ extern "C" {
   //
 
   // TODO: void gtk_widget_draw(GtkWidget *widget, cairo_t *cr);
+
+
+  void og_widget_draw(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    long* r = (long*)APITools_GetObjectValue(context, 1);    
+    gtk_widget_draw(widget, (GdkRectangle*)r[0]);
+  }
 
   void og_widget_realize(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
