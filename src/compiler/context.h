@@ -892,7 +892,9 @@ class ContextAnalyzer {
 #ifdef _DEBUG
     Show("variable=|" + entry->GetName() + "|", char_str->GetLineNumber(), depth + 1);
 #endif
-    if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetClassName() != "System.String") {
+    if(entry->GetType()->GetType() == CLASS_TYPE && 
+       entry->GetType()->GetClassName() != "System.String" && 
+       entry->GetType()->GetClassName() != "String") {
       const string cls_name = entry->GetType()->GetClassName();
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
