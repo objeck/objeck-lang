@@ -135,6 +135,10 @@ class GtkParser {
 		};
 	}
 
+	method : NextChar() ~ Nil {
+
+	}
+
 	method : Scan(file : String) ~ Vector {
 		tokens := Vector->New();
 		reserved := StringMap->New();
@@ -151,8 +155,10 @@ class GtkParser {
 
 		comment := false;
 		@line := FileReader->ReadFile(file);
-		
-		@cur_char := @line->Get(@index);
+		@index := -1;		
+
+		@index += 1;  
+		@cur_char := @line->Get(@index);              
 		@nxt_char := '\0';
 		if(@index + 1 < @line->Size()) {
 			@nxt_char := @line->Get(@index + 1);
@@ -177,9 +183,12 @@ class GtkParser {
 					string := String->New();
 					if(@cur_char = '#') {
 						string->Append(@cur_char);
-						@index += 1;
+						@index += 1;  
 						@cur_char := @line->Get(@index);              
 						@nxt_char := '\0';
+						if(@index + 1 < @line->Size()) {
+							@nxt_char := @line->Get(@index + 1);
+						};
 					};
 		
 					while(@index < @line->Size() & (@cur_char->IsChar() | @cur_char->IsDigit() | 
