@@ -5,6 +5,8 @@ use Collection;
 class GtkParser {
 	@tokens : Vector;
 	@token_index : Int;
+	@line : String;
+	@index : Int;
 
 	New(file : String) {
 		@tokens := Scan(file);
@@ -145,30 +147,30 @@ class GtkParser {
 		reserved->Insert("typedef", IntHolder->New(TokenType->TYPEDEF->As(Int)));
 		reserved->Insert("void", IntHolder->New(TokenType->VOID->As(Int)));
 
-		line_num := 0;
+		@line_num := 0;
 		comment := false;
 		
-		i := 0;  
-		line := FileReader->ReadFile(file);
+		index := 0;  
+		@line := FileReader->ReadFile(file);
 		
-		cur_char := line->Get(i);
+		cur_char := @line->Get(index);
 		nxt_char := '\0';
-		if(i + 1 < line->Size()) {
-			nxt_char := line->Get(i + 1);
+		if(index + 1 < @line->Size()) {
+			nxt_char := @line->Get(index + 1);
 		};
 				
-		while(i < line->Size()) {
+		while(index < @line->Size()) {
 			# skip whitespace
-			while(i < line->Size() & (line->Get(i) = ' ' | line->Get(i) = '\t' | 
-					line->Get(i) = '\r' | line->Get(i) = '\n')) {
-				i += 1;
+			while(index < @line->Size() & (@line->Get(index) = ' ' | @line->Get(index) = '\t' | 
+					@line->Get(index) = '\r' | @line->Get(index) = '\n')) {
+				index += 1;
 			};
 			  
-			if(i < line->Size()) {
-				cur_char := line->Get(i);
+			if(index < @line->Size()) {
+				cur_char := @line->Get(index);
 				nxt_char := '\0';
-				if(i + 1 < line->Size()) {
-					nxt_char := line->Get(i + 1);
+				if(index + 1 < @line->Size()) {
+					nxt_char := @line->Get(index + 1);
 				};
 
 				# word
@@ -176,19 +178,19 @@ class GtkParser {
 					string := String->New();
 					if(cur_char = '#') {
 						string->Append(cur_char);
-						i += 1;
-						cur_char := line->Get(i);              
+						index += 1;
+						cur_char := @line->Get(index);              
 						nxt_char := '\0';
 					};
 		
-					while(i < line->Size() & (cur_char->IsChar() | cur_char->IsDigit() | 
+					while(index < @line->Size() & (cur_char->IsChar() | cur_char->IsDigit() | 
 							cur_char = '_' | cur_char = '.')) {
 						string->Append(cur_char);
-						i += 1;  
-						cur_char := line->Get(i);              
+						index += 1;  
+						cur_char := @line->Get(index);              
 						nxt_char := '\0';
-						if(i + 1 < line->Size()) {
-							nxt_char := line->Get(i + 1);
+						if(index + 1 < @line->Size()) {
+							nxt_char := @line->Get(index + 1);
 						};
 					};
 # "### {$string} ###"->PrintLine();
@@ -209,16 +211,16 @@ class GtkParser {
 				else if(cur_char->IsDigit() = true) {
 					number := String->New();
 					is_dec := false;
-					while(i < line->Size() & (cur_char->IsDigit() = true | cur_char = '.')) {
+					while(index < @line->Size() & (cur_char->IsDigit() = true | cur_char = '.')) {
 						if(cur_char = '.') {
 							is_dec := true;
 						};
 						number->Append(cur_char);
-						i += 1;
-						cur_char := line->Get(i);
+						index += 1;
+						cur_char := @line->Get(index);
 						nxt_char := '\0';
-						if(i + 1 < line->Size()) {
-							nxt_char := line->Get(i + 1);
+						if(index + 1 < @line->Size()) {
+							nxt_char := @line->Get(index + 1);
 						};
 					};
 
@@ -359,11 +361,11 @@ class GtkParser {
 						label '/': {
 							if(nxt_char = '*') {
 								comment := true;
-								i += 1;
-								cur_char := line->Get(i);
+								index += 1;
+								cur_char := @line->Get(index);
 								nxt_char := '\0';
-								if(i + 1 < line->Size()) {
-									nxt_char := line->Get(i + 1);
+								if(index + 1 < @line->Size()) {
+									nxt_char := @line->Get(index + 1);
 								};
 							}
 							else {
@@ -376,11 +378,11 @@ class GtkParser {
 						label '*': {
 							if(nxt_char = '/') {
 								comment := false;
-								i += 1;
-								cur_char := line->Get(i);
+								index += 1;
+								cur_char := @line->Get(index);
 								nxt_char := '\0';
-								if(i + 1 < line->Size()) {
-									nxt_char := line->Get(i + 1);
+								if(index + 1 < @line->Size()) {
+									nxt_char := @line->Get(index + 1);
 								};
 							}
 							else {
@@ -396,7 +398,7 @@ class GtkParser {
 							};
 						}
 					};
-					i += 1;
+					index += 1;
 				};		
 			};
 		};
