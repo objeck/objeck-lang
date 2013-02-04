@@ -2540,10 +2540,29 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
   }
   else {
     SymbolEntry* var_entry = segment->GetEntry();
+    MemoryContext mem_context;
+    if(var_entry->IsLocal()) {
+      mem_context = LOCL;
+    } 
+    else if(var_entry->IsStatic()) {
+      mem_context = CLS;
+    } 
+    else {
+      mem_context = INST;
+    }
+    
+    // emit the correct context
+    if(mem_context == INST) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    } 
+    else if(mem_context == CLS) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+    } 
+    
     switch(var_entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), LOCL));
+										 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
@@ -2564,7 +2583,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::BYTE_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), LOCL));
+										 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
@@ -2585,7 +2604,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), LOCL));
+										 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
@@ -2606,7 +2625,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), LOCL));
+										 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
@@ -2629,7 +2648,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       // process string instance
       if(var_entry->GetType()->GetClassName() == "System.String") {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   var_entry->GetId(), LOCL));
+										   var_entry->GetId(), mem_context));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										   concat_entry->GetId(), LOCL));     
 	if(is_lib) {
@@ -2651,7 +2670,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       else {
 	// call object's 'ToString' method
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   var_entry->GetId(), LOCL));	
+										   var_entry->GetId(), mem_context));	
 	Method* inst_mthd = segment->GetMethod();
 	LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
 	
@@ -2712,7 +2731,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 
-										 var_entry->GetId(), LOCL));
+										 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
