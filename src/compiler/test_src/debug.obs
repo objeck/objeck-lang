@@ -1,42 +1,27 @@
-﻿interface Inf {
-	method : public : virtual : ToString() ~ String;
-}
+﻿class Foo {
+	@a : Int;
+	@b : Int;
 
-class Foo implements Inf {
 	New() {
+		@a := 13;
+		@b := 7;
 	}
 	
-	method : public : ToString() ~ String {
-		return "Hi";
-	}
-	method : public : ToString2() ~ String {
-		return "Hi 2";
+	method : public : Foo() ~ Nil {
+#		@a->PrintLine();
+#		@b->PrintLine();
+
+#		a := @a;
+#		b := @b;
+
+		"blah blah {$@a} what not."->PrintLine();
+		"blah blah {$@b} what not."->PrintLine();
 	}
 }
 
 class Bar {
 	function : Main(a : String[]) ~ Nil {
-		ss := "world ";
-		ss3 := " again!";
-		f := 3.51;
-		bb := true;
-		str := "{$bb}.hello {$ss}-- {$ss3}|{$f}";
-		str->PrintLine();
-
-		
-		
-		v1 := "def";
-		v2 := 'j';
-		v3 := 13;
-		v4 := 101.5;
-		"abc{\$v1}ghi{$v2}k${$v3}|{$v4}"->PrintLine();
-	
-		"{\\$\n\t."->PrintLine();
-		foo := Foo->New();
-		"array values: {$foo}"->PrintLine();
-		foo->ToString2();
-
-		zz := [3, 6, 9];
-		zz->ToString()->PrintLine();
+		f := Foo->New();
+		f->Foo();
 	}
 }

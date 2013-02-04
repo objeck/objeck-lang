@@ -982,10 +982,13 @@ bool ContextAnalyzer::Analyze()
     if(segments.size() > 1) {
       Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, "System.String");
       const string scope_name = current_method->GetName() + ":#concat#";
-      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
-								    char_str->GetLineNumber(),
-								    scope_name, type, false, true);
-      current_table->AddEntry(entry, true);
+      SymbolEntry* entry = current_table->GetEntry(scope_name);
+      if(!entry) {
+	entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
+							 char_str->GetLineNumber(),
+							 scope_name, type, false, true);
+	current_table->AddEntry(entry, true);
+      }
       char_str->SetConcat(entry);
     }
     
