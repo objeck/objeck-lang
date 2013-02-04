@@ -5,7 +5,7 @@ use Collection;
 class GtkParser {
 	@tokens : Vector;
 	@token_@index : Int;
-	@line : String;
+	@input : String;
 	@index : Int;
 	@cur_char : Char;
 	@nxt_char : Char;
@@ -136,7 +136,18 @@ class GtkParser {
 	}
 
 	method : NextChar() ~ Nil {
-
+		if(@index < @input->Size()) {
+			@cur_char := @input->Get(@index);
+			@nxt_char := '\0';
+			if(@index + 1 < @input->Size()) {
+				@nxt_char := @input->Get(@index + 1);
+			};
+			@index += 1;
+		}
+		else {
+			@cur_char := '\0';
+			@nxt_char := '\0';
+		};
 	}
 
 	method : Scan(file : String) ~ Vector {
@@ -154,261 +165,218 @@ class GtkParser {
 		reserved->Insert("void", IntHolder->New(TokenType->VOID->As(Int)));
 
 		comment := false;
-		@line := FileReader->ReadFile(file);
-		@index := -1;		
-
-		@index += 1;  
-		@cur_char := @line->Get(@index);              
-		@nxt_char := '\0';
-		if(@index + 1 < @line->Size()) {
-			@nxt_char := @line->Get(@index + 1);
-		};
+		@input := FileReader->ReadFile(file);
+		NextChar();
 				
-		while(@index < @line->Size()) {
+		while(@cur_char <> '\0') {
 			# skip whitespace
-			while(@index < @line->Size() & (@line->Get(@index) = ' ' | @line->Get(@index) = '\t' | 
-					@line->Get(@index) = '\r' | @line->Get(@index) = '\n')) {
-				@index += 1;
+			while(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n') {
+				NextChar();
 			};
-			  
-			if(@index < @line->Size()) {
-				@cur_char := @line->Get(@index);
-				@nxt_char := '\0';
-				if(@index + 1 < @line->Size()) {
-					@nxt_char := @line->Get(@index + 1);
+			
+			if(@cur_char->IsChar() | @cur_char = '_' | @cur_char = '#') {
+				# word
+				string := String->New();
+				if(@cur_char = '#') {
+					string->Append(@cur_char);
+					NextChar();
+				};
+	
+				while(@cur_char->IsChar() | @cur_char->IsDigit() | @cur_char = '_') {
+					string->Append(@cur_char);
+					NextChar();
+				};
+				
+				result := reserved->Find(string)->As(IntHolder);
+				if(result <> Nil) {
+					if(comment = false) {
+						tokens->AddBack(Token->New(result->Get()->As(TokenType)));
+					};
+				}
+				else {
+					if(comment = false) {
+						tokens->AddBack(Token->New(string));
+					};
+				};
+			}
+			# number
+			else if(@cur_char->IsDigit()) {
+				number := String->New();
+				is_dec := false;
+				while(@cur_char->IsDigit() = true | @cur_char = '.') {
+					if(@cur_char = '.') {
+						is_dec := true;
+					};
+					number->Append(@cur_char);
+					NextChar();
 				};
 
-				# word
-				if(@cur_char->IsChar() | @cur_char = '_' | @cur_char = '#') {
-					string := String->New();
-					if(@cur_char = '#') {
-						string->Append(@cur_char);
-						@index += 1;  
-						@cur_char := @line->Get(@index);              
-						@nxt_char := '\0';
-						if(@index + 1 < @line->Size()) {
-							@nxt_char := @line->Get(@index + 1);
-						};
-					};
-		
-					while(@index < @line->Size() & (@cur_char->IsChar() | @cur_char->IsDigit() | 
-							@cur_char = '_' | @cur_char = '.')) {
-						string->Append(@cur_char);
-						@index += 1;  
-						@cur_char := @line->Get(@index);              
-						@nxt_char := '\0';
-						if(@index + 1 < @line->Size()) {
-							@nxt_char := @line->Get(@index + 1);
-						};
-					};
-# "### {$string} ###"->PrintLine();
-
-					result := reserved->Find(string)->As(IntHolder);
-					if(result <> Nil) {
-						if(comment = false) {
-							tokens->AddBack(Token->New(result->Get()->As(TokenType)));
-						};
-					}
-					else {
-						if(comment = false) {
-							tokens->AddBack(Token->New(string));
-						};
+				if(is_dec) {
+					if(comment = false) {
+						tokens->AddBack(Token->New(TokenType->DEC, number));
 					};
 				}
-				# number
-				else if(@cur_char->IsDigit() = true) {
-					number := String->New();
-					is_dec := false;
-					while(@index < @line->Size() & (@cur_char->IsDigit() = true | @cur_char = '.')) {
-						if(@cur_char = '.') {
-							is_dec := true;
-						};
-						number->Append(@cur_char);
-						@index += 1;
-						@cur_char := @line->Get(@index);
-						@nxt_char := '\0';
-						if(@index + 1 < @line->Size()) {
-							@nxt_char := @line->Get(@index + 1);
-						};
-					};
-
-					if(is_dec) {
-						if(comment = false) {
-							tokens->AddBack(Token->New(TokenType->DEC, number));
-						};
-					}
-					else {
-						if(comment = false) {
-							tokens->AddBack(Token->New(TokenType->INT, number));
-						};
-					};
-				}
-				# other
 				else {
-					select(@cur_char) {
-						label '(': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->OPREN));
-							};
-						}
-
-						label ')': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->CPREN));
-							};
-						}
-
-						label '{': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->OCPREN));
-							};  
-						}
-
-						label '}': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->CCPREN));
-							};
-						}
-
-						label ',': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->COMMA));
-							};
-						}
-
-						label ':': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->COLON));
-							};
-						}
-
-						label ';': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->SEMI_COLON));
-							};
-						}
-
-						label '!': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->BANG));
-							};
-						}
-
-						label '~': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->TILDE));
-							};
-						}
-
-						label '.': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->DOT));
-							};
-						}
-
-						label '=': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->EQUAL));
-							};
-						}
-    
-						label '\\': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->BACK_SLASH));
-							};
-						}
-
-						label '&': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->AND));
-							};
-						}
-
-						label '-': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->MINUS));
-							};
-						}
-
-						label '|': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->OR));
-							};
-						}
-
-						label '<': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->LESS));
-							};
-						}
-
-						label '>': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->GREATER));
-							};
-						}
-
-						label '"': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->DBL_QUOTE));
-							};
-						}
-
-						label '\'': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->QUOTE));
-							};
-						}
-
-						label '%': {
-							if(comment = false) {
-								tokens->AddBack(Token->New(TokenType->PERCENT));
-							};
-						}
-    
-						label '/': {
-							if(@nxt_char = '*') {
-								comment := true;
-								@index += 1;
-								@cur_char := @line->Get(@index);
-								@nxt_char := '\0';
-								if(@index + 1 < @line->Size()) {
-									@nxt_char := @line->Get(@index + 1);
-								};
-							}
-							else {
-								if(comment = false) {
-									tokens->AddBack(Token->New(TokenType->DIV));
-								};
-							};
-						}
-    
-						label '*': {
-							if(@nxt_char = '/') {
-								comment := false;
-								@index += 1;
-								@cur_char := @line->Get(@index);
-								@nxt_char := '\0';
-								if(@index + 1 < @line->Size()) {
-									@nxt_char := @line->Get(@index + 1);
-								};
-							}
-							else {
-								if(comment = false) {
-									tokens->AddBack(Token->New(TokenType->MUL));
-								};
-							};
-						}
- 
-						other: {
-							if(comment = false) {
-								Console->Print("char='")->Print(@cur_char)->PrintLine("'");
-							};
-						}
+					if(comment = false) {
+						tokens->AddBack(Token->New(TokenType->INT, number));
 					};
-					@index += 1;
-				};		
-			};
+				};
+			}
+			# other
+			else {
+				select(@cur_char) {
+					label '(': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OPREN));
+						};
+					}
+
+					label ')': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->CPREN));
+						};
+					}
+
+					label '{': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OCPREN));
+						};  
+					}
+
+					label '}': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->CCPREN));
+						};
+					}
+
+					label ',': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->COMMA));
+						};
+					}
+
+					label ':': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->COLON));
+						};
+					}
+
+					label ';': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->SEMI_COLON));
+						};
+					}
+
+					label '!': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->BANG));
+						};
+					}
+
+					label '~': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->TILDE));
+						};
+					}
+
+					label '.': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->DOT));
+						};
+					}
+
+					label '=': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->EQUAL));
+						};
+					}
+  
+					label '\\': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->BACK_SLASH));
+						};
+					}
+
+					label '&': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->AND));
+						};
+					}
+
+					label '-': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->MINUS));
+						};
+					}
+
+					label '|': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OR));
+						};
+					}
+
+					label '<': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->LESS));
+						};
+					}
+
+					label '>': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->GREATER));
+						};
+					}
+
+					label '"': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->DBL_QUOTE));
+						};
+					}
+
+					label '\'': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->QUOTE));
+						};
+					}
+
+					label '%': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->PERCENT));
+						};
+					}
+  
+					label '/': {
+						if(@nxt_char = '*') {
+							comment := true;
+							NextChar();
+						}
+						else {
+							if(comment = false) {
+								tokens->AddBack(Token->New(TokenType->DIV));
+							};
+						};
+					}
+  
+					label '*': {
+						if(@nxt_char = '/') {
+							comment := false;
+							NextChar();
+						}
+						else {
+							if(comment = false) {
+								tokens->AddBack(Token->New(TokenType->MUL));
+							};
+						};
+					}
+
+					other: {
+						if(comment = false) {
+							Console->Print("char='")->Print(@cur_char)->PrintLine("'");
+						};
+					}
+				};
+				NextChar();
+			};			
 		};
 		
 		return tokens;
