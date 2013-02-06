@@ -19,7 +19,10 @@ class GtkParser {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := GtkParser->New(args[0]);
-			parser->Parse();
+			funcs := parser->Parse();
+			funcs_size := funcs->Size();
+			"-----"->PrintLine();
+			"total functions: {$funcs_size}"->PrintLine();			
 		};
 	}
 
@@ -41,7 +44,9 @@ class GtkParser {
 		return "";
 	}
 
-	method : native : Parse() ~ Nil {
+	method : native : Parse() ~ Vector {
+		functions := Vector->New();
+		
 		each(i : @tokens) {
 			# find a valid return type
 			if(GetTokenType(i) = TokenType->VOID | GetTokenType(i) = TokenType->IDENT) {
@@ -125,11 +130,17 @@ class GtkParser {
 							};			
 							# update
 							j += 1;
+						};
+						# add function
+						if(func <> Nil) {
+							functions->AddBack(func);
 						};						
 					};
 				};
 			};
 		};
+
+		return functions;
 	}
 
 	method : NextChar() ~ Nil {
