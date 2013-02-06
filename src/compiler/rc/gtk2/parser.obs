@@ -109,6 +109,7 @@ class GtkParser {
 								if(GetTokenType(i) = TokenType->IDENT) {
 									param_name := GetTokenValue(i);
 									i += 1;
+									func->AddParameter(param_type_token->GetValue(), param_name);
 "\tparam {$j}: type=\"{$param_type_token}\", name=\"{$param_name}\""->PrintLine();
 									# comma
 									if(GetTokenType(i) = TokenType->COMMA) {
@@ -119,6 +120,7 @@ class GtkParser {
 							# variadic type
 							else if(GetTokenType(i) = TokenType->DOT & GetTokenType(i + 1) = TokenType->DOT & GetTokenType(i + 2) = TokenType->DOT) {
 "\tparam {$j}: type=\"variadic\""->PrintLine();
+								func->AddParameter("variadic", "#");
 								i += 3;
 							};			
 							# update
