@@ -114,6 +114,7 @@ class GtkParser {
 								if(GetTokenType(i) = TokenType->IDENT) {
 									param_name := GetTokenValue(i);
 									i += 1;
+									# TODO: add token
 									func->AddParameter(param_type_token->GetValue(), param_name);
 "\tparam {$j}: type=\"{$param_type_token}\", name=\"{$param_name}\""->PrintLine();
 									# comma
