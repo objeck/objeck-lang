@@ -2,6 +2,7 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
+# parsing framework for Gtk2
 class GtkParser {
 	@tokens : Vector;
 	@token_@index : Int;
@@ -65,9 +66,11 @@ class GtkParser {
 					if(GetTokenType(i) = TokenType->OPREN) {
 						i += 1;
 
+						func : Function;
 						if(GetTokenType(i) = TokenType->CONST | GetTokenType(i) = TokenType->VOID | 
 								GetTokenType(i) = TokenType->IDENT | GetTokenType(i) = TokenType->DOT) {
-"function: name=\"{$func_name}\", return={$return_token}"->PrintLine();
+							func := Function->New(func_name, return_token);
+"function: name=\"{$func_name}\", return=\"{$return_token}\""->PrintLine();
 						};
 
 						j := 0;
@@ -81,7 +84,7 @@ class GtkParser {
 							
 							# void type
 							if(GetTokenType(i) = TokenType->VOID) {
-"\tparam {$j}: type=void"->PrintLine();
+"\tparam {$j}: type=\"void\""->PrintLine();
 								i += 1;
 								# advance to semi-colon
 								while(i < @tokens->Size() & GetTokenType(i) <> TokenType->CPREN) {
@@ -106,29 +109,21 @@ class GtkParser {
 								if(GetTokenType(i) = TokenType->IDENT) {
 									param_name := GetTokenValue(i);
 									i += 1;
-"\tparam {$j}: type={$param_type_token}, name=\"{$param_name}\""->PrintLine();
+"\tparam {$j}: type=\"{$param_type_token}\", name=\"{$param_name}\""->PrintLine();
 									# comma
 									if(GetTokenType(i) = TokenType->COMMA) {
 										i += 1;
 									};
-								}
-								else {
-# type := GetTokenType(i)->As(Int);
-# "*** end 1: type={$type} ***"->PrintLine();
-								};								
+								};							
 							}
 							# variadic type
 							else if(GetTokenType(i) = TokenType->DOT & GetTokenType(i + 1) = TokenType->DOT & GetTokenType(i + 2) = TokenType->DOT) {
-"\tparam {$j}: type=variadic"->PrintLine();
+"\tparam {$j}: type=\"variadic\""->PrintLine();
 								i += 3;
 							};			
 							# update
 							j += 1;
-						};
-
-# type := GetTokenType(i)->As(Int);
-# "*** end 1: type={$type} ***"->PrintLine();
-						
+						};						
 					};
 				};
 			};
@@ -163,11 +158,10 @@ class GtkParser {
 		reserved->Insert("const", IntHolder->New(TokenType->CONST->As(Int)));
 		reserved->Insert("typedef", IntHolder->New(TokenType->TYPEDEF->As(Int)));
 		reserved->Insert("void", IntHolder->New(TokenType->VOID->As(Int)));
-
-		comment := false;
+		
 		@input := FileReader->ReadFile(file);
 		NextChar();
-				
+		comment := false;		
 		while(@cur_char <> '\0') {
 			# skip whitespace
 			while(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n') {
@@ -370,7 +364,7 @@ class GtkParser {
 					}
 
 					other: {
-						if(comment = false) {
+						if(comment = false & @cur_char <> '\0') {
 							Console->Print("char='")->Print(@cur_char)->PrintLine("'");
 						};
 					}
@@ -383,6 +377,34 @@ class GtkParser {
 	}
 }
 
+# function model class
+class Function {
+	@func_name : String;
+	@return_token : Token;
+	@parameters : Vector;
+	
+	New(func_name : String, return_token : Token) {
+		@func_name := func_name;
+		@return_token := return_token;
+		@parameters := Vector->New();
+	}
+
+	method : public : AddParameter(type : String, name : String) ~ Nil {
+		@parameters->AddBack(FunctionParameter->New(type, name));
+	}
+}
+
+class FunctionParameter {
+	@type : String;
+	@name : String;
+	
+	New(type : String, name : String) {
+		@type := type;
+		@name := name;
+	}
+}
+
+# stream token class
 class Token {
 	@type : TokenType;
 	@value : String;
