@@ -1,8 +1,6 @@
 ﻿class FooBar {
 	function : Main(args : String[]) ~ Nil {
-#		x : String[] := args;
-#		x[0]->PrintLine();
-		s := ["a", "bb", "ccc"]->Size();
+		s := "";
 		s->PrintLine();
 	}	
 }
