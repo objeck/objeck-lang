@@ -2758,13 +2758,6 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 
 void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str)
 {
-  // copy and create Char[]
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetString().size() + 1));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetId()));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
-
 #ifdef _SYSTEM
   if(string_cls_id < 0) {
     Class* klass = SearchProgramClasses("System.String");
@@ -2774,27 +2767,52 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     string_cls_id = klass->GetId();
   }
 #endif
-
-  // create 'System.String' instance
-  if(is_lib) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
-  } 
+  
+  if(segment->GetString().size() > 0) {
+    // copy and create Char[]
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetString().size() + 1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetId()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
+  
+    // create 'System.String' instance
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+    } 
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
+    }
+    // note: method ID is position dependant
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
+										 "System.String", "System.String:New:c*,"));
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
+    }    
+  }
   else {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
+    // create 'System.String' instance
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+    } 
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
+    }
+    // note: method ID is position dependant
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
+										 "System.String", "System.String:New:"));
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 0L, 0L)); 
+    }    
   }
-  // note: method ID is position dependant
-  if(is_lib) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-									       "System.String", "System.String:New:c*,"));
-  }
-  else {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
-  }
-
+  
   if(char_str && char_str->GetConcat()) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, char_str->GetConcat()->GetId(), LOCL));
   }
-  
   // check for stack swap
   new_char_str_count++;
   if(!is_str_array && new_char_str_count >= 2) {
