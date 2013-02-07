@@ -196,7 +196,7 @@ class GtkParser {
 			
 			if(@cur_char->IsChar() | @cur_char = '_' | @cur_char = '#') {
 				# word
-				string := String->New();
+				string := "";
 				if(@cur_char = '#') {
 					string->Append(@cur_char);
 					NextChar();
@@ -221,7 +221,7 @@ class GtkParser {
 			}
 			# number
 			else if(@cur_char->IsDigit()) {
-				number := String->New();
+				number := "";
 				is_dec := false;
 				while(@cur_char->IsDigit() = true | @cur_char = '.') {
 					if(@cur_char = '.') {
@@ -420,7 +420,7 @@ class Function {
 	}
 
 	method : public : ToString() ~ String {
-		buffer := String->New();		
+		buffer := "";		
 		buffer->Append("function: name=\"{$@func_name}\", return=\"{$@return_token}\"\r\n");
 		each(i : @parameters) {
 			param := @parameters->Get(i)->As(FunctionParameter);
@@ -486,7 +486,7 @@ class Token {
 	}
 
 	method  : public : ToString() ~ String {
-		out := String->New();
+		out := "";
 
 		if(@is_const) {
 			out->Append("const ");
