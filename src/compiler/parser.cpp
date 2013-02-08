@@ -262,7 +262,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_INTERFACE_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_INTERFACE_ID)) {
     string bundle_name = "";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -298,7 +298,7 @@ void Parser::ParseBundle(int depth)
   }
   // error
   else {
-    ProcessError("Expected 'bundle', 'class' or 'use'");
+    ProcessError("Expected 'use', 'bundle', 'class, 'enum', or 'interface'");
   }
 }
 

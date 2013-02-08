@@ -1,27 +1,49 @@
-﻿class Foo {
-	@a : Int;
-	@b : Int;
-
-	New() {
-		@a := 13;
-		@b := 7;
-	}
-	
-	method : public : Foo() ~ Nil {
-#		@a->PrintLine();
-#		@b->PrintLine();
-
-#		a := @a;
-#		b := @b;
-
-		"blah blah {$@a} what not."->PrintLine();
-		"blah blah {$@b} what not."->PrintLine();
-	}
-}
-
+﻿enum Foo := -100 { THUG, LIFE, BABY }
 class Bar {
 	function : Main(a : String[]) ~ Nil {
-		f := Foo->New();
-		f->Foo();
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(Foo->THUG->As(Int));
+		f->Get();
+#		f := IntHolder->New(Foo->THUG->As(Int));
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+		f := FloatHolder->New(13.33333);
+
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f := FloatHolder->New(100);
+		f->Get();
 	}
 }
