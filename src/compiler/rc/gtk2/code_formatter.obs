@@ -1,0 +1,138 @@
+use Collection;
+
+# parsing framework for Gtk2
+class GtkCodeFormatter {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := GtkParser->New(args[0]);
+			funcs := parser->Parse();
+			"-----"->PrintLine();
+			each(i : funcs) {
+				buffer := "";
+				func := funcs->Get(i)->As(Function);
+				func_name := func->GetName();
+				buffer->Append("void og_{$func_name}(VMContext& context) {\r\n");
+				buffer->Append(FormatCode(func));
+				buffer->Append("}\r\n");
+				buffer->PrintLine();
+			};
+			funcs_size := funcs->Size();
+			"total functions: {$funcs_size}"->PrintLine();			
+		};
+	}
+	
+	function : FormatCode(func : Function) ~ String {
+		buffer := "";
+		
+		params := func->GetParameters();
+		param_names := Vector->New();
+		each(i : params) {
+			param := params->Get(i)->As(FunctionParameter);
+			param_name := "param_{$i}";
+			param_names->AddBack(param_name);
+			
+			select(param->GetType()) {
+				other: {
+					param_type := param->GetValue();
+					buffer->Append("\t{$param_type} {$param_name} = ({$param_type})APITools_GetIntValue(context, {$i});\r\n");
+				}
+		
+				label TokenType->GBOOLEAN: {
+					buffer->Append("\tgboolean {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+				}
+			
+				label TokenType->GCHAR: {
+					buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GUCHAR: {
+					buffer->Append("\tguchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GINT: {
+					buffer->Append("\tgint {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+				}
+				
+				label TokenType->GUINT: {
+					buffer->Append("\tguint {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+				
+				label TokenType->GSHORT: {
+					buffer->Append("\tgshort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GUSHORT: {
+					buffer->Append("\tgushort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GULONG: {
+					buffer->Append("\tgulong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GLONG: {
+					buffer->Append("\tglong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+				
+				label TokenType->GINT8: {
+					buffer->Append("\tgint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GUINT8: {
+					buffer->Append("\tguint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+				
+				label TokenType->GINT16: {
+					buffer->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GUINT16: {
+					buffer->Append("\tguint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GINT32: {
+					buffer->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GUINT32: {
+					buffer->Append("\tguint32 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GFLOAT: {
+					buffer->Append("\tgfloat {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
+				}
+			
+				label TokenType->GDOUBLE: {
+					buffer->Append("\tgdouble {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GPOINTER: {
+					buffer->Append("\tgpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GCONSTPOINTER: {
+					buffer->Append("\tgconstpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GSIZE: {
+					buffer->Append("\tgsize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+
+				label TokenType->GSSIZE: {
+					buffer->Append("\tgssize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+				}
+			};
+		};
+
+		func_name := func->GetName();
+		buffer->Append("\t{$func_name}(");
+		each(i : param_names) {
+			buffer->Append(param_names->Get(i)->As(String));
+			if(i + 1 < param_names->Size()) {
+				buffer->Append(", ");
+			};
+		};
+		buffer->Append(");\r\n");
+			
+		return buffer;
+	}
+}
