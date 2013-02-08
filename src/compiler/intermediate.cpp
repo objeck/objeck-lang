@@ -3082,14 +3082,20 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     Type* base_type;
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
       MethodCall* call = static_cast<MethodCall*>(expression);
-      if(call->GetMethod()) {
+      if(call->GetCallType() == ENUM_CALL) {
+	base_type = expression->GetEvalType();
+      }
+      else if(call->GetMethod()) {
         base_type = call->GetMethod()->GetReturn();
-      } else if(call->GetLibraryMethod()) {
+      } 
+      else if(call->GetLibraryMethod()) {
         base_type = call->GetLibraryMethod()->GetReturn();
-      } else {
+      } 
+      else {
         base_type = expression->GetBaseType();
       }
-    } else {
+    } 
+    else {
       base_type = expression->GetBaseType();
     }
 
