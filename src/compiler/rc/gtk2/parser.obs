@@ -553,6 +553,10 @@ class Token {
 	method  : public : AddPointer() ~ Nil {
 		@ptr_num += 1;
 	}
+	
+	method  : public : GetPointerCount() ~ Int {
+		return @ptr_num;
+	}
 
 	method  : public : IsConst(is_const : Bool) ~ Nil {
 		@is_const := is_const;

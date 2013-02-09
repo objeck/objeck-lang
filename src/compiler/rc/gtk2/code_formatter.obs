@@ -9,7 +9,6 @@ class GtkCodeFormatter {
 			
 			parser := GtkParser->New(file);
 			funcs := parser->Parse();
-			"-----"->PrintLine();
 			count := 0;
 			each(i : funcs) {
 				buffer := "";
@@ -62,11 +61,23 @@ class GtkCodeFormatter {
 					}
 			
 					label TokenType->GCHAR: {
-						buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							buffer->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
+						}
+						else {
+							buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						};
 					}
 
 					label TokenType->GUCHAR: {
-						buffer->Append("\tguchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							buffer->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
+						}
+						else {
+							buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						};
 					}
 
 					label TokenType->GINT: {
