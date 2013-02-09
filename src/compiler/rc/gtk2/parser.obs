@@ -85,7 +85,7 @@ class GtkParser {
 								# void type
 								label TokenType->VOID: {
 									if(func <> Nil) {
-	"\tparam {$j}: type=\"void\""->PrintLine();
+# "\tparam {$j}: type=\"void\""->PrintLine();
 									};
 									i += 1;
 									# advance to semi-colon
@@ -147,7 +147,7 @@ class GtkParser {
 								# variadic type
 								label TokenType->DOT: {
 									if(GetTokenType(i + 1) = TokenType->DOT & GetTokenType(i + 2) = TokenType->DOT) {
-	"\tparam {$j}: type=\"variadic\""->PrintLine();
+# "\tparam {$j}: type=\"variadic\""->PrintLine();
 										if(func <> Nil) {
 											func->AddParameter(variadic_token, "#");
 										};
@@ -470,6 +470,10 @@ class Function {
 	method : public : GetParameters() ~ Vector {
 		return @parameters;
 	}
+
+	method : public : GetReturn() ~ Token {
+		return @return_token;
+	}
 	
 	method : public : ToString() ~ String {
 		buffer := "";		
@@ -492,7 +496,11 @@ class FunctionParameter {
 		@name := name;
 	}
 	
-	method : public : GetType() ~ TokenType {
+	method : public : GetType() ~ Token {
+		return @type;
+	}
+
+	method : public : GetTokenType() ~ TokenType {
 		return @type->GetType();
 	}
 
