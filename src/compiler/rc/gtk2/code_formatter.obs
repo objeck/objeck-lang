@@ -5,31 +5,62 @@ class GtkCodeFormatter {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			file := args[0];
-			klass := args[1];
+			klass_name := args[1];
 			
 			parser := GtkParser->New(file);
 			funcs := parser->Parse();
 			count := 0;
 			each(i : funcs) {
-				buffer := "";
+				c_code := "";
+				objk_code := "";
 				func := funcs->Get(i)->As(Function);
-				code := FormatCode(func, klass);
-				if(code->Size() > 0) {
-					func_name := func->GetName();
-					buffer->Append("void og_{$func_name}(VMContext& context) {\r\n");
-					buffer->Append(FormatCode(func, klass));
-					buffer->Append("}\r\n");
+				if(FormatCode(func, klass_name, c_code, objk_code)) {
+					c_code->PrintLine();
 					count += 1;
-					buffer->PrintLine();
 				};
 			};
 			"total functions: {$count}"->PrintLine();			
 		};
 	}
-	
-	function : native : FormatCode(func : Function, klass : String) ~ String {
-		buffer := "";	
+
+	function : native : ParseMethodName(func_name : String, klass_name : String) ~ String {
+		done := false;
+		offset := 0;
+		for(i := 0; done = false & i < func_name->Size(); i += 1;) {
+			if(func_name->Get(i) <> '_') {
+				done := func_name->Get(i)->ToUpper() <> func_name->Get(offset)->ToUpper();
+				offset += 1; 
+			};
+		};
 		
+		objk_name := String->New();
+		temp := func_name->SubString(offset, func_name->Size() - offset);
+		flag := false;
+		each(i : temp) {
+			if(i = 0) {
+x := temp->Get(i)->ToUpper();
+				objk_name->Append(x);
+			}
+			else if(temp->Get(i) = '_') {
+				flag := true;
+			}	
+			else if(flag) {
+x := temp->Get(i)->ToUpper();
+				objk_name->Append(x);
+				flag := false;
+			}
+			else {
+				objk_name->Append(temp->Get(i));
+				flag := false;
+			};
+		};
+		
+objk_name->PrintLine();
+		
+		return objk_name;
+	}
+
+	function : native : FormatCode(func : Function, klass_name : String, c_code : String, objk_body : String) ~ Bool {
 		match := false;
 		params := func->GetParameters();
 		if(params->Size() > 0) {
@@ -37,13 +68,17 @@ class GtkCodeFormatter {
 			param := params->Get(0)->As(FunctionParameter);
 			param_type := param->GetType();
 			if(param_type->GetType() = TokenType->IDENT) {				
-				match := klass->Equals(param_type->GetValue());
+				match := klass_name->Equals(param_type->GetValue());
 			};
 		};
 		
 		# process params
-		if(match) {	
+		if(match) {			
 			func_name := func->GetName();
+			c_code->Append("void og_{$func_name}(VMContext& context) {\r\n");
+
+			ParseMethodName(func_name, klass_name)->PrintLine();
+
 			param_names := Vector->New();
 			each(i : params) {
 				param := params->Get(i)->As(FunctionParameter);
@@ -53,122 +88,125 @@ class GtkCodeFormatter {
 				select(param->GetTokenType()) {
 					other: {
 						param_type_name := param->GetValue();
-						buffer->Append("\t{$param_type_name} {$param_name} = ({$param_type_name})APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\t{$param_type_name} {$param_name} = ({$param_type_name})APITools_GetIntValue(context, {$i});\r\n");
 					}
 		
 					label TokenType->GBOOLEAN: {
-						buffer->Append("\tgboolean {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgboolean {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
 					}
 			
 					label TokenType->GCHAR: {
 						param_type := param->GetType();
 						if(param_type->GetPointerCount() = 1) {
-							buffer->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
+							c_code->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
 						}
 						else {
-							buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+							c_code->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
 						};
 					}
 
 					label TokenType->GUCHAR: {
 						param_type := param->GetType();
 						if(param_type->GetPointerCount() = 1) {
-							buffer->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
+							c_code->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$i});\r\n");
 						}
 						else {
-							buffer->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+							c_code->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
 						};
 					}
 
 					label TokenType->GINT: {
-						buffer->Append("\tgint {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgint {$param_name} = APITools_GetIntValue(context, {$i});\r\n");
 					}
 				
 					label TokenType->GUINT: {
-						buffer->Append("\tguint {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tguint {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 				
 					label TokenType->GSHORT: {
-						buffer->Append("\tgshort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgshort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GUSHORT: {
-						buffer->Append("\tgushort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgushort {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GULONG: {
-						buffer->Append("\tgulong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgulong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GLONG: {
-						buffer->Append("\tglong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tglong {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 				
 					label TokenType->GINT8: {
-						buffer->Append("\tgint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GUINT8: {
-						buffer->Append("\tguint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tguint8 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 				
 					label TokenType->GINT16: {
-						buffer->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GUINT16: {
-						buffer->Append("\tguint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tguint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GINT32: {
-						buffer->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GUINT32: {
-						buffer->Append("\tguint32 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tguint32 {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GFLOAT: {
-						buffer->Append("\tgfloat {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
+						c_code->Append("\tgfloat {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
 					}
 			
 					label TokenType->GDOUBLE: {
-						buffer->Append("\tgdouble {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
+						c_code->Append("\tgdouble {$param_name} APITools_GetFloatValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GPOINTER: {
-						buffer->Append("\tgpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GCONSTPOINTER: {
-						buffer->Append("\tgconstpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgconstpointer {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GSIZE: {
-						buffer->Append("\tgsize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgsize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 
 					label TokenType->GSSIZE: {
-						buffer->Append("\tgssize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
+						c_code->Append("\tgssize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 				};
 			};
 			# write gtk2 call		
-			buffer->Append("\t{$func_name}(");
+			c_code->Append("\t{$func_name}(");
 			each(i : param_names) {
-				buffer->Append(param_names->Get(i)->As(String));
+				c_code->Append(param_names->Get(i)->As(String));
 				if(i + 1 < param_names->Size()) {
-					buffer->Append(", ");
+					c_code->Append(", ");
 				};
 			};
-			buffer->Append(");\r\n");
+			c_code->Append(");\r\n");
 
 			return_token := func->GetReturn();
 			if(return_token->GetType() <> TokenType->VOID) {
-				buffer->Append("\t// handle return type\r\n");
+				c_code->Append("\t// handle return type\r\n");
 			};
+			c_code->Append("}\r\n");
+			
+			return true;
 		};
 		
-		return buffer;
+		return false;
 	}
 }
