@@ -53,12 +53,10 @@ class GtkCodeFormatter {
 			};
 		};
 		
-objk_name->PrintLine();
-		
 		return objk_name;
 	}
 
-	function : native : FormatCode(func : Function, klass_name : String, c_code : String, objk_body : String) ~ Bool {
+	function : native : FormatCode(func : Function, klass_name : String, c_code : String, objk_code : String) ~ Bool {
 		match := false;
 		params := func->GetParameters();
 		if(params->Size() > 0) {
@@ -74,9 +72,10 @@ objk_name->PrintLine();
 		if(match) {			
 			func_name := func->GetName();
 			c_code->Append("void og_{$func_name}(VMContext& context) {\r\n");
-
-			ParseMethodName(func_name, klass_name)->PrintLine();
-
+			
+			mthd_name := ParseMethodName(func_name, klass_name);
+			objk_code->Append("method : {$mthd_name}(\r\n");
+			
 			param_names := Vector->New();
 			each(i : params) {
 				param := params->Get(i)->As(FunctionParameter);

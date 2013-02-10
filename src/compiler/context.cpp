@@ -1883,14 +1883,22 @@ bool ContextAnalyzer::Analyze()
     // evaluate matches
     LibraryMethodCallSelector selector(method_call, matches);
     LibraryMethod* lib_method = selector.GetSelection();
+
+    
     if(lib_method) {
+      
+
       // check casts on final candidate
       vector<Type*> method_parms = lib_method->GetDeclarationTypes();
       for(size_t j = 0; j < expr_params.size(); j++) {
-	AnalyzeRightCast(method_parms[j], expr_params[j], IsScalar(expr_params[j]), depth + 1);
+	Expression* expression = expr_params[j];
+	while(expression->GetMethodCall()) {
+	  expression = expression->GetMethodCall();
+	}
+	AnalyzeRightCast(method_parms[j], expression, IsScalar(expression), depth + 1);
       }
     }
-
+    
     return lib_method;
   }
   
