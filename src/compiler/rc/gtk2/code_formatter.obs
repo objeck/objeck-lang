@@ -73,15 +73,21 @@ class GtkCodeFormatter {
 			func_name := func->GetName();
 			c_code->Append("void og_{$func_name}(VMContext& context) {\r\n");
 			
-			mthd_name := ParseMethodName(func_name, klass_name);
-			objk_code->Append("method : {$mthd_name}(\r\n");
+			objk_mthd_name := ParseMethodName(func_name, klass_name);
+			objk_code->Append("method : public : {$objk_mthd_name}(");
 			
-			param_names := Vector->New();
+			objk_params := "";
+			objk_stmts := "";
+			params_size := params->Size();
+			objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
+						
+			# process c params	
+			c_param_names := Vector->New();
 			each(i : params) {
-				param := params->Get(i)->As(FunctionParameter);
+				param := params->Get(i)->As(FunctionParameter);			
 				param_name := "param_{$i}";
-				param_names->AddBack(param_name);
-			
+				c_param_names->AddBack(param_name);
+				
 				select(param->GetTokenType()) {
 					other: {
 						param_type_name := param->GetValue();
@@ -184,12 +190,75 @@ class GtkCodeFormatter {
 						c_code->Append("\tgssize {$param_name} APITools_GetIntValue(context, {$i});\r\n");
 					}
 				};
+				
+				# update objk params
+				objk_stmts->Append("\tarray_args[{$i}] := ");
+				select(param->GetTokenType()) {
+					other: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : {$param_type_name}");							
+						};
+					}					
+					
+					label TokenType->GCHAR:
+					label TokenType->GUCHAR: {
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							if(i <> 0) {
+								param_type_name := param->GetType()->GetValue();
+								objk_params->Append("{$param_name} : String");							
+							};
+						}
+						else {
+							if(i <> 0) {
+								param_type_name := param->GetType()->GetValue();
+								objk_params->Append("{$param_name} : Char");							
+							};
+						};
+					}
+
+					label TokenType->GBOOLEAN:
+					label TokenType->GINT:
+					label TokenType->GUINT:
+					label TokenType->GSHORT:
+					label TokenType->GUSHORT:
+					label TokenType->GULONG:
+					label TokenType->GLONG:
+					label TokenType->GINT8:
+					label TokenType->GUINT8:
+					label TokenType->GINT16:
+					label TokenType->GUINT16:
+					label TokenType->GINT32:
+					label TokenType->GUINT32:
+					label TokenType->GPOINTER:
+					label TokenType->GCONSTPOINTER:
+					label TokenType->GSIZE:
+					label TokenType->GSSIZE: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Int");							
+						};
+					}
+
+					label TokenType->GFLOAT:
+					label TokenType->GDOUBLE: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Float");							
+						};
+					}
+				};
+				# update		
+				if(i <> 0 & i + i < params->Size()) {
+					objk_params->Append(", ");
+				};
 			};
 			# write gtk2 call		
 			c_code->Append("\t{$func_name}(");
-			each(i : param_names) {
-				c_code->Append(param_names->Get(i)->As(String));
-				if(i + 1 < param_names->Size()) {
+			each(i : c_param_names) {
+				c_code->Append(c_param_names->Get(i)->As(String));
+				if(i + 1 < c_param_names->Size()) {
 					c_code->Append(", ");
 				};
 			};
@@ -200,6 +269,12 @@ class GtkCodeFormatter {
 				c_code->Append("\t// handle return type\r\n");
 			};
 			c_code->Append("}\r\n");
+
+			
+
+			objk_code->Append(objk_params);
+			objk_code->Append(") {");
+objk_code->PrintLine();
 			
 			return true;
 		};
