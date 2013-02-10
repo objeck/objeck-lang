@@ -38,15 +38,13 @@ class GtkCodeFormatter {
 		flag := false;
 		each(i : temp) {
 			if(i = 0) {
-x := temp->Get(i)->ToUpper();
-				objk_name->Append(x);
+				objk_name->Append(temp->Get(i)->ToUpper());
 			}
 			else if(temp->Get(i) = '_') {
 				flag := true;
 			}	
 			else if(flag) {
-x := temp->Get(i)->ToUpper();
-				objk_name->Append(x);
+				objk_name->Append(temp->Get(i)->ToUpper());
 				flag := false;
 			}
 			else {
