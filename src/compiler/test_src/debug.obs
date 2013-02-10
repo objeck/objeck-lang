@@ -1,49 +1,12 @@
 ﻿enum Foo := -100 { THUG, LIFE, BABY }
 class Bar {
 	function : Main(a : String[]) ~ Nil {
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(Foo->THUG->As(Int));
-		f->Get();
-#		f := IntHolder->New(Foo->THUG->As(Int));
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-		f := FloatHolder->New(13.33333);
-
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f := FloatHolder->New(100);
-		f->Get();
+		out := "";
+		in := "Hello World!";
+		each(i : in) {
+			out->Append(in->Get(i)->ToUpper());
+#			out->Append(in->Get(i));
+		};
+		out->PrintLine();
 	}
 }

@@ -1875,10 +1875,6 @@ bool ContextAnalyzer::Analyze()
 	for(size_t j = 0; j < expr_params.size(); j++) {
 	  int compare = MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass, depth);
 	  match->AddParameterMatch(compare);
-	  // additional sanity check and type casting
-	  if(compare == 1) {
-	    AnalyzeRightCast(method_parms[j], expr_params[j], IsScalar(expr_params[j]), depth + 1);
-	  }
 	}
 	matches.push_back(match);
       }
@@ -1886,7 +1882,16 @@ bool ContextAnalyzer::Analyze()
     
     // evaluate matches
     LibraryMethodCallSelector selector(method_call, matches);
-    return selector.GetSelection();
+    LibraryMethod* lib_method = selector.GetSelection();
+    if(lib_method) {
+      // check casts on final candidate
+      vector<Type*> method_parms = lib_method->GetDeclarationTypes();
+      for(size_t j = 0; j < expr_params.size(); j++) {
+	AnalyzeRightCast(method_parms[j], expr_params[j], IsScalar(expr_params[j]), depth + 1);
+      }
+    }
+
+    return lib_method;
   }
   
   /****************************
