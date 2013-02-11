@@ -15,6 +15,8 @@ class GtkCodeFormatter {
 				objk_code := "";
 				func := funcs->Get(i)->As(Function);
 				if(FormatCode(func, klass_name, c_code, objk_code)) {
+					"-------------"->PrintLine();
+					objk_code->PrintLine();
 					c_code->PrintLine();
 					count += 1;
 				};
@@ -192,12 +194,16 @@ class GtkCodeFormatter {
 				};
 				
 				# update objk params
-				objk_stmts->Append("\tarray_args[{$i}] := ");
+				objk_stmts->Append("\tarray_args[{$i}] := ");				
+				if(i = 0) {
+					objk_stmts->Append("@self;\r\n");
+				};
 				select(param->GetTokenType()) {
 					other: {
 						if(i <> 0) {
 							param_type_name := param->GetType()->GetValue();
-							objk_params->Append("{$param_name} : {$param_type_name}");							
+							objk_params->Append("{$param_name} : {$param_type_name}");
+							objk_stmts->Append("{$param_name};\r\n");
 						};
 					}					
 					
@@ -207,18 +213,27 @@ class GtkCodeFormatter {
 						if(param_type->GetPointerCount() = 1) {
 							if(i <> 0) {
 								param_type_name := param->GetType()->GetValue();
-								objk_params->Append("{$param_name} : String");							
+								objk_params->Append("{$param_name} : String");
+								objk_stmts->Append("{$param_name};\r\n");
 							};
 						}
 						else {
 							if(i <> 0) {
 								param_type_name := param->GetType()->GetValue();
-								objk_params->Append("{$param_name} : Char");							
+								objk_params->Append("{$param_name} : Char");
+								objk_stmts->Append("IntHolder->New({$param_name});\r\n");
 							};
 						};
 					}
 
-					label TokenType->GBOOLEAN:
+					label TokenType->GBOOLEAN: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Bool");
+							objk_stmts->Append("IntHolder->New({$param_name} = 0 ? true : false);\r\n");
+						};
+					}
+					
 					label TokenType->GINT:
 					label TokenType->GUINT:
 					label TokenType->GSHORT:
@@ -237,7 +252,8 @@ class GtkCodeFormatter {
 					label TokenType->GSSIZE: {
 						if(i <> 0) {
 							param_type_name := param->GetType()->GetValue();
-							objk_params->Append("{$param_name} : Int");							
+							objk_params->Append("{$param_name} : Int");
+							objk_stmts->Append("IntHolder->New({$param_name});\r\n");
 						};
 					}
 
@@ -245,7 +261,8 @@ class GtkCodeFormatter {
 					label TokenType->GDOUBLE: {
 						if(i <> 0) {
 							param_type_name := param->GetType()->GetValue();
-							objk_params->Append("{$param_name} : Float");							
+							objk_params->Append("{$param_name} : Float");
+							objk_stmts->Append("FloatHolder->New({$param_name});\r\n");
 						};
 					}
 				};
@@ -273,8 +290,9 @@ class GtkCodeFormatter {
 			
 
 			objk_code->Append(objk_params);
-			objk_code->Append(") {");
-objk_code->PrintLine();
+			objk_code->Append(") {\r\n");
+			objk_code->Append(objk_stmts);
+			objk_code->Append("}\r\n");
 			
 			return true;
 		};
