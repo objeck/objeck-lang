@@ -77,7 +77,43 @@ class GtkCodeFormatter {
 			
 			objk_mthd_name := ParseMethodName(func_name, klass_name);
 			objk_code->Append("method : public : {$objk_mthd_name}(");
-			
+
+			is_return := false;
+			return_token := func->GetReturn();
+			select(return_token->GetType()) {
+				other: {
+				}					
+				
+				label TokenType->GCHAR:
+				label TokenType->GUCHAR: {
+				}
+
+				label TokenType->GBOOLEAN: {
+				}
+				
+				label TokenType->GINT:
+				label TokenType->GUINT:
+				label TokenType->GSHORT:
+				label TokenType->GUSHORT:
+				label TokenType->GULONG:
+				label TokenType->GLONG:
+				label TokenType->GINT8:
+				label TokenType->GUINT8:
+				label TokenType->GINT16:
+				label TokenType->GUINT16:
+				label TokenType->GINT32:
+				label TokenType->GUINT32:
+				label TokenType->GPOINTER:
+				label TokenType->GCONSTPOINTER:
+				label TokenType->GSIZE:
+				label TokenType->GSSIZE: {
+				}
+
+				label TokenType->GFLOAT:
+				label TokenType->GDOUBLE: {
+				}
+			};
+				
 			objk_params := "";
 			objk_stmts := "";
 			params_size := params->Size();
@@ -271,7 +307,8 @@ class GtkCodeFormatter {
 					objk_params->Append(", ");
 				};
 			};
-			# write gtk2 call		
+			
+			# format c code
 			c_code->Append("\t{$func_name}(");
 			each(i : c_param_names) {
 				c_code->Append(c_param_names->Get(i)->As(String));
@@ -280,15 +317,14 @@ class GtkCodeFormatter {
 				};
 			};
 			c_code->Append(");\r\n");
-
+			
 			return_token := func->GetReturn();
 			if(return_token->GetType() <> TokenType->VOID) {
 				c_code->Append("\t// handle return type\r\n");
 			};
 			c_code->Append("}\r\n");
 
-			
-
+			# format objeck code
 			objk_code->Append(objk_params);
 			objk_code->Append(") {\r\n");
 			objk_code->Append(objk_stmts);
