@@ -79,6 +79,7 @@ class GtkCodeFormatter {
 			objk_code->Append("method : public : {$objk_mthd_name}(");
 
 			objk_params := "";
+			objk_params_end := "";
 			objk_stmts := "";
 			params_size := params->Size();
 			
@@ -89,19 +90,42 @@ class GtkCodeFormatter {
 					return_token_name := return_token->GetValue();
 					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
 					objk_stmts->Append("\tparams[{$param_index}] := {$return_token_name}->New()\r\n");
+					objk_params_end->Append(") ~ {$return_token_name} {\r\n");
 					param_index += 1;
 				}
 				
-				label TokenType->VOID: {}	
+				label TokenType->VOID: {
+					objk_params_end->Append(") ~ Nil {\r\n");
+				}	
 
 				label TokenType->VARIADIC: {
 					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
 					objk_stmts->Append("\t// TODO: create return vector\r\n");
 					param_index += 1;
-				}			
+				}		
+
+				label TokenType->GBOOLEAN: {
+					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
+					objk_stmts->Append("\tparams[{$param_index}] := IntHolder->New()\r\n");
+					objk_params_end->Append(") ~ Bool {\r\n");
+					param_index += 1;
+				}
 				
 				label TokenType->GCHAR:
-				label TokenType->GUCHAR:
+				label TokenType->GUCHAR: {
+					if(return_token->GetPointerCount() = 1) {
+						objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
+						objk_stmts->Append("\t// TODO: create return string\r\n");
+						objk_params_end->Append(") ~ String {\r\n");
+					}
+					else {
+						objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
+						objk_stmts->Append("\tparams[{$param_index}] := IntHolder->New()\r\n");
+						objk_params_end->Append(") ~ Char {\r\n");								
+					};
+					param_index += 1;
+				}
+
 				label TokenType->GINT:
 				label TokenType->GUINT:
 				label TokenType->GSHORT:
@@ -120,6 +144,7 @@ class GtkCodeFormatter {
 				label TokenType->GSSIZE: {
 					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
 					objk_stmts->Append("\tparams[{$param_index}] := IntHolder->New()\r\n");
+					objk_params_end->Append(") ~ Int {\r\n");			
 					param_index += 1;
 				}
 
@@ -127,6 +152,7 @@ class GtkCodeFormatter {
 				label TokenType->GDOUBLE: {
 					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
 					objk_stmts->Append("\tparams[{$param_index}] := FloatHolder->New()\r\n");
+					objk_params_end->Append(") ~ Float {\r\n");
 					param_index += 1;
 				}
 			};
@@ -326,7 +352,7 @@ class GtkCodeFormatter {
 					}
 				};
 				# update		
-				if(i <> 0 & i + i <= params->Size()) {
+				if(i <> 0 & i + 1 < params->Size()) {
 					objk_params->Append(", ");
 				};
 				param_index += 1;
@@ -350,7 +376,7 @@ class GtkCodeFormatter {
 
 			# format objeck code
 			objk_code->Append(objk_params);
-			objk_code->Append(") {\r\n");
+			objk_code->Append(objk_params_end);
 			objk_code->Append(objk_stmts);
 			objk_code->Append("}\r\n");
 			
