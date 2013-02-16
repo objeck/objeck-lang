@@ -101,60 +101,44 @@ extern "C" {
   // widget functions
   //
 
-  // TODO: void gtk_widget_draw(GtkWidget *widget, cairo_t *cr);
-
-
-  void og_widget_draw(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    long* r = (long*)APITools_GetObjectValue(context, 1);    
-    gtk_widget_draw(widget, (GdkRectangle*)r[0]);
+  void og_gtk_widget_destroy(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_destroy(param_0);
   }
 
-  void og_widget_realize(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_realize(widget);
+  void og_gtk_widget_destroyed(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_widget_destroyed(param_0, &param_1);
   }
 
-  void  og_widget_unrealize(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_unrealize(widget);
-  }
-
-  void og_widget_map(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_map(widget);
+  void og_gtk_widget_unref(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_unref(param_0);
   }
   
-  void og_widget_unmap(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_unmap(widget);
-  }
-  
-  void og_widget_unparent(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_unparent(widget);
+  void og_gtk_widget_hide_all(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_hide_all(param_0);
   }
 
-  void og_widget_show(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_show(widget);
+  void og_gtk_widget_unparent(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_unparent(param_0);
   }
 
-  void og_widget_show_now(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_show_now(widget);
+  void og_gtk_widget_show(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_show(param_0);
   }
   
-  void og_widget_show_all(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_show_all(widget);
+  void og_gtk_widget_show_now(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_show_now(param_0);
   }
+  
+  //---
 
-  void og_widget_destroy(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gtk_widget_destroy(widget);
-  }
-  
   void og_signal_handler_disconnect(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
     glong id = APITools_GetIntValue(context, 1);
