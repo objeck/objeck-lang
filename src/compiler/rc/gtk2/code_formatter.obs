@@ -9,19 +9,27 @@ class GtkCodeFormatter {
 			
 			parser := GtkParser->New(file);
 			funcs := parser->Parse();
+			klasses := StringSet->New();
 			count := 0;
 			each(i : funcs) {
 				c_code := "";
 				objk_code := "";
 				func := funcs->Get(i)->As(Function);
-				if(FormatCode(func, klass_name, c_code, objk_code)) {
-					"------------- {$i} -------------"->PrintLine();
+				if(FormatCode(func, klass_name, c_code, objk_code, klasses)) {
+					"------------- {$count} -------------"->PrintLine();
 					objk_code->PrintLine();
 					c_code->PrintLine();
 					count += 1;
 				};
 			};
-			"total functions: {$count}"->PrintLine();			
+			"total functions: {$count}"->PrintLine();
+			"================="->PrintLine();
+			new_klasses := klasses->GetKeys();
+			each(i : new_klasses) {
+				if(new_klasses->Get(i)->As(String)->Equals(klass_name) <> true) {
+					new_klasses->Get(i)->As(String)->PrintLine();
+				};
+			};
 		};
 	}
 
@@ -58,7 +66,8 @@ class GtkCodeFormatter {
 		return objk_name;
 	}
 
-	function : native : FormatCode(func : Function, klass_name : String, c_code : String, objk_code : String) ~ Bool {
+	function : native : FormatCode(func : Function, klass_name : String, 
+			c_code : String, objk_code : String, klasses : StringSet) ~ Bool {
 		match := false;
 		params := func->GetParameters();
 		if(params->Size() > 0) {
@@ -91,6 +100,10 @@ class GtkCodeFormatter {
 					objk_stmts->Append("\tparams := Base->New[{$params_size}]\r\n");
 					objk_stmts->Append("\tparams[{$param_index}] := {$return_token_name}->New()\r\n");
 					objk_params_end->Append(") ~ {$return_token_name} {\r\n");
+
+					if(klasses->Has(return_token_name) = false) {
+						klasses->Insert(return_token_name);
+					};
 					param_index += 1;
 				}
 				
