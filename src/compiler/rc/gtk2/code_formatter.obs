@@ -92,6 +92,8 @@ class GtkCodeFormatter {
 			objk_stmts := "";
 			params_size := params->Size();
 			
+			objk_stmts->Append("\tlib_proxy := GetDllProxy();\r\n");
+		
 			param_index := 0;
 			return_token := func->GetReturn();
 			select(return_token->GetType()) {
@@ -388,6 +390,9 @@ class GtkCodeFormatter {
 			c_code->Append("}\r\n");
 
 			# format objeck code
+
+			objk_stmts->Append("\tlib_proxy->CallFunction(\"og_{$func_name}\", array_args)\r\n");
+
 			objk_code->Append(objk_params);
 			objk_code->Append(objk_params_end);
 			objk_code->Append(objk_stmts);
