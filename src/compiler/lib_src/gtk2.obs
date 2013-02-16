@@ -63,83 +63,12 @@ bundle Gtk2 {
 
 			return -1;
 		}
-
-		method : public : Draw(r : Rectangle) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New(@native_ptr);
-			array_args[1] := r;
-			lib_proxy->CallFunction("og_widget_draw", array_args);
-		}
-
-		method : public : Show() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_show", array_args);
-		}
-
-		method : public : ShowNow() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_show_now", array_args);
-		}
 		
-		method : public : Destroy() ~ Nil {
+		method : public : WidgetDestroy() ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_destroy", array_args);
-		}
-
-		method : public : Unparent() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_unparent", array_args);
-		}
-		
-		method : public : ShowAll() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_show_all", array_args);
-		}
-
-		method : public : Hide() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_hide", array_args);
-		}
-
-		method : public : Map() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_map", array_args);
-		}
-
-		method : public : Unmap() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_unmap", array_args);
-		}
-
-		method : public : Realize() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_realize", array_args);
-		}
-
-		method : public : Unrealize() ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@native_ptr);
-			lib_proxy->CallFunction("og_widget_unrealize", array_args);
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_destroy", array_args);
 		}
 	}
 	
