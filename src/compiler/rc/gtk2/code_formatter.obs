@@ -331,7 +331,7 @@ class GtkCodeFormatter {
 						if(i <> 0) {
 							param_type_name := param->GetType()->GetValue();
 							objk_params->Append("{$param_name} : Bool");
-							objk_stmts->Append("IntHolder->New({$param_name} = 0 ? true : false);\n");
+							objk_stmts->Append("IntHolder->New({$param_name} = false ? 0 : 1);\n");
 						};
 					}
 					

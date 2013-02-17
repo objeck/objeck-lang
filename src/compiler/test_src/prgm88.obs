@@ -51,11 +51,11 @@ button->GetLabel()->PrintLine();
 			window->Add(hbox->As(GtkWidget));
 
 			
-			# show
-			button->Show();
-			button2->Show();
-			hbox->Show();			
-			window->Show();
+			# WidgetShow
+			button->WidgetShow();
+			button2->WidgetShow();
+			hbox->WidgetShow();			
+			window->WidgetShow();
 			Appliction->Main();
 		}
 	}
