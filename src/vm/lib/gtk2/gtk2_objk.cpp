@@ -96,9 +96,33 @@ extern "C" {
     GtkWidget* window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     APITools_SetIntValue(context, 0, (long)window);
   }
+
+
+  //
+  // GtkAccelGroup functions
+  //
+  
+  void og_gtk_accel_group_new(VMContext& context) {
+    APITools_SetIntValue(context, 0, (long)gtk_accel_group_new());
+  }
+  
+  void og_gtk_accel_group_get_modifier_mask(VMContext& context) {
+    GtkAccelGroup* param_1 = (GtkAccelGroup*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, gtk_accel_group_get_modifier_mask(param_1));
+  }
+
+  void og_gtk_accel_group_lock(VMContext& context) {
+    GtkAccelGroup* param_0 = (GtkAccelGroup*)APITools_GetIntValue(context, 0);
+    gtk_accel_group_lock(param_0);
+  }
+  
+  void og_gtk_accel_group_unlock(VMContext& context) {
+    GtkAccelGroup* param_0 = (GtkAccelGroup*)APITools_GetIntValue(context, 0);
+    gtk_accel_group_unlock(param_0);
+  }
   
   //
-  // widget functions
+  // GtkWidget functions
   //
 
   void og_gtk_widget_destroy(VMContext& context) {
