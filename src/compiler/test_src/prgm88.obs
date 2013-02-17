@@ -51,6 +51,12 @@ button->GetLabel()->PrintLine();
 			window->Add(hbox->As(GtkWidget));
 
 			
+			req := GtkRequisition->New();
+			button->WidgetSizeRequest(req);
+
+req->GetWidth()->PrintLine();
+req->GetHeight()->PrintLine();
+
 			# WidgetShow
 			button->WidgetShow();
 			button2->WidgetShow();
