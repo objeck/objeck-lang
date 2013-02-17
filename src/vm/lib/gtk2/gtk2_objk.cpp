@@ -217,6 +217,29 @@ extern "C" {
     GtkAllocation* param_1 = (GtkAllocation*)APITools_GetIntValue(context, 1);
     gtk_widget_size_allocate(param_0, param_1);
   }
+
+  void og_gtk_widget_add_accelerator(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    GtkAccelGroup* param_2 = (GtkAccelGroup*)APITools_GetIntValue(context, 2);
+    guint param_3 = APITools_GetIntValue(context, 3);
+    GdkModifierType param_4 = (GdkModifierType)APITools_GetIntValue(context, 4);
+    GtkAccelFlags param_5 = (GtkAccelFlags)APITools_GetIntValue(context, 5);
+    gtk_widget_add_accelerator(param_0, param_1, param_2, param_3, param_4, param_5);
+  }
+
+  void og_gtk_widget_set_accel_path(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    GtkAccelGroup* param_2 = (GtkAccelGroup*)APITools_GetIntValue(context, 2);
+    gtk_widget_set_accel_path(param_0, param_1, param_2);
+  }
+
+  void og_gtk_widget_list_accel_closures(VMContext& context) {
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_widget_list_accel_closures(param_1);
+    // handle return type
+  }
   
   //--- 22 ---
 
