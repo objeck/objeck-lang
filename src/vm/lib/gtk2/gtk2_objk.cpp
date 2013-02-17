@@ -211,8 +211,14 @@ extern "C" {
     GtkRequisition* param_1 = (GtkRequisition*)APITools_GetIntValue(context, 1);
     gtk_widget_size_request(param_0, param_1);
   }
+
+  void og_gtk_widget_size_allocate(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkAllocation* param_1 = (GtkAllocation*)APITools_GetIntValue(context, 1);
+    gtk_widget_size_allocate(param_0, param_1);
+  }
   
-  //---
+  //--- 22 ---
 
   void og_signal_handler_disconnect(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
