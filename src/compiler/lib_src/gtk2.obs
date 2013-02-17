@@ -14,7 +14,6 @@ bundle Gtk2 {
 		}
 	}
 
-	# TODO:
 	class GtkRequisition {
 		@width : Int;
 		@height : Int;
@@ -42,23 +41,7 @@ bundle Gtk2 {
 			@height := height;
 		}
 	}
-
-	# TODO:
-	class GtkAllocation {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		New() {}
-	}
-		
-	# TODO:
-	class GtkAccelGroup {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		New() {}
-	}
-
+			
 	# TODO:
 	class GdkModifierType {
 		@native_ptr : Int;
@@ -83,13 +66,13 @@ bundle Gtk2 {
 		New() {}
 	}
 	
-	# GtkWidget class
-	class GtkWidget {
+	###############################
+	# GtkAccelGroup class
+	###############################
+	class GtkAccelGroup {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
 		
-		New() {}
-
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
 				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
@@ -97,6 +80,56 @@ bundle Gtk2 {
 
 			return @lib_proxy;
 		}
+
+		New() {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_accel_group_new", array_args);
+		}
+		
+		method : public : AccelGroupGetModifierMask() ~ Int {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_accel_group_get_modifier_mask", array_args);
+			
+			return_arg := array_args[0]->As(IntHolder);
+			return return_arg->Get();
+		}
+		
+		method : public : AccelGroupLock() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_accel_group_lock", array_args);
+		}
+
+		method : public : AccelGroupUnlock() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_accel_group_unlock", array_args);
+		}
+	}
+
+	###############################
+	# GtkWidget class
+	###############################
+	class GtkWidget {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}		
 		
 		method : public : SignalHandlerDisconnect(id : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
@@ -274,14 +307,6 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
-		}
-
-		method : public : WidgetSizeAllocate(param_1 : GtkAllocation) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			lib_proxy->CallFunction("og_gtk_widget_size_allocate", array_args);
 		}
 
 		method : public : WidgetAddAccelerator(param_1 : String, param_2 : GtkAccelGroup, param_3 : Int, param_4 : GdkModifierType, param_5 : GtkAccelFlags) ~ Nil {
