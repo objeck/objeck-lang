@@ -14,7 +14,7 @@ bundle Gtk2 {
 		}
 	}
 
-	# The cairo drawing context
+	# TODO:
 	class Rectangle {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -22,6 +22,14 @@ bundle Gtk2 {
 		New() {}
 	}
 
+	# TODO:
+	class GtkRequisition {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		New() {}
+	}
+	
 	# GtkWidget class
 	class GtkWidget {
 		@native_ptr : Int;
@@ -69,6 +77,150 @@ bundle Gtk2 {
 			array_args := Base->New[1];
 			array_args[0] := @self;
 			lib_proxy->CallFunction("og_gtk_widget_destroy", array_args);
+		}
+
+		method : public : WidgetDestroyed(param_1 : GtkWidget) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_widget_destroyed", array_args);
+		}
+
+		method : public : WidgetUnref() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_unref", array_args);
+		}
+
+		method : public : WidgetHideAll() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_hide_all", array_args);
+		}
+
+		method : public : WidgetUnparent() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_unparent", array_args);
+		}
+
+		method : public : WidgetShow() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_show", array_args);
+		}
+
+		method : public : WidgetShowNow() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_show_now", array_args);
+		}
+
+		method : public : WidgetHide() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_hide", array_args);
+		}
+		
+		method : public : WidgetShowAll() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_show_all", array_args);
+		}
+
+		method : public : WidgetSetNoShowAll(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_no_show_all", array_args);
+		}
+
+		method : public : WidgetMap() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_map", array_args);
+		}
+
+		method : public : WidgetUnmap() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_unmap", array_args);
+		}
+
+		method : public : WidgetRealize() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_realize", array_args);
+		}
+
+		method : public : WidgetUnrealize() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_unrealize", array_args);
+		}
+
+		method : public : WidgetQueueDraw() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_queue_draw", array_args);
+		}
+
+		method : public : WidgetQueueDrawArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1);
+			array_args[2] := IntHolder->New(param_2);
+			array_args[3] := IntHolder->New(param_3);
+			array_args[4] := IntHolder->New(param_4);
+			lib_proxy->CallFunction("og_gtk_widget_queue_draw_area", array_args);
+		}
+
+		method : public : WidgetQueueClearArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1);
+			array_args[2] := IntHolder->New(param_2);
+			array_args[3] := IntHolder->New(param_3);
+			array_args[4] := IntHolder->New(param_4);
+			lib_proxy->CallFunction("og_gtk_widget_queue_clear_area", array_args);
+		}
+
+		method : public : WidgetQueueResize() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_queue_resize", array_args);
+		}
+
+		method : public : WidgetQueueResizeNoRedraw() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_queue_resize_no_redraw", array_args);
+		}
+
+		method : public : WidgetSizeRequest(param_1 : GtkRequisition) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
 		}
 	}
 	
