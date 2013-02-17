@@ -220,47 +220,47 @@ class GtkCodeFormatter {
 					}
 				
 					label TokenType->GUINT: {
-						c_code->Append("\tguint {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tguint {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 				
 					label TokenType->GSHORT: {
-						c_code->Append("\tgshort {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgshort {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GUSHORT: {
-						c_code->Append("\tgushort {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgushort {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GULONG: {
-						c_code->Append("\tgulong {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgulong {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GLONG: {
-						c_code->Append("\tglong {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tglong {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 				
 					label TokenType->GINT8: {
-						c_code->Append("\tgint8 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgint8 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GUINT8: {
-						c_code->Append("\tguint8 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tguint8 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 				
 					label TokenType->GINT16: {
-						c_code->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GUINT16: {
-						c_code->Append("\tguint16 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tguint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GINT32: {
-						c_code->Append("\tgint16 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GUINT32: {
-						c_code->Append("\tguint32 {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tguint32 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GFLOAT: {
@@ -272,19 +272,19 @@ class GtkCodeFormatter {
 					}
 
 					label TokenType->GPOINTER: {
-						c_code->Append("\tgpointer {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgpointer {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GCONSTPOINTER: {
-						c_code->Append("\tgconstpointer {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgconstpointer {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GSIZE: {
-						c_code->Append("\tgsize {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgsize {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 
 					label TokenType->GSSIZE: {
-						c_code->Append("\tgssize {$param_name} APITools_GetIntValue(context, {$param_index});\n");
+						c_code->Append("\tgssize {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
 					}
 				};
 				
