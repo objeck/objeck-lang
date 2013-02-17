@@ -15,19 +15,32 @@ bundle Gtk2 {
 	}
 
 	# TODO:
-	class Rectangle {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		New() {}
-	}
-
-	# TODO:
 	class GtkRequisition {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
+		@width : Int;
+		@height : Int;
 		
 		New() {}
+		
+		New(width : Int, height : Int) {
+			@width := width;
+			@height := height;				
+		}
+
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+
+		method : public : SetWidth(width : Int) ~ Nil {
+			@width := width;
+		}
+
+		method : public : SetHeight(height : Int) ~ Nil {
+			@height := height;
+		}
 	}
 
 	# TODO:
@@ -121,7 +134,7 @@ bundle Gtk2 {
 
 		method : public : WidgetDestroyed(param_1 : GtkWidget) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_widget_destroyed", array_args);
@@ -178,7 +191,7 @@ bundle Gtk2 {
 
 		method : public : WidgetSetNoShowAll(param_1 : Bool) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
 			lib_proxy->CallFunction("og_gtk_widget_set_no_show_all", array_args);
@@ -221,7 +234,7 @@ bundle Gtk2 {
 
 		method : public : WidgetQueueDrawArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[5];
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1);
 			array_args[2] := IntHolder->New(param_2);
@@ -232,7 +245,7 @@ bundle Gtk2 {
 
 		method : public : WidgetQueueClearArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[5];
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1);
 			array_args[2] := IntHolder->New(param_2);
@@ -257,7 +270,7 @@ bundle Gtk2 {
 
 		method : public : WidgetSizeRequest(param_1 : GtkRequisition) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
@@ -265,7 +278,7 @@ bundle Gtk2 {
 
 		method : public : WidgetSizeAllocate(param_1 : GtkAllocation) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_widget_size_allocate", array_args);
@@ -273,7 +286,7 @@ bundle Gtk2 {
 
 		method : public : WidgetAddAccelerator(param_1 : String, param_2 : GtkAccelGroup, param_3 : Int, param_4 : GdkModifierType, param_5 : GtkAccelFlags) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[6];
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			array_args[2] := param_2;
@@ -285,7 +298,7 @@ bundle Gtk2 {
 
 		method : public : WidgetSetAccelPath(param_1 : String, param_2 : GtkAccelGroup) ~ Nil {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[3];
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			array_args[2] := param_2;
@@ -294,7 +307,7 @@ bundle Gtk2 {
 
 		method : public : WidgetListAccelClosures() ~ GList {
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
+			array_args := Base->New[2];
 			array_args[0] := GList->New();
 			array_args[1] := @self;
 			lib_proxy->CallFunction("og_gtk_widget_list_accel_closures", array_args);
