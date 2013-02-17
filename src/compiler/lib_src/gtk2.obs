@@ -29,7 +29,15 @@ bundle Gtk2 {
 		
 		New() {}
 	}
-	
+
+	# TODO:
+	class GtkAllocation {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		New() {}
+	}
+		
 	# GtkWidget class
 	class GtkWidget {
 		@native_ptr : Int;
@@ -221,6 +229,14 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
+		}
+
+		method : public : WidgetSizeAllocate(param_1 : GtkAllocation) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_widget_size_allocate", array_args);
 		}
 	}
 	
