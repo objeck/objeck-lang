@@ -90,7 +90,7 @@ class GtkCodeFormatter {
 			objk_params := "";
 			objk_params_end := "";
 			objk_stmts := "";
-			params_size := params->Size();
+			params_size := params->Size() + 1;
 			
 			objk_stmts->Append("\tlib_proxy := GetDllProxy();\n");
 		
@@ -110,7 +110,8 @@ class GtkCodeFormatter {
 				}
 				
 				label TokenType->VOID: {
-					objk_stmts->Append("\tarray_args := Base->New[1];\n");
+					params_size -= 1;
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
 					objk_params_end->Append(") ~ Nil {\n");
 				}	
 
