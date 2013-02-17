@@ -208,8 +208,13 @@ extern "C" {
 
   void og_gtk_widget_size_request(VMContext& context) {
     GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
-    GtkRequisition* param_1 = (GtkRequisition*)APITools_GetIntValue(context, 1);
-    gtk_widget_size_request(param_0, param_1);
+    long* param_1 = (long*)APITools_GetObjectValue(context, 1);
+    
+    GtkRequisition requisition;       
+    gtk_widget_size_request(param_0, &requisition);
+    
+    param_1[0] = requisition.width;
+    param_1[1] =  requisition.height;
   }
 
   void og_gtk_widget_size_allocate(VMContext& context) {
