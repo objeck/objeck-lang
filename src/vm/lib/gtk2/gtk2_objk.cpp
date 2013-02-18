@@ -97,11 +97,16 @@ extern "C" {
     APITools_SetIntValue(context, 0, (long)window);
   }
 
-
+  //
+  // GdkRegion functions
+  //  
+  void og_gdk_region_new(VMContext& context) {
+    APITools_SetIntValue(context, 0, (long)gdk_region_new());
+  }
+  
   //
   // GtkAccelGroup functions
   //
-  
   void og_gtk_accel_group_new(VMContext& context) {
     APITools_SetIntValue(context, 0, (long)gtk_accel_group_new());
   }
@@ -168,7 +173,6 @@ extern "C" {
   //
   // GtkWidget functions
   //
-
   void og_gtk_widget_destroy(VMContext& context) {
     GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_destroy(param_0);
@@ -308,13 +312,43 @@ extern "C" {
     gtk_widget_set_accel_path(param_0, param_1, param_2);
   }
 
-  void og_gtk_widget_list_accel_closures(VMContext& context) {
+  void og_gtk_widget_reparent(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
     GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
-    gtk_widget_list_accel_closures(param_1);
-    // handle return type
+    gtk_widget_reparent(param_0, param_1);
+  }
+
+  void og_gtk_widget_region_intersect(VMContext& context) {
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    const GdkRegion* param_2 = (const GdkRegion*)APITools_GetIntValue(context, 2);    
+    APITools_SetIntValue(context, 0, (long)gtk_widget_region_intersect(param_1, param_2));
   }
   
-  //--- 22 ---
+  void og_gtk_widget_freeze_child_notify(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_freeze_child_notify(param_0);
+  }
+
+  void og_gtk_widget_child_notify(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    gtk_widget_child_notify(param_0, param_1);
+  }
+  
+  void og_gtk_widget_thaw_child_notify(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_thaw_child_notify(param_0);
+  }
+
+  void og_gtk_widget_set_can_focus(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_can_focus(param_0, param_1);
+  }
+  
+  //
+  // signals and events
+  //
 
   void og_signal_handler_disconnect(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
