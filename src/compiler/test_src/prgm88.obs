@@ -63,6 +63,7 @@ req->GetHeight()->PrintLine();
 			# WidgetShow
 			button->WidgetShow();
 			button2->WidgetShow();
+button2->WidgetGrabFocus();
 			hbox->WidgetShow();			
 			window->WidgetShow();
 			Appliction->Main();
