@@ -484,7 +484,7 @@ void og_gtk_widget_grab_focus(VMContext& context) {
 	gtk_widget_grab_focus(param_0);
 }
 
-------------- 33 -------------
+LAST: ------------- 33 -------------
 method : public : WidgetSetCanDefault(param_1 : Bool) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];

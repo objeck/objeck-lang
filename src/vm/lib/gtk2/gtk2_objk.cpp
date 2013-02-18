@@ -345,6 +345,11 @@ extern "C" {
     gboolean param_1 = APITools_GetIntValue(context, 1);
     gtk_widget_set_can_focus(param_0, param_1);
   }
+
+  void og_gtk_widget_grab_focus(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_grab_focus(param_0);
+  }
   
   //
   // signals and events
