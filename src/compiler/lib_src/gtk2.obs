@@ -75,23 +75,7 @@ bundle Gtk2 {
 		
 		New() {}
 	}	
-		
-	# TODO:
-	class GdkModifierType {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		New() {}
-	}
-
-	# TODO:
-	class GtkAccelFlags {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		New() {}
-	}
-
+	
 	# TODO:
 	class GList {
 		@native_ptr : Int;
@@ -377,15 +361,15 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
 		}
 
-		method : public : WidgetAddAccelerator(param_1 : String, param_2 : GtkAccelGroup, param_3 : Int, param_4 : GdkModifierType, param_5 : GtkAccelFlags) ~ Nil {
+		method : public : WidgetAddAccelerator(param_1 : String, param_2 : Int, param_3 : Int, param_4 : Int, param_5 : Int) ~ Nil {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[6];
 			array_args[0] := @self;
 			array_args[1] := param_1;
-			array_args[2] := param_2;
+			array_args[2] := IntHolder->New(param_2);
 			array_args[3] := IntHolder->New(param_3);
-			array_args[4] := param_4;
-			array_args[5] := param_5;
+			array_args[4] := IntHolder->New(param_4);
+			array_args[5] := IntHolder->New(param_5);
 			lib_proxy->CallFunction("og_gtk_widget_add_accelerator", array_args);
 		}
 
@@ -396,16 +380,6 @@ bundle Gtk2 {
 			array_args[1] := param_1;
 			array_args[2] := param_2;
 			lib_proxy->CallFunction("og_gtk_widget_set_accel_path", array_args);
-		}
-
-		method : public : WidgetListAccelClosures() ~ GList {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := GList->New();
-			array_args[1] := @self;
-			lib_proxy->CallFunction("og_gtk_widget_list_accel_closures", array_args);
-			# TODO: process return
-			return Nil;
 		}
 	}
 	
