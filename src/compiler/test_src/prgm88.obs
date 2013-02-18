@@ -50,6 +50,9 @@ button->GetLabel()->PrintLine();
 
 			window->Add(hbox->As(GtkWidget));
 
+group := GtkAccelGroup->New();
+group->AccelGroupGetModifierMask();
+
 			
 			req := GtkRequisition->New();
 			button->WidgetSizeRequest(req);

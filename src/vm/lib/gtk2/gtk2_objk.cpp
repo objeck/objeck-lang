@@ -120,6 +120,50 @@ extern "C" {
     GtkAccelGroup* param_0 = (GtkAccelGroup*)APITools_GetIntValue(context, 0);
     gtk_accel_group_unlock(param_0);
   }
+
+  void og_gtk_accel_group_connect(VMContext& context) {
+    GtkAccelGroup* param_0 = (GtkAccelGroup*)APITools_GetIntValue(context, 0);
+    guint param_1 = APITools_GetIntValue(context, 1);
+    GdkModifierType param_2 = (GdkModifierType)APITools_GetIntValue(context, 2);
+    GtkAccelFlags param_3 = (GtkAccelFlags)APITools_GetIntValue(context, 3);
+    long* param_4 = (long*)APITools_GetObjectValue(context, 4);
+    
+    GClosure closure;
+    closure.in_marshal = param_4[0];
+    closure.is_invalid = param_4[1];
+    
+    gtk_accel_group_connect(param_0, param_1, param_2, param_3, &closure);
+
+    param_4[0] = closure.in_marshal;
+    param_4[1] = closure.is_invalid;
+  }
+
+  void og_gtk_accel_group_connect_by_path(VMContext& context) {
+    GtkAccelGroup* param_0 = (GtkAccelGroup*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    long* param_2 = (long*)APITools_GetIntValue(context, 2);
+
+    GClosure closure;
+    closure.in_marshal = param_2[0];
+    closure.is_invalid = param_2[1];
+
+    gtk_accel_group_connect_by_path(param_0, param_1, &closure);
+    
+    param_2[0] = closure.in_marshal;
+    param_2[1] = closure.is_invalid;
+  }
+
+  void og_gtk_accel_group_query(VMContext& context) {
+    GtkAccelGroup* param_1 = (GtkAccelGroup*)APITools_GetObjectValue(context, 1);
+    guint param_2 = APITools_GetIntValue(context, 2);
+    GdkModifierType param_3 = (GdkModifierType)APITools_GetIntValue(context, 3);
+    guint param_4 = APITools_GetIntValue(context, 4);
+        
+    GtkAccelGroupEntry* entry = gtk_accel_group_query(param_1, param_2, param_3, &param_4);
+    
+    APITools_SetIntValue(context, 4, param_4);
+    APITools_SetIntValue(context, 0, (long)entry);
+  }
   
   //
   // GtkWidget functions
