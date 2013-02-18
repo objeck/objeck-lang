@@ -1,7 +1,7 @@
 use System.API;
 
 bundle Gtk2 {
-	# callback method holder
+	# supporting classes
 	class CallbackHolder {
 		@callback : (GtkWidget, Base) ~ Nil;
 
@@ -67,7 +67,7 @@ bundle Gtk2 {
 			@is_invalid := is_invalid;
 		}
 	}
-	
+
 	# TODO:
 	class GtkAccelGroupEntry {
 		@native_ptr : Int;
@@ -83,10 +83,33 @@ bundle Gtk2 {
 		
 		New() {}
 	}
-	
-	###############################
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# GdkRegion class
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+	class GdkRegion {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gdk_region_new", array_args);
+		}
+	}
+			
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# GtkAccelGroup class
-	###############################
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 	class GtkAccelGroup {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -133,23 +156,27 @@ bundle Gtk2 {
 		
 		method : public : AccelGroupConnect(param_1 : Int, param_2 : Int, 
 				param_3 : Int, param_4 : GClosure) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[5];
-			array_args[0] := @self;
-			array_args[1] := IntHolder->New(param_1);
-			array_args[2] := IntHolder->New();
-			array_args[3] := IntHolder->New();
-			array_args[4] := param_4;
-			lib_proxy->CallFunction("og_gtk_accel_group_connect", array_args);
+			if(param_4 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[5];
+				array_args[0] := @self;
+				array_args[1] := IntHolder->New(param_1);
+				array_args[2] := IntHolder->New();
+				array_args[3] := IntHolder->New();
+				array_args[4] := param_4;
+				lib_proxy->CallFunction("og_gtk_accel_group_connect", array_args);
+			};
 		}
 		
 		method : public : AccelGroupConnectByPath(param_1 : String, param_2 : GClosure) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[3];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			array_args[2] := param_2;
-			lib_proxy->CallFunction("og_gtk_accel_group_connect_by_path", array_args);
+			if(param_2 <> Nil) {		
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[3];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				array_args[2] := param_2;
+				lib_proxy->CallFunction("og_gtk_accel_group_connect_by_path", array_args);
+			};
 		}
 
 		method : public : AccelGroupQuery(param_2 : Int, param_3 : Int, param_4 : Int) ~ GtkAccelGroupEntry {
@@ -164,11 +191,61 @@ bundle Gtk2 {
 
 			return array_args[0]->As(GtkAccelGroupEntry);
 		}
-	}
 
-	###############################
+		method : public : WidgetReparent(param_1 : GtkWidget) ~ Nil {
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				lib_proxy->CallFunction("og_gtk_widget_reparent", array_args);
+			};
+		}
+
+		method : public : WidgetRegionIntersect(param_2 : GdkRegion) ~ GdkRegion {
+			if(param_2 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[3];
+				array_args[0] := GdkRegion->New();
+				array_args[1] := @self;
+				array_args[2] := param_2;
+				lib_proxy->CallFunction("og_gtk_widget_region_intersect", array_args);
+
+				return array_args[0]->As(GdkRegion);
+			};
+
+			return Nil;
+		}
+
+		method : public : WidgetFreezeChildNotify() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_freeze_child_notify", array_args);
+		}
+		
+		method : public : WidgetChildNotify(param_1 : String) ~ Nil {
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				lib_proxy->CallFunction("og_gtk_widget_child_notify", array_args);
+			};
+		}
+		
+		method : public : WidgetThawChildNotify() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_thaw_child_notify", array_args);
+		}
+	}
+	
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# GtkWidget class
-	###############################
+	# TODO: error handling
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 	class GtkWidget {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -380,6 +457,14 @@ bundle Gtk2 {
 			array_args[1] := param_1;
 			array_args[2] := param_2;
 			lib_proxy->CallFunction("og_gtk_widget_set_accel_path", array_args);
+		}
+
+		method : public : WidgetSetCanFocus(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_can_focus", array_args);
 		}
 	}
 	
