@@ -240,11 +240,19 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			lib_proxy->CallFunction("og_gtk_widget_thaw_child_notify", array_args);
 		}
+
+		method : public : WidgetGrabFocus() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_grab_focus", array_args);
+		}
 	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# GtkWidget class
 	# TODO: error handling
+	# TODO: map events and signals
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 	class GtkWidget {
 		@native_ptr : Int;
@@ -264,7 +272,7 @@ bundle Gtk2 {
 			lib_proxy := GetDllProxy();
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New(@native_ptr);	# pointer
-			array_args[1] := IntHolder->New(id);		# widget id
+			array_args[1] := IntHolder->New(id); # widget id
 			lib_proxy->CallFunction("og_signal_handler_disconnect", array_args);
 		}
 
@@ -272,11 +280,11 @@ bundle Gtk2 {
 			if(name <> Nil) {
 				lib_proxy := GetDllProxy();
 				array_args := Base->New[5];
-				array_args[0] := IntHolder->New();		# signal id
-				array_args[1] := @self;				# widget
-				array_args[2] := name;				# name
+				array_args[0] := IntHolder->New(); # signal id
+				array_args[1] := @self;	# widget
+				array_args[2] := name; # name
 				array_args[3] := CallbackHolder->New(callback);	# function
-				array_args[4] := params; 			# function params
+				array_args[4] := params; # function params
 				lib_proxy->CallFunction("og_signal_connect", array_args);
 				
 				# get return value
@@ -465,6 +473,13 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
 			lib_proxy->CallFunction("og_gtk_widget_set_can_focus", array_args);
+		}
+
+		method : public : WidgetGrabFocus() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_grab_focus", array_args);
 		}
 	}
 	
