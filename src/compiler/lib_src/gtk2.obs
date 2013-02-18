@@ -41,7 +41,41 @@ bundle Gtk2 {
 			@height := height;
 		}
 	}
-			
+
+	class GClosure {
+		@in_marshal : Int;
+		@is_invalid : Int;
+
+		New() {
+			@in_marshal := 1;
+			@is_invalid := 1;
+		}
+
+		method : public : GetInMarshal() ~ Int {
+			return @in_marshal;
+		}
+
+		method : public : SetInMarshal(in_marshal : Int) ~ Nil {
+			@in_marshal := in_marshal;
+		}
+		
+		method : public : IsInvalid() ~ Int {
+			return @is_invalid;
+		}
+
+		method : public : SetIsInvalid(is_invalid : Int) ~ Nil {
+			@is_invalid := is_invalid;
+		}
+	}
+	
+	# TODO:
+	class GtkAccelGroupEntry {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		New() {}
+	}	
+		
 	# TODO:
 	class GdkModifierType {
 		@native_ptr : Int;
@@ -111,6 +145,40 @@ bundle Gtk2 {
 			array_args := Base->New[1];
 			array_args[0] := @self;
 			lib_proxy->CallFunction("og_gtk_accel_group_unlock", array_args);
+		}
+		
+		method : public : AccelGroupConnect(param_1 : Int, param_2 : Int, 
+				param_3 : Int, param_4 : GClosure) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[5];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1);
+			array_args[2] := IntHolder->New();
+			array_args[3] := IntHolder->New();
+			array_args[4] := param_4;
+			lib_proxy->CallFunction("og_gtk_accel_group_connect", array_args);
+		}
+		
+		method : public : AccelGroupConnectByPath(param_1 : String, param_2 : GClosure) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[3];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			array_args[2] := param_2;
+			lib_proxy->CallFunction("og_gtk_accel_group_connect_by_path", array_args);
+		}
+
+		method : public : AccelGroupQuery(param_2 : Int, param_3 : Int, param_4 : Int) ~ GtkAccelGroupEntry {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[5];
+			array_args[0] := GtkAccelGroupEntry->New();
+			array_args[1] := @self;
+			array_args[2] := IntHolder->New(param_2);
+			array_args[3] := IntHolder->New(param_3);
+			array_args[4] := IntHolder->New(param_4);
+			lib_proxy->CallFunction("og_gtk_accel_group_query", array_args);
+
+			return array_args[0]->As(GtkAccelGroupEntry);
 		}
 	}
 
