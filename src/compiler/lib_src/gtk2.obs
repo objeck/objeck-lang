@@ -64,10 +64,36 @@ bundle Gtk2 {
 			array_args[1] := @self;
 			lib_proxy->CallFunction("og_gdk_get_event_type", array_args);
 
-			type := array_args[1]->As(IntHolder);
+			type := array_args[0]->As(IntHolder);
 			return type->Get()->As(GdkEventType);
 		}
+		
+		method : public : GetGdkEventKey() ~ GdkEventKey {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];			
+			array_args[0] := GdkEventKey->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gdk_get_event_key", array_args);
+
+			return array_args[0]->As(GdkEventKey);
+		}
 	}	
+
+
+	class GdkEventKey {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}
+	}
 
 	class CallbackHolder {
 		@callback : (GtkWidget, GdkEvent, Base) ~ Nil;

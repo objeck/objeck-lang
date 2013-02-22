@@ -12,16 +12,17 @@ bundle Default {
 	}
 
 	class HelloGtk {
-		function : TestHandle(widget : GtkWidget, param : Base) ~ Nil {
+		function : TestHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
 			"Hello Gtk2"->PrintLine();
 			Appliction->MainQuit();
 		}
 
-		function : FooHandle(widget : GtkWidget, param : Base) ~ Nil {
-			"-- press --"->PrintLine();
+		function : FooHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
+			type := event->GetType()->As(Int);
+			"-- press event: {$type} --"->PrintLine();
 		}
 
-		function : ButtonHandle(widget : GtkWidget, param : Base) ~ Nil {
+		function : ButtonHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
 			widget->GetClass()->GetName()->PrintLine();
 			param->GetClass()->GetName()->PrintLine();
 		}
@@ -29,9 +30,9 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			# callbacks
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
-			test_callback := TestHandle(GtkWidget, Base) ~ Nil;
-			foo_callback := FooHandle(GtkWidget, Base) ~ Nil;
-			button_callback := ButtonHandle(GtkWidget, Base) ~ Nil;
+			test_callback := TestHandle(GtkWidget, GdkEvent, Base) ~ Nil;
+			foo_callback := FooHandle(GtkWidget, GdkEvent, Base) ~ Nil;
+			button_callback := ButtonHandle(GtkWidget, GdkEvent, Base) ~ Nil;
 	
 			# create 
 			button := MyButton->New("button 1");
