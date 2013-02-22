@@ -44,16 +44,16 @@ bundle Default {
 			hbox->PackStart(button2->As(GtkWidget), true, true, 0);
 
 			window := GtkWindow->New();
-			window->SignalConnect3("delete-event", test_callback, window);
+			window->SignalConnectEvent("delete-event", test_callback, window);
 
-window->SignalConnect3("key-press-event", foo_callback, window);
+window->SignalConnectEvent("key-press-event", foo_callback, window);
 
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
 
 button->GetClass()->GetName()->PrintLine();
 
-			id := button->SignalConnect3("clicked", button_callback, button);
+			id := button->SignalConnectEvent("clicked", button_callback, button);
 			button->SignalHandlerDisconnect(id);
 
 button->GetLabel()->PrintLine();

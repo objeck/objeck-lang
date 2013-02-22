@@ -43,6 +43,24 @@ bundle Gtk2 {
 		GDK_OWNER_CHANGE
 	}
 
+	class GParamSpec {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}
+	}
+	
+	# 
+	# Event objects
+	# 
 	class GdkEvent {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -83,7 +101,13 @@ bundle Gtk2 {
 		New() { Parent(); }
 	}
 
-	# Callback function holders
+	class GdkEventClient from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	# 
+	# Callback holders
+	# 
 	class EventCallbackHolder {
 		@callback : (GtkWidget, GdkEvent, Base) ~ Nil;
 
@@ -108,6 +132,18 @@ bundle Gtk2 {
 		}
 	}
 	
+	class SignalParamCallbackHolder {
+		@callback : (GtkWidget, GParamSpec, Base) ~ Nil;
+
+		New(callback : (GtkWidget, GParamSpec, Base) ~ Nil) {
+			@callback := callback;
+		}
+
+		method : public : Get() ~ (GtkWidget, GParamSpec, Base) ~ Nil {
+			return @callback;
+		}
+	}
+
 	class SignalIDCallbackHolder {
 		@callback : (GtkWidget, Int, Base) ~ Nil;
 
@@ -405,7 +441,7 @@ bundle Gtk2 {
 			return -1;
 		}
 
-		method : public : SignalConnect2(name : String, callback : (GtkWidget, Int, Base) ~ Nil, params : Base) ~ Int {
+		method : public : SignalConnectId(name : String, callback : (GtkWidget, Int, Base) ~ Nil, params : Base) ~ Int {
 			if(name <> Nil) {
 				lib_proxy := GetDllProxy();
 				array_args := Base->New[5];
@@ -414,7 +450,7 @@ bundle Gtk2 {
 				array_args[2] := name; # name
 				array_args[3] := SignalIDCallbackHolder->New(callback);	# function
 				array_args[4] := params; # function params
-				lib_proxy->CallFunction("og_event_connect", array_args);
+				lib_proxy->CallFunction("og_event_id_connect", array_args);
 				
 				# get return value
 				id := array_args[0]->As(IntHolder);
@@ -424,7 +460,26 @@ bundle Gtk2 {
 			return -1;
 		}
 
-		method : public : SignalConnect3(name : String, callback : (GtkWidget, GdkEvent, Base) ~ Nil, params : Base) ~ Int {
+		method : public : SignalConnectParam(name : String, callback : (GtkWidget, GParamSpec, Base) ~ Nil, params : Base) ~ Int {
+			if(name <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New(); # signal id
+				array_args[1] := @self;	# widget
+				array_args[2] := name; # name
+				array_args[3] := SignalParamCallbackHolder->New(callback);	# function
+				array_args[4] := params; # function params
+				lib_proxy->CallFunction("og_event_param_connect", array_args);
+				
+				# get return value
+				id := array_args[0]->As(IntHolder);
+				return id->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : SignalConnectEvent(name : String, callback : (GtkWidget, GdkEvent, Base) ~ Nil, params : Base) ~ Int {
 			if(name <> Nil) {
 				lib_proxy := GetDllProxy();
 				array_args := Base->New[5];

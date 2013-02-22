@@ -10,6 +10,7 @@ extern "C" {
   static gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args);
   static void signal_callback_handler(GtkWidget *widget, gpointer data);
   static gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer data);
+  static void signal_callback_param_handler(GtkWidget *widget, GParamSpec *pspec, gpointer user_data);
   
   //
   // callback holder
@@ -368,6 +369,10 @@ extern "C" {
   void og_event_connect(VMContext& context) {
     signal_connect_handler(context, 2);
   }
+
+  void og_event_param_connect(VMContext& context) {
+    signal_connect_handler(context, 3);
+  }
   
   void signal_connect_handler(VMContext& context, int type) {
     long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
@@ -402,6 +407,10 @@ extern "C" {
       
     case 2:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(event_callback_handler), data);
+      break;
+
+    case 3:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_param_handler), data);
       break;
     }
     
@@ -481,7 +490,8 @@ extern "C" {
   //
   // callbacks
   //
-  gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
+  gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) 
+  {
     callback_data* data = (callback_data*)args;
     
 #ifdef _DEBUG
@@ -507,26 +517,16 @@ extern "C" {
       break;
 
     case GDK_BUTTON_PRESS:
-      break;
-
     case GDK_2BUTTON_PRESS:
-      break;
-
     case GDK_3BUTTON_PRESS:
-      break;
-
     case GDK_BUTTON_RELEASE:
-      break;
-
     case GDK_KEY_PRESS:
+    case GDK_KEY_RELEASE:
       event_obj = data->context.alloc_obj("Gtk2.GdkEventKey", 
 					  (long*)data->context.op_stack, 
 					  *data->context.stack_pos, false);
       break;
       
-    case GDK_KEY_RELEASE:
-      break;
-
     case GDK_ENTER_NOTIFY:
       break;
 
@@ -616,7 +616,8 @@ extern "C" {
     return TRUE;
   }
 
-  void signal_callback_handler(GtkWidget* widget, gpointer args) {
+  void signal_callback_handler(GtkWidget* widget, gpointer args) 
+  {
     callback_data* data = (callback_data*)args;
     
 #ifdef _DEBUG
@@ -629,8 +630,9 @@ extern "C" {
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
   }
-
-  gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer args) {
+  
+  gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer args) 
+  {
     callback_data* data = (callback_data*)args;
     
 #ifdef _DEBUG
@@ -645,6 +647,27 @@ extern "C" {
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
     
     return TRUE;
+  }
+  
+  void signal_callback_param_handler(GtkWidget* widget, GParamSpec* pspec, gpointer args)
+  {
+    callback_data* data = (callback_data*)args;
+    
+#ifdef _DEBUG
+    cout << "@@@ Signal params: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params="  << data->params 
+	 << " @@@" << endl;
+#endif
+    
+    long* event_obj = data->context.alloc_obj("Gtk2.GParamSpec", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
+    event_obj[0] = (long)pspec;
+    
+    APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, (long)event_obj);
+    APITools_PushInt(data->context, (long)data->widget);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
   }
 }
 
