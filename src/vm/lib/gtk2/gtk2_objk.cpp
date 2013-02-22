@@ -405,7 +405,7 @@ extern "C" {
 
   void og_container_get_border_width(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gint width =gtk_container_get_border_width(GTK_CONTAINER (widget));
+    gint width = gtk_container_get_border_width(GTK_CONTAINER (widget));
     APITools_SetIntValue(context, 1, width);
   }
 
@@ -433,6 +433,14 @@ extern "C" {
   }  
   
   //
+  // events
+  //
+  void og_gdk_get_event_type(VMContext& context) {
+    GdkEvent* event = (GdkEvent*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, event->type);
+  }
+
+  //
   // callbacks
   //
   gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args) {
@@ -443,6 +451,10 @@ extern "C" {
 	 << ", params=" << data->params << ", event=" << event << " @@@" << endl;
 #endif
     
+    long* event_obj = context.alloc_obj("Gtk2.GdkEvent", (long*)context.op_stack, *context.stack_pos, false);
+    event_obj[0] = (long)event;
+    
+    APITools_PushInt(data->context, (long)event_obj);
     APITools_PushInt(data->context, (long)data->params);
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);

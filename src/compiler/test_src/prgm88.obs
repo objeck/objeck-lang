@@ -17,6 +17,10 @@ bundle Default {
 			Appliction->MainQuit();
 		}
 
+		function : FooHandle(widget : GtkWidget, param : Base) ~ Nil {
+			"-- press --"->PrintLine();
+		}
+
 		function : ButtonHandle(widget : GtkWidget, param : Base) ~ Nil {
 			widget->GetClass()->GetName()->PrintLine();
 			param->GetClass()->GetName()->PrintLine();
@@ -26,6 +30,7 @@ bundle Default {
 			# callbacks
 			delete_callback := Events->DeleteEvent(GtkWidget) ~ Nil;
 			test_callback := TestHandle(GtkWidget, Base) ~ Nil;
+			foo_callback := FooHandle(GtkWidget, Base) ~ Nil;
 			button_callback := ButtonHandle(GtkWidget, Base) ~ Nil;
 	
 			# create 
@@ -38,6 +43,9 @@ bundle Default {
 
 			window := GtkWindow->New();
 			window->SignalConnect("delete-event", test_callback, window);
+
+window->SignalConnect("key-press-event", foo_callback, window);
+
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
 
