@@ -4009,7 +4009,13 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       while(parent) {
         SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
         size += CalculateEntrySpace(table, index, declarations, is_static);
-        parent = SearchProgramClasses(parent->GetParentName());
+        Class* tmp = SearchProgramClasses(parent->GetParentName());
+	if(tmp == parent) {
+	  parent = NULL;
+	}
+	else {
+	  parent = tmp;
+	}
       }
     } 
     else {
