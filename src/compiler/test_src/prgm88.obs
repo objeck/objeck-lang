@@ -18,7 +18,8 @@ bundle Default {
 		}
 
 		function : FooHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
-			type := event->GetType()->As(Int);
+			event_key := event->As(GdkEventKey);
+			type := event_key->GetType()->As(Int);
 			"-- press event: {$type} --"->PrintLine();
 		}
 
