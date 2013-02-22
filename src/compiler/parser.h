@@ -143,6 +143,7 @@ class Parser {
   void LoadErrorCodes();
   void ProcessError(const TokenType type);
   void ProcessError(const string &msg);
+  void ProcessError(const string &msg, ParseNode* node);
   void ProcessError(const string &msg, const TokenType sync);
   bool CheckErrors();
 

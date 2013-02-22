@@ -6,8 +6,10 @@
 using namespace std;
 
 extern "C" {
+  static void signal_connect_handler(VMContext& context, int id);
   static gboolean event_callback_handler(GtkWidget* widget, GdkEvent* event, gpointer args);
   static void signal_callback_handler(GtkWidget *widget, gpointer data);
+  static gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer data);
   
   //
   // callback holder
@@ -354,14 +356,20 @@ extern "C" {
   //
   // signals and events
   //
-
-  void og_signal_handler_disconnect(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
-    glong id = APITools_GetIntValue(context, 1);
-    g_signal_handler_disconnect(widget, id);
+  
+  void og_signal_connect(VMContext& context) {
+    signal_connect_handler(context, 0);
   }
 
-  void og_signal_connect(VMContext& context) {
+  void og_signal_id_connect(VMContext& context) {
+    signal_connect_handler(context, 1);
+  }
+  
+  void og_event_connect(VMContext& context) {
+    signal_connect_handler(context, 2);
+  }
+  
+  void signal_connect_handler(VMContext& context, int type) {
     long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
     const char* name = APITools_GetStringValue(context, 2); // name
     int cls_id = APITools_GetFunctionValue(context, 3, CLS_ID); // function
@@ -382,20 +390,33 @@ extern "C" {
 #endif
     
     // widget id
-    glong id;
-    if(strstr(name, "event")) {
-      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(event_callback_handler), data);
-    }
-    else {
+    gulong id;
+    switch(type) {
+    case 0:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_handler), data);
+      break;
+      
+    case 1:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_id_handler), data);
+      break;
+      
+    case 2:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(event_callback_handler), data);
+      break;
     }
     
     // set return
     APITools_SetIntValue(context, 0, id);
   }
   
+  void og_signal_handler_disconnect(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0); // raw widget
+    glong id = APITools_GetIntValue(context, 1);
+    g_signal_handler_disconnect(widget, id);
+  }
+  
   //
-  // container functions
+  // container class functions
   //
   void og_container_set_border_width(VMContext& context) {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
@@ -591,8 +612,6 @@ extern "C" {
     APITools_PushInt(data->context, (long)event_obj);
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
-
-    // TODO: free memory
     
     return TRUE;
   }
@@ -609,8 +628,23 @@ extern "C" {
     APITools_PushInt(data->context, (long)data->params);
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
+  }
+
+  gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer args) {
+    callback_data* data = (callback_data*)args;
     
-    // TODO: free memory
+#ifdef _DEBUG
+    cout << "@@@ Signal ID: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params=" 
+	 << data->params << " @@@" << endl;
+#endif
+    
+    APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, (long)signal_id);
+    APITools_PushInt(data->context, (long)data->widget);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
+    
+    return TRUE;
   }
 }
 
