@@ -437,7 +437,24 @@ extern "C" {
   //
   void og_gdk_get_event_type(VMContext& context) {
     GdkEvent* event = (GdkEvent*)APITools_GetIntValue(context, 1);
+#ifdef _DEBUG
+    cout << "@@@ Event: id=" << event << ", type=" << event->type << " @@@" << endl;
+#endif
     APITools_SetIntValue(context, 0, event->type);
+  }
+  
+  void og_gdk_get_event_key(VMContext& context) {
+    GdkEvent* event = (GdkEvent*)APITools_GetIntValue(context, 1);
+#ifdef _DEBUG
+    cout << "@@@ Event: id=" << event << ", type=" << event->type << " @@@" << endl;
+#endif
+
+    long* event_obj = context.alloc_obj("Gtk2.GdkEventKey", 
+					(long*)context.op_stack, 
+					*context.stack_pos, false);
+    event_obj[0] = (long)event;
+    
+    APITools_SetObjectValue(context, 0, event_obj);
   }
 
   //
@@ -448,14 +465,16 @@ extern "C" {
     
 #ifdef _DEBUG
     cout << "@@@ Event: cls_id=" << data->cls_id << ", mthd_id=" << data->mthd_id 
-	 << ", params=" << data->params << ", event=" << event << " @@@" << endl;
+	 << ", params=" << data->params << ", event_type=" << event->type << " @@@" << endl;
 #endif
     
-    long* event_obj = context.alloc_obj("Gtk2.GdkEvent", (long*)context.op_stack, *context.stack_pos, false);
+    long* event_obj = data->context.alloc_obj("Gtk2.GdkEvent", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
     event_obj[0] = (long)event;
     
-    APITools_PushInt(data->context, (long)event_obj);
     APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, (long)event_obj);
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
 
