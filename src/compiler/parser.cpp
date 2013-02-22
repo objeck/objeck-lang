@@ -107,6 +107,21 @@ void Parser::ProcessError(const string &msg, TokenType sync)
 }
 
 /****************************
+ * Emits parsing error.
+ ****************************/
+void Parser::ProcessError(const string &msg, ParseNode* node)
+{
+#ifdef _DEBUG
+  cout << "\tError: " << node->GetFileName() << ":" << node->GetLineNumber()
+       << ": " << msg << endl;
+#endif
+
+  const string &str_line_num = ToString(node->GetLineNumber());
+  errors.insert(pair<int, string>(node->GetLineNumber(), node->GetFileName() +
+                                  ":" + str_line_num + ": " + msg));
+}
+
+/****************************
  * Checks for parsing errors.
  ****************************/
 bool Parser::CheckErrors()
@@ -459,16 +474,14 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       Method* method = ParseMethod(true, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError("Method or function already defined '" + method->GetName() + "'",
-                     TOKEN_CLOSED_PAREN);
+        ProcessError("Method or function already defined '" + method->GetName() + "'", method);
       }
     } 
     else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
       Method* method = ParseMethod(false, false, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError("Method or function already defined '" + method->GetName() + "'",
-                     TOKEN_CLOSED_PAREN);
+        ProcessError("Method or function already defined '" + method->GetName() + "'", method);
       }
     } 
     else if(Match(TOKEN_IDENT)) {
@@ -546,16 +559,14 @@ Class* Parser::ParseInterface(const string &bundle_name, int depth)
       Method* method = ParseMethod(true, true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError("Method or function already defined '" + method->GetName() + "'",
-                     TOKEN_CLOSED_PAREN);
+        ProcessError("Method or function already defined '" + method->GetName() + "'", method);
       }
     } 
     else if(Match(TOKEN_METHOD_ID)) {
       Method* method = ParseMethod(false, true, depth + 1);
       bool was_added = klass->AddMethod(method);
       if(!was_added) {
-        ProcessError("Method or function already defined '" + method->GetName() + "'",
-                     TOKEN_CLOSED_PAREN);
+        ProcessError("Method or function already defined '" + method->GetName() + "'", method);
       }
     } 
     else {
