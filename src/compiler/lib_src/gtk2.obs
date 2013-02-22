@@ -80,19 +80,8 @@ bundle Gtk2 {
 	}	
 
 
-	class GdkEventKey {
-		@native_ptr : Int;
-		@lib_proxy : static : DllProxy;
-		
-		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
-			};
-
-			return @lib_proxy;
-		}
-
-		New() {}
+	class GdkEventKey from GdkEvent {
+		New() { Parent(); }
 	}
 
 	class CallbackHolder {

@@ -456,7 +456,7 @@ extern "C" {
     
     APITools_SetObjectValue(context, 0, event_obj);
   }
-
+  
   //
   // callbacks
   //
@@ -467,10 +467,124 @@ extern "C" {
     cout << "@@@ Event: cls_id=" << data->cls_id << ", mthd_id=" << data->mthd_id 
 	 << ", params=" << data->params << ", event_type=" << event->type << " @@@" << endl;
 #endif
-    
-    long* event_obj = data->context.alloc_obj("Gtk2.GdkEvent", 
-					      (long*)data->context.op_stack, 
-					      *data->context.stack_pos, false);
+
+    long* event_obj;
+    switch(event->type) {
+    case GDK_NOTHING:
+      break;
+
+    case GDK_DELETE:
+      break;
+
+    case GDK_DESTROY:
+      break;
+
+    case GDK_EXPOSE:
+      break;
+
+    case GDK_MOTION_NOTIFY:
+      break;
+
+    case GDK_BUTTON_PRESS:
+      break;
+
+    case GDK_2BUTTON_PRESS:
+      break;
+
+    case GDK_3BUTTON_PRESS:
+      break;
+
+    case GDK_BUTTON_RELEASE:
+      break;
+
+    case GDK_KEY_PRESS:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventKey", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
+      break;
+      
+    case GDK_KEY_RELEASE:
+      break;
+
+    case GDK_ENTER_NOTIFY:
+      break;
+
+    case GDK_LEAVE_NOTIFY:
+      break;
+
+    case GDK_FOCUS_CHANGE:
+      break;
+
+    case GDK_CONFIGURE:
+      break;
+
+    case GDK_MAP:
+      break;
+
+    case GDK_UNMAP:
+      break;
+      
+    case GDK_PROPERTY_NOTIFY:
+      break;
+
+    case GDK_SELECTION_CLEAR:
+      break;
+
+    case GDK_SELECTION_REQUEST:
+      break;
+
+    case GDK_SELECTION_NOTIFY:
+      break;
+
+    case GDK_PROXIMITY_IN:
+      break;
+
+    case GDK_PROXIMITY_OUT:
+      break;
+
+    case GDK_DRAG_ENTER:
+      break;
+
+    case GDK_DRAG_LEAVE:
+      break;
+
+    case GDK_DRAG_MOTION:
+      break;
+
+    case GDK_DRAG_STATUS:
+      break;
+
+    case GDK_DROP_START:
+      break;
+
+    case GDK_DROP_FINISHED:
+      break;
+
+    case GDK_CLIENT_EVENT:
+      break;
+
+    case GDK_VISIBILITY_NOTIFY:
+      break;
+
+    case GDK_NO_EXPOSE:
+      break;
+
+    case GDK_SCROLL:
+      break;
+
+    case GDK_WINDOW_STATE:
+      break;
+
+    case GDK_SETTING:
+      break;
+      
+    case GDK_OWNER_CHANGE:
+      break;
+
+    default:
+      event_obj = NULL;
+      break;
+    }    
     event_obj[0] = (long)event;
     
     APITools_PushInt(data->context, (long)data->params);

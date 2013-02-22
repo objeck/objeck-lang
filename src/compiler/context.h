@@ -553,6 +553,10 @@ class ContextAnalyzer {
 
   // checks for a valid downcast
   bool ValidDownCast(const string &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp) {
+    if(cls_name == "System.Base") {
+      return true;
+    }
+    
     while(class_tmp || lib_class_tmp) {
       // get cast name
       string cast_name;
