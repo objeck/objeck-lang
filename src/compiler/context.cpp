@@ -1107,7 +1107,7 @@ bool ContextAnalyzer::Analyze()
       if(SearchProgramClasses(name) || SearchProgramEnums(name) ||
 	 linker->SearchClassLibraries(name, program->GetUses()) ||
 	 linker->SearchEnumLibraries(name, program->GetUses())) {
-	ProcessError(variable, "Variable name already used to define a class or enum");
+	ProcessError(variable, "Variable name already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
       }
 
       // associate variable and entry
