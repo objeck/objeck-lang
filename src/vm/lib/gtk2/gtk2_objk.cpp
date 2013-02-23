@@ -11,6 +11,7 @@ extern "C" {
   static void signal_callback_handler(GtkWidget *widget, gpointer data);
   static gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer data);
   static void signal_callback_param_handler(GtkWidget *widget, GParamSpec *pspec, gpointer user_data);
+  static void signal_callback_drag_handler(GtkWidget *widget, GdkDragContext* drag, gpointer args);
   
   //
   // callback holder
@@ -373,6 +374,10 @@ extern "C" {
   void og_event_param_connect(VMContext& context) {
     signal_connect_handler(context, 3);
   }
+
+  void og_event_drag_connect(VMContext& context) {
+    signal_connect_handler(context, 4);
+  }
   
   void signal_connect_handler(VMContext& context, int type) {
     long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
@@ -411,6 +416,10 @@ extern "C" {
       
     case 3:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_param_handler), data);
+      break;
+      
+    case 4:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_drag_handler), data);
       break;
     }
     
@@ -669,6 +678,27 @@ extern "C" {
 					      (long*)data->context.op_stack, 
 					      *data->context.stack_pos, false);
     event_obj[0] = (long)pspec;
+    
+    APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, (long)event_obj);
+    APITools_PushInt(data->context, (long)data->widget);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
+  }
+
+  void signal_callback_drag_handler(GtkWidget *widget, GdkDragContext* drag, gpointer args) 
+  {
+    callback_data* data = (callback_data*)args;
+    
+#ifdef _DEBUG
+    cout << "@@@ Signal drag: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params="  << data->params 
+	 << " @@@" << endl;
+#endif
+    
+    long* event_obj = data->context.alloc_obj("Gtk2.GdkDragContext", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
+    event_obj[0] = (long)drag;
     
     APITools_PushInt(data->context, (long)data->params);
     APITools_PushInt(data->context, (long)event_obj);
