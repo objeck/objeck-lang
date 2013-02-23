@@ -12,6 +12,7 @@ extern "C" {
   static gboolean signal_callback_id_handler(GtkWidget *widget, guint signal_id, gpointer data);
   static void signal_callback_param_handler(GtkWidget *widget, GParamSpec *pspec, gpointer user_data);
   static void signal_callback_drag_handler(GtkWidget *widget, GdkDragContext* drag, gpointer args);
+  static void signal_callback_style_handler(GtkWidget *widget, GtkStyle* style, gpointer args);
   
   //
   // callback holder
@@ -356,6 +357,44 @@ extern "C" {
   }
   
   //
+  // container class functions
+  //
+  void og_container_set_border_width(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    int width = APITools_GetIntValue(context, 1);
+    gtk_container_set_border_width(GTK_CONTAINER (widget), width);
+  }
+
+  void og_container_get_border_width(VMContext& context) {
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gint width = gtk_container_get_border_width(GTK_CONTAINER (widget));
+    APITools_SetIntValue(context, 1, width);
+  }
+
+  void og_container_add(VMContext& context) {
+    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_container_add(GTK_CONTAINER (container), widget);
+  }
+
+  void og_container_remove(VMContext& context) {
+    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_container_remove(GTK_CONTAINER (container), widget);
+  }
+  
+  //
+  // application functions
+  //
+  void og_main(VMContext& context) {
+    gtk_main();
+  }
+  
+  void og_main_quit(VMContext& context) {
+    gtk_main_quit();
+  }  
+
+  //
   // signals and events
   //
   
@@ -421,6 +460,10 @@ extern "C" {
     case 4:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_drag_handler), data);
       break;
+
+    case 5:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_style_handler), data);
+      break;
     }
     
     // set return
@@ -432,45 +475,7 @@ extern "C" {
     glong id = APITools_GetIntValue(context, 1);
     g_signal_handler_disconnect(widget, id);
   }
-  
-  //
-  // container class functions
-  //
-  void og_container_set_border_width(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    int width = APITools_GetIntValue(context, 1);
-    gtk_container_set_border_width(GTK_CONTAINER (widget), width);
-  }
-
-  void og_container_get_border_width(VMContext& context) {
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gint width = gtk_container_get_border_width(GTK_CONTAINER (widget));
-    APITools_SetIntValue(context, 1, width);
-  }
-
-  void og_container_add(VMContext& context) {
-    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
-    gtk_container_add(GTK_CONTAINER (container), widget);
-  }
-
-  void og_container_remove(VMContext& context) {
-    GtkWidget* container = (GtkWidget*)APITools_GetIntValue(context, 0);
-    GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
-    gtk_container_remove(GTK_CONTAINER (container), widget);
-  }
-  
-  //
-  // application functions
-  //
-  void og_main(VMContext& context) {
-    gtk_main();
-  }
-  
-  void og_main_quit(VMContext& context) {
-    gtk_main_quit();
-  }  
-  
+    
   //
   // events
   //
@@ -600,6 +605,9 @@ extern "C" {
       break;
       
     case GDK_VISIBILITY_NOTIFY:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventVisibility", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
 
     case GDK_NO_EXPOSE:
@@ -609,6 +617,9 @@ extern "C" {
       break;
 
     case GDK_WINDOW_STATE:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventWindowState", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
 
     case GDK_SETTING:
@@ -699,6 +710,27 @@ extern "C" {
 					      (long*)data->context.op_stack, 
 					      *data->context.stack_pos, false);
     event_obj[0] = (long)drag;
+    
+    APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, (long)event_obj);
+    APITools_PushInt(data->context, (long)data->widget);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
+  }
+  
+  void signal_callback_style_handler(GtkWidget *widget, GtkStyle* style, gpointer args) 
+  {
+    callback_data* data = (callback_data*)args;
+    
+#ifdef _DEBUG
+    cout << "@@@ Signal style: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params="  << data->params 
+	 << " @@@" << endl;
+#endif
+    
+    long* event_obj = data->context.alloc_obj("Gtk2.GdkDragContext", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
+    event_obj[0] = (long)style;
     
     APITools_PushInt(data->context, (long)data->params);
     APITools_PushInt(data->context, (long)event_obj);
