@@ -12,6 +12,10 @@ bundle Default {
 	}
 
 	class HelloGtk {
+		function : FooBarHandle(widget : GtkWidget, param : Base) ~ Nil {
+			"@@@ foo+bar @@@"->PrintLine();
+		}
+
 		function : DragHandle(widget : GtkWidget, event: GdkDragContext, param : Base) ~ Nil {
 			"@@@ drag @@@"->PrintLine();
 		}
@@ -48,19 +52,23 @@ bundle Default {
 			hbox->PackStart(button2->As(GtkWidget), true, true, 0);
 
 			window := GtkWindow->New();
-			window->SignalConnectEvent("delete-event", test_callback, window);
+			window->SignalEventConnect("delete-event", test_callback, window);
 
-window->SignalConnectEvent("key-press-event", foo_callback, window);
+window->SignalEventConnect("key-press-event", foo_callback, window);
 
-window->SignalConnectDrag("drag-begin", DragHandle(GtkWidget, GdkDragContext, Base), window);
+window->SignalDragConnect("drag-begin", DragHandle(GtkWidget, GdkDragContext, Base) ~ Nil, window);
+
+button->SignalConnect("grab-focus", FooBarHandle(GtkWidget, Base) ~ Nil, window);
+
+ 
 
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
 
 button->GetClass()->GetName()->PrintLine();
 
-			id := button->SignalConnectEvent("clicked", button_callback, button);
-			button->SignalHandlerDisconnect(id);
+			id := button->SignalEventConnect("clicked", button_callback, button);
+			button->SignalDisconnect(id);
 
 button->GetLabel()->PrintLine();
 
