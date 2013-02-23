@@ -57,7 +57,22 @@ bundle Gtk2 {
 
 		New() {}
 	}
-	
+
+	class GdkDragContext {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}
+	}
+		
 	# 
 	# Event objects
 	# 
@@ -156,6 +171,18 @@ bundle Gtk2 {
 		}
 
 		method : public : Get() ~ (GtkWidget, Int, Base) ~ Nil {
+			return @callback;
+		}
+	}
+	
+	class SignalDragCallbackHolder {
+		@callback : (GtkWidget, GdkDragContext, Base) ~ Nil;
+
+		New(callback : (GtkWidget, GdkDragContext, Base) ~ Nil) {
+			@callback := callback;
+		}
+
+		method : public : Get() ~ (GtkWidget, GdkDragContext, Base) ~ Nil {
 			return @callback;
 		}
 	}
@@ -455,6 +482,25 @@ bundle Gtk2 {
 				array_args[3] := SignalIDCallbackHolder->New(callback);	# function
 				array_args[4] := params; # function params
 				lib_proxy->CallFunction("og_event_id_connect", array_args);
+				
+				# get return value
+				id := array_args[0]->As(IntHolder);
+				return id->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : SignalConnectDrag(name : String, callback : (GtkWidget, GdkDragContext, Base) ~ Nil, params : Base) ~ Int {
+			if(name <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New(); # signal id
+				array_args[1] := @self;	# widget
+				array_args[2] := name; # name
+				array_args[3] := SignalDragCallbackHolder->New(callback);	# function
+				array_args[4] := params; # function params
+				lib_proxy->CallFunction("og_event_drag_connect", array_args);
 				
 				# get return value
 				id := array_args[0]->As(IntHolder);
