@@ -1,9 +1,6 @@
 use System.API;
 
 bundle Gtk2 {
-	# supporting classes
-
-	# TODO:
 	enum GdkEventType := -1 {
 		GDK_NOTHING,
 		GDK_DELETE,
@@ -43,6 +40,9 @@ bundle Gtk2 {
 		GDK_OWNER_CHANGE
 	}
 
+	# 
+	# Signal objects
+	# 
 	class GParamSpec {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -102,6 +102,10 @@ bundle Gtk2 {
 	}
 
 	class GdkEventClient from GdkEvent {
+		New() { Parent(); }
+	}
+
+	class GdkEventConfigure from GdkEvent {
 		New() { Parent(); }
 	}
 	
