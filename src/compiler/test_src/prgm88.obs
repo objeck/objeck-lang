@@ -12,6 +12,10 @@ bundle Default {
 	}
 
 	class HelloGtk {
+		function : DragHandle(widget : GtkWidget, event: GdkDragContext, param : Base) ~ Nil {
+			"@@@ drag @@@"->PrintLine();
+		}
+
 		function : TestHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
 			"Hello Gtk2"->PrintLine();
 			Appliction->MainQuit();
@@ -47,6 +51,8 @@ bundle Default {
 			window->SignalConnectEvent("delete-event", test_callback, window);
 
 window->SignalConnectEvent("key-press-event", foo_callback, window);
+
+window->SignalConnectDrag("drag-begin", DragHandle(GtkWidget, GdkDragContext, Base), window);
 
 			window->SetBorderWidth(35);
 			window->SetTitle("Goodbye, World!");
