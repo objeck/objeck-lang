@@ -408,7 +408,7 @@ extern "C" {
     case 2:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(event_callback_handler), data);
       break;
-
+      
     case 3:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_param_handler), data);
       break;
@@ -537,8 +537,11 @@ extern "C" {
       break;
 
     case GDK_CONFIGURE:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventConfigure", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_MAP:
       break;
 
@@ -582,8 +585,11 @@ extern "C" {
       break;
 
     case GDK_CLIENT_EVENT:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventClient", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_VISIBILITY_NOTIFY:
       break;
 
