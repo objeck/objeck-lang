@@ -484,7 +484,7 @@ void og_gtk_widget_grab_focus(VMContext& context) {
 	gtk_widget_grab_focus(param_0);
 }
 
-LAST: ------------- 33 -------------
+------------- 33 -------------
 method : public : WidgetSetCanDefault(param_1 : Bool) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];
@@ -602,7 +602,7 @@ void og_gtk_widget_set_visible(VMContext& context) {
 	gtk_widget_set_visible(param_0, param_1);
 }
 
-------------- 41 -------------
+END: ------------- 41 -------------
 method : public : WidgetSetHasWindow(param_1 : Bool) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];

@@ -356,6 +356,52 @@ extern "C" {
     GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
     gtk_widget_grab_focus(param_0);
   }
+
+  void og_gtk_widget_set_can_default(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_can_default(param_0, param_1);
+  }
+  
+  void og_gtk_widget_grab_default(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gtk_widget_grab_default(param_0);
+  }
+  
+  void og_gtk_widget_set_receives_default(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_receives_default(param_0, param_1);
+  }
+  
+  void og_gtk_widget_set_name(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    gtk_widget_set_name(param_0, param_1);
+  }
+  
+  void og_gtk_widget_set_state(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+    gtk_widget_set_state(param_0, param_1);
+  }
+  
+  void og_gtk_widget_get_state(VMContext& context) {
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, gtk_widget_get_state(param_1));
+  }
+  
+  void og_gtk_widget_set_sensitive(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_sensitive(param_0, param_1);
+  }
+
+  void og_gtk_widget_set_visible(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_visible(param_0, param_1);
+  }
   
   //
   // container class functions
