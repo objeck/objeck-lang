@@ -519,7 +519,7 @@ extern "C" {
       break;
 
     case GDK_DELETE:
-	case GDK_DESTROY:
+    case GDK_DESTROY:
       event_obj = data->context.alloc_obj("Gtk2.GdkEvent", 
 					  (long*)data->context.op_stack, 
 					  *data->context.stack_pos, false);
@@ -558,8 +558,8 @@ extern "C" {
       break;
       
     case GDK_MAP:
-	case GDK_UNMAP:
-	  event_obj = data->context.alloc_obj("Gtk2.GdkEvent", 
+    case GDK_UNMAP:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEvent", 
 					  (long*)data->context.op_stack, 
 					  *data->context.stack_pos, false);
       break;
@@ -631,18 +631,18 @@ extern "C" {
       break;
     }    
 	
-	if(event_obj) {
-		event_obj[0] = (long)event;
+    if(event_obj) {
+      event_obj[0] = (long)event;
 		
-		APITools_PushInt(data->context, (long)data->params);
-		APITools_PushInt(data->context, (long)event_obj);
-		APITools_PushInt(data->context, (long)data->widget);
-		APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
+      APITools_PushInt(data->context, (long)data->params);
+      APITools_PushInt(data->context, (long)event_obj);
+      APITools_PushInt(data->context, (long)data->widget);
+      APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
 		
-		return TRUE;
-	}
+      return TRUE;
+    }
 	
-	return FALSE;
+    return FALSE;
   }
 
   void signal_callback_handler(GtkWidget* widget, gpointer args) 
