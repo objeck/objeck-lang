@@ -21,7 +21,7 @@ bundle Default {
 		}
 
 		function : TestHandle(widget : GtkWidget, event: GdkEvent, param : Base) ~ Nil {
-			"Hello Gtk2"->PrintLine();
+#			"Hello Gtk2"->PrintLine();
 			Appliction->MainQuit();
 		}
 
@@ -54,11 +54,11 @@ bundle Default {
 			window := GtkWindow->New();
 			window->SignalEventConnect("delete-event", test_callback, window);
 
-window->SignalEventConnect("key-press-event", foo_callback, window);
+# window->SignalEventConnect("key-press-event", foo_callback, window);
 
-window->SignalDragConnect("drag-begin", DragHandle(GtkWidget, GdkDragContext, Base) ~ Nil, window);
+# window->SignalDragConnect("drag-begin", DragHandle(GtkWidget, GdkDragContext, Base) ~ Nil, window);
 
-button->SignalConnect("grab-focus", FooBarHandle(GtkWidget, Base) ~ Nil, window);
+# button->SignalConnect("grab-focus", FooBarHandle(GtkWidget, Base) ~ Nil, window);
 
  
 
@@ -67,8 +67,8 @@ button->SignalConnect("grab-focus", FooBarHandle(GtkWidget, Base) ~ Nil, window)
 
 button->GetClass()->GetName()->PrintLine();
 
-			id := button->SignalEventConnect("clicked", button_callback, button);
-			button->SignalDisconnect(id);
+#			id := button->SignalEventConnect("clicked", button_callback, button);
+#			button->SignalDisconnect(id);
 
 button->GetLabel()->PrintLine();
 
