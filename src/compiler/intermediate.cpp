@@ -2645,7 +2645,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::CLASS_TYPE:
       // process string instance
-      if(var_entry->GetType()->GetClassName() == "System.String") {
+      if(var_entry->GetType()->GetClassName() == "System.String" || var_entry->GetType()->GetClassName() == "String") {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										   var_entry->GetId(), mem_context));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
