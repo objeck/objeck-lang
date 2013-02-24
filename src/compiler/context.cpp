@@ -2540,7 +2540,6 @@ bool ContextAnalyzer::Analyze()
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
 	if(expression->GetCastType()) {
-	  //	  variable->SetTypes(expression->GetCastType());
 	  Type* to_type = expression->GetCastType();
 	  if(to_type->GetType() == CLASS_TYPE) {
 	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
@@ -2557,13 +2556,12 @@ bool ContextAnalyzer::Analyze()
 	      }
 	    }
 	  }
-	  variable->SetEvalType(to_type, true);
+	  variable->SetTypes(to_type);
 	  entry->SetType(to_type);
 	}
 	else {
-	  // variable->SetTypes(expression->GetEvalType());
 	  Type* to_type = expression->GetEvalType();
-	  if(to_type->GetType() == CLASS_TYPE) {
+	  if(to_type && to_type->GetType() == CLASS_TYPE) {
 	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
 	    if(to_class) {
 	      expression->SetToClass(to_class);
@@ -2578,7 +2576,7 @@ bool ContextAnalyzer::Analyze()
 	      }
 	    }
 	  }
-	  variable->SetEvalType(to_type, true);
+	  variable->SetTypes(to_type);
 	  entry->SetType(to_type);
 	}
 	// set variable to scalar type if we're de-referencing an array variable
