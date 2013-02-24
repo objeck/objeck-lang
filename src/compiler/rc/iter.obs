@@ -10,9 +10,7 @@
 
 		each(i : keys) {
 			key := keys->Get(i)->As(String);
-#			value := assoc_array->Find(key)->As(IntHolder)->Get();
-			value : String := assoc_array->Find(key)->As(String);
-value->Append("fff");
+			value := assoc_array->Find(key)->As(IntHolder)->Get();
 			"key={$key}, value={$value}"->PrintLine();
 		};
 
