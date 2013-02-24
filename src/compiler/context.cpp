@@ -3863,7 +3863,7 @@ bool ContextAnalyzer::Analyze()
 	if(variable->GetIndices()) {
 	  vector<Expression*> indices = variable->GetIndices()->GetExpressions();
 	  variable->GetEvalType()->SetDimension(indices.size());
-	  for(size_t i = 0; i < indices.size(); i++) {
+	  for(size_t j = 0; j < indices.size(); j++) {
 	    encoded_name += '*';
 	  }
 	}
