@@ -526,9 +526,15 @@ extern "C" {
       break;
 
     case GDK_EXPOSE:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventExpose", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
 
     case GDK_MOTION_NOTIFY:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventMotion", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
 
     case GDK_BUTTON_PRESS:
@@ -543,14 +549,18 @@ extern "C" {
       break;
       
     case GDK_ENTER_NOTIFY:
-      break;
-
     case GDK_LEAVE_NOTIFY:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventCrossing", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_FOCUS_CHANGE:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventFocus", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_CONFIGURE:
       event_obj = data->context.alloc_obj("Gtk2.GdkEventConfigure", 
 					  (long*)data->context.op_stack, 
@@ -565,23 +575,26 @@ extern "C" {
       break;
       
     case GDK_PROPERTY_NOTIFY:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventProperty", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
 
     case GDK_SELECTION_CLEAR:
-      break;
-
     case GDK_SELECTION_REQUEST:
-      break;
-
     case GDK_SELECTION_NOTIFY:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventSelection", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_PROXIMITY_IN:
-      break;
-
     case GDK_PROXIMITY_OUT:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventProximity", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_DRAG_ENTER:
       break;
 
@@ -616,8 +629,11 @@ extern "C" {
       break;
 
     case GDK_SCROLL:
+      event_obj = data->context.alloc_obj("Gtk2.GdkEventScroll", 
+					  (long*)data->context.op_stack, 
+					  *data->context.stack_pos, false);
       break;
-
+      
     case GDK_WINDOW_STATE:
       event_obj = data->context.alloc_obj("Gtk2.GdkEventWindowState", 
 					  (long*)data->context.op_stack, 
