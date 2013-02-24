@@ -1670,6 +1670,7 @@ bool ContextAnalyzer::Analyze()
 	    const string calling_type_name = calling_type->GetClassName();
 	    string method_type_name = method_type->GetClassName();
 	    if(method_type_name.size() == 0) {
+	      AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param); 
 	      method_type_name = "m." + EncodeFunctionType(method_type->GetFunctionParameters(),
 							   method_type->GetFunctionReturn());
 	      method_type->SetClassName(method_type_name);
@@ -2001,10 +2002,11 @@ bool ContextAnalyzer::Analyze()
       string dyn_func_params = type->GetClassName();
       if(dyn_func_params.size() == 0) {
 	vector<Type*>& func_params = type->GetFunctionParameters();
+	AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), static_cast<Expression*>(method_call)); 
 	for(size_t i = 0; i < func_params.size(); i++) {
+	  // encode parameter
 	  dyn_func_params += EncodeType(func_params[i]);
-	  // encode dimension
-	  for(int i = 0; i < type->GetDimension(); i++) {
+	  for(int j = 0; j < type->GetDimension(); j++) {
 	    dyn_func_params += '*';
 	  }
 	  dyn_func_params += ',';
@@ -3080,6 +3082,7 @@ bool ContextAnalyzer::Analyze()
 	// FUNCTION
 	switch(right->GetType()) {
 	case FUNC_TYPE: {
+	  AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
 	  if(left->GetClassName().size() == 0) {
 	    left->SetClassName("m." + EncodeFunctionType(left->GetFunctionParameters(),
 						  left->GetFunctionReturn()));
@@ -3493,6 +3496,7 @@ bool ContextAnalyzer::Analyze()
 	// FUNCTION
 	switch(right->GetType()) {
 	case FUNC_TYPE: {
+	  AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
 	  if(left->GetClassName().size() == 0) {
 	    left->SetClassName("m." + EncodeFunctionType(left->GetFunctionParameters(),
 							 left->GetFunctionReturn()));
@@ -3758,6 +3762,7 @@ bool ContextAnalyzer::Analyze()
       else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
 	// resolve function name
 	Type* type = entry->GetType();
+	AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry);
 	const string encoded_name = "m." + EncodeFunctionType(type->GetFunctionParameters(),
 							      type->GetFunctionReturn());
 #ifdef _DEBUG
@@ -3884,7 +3889,7 @@ bool ContextAnalyzer::Analyze()
       encoded_name += EncodeType(func_params[i]);
 
       // encode dimension
-      for(int i = 0; i < func_params[i]->GetDimension(); i++) {
+      for(int j = 0; j < func_params[i]->GetDimension(); j++) {
 	encoded_name += '*';
       }
       encoded_name += ',';
@@ -3929,7 +3934,7 @@ bool ContextAnalyzer::Analyze()
 	encoded_name += EncodeType(type);
 
 	// encode dimension
-	for(int i = 0; !IsScalar(expression) && i < type->GetDimension(); i++) {
+	for(int j = 0; !IsScalar(expression) && j < type->GetDimension(); j++) {
 	  encoded_name += '*';
 	}
 	encoded_name += ',';

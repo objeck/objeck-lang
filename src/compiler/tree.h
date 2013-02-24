@@ -1754,7 +1754,7 @@ namespace frontend {
 	encoded_name += EncodeType(func_params[i], program, linker);
     
 	// encode dimension   
-	for(int i = 0; i < func_params[i]->GetDimension(); i++) {
+	for(int j = 0; j < func_params[i]->GetDimension(); j++) {
 	  encoded_name += '*';
 	}    
 	encoded_name += ',';
