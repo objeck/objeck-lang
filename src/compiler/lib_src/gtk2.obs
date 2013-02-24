@@ -147,8 +147,38 @@ bundle Gtk2 {
 	class GdkEventVisibility from GdkEvent {
 		New() { Parent(); }
 	}
-
- 
+	
+	class GdkEventExpose from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventMotion from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventCrossing from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventFocus from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventProperty from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventSelection from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventProximity from GdkEvent {
+		New() { Parent(); }
+	}
+	
+	class GdkEventScroll from GdkEvent {
+		New() { Parent(); }
+	}
 	
 	# 
 	# Callback holders
