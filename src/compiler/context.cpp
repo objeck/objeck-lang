@@ -2540,12 +2540,46 @@ bool ContextAnalyzer::Analyze()
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
 	if(expression->GetCastType()) {
-	  variable->SetTypes(expression->GetCastType());
-	  entry->SetType(expression->GetCastType());
+	  //	  variable->SetTypes(expression->GetCastType());
+	  Type* to_type = expression->GetCastType();
+	  if(to_type->GetType() == CLASS_TYPE) {
+	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
+	    if(to_class) {
+	      expression->SetToClass(to_class);
+	    }
+	    else {
+	      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
+	      if(to_lib_class) {
+		expression->SetToLibraryClass(to_lib_class);
+	      }
+	      else {
+		ProcessError(expression, "Undefined class: '" + to_type->GetClassName() + "'");
+	      }
+	    }
+	  }
+	  variable->SetEvalType(to_type, true);
+	  entry->SetType(to_type);
 	}
 	else {
-	  variable->SetTypes(expression->GetEvalType());
-	  entry->SetType(expression->GetEvalType());
+	  // variable->SetTypes(expression->GetEvalType());
+	  Type* to_type = expression->GetEvalType();
+	  if(to_type->GetType() == CLASS_TYPE) {
+	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
+	    if(to_class) {
+	      expression->SetToClass(to_class);
+	    }
+	    else {
+	      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
+	      if(to_lib_class) {
+		expression->SetToLibraryClass(to_lib_class);
+	      }
+	      else {
+		ProcessError(expression, "Undefined class: '" + to_type->GetClassName() + "'");
+	      }
+	    }
+	  }
+	  variable->SetEvalType(to_type, true);
+	  entry->SetType(to_type);
 	}
 	// set variable to scalar type if we're de-referencing an array variable
 	if(expression->GetExpressionType() == VAR_EXPR) {
@@ -3584,7 +3618,7 @@ bool ContextAnalyzer::Analyze()
     }
     
     //
-    // program enumt
+    // program enum
     //
     if(left && right && SearchProgramEnums(left->GetClassName())) {
       Enum* left_enum = SearchProgramEnums(left->GetClassName());
