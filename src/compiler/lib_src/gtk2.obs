@@ -40,6 +40,14 @@ bundle Gtk2 {
 		GDK_OWNER_CHANGE
 	}
 
+	enum GtkStateType {
+		GTK_STATE_NORMAL,
+		GTK_STATE_ACTIVE,
+		GTK_STATE_PRELIGHT,
+		GTK_STATE_SELECTED,
+		GTK_STATE_INSENSITIVE
+	}
+
 	# 
 	# Signal objects
 	# 
@@ -707,11 +715,13 @@ bundle Gtk2 {
 		}
 
 		method : public : WidgetDestroyed(param_1 : GtkWidget) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			lib_proxy->CallFunction("og_gtk_widget_destroyed", array_args);
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				lib_proxy->CallFunction("og_gtk_widget_destroyed", array_args);
+			};
 		}
 
 		method : public : WidgetUnref() ~ Nil {
@@ -843,32 +853,38 @@ bundle Gtk2 {
 		}
 
 		method : public : WidgetSizeRequest(param_1 : GtkRequisition) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[2];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
+			};
 		}
 
 		method : public : WidgetAddAccelerator(param_1 : String, param_2 : Int, param_3 : Int, param_4 : Int, param_5 : Int) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[6];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			array_args[2] := IntHolder->New(param_2);
-			array_args[3] := IntHolder->New(param_3);
-			array_args[4] := IntHolder->New(param_4);
-			array_args[5] := IntHolder->New(param_5);
-			lib_proxy->CallFunction("og_gtk_widget_add_accelerator", array_args);
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[6];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				array_args[2] := IntHolder->New(param_2);
+				array_args[3] := IntHolder->New(param_3);
+				array_args[4] := IntHolder->New(param_4);
+				array_args[5] := IntHolder->New(param_5);
+				lib_proxy->CallFunction("og_gtk_widget_add_accelerator", array_args);
+			};
 		}
 
 		method : public : WidgetSetAccelPath(param_1 : String, param_2 : GtkAccelGroup) ~ Nil {
-			lib_proxy := GetDllProxy();
-			array_args := Base->New[3];
-			array_args[0] := @self;
-			array_args[1] := param_1;
-			array_args[2] := param_2;
-			lib_proxy->CallFunction("og_gtk_widget_set_accel_path", array_args);
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[3];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				array_args[2] := param_2;
+				lib_proxy->CallFunction("og_gtk_widget_set_accel_path", array_args);
+			};
 		}
 
 		method : public : WidgetSetCanFocus(param_1 : Bool) ~ Nil {
@@ -884,6 +900,74 @@ bundle Gtk2 {
 			array_args := Base->New[1];
 			array_args[0] := @self;
 			lib_proxy->CallFunction("og_gtk_widget_grab_focus", array_args);
+		}
+
+		method : public : WidgetSetCanDefault(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_can_default", array_args);
+		}
+
+		method : public : WidgetGrabDefault() ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_grab_default", array_args);
+		}
+
+		method : public : WidgetSetReceivesDefault(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_receives_default", array_args);
+		}
+
+		method : public : WidgetSetName(param_1 : String) ~ Nil {
+			if(param_1 <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[2];
+				array_args[0] := @self;
+				array_args[1] := param_1;
+				lib_proxy->CallFunction("og_gtk_widget_set_name", array_args);
+			};
+		}
+
+		method : public : WidgetSetState(param_1 : GtkStateType) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1->As(Int));
+			lib_proxy->CallFunction("og_gtk_widget_set_state", array_args);
+		}
+
+		method : public : WidgetGetState() ~ GtkStateType {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_get_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GtkStateType);
+		}
+
+		method : public : WidgetSetSensitive(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_sensitive", array_args);
+		}
+		
+		method : public : WidgetSetVisible(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_visible", array_args);
 		}
 	}
 	
