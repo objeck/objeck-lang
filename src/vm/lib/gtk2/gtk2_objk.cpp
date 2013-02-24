@@ -13,6 +13,8 @@ extern "C" {
   static void signal_callback_param_handler(GtkWidget *widget, GParamSpec *pspec, gpointer user_data);
   static void signal_callback_drag_handler(GtkWidget *widget, GdkDragContext* drag, gpointer args);
   static void signal_callback_style_handler(GtkWidget *widget, GtkStyle* style, gpointer args);
+  static void signal_callback_drag_get_handler(GtkWidget* widget, GdkDragContext* drag_context, 
+					       GtkSelectionData* data, guint info, guint time, gpointer args);
   
   //
   // callback holder
@@ -755,10 +757,34 @@ extern "C" {
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
   }
 
-  void signal_callback_drag_get_handler(GtkWidget* widget, GdkDragContext* drag_context, 
-					GtkSelectionData* data, guint info, guint time, gpointer args)
+  void signal_callback_drag_get_handler(GtkWidget* widget, GdkDragContext* drag, GtkSelectionData* sel, 
+					guint info, guint time, gpointer args)
   {
+    callback_data* data = (callback_data*)args;
     
+#ifdef _DEBUG
+    cout << "@@@ Signal drag get: data=" << data << "; cls_id=" << data->cls_id << "; mthd_id=" 
+	 << data->mthd_id << "; widget=" << data->widget << "; params="  << data->params 
+	 << " @@@" << endl;
+#endif
+    
+    long* event_obj_1 = data->context.alloc_obj("Gtk2.GdkDragContext", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
+    event_obj_1[0] = (long)drag;
+
+    long* event_obj_2 = data->context.alloc_obj("Gtk2.GtkSelectionData", 
+					      (long*)data->context.op_stack, 
+					      *data->context.stack_pos, false);
+    event_obj_2[0] = (long)sel;
+    
+    APITools_PushInt(data->context, (long)data->params);
+    APITools_PushInt(data->context, time);
+    APITools_PushInt(data->context, info);
+    APITools_PushInt(data->context, (long)event_obj_2);
+    APITools_PushInt(data->context, (long)event_obj_1);
+    APITools_PushInt(data->context, (long)data->widget);
+    APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
   }
   
   void signal_callback_style_handler(GtkWidget *widget, GtkStyle* style, gpointer args) 
