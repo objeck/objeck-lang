@@ -23,7 +23,6 @@ extern "C" {
     int cls_id;
     int mthd_id;
     long* params;
-    APITools_MethodCallId_Ptr callback;
   } callback_data;
   
   //
@@ -418,6 +417,14 @@ extern "C" {
     signal_connect_handler(context, 4);
   }
   
+  void og_event_style_connect(VMContext& context) {
+    signal_connect_handler(context, 5);
+  }
+  
+  void og_event_drag_get_connect(VMContext& context) {
+    signal_connect_handler(context, 6);
+  }
+  
   void signal_connect_handler(VMContext& context, int type) {
     long* widget = (long*)APITools_GetObjectValue(context, 1); // widget
     const char* name = APITools_GetStringValue(context, 2); // name
@@ -427,7 +434,6 @@ extern "C" {
     
     callback_data* data = new callback_data;
     data->context = context;
-    data->callback = context.call_method_by_id;
     data->widget = widget;
     data->cls_id = cls_id;
     data->mthd_id = mthd_id;
@@ -463,6 +469,10 @@ extern "C" {
 
     case 5:
       id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_style_handler), data);
+      break;
+      
+    case 6:
+      id = g_signal_connect((GtkWidget*)widget[0], name, G_CALLBACK(signal_callback_drag_get_handler), data);
       break;
     }
     
@@ -512,9 +522,15 @@ extern "C" {
     cout << "@@@ Event: cls_id=" << data->cls_id << ", mthd_id=" << data->mthd_id 
 	 << ", params=" << data->params << ", event_type=" << event->type << " @@@" << endl;
 #endif
-
+    
     long* event_obj = NULL;
     switch(event->type) {
+    case GDK_GRAB_BROKEN:
+      break;
+
+    case GDK_DAMAGE:
+      break;
+      
     case GDK_NOTHING:
       break;
 
@@ -617,6 +633,9 @@ extern "C" {
       event_obj = data->context.alloc_obj("Gtk2.GdkEventClient", 
 					  (long*)data->context.op_stack, 
 					  *data->context.stack_pos, false);
+      break;
+
+    case GDK_EVENT_LAST:
       break;
       
     case GDK_VISIBILITY_NOTIFY:
@@ -735,6 +754,12 @@ extern "C" {
     APITools_PushInt(data->context, (long)data->widget);
     APITools_CallMethod(data->context, NULL, data->cls_id, data->mthd_id);
   }
+
+  void signal_callback_drag_get_handler(GtkWidget* widget, GdkDragContext* drag_context, 
+					GtkSelectionData* data, guint info, guint time, gpointer args)
+  {
+    
+  }
   
   void signal_callback_style_handler(GtkWidget *widget, GtkStyle* style, gpointer args) 
   {
@@ -746,7 +771,7 @@ extern "C" {
 	 << " @@@" << endl;
 #endif
     
-    long* event_obj = data->context.alloc_obj("Gtk2.GdkDragContext", 
+    long* event_obj = data->context.alloc_obj("Gtk2.GdkStyleContext", 
 					      (long*)data->context.op_stack, 
 					      *data->context.stack_pos, false);
     event_obj[0] = (long)style;

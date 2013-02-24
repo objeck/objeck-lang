@@ -73,6 +73,21 @@ bundle Gtk2 {
 		New() {}
 	}
 	
+	class GtkSelectionData {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}
+	}
+	
 	class GtkStyle {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -87,8 +102,22 @@ bundle Gtk2 {
 
 		New() {}
 	}
-
+	
+	class GdkStyleContext {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
 		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {}
+	}
+	
 	# 
 	# Event objects
 	# 
@@ -242,7 +271,19 @@ bundle Gtk2 {
 			return @callback;
 		}
 	}
+	
+	class SignalDragGetHolder {
+		@callback : (GtkWidget, GdkDragContext, GtkSelectionData, Int, Int, Base) ~ Nil;
 
+		New(callback : (GtkWidget, GdkDragContext, GtkSelectionData, Int, Int, Base) ~ Nil) {
+			@callback := callback;
+		}
+
+		method : public : Get() ~ (GtkWidget, GdkDragContext, GtkSelectionData, Int, Int, Base) ~ Nil {
+			return @callback;
+		}
+	}
+	
 	class SignalStyleHolder {
 		@callback : (GtkWidget, GdkStyleContext, Base) ~ Nil;
 
@@ -570,6 +611,25 @@ bundle Gtk2 {
 				array_args[3] := SignalDragHolder->New(callback);	# function
 				array_args[4] := params; # function params
 				lib_proxy->CallFunction("og_event_drag_connect", array_args);
+				
+				# get return value
+				id := array_args[0]->As(IntHolder);
+				return id->Get();
+			};
+
+			return -1;
+		}
+			
+		method : public : SignalDragGetConnect(name : String, callback : (GtkWidget, GdkDragContext, GtkSelectionData, Int, Int, Base) ~ Nil, params : Base) ~ Int {
+			if(name <> Nil) {
+				lib_proxy := GetDllProxy();
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New(); # signal id
+				array_args[1] := @self;	# widget
+				array_args[2] := name; # name
+				array_args[3] := SignalDragGetHolder->New(callback);	# function
+				array_args[4] := params; # function params
+				lib_proxy->CallFunction("og_event_drag_get_connect", array_args);
 				
 				# get return value
 				id := array_args[0]->As(IntHolder);

@@ -936,7 +936,16 @@ class ContextAnalyzer {
       char_str->AddSegment(entry);
     }
   }
-
+  
+  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node) {
+    for(size_t i = 0; i < func_params.size(); i++) {
+      Type* type = func_params[i];
+      if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
+	ProcessError(node, "Undefined class or enum: '" + type->GetClassName() + "'");
+      }
+    }
+  }
+  
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
   void ProcessError(const string &msg);
