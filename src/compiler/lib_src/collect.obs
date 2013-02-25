@@ -2396,6 +2396,10 @@ bundle HTTP {
 			@cookies->AddBack(cookie);
 		}	
 		
+		method : public : Post(url : String, data : String) ~ Vector {
+			return Post(url, 80, "text/plain", data);
+		}
+		
 		method : public : Post(url : String, port : Int, data : String) ~ Vector {
 			return Post(url, port, "text/plain", data);
 		}
@@ -2509,6 +2513,10 @@ bundle HTTP {
 			};
 			
 			return content;
+		}
+		
+		method : public : Get(url : String) ~ Vector {
+			return Get(url, 80 , "text/plain");
 		}
 		
 		method : public : Get(url : String, port : Int) ~ Vector {
@@ -2666,6 +2674,10 @@ bundle HTTP {
 			@cookies->AddBack(cookie);
 		}	
 		
+		method : public : Post(url : String, data : String) ~ Vector {
+			return Post(url, 443, "text/plain", data);
+		}
+		
 		method : public : Post(url : String, port : Int, data : String) ~ Vector {
 			return Post(url, port, "text/plain", data);
 		}
@@ -2674,8 +2686,8 @@ bundle HTTP {
 			@headers := Hash->New();
 					
 			content := Vector->New();
-			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+			if(url->StartsWith("https://")) {
+				url := url->SubString("https://"->Size(), url->Size() - "https://"->Size());
 				index := url->Find('/');
 				address := "";
 				location := "/";
@@ -2781,6 +2793,10 @@ bundle HTTP {
 			return content;
 		}
 		
+		method : public : Get(url : String) ~ Vector {
+			return Get(url, 443, "text/plain");
+		}
+		
 		method : public : Get(url : String, port : Int) ~ Vector {
 			return Get(url, port, "text/plain");
 		}
@@ -2789,8 +2805,8 @@ bundle HTTP {
 			@headers := Hash->New();
 			content := Vector->New();
 			
-			if(url->StartsWith("http://")) {
-				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+			if(url->StartsWith("https://")) {
+				url := url->SubString("https://"->Size(), url->Size() - "https://"->Size());
 				index := url->Find('/');
 				address := "";
 				location := "/";
@@ -2834,6 +2850,7 @@ bundle HTTP {
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
+# status_code->PrintLine();					
 					if(status_code <> 500) {
 						# get @headers
 						do {
