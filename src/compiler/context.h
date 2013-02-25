@@ -938,40 +938,16 @@ class ContextAnalyzer {
   }
   
   void AnalyzeVariableCast(Type* to_type, Expression* expression) {
-    if(to_type && to_type->GetType() == CLASS_TYPE && to_type->GetDimension() < 1 && 
-       to_type->GetClassName() != "System.Base" && to_type->GetClassName() != "Base") {
+    if(to_type && to_type->GetType() == CLASS_TYPE && expression->GetCastType() && to_type->GetDimension() < 1 && 
+       to_type->GetClassName() != "System.Base" &&  to_type->GetClassName() != "Base") {
       Class* to_class = SearchProgramClasses(to_type->GetClassName());
       if(to_class) {
-	bool set = true;
-	if(expression->GetExpressionType() == METHOD_CALL_EXPR && !expression->GetCastType()) {
-	  MethodCall* method_call = static_cast<MethodCall*>(expression);
-	  Method* method = method_call->GetMethod();
-	  LibraryMethod* lib_method = method_call->GetLibraryMethod();	  
-	  if((method && method->GetMethodType() == NEW_PUBLIC_METHOD) || (lib_method && lib_method->GetMethodType() == NEW_PUBLIC_METHOD)) {
-	    set = false;
-	  }
-	}
-	// set class cast
-	if(set) {
-	  expression->SetToClass(to_class);
-	}
+	expression->SetToClass(to_class);
       }
       else {
 	LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
 	if(to_lib_class) {
-	  bool set = true;
-	  if(expression->GetExpressionType() == METHOD_CALL_EXPR && !expression->GetCastType()) {
-	    MethodCall* method_call = static_cast<MethodCall*>(expression);
-	    Method* method = method_call->GetMethod();
-	    LibraryMethod* lib_method = method_call->GetLibraryMethod();	  
-	    if((method && method->GetMethodType() == NEW_PUBLIC_METHOD) || (lib_method && lib_method->GetMethodType() == NEW_PUBLIC_METHOD)) {
-	      set = false;
-	    }
-	  }
-	  // set class cast
-	  if(set) {
-	    expression->SetToLibraryClass(to_lib_class);
-	  }
+	  expression->SetToLibraryClass(to_lib_class);
 	}
 	else {
 	  ProcessError(expression, "Undefined class: '" + to_type->GetClassName() + "'");
