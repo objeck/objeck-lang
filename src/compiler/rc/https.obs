@@ -5,8 +5,7 @@ class HttpsTest {
 		client := HttpsClient->New();
 		lines := client->Get("https://sourceforge.net");
 		each(i : lines) {
-			line := lines->Get(i)->As(String);
-			line->PrintLine();
+			lines->Get(i)->As(String)->PrintLine();
 		};
 	}
 }
