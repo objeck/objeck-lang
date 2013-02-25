@@ -12,9 +12,9 @@ class Test {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-#		fb := Get()->As(String);
-#		fb->GetInstanceID()->PrintLine();	
-		str := String->New();
-		str->Size()->PrintLine();
+		fb := Get()->As(Foo);
+		fb->GetInstanceID()->PrintLine();	
+#		str := String->New()->As(Base);
+#		str->GetInstanceID()->PrintLine();
 	}
 }
