@@ -2540,42 +2540,14 @@ bool ContextAnalyzer::Analyze()
       SymbolEntry* entry = variable->GetEntry();
       if(entry) {
 	if(expression->GetCastType()) {
-	  Type* to_type = expression->GetCastType();
-	  if(to_type->GetType() == CLASS_TYPE) {
-	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
-	    if(to_class) {
-	      expression->SetToClass(to_class);
-	    }
-	    else {
-	      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
-	      if(to_lib_class) {
-		expression->SetToLibraryClass(to_lib_class);
-	      }
-	      else {
-		ProcessError(expression, "Undefined class: '" + to_type->GetClassName() + "'");
-	      }
-	    }
-	  }
+	  Type* to_type = expression->GetCastType();	  
+	  AnalyzeVariableCast(to_type, expression);
 	  variable->SetTypes(to_type);
 	  entry->SetType(to_type);
 	}
 	else {
 	  Type* to_type = expression->GetEvalType();
-	  if(to_type && to_type->GetType() == CLASS_TYPE) {
-	    Class* to_class = SearchProgramClasses(to_type->GetClassName());
-	    if(to_class) {
-	      expression->SetToClass(to_class);
-	    }
-	    else {
-	      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
-	      if(to_lib_class) {
-		expression->SetToLibraryClass(to_lib_class);
-	      }
-	      else {
-		ProcessError(expression, "Undefined class: '" + to_type->GetClassName() + "'");
-	      }
-	    }
-	  }
+	  AnalyzeVariableCast(to_type, expression);
 	  variable->SetTypes(to_type);
 	  entry->SetType(to_type);
 	}
