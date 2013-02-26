@@ -402,6 +402,18 @@ extern "C" {
     gboolean param_1 = APITools_GetIntValue(context, 1);
     gtk_widget_set_visible(param_0, param_1);
   }
+
+  void og_gtk_widget_set_visible(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_visible(param_0, param_1);
+  }
+  
+  void og_gtk_widget_set_realized(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_realized(param_0, param_1);
+  }
   
   //
   // container class functions
@@ -429,7 +441,48 @@ extern "C" {
     GtkWidget* widget = (GtkWidget*)APITools_GetIntValue(context, 1);
     gtk_container_remove(GTK_CONTAINER (container), widget);
   }
+
+  void og_gtk_widget_set_mapped(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_mapped(param_0, param_1);
+  }
+
+  void og_gtk_widget_set_app_paintable(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_app_paintable(param_0, param_1);
+  }
   
+  void og_gtk_widget_set_double_buffered(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_double_buffered(param_0, param_1);
+  }
+  
+  void og_gtk_widget_set_redraw_on_allocate(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_widget_set_redraw_on_allocate(param_0, param_1);
+  }
+
+  void og_gtk_widget_set_parent(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_widget_set_parent(param_0, param_1);
+  }
+  
+  void og_gtk_widget_get_parent(VMContext& context) {
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)gtk_widget_get_parent(param_1));
+  }
+
+  void og_gtk_widget_set_parent_window(VMContext& context) {
+    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+    GdkWindow* param_1 = (GdkWindow*)APITools_GetIntValue(context, 1);
+    gtk_widget_set_parent_window(param_0, param_1);
+  }
+    
   //
   // application functions
   //
