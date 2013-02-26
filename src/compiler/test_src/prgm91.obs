@@ -1,4 +1,4 @@
-use IO;
+use System.IO;
 
 bundle Default {
 	class Introspection {
@@ -17,10 +17,14 @@ bundle Default {
 				each(j : p) {
 					"------"->PrintLine();
 					a := p[j];
-					Console->Print("  parameter type=")->PrintLine(a->GetType()->As(Int));
-					Console->Print("  parameter dim=")->PrintLine(a->GetDimension());
+					type :=  a->GetType()->As(Int);
+          dim := a->GetDimension();
+				
+					"  parameter type={$type}"->PrintLine();
+					"  parameter dim={$dim}"->PrintLine();
 					if(a->GetType() = TypeId->CLASS) {
-						Console->Print("  parameter class name=")->PrintLine(a->GetClassName());
+            name := a->GetClassName();
+						"  parameter class name={$name}"->PrintLine();
 					};
 				};
 				"======"->PrintLine();
