@@ -360,6 +360,14 @@ bundle Gtk2 {
 	}
 
 	# TODO:
+	class GdkWindow {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		New() {}
+	}	
+
+	# TODO:
 	class GtkAccelGroupEntry {
 		@native_ptr : Int;
 		@lib_proxy : static : DllProxy;
@@ -589,7 +597,6 @@ bundle Gtk2 {
 			return -1;
 		}
 
-		# TODO: guard invalid messages
 		method : public : SignalIDConnect(name : String, callback : (GtkWidget, Int, Base) ~ Nil, params : Base) ~ Int {
 			if(name <> Nil) {
 				lib_proxy := GetDllProxy();
@@ -968,6 +975,79 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
 			lib_proxy->CallFunction("og_gtk_widget_set_visible", array_args);
+		}
+
+		method : public : WidgetSetHasWindow(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_has_window", array_args);
+		}
+
+		method : public : WidgetSetRealized(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_realized", array_args);
+		}
+
+		method : public : WidgetSetMapped(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_mapped", array_args);
+		}
+
+		method : public : WidgetSetAppPaintable(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_app_paintable", array_args);
+		}
+
+		method : public : WidgetSetDoubleBuffered(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_double_buffered", array_args);
+		}
+
+		method : public : WidgetSetRedrawOnAllocate(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_widget_set_redraw_on_allocate", array_args);
+		}
+
+		method : public : WidgetSetParent(param_1 : GtkWidget) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_widget_set_parent", array_args);
+		}
+
+		method : public : WidgetGetParent() ~ GtkWidget {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := GtkWidget->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_widget_get_parent", array_args);
+			return array_args[0]->As(GtkWidget);
+		}
+
+		method : public : WidgetSetParentWindow(param_1 : GdkWindow) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_widget_set_parent_window", array_args);
 		}
 	}
 	
