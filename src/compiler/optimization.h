@@ -250,10 +250,12 @@ class ItermediateOptimizer {
   // atempts to inline a method
   //
   inline int CanInlineSetterGetter(IntermediateMethod* mthd_called) {
+    // ignore interfaces
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-#ifdef _DEBUG
-    assert(blocks.size() == 1);
-#endif
+    if(blocks.size() < 1) {
+      return -1;
+    }
+
     if(mthd_called->GetNumParams() == 0) {
       vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
       //
