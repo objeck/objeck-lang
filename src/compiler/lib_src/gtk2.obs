@@ -1,6 +1,11 @@
 use System.API;
 
 bundle Gtk2 {
+	enum GtkWindowType {
+		GTK_WINDOW_TOPLEVEL,
+		GTK_WINDOW_POPUP
+	}
+
 	enum GdkEventType := -1 {
 		GDK_NOTHING,
 		GDK_DELETE,
@@ -1145,11 +1150,13 @@ bundle Gtk2 {
 
 	# GtkWindow class
 	class GtkWindow from GtkContainer {
-		New() {
+		New(type : GtkWindowType) {
 			Parent();
 			lib_proxy := GetDllProxy();
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(type->As(Int));
+			
 			lib_proxy->CallFunction("og_window_new", array_args);
 			ptr_holder := array_args[0]->As(IntHolder);
 			@native_ptr := ptr_holder->Get();
@@ -1159,7 +1166,7 @@ bundle Gtk2 {
 			if(title <> Nil) {
 				lib_proxy := GetDllProxy();
 				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@native_ptr);
+				array_args[0] := @self;
 				array_args[1] := title;
 				lib_proxy->CallFunction("og_window_set_title", array_args);
 			};
