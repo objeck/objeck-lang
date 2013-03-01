@@ -99,7 +99,8 @@ extern "C" {
   }
 
   void og_window_new(VMContext& context) {
-    GtkWidget* window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+    GtkWindowType type = (GtkWindowType)APITools_GetIntValue(context, 0);
+    GtkWidget* window = gtk_window_new(type);
     APITools_SetIntValue(context, 0, (long)window);
   }
 
@@ -396,13 +397,7 @@ extern "C" {
     gboolean param_1 = APITools_GetIntValue(context, 1);
     gtk_widget_set_sensitive(param_0, param_1);
   }
-
-  void og_gtk_widget_set_visible(VMContext& context) {
-    GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
-    gboolean param_1 = APITools_GetIntValue(context, 1);
-    gtk_widget_set_visible(param_0, param_1);
-  }
-
+  
   void og_gtk_widget_set_visible(VMContext& context) {
     GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
     gboolean param_1 = APITools_GetIntValue(context, 1);
