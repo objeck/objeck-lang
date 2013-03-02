@@ -1,6 +1,17 @@
 use System.API;
 
 bundle Gtk2 {
+	enum GdkWindowTypeHint {
+		GDK_WINDOW_TYPE_HINT_NORMAL,
+		GDK_WINDOW_TYPE_HINT_DIALOG,
+		GDK_WINDOW_TYPE_HINT_MENU,
+		GDK_WINDOW_TYPE_HINT_TOOLBAR,
+		GDK_WINDOW_TYPE_HINT_SPLASHSCREEN,
+		GDK_WINDOW_TYPE_HINT_UTILITY,
+		GDK_WINDOW_TYPE_HINT_DOCK,
+		GDK_WINDOW_TYPE_HINT_DESKTOP
+	} 
+
 	enum GtkWindowType {
 		GTK_WINDOW_TOPLEVEL,
 		GTK_WINDOW_POPUP
@@ -1211,6 +1222,73 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := param_1;
 			lib_proxy->CallFunction("og_gtk_window_remove_accel_group", array_args);
+		}
+
+		method : public : WindowSetFocus(param_1 : GtkWidget) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_set_focus", array_args);
+		}
+
+		method : public : WindowGetFocus() ~ GtkWidget {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := GtkWidget->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_window_get_focus", array_args);
+			return array_args[0]->As(GtkWidget);
+		}
+
+		method : public : WindowSetDefault(param_1 : GtkWidget) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_set_default", array_args);
+		}
+
+		method : public : WindowGetDefaultWidget() ~ GtkWidget {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := GtkWidget->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_window_get_default_widget", array_args);
+			return array_args[0]->As(GtkWidget);
+		}
+
+		method : public : WindowSetTransientFor(param_1 : GtkWindow) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_set_transient_for", array_args);
+		}
+
+		method : public : WindowGetTransientFor() ~ GtkWindow {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := GtkWindow->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_window_get_transient_for", array_args);
+			return array_args[0]->As(GtkWindow);
+		}
+		
+		method : public : WindowSetOpacity(param_1 : Float) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := FloatHolder->New(param_1);
+			lib_proxy->CallFunction("og_gtk_window_set_opacity", array_args);
+		}
+
+		method : public : WindowSetTypeHint(param_1 : GdkWindowTypeHint) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1->As(Int));
+			lib_proxy->CallFunction("og_gtk_window_set_type_hint", array_args);
 		}
 	}
 
