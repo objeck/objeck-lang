@@ -1,6 +1,18 @@
 use System.API;
 
 bundle Gtk2 {
+	enum GdkGravity := 1 {
+		GDK_GRAVITY_NORTH,
+		GDK_GRAVITY_NORTH_EAST,
+		GDK_GRAVITY_WEST,
+		GDK_GRAVITY_CENTER,
+		GDK_GRAVITY_EAST,
+		GDK_GRAVITY_SOUTH_WEST,
+		GDK_GRAVITY_SOUTH,
+		GDK_GRAVITY_SOUTH_EAST,
+		GDK_GRAVITY_STATIC
+	} 
+
 	enum GdkWindowTypeHint {
 		GDK_WINDOW_TYPE_HINT_NORMAL,
 		GDK_WINDOW_TYPE_HINT_DIALOG,
@@ -609,6 +621,14 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
 			lib_proxy->CallFunction("og_gtk_window_set_mnemonics_visible", array_args);
+		}
+
+		method : public : WindowSetResizable(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_window_set_resizable", array_args);
 		}
 	}
 	
@@ -1348,6 +1368,14 @@ bundle Gtk2 {
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GdkWindowTypeHint);
+		}
+
+		method : public : WindowSetGravity(param_1 : GdkGravity) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1->As(Int));
+			lib_proxy->CallFunction("og_gtk_window_set_gravity", array_args);
 		}
 	}
 
