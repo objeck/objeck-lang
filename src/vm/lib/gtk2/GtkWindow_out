@@ -315,7 +315,7 @@ void og_gtk_window_set_focus_on_map(VMContext& context) {
 	gtk_window_set_focus_on_map(param_0, param_1);
 }
 
-END: ------------- 21 -------------
+------------- 21 -------------
 method : public : WindowSetDestroyWithParent(param_1 : Bool) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];
@@ -390,7 +390,7 @@ void og_gtk_window_get_gravity(VMContext& context) {
 	// handle return type
 }
 
-------------- 26 -------------
+END: ------------- 26 -------------
 method : public : WindowSetGeometryHints(param_1 : GtkWidget, param_2 : GdkGeometry, param_3 : GdkWindowHints) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[4];

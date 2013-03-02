@@ -220,6 +220,18 @@ extern "C" {
     gtk_window_set_mnemonics_visible(param_0, param_1);
   }
   
+  void og_gtk_window_set_resizable(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_resizable(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_gravity(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GdkGravity param_1 = (GdkGravity)APITools_GetIntValue(context, 1);
+    gtk_window_set_gravity(param_0, param_1);
+  }
+  
   //
   // GdkRegion functions
   //  
