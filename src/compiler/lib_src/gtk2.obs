@@ -166,8 +166,8 @@ bundle Gtk2 {
 			array_args[1] := @self;
 			lib_proxy->CallFunction("og_gdk_get_event_type", array_args);
 
-			type := array_args[0]->As(IntHolder);
-			return type->Get()->As(GdkEventType);
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GdkEventType);
 		}
 		
 		method : public : GetGdkEventKey() ~ GdkEventKey {
@@ -451,8 +451,8 @@ bundle Gtk2 {
 			array_args[1] := @self;
 			lib_proxy->CallFunction("og_gtk_accel_group_get_modifier_mask", array_args);
 			
-			return_arg := array_args[0]->As(IntHolder);
-			return return_arg->Get();
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 		
 		method : public : AccelGroupLock() ~ Nil {
@@ -562,6 +562,30 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			lib_proxy->CallFunction("og_gtk_widget_grab_focus", array_args);
 		}
+
+		method : public : WindowSetSkipTaskbarHint(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_window_set_skip_taskbar_hint", array_args);
+		}
+
+		method : public : WindowSetSkipPagerHint(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_window_set_skip_pager_hint", array_args);
+		}
+
+		method : public : WindowSetUrgencyHint(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_window_set_urgency_hint", array_args);
+		}
 	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -606,8 +630,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_signal_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -625,8 +649,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_id_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -644,8 +668,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_drag_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -663,8 +687,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_drag_get_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -682,8 +706,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_style_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -701,8 +725,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_param_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -720,8 +744,8 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_event_connect", array_args);
 				
 				# get return value
-				id := array_args[0]->As(IntHolder);
-				return id->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
 			};
 
 			return -1;
@@ -1289,6 +1313,17 @@ bundle Gtk2 {
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(param_1->As(Int));
 			lib_proxy->CallFunction("og_gtk_window_set_type_hint", array_args);
+		}
+
+		method : public : WindowGetTypeHint() ~ GdkWindowTypeHint {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_window_get_type_hint", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GdkWindowTypeHint);
 		}
 	}
 

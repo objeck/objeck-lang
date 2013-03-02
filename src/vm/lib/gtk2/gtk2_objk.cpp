@@ -178,6 +178,29 @@ extern "C" {
     GdkWindowTypeHint param_1 = (GdkWindowTypeHint)APITools_GetIntValue(context, 1);
     gtk_window_set_type_hint(param_0, param_1);
   }
+
+  void og_gtk_window_get_type_hint(VMContext& context) {
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)gtk_window_get_type_hint(param_1));
+  }
+
+  void og_gtk_window_set_skip_taskbar_hint(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_skip_taskbar_hint(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_skip_pager_hint(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_skip_pager_hint(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_urgency_hint(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_urgency_hint(param_0, param_1);
+  }
   
   //
   // GdkRegion functions
