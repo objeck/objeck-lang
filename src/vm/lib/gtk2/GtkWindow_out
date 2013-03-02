@@ -90,7 +90,7 @@ void og_gtk_window_remove_accel_group(VMContext& context) {
 	gtk_window_remove_accel_group(param_0, param_1);
 }
 
-END: ------------- 6 -------------
+------------- 6 -------------
 method : public : WindowSetPosition(param_1 : GtkWindowPosition) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];
@@ -165,7 +165,7 @@ void og_gtk_window_get_default_widget(VMContext& context) {
 	// handle return type
 }
 
-------------- 11 -------------
+END: ------------- 11 -------------
 method : public : WindowSetTransientFor(param_1 : GtkWindow) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];
@@ -206,7 +206,7 @@ method : public : WindowSetOpacity(param_1 : Float) ~ Nil {
 
 void og_gtk_window_set_opacity(VMContext& context) {
 	GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
-	gdouble param_1 APITools_GetFloatValue(context, 1);
+	gdouble param_1= APITools_GetFloatValue(context, 1);
 	gtk_window_set_opacity(param_0, param_1);
 }
 
