@@ -103,7 +103,38 @@ extern "C" {
     GtkWidget* window = gtk_window_new(type);
     APITools_SetIntValue(context, 0, (long)window);
   }
+  
+  void og_gtk_window_set_wmclass(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    gchar* param_2 = APITools_GetStringValue(context, 2);
+    gtk_window_set_wmclass(param_0, param_1, param_2);
+  }
 
+  void og_gtk_window_set_role(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    gtk_window_set_role(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_startup_id(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gchar* param_1 = APITools_GetStringValue(context, 1);
+    gtk_window_set_startup_id(param_0, param_1);
+  }
+
+  void og_gtk_window_add_accel_group(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkAccelGroup* param_1 = (GtkAccelGroup*)APITools_GetIntValue(context, 1);
+    gtk_window_add_accel_group(param_0, param_1);
+  }
+  
+  void og_gtk_window_remove_accel_group(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkAccelGroup* param_1 = (GtkAccelGroup*)APITools_GetIntValue(context, 1);
+    gtk_window_remove_accel_group(param_0, param_1);
+  }
+  
   //
   // GdkRegion functions
   //  

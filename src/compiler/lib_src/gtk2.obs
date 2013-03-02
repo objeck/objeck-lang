@@ -1171,6 +1171,47 @@ bundle Gtk2 {
 				lib_proxy->CallFunction("og_window_set_title", array_args);
 			};
 		}
+
+		method : public : WindowSetWmclass(param_1 : String, param_2 : String) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[3];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			array_args[2] := param_2;
+			lib_proxy->CallFunction("og_gtk_window_set_wmclass", array_args);
+		}
+
+		method : public : WindowSetRole(param_1 : String) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_set_role", array_args);
+		}
+
+		method : public : WindowSetStartupId(param_1 : String) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_set_startup_id", array_args);
+		}
+
+		method : public : WindowAddAccelGroup(param_1 : GtkAccelGroup) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_add_accel_group", array_args);
+		}
+
+		method : public : WindowRemoveAccelGroup(param_1 : GtkAccelGroup) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			lib_proxy->CallFunction("og_gtk_window_remove_accel_group", array_args);
+		}
 	}
 
 	# Events class
