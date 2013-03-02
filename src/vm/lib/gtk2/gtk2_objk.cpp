@@ -202,6 +202,12 @@ extern "C" {
     gtk_window_set_urgency_hint(param_0, param_1);
   }
   
+  void og_gtk_window_set_focus_on_map(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_focus_on_map(param_0, param_1);
+  }
+  
   //
   // GdkRegion functions
   //  
