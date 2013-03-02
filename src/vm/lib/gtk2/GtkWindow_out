@@ -90,7 +90,7 @@ void og_gtk_window_remove_accel_group(VMContext& context) {
 	gtk_window_remove_accel_group(param_0, param_1);
 }
 
-------------- 6 -------------
+END: ------------- 6 -------------
 method : public : WindowSetPosition(param_1 : GtkWindowPosition) ~ Nil {
 	lib_proxy := GetDllProxy();
 	array_args := Base->New[2];

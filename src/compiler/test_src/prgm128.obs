@@ -51,7 +51,7 @@ bundle Default {
 			hbox->PackStart(button->As(GtkWidget), true, true, 0);
 			hbox->PackStart(button2->As(GtkWidget), true, true, 0);
 
-			window := GtkWindow->New();
+			window := GtkWindow->New(GtkWindowType->GTK_WINDOW_TOPLEVEL);
 			window->SignalEventConnect("delete-event", test_callback, window);
 
 # window->SignalEventConnect("key-press-event", foo_callback, window);
