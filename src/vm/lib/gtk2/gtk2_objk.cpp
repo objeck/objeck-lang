@@ -100,8 +100,7 @@ extern "C" {
 
   void og_window_new(VMContext& context) {
     GtkWindowType type = (GtkWindowType)APITools_GetIntValue(context, 0);
-    GtkWidget* window = gtk_window_new(type);
-    APITools_SetIntValue(context, 0, (long)window);
+    APITools_SetIntValue(context, 0, (long)gtk_window_new(type));
   }
   
   void og_gtk_window_set_wmclass(VMContext& context) {
@@ -133,6 +132,51 @@ extern "C" {
     GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
     GtkAccelGroup* param_1 = (GtkAccelGroup*)APITools_GetIntValue(context, 1);
     gtk_window_remove_accel_group(param_0, param_1);
+  }
+
+  void og_gtk_window_set_focus(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_window_set_focus(param_0, param_1);
+  }
+  
+  void og_gtk_window_get_focus(VMContext& context) {
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);    
+    APITools_SetIntValue(context, 0, (long)gtk_window_get_focus(param_1));
+  }
+  
+  void og_gtk_window_set_default(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    gtk_window_set_default(param_0, param_1);
+  }
+
+  void og_gtk_window_get_default_widget(VMContext& context) {
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)gtk_window_get_default_widget(param_1));
+  }
+
+  void og_gtk_window_set_transient_for(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+    gtk_window_set_transient_for(param_0, param_1);
+  }
+
+  void og_gtk_window_get_transient_for(VMContext& context) {
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)gtk_window_get_transient_for(param_1));
+  }
+  
+  void og_gtk_window_set_opacity(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gdouble param_1 = APITools_GetFloatValue(context, 1);
+    gtk_window_set_opacity(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_type_hint(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GdkWindowTypeHint param_1 = (GdkWindowTypeHint)APITools_GetIntValue(context, 1);
+    gtk_window_set_type_hint(param_0, param_1);
   }
   
   //
