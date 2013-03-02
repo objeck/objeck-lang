@@ -586,6 +586,14 @@ bundle Gtk2 {
 			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
 			lib_proxy->CallFunction("og_gtk_window_set_urgency_hint", array_args);
 		}
+
+		method : public : WindowSetFocusOnMap(param_1 : Bool) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := @self;
+			array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+			lib_proxy->CallFunction("og_gtk_window_set_focus_on_map", array_args);
+		}
 	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
