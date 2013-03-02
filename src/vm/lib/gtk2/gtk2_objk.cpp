@@ -208,6 +208,18 @@ extern "C" {
     gtk_window_set_focus_on_map(param_0, param_1);
   }
   
+  void og_gtk_window_set_destroy_with_parent(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_destroy_with_parent(param_0, param_1);
+  }
+  
+  void og_gtk_window_set_mnemonics_visible(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    gboolean param_1 = APITools_GetIntValue(context, 1);
+    gtk_window_set_mnemonics_visible(param_0, param_1);
+  }
+  
   //
   // GdkRegion functions
   //  
