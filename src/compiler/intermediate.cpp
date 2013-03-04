@@ -4023,9 +4023,11 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
       if(lib_parent) {
         if(is_static) {
           size += lib_parent->GetClassSpace();
-        } else {
+        } 
+	else {
           size += lib_parent->GetInstanceSpace();
         }
+	index = size / sizeof(INT_VALUE);
       }
     }    
     // calculate current space
