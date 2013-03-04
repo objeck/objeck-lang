@@ -64,6 +64,7 @@ namespace Runtime {
   
   struct ThreadHolder {
     StackMethod* called;
+    long* self;
     long* param;
   };
 
@@ -124,12 +125,14 @@ namespace Runtime {
       cerr << "  ..." << endl;
 #else
       cerr << "Unwinding local stack (" << this << "):" << endl;
-      cerr << "  method: pos=" << pos << ", name="
+      cerr << "  method: pos=" << pos << ", name=" 
 	   << frame->GetMethod()->GetName() << endl;
-      while(--pos) {
-	if(pos > - 1) {
-	  cerr << "  method: pos=" << pos << ", name="
-	       << call_stack[pos]->GetMethod()->GetName() << endl;
+      if(pos != 0) {
+	while(--pos) {
+	  if(pos > - 1) {
+	    cerr << "  method: pos=" << pos << ", name="
+		 << call_stack[pos]->GetMethod()->GetName() << endl;
+	  }
 	}
       }
       cerr << "  ..." << endl;
