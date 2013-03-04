@@ -1267,7 +1267,7 @@ bundle Collection {
 		}
 		
 		method : public : native : Insert(value : Compare) ~ Bool {
-			if(@cursor <> Nil) {
+			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
 				node := ListNode->New(value);
 				if(@cursor = @head & @cursor = @tail) {
 			 		@head->SetNext(node);
@@ -1291,6 +1291,10 @@ bundle Collection {
 			 	};
 			 	@size += 1;
 				
+				return true;
+			}
+			else if(@head = Nil & @tail = Nil) {
+				AddBack(value);
 				return true;
 			};
 			
