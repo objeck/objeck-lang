@@ -971,13 +971,11 @@ bundle Collection {
 		}
 		
 		method : public : Find(value : Int) ~ Bool {
-			holder : IntHolder := IntHolder->New(value);
-			return holder <> Nil;
+			return @list->Find(IntHolder->New(value)) <> Nil;
 		}
 		
 		method : public : Insert(value : Int) ~ Nil {
-			holder : IntHolder := IntHolder->New(value);
-			@list->Insert(holder);
+			@list->Insert(IntHolder->New(value));
 		}
 
 		method : public : RemoveBack() ~ Nil {
@@ -1075,13 +1073,11 @@ bundle Collection {
 		}
 		
 		method : public : Find(value : Float) ~ Bool {
-			holder : FloatHolder := FloatHolder->New(value);
-			return holder <> Nil;
+			return @list->Find(FloatHolder->New(value)) <> Nil;
 		}
 		
 		method : public : Insert(value : Float) ~ Nil {
-			holder : FloatHolder := FloatHolder->New(value);
-			@list->Insert(holder);
+			@list->Insert(FloatHolder->New(value));
 		}
 		
 		method : public : RemoveBack() ~ Nil {
@@ -1272,26 +1268,28 @@ bundle Collection {
 		
 		method : public : native : Insert(value : Compare) ~ Bool {
 			if(@cursor <> Nil) {
-				node : ListNode := ListNode->New(value);
-				@cursor->SetNext(node);
-			 	node->SetPrevious(@cursor);
-			 	if(@cursor = @head & @cursor = @tail) {
-			 		@cursor := node;
-			 		@head := @cursor;
-			 		@tail := @cursor;
+				node := ListNode->New(value);
+				if(@cursor = @head & @cursor = @tail) {
+			 		@head->SetNext(node);
+			 		node->SetPrevious(@head);
+			 		@tail := node;
 			 	}
 			 	else if(@cursor = @head) {
-			 		@cursor := node;
-			 		@head := @cursor;
+			 		node->SetNext(@head->GetNext());
+			 		@head->SetNext(node);
+			 		node->SetPrevious(@head);
 			 	}
 			 	else if(@cursor = @tail) {
-			 		@cursor := node;
-			 		@tail := @cursor;
+			 		@tail->SetNext(node);
+			 		node->SetPrevious(@tail);
+			 		@tail := node;
 			 	}
 			 	else {
-			 		@cursor := node;
+			 		node->SetNext(@cursor->GetNext());
+			 		@cursor->SetNext(node);
+			 		node->SetPrevious(@cursor);
 			 	};
-			 	@size := @size + 1;
+			 	@size += 1;
 				
 				return true;
 			};
