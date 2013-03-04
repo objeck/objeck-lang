@@ -3,7 +3,7 @@ use HTTP;
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
 		client := HttpsClient->New();
-		lines := client->Get("https://sourceforge.net");
+		lines := client->Get("https://google.com");
 		each(i : lines) {
 			lines->Get(i)->As(String)->PrintLine();
 		};
