@@ -1470,8 +1470,10 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
  ********************************/
 void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 {
+  long* instance = (long*)frame->GetMemory()[0];
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
+  holder->self = instance;
   holder->param = param;
 
 #ifdef _WIN32
@@ -1492,8 +1494,8 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
     exit(-1);
   }
 #endif  
+  
   // assign thread ID
-  long* instance = (long*)frame->GetMemory()[0];
   if(!instance) {
     cerr << ">>> Unable to create runtime thread! <<<" << endl;
     exit(-1);
@@ -1531,7 +1533,7 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 #endif  
 
   Runtime::StackInterpreter intpr;
-  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
+  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
 
 #ifdef _DEBUG
   cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << vm_thread << " #" << endl;
@@ -1572,7 +1574,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 #endif  
 
   Runtime::StackInterpreter intpr;
-  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, NULL, false);
+  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
 
 #ifdef _DEBUG
   cout << "# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
