@@ -14,13 +14,13 @@
 		list->Insert(50);
 
 		list->Rewind();
-		while(list->IsEnd() = false) {
+		while(list->Get() <> Nil) {
 			list->Get()->PrintLine();
 			list->Next();
 		};
 
 		list->Forward();
-		while(list->IsEnd() = false) {
+		while(list->GEt() <> Nil) {
 			list->Get()->PrintLine();
 			list->Previous();
 		};
