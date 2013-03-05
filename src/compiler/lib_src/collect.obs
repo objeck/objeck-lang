@@ -69,6 +69,20 @@ bundle Collection {
 	
 			return 0;
 		}
+		
+		method : public : Remove(i : Int) ~ Int {
+			if(i > -1 & i < @size) {
+				temp := Int->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
+			return 0;
+		}
 
 		method : public : Get(index : Int) ~ Int {
 			if(index > -1 & index < @size) {
@@ -326,6 +340,20 @@ bundle Collection {
 	
 			return 0.0;
 		}
+		
+		method : public : Remove(i : Int) ~ Float {
+			if(i > -1 & i < @size) {
+				temp := Float->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
+			return 0.0;
+		}
 
 		method : public : Get(index : Int) ~ Float {
 			if(index > -1 & index < @size) {
@@ -577,6 +605,20 @@ bundle Collection {
 	
 			return Nil;
 		}
+		
+		method : public : Remove(i : Int) ~ Compare {
+			if(i > -1 & i < @size) {
+				temp := Compare->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
+			return Nil;
+		}
 
 		method : public : Get(index : Int) ~ Compare {
 			if(index > -1 & index < @size) {
@@ -768,6 +810,20 @@ bundle Collection {
 				return @values[@size];
 			};
 	
+			return Nil;
+		}
+		
+		method : public : Remove(i : Int) ~ Base {
+			if(i > -1 & i < @size) {
+				temp := Base->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
 			return Nil;
 		}
 
@@ -1007,10 +1063,6 @@ bundle Collection {
 			return @list->IsBack();
 		}
 
-		method : public : IsEnd()~ Bool {
-			return @list->IsEnd();
-		}
-
 		method : public : Front() ~ Int {
 			holder := @list->Front()->As(IntHolder);
 			if(holder <> Nil) {
@@ -1103,10 +1155,6 @@ bundle Collection {
 		
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
-		}
-
-		method : public : IsEnd() ~ Bool {
-			return @list->IsEnd();
 		}
 
 		method : public : Front() ~ Int {
