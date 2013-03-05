@@ -1062,6 +1062,10 @@ bundle Collection {
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
 		}
+		
+		method : public : More() ~ Bool {
+			return @list->More();
+		}
 
 		method : public : Front() ~ Int {
 			holder := @list->Front()->As(IntHolder);
@@ -1155,6 +1159,10 @@ bundle Collection {
 		
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
+		}
+		
+		method : public : More() ~ Bool {
+			return @list->More();
 		}
 
 		method : public : Front() ~ Int {
@@ -1307,19 +1315,16 @@ bundle Collection {
 			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
 				node := ListNode->New(value);
 				if(@cursor = @head & @cursor = @tail) {
-"-1-"->PrintLine();				
 			 		@head->SetNext(node);
 			 		node->SetPrevious(@head);
 			 		@tail := node;
 			 	}
 			 	else if(@cursor = @tail) {
-"-2-"->PrintLine();			 	
 			 		@tail->SetNext(node);
 			 		node->SetPrevious(@tail);
 			 		@tail := node;
 			 	}
 			 	else {
-"-3-"->PrintLine();	
 					@cursor->GetNext()->SetPrevious(node);
 					node->SetNext(@cursor->GetNext());
 			 		@cursor->SetNext(node);
@@ -1368,6 +1373,10 @@ bundle Collection {
 		
 		method : public : IsBack() ~ Bool {
 			return @cursor = @tail;
+		}
+		
+		method : public : More() ~ Bool {
+			return @cursor <> Nil;
 		}
 
 		method : public : Front() ~ Compare {
@@ -2282,7 +2291,7 @@ bundle Collection {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->Get() <> Nil) {
+				while(list->More()) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						return pair->Get();
@@ -2306,7 +2315,7 @@ bundle Collection {
 			list := @buckets[hash];
 			if(list <> Nil) {
 				list->Rewind();
-				while(list->Get() <> Nil) {
+				while(list->More()) {
 					pair : HashPair := list->Get()->As(HashPair);
 					if(pair->Compare(key) = 0) {
 						list->Remove();
@@ -2328,7 +2337,7 @@ bundle Collection {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->Get() <> Nil) {
+					while(list->More()) {
 						pair : HashPair := list->Get()->As(HashPair);
 						keys->AddBack(pair->GetKey());
 						list->Next();
@@ -2345,7 +2354,7 @@ bundle Collection {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
 					list->Rewind();
-					while(list->Get() <> Nil) {
+					while(list->More()) {
 						pair : HashPair := list->Get()->As(HashPair);
 						values->AddBack(pair->Get());
 						list->Next();
