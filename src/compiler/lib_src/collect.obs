@@ -1650,7 +1650,7 @@ bundle Collection {
 		}
     
 		method : public : Has(key : Int) ~ Bool {
-			result : IntHolder := @map->Find(IntHolder->New(key))->As(IntHolder);
+			result := @map->Find(IntHolder->New(key))->As(IntHolder);
 			return result <> Nil;
 		}
     
@@ -2117,7 +2117,7 @@ bundle Collection {
 		}
     
 		method : public : Has(key : Float) ~ Bool {
-			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
+			result := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			return result <> Nil;
 		}
     
@@ -2165,8 +2165,7 @@ bundle Collection {
 		}
     
 		method : public : Has(key : String) ~ Bool {
-			result := @map->Find(key);
-			return result <> Nil;
+			return @map->Find(key) <> Nil;
 		}
     
 		method : public : GetKeys() ~ Vector {
@@ -2202,8 +2201,7 @@ bundle Collection {
 		}
     
 		method : public : Has(key : Compare) ~ Bool {
-			result := @map->Find(key);
-			return result <> Nil;
+			return @map->Find(key) <> Nil;
 		}
     
 		method : public : GetKeys() ~ Vector {
