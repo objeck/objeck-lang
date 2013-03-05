@@ -5,7 +5,7 @@
 		list->AddBack(31);
 		list->AddFront(1);
 		list->AddBack(3);
-		list->Find(31);
+		list->Find(13);
 		list->Insert(100);
 
 		list->Rewind();
