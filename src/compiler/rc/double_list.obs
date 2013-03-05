@@ -1,26 +1,22 @@
-﻿class Hello {
+﻿class Traverse {
 	function : Main(args : String[]) ~ Nil {
 		list := Collection.IntList->New();
-#~
-		list->AddBack(13);
-		list->AddBack(31);
-		list->AddFront(1);
-		list->AddBack(3);
-		list->Find(13);
-~#
 		list->Insert(100);
-		list->Insert(10);
-		list->Find(10);
 		list->Insert(50);
+		list->Insert(25);
+		list->Insert(10);
+		list->Insert(5);
 
+		"-- forward --"->PrintLine();
 		list->Rewind();
-		while(list->Get() <> Nil) {
+		while(list->More()) {
 			list->Get()->PrintLine();
 			list->Next();
 		};
 
+		"-- backward --"->PrintLine();
 		list->Forward();
-		while(list->GEt() <> Nil) {
+		while(list->More()) {
 			list->Get()->PrintLine();
 			list->Previous();
 		};
