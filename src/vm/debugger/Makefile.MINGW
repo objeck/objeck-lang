@@ -1,20 +1,5 @@
-##############
-# For OSX only
-##############
-# ARGS=-pthread -mstackrealign -O3
-# ARGS=-pthread -D_TIMING -mstackrealign -O3
-# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
-# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
-ARGS=-O3 -D_MINGW -D_DEBUGGER -Wall
-
-##############
-# For Linux
-##############
-# ARGS=-g -Wunused -pthread
 # ARGS=-g -D_DEBUG -D_DEBUGGER -Wunused -pthread
-# ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
-# ARGS=-O3 -pthread
+ARGS=-O3 -D_MINGW -D_DEBUGGER -Wall
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
@@ -26,7 +11,7 @@ EXE=obd
 RES=debugger/objeck.res
 
 $(EXE): $(SRC) $(OBJ_LIBS) $(RES)
-	$(CC) -m32 -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) $(RES) -lws2_32
+	$(CC) -m32 -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) $(RES) -L"../lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
@@ -41,7 +26,7 @@ $(RES):
 	windres debugger/objeck.rc -O coff -o $(RES)
 	
 %.o: %.cpp
-	$(CC) -m32 -static -static-libstdc++ $(ARGS) -c $< 
+	$(CC) -m32 -D_MINGW -I"../lib/openssl/win32/include" -static -static-libstdc++ $(ARGS) -c $< 
 
 clean:
 	cd $(COMPILER_PATH); make clean
