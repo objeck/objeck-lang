@@ -1,13 +1,13 @@
 CC=g++
 # ARGS=-g -D_SYSTEM -D_DEBUG -Wunused
-# ARGS=-g -D_DEBUG -Wunused
-ARGS=-O3 -Wunused
+# ARGS=-g -D_DEBUG -Wall
+ARGS=-O3 -Wall
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o target.o compiler.o posix_main.o
 EXE=obc
 RES=compiler/objeck.res
 
 $(EXE): $(SRC) $(RES)
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(RES)  $(SRC)
+	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(RES) $(SRC)
 
 $(RES):
 	windres compiler/objeck.rc -O coff -o $(RES)
