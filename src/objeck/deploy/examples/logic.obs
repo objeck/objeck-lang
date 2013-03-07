@@ -1,0 +1,13 @@
+use System.IO;
+
+bundle Default {
+  class Logic {
+    function : Main(args : String[]) ~ Nil {
+      a := true;
+      b := false;
+      Console->Print("a and b is: ")->PrintLine(a & b);
+      Console->Print("a or b is: ")->PrintLine(a | b);
+      Console->Print("not a is: ")->PrintLine(a <> true);
+    }
+  }
+}

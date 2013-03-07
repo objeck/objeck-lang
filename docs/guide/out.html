@@ -1,0 +1,2489 @@
+<p>An introduction to the Objeck programming language and it’s features. This article is intended to introduce programmers and compiler enthusiasts to the unique features and design of the Objeck programming language. Unless otherwise noted, this article covers functionality that’s part of v3.1.7. For additional information please refer to the , and websites.</p>
+<p>[Introduction]</p>
+<h1 id="introduction">Introduction</h1>
+<p>The Objeck program language is an object-oriented computer language with functional features. The language was designed to be an easy to use general purpose programming system. The Objeck language allows programmers to quickly create solutions by leveraging existing class libraries and APIs. The syntax for the language was designed with symmetry in mind and enforces the notion that there should one intuitive way to do things. Features include:</p>
+<ul>
+<li><p>Support for object-oriented programming (all data types are treated as objects)</p></li>
+<li><p>Functional support (higher-order functions)</p></li>
+<li><p>Cross platform (support for OS X, Linux and Windows)</p></li>
+<li><p>Concurrent runtime JIT support for Intel processors (x86 and x64)</p></li>
+<li><p>Multi-threaded memory management (garbage collector)</p></li>
+<li><p>Local optimizations including method inlining</p></li>
+<li><p>Support for static libraries</p></li>
+<li><p>Command line debugger</p></li>
+</ul>
+<h1 id="getting-started">Getting Started</h1>
+<p>The Objeck distribution consists of a compiler, virtual machine, debugger and library inspection tool. The compiler executable is named <code>obc</code>, while the runtime virtual machine (VM) executable is named <code>obr</code>. Here is the world famous ``Hello World&quot; program written in the Objeck language:</p>
+<pre><code>class Hello {
+  function : Main(args : String[]) ~ Nil {
+    &quot;Hello World!&quot;-&gt;PrintLine();
+  }
+}</code></pre>
+<h2 id="compiling-source">Compiling Source</h2>
+<p>The example below compiles the source program <code>hello.obs</code> into the target binary file <code>hello.obe</code>. The two output file types that the compiler supports are executables and shared libraries. Shared libraries are binary files that contain all of the metadata needed by the compiler to relink them into executables. Both executables and shared libraries contain enough metadata to support runtime introspection. As a naming convention, executables must end in <code>*.obe</code> while shared libraries must end in <code>*.obl</code>.</p>
+<p>Below is an example of compiling the ``Hello World&quot; program:</p>
+<pre><code>obc -src tests\hello.obs -dest hello.obe</code></pre>
+<p>Here’s a more advanced example of linking in two required class libraries to an executable.</p>
+<pre><code>obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe</code></pre>
+<p>Additional compiler options are:</p>
+<p>| l | l |</p>
+<p><em>Option</em> &amp; <em>Description</em><br /><code>-src</code> &amp; path to source files, delimited by the ‘<code>,</code>’ character<br /><code>-lib</code> &amp; path to library files, delimited by the ‘<code>,</code>’ character<br /><code>-tar</code> &amp; target output <code>exe</code> for executable and <code>lib</code> for library; default is <code>exe</code><br /><code>-opt</code> &amp; optimization level <code>s0</code>–<code>s3</code> with <code>s3</code> being the most aggressive; default is <code>s0</code><br /><code>-dest</code> &amp; output file name<br /><code>-debug</code> &amp; if set, produces debug out for use by the interactive debugger (see below)<br /></p>
+<h2 id="executing">Executing</h2>
+<p>The command-line example below executes the <code>hello.obe</code> executable. Note, for executables all required libraries are statically linked in the target output file. When compiling shared libraries, other shared libraries are linked into the target output library file.</p>
+<pre><code>obr hello.obe</code></pre>
+<h1 id="the-basics">The Basics</h1>
+<p>Now lets introduce the core features of the Objeck programming language.</p>
+<p>Let’s first start with a list of keywords that exist in language. These words are reserved for the language and may not be used as identifiers.</p>
+<p>| c | c | c | c | c |</p>
+<p><br />and &amp; As &amp; Bool &amp; break &amp; bundle<br />Byte &amp; Char &amp; class &amp; critical &amp; do<br />each &amp; else &amp; enum &amp; false &amp; Float<br />for &amp; from &amp; function &amp; if &amp; Int<br />interface &amp; label &amp; method &amp; native &amp; New<br />or &amp; other &amp; Parent &amp; private &amp; public<br />return &amp; select &amp; static &amp; true &amp; TypeOf<br />use &amp; virtual &amp; — &amp; while &amp; xor<br /></p>
+<p>In Objeck, all data types (excluding higher-order functions) are treated as objects. Basic objects provide supports for boolean, character, byte, integer and decimal types. These basic objects can be used to create more complex user defined objects. The listing below defines the basic objects that are supported in the language:</p>
+<p>| l | l |</p>
+<p><em>Type</em> &amp; <em>Description</em><br /><code>Char</code> &amp; 1–byte character<br /><code>Char[]</code> &amp; character array<br /><code>Bool</code> &amp; boolean value<br /><code>Bool[]</code> &amp; boolean array<br /><code>Byte</code> &amp; 1–byte integer<br /><code>Byte[]</code> &amp; byte array<br /><code>Int</code> &amp; 4–byte integer<br /><code>Int[]</code> &amp; integer array<br /><code>Float</code> &amp; 8–byte decimal<br /><code>Float[]</code> &amp; decimal array<br /><code>Function</code> &amp; 4–byte integer pair<br /></p>
+<p>As mentioned above, basic types are objects and have associated methods for each basic class type. For example:</p>
+<pre><code>13-&gt;Min(3)-&gt;PrintLine();
+3.89-&gt;Sin()-&gt;PrintLine();
+-22-&gt;Abs()-&gt;PrintLine();
+Float-&gt;Pi()-&gt;PrintLine();</code></pre>
+<h2 id="variable-declarations">Variable Declarations</h2>
+<p>Variables can be declared for all of the basic types (described above), user defined objects and high-order functions. Variables can be declared anywhere in a program and are bound to traditional block scoping rules. Variable assignments can be made during a declaration or at any other point in a program. Variables may be declared as local, instance or class level scope. Class level variables are declared using the <code>static</code> keyword. A class that is derived from another class may access it’s parents variables if the parent class is declared in one of the source programs. <em>If a class is derived from a class declared in a shared library then that class cannot access it’s parents variables, unless an accessor method is provided.</em> Local variables can be declared without specifying their data type, such variables are bound to the type defined by their first right-hand side assignment. Three different declaration styles are shown below:</p>
+<pre><code>a : Int;
+b : Int := 13;
+c := 7; # implicit type deceleration </code></pre>
+<p>Types that are not initialized at declaration time are initialized with the following default values:</p>
+<p>| l | c |</p>
+<p><em>Type</em> &amp; <em>Initialization</em><br /><code>Char</code> &amp; ‘\0’<br /><code>Byte</code> &amp; 0<br /><code>Int</code> &amp; 0<br /><code>Float</code> &amp; 0.0<br />Array &amp; <code>Nil</code><br />Object &amp; <code>Nil</code><br />Function &amp; <code>Nil</code><br /></p>
+<h2 id="expressions">Expressions</h2>
+<p>The Objeck language supports various types of expressions. Some of these expressions include mathematical, logical, array and method calls. The preceding sections describes some of the expressions that are supported in Objeck.</p>
+<h3 id="mathematical-and-logical-expressions">Mathematical and Logical Expressions</h3>
+<p>The following code example demonstrates two ways to printing the number <code>42</code>. The first way invokes the <code>PrintLine()</code> method for the literal <code>42</code>. The second prints the product of a variable and a literal.</p>
+<pre><code>class Test {
+  function : Main() ~ Nil {
+    42-&gt;PrintLine();
+    eiht := 8;
+    (eiht * 7)-&gt;PrintLine();
+  }
+}</code></pre>
+<p>The following mathematical operators are supported in the Objeck language for integers and decimal types:</p>
+<ul>
+<li><p>addition (<code>+</code>)</p></li>
+<li><p>subtraction (<code>-</code>)</p></li>
+<li><p>multiplication (<code>*</code>)</p></li>
+<li><p>division (<code>/</code>)</p></li>
+<li><p>modulus – (<code>%</code> - for integer values only)</p></li>
+<li><p>shift left – (<code>&lt;&lt;</code> - for integer values only)</p></li>
+<li><p>shift right – (<code>&gt;&gt;</code> - for integer values only)</p></li>
+</ul>
+<p>In addition the following assignment operators are supported:</p>
+<ul>
+<li><p>addition-equals (<code>+=</code>)</p></li>
+<li><p>subtraction-equals (<code>-=</code>)</p></li>
+<li><p>multiplication-equals (<code>*=</code>)</p></li>
+<li><p>division-equals (<code>/=</code>)</p></li>
+</ul>
+<p>The following bitwise operators are also supported for integer types:</p>
+<ul>
+<li><p>and (<code>and</code>)</p></li>
+<li><p>or (<code>or</code>)</p></li>
+<li><p>xor (<code>xor</code>)</p></li>
+</ul>
+<p>The [<code>*</code>, <code>/</code>, <code>%</code>] operators have a higher precedence than the [<code>+</code>, <code>-</code>] operators and are naturally enforced by the language. Operators of the same precedence are evaluated from left-to-right. Logical operations are of lower precedence than mathematical operations. All logical operators are of the same precedence and order is determined via left–to–right evaluation. The [<code>&amp;</code>, <code>|</code>] logical operators use short-circuit logic; meaning that some expressions may not be executed if evaluation criteria is not satisfied.</p>
+<p>The following logical operators are supported in the Objeck language:</p>
+<ul>
+<li><p>and (<code>&amp;</code>)</p></li>
+<li><p>or (<code>|</code>)</p></li>
+<li><p>equal (<code>=</code>)</p></li>
+<li><p>not–equal (<code>&lt;&gt;</code>)</p></li>
+<li><p>less–than (<code>&lt;</code>)</p></li>
+<li><p>greater–than (<code>&gt;</code>)</p></li>
+<li><p>less–than–equal (<code>&lt;=</code>)</p></li>
+<li><p>greater–than–equal (<code>&gt;=</code>)</p></li>
+</ul>
+<h3 id="arrays">Arrays</h3>
+<p>Objeck supports single and multi-dimensional arrays. Arrays are allocated dynamically from the system heap. The memory that is allocated for arrays is managed automatically by the garbage collector. All of the basic types described above (as well as user defined types) can be allocated as arrays. The code example below shows how a two-dimensional array of type <code>Int</code> is allocated and dereferenced.</p>
+<pre><code>array := Int-&gt;New[2,3];
+array[0,2] := 13;
+array[1,0] := 7;</code></pre>
+<p>The size of an array can be obtained by calling the array’s <code>Size()</code> method. The <code>Size()</code> method will return the number of elements in a given array. For a multi-dimensional array the <code>Size()</code> method returns an array of sizes for each dimension. Character array literals are allocated as <code>String</code> objects. The <code>String</code> class provides support for advanced string operations.</p>
+<pre><code>string := &quot;Hello World!&quot;;
+string-&gt;Size()-&gt;PrintLine();
+strings := [&quot;Hello&quot;,&quot;World!&quot;];
+sizes := strings-&gt;Size();
+sizes[0]-&gt;PrintLine();
+sizes[1]-&gt;PrintLine();</code></pre>
+<p>The following example allocates an array of <code>Widget</code> objects. An object must implment it’s <code>New</code> method if it’s going to be instnatanced.</p>
+<pre><code>class Widget {
+  New() {
+  }
+}
+
+class MakeWidgets {
+  function : Main(args : String[]) ~ Nil {
+    widgets := Widget-&gt;New[1000];
+    each(i : widgets) {
+      widgets[i] := Widget-&gt;New();
+    };
+  }
+}</code></pre>
+<h3 id="conditional-expressions">Conditional Expressions</h3>
+<p>There’s also support for ternary conditional expressions. For example the following statement prints the value <code>false</code> after two logical comparisons.</p>
+<pre><code>a := 7;
+b := 13;
+(((a &lt; 13) ? 10 : 20) &gt;  15)-&gt;PrintLine();</code></pre>
+<h2 id="statements">Statements</h2>
+<p>Besides providing support for declaration statements the language has support for conditional and control statements. As with other languages, control statements can be nested in order to provide finer grain logical control. General control statements include <code>if</code> and <code>select</code> statements. Basic looping statements include <code>while</code>, <code>do/while</code>, <code>for</code> and <code>each</code> loops. Note, all statements end with the ‘<code>;</code>’ character.</p>
+<h3 id="if-statement">If Statement</h3>
+<p>An <code>if</code> statement is a control statement that executes an associated block of code if it evaluates to <code>true</code>. If the evaluation statement does not evaluate to <code>true</code> than an <code>else if</code> statement may be evaluated (if it exists), otherwise an <code>else</code> statement will be executed (if it exists). The example below demonstrates an <code>if</code> statement.</p>
+<pre><code>value := Console-&gt;ReadLine()-&gt;ToInt();
+if(value &lt;&gt; 3) {
+  &quot;Not equal to 3&quot;-&gt;PrintLine();
+}
+else if(value &lt; 13) {
+  &quot;Less than 13&quot;-&gt;PrintLine();
+}
+else {
+  &quot;Some other number&quot;-&gt;PrintLine();
+};</code></pre>
+<h3 id="select-statement">Select Statement</h3>
+<p>A <code>select</code> statement maps a value to 1 or more labels. Labels are associated to statement blocks. A label may either be a literal or an <code>enum</code> value. Multiple labels can be mapped to the same statement block. Below is an example of a <code>select</code> statement.</p>
+<pre><code>select(v) {
+   label Color-&gt;Red: {
+      &quot;Red&quot;-&gt;PrintLine();
+   }
+
+   label 9:
+   label 19: {
+      v-&gt;PrintLine();
+   }
+
+   label 27: {
+      (3 * 9)-&gt;PrintLine();
+   }
+  
+   other: {
+     &quot;some rather another&quot;-&gt;PrintLine();
+   }
+};</code></pre>
+<h3 id="while-statement">While Statement</h3>
+<p>A <code>while</code> statement is a control statement that will continue to execute it’s main body as long as it’s conditional expression evaluates to <code>true</code>. When its conditional expression evaluates to <code>false</code> than the loop body will cease to execute.</p>
+<pre><code>i := 10;
+while(i &gt; 0) {
+   i-&gt;PrintLine();
+   i -= 1;
+}</code></pre>
+<h3 id="dowhile-statement">Do/While Statement</h3>
+<p>A <code>do/while</code> statement is a control statement that will execute it’s main body at least once and continue to execute it’s main body as long as its conditional expression evaluates to <code>true</code>. When it’s conditional expression evaluates to <code>false</code> than the loop body will cease to execute.</p>
+<pre><code>i := 10;
+do { 
+   i-&gt;PrintLine();
+   i -= 1;
+} 
+while(i &gt; 0);</code></pre>
+<h3 id="for-statements">For Statements</h3>
+<p>The <code>for</code> statement is another common looping construct. The <code>for</code> loop consists of a pre-condition statement followed by an evaluation expression and an update statement.</p>
+<pre><code>location := &quot;East Bay&quot;-&gt;ToCharArray();
+for(i := 0; i &lt; location-&gt;Size(); i += 1;) {
+  location[i]-&gt;PrintLine();
+}</code></pre>
+<h3 id="each-statements">Each Statements</h3>
+<p>The <code>each</code> statement is a specialized version of a <code>for</code> statement. The <code>each</code> loop consists of a counter variable and a data structure that has a <code>Size</code> method, such as arrays and <code>Vector</code> classes. The statement iterates thru all elements in the data structure.</p>
+<pre><code>values := Int-&gt;New[3];
+values[0] := 5;
+values[1] := 1;
+values[2] := 0;
+
+each(i : values) {
+  values[i]-&gt;PrintLine();
+};</code></pre>
+<h1 id="user-defined-types">User Defined Types</h1>
+<h2 id="enums">Enums</h2>
+<p>Enums are user defined enumerated types. The main use of an <code>enum</code> is to group a class of countable values, for example colors, into a distinct category. Once <code>enum</code> values have been defined they may not be assigned or associated to a other <code>enum</code> groups or integer classes. The valid operations for enums are as follows:</p>
+<ul>
+<li><p>assignment (<code>:=</code>)</p></li>
+<li><p>equal (<code>=</code>)</p></li>
+<li><p>not–equal (<code>&lt;&gt;</code>)</p></li>
+</ul>
+<p>In addition, enum values may be used in <code>select</code> statements as conditional tests or labels.</p>
+<pre><code>enum Color {
+   Red,
+   Black,
+   Green
+}
+
+enum Type := -100 {
+   TYPES,
+   CLASSES,
+   INT,
+   FLOAT
+}</code></pre>
+<h2 id="classes">Classes</h2>
+<p>Classes are user defined types that allow programmers to create specialized data types. Classes are made up of attributes (data) and operations (methods). Classes are used to encapsulate programming logic and localize information. Operations that are associated to a class may either be at the class level or instance level. Class instances are created by calling an object’s <code>New()</code> function. Note, an object instance can only be created if one or more <code>New()</code> functions have been defined.</p>
+<h3 id="class-inheritance">Class Inheritance</h3>
+<p>Classes may be derived from other classes using the <code>from</code> keyword. Class inheritance allows classes to share common functionality. The Objeck language supports single class inheritance, meaning that a derived class may only have one parent. The language also supports virtual classes, which assures that derived classes have been defined for all required operations declared in the base class. Virtual classes also allow the programmer to define non-virtual methods that contain program behavior. Virtual classes are dynamically associated with implementation classes at runtime.</p>
+<pre><code>class Foo {
+  @lhs : Int;
+
+  New(lhs : Int) {
+    @lhs := lhs;
+  }
+
+  method : native : AddTwo(rhs : Int) ~ Int {
+    return 2 + rhs;
+  }
+
+  method : virtual : AddThree(int rhs) ~ Int;
+
+  method : GetLhs() ~ Int {
+    return lhs;
+  }
+}
+
+class Bar from Foo {
+  New(value : Int) {
+    Parent(value);
+  }
+
+  method : native : AddThree(rhs : Int) ~ Int {
+    return 3 + rhs;
+  }
+
+  function : Main() ~ Nil {
+    bar : b := Bar-&gt;New(31);
+    b-&gt;AddThree(9)-&gt;PrintLine();
+  }
+}</code></pre>
+<h3 id="class-casting-and-identification">Class Casting and Identification</h3>
+<p>An object that is inherited from another object may be either upcasted or downcasted. Object casting can be performed using the <code>As()</code> operator. Upcasting requires a runtime check, while down casting does not. If cross casting is detected then a compile time error will be generated.</p>
+<pre><code>values := Vector-&gt;New();
+values-&gt;AddBack(IntHolder-&gt;New(2));
+values-&gt;AddBack(IntHolder-&gt;New(4));
+values-&gt;AddBack(IntHolder-&gt;New(8));
+
+total := 0;
+each(i : values) {
+  total += values-&gt;Get(i)-&gt;As(IntHolder)-&gt;Get();
+};
+total-&gt;PrintLine();</code></pre>
+<p>To determine if an object instance is of a certain class type (object or interface) it’s <code>TypeOf</code> method can be invoked. This method will return <code>true</code> if the instance is of the same or a derived type, <code>false</code> otherwise. This method can be used to check a class instance type before casting it.</p>
+<pre><code>s := &quot;FooBar&quot;;
+t := s-&gt;TypeOf(String);
+t-&gt;PrintLine();</code></pre>
+<p>The class that a given object instance belongs to can found by calling its <code>GetClassID</code> method. This method returns an enum that is associated with that instance’s class type. This method is generally used to determine if two object instances are of the same or different classes.</p>
+<h3 id="methods-and-functions">Methods and Functions</h3>
+<p>The Objeck language supports both methods and functions. Functions are public static procedures that may be executed by any class. Methods are operations that may be performed on an object instance. Methods have <code>public</code> and <code>private</code> qualifiers. Methods that are <code>private</code> may only be called from within the same class, while <code>public</code> methods may be called from other classes. Note, methods are <code>private</code> by default. The Objeck language supports polymorphic methods and functions, meaning that there can be multiple methods with the same name within the same class as long as their declaration arguments vary.</p>
+<p>Methods and functions can either be executed in an interpreted or JIT compiled mode. Interpreted execution mimics microprocessor functions in a platform independent manner. JIT execution takes the compiled stack code an produces native machine code. Note, that there is initial overhead involved in the JIT compilation process since it occurs at runtime. In addition, some methods can not be compiled into native machine code but this is a rare case. The keyword <code>native</code> is used to JIT compile methods and functions at runtime.</p>
+<p>A function or method may be defined as <code>virtual</code> meaning that any class that originates from that class must implement all of the class’s <code>virtual</code> methods or functions. <code>Virtual</code> methods are a way to ensure that certain operations are available to a family of classes. If a class declares a <code>virtual</code> method then the class become <code>virtual</code>, meaning that it cannot be directly instantiated.</p>
+<p>Below is an example of declaring a virtual method:</p>
+<pre><code>method : virtual : public : GetMake() ~ String;</code></pre>
+<h2 id="interfaces">Interfaces</h2>
+<p>As a modern object-oriented language, Objeck supports interfaces. Interfaces define virtual methods that must be implemented by a given class. A class may implement one or more interfaces. Interface references may be passed, dereferenced and casted in a similar manner to class references. Below is an example of an interface definition:</p>
+<pre><code>interface Color {
+  method : virtual : public : GetColor() ~ String;
+}
+
+interface Vehicle {
+  method : virtual : SetName(name : String) ~ Nil;
+  method : virtual : public : GetNumberOfWheels() ~ Int;
+}
+
+class Ufo implements Vehicle, Color {
+  method : public : GetColor() ~ String {
+    ...
+  }
+  method : SetName(name : String) ~ Nil {
+    ...
+  }
+  method : public : GetNumberOfWheels() ~ Int {
+    ...
+  }
+}</code></pre>
+<h2 id="higher-order-functions">Higher-Order Functions</h2>
+<p>The Objeck language supports the notion of higher-order functions such that a given function may be bound to a variable at runtime. Variables are assigned based upon functional prototypes. Prototypes enforce strong type checking by ensuring that a function’s parameters and return type are consistent between assignments. Once a variable is bound, it may be assigned to other variables, passed to other functions/methods, returned from other functions/method or dynamically evoked. Please note, methods are not treated as higher-order constructs only functions.</p>
+<h3 id="assigning-and-passing-functions">Assigning and Passing Functions</h3>
+<p>The following example shows how a function is defined and assigned to a variable:</p>
+<pre><code>class Foo {
+  function : GetSize(s : String) ~ Int {
+      return s-&gt;Size();
+  }
+}
+....
+s1 : (String) ~ Int := Foo-&gt; GetSize(String) ~ Int;
+s2 := Foo-&gt;GetSize(String) ~ Int;
+size1 := EnvokeSize(&quot;Hello&quot;, s1);
+size2 := EnvokeSize(&quot;Hello&quot;, s2);</code></pre>
+<h3 id="envoking-functions">Envoking Functions</h3>
+<p>The following example shows how a function variable can be assigned and envoked:</p>
+<pre><code>...
+method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
+  return f(s);
+}
+...</code></pre>
+<h1 id="native-shared-library-support">Native Shared Library Support</h1>
+<p>The Objeck Language has the ability to interact with native C/C++ shared libraries via runtime extensions. The APIs allows a programmer to load a shared libraries and invoke native C functions. Data is passed between the two layers via <code>Object[]</code>. Basic objects such as <code>Int</code> and <code>Float</code> types must be wrapped in <code>IntHolder</code> and <code>FloatHolder</code> classes respectively. Please refer to the examples in the source code distribution for additional information.</p>
+<p>A native function signature looks like the following:</p>
+<pre><code>#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_connect(VMContext&amp; context);</code></pre>
+<p>The <code>VMContext</code> structure contains pointers to the calculation stack as well as utility functions that allow programmers to allocate VM objects and arrays. In addition, this structure provides the ability to invoke Objeck functions and methods..</p>
+<pre><code>struct VMContext {
+  long* data_array;
+  long* op_stack;
+  long* stack_pos;
+  APITools_AllocateArray_Ptr alloc_array;
+  APITools_AllocateObject_Ptr alloc_obj;
+  APITools_MethodCall_Ptr call_method_by_name;
+  APITools_MethodCallId_Ptr call_method_by_id;
+};</code></pre>
+<p>The <code>lib_api.h</code> header file also includes helper functions that allow programmers to access and set data that passed into the native C function. A subset of the available functions include the following:</p>
+<ul>
+<li><pre><code>APITools_GetFunctionValue</code></pre></li>
+<li><pre><code>APITools_SetFunctionValue</code></pre></li>
+<li><pre><code>APITools_GetIntValue</code></pre></li>
+<li><pre><code>APITools_GetIntAddress</code></pre></li>
+<li><pre><code>APITools_SetIntValue</code></pre></li>
+<li><pre><code>APITools_GetFloatValue</code></pre></li>
+<li><pre><code>APITools_GetFloatAddress</code></pre></li>
+<li><pre><code>APITools_GetStringValue</code></pre></li>
+<li><pre><code>APITools_SetStringValue</code></pre></li>
+<li><pre><code>APITools_CallMethod</code></pre></li>
+<li><pre><code>APITools_PushInt</code></pre></li>
+<li><pre><code>APITools_PushFloat</code></pre></li>
+<li><pre><code>APITools_GetArraySize</code></pre></li>
+<li><pre><code>APITools_SetIntArrayElement</code></pre></li>
+<li><pre><code>APITools_GetFloatArrayElement</code></pre></li>
+<li><pre><code>APITools_SetFloatArrayElement</code></pre></li>
+</ul>
+<h1 id="debugger">Debugger</h1>
+<p>The Objeck compiler toolset contains a simple interactive read-only debugger, which allows programmers to monitor the runtime behavior of their programs. The debugger allows programmers to set breakpoints within methods based upon source line numbers. The debugger can also calculate simple arithmetic expressions involving variables and constants. The following commands are currently supported:</p>
+<h2 id="debugging-commands">Debugging Commands</h2>
+<p>| l |p4 cm |p4 cm |</p>
+<p><em>Command</em> &amp; <em>Description</em> &amp; <em>Example</em><br /><code>[b]reak</code> &amp; sets a breakpoint &amp; <code>b b hello.obs:10</code><br /><code>breaks</code> &amp; shows all breakpoints &amp;<br /><code>[d]elete</code> &amp; deletes a breakpoint &amp; <code>d hello.obs:10</code><br /><code>clear</code> &amp; clears all breakpoints &amp;<br /><code>[n]ext</code> &amp; moves to the next line within the same method/function with debug information &amp;<br /><code>[s]tep</code> &amp; moves to the next line with debug information &amp;<br /><code>[j]ump</code> &amp; jumps out of an existing method/function and moves to the next line with debug information &amp;<br /><code>args</code> &amp; specifies program arguments &amp; <code>args &quot;Hello World&quot;</code><br /><code>[r]un</code> &amp; runs a loaded program &amp;<br /><code>[p]rint</code> &amp; prints the value of an expression, along with metadata &amp; <code>p locl_value p @self\rightarrowinst_value</code><br /><code>[l]ist</code> &amp; lists a range of lines in a source file or the lines near the current breakpoint &amp; <code>l l hello.obs:10</code><br /><code>[i]nfo</code> &amp; displays the variables for a class &amp; <code>i i class=Foo</code><br /><code>stack</code> &amp; displays the method/function call stack &amp;<br /><code>exe</code> &amp; loads a new executable &amp; <code>exe &quot;./../test.obe&quot;</code><br /><code>src</code> &amp; specifies a new source path &amp; <code>src &quot;../../&quot;</code><br /><code>[q]uit</code> &amp; exits a given debugging session &amp;<br /></p>
+<h2 id="starting-the-debugger">Starting the Debugger</h2>
+<p>The source program must be compiled with the <code>-debug</code> set. The command line debugger is started up running the <code>odb</code> executable. The <code>-exe</code> option must be present and specify the path to the executable. The The <code>-src</code> option is optional and specifies the path to the program source. Also note, to print instance level variables the path must start with <code>@self\rightarrow</code>.</p>
+<h1 id="class-libraries">Class Libraries</h1>
+<p>Objeck includes class libraries that provides access to system resources, such as files and sockets, while also providing support for data structures like vectors, lists, queues, etc. As new classes are added they’ll be documented in this section.</p>
+<p>The diagram below outlines available class bundles:</p>
+<div class="figure">
+<img src="../../images/classes.png" alt="image" /><p class="caption">image</p>
+</div>
+<h2 id="system">System</h2>
+<p>Class support for basic data types. These classes are located in the default ‘System’ bundle.</p>
+<h3 id="base">Base</h3>
+<p>Base class for all objects.</p>
+<ul>
+<li><p><code>GetClass</code> - returns metadata about a class</p>
+<ul>
+<li><p>method : public : GetClass() Class</p></li>
+</ul></li>
+<li><p><code>GetClassID</code> - returns the class ID</p>
+<ul>
+<li><p>method : public : native : GetClassID() ClassID</p></li>
+</ul></li>
+<li><p><code>GetInstanceID</code> - returns a unique instance ID</p>
+<ul>
+<li><p>method : public : native : GetInstanceID() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="bool">Bool</h3>
+<ul>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - converts the current value to a <code>String</code> object instance</p>
+<ul>
+<li><p>method : native : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="char">Char</h3>
+<ul>
+<li><p><code>ToUpper</code> - coverts a character to a uppercase character</p>
+<ul>
+<li><p>method : public : native : ToUpper() Char</p></li>
+</ul></li>
+<li><p><code>ToLower</code> - coverts a character to a lowercase character</p>
+<ul>
+<li><p>method : public : native : ToLower() Char</p></li>
+</ul></li>
+<li><p><code>IsDigit</code> - determines if the character is a digit (in the range of <code>0-9</code>)</p>
+<ul>
+<li><p>method : native : IsDigit() Bool</p></li>
+</ul></li>
+<li><p><code>IsChar</code> - determines if the character is a alpha (in the range of <code>A-Z</code> or <code>a-z</code>)</p>
+<ul>
+<li><p>method : native : IsChar() Bool</p></li>
+</ul></li>
+<li><p><code>Min</code> - returns the smallest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Min(r : Char) Char</p></li>
+</ul></li>
+<li><p><code>Max</code> - returns the largest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Max(r : Char) Char</p></li>
+</ul></li>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - converts the current value to a <code>String</code> object instance</p>
+<ul>
+<li><p>method : native : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="byteint">Byte/Int</h3>
+<ul>
+<li><p><code>Min</code> - returns the smallest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Min(r : Int) Int</p></li>
+</ul></li>
+<li><p><code>Max</code> - returns the largest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Max(r : Int) Int</p></li>
+</ul></li>
+<li><p><code>MaxSize</code> - maximum size of an integer</p>
+<ul>
+<li><p>method : native : MaxSize() Int</p></li>
+</ul></li>
+<li><p><code>Abs</code> - returns the absolute value of the current number</p>
+<ul>
+<li><p>method : native : Abs() Int</p></li>
+</ul></li>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+<li><p><code>ToBinaryString</code> - converts the current value to a binary <code>String</code></p>
+<ul>
+<li><p>method : native : ToBinaryString() String</p></li>
+</ul></li>
+<li><p><code>ToString</code> - converts the current value to a <code>String</code></p>
+<ul>
+<li><p>method : native : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="float">Float</h3>
+<ul>
+<li><p><code>Min</code> - returns the smallest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Min(r : Float) Float</p></li>
+</ul></li>
+<li><p><code>Max</code> - returns the largest of the two numbers; returns the same number if they are equal</p>
+<ul>
+<li><p>method : native : Max(r : Float) Float</p></li>
+</ul></li>
+<li><p><code>Abs</code> - returns the absolute value of the current number</p>
+<ul>
+<li><p>method : native : Abs() Float</p></li>
+</ul></li>
+<li><p><code>Floor</code> - returns the floor of the current number</p>
+<ul>
+<li><p>method : Floor() Float</p></li>
+</ul></li>
+<li><p><code>Ceiling</code> - returns the ceiling of the current number</p>
+<ul>
+<li><p>method : Ceiling() Float</p></li>
+</ul></li>
+<li><p><code>Sin</code> - returns the sine of the radian value</p>
+<ul>
+<li><p>method : Sin() Float</p></li>
+</ul></li>
+<li><p><code>Cos</code> - returns the cosine of the radian value</p>
+<ul>
+<li><p>method : Cos() Float</p></li>
+</ul></li>
+<li><p><code>Tan</code> - returns the tangent of the radian value</p>
+<ul>
+<li><p>method : Tan() Float</p></li>
+</ul></li>
+<li><p><code>ArcSin</code> - returns the arc sine of the radian value</p>
+<ul>
+<li><p>method : ArcSin() Float</p></li>
+</ul></li>
+<li><p><code>ArcCos</code> - returns the arc cosine of the radian value</p>
+<ul>
+<li><p>method : ArcCos() Float</p></li>
+</ul></li>
+<li><p><code>ArcTan</code> - returns the arc tangent of the radian value</p>
+<ul>
+<li><p>method : ArcTan() Float</p></li>
+</ul></li>
+<li><p><code>ToRadians</code> - converts degrees to radians</p>
+<ul>
+<li><p>method : ToRadians() Float</p></li>
+</ul></li>
+<li><p><code>Log</code> - returns the natural log of the radian value</p>
+<ul>
+<li><p>method : Log() Float</p></li>
+</ul></li>
+<li><p><code>Pi</code> - returns the value of Pi</p>
+<ul>
+<li><p>function : Pi() Float</p></li>
+</ul></li>
+<li><p><code>E</code> - returns the value of E</p>
+<ul>
+<li><p>function : E() Float</p></li>
+</ul></li>
+<li><p><code>Power</code> - returns the exponential power value</p>
+<ul>
+<li><p>method : Power() Float</p></li>
+</ul></li>
+<li><p><code>SquareRoot</code> - returns the square root</p>
+<ul>
+<li><p>method : SquareRoot() Float</p></li>
+</ul></li>
+<li><p><code>Random</code> - returns a puedo-random number between 0.0 and 1.0</p>
+<ul>
+<li><p>function : Random() Float</p></li>
+</ul></li>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - converts the current value to a <code>String</code> object instance</p>
+<ul>
+<li><p>method : native : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="string">String</h3>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+<li><p>New(s : String)</p></li>
+<li><p>New(a : Char[])</p></li>
+<li><p>New(a : Char[], offset : Int, max : Int)</p></li>
+<li><p>New(a : Byte[])</p></li>
+<li><p>New(a : Byte[], offset : Int, max : Int)</p></li>
+</ul></li>
+<li><p><code>Append</code> - Appends a <code>String</code>, <code>Char[]</code>, <code>Char</code>, <code>Int</code> or <code>Float</code> to the current String instance</p>
+<ul>
+<li><p>method : public : native : Append(s : String) Nil</p></li>
+<li><p>method : public : native : Append(c : Char) Nil</p></li>
+<li><p>method : public : native : Append(b : Byte) Nil</p></li>
+<li><p>method : public : native : Append(i : Int) Nil</p></li>
+<li><p>method : public : native : Append(f : Float) Nil</p></li>
+<li><p>method : public : native : Append(a : Char[]) Nil</p></li>
+<li><p>method : public : native : Append(a : Char[], offset : Int, max : Int) Nil</p></li>
+<li><p>method : public : native : Append(a : Byte[]) Nil</p></li>
+<li><p>method : public : native : Append(a : Byte[], offset : Int, max : Int) Nil</p></li>
+</ul></li>
+<li><p><code>Find</code> - returns the index of the first occurrence of a given Character; -1 if not found</p>
+<ul>
+<li><p>method : public : native : Find(c : Char) Int</p></li>
+<li><p>method : public : native : Find(offset : Int, c : Char) Int</p></li>
+</ul></li>
+<li><p><code>Find</code> - returns the index of the first occurrence of a given String; -1 if not found</p>
+<ul>
+<li><p>method : public : native : Find(s : String) Int</p></li>
+<li><p>method : public : native : Find(s : String, offfset : Int) Int</p></li>
+</ul></li>
+<li><p><code>Replace</code> - find and replace a single string instance.</p>
+<ul>
+<li><p>method : public : native : Replace(find : String, replace : String) String</p></li>
+</ul></li>
+<li><p><code>ReplaceAll</code> - find and replace all string instances.</p>
+<ul>
+<li><p>method : public : native : ReplaceAll(find : String, replace : String) String</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the String</p>
+<ul>
+<li><p>method : public : native : Size() Int</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if the string is empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns the Character at the given index or -1 if not found</p>
+<ul>
+<li><p>method : public : native : Get(i : Int) Char</p></li>
+</ul></li>
+<li><p><code>ToCharArray</code> - converts a string to a <code>Char[]</code></p>
+<ul>
+<li><p>method : public : native : ToCharArray() Char[]</p></li>
+</ul></li>
+<li><p><code>ToBytteArray</code> - converts a string to a <code>Bytte[]</code></p>
+<ul>
+<li><p>method : public : native : ToBytteArray() Bytte[]</p></li>
+</ul></li>
+<li><p><code>ToInt</code> - converts a string to a <code>Int</code></p>
+<ul>
+<li><p>method : public : native : ToInt() Int</p></li>
+</ul></li>
+<li><p><code>ToFloat</code> - converts a string to a <code>Float</code></p>
+<ul>
+<li><p>method : public : native : ToFloat() Int</p></li>
+</ul></li>
+<li><p><code>SubString</code> - creates a new string that contains a subset of the string’s contents</p>
+<ul>
+<li><p>method : public : native : SubString(offset : Int) String</p></li>
+<li><p>method : public : native : SubString(offset : Int, length : Int) String</p></li>
+</ul></li>
+<li><p><code>Trim</code> - removes all leading and trailing whitespace</p>
+<ul>
+<li><p>method : public : native : Trim() String</p></li>
+</ul></li>
+<li><p><code>Pop</code> - removes the last character from a string</p>
+<ul>
+<li><p>method : public : native : Pop() Char</p></li>
+</ul></li>
+<li><p><code>StartsWith</code> - returns true if <code>String</code> starts with matching pattern; returns false otherwise</p>
+<ul>
+<li><p>method : public : native : StartsWith() Bool</p></li>
+</ul></li>
+<li><p><code>EndsWith</code> - returns true if <code>String</code> ends with matching pattern; returns false otherwise</p>
+<ul>
+<li><p>method : public : native : EndsWith() Bool</p></li>
+</ul></li>
+<li><p><code>ToUpper</code> - coverts all lowercase characters to uppercase characters</p>
+<ul>
+<li><p>method : public : native : ToUpper() String</p></li>
+</ul></li>
+<li><p><code>ToLower</code> - coverts all uppercase characters to lowercase characters</p>
+<ul>
+<li><p>method : public : native : ToLower() String</p></li>
+</ul></li>
+<li><p><code>Reverse</code> - returns a string with reversed characters</p>
+<ul>
+<li><p>method : public : native : Reverse() String</p></li>
+</ul></li>
+<li><p><code>Equals</code> - compares two string returns <code>true</code> if they are equal</p>
+<ul>
+<li><p>method : public : Equals(rhs : String) Bool</p></li>
+</ul></li>
+<li><p><code>Compare</code> - compares two string returns 0 if they are equal</p>
+<ul>
+<li><p>method : public : native : Compare(rhs : Compare) Int</p></li>
+</ul></li>
+<li><p><code>Split</code> - breaks a string into tokens based upon a given delimiter</p>
+<ul>
+<li><p>method : public : native : Split(delim : String) String[]</p></li>
+</ul></li>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="bool-1">Bool</h3>
+<ul>
+<li><p><code>Print</code> - prints the current value</p>
+<ul>
+<li><p>method : native : Print() Nil</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints the current value along with a line return</p>
+<ul>
+<li><p>method : native : PrintLine() Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - converts the current value to a <code>String</code> object instance</p>
+<ul>
+<li><p>method : native : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="intholder">IntHolder</h3>
+<p>Holds an interger type.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Int)</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Int</p></li>
+</ul></li>
+<li><p><code>Compare</code> - returns a value</p>
+<ul>
+<li><p>method : public : Compare(rhs : Compare) Int</p></li>
+</ul></li>
+<li><p><code>HashID</code> - returns a unique value for the given class type</p>
+<ul>
+<li><p>method : public : HashID() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="intarrayholder">IntArrayHolder</h3>
+<p>Holds an interger array.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Int[])</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Int[]</p></li>
+</ul></li>
+</ul>
+<h3 id="floatholder">FloatHolder</h3>
+<p>Holds a float type.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Float)</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Float</p></li>
+</ul></li>
+<li><p><code>Compare</code> - returns a value</p>
+<ul>
+<li><p>method : public : Compare(rhs : Compare) Int</p></li>
+</ul></li>
+<li><p><code>HashID</code> - returns a unique value for the given class type</p>
+<ul>
+<li><p>method : public : HashID() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="floatarrayholder">FloatArrayHolder</h3>
+<p>Holds a float array.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Float[])</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Float[]</p></li>
+</ul></li>
+</ul>
+<h3 id="bytearrayholder">ByteArrayHolder</h3>
+<p>Holds a byte array.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Byte[])</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Byte[]</p></li>
+</ul></li>
+</ul>
+<h3 id="chararrayholder">CharArrayHolder</h3>
+<p>Holds a character array.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(value : Char[])</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns a value</p>
+<ul>
+<li><p>method : public : Get() Char[]</p></li>
+</ul></li>
+</ul>
+<h3 id="runtime">Runtime</h3>
+<p>The Runtime class provides information about the runtime VM environment.</p>
+<ul>
+<li><p><code>GetPlatform</code> - returns a string containing information about the runtime environment</p>
+<ul>
+<li><p>function : GetPlatform() String</p></li>
+</ul></li>
+<li><p><code>GetProperty</code> - returns the value for a given property</p>
+<ul>
+<li><p>function : GetProperty() String</p></li>
+</ul></li>
+<li><p><code>SetProperty</code> - sets the key/value pair for a given property. Properties can also be set via the ‘config.prop’ configuration file, which must be located in the same directory as the VM.</p>
+<ul>
+<li><p>function : SetProperty(k : String, v : String) Nil</p></li>
+</ul></li>
+<li><p><code>GetDate</code> - returns the current time</p>
+<ul>
+<li><p>function : public : GetDate() Date</p></li>
+</ul></li>
+<li><p><code>Exit</code> - exits the current running program</p>
+<ul>
+<li><p>function : public : Exit() Nil</p></li>
+</ul></li>
+<li><p><code>Copy</code> - copies a block of memory from one array to another</p>
+<ul>
+<li><p>function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) Bool</p></li>
+<li><p>function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) Bool</p></li>
+<li><p>function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) Bool</p></li>
+<li><p>function : Copy(dest : Base[], dest_offset : Int, src : Base[], src_offset : Int, len : Int) Bool</p></li>
+<li><p>function : Copy(dest : Compare[], dest_offset : Int, src : Compare[], src_offset : Int, len : Int) Bool</p></li>
+</ul></li>
+</ul>
+<h2 id="system.introspection">System.Introspection</h2>
+<p>Provides the ability to access program metadata at runtime.</p>
+<h3 id="class">Class</h3>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(c : String)</p></li>
+</ul></li>
+<li><p><code>IsLoaded</code> - returns true if this class has been loaded, false otherwise</p>
+<ul>
+<li><p>method : public : IsLoaded() Bool</p></li>
+</ul></li>
+<li><p><code>Instance</code> - creates a new class instance and calls default constructor</p>
+<ul>
+<li><p>function : Instacne(name : String) Base</p></li>
+</ul></li>
+<li><p><code>GetName</code> - returns the name of the class</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+<li><p><code>GetMethods</code> - returns an array of methods</p>
+<ul>
+<li><p>method : public : GetMethods() GetMethods[]</p></li>
+</ul></li>
+<li><p><code>GetMethodNumber</code> - returns the number of methods in the class</p>
+<ul>
+<li><p>method : public : GetMethodNumber() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="method">Method</h3>
+<ul>
+<li><p><code>GetClass</code> - returns class assoicated with the method</p>
+<ul>
+<li><p>method : public : GetClass() Class</p></li>
+</ul></li>
+<li><p><code>GetName</code> - returns the pretty name of the method</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+<li><p><code>GetParameters</code> - returns the datatypes of the parameters</p>
+<ul>
+<li><p>method : public : GetParameters() DataType[]</p></li>
+</ul></li>
+<li><p><code>GetReturn</code> - returns the datatype of the return</p>
+<ul>
+<li><p>method : public : GetReturn() DataType</p></li>
+</ul></li>
+</ul>
+<h3 id="datatype">DataType</h3>
+<ul>
+<li><p><code>GetType</code> - returns the type ID</p>
+<ul>
+<li><p>method : public : GetType() TypeId</p></li>
+</ul></li>
+<li><p><code>GetDimension</code> - returns dimensions of the datatype</p>
+<ul>
+<li><p>method : public : GetDimension() Int</p></li>
+</ul></li>
+<li><p><code>GetClassName</code> - returns string name of non-basic objects, Nil otherwise</p>
+<ul>
+<li><p>method : public : GetClassName() String</p></li>
+</ul></li>
+</ul>
+<h3 id="typeid">TypeId</h3>
+<ul>
+<li><p>BOOL</p></li>
+<li><p>BYTE</p></li>
+<li><p>CHAR</p></li>
+<li><p>INT</p></li>
+<li><p>FLOAT</p></li>
+<li><p>CLASS</p></li>
+<li><p>FUNC</p></li>
+</ul>
+<h2 id="system.io">System.IO</h2>
+<p>This bundle supports console I/O, object serialization and defines general I/O interfaces.</p>
+<h3 id="inputstream">InputStream</h3>
+<p>The InputStream interface defines input operations.</p>
+<ul>
+<li><p><code>ReadByte</code> - reads a byte</p>
+<ul>
+<li><p>method : public : ReadByte() Byte</p></li>
+</ul></li>
+<li><p><code>ReadBuffer</code> - reads n number of bytes</p>
+<ul>
+<li><p>method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>ReadString</code> - reads a line</p>
+<ul>
+<li><p>method : public : ReadString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="outputstream">OutputStream</h3>
+<p>The OutputStream interface defines output operations.</p>
+<ul>
+<li><p><code>WriteByte</code> - writes a byte</p>
+<ul>
+<li><p>method : public : WriteByte(b : Int) Bool</p></li>
+</ul></li>
+<li><p><code>WriteBuffer</code> - writes n number of bytes</p>
+<ul>
+<li><p>method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>WriteString</code> - writes a string</p>
+<ul>
+<li><p>method : public : WriteString(s : String) Nil</p></li>
+</ul></li>
+<li><p><code>Flush</code> - flushes buffer</p>
+<ul>
+<li><p>method : public : Flush() Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="console">Console</h3>
+<p>The Console class allows programmers to read and write information to the system console. The class supports the following operations:</p>
+<ul>
+<li><p><code>Print</code> - prints all basic types including <code>String</code> and <code>Char[]</code> to standard out.</p>
+<ul>
+<li><p>function : Print(t : type) ConsoleIO</p></li>
+</ul></li>
+<li><p><code>PrintLine</code> - prints all basic types including <code>String</code> and <code>Char[]</code> to standard out followed by a newline.</p>
+<ul>
+<li><p>function : PrintLine(t : type) ConsoleIO</p></li>
+</ul></li>
+<li><p><code>WriteBuffer</code> - writes a buffer to standard out.</p>
+<ul>
+<li><p>function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) Bool</p></li>
+<li><p>function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) Bool</p></li>
+</ul></li>
+<li><p><code>ReadString</code> - reads in a line of text as a <code>Char[]</code> from standard in.</p>
+<ul>
+<li><p>method : public : ReadString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="serializer">Serializer</h3>
+<p>The Serializer class allows datatypes to be deflated into a byte array for storage or transmission. This class is in the ‘IO’ bundle. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+</ul></li>
+<li><p><code>Add</code> - deflates a datatype</p>
+<ul>
+<li><p>method : public : Write(b : Bool) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(i : Int) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(f : Float) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(o : Base) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(b : Bool[]) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(b : Bool[]) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(b : Byte[]) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(c : Charl[]) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(i : Int[]) Nil</p></li>
+</ul>
+<ul>
+<li><p>method : public : Write(f : Float[]) Nil</p></li>
+</ul></li>
+<li><p><code>Serialize</code> - returns a byte stream of serialized data</p>
+<ul>
+<li><p>method : public : Serialize() Byte[]</p></li>
+</ul></li>
+</ul>
+<h3 id="deserializer">Deserializer</h3>
+<p>The Deserializer class allows datatypes to be inflated from a byte array. This class is in the ‘IO’ bundle. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(b : Byte[])</p></li>
+</ul></li>
+<li><p><code>ReadBool</code> - reads a boolean value</p>
+<ul>
+<li><p>method : public : ReadBool() Bool</p></li>
+</ul></li>
+<li><p><code>ReadInt</code> - reads an integer value</p>
+<ul>
+<li><p>method : public : ReadInt() Int</p></li>
+</ul></li>
+<li><p><code>ReadFloat</code> - reads a float value</p>
+<ul>
+<li><p>method : public : ReadFloat() Float</p></li>
+</ul></li>
+<li><p><code>ReadObject</code> - reads an object</p>
+<ul>
+<li><p>method : public : ReadObject() Float</p></li>
+</ul></li>
+<li><p><code>ReadBoolArray</code> - reads a boolean array</p>
+<ul>
+<li><p>method : public : ReadBoolArray() Bool[]</p></li>
+</ul></li>
+<li><p><code>ReadByteArray</code> - reads a byte array</p>
+<ul>
+<li><p>method : public : ReadByteArray() Byte[]</p></li>
+</ul></li>
+<li><p><code>ReadCharArray</code> - reads a character array</p>
+<ul>
+<li><p>method : public : ReadCharArray() Char[]</p></li>
+</ul></li>
+<li><p><code>ReadIntArray</code> - reads an integer array</p>
+<ul>
+<li><p>method : public : ReadIntArray() Byte[]</p></li>
+</ul></li>
+<li><p><code>ReadFloatArray</code> - reads a float array</p>
+<ul>
+<li><p>method : public : ReadFloatArray() Float[]</p></li>
+</ul></li>
+</ul>
+<h2 id="system.io.file">System.IO.File</h2>
+<p>Provides support for file and directory operations.</p>
+<h3 id="file">File</h3>
+<p>The File class allows programmers to access files.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(name : String)</p></li>
+</ul></li>
+<li><p><code>IsOpen</code> - returns true if file is open.</p>
+<ul>
+<li><p>method : public : IsOpen() Bool</p></li>
+</ul></li>
+<li><p><code>IsEOF</code> - returns true if the file pointer is at the EOF.</p>
+<ul>
+<li><p>method : public : IsEOF() Bool</p></li>
+</ul></li>
+<li><p><code>Seek</code> - seeks to a position in a file.</p>
+<ul>
+<li><p>method : public : Seek(p : Int) Bool</p></li>
+</ul></li>
+<li><p><code>Rewind</code> - moves the file pointer to the beginning of a file.</p>
+<ul>
+<li><p>method : public : Rewind() Nil</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the file.</p>
+<ul>
+<li><p>function : Size(name : String) Int</p></li>
+</ul></li>
+<li><p><code>Remove</code> - deletes a file.</p>
+<ul>
+<li><p>function : Remove(n : String) Bool</p></li>
+</ul></li>
+<li><p><code>Exists</code> - returns true if the file exists.</p>
+<ul>
+<li><p>function : Exists(n : String) Bool</p></li>
+</ul></li>
+<li><p><code>CreateTime</code> - returns the time in which the file was created</p>
+<ul>
+<li><p>function : CreateTime(n : String) Date</p></li>
+<li><p>function : CreateTime(n : String, gmt : Bool) Date</p></li>
+</ul></li>
+<li><p><code>ModifiedTime</code> - returns the time in which the file was last modifed</p>
+<ul>
+<li><p>function : ModifiedTime(n : String) Date</p></li>
+<li><p>function : ModifiedTime(n : String, gmt : Bool) Date</p></li>
+</ul></li>
+<li><p><code>AccessedTime</code> - returns the time in which the file was last modifed</p>
+<ul>
+<li><p>function : AccessedTime(n : String) Date</p></li>
+<li><p>function : AccessedTime(n : String, gmt : Bool) Date</p></li>
+</ul></li>
+<li><p><code>Rename</code> - renames a file</p>
+<ul>
+<li><p>function : Rename(from : String, to : String) Bool</p></li>
+</ul></li>
+</ul>
+<h3 id="filereader">FileReader</h3>
+<p>The FileReader is inherited from the File class implements InputStream and allows programmers read files. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(name : String)</p></li>
+</ul></li>
+<li><p><code>Close</code> - closes a file.</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+<li><p><code>ReadByte</code> - reads a byte from a file.</p>
+<ul>
+<li><p>method : public : ReadByte() Byte</p></li>
+</ul></li>
+<li><p><code>ReadBinaryFile</code> - reads an entire file into a byte array.</p>
+<ul>
+<li><p>function : public : ReadBinaryFile(file : String) Byte[]</p></li>
+</ul></li>
+<li><p><code>ReadBuffer</code> - reads n number of bytes from a file.</p>
+<ul>
+<li><p>method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>ReadString</code> - reads a line from a file.</p>
+<ul>
+<li><p>method : public : ReadString() String</p></li>
+</ul></li>
+<li><p><code>ReadFile</code> - reads an entire file.</p>
+<ul>
+<li><p>method : public : ReadFile() String</p></li>
+</ul></li>
+</ul>
+<h3 id="filewriter">FileWriter</h3>
+<p>The FileReader is inherited from the File class implements OutputStream and allows programmers to write to files. The class supports the following operations:</p>
+<ul>
+<li><p><code>Close</code> - closes a file.</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+<li><p><code>Flush</code> - flushes a file.</p>
+<ul>
+<li><p>method : public : Flush() Nil</p></li>
+</ul></li>
+<li><p><code>WriteByte</code> - writes a byte to a file.</p>
+<ul>
+<li><p>method : public : WriteByte(b : Int) Bool</p></li>
+</ul></li>
+<li><p><code>WriteBuffer</code> - writes n number of bytes to a file.</p>
+<ul>
+<li><p>method : public : WriteBuffer(buffer : Byte[]) Int</p></li>
+<li><p>method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>WriteString</code> - writes a string to a file.</p>
+<ul>
+<li><p>method : public : WriteString(s : String) Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="directory">Directory</h3>
+<p>The Directory class allows programmers manipulate file system directories. The class supports the following operations:</p>
+<ul>
+<li><p><code>Create</code> - creates a new directory.</p>
+<ul>
+<li><p>function : Create(n : String) Bool</p></li>
+</ul></li>
+<li><p><code>Exists</code> - returns true if the directory exists.</p>
+<ul>
+<li><p>function : Exists(n : String) Bool</p></li>
+</ul></li>
+<li><p><code>List</code> - returns vector of file and directory names.</p>
+<ul>
+<li><p>function : List(n : String) String[]</p></li>
+</ul></li>
+</ul>
+<h2 id="system.io.net">System.IO.Net</h2>
+<p>Provides support for TCP/IP client and server sockets. The TCPSecureSocket class provides SSL support for TCP/IP connections.</p>
+<h3 id="tcpsockettcpsecuresocket">TCPSocket/TCPSecureSocket</h3>
+<p>The TCPSocket class implements the InputStream and OuptStream interfaces and allows programmers to connect to TCP/IP socket servers. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(address : String, port : Int)</p></li>
+</ul></li>
+<li><p><code>IsOpen</code> - returns true if the socket is connected.</p>
+<ul>
+<li><p>method : public : IsOpen() Bool</p></li>
+</ul></li>
+<li><p><code>GetAddress</code> - return the socket address</p>
+<ul>
+<li><p>method : public : GetAddress() String</p></li>
+</ul></li>
+<li><p><code>GetPort</code> - return the socket port</p>
+<ul>
+<li><p>method : public : GetPort() Int</p></li>
+</ul></li>
+<li><p><code>Close</code> - closes a connected socket.</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+<li><p><code>WriteByte</code> - writes a byte to a socket.</p>
+<ul>
+<li><p>method : public : WriteByte(b : Int) Bool</p></li>
+</ul></li>
+<li><p><code>WriteBuffer</code> - writes n number of bytes to a socket.</p>
+<ul>
+<li><p>method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>WriteString</code> - writes a string to a socket.</p>
+<ul>
+<li><p>method : public : WriteString(s : String) Nil</p></li>
+</ul></li>
+<li><p><code>ReadByte</code> - reads a byte from a socket.</p>
+<ul>
+<li><p>method : public : ReadByte() Byte</p></li>
+</ul></li>
+<li><p><code>ReadBuffer</code> - reads n number of bytes from a socket.</p>
+<ul>
+<li><p>method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) Int</p></li>
+</ul></li>
+<li><p><code>ReadString</code> - reads a line from a socket.</p>
+<ul>
+<li><p>method : public : ReadString() String</p></li>
+</ul></li>
+<li><p><code>HostName</code> - returns the host name (for TCPSocket only)</p>
+<ul>
+<li><p>function : HostName() String</p></li>
+</ul></li>
+</ul>
+<h3 id="tcpsocketserver">TCPSocketServer</h3>
+<p>The TCPSocket class allows programmers develop TCP/IP socket servers. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(port : Int)</p></li>
+</ul></li>
+<li><p><code>Listen</code> - listens for client connections</p>
+<ul>
+<li><p>method : public : Listen(backlog : Int) Bool</p></li>
+</ul></li>
+<li><p><code>Accept</code> - listens for client connections</p>
+<ul>
+<li><p>method : public : Accept() TCPSocket</p></li>
+</ul></li>
+<li><p><code>Close</code> - closes a connected socket.</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+</ul>
+<h2 id="system.time">System.Time</h2>
+<p>Provides time and date operations.</p>
+<h3 id="date">Date</h3>
+<p>The Date class allows programmers gain access to the current system time. This class is in the ‘Time’ bundle. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+<li><p>New(gmt : Bool)</p></li>
+<li><p>New(day : Int, month : Int, year : Int, gmt : Bool)</p></li>
+<li><p>New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool)</p></li>
+</ul></li>
+<li><p><code>GetDay</code> - return the current day as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetDay() Int</p></li>
+</ul></li>
+<li><p><code>GetDayName</code> - return the current day of the week as a <code>String</code>.</p>
+<ul>
+<li><p>method : public : GetNameDay() String</p></li>
+</ul></li>
+<li><p><code>GetMonth</code> - return the current month as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetMonth() Int</p></li>
+</ul></li>
+<li><p><code>GetMonthName</code> - return the current month as a <code>String</code>.</p>
+<ul>
+<li><p>method : public : GetMonthName() String</p></li>
+</ul></li>
+<li><p><code>GetYear</code> - return the current year as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetYear() Int</p></li>
+</ul></li>
+<li><p><code>GetHours</code> - return the current hour as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetHours() Int</p></li>
+</ul></li>
+<li><p><code>GetMinutes</code> - return the current minutes as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetMinutes() Int</p></li>
+</ul></li>
+<li><p><code>GetSeconds</code> - return the current seconds as an <code>Int</code>.</p>
+<ul>
+<li><p>method : public : GetSeconds() Int</p></li>
+</ul></li>
+<li><p><code>IsSavingsTime</code> - return true if daylights saving time, false otherwise</p>
+<ul>
+<li><p>method : public : IsSavingsTime() Bool</p></li>
+</ul></li>
+<li><p><code>Add</code> - adds (or subtracts) time from a date</p>
+<ul>
+<li><p>method : public : AddDays(value : Int) Nil</p></li>
+<li><p>method : public : AddHours(value : Int) Nil</p></li>
+<li><p>method : public : AddMinutes(value : Int) Nil</p></li>
+<li><p>method : public : AddSeconds(value : Int) Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - formats a date into a <code>String</code>.</p>
+<ul>
+<li><p>method : public : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="timer">Timer</h3>
+<p>The Time class allows programmers perform simple timings. This class is in the ‘Time’ bundle. The class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+</ul></li>
+<li><p><code>Start</code> - Starts the timing</p>
+<ul>
+<li><p>method : public : Start() Nil</p></li>
+</ul></li>
+<li><p><code>End</code> - Ends the timing</p>
+<ul>
+<li><p>method : public : End() Nil</p></li>
+</ul></li>
+<li><p><code>End</code> - Returns the elapsed time in milliseconds</p>
+<ul>
+<li><p>method : public : GetElapsedTime() Int</p></li>
+</ul></li>
+</ul>
+<h2 id="system.concurrency">System.Concurrency</h2>
+<p>Support for system concurrency. These classes are located in the default ‘System.Concurrency’ bundle.</p>
+<h3 id="thread">Thread</h3>
+<p>The Thread class allows programmers to invoke a method in a separately running system thread. This class is in the ‘System.Concurrency’ bundle.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(name : String)</p></li>
+</ul></li>
+<li><p><code>Execute</code> - Execute a <code>Thread()</code> by calling the thread’s <code>Run()</code> method in a separate thread.</p>
+<ul>
+<li><p>method : public : Execute(param : System.Base) Nil</p></li>
+</ul></li>
+<li><p><code>Sleep</code> - Sleeps a given thread for a number of milliseconds.</p>
+<ul>
+<li><p>function : Sleep(t : Int) Nil</p></li>
+</ul></li>
+<li><p><code>Join</code> - Joins a thread instance with the creating thread</p>
+<ul>
+<li><p>method : public : Join() Nil</p></li>
+</ul></li>
+<li><p><code>GetName</code> - Returns the name of the thread</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+<li><p><code>GetRunID</code> - Returns running thread ID</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+<li><p><code>Run</code> - Method that is executed by the new thread</p>
+<ul>
+<li><p>method : virtual : public : Run(param : System.Base) Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="threadmutex">ThreadMutex</h3>
+<p>The ThreadMutex class is used for thread synchronization i.e. locking and unlocking running threads.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(name : String)</p></li>
+</ul></li>
+<li><p><code>GetName</code> - Returns the name of the thread</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+</ul>
+<h2 id="collection">Collection</h2>
+<p>Provides support for basic data structures such as vectors, lists, hashes, maps, etc.</p>
+<h3 id="compare">Compare</h3>
+<p>Interface for all objects that use comparative algorithms.</p>
+<ul>
+<li><p><code>Compare</code> - compares two object instances; 0 if equal, less-then 0 if less and greater-then 0 if greater.</p>
+<ul>
+<li><p>method : virtual : public : Compare(rhs : System.Compare) Int</p></li>
+</ul></li>
+<li><p><code>HashID</code> - returns a unique value for the given class type</p>
+<ul>
+<li><p>method : virtual : public : HashID() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="basiccompare">BasicCompare</h3>
+<p>Basic implementation of <code>Compare</code> methods.</p>
+<ul>
+<li><p><code>Compare</code> - returns true if argument is the same instance, false otherwise.</p>
+<ul>
+<li><p>method : public : Compare(rhs : System.Compare) Int</p></li>
+</ul></li>
+<li><p><code>HashID</code> - hash value based upon instance ID</p>
+<ul>
+<li><p>method : public : HashID() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="queuequeueintqueuefloat">Queue/QueueInt/QueueFloat</h3>
+<p>The Queue class support the concept of a growing queue and based upon a FIFO priority. There are two specialized version of this class: <code>IntQueue</code> and <code>FloatQueue</code>. The <code>IntQueue</code> and <code>FloatQueue</code> classes use <code>Int</code> and <code>Float</code> types respectively instead of <code>Compare</code> type. The general class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p></li>
+<li><p><code>Add</code> - adds a new value to the back of the list</p>
+<ul>
+<li><p>method : public Add(value : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>Remove</code> - removes the first element in the list</p>
+<ul>
+<li><p>method : public : Remove() Compare</p></li>
+</ul></li>
+<li><p><code>Head</code> - returns the first element in the list</p>
+<ul>
+<li><p>method : public : Head() Compare</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the list</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="listintlistfloatlist">List/IntList/FloatList</h3>
+<p>The List class allows values to be added, removed and deleted from a list. There are two specialized version of this class: <code>IntList</code> and <code>FloatList</code>. The <code>IntList</code> and <code>FloatList</code> classes use <code>Int</code> and <code>Float</code> types respectively instead of <code>Compare</code> type. The general class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p></li>
+<li><p><code>AddBack</code> - adds a new value to the back of the list</p>
+<ul>
+<li><p>method : public : native : AddBack(value : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>RemoveBack</code> - removes the last element in the list</p>
+<ul>
+<li><p>method : public : RemoveBack() Nil</p></li>
+</ul></li>
+<li><p><code>AddFront</code> - adds a new value to the front of the list</p>
+<ul>
+<li><p>method : public : native : AddFront(value : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>RemoveFront</code> - removes the first element in the list</p>
+<ul>
+<li><p>method : public : RemoveFront() Nil</p></li>
+</ul></li>
+<li><p><code>Find</code> - finds an element in the list</p>
+<ul>
+<li><p>method : public : Find(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>Has</code> - returns true if item is in list</p>
+<ul>
+<li><p>method : public : Has(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>Insert</code> - inserts a new value in the position pointed to the cursor</p>
+<ul>
+<li><p>method : public : Insert(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>Remove</code> - removes the last element in the list</p>
+<ul>
+<li><p>method : public : Remove() Nil</p></li>
+</ul></li>
+<li><p><code>Insert</code> - inserts an element into the current cursor position</p>
+<ul>
+<li><p>method : public : Insert(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>Next</code> - advances the internal cursor by one element</p>
+<ul>
+<li><p>method : public : Next() Nil</p></li>
+</ul></li>
+<li><p><code>Previous</code> - retreats the internal cursor by one element</p>
+<ul>
+<li><p>method : public : Previous() Nil</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns the value of the element pointed to by the cursor</p>
+<ul>
+<li><p>method : public : Get() Compare</p></li>
+</ul></li>
+<li><p><code>Forward</code> - moves the cursor to the end of the list</p>
+<ul>
+<li><p>method : public : Forward() Nil</p></li>
+</ul></li>
+<li><p><code>Rewind</code> - moves the cursor to the start of the list</p>
+<ul>
+<li><p>method : public : Rewind() Nil</p></li>
+</ul></li>
+<li><p><code>IsFront</code> - returns true if cursor is at the front of the list</p>
+<ul>
+<li><p>method : public : IsFront() Bool</p></li>
+</ul></li>
+<li><p><code>IsBack</code> - returns true if cursor is at the back of the list</p>
+<ul>
+<li><p>method : public : IsBack() Bool</p></li>
+</ul></li>
+<li><p><code>IsEnd</code> - returns true if cursor is at the end of the list</p>
+<ul>
+<li><p>method : public : IsEnd() Bool</p></li>
+</ul></li>
+<li><p><code>Front</code> - returns the item at the front of the list</p>
+<ul>
+<li><p>method : public : Front() Compare</p></li>
+</ul></li>
+<li><p><code>Back</code> - returns the item at the back of the list</p>
+<ul>
+<li><p>method : public : Back() Compare</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the list</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the stack size</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="stackintstackfloatstack">Stack/IntStack/FloatStack</h3>
+<p>The Stack class support the concept of a growing stack based upon a FILO priority. There are two specialized version of this class: <code>IntStack</code> and <code>FloatStack</code>. The <code>IntStack</code> and <code>FloatStack</code> classes use <code>Int</code> and <code>Float</code> types respectively instead of <code>Base</code> type. The general class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p></li>
+<li><p><code>Push</code> - pushes a new value onto the stack</p>
+<ul>
+<li><p>method : public : Push(value : Base) Nil</p></li>
+</ul></li>
+<li><p><code>Pop</code> - pops a values from the top of the stack</p>
+<ul>
+<li><p>method : public : Pop() Base</p></li>
+</ul></li>
+<li><p><code>Top</code> - retrieves the top value from the stack (without popping the stack)</p>
+<ul>
+<li><p>method : public : Top() Base</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if stack is empty</p>
+<ul>
+<li><p>method : public : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the stack</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the stack size</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="vectorcomparevectorintvectorfloatvector">Vector/CompareVector/IntVector/FloatVector</h3>
+<p>The Vector class support the concept of a growing array. There are three specialized version of this class: <code>CompareVector</code>, <code>IntVector</code> and <code>FloatVector</code>. The <code>IntVector</code>, <code>FloatVector</code> and <code>CompareVector</code> classes use <code>Int</code>, <code>Float</code> and <code>Compare</code> types respectively instead of <code>Base</code> type. The general class supports the following operations:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+<li><p>New(values : Base[])</p></li>
+<li><p>New(values : Vector)</p></li>
+</ul></li>
+<li><p><code>AddBack</code> - adds a new value to the back of the vector</p>
+<ul>
+<li><p>method : public : AddBack(value : Base) Nil</p></li>
+</ul></li>
+<li><p><code>RemoveBack</code> - removes the last element in the vector</p>
+<ul>
+<li><p>method : public : RemoveBack() Base</p></li>
+</ul></li>
+<li><p><code>Get</code> - returns the value of the element pointed to by the cursor</p>
+<ul>
+<li><p>method : public : Get(index : Int) Base</p></li>
+</ul></li>
+<li><p><code>Set</code> - replaces the list value based upon the given index</p>
+<ul>
+<li><p>method : public : Set(value : Base, index : Int) Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the list</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the vector</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>ToArray</code> - returns an array of elements</p>
+<ul>
+<li><p>method : public : ToArray() Base</p></li>
+</ul></li>
+<li><p><code>Sort</code> - sorts a vector of values using a merge sort algorithm in <span class="math"><em>O</em>(<em>n</em>log<sub>2</sub><em>n</em>)</span> time.</p>
+<ul>
+<li><p>method : public : Sort() Nil</p></li>
+</ul></li>
+<li><p><code>BinarySearch</code> - performs a binary search for an element in a <em>sorted</em> vector using an iterative binary search algorithm in <span class="math"><em>O</em>(log<sub>2</sub><em>n</em>)</span> time. Returns the index of element is returned, -1 otherwise.</p>
+<ul>
+<li><p>method : public : BinarySearch(v : Compare) Int</p></li>
+</ul></li>
+<li><p><code>Find</code> - search for an element in the array and reutrn the index of the element found, -1 otherwise.</p>
+<ul>
+<li><p>method : public : Find(v : Compare) Int</p></li>
+</ul></li>
+<li><p><code>Min</code> - returns the smallest value in the vector</p>
+<ul>
+<li><p>method : public : native : Min() Int/Float</p></li>
+</ul></li>
+<li><p><code>Max</code> - returns the largest value in the vector</p>
+<ul>
+<li><p>method : public : native : Max() Int/Float</p></li>
+</ul></li>
+<li><p><code>Average</code> - returns the calculated average for all values in the list</p>
+<ul>
+<li><p>method : public : native : Average() Int/Float</p></li>
+</ul></li>
+<li><p><code>Filter</code> - applys the result of the passed in function to each element in the array</p>
+<ul>
+<li><p>method : public : Filter(func : (Int/Float/Compare) <span class="math"> ∼ </span> Bool) IntVector/FloatVector/CompareVector</p></li>
+</ul></li>
+<li><p><code>Apply</code> - applys the result of the passed in function to each element in the array</p>
+<ul>
+<li><p>method : public : Apply(func : (Int/Float) <span class="math"> ∼ </span> Int/Float), IntVector/FloatVector</p></li>
+</ul></li>
+</ul>
+<h3 id="mapintmapfloatmapstringmap">Map/IntMap/FloatMap/StringMap</h3>
+<p>The Map class supports the concept of an associative array with key/value pairs. The class implements a balance binary tree algorithm such that inserts, deletes and searches are <span class="math"><em>O</em>(log<sub>2</sub><em>n</em>)</span>.</p>
+<ul>
+<li><p><code>New</code></p></li>
+<li><p><code>Insert</code> - adds a new value to the tree</p>
+<ul>
+<li><p>method : public : Insert(key : Compare, value : Base) Nil</p></li>
+</ul></li>
+<li><p><code>Remove</code> - removes a value from the tree</p>
+<ul>
+<li><p>method : public : Remove(key : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>Find</code> - searches for a value based upon a key</p>
+<ul>
+<li><p>method : public : Find(key : Compare) Base</p></li>
+</ul></li>
+<li><p><code>Has</code> - returns true if item is in map</p>
+<ul>
+<li><p>method : public : Has(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>GetKeys</code> - returns a vector of keys</p>
+<ul>
+<li><p>method : public : GetKeys() Vector</p></li>
+</ul></li>
+<li><p><code>GetValues</code> - returns a vector of values</p>
+<ul>
+<li><p>method : public : GetValues() Vector</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the map</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the map</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="setintsetfloatsetstringset">Set/IntSet/FloatSet/StringSet</h3>
+<p>The Set class supports the concept of an associative array with keys. The class implements a balance binary tree algorithm such that inserts, deletes and searches are <span class="math"><em>O</em>(log<sub>2</sub><em>n</em>)</span>.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New()</p></li>
+</ul></li>
+<li><p><code>Insert</code> - adds a new key to the tree</p>
+<ul>
+<li><p>method : public : Insert(key : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>Remove</code> - removes a value from the tree</p>
+<ul>
+<li><p>method : public : Remove(key : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>Has</code> - returns true if item is in map</p>
+<ul>
+<li><p>method : public : Has(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>GetKeys</code> - returns a vector of keys</p>
+<ul>
+<li><p>method : public : GetKeys() Vector</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the map</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the map</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h3 id="hashstringhash">Hash/StringHash</h3>
+<p>The Hash class supports the concept of a hash table with key/value pairs. The class implements a hashing algorithm that is optimized for pairs of 256 elements or less (consider using the <code>Map</code> class for larger sets):</p>
+<ul>
+<li><p><code>Insert</code> - adds a new value to the hash table</p>
+<ul>
+<li><p>method : public : Insert(key : Compare, value : Base) Nil</p></li>
+</ul></li>
+<li><p><code>Remove</code> - removes a value from the hash table</p>
+<ul>
+<li><p>method : public : Remove(key : Compare) Nil</p></li>
+</ul></li>
+<li><p><code>Find</code> - searches for a value based upon a key</p>
+<ul>
+<li><p>method : public : Find(key : Compare) Base</p></li>
+</ul></li>
+<li><p><code>Has</code> - returns true if item is in hash</p>
+<ul>
+<li><p>method : public : Has(value : Compare) Bool</p></li>
+</ul></li>
+<li><p><code>GetKeys</code> - returns a vector of keys</p>
+<ul>
+<li><p>method : public : GetKeys() Vector</p></li>
+</ul></li>
+<li><p><code>GetValues</code> - returns a vector of values</p>
+<ul>
+<li><p>method : public : GetValues() Vector</p></li>
+</ul></li>
+<li><p><code>Empty</code> - clears the hash table</p>
+<ul>
+<li><p>method : public : Emtpy() Nil</p></li>
+</ul></li>
+<li><p><code>IsEmpty</code> - returns true if empty, false otherwise</p>
+<ul>
+<li><p>method : public : native : IsEmpty() Bool</p></li>
+</ul></li>
+<li><p><code>Size</code> - returns the size of the Hash</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+</ul>
+<h2 id="http">HTTP</h2>
+<p>These classes provide support for the HTTP and HTTPS web protocols.</p>
+<h3 id="httpclient">HttpClient</h3>
+<p>The HttpClient class allows programmers access web servers via HTTP.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New();</p></li>
+</ul></li>
+<li><p><code>Post</code> - Performs a HTTP POST to the connected website, returns true is successful</p>
+<ul>
+<li><p>method : public : Post(url : String, port : Int, content : String) Vector</p></li>
+<li><p>method : public : Post(url : String, content_type: String, port : Int, content : String) Vector</p></li>
+</ul></li>
+<li><p><code>Get</code> - Performs a HTTP GET from the connected website, returns a <code>Vector</code> of strings</p>
+<ul>
+<li><p>method : public : Get(url : String, port : Int) Vector</p></li>
+<li><p>method : public : Get(url : String, content_type: String, port : Int) Vector</p></li>
+</ul></li>
+<li><p><code>GetHeaders</code> - Returns a <code>Map</code> of headers information. HTTP header information is populated after a GET and POST requests.</p>
+<ul>
+<li><p>method : GetHeaders() Map</p></li>
+</ul></li>
+<li><p><code>GetCookies</code> - Gets a list of cookies. The cookie list can be cleared using this method.</p>
+<ul>
+<li><p>method : GetCookies() List</p></li>
+</ul></li>
+<li><p><code>CookiesEnabled</code> - Enables or disables cookie support.</p>
+<ul>
+<li><p>method : CookiesEnabled(state : Bool) List</p></li>
+</ul></li>
+<li><p><code>SetCookie</code> - Sets a cookie.</p>
+<ul>
+<li><p>method : SetCookie(cookie : String) Nil</p></li>
+</ul></li>
+</ul>
+<h2 id="json">JSON</h2>
+<p>These bundle provides for JSON parsing and document creation.</p>
+<h3 id="jsonparser">JSONParser</h3>
+<p>The JSONParser class allows programmers to parse and search JSON documents.</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(buffer : String)</p></li>
+</ul></li>
+<li><p><code>Parse</code> - Parses a JSON stream into a graph of elements. Returns true if successful; false otherwise.</p>
+<ul>
+<li><p>method : public : Parse() JSONElement</p></li>
+</ul></li>
+</ul>
+<h3 id="jsonelement">JSONElement</h3>
+<p>JSON element that contains a root value or references to nested elements (i.e. array and objects).</p>
+<ul>
+<li><p><code>GetType</code> - Returns the JSON element type.</p>
+<ul>
+<li><p>method : public : GetType() JSONType</p></li>
+</ul></li>
+<li><p><code>GetValue</code> - Returns a JSON element value.</p>
+<ul>
+<li><p>method : public : GetValue() String</p></li>
+</ul></li>
+<li><p><code>Get</code> - Returns a JSON element by index for array element types.</p>
+<ul>
+<li><p>method : public : Get(index : Int) JSONElement</p></li>
+</ul></li>
+<li><p><code>Get</code> - Returns a JSON element by name for object elemet members.</p>
+<ul>
+<li><p>method : public : Get(key : String) JSONElement</p></li>
+</ul></li>
+<li><p><code>GetKeys</code> - Returns a list of element keys corresponding to object elemet members.</p>
+<ul>
+<li><p>method : public : GetKeys() Vector</p></li>
+</ul></li>
+<li><p><code>Size</code> - Returns number of sub-elements</p>
+<ul>
+<li><p>method : public : Size() Int</p></li>
+</ul></li>
+<li><p><code>ToString</code> - serialize object into a String</p>
+<ul>
+<li><p>method : public : ToString() String</p></li>
+</ul></li>
+</ul>
+<h3 id="jsontype">JSONType</h3>
+<ul>
+<li><p>STRING</p></li>
+<li><p>NUMBER</p></li>
+<li><p>TRUE</p></li>
+<li><p>FALSE</p></li>
+<li><p>ARRAY</p></li>
+<li><p>OBJECT</p></li>
+</ul>
+<h2 id="xml">XML</h2>
+<p>These bundle provides support for XML parsing and document creation.</p>
+<h3 id="xmlparser">XMLParser</h3>
+<p>The XMLParser class allows programmers to parse and search XML documents using a simplified DOM structure. This class in the ‘XML’ bundle:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(buffer : Char[])</p></li>
+<li><p>New(buffer : String)</p></li>
+</ul></li>
+<li><p><code>ToString</code> - serializes the DOM into a string</p>
+<ul>
+<li><p>method : public : ToString() String</p></li>
+</ul></li>
+<li><p><code>Parse</code> - Parses an XML stream into a DOM structure. Returns true if successful; false otherwise.</p>
+<ul>
+<li><p>method : public : Parse() Bool</p></li>
+</ul></li>
+<li><p><code>GetVersion</code> - returns the XML document version</p>
+<ul>
+<li><p>method : public : GetVersion() String</p></li>
+</ul></li>
+<li><p><code>GetEncoding</code> - returns the XML character encoding</p>
+<ul>
+<li><p>method : public : GetEncoding() String</p></li>
+</ul></li>
+<li><p><code>GetRoot</code> - Returns the root node of the DOM.</p>
+<ul>
+<li><p>method : public : GetRoot() XmlElement</p></li>
+</ul></li>
+<li><p><code>FindElements</code> - returns all elements that match the given query string. The following XPath expressions are supported num, attrib_name first() and last().</p>
+<ul>
+<li><p>method : public : FindElements(path : String) Vector</p></li>
+</ul></li>
+<li><p><code>GetError</code> - Returns the last parsing error; if one occurred.</p>
+<ul>
+<li><p>method : public : Parse() Bool</p></li>
+</ul></li>
+</ul>
+<h3 id="xmlbuilder">XmlBuilder</h3>
+<p>The XmlBuilder class allows a programmer to dynamically build an XML DOM. Once the DOM is build it may be traversed and/or serialized into a string. This class in the ‘XML’ bundle:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(root : String)</p></li>
+<li><p>New(root : String, version : String, encoding : String)</p></li>
+</ul></li>
+<li><p><code>GetRoot</code> - Returns the root element.</p>
+<ul>
+<li><p>method : public : GetRoot() XmlElement</p></li>
+</ul></li>
+<li><p><code>ToString</code> - Serializes an element into a string</p>
+<ul>
+<li><p>method : public : ToString() String</p></li>
+</ul></li>
+<li><p><code>GetVersion</code> - Returns the version name.</p>
+<ul>
+<li><p>method : public : GetVersion() String</p></li>
+</ul></li>
+<li><p><code>SetVersion</code> - Sets the version name.</p>
+<ul>
+<li><p>method : public : SetVersion(name : String) Nil</p></li>
+</ul></li>
+<li><p><code>GetEncoding</code> - Returns the encoding name.</p>
+<ul>
+<li><p>method : public : GetEncoding() String</p></li>
+</ul></li>
+<li><p><code>SetEncoding</code> - Sets the encoding name.</p>
+<ul>
+<li><p>method : public : SetEncoding(name : String) Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="xmlelement">XmlElement</h3>
+<p>The XmlElement class represents a canonical XML node within a DOM. This class in the ‘XML’ bundle:</p>
+<ul>
+<li><p><code>New</code></p>
+<ul>
+<li><p>New(type : XmlElementType, name : String)</p></li>
+<li><p>New(type : XmlElementType, name : String, content : String)</p></li>
+<li><p>New(type : XmlElementType, name : String, attribs : StringHash, content : String)</p></li>
+</ul></li>
+<li><p><code>GetName</code> - Returns the element name.</p>
+<ul>
+<li><p>method : public : GetName() String</p></li>
+</ul></li>
+<li><p><code>SetName</code> - Sets the element name.</p>
+<ul>
+<li><p>method : public : SetName(name : String) Nil</p></li>
+</ul></li>
+<li><p><code>GetRoot</code> - Returns the root element.</p>
+<ul>
+<li><p>method : public : GetRoot() XmlElement</p></li>
+</ul></li>
+<li><p><code>GetType</code> - Returns the element type.</p>
+<ul>
+<li><p>method : public : GetType() XmlElementType</p></li>
+</ul></li>
+<li><p><code>SetType</code> - Sets the element type.</p>
+<ul>
+<li><p>method : public : SetType(type : XmlElementType) Nil</p></li>
+</ul></li>
+<li><p><code>GetParent</code> - Gets the parent element</p>
+<ul>
+<li><p>method : public : GetParent() XmlElement</p></li>
+</ul></li>
+<li><p><code>SetParent</code> - Sets the parent element</p>
+<ul>
+<li><p>method : public : SetParent(parent : XmlElement) Nil</p></li>
+</ul></li>
+<li><p><code>GetContent</code> - Returns the XML content between two tags.</p>
+<ul>
+<li><p>method : public : GetContent() String</p></li>
+</ul></li>
+<li><p><code>SetContent</code> - Sets the XML content between two tags.</p>
+<ul>
+<li><p>method : public : SetContent(content : String) Nil</p></li>
+</ul></li>
+<li><p><code>GetChildCount</code> - Returns number of logical child elements.</p>
+<ul>
+<li><p>method : public : GetChildCount() Int</p></li>
+</ul></li>
+<li><p><code>FindElements</code> - returns all elements that match the given query string. The following XPath expressions are supported num, attrib_name, first() and last(). Note: current node name must be part of the query.</p>
+<ul>
+<li><p>method : public : FindElements(path : String) Vector</p></li>
+</ul></li>
+<li><p><code>GetChildren</code> - Returns all child elements.</p>
+<ul>
+<li><p>method : public : GetChildren() Vector</p></li>
+</ul></li>
+<li><p><code>GetChildren</code> - Returns all child elements that match the given name.</p>
+<ul>
+<li><p>method : public : GetChildren(name : String) Vector</p></li>
+</ul></li>
+<li><p><code>GetChild</code> - Returns a child element.</p>
+<ul>
+<li><p>method : public : GetChild(i : Int) XmlElement</p></li>
+</ul></li>
+<li><p><code>AddChild</code> - adds a child element.</p>
+<ul>
+<li><p>method : public : AddChild(child : XmlElement) Nil</p></li>
+</ul></li>
+<li><p><code>GetAttribute</code> - Returns the value of a given attribute.</p>
+<ul>
+<li><p>method : public : GetAttribute(name : String) String</p></li>
+</ul></li>
+<li><p><code>SetAttribute</code> - Sets the name/value of a given attribute.</p>
+<ul>
+<li><p>method : public : SetAttribute(name : String, value : String), Nil</p></li>
+</ul></li>
+<li><p><code>ToString</code> - Serializes an element into a string</p>
+<ul>
+<li><p>method : public : ToString() String</p></li>
+</ul></li>
+<li><p><code>DecodeString</code> - Decodes an XML encoded string</p>
+<ul>
+<li><p>function : DecodeString(in : String) String</p></li>
+</ul></li>
+<li><p><code>EncodeString</code> - Encodes an XML encoded string</p>
+<ul>
+<li><p>function : EncodeString(in : String) String</p></li>
+</ul></li>
+</ul>
+<h2 id="odbc">ODBC</h2>
+<p>Provides support for database access.</p>
+<h3 id="connection">Connection</h3>
+<p>The Connection class allow programmers to connect to ODBC sources.</p>
+<ul>
+<li><p><code>New</code> - Establishes a database connection</p>
+<ul>
+<li><p>New(ds : String, username : String, password : String)</p></li>
+</ul></li>
+<li><p><code>Close</code> - Closes a database connection</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+<li><p><code>Update</code> - Executes an SQL update statement returning status code</p>
+<ul>
+<li><p>method : public : Update(sql : String) Int</p></li>
+</ul></li>
+<li><p><code>Select</code> - Executes an SQL select statement returning a result set</p>
+<ul>
+<li><p>method : public : Select(sql : String) ResultSet</p></li>
+</ul></li>
+<li><p><code>CreateParameterStatement</code> - Creates a prepared statements, which is used to pass parameters into SQL statements.</p>
+<ul>
+<li><p>method : public : CreateParameterStatement(sql : String) ParameterStatement</p></li>
+</ul></li>
+</ul>
+<h3 id="parameterstatement">ParameterStatement</h3>
+<p>The ParameterStatement class is used to set parameters for SQL queries.</p>
+<ul>
+<li><p><code>Set</code> - Sets the values for various SQL data types. Returns true if the value has been set, false otherwise.</p>
+<ul>
+<li><p>method : public : SetBit(pos : Int, value : Bool) Bool</p></li>
+<li><p>method : public : SetSmallInt(pos : Int, value : Int) Bool</p></li>
+<li><p>method : public : SetInt(pos : Int, value : Int) Bool</p></li>
+<li><p>method : public : SetDouble(pos : Int, value : Float) Bool</p></li>
+<li><p>method : public : SetReal(pos : Int, value : Float) Bool</p></li>
+<li><p>method : public : SetVarchar(pos : Int, value : String) Bool</p></li>
+<li><p>method : public : SetDate(pos : Int, value : Date) Bool</p></li>
+<li><p>method : public : SetTimestamp(pos : Int, value : Timestamp)</p></li>
+</ul></li>
+<li><p><code>Update</code> - Executes a SQL update statement that returns a status code</p>
+<ul>
+<li><p>method : public : Update() Int</p></li>
+</ul></li>
+<li><p><code>Select</code> - Executes a SQL select statement that returns a result set.</p>
+<ul>
+<li><p>method : public : Update() Int</p></li>
+</ul></li>
+<li><p><code>Close</code> - Closes the statement</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="resultset">ResultSet</h3>
+<p>The ResultSet class holds the results of a query statement. A ResultSet contains 0 or more rows with column values that may be accessed via index or by name. Column values may be ‘null’.</p>
+<ul>
+<li><p><code>Next</code> - Moves the result set cursor to the next row.</p>
+<ul>
+<li><p>method : public : Next() Bool</p></li>
+</ul></li>
+<li><p><code>IsNull</code> - Returns true if the accessed column value is ‘null’.</p>
+<ul>
+<li><p>method : public : IsNull() Bool</p></li>
+</ul></li>
+<li><p><code>Get</code> - Returns the column value for the given row.</p>
+<ul>
+<li><p>method : public : GetInt(column : Int) Int</p></li>
+<li><p>method : public : GetSmallInt(column : Int) Int</p></li>
+<li><p>method : public : GetBit(column : Int) Bool</p></li>
+<li><p>method : public : GetDouble(column : Int) Float</p></li>
+<li><p>method : public : GetReal(column : Int) Float</p></li>
+<li><p>method : public : GetVarchar(column : Int) String</p></li>
+<li><p>method : public : GetVarchar(name : String) String</p></li>
+<li><p>method : public : GetDate(column : Int) ODBC.Date</p></li>
+<li><p>method : public : GetTimestamp(column : Int) Timestamp</p></li>
+</ul></li>
+<li><p><code>Close</code> - Closes the result set.</p>
+<ul>
+<li><p>method : public : Close() Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="date-1">Date</h3>
+<p>The ODBC.Date class holds the values for a SQL date.</p>
+<ul>
+<li><p><code>Get</code> - Gets various data values</p>
+<ul>
+<li><p>method : public : GetYear() Int</p></li>
+<li><p>method : public : SetYear(year : Int) Nil</p></li>
+<li><p>method : public : GetMonth() Int</p></li>
+<li><p>method : public : SetMonth(month : Int) Nil</p></li>
+<li><p>method : public : GetDay() Int</p></li>
+<li><p>method : public : SetDay(day : Int) Nil</p></li>
+</ul></li>
+</ul>
+<h3 id="timestamp">Timestamp</h3>
+<p>The ODBC.Timestamp class holds the values for a SQL timestamp.</p>
+<ul>
+<li><p><code>Get</code> - Gets various data values</p>
+<ul>
+<li><p>method : public : GetYear()   Int</p></li>
+<li><p>method : public : SetYear(year : Int)   Nil</p></li>
+<li><p>method : public : GetMonth()   Int</p></li>
+<li><p>method : public : SetMonth(month : Int)   Nil</p></li>
+<li><p>method : public : GetDay()   Int</p></li>
+<li><p>method : public : SetDay(day : Int)   Nil</p></li>
+<li><p>method : public : GetHours()   Int</p></li>
+<li><p>method : public : SetHours(hours : Int)   Nil</p></li>
+<li><p>method : public : GetMinute()   Int</p></li>
+<li><p>method : public : SetMinute(minute : Int)   Nil</p></li>
+<li><p>method : public : GetSeconds()   Int</p></li>
+<li><p>method : public : SetSeconds(second : Int)   Nil</p></li>
+<li><p>method : public : GetFraction()   Int</p></li>
+</ul></li>
+</ul>
+<h2 id="regex">RegEx</h2>
+<p>Support for regular expressions.</p>
+<h3 id="regex-1">RegEx</h3>
+<p>The RegEx class provides support for regular expressions parsing.</p>
+<ul>
+<li><p><em>Expressions</em></p>
+<ul>
+<li><p><code>` d</code> <code>` w</code> <code>` s</code> digit, word or white space</p></li>
+<li><p><code>.</code> match any 1</p></li>
+<li><p><code>?</code> optional 1</p></li>
+<li><p><code>*</code> match 0 or more</p></li>
+<li><p><code>+</code> match 1 or more</p></li>
+<li><p><code>a{2,4}</code> range</p></li>
+<li><p><code>|</code> or</p></li>
+<li><p><code>(abc)</code> grouping</p></li>
+<li><p><code>[abc]</code>, <code>[0-9]</code> classes</p></li>
+<li><p><code>^</code> or <code>$</code> starts with and ends wtih anchors</p></li>
+</ul></li>
+</ul>
+<ul>
+<li><p><code>New</code> - Compiles the regular expression</p>
+<ul>
+<li><p>New(pattern : String)</p></li>
+</ul></li>
+<li><p><code>MatchExact</code> - Attempts to match the exact input string using supplied pattern. Returns true if successful, false otherwise.</p>
+<ul>
+<li><p>method : public : MatchExact(input : String) Bool</p></li>
+</ul></li>
+<li><p><code>Match</code> - Attempts to best match the input string using supplied pattern. Returns the index of the best match.</p>
+<ul>
+<li><p>method : public : Match(input : String) Int</p></li>
+</ul></li>
+<li><p><code>FindFirst</code> - Searches the input string for the best first match.</p>
+<ul>
+<li><p>method : public : FindFirst(input : String) String</p></li>
+</ul></li>
+<li><p><code>Find</code> - Searches the input string for all the matches. Returns a Vector of string matches.</p>
+<ul>
+<li><p>method : public : Find(input : String) Vector</p></li>
+</ul></li>
+<li><p><code>ReplaceFirst</code> - Searches and replaces the first best best match.</p>
+<ul>
+<li><p>method : public : ReplaceFirst(input : String, replace : String) String</p></li>
+</ul></li>
+<li><p><code>ReplaceAll</code> - Searches and replaces all best best matchs.</p>
+<ul>
+<li><p>method : public : ReplaceAll(input : String, replace : String) String</p></li>
+</ul></li>
+</ul>
+<h2 id="encryption">Encryption</h2>
+<p>Support for encryption.</p>
+<h3 id="hash">Hash</h3>
+<p>The Hash class provides support for one-way hashing.</p>
+<ul>
+<li><p><code>SHA256</code> - SHA-256 hash</p>
+<ul>
+<li><p>function : SHA256(input : Byte[]) Byte[]</p></li>
+</ul></li>
+</ul>
+<h3 id="encrypt">Encrypt</h3>
+<p>Provides support for encryption.</p>
+<ul>
+<li><p><code>SHA256</code> - AES-256 encryption without “salt”</p>
+<ul>
+<li><p>function : AES256(key : Byte[], input : Byte[]) Byte[]</p></li>
+</ul></li>
+</ul>
+<h3 id="decrypt">Decrypt</h3>
+<p>Provides support for encryption.</p>
+<ul>
+<li><p><code>SHA256</code> - AES-256 decryption without “salt”</p>
+<ul>
+<li><p>function : AES256(key : Byte[], input : Byte[]) Byte[]</p></li>
+</ul></li>
+</ul>
+<h1 id="examples">Examples</h1>
+<h2 id="prime-numbers">Prime Numbers</h2>
+<p>Demonstrates basic language features such as arithmetic and logical operations.</p>
+<pre><code>class FindPrime {
+  function : Main() ~ Nil {
+    Run(1000000);
+  }
+
+  function : native : Run(topCandidate : Int)~ Nil {
+    candidate : Int := 2;
+    while(candidate &lt;= topCandidate) {
+      trialDivisor : Int := 2;
+      prime : Int := 1;
+
+      found : Bool := true;
+      while(trialDivisor * trialDivisor &lt;= candidate &amp; found) {
+        if(candidate % trialDivisor = 0) {
+          prime := 0;
+          found := false;
+        }
+        else {
+          trialDivisor := trialDivisor + 1;
+        };
+      };
+
+      if(found) {
+        candidate-&gt;PrintLine();
+      };
+      candidate := candidate + 1;
+    };
+  }
+}</code></pre>
+<h2 id="arrays-1">Arrays</h2>
+<p>Demonstrates the use of arrays.</p>
+<pre><code>class Transpose {
+  function : Main(args : String[]) ~ Nil {
+    input := [
+      [1, 1, 1, 1]
+      [2, 4, 8, 16]
+      [3, 9, 27, 81]
+      [4, 16, 64, 256]
+      [5, 25, 125, 625]
+    ];
+    dim := input-&gt;Size();
+
+    output := Int-&gt;New[dim[0],dim[1]];
+    for(i := 0; i &lt; dim[0]; i+=1;) {
+      for(j := 0; j &lt; dim[1]; j+=1;) {
+        output[i,j] := input[i,j];
+      };
+    };
+
+    Print(output);
+  }
+
+  function : Print(matrix : Int[,]) ~ Nil {
+    dim := matrix-&gt;Size();
+    for(i := 0; i &lt; dim[0]; i+=1;) {
+      for(j := 0; j &lt; dim[1]; j+=1;) {
+        IO.Console-&gt;Print(matrix[i,j])-&gt;Print(&#39;\t&#39;);
+      };
+      &#39;\n&#39;-&gt;Print();
+    };
+  }
+}</code></pre>
+<h2 id="simple-http-client">Simple HTTP client</h2>
+<p>Demonstrates HTTP access.</p>
+<pre><code>use Collection;
+
+class HttpTest {
+  function : Main(args : String[]) ~ Nil {
+    if(args-&gt;Size() = 1) {
+      client := Net.HttpClient-&gt;New();
+      lines := client-&gt;Get(args[0], 80);
+      each(i : lines) {
+        lines-&gt;Get(i)-&gt;As(String)-&gt;PrintLine();
+      };
+    };
+  }
+}</code></pre>
+<h2 id="xml-parsing-and-querying">XML Parsing and Querying</h2>
+<p>Demonstrates simple XML parsing.</p>
+<pre><code>use System.IO;
+use XML;
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    in := String-&gt;New();
+    in-&gt;Append(&quot;&lt;inventory title=\&quot;OmniCorp Store #45x10^3\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;section name=\&quot;health\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;item upc=\&quot;123456789\&quot; stock=\&quot;12\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;name&gt;Invisibility Cream&lt;/name&gt;&quot;);
+    in-&gt;Append(&quot;&lt;price&gt;14.50&lt;/price&gt;&quot;);
+    in-&gt;Append(&quot;&lt;description&gt;Makes you invisible&lt;/description&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/item&gt;&quot;);
+    in-&gt;Append(&quot;&lt;item upc=\&quot;445322344\&quot; stock=\&quot;18\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;name&gt;Levitation Salve&lt;/name&gt;&quot;);
+    in-&gt;Append(&quot;&lt;price&gt;23.99&lt;/price&gt;&quot;);
+    in-&gt;Append(&quot;&lt;description&gt;Levitate yourself for up to 3 hours per application&lt;/description&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/item&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/section&gt;&quot;);
+    in-&gt;Append(&quot;&lt;section name=\&quot;food\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;item upc=\&quot;485672034\&quot; stock=\&quot;653\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;name&gt;Blork and Freen Instameal&lt;/name&gt;&quot;);
+    in-&gt;Append(&quot;&lt;price&gt;4.95&lt;/price&gt;&quot;);
+    in-&gt;Append(&quot;&lt;description&gt;A tasty meal in a tablet; just add water&lt;/description&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/item&gt;&quot;);
+    in-&gt;Append(&quot;&lt;item upc=\&quot;132957764\&quot; stock=\&quot;44\&quot;&gt;&quot;);
+    in-&gt;Append(&quot;&lt;name&gt;Grob winglets&lt;/name&gt;&quot;);
+    in-&gt;Append(&quot;&lt;price&gt;3.56&lt;/price&gt;&quot;);
+    in-&gt;Append(&quot;&lt;description&gt;Tender winglets of Grob. Just add water&lt;/description&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/item&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/section&gt;&quot;);
+    in-&gt;Append(&quot;&lt;/inventory&gt;&quot;);
+  
+    parser := XmlParser-&gt;New(in);
+    if(parser-&gt;Parse()) {
+      # get first item
+      results := parser-&gt;FindElements(&quot;/inventory/section[1]/item[1]&quot;);
+      if(results &lt;&gt; Nil) {
+        Console-&gt;Print(&quot;items: &quot;)-&gt;PrintLine(results-&gt;Size());
+      };
+      # get all prices
+      results := parser-&gt;FindElements(&quot;/inventory/section/item/price&quot;);
+      if(results &lt;&gt; Nil) {
+        each(i : results) {          
+          element := results-&gt;Get(i)-&gt;As(XmlElement);
+          element-&gt;GetContent()-&gt;PrintLine();
+        };
+      };
+      # get names
+      results := parser-&gt;FindElements(&quot;/inventory/section/item/name&quot;);
+      if(results &lt;&gt; Nil) {
+        Console-&gt;Print(&quot;names: &quot;)-&gt;PrintLine(results-&gt;Size());
+      };
+    };
+  }
+}</code></pre>
+<h2 id="echo-server">Echo Server</h2>
+<p>Demonstrates usage of server sockets and threads.</p>
+<pre><code>use System.IO.Net;
+use System.Concurrency;
+ 
+bundle Default {
+  class SocketServer {
+    id : static : Int;
+ 
+    function : Main(args : String[]) ~ Nil {
+      server := TCPSocketServer-&gt;New(12321);
+      if(server-&gt;Listen(5)) {
+        while(true) {
+          client := server-&gt;Accept();
+          service := Service-&gt;New(id-&gt;ToString());
+          service-&gt;Execute(client);
+          id += 1;
+        };
+      };
+      server-&gt;Close();
+    }
+  }
+ 
+  class Service from Thread {
+    New(name : String) {
+      Parent(name);
+    }
+ 
+    method : public : Run(param : Base) ~ Nil {
+      client := param-&gt;As(TCPSocket);
+      line := client-&gt;ReadString();
+      while(line-&gt;Size() &gt; 0) {
+        line-&gt;PrintLine();
+        line := client-&gt;ReadString();
+      };
+    }
+  }
+}</code></pre>
+<h1 id="appendix-a-sample-debugging-session">Appendix A: Sample Debugging Session</h1>
+<h2 id="source-for-example">Source for Example</h2>
+<pre><code>bundle Default {
+  class Bar {
+    v1 : Float;
+    v2 : Int;
+
+    New() {
+      v1 := 2.31;
+      v2 := 26;
+    }
+  }
+
+  class Foo {
+    bar : Bar;
+    value : Int;
+
+    New(v : Int) {
+      value := v;
+    }
+
+    method : public : Get() ~ Int {
+      return value;
+    }
+
+    method : public : SetBar() ~ Nil {
+      bar := Bar-&gt;New();
+    }
+  }
+
+  class Test {
+    function : Main(args : System.String[]) ~ Nil {
+      d : Float := 11.12;
+      z := Int-&gt;New[5,6];
+      z[2,3] := 27;
+
+      f := Foo-&gt;New(24);
+      f-&gt;SetBar();
+      v := f-&gt;Get();
+    }
+  }
+}</code></pre>
+<p>The sample file is named <code>debug.obs</code>.</p>
+<h2 id="compiling-the-source-and-starting-the-debugger">Compiling the Source and Starting the Debugger</h2>
+<pre><code>obc -src test_src\debug.obs -dest a.obe -debug
+obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
+
+-------------------------------------
+Objeck v1.0.0 - Interactive Debugger
+-------------------------------------
+loaded executable: file=&#39;../../compiler/a.obe&#39;
+source files: path=&#39;../../compiler/test_src/&#39;</code></pre>
+<h2 id="setting-a-breakpoint-and-running-the-program">Setting a Breakpoint and Running the Program</h2>
+<pre><code>&gt; b debug.obs:31
+added break point: file=&#39;debug.obs:31&#39;
+&gt; r
+break: file=&#39;debug.obs:31&#39;, method=&#39;Test-&gt;Main(..)&#39;
+&gt; l
+  List
+     26:        }
+     27:    }
+     28: 
+     29:    class Test {
+     30:        function : Main(args : System.String[]) ~ Nil {
+=&gt;   31:            d : Float := 11.12;
+     32:            z := Int-&gt;New[5,6]; 
+     33:            z[2,3] := 27;
+     34: 
+     35:            f := Foo-&gt;New(24);
+     36:            f-&gt;SetBar();
+&gt; n
+break: file=&#39;debug2.obs:32&#39;, method=&#39;Test-&gt;Main(..)&#39;</code></pre>
+<h2 id="printing-a-value">Printing a Value</h2>
+<pre><code>&gt; p d
+print: type=Float, value=11.12
+&gt; b debug.obs:37
+added break point: file=&#39;debug.obs:37&#39;
+&gt; c
+break: file=&#39;debug2.obs:37&#39;, method=&#39;Test-&gt;Main(..)&#39;
+&gt; p z
+print: type=Int[], value=2197556(0x218834), dimension=2, size=30
+&gt; p z[2,3]
+print: type=Int[], value=27(0x1b)
+&gt;  p f-&gt;value
+print: type=Int, value=24
+&gt; p f-&gt;bar
+print: type=Bar, value=0x218864
+&gt; p f-&gt;bar-&gt;v1
+print: type=Float, value=2.31
+&gt; q
+&gt; p f-&gt;bar-&gt;v1 * 3.5
+print: type=Float, value=8.085
+goodbye.</code></pre>
+<h1 id="appendix-b-compiler-and-vm-design">Appendix B: Compiler and VM Design</h1>
+<div class="figure">
+<img src="../../images/compiler_data_flow.png" alt="image" /><p class="caption">image</p>
+</div>
+<p>The following section gives a brief overview of the major architectural components the comprise the Objeck language compiler and virtual machine.</p>
+<h2 id="compiler">Compiler</h2>
+<p>The language compiler is written in C++ and makes heavy use of the C++ STL for portability across platforms. As mentioned in the introduction, the compiler accepts source files and shared libraries as inputs and produces either executables or shared libraries. Note, the compiler has two modes of operation: <code>User Mode</code> compiles traditional end-user programs, while <code>System Mode</code> compiles system libraries and processes special system language directives.</p>
+<h3 id="scanner-and-parser">Scanner and Parser</h3>
+<p>The scanner component reads source files and parses the text into tokens. The scanner works in conjugation with the <em>LL(k)</em> parser by providing <em>k</em> lookahead tokens for parsing. Note, the scanner can only scan system language directives while in <code>System Mode</code>. The source parser is a recursive-decent parser that generates an abstract parser tree, which is passed to the Contextual Analyser for validation.</p>
+<h3 id="contextual-analyser">Contextual Analyser</h3>
+<p>The Contextual Analyzer is responsible for ensuring that a source program is valid. In addition, the context analyzer also creates relationships between contextually resolved entities (i.e. methods <span class="math"> ↔ </span> method calls). The analyzer accepts an abstract parser tree and shared libraries as input and produces a decorated parse tree as output. The decorated parse tree is then passed to the Intermediate Code Generator for the production of VM instructions.</p>
+<h3 id="intermediate-code-generator-and-optimzier">Intermediate Code Generator and Optimzier</h3>
+<p>The Intermediate Code Generator accpets a decorated parse and produces a flat list of VM stack instructions. These instruction lists are then passed to the Optimizer for basic block optimizations (constant folding, strength reduction, instruction simplification and method inlining).</p>
+<h3 id="target-emitter">Target Emitter</h3>
+<p>Finally, the improved intermediate code is passed to code emitter component, which writes it to a file.</p>
+<h2 id="virtual-machine">Virtual Machine</h2>
+<p>The language VM is written in C/C++ and was designed to be highly portable. The VM makes heavy use of operating system specific APIs (i.e. WIN32 and POSIX) but does so in an abstracted manner. The JIT compiler is targeted to produce machine code for the IA-32 and AMD64 hardware architectures.</p>
+<h3 id="loader">Loader</h3>
+<p>The loader component allows the VM to read target code structures such as classes, methods and VM instructions. The loader create an in-memory representation of this information, which is used by the VM interpreter and JIT compiler. In addition, the loader processes command-line parameters that are passed into the VM prior to execution.</p>
+<h3 id="interpreter">Interpreter</h3>
+<p>The Interpreter executes stack based VM instructions (listed below) and manages two primary stacks: the execution stack and call stack. The execution stack is used to manage the data that is needed for VM calculations. The call stack is used to manage function/method calls and the states between those calls.</p>
+<h3 id="jit-compiler">JIT Compiler</h3>
+<p>The JIT compiler translates stack based VM instructions into processor specific machine code (i.e. IA-32 and AMD64). The JIT compiler is evoked by the interpreter and methods are translated into machine code and cached for subsequent calls.</p>
+<h3 id="memory-manager">Memory Manager</h3>
+<p>The Memory Manager component allows the runtime system to manage the user allocation/deallocation of heap memory. The memory mangers implements a multi-thread “mark and sweep” algorithm. The marking stage of the process is multi-thread, such that, each root in scanned in a separate thread. The sweeping stage is done in a single thread since runtime structures are modified.</p>
+<h1 id="appendix-c-vm-instruction-set">Appendix C: VM Instruction Set</h1>
+<p>The appendix below lists the types of stack instructions that are executed by the Objeck VM. The VM was designed to be portable and language independent. Early development versions of the VM included an inline assembler, which may be re-added in a future release.</p>
+<p>| l | l | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />LOAD_INT_LIT &amp; 4-byte integer &amp; pushes integer onto stack<br />LOAD_FLOAT_LIT &amp; 8-byte float &amp; pushes float onto stack<br />LOAD_INT_VAR &amp; variable index &amp; pushes integer onto stack<br />LOAD_FLOAT_VAR &amp; variable index &amp; pushes float onto stack<br />LOAD_FUNC_VAR &amp; variable index &amp; pushes float onto stack<br />LOAD_SELF &amp; n/a &amp; pushes self integer on stack<br />STOR_INT_VAR &amp; variable index &amp; pops integer from stack and saves to index location<br />STOR_FLOAT_VAR &amp; variable index &amp; pops float from stack and saves to index location<br />STOR_FUNC_VAR &amp; variable index &amp; pops float from stack and saves to index location<br />COPY_INT_VAR &amp; variable index &amp; copies an integer from stack and saves to index location<br />COPY_FLOAT_VAR &amp; variable index &amp; copies a float from stack and saves to index location<br />LOAD_BYTE_ARY_ELM &amp; array dimension &amp; pushes byte onto stack; assumes array address was pushed prior<br />LOAD_INT_ARY_ELM &amp; array dimension &amp; pushes integer onto stack; assumes array address was pushed prior<br />LOAD_FLOAT_ARY_ELM &amp; array dimension &amp; pushes float onto stack; assumes array address was pushed prior<br />LOAD_ARY_SIZE &amp; n/a &amp; pushes array size as integer onto stack; assumes array address was pushed prior<br />STOR_BYTE_ARY_ELM &amp; variable index &amp; stores byte at index location; assumes array address was pushed prior<br />STOR_INT_ARY_ELM &amp; variable index &amp; stores integer at index location ; assumes array address was pushed prior<br />STOR_FLOAT_ARY_ELM &amp; variable index &amp; stores float at index location; assumes array address was pushed prior<br /></p>
+<p>| l | l | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />EQL_INT &amp; n/a &amp; pops top two integer values and pushes result of equal operation<br />NEQL_INT &amp; n/a &amp; pops top two integer values and pushes result of not-equal operation<br />LES_INT &amp; n/a &amp; pops top two integer values and pushes result of less-than operation<br />GTR_INT &amp; n/a &amp; pops top two integer values and pushes result of greater-than operation<br />LES_EQL_INT &amp; n/a &amp; pops top two integer values and pushes result of less-than-equal operation<br />GTR_EQL_INT &amp; n/a &amp; pops top two integer values and pushes result of greater-than-equal operation<br />EQL_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of equal operation<br />NEQL_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of not-equal operation<br />LES_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of less-than operation<br />GTR_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of greater-than operation<br />LES_EQL_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of less-than-equal operation<br />GTR_EQL_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of greater-than-equal operation<br /></p>
+<p>| l | l | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />AND_INT &amp; n/a &amp; pops top two integer values and pushes result of add operation<br />OR_INT &amp; n/a &amp; pops top two integer values and pushes result of or operation<br /></p>
+<p>| l | l | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />ADD_INT &amp; n/a &amp; pops top two integer values and pushes result of add operation<br />SUB_INT &amp; n/a &amp; pops top two integer values and pushes result of subtract operation<br />MUL_INT &amp; n/a &amp; pops top two integer values and pushes result of multiply operation<br />DIV_INT &amp; n/a &amp; pops top two integer values and pushes result of divide operation<br />SHL_INT &amp; n/a &amp; pops top two floats values and pushes result of shift left operation<br />SHR_INT &amp; n/a &amp; pops top two floats values and pushes result of shift right operation<br />MOD_INT &amp; n/a &amp; pops top two integer values and pushes result of modulus operation<br />ADD_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of greater-than-equal operation<br />SUB_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of subtract operation<br />MUL_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of multiply operation<br />DIV_FLOAT &amp; n/a &amp; pops top two floats values and pushes result of divide operation<br />I2F &amp; n/a &amp; pop top integer and pushes result of float cast<br />F2I &amp; n/a &amp; pop top float and pushes result of integer cast<br /></p>
+<p>| l | p4 cm | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />SWAP_INT &amp; n/a &amp; swaps the top two integer values on the stack<br />POP_INT &amp; n/a &amp; control pop of an integer from the stack<br />POP_FLOAT &amp; n/a &amp; control pop of a float from the stack<br />RTRN &amp; n/a &amp; exits existing method returning control to callee<br />MTHD_CALL &amp; integer values for class id and method id &amp; synchronous call to given method releasing control<br />DYN_MTHD_CALL &amp; pops integer values for class id and method id &amp; dynamic synchronous call to given method releasing control<br />ASYNC_MTHD_CALL &amp; integer values for class id and method id; pushes new thread id &amp; asynchronous call to given method<br />ASYNC_JOIN &amp; thread id &amp; waits for identified thread to end execution<br />LBL &amp; label id &amp; identifies a jump label<br /></p>
+<p>| l | p4 cm | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />JMP &amp; label id and conditional context (1=true, 0=unconditional, -1=false) &amp; jump to label id<br />NEW_BYTE_ARY &amp; array dimension &amp; pushes address of new byte array<br />NEW_INT_ARY &amp; array dimension &amp; pushes address of new integer array<br />NEW_FLOAT_ARY &amp; array dimension &amp; pushes address of new float array<br />NEW_OBJ_INST &amp; integer value for class id &amp; pushes address of new class instance<br />OBJ_TYPE_OF &amp; integer value of “check” class &amp; performs runtime object instance check<br />OBJ_INST_CAST &amp; integer values for “from” class and “to” class &amp; performs runtime class cast check (note: only required for up casting)<br />CPY_BYTE_ARY &amp; destination of source array, offset of destination array, address of source array, offset of source array, number of &amp; copies elements from one array to another<br />CPY_INT_ARY &amp; destination of source array, offset of destination array, address of source array, offset of source array, number of &amp; copies elements from one array to another<br />CPY_FLOAT_ARY &amp; destination of source array, offset of destination array, address of source array, offset of source array, number of &amp; copies elements from one array to another<br /></p>
+<p>| l | p4 cm | p6 cm |</p>
+<p><br /><em>Mnemonic</em> &amp; <em>Opcode(s)</em> &amp; <em>Description</em><br />THREAD_CREATE &amp; n/a &amp; creates an new thread instance (calculation stack and stack pointer)<br />THREAD_WAIT &amp; n/a &amp; waits for worker threads to stop execution<br />CRITICAL_START &amp; n/a &amp; creates a mutex such that only one thread can execute in a given section<br />CRITICAL_END &amp; n/a &amp; releases a system mutex<br />TRAP &amp; integer value for trap id &amp; calls runtime subroutine releasing control<br />TRAP_RTRN &amp; integer value for trap id and number of arguments &amp; calls runtime subroutine releasing control and then processes an integer return value<br />LIB_NEW_OBJ_INST &amp; n/a &amp; symbolic library link for a new object instance<br />LIB_MTHD_CALL &amp; n/a &amp; symbolic library link for a method call<br />LIB_OBJ_INST_CAST &amp; n/a &amp; symbolic library link for an object cast<br /></p>
