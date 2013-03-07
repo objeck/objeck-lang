@@ -52,7 +52,7 @@
 	<summary>
 		<codepage>1252</codepage>
 		<title>Installation Database</title>
-		<subject>Objeck Programming Language</subject>
+		<subject>Objeck</subject>
 		<author>##ID_STRING3##</author>
 		<keywords>Installer,MSI,Database</keywords>
 		<comments>Contact:  Your local administrator</comments>
@@ -350,6 +350,7 @@
 		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{C8878A55-ED2E-4EC2-BBCC-15C9A14039A6}</td><td>ODBC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{D6E0BFAC-C8FB-4481-B81A-DF166EBE133F}</td><td>WEB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{15C6029C-C32A-40BE-AEA5-C2B40ABA7376}</td><td>XML</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT19</td><td>{9FDC6DF4-765D-4AEC-9E07-F3CAA0F5AC82}</td><td>ProgramFilesFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{C660ECF2-8075-49F8-AAD3-7B20FC28B5DA}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{69EBD078-C2D8-43B6-943E-E932FBE0A009}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
@@ -1079,6 +1080,7 @@
 		<row><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>ISX_DEFAULTCOMPONENT10</td></row>
 		<row><td>ODBC</td><td>ISX_DEFAULTCOMPONENT5</td></row>
 		<row><td>OPENSSL</td><td>ISX_DEFAULTCOMPONENT6</td></row>
+		<row><td>ProgramFilesFolder</td><td>ISX_DEFAULTCOMPONENT19</td></row>
 		<row><td>TempFolder</td><td>ISX_DEFAULTCOMPONENT9</td></row>
 		<row><td>USERPROFILE</td><td>ISX_DEFAULTCOMPONENT4</td></row>
 	</table>
@@ -1186,7 +1188,7 @@
 		<row><td>MY_PRODUCT_NAME</td><td>RANDY_HOLLINES</td><td>MYPROD~1|My Product Name</td><td/><td>0</td><td/></row>
 		<row><td>MyPicturesFolder</td><td>TARGETDIR</td><td>.:MyPict~1|MyPictures</td><td/><td>0</td><td/></row>
 		<row><td>NetHoodFolder</td><td>TARGETDIR</td><td>.:NetHood</td><td/><td>0</td><td/></row>
-		<row><td>OBJECK_PROGRAMMING_LANGUAGE</td><td>USERPROFILE</td><td>OBJECK~1|Objeck Programming Language</td><td/><td>0</td><td/></row>
+		<row><td>OBJECK_PROGRAMMING_LANGUAGE</td><td>ProgramFilesFolder</td><td>Objeck</td><td/><td>0</td><td/></row>
 		<row><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>AppDataFolder</td><td>OBJECK~1|Objeck Programming Language</td><td/><td>0</td><td/></row>
 		<row><td>OBJECK_PROGRAMMING_LANGUAGE_</td><td>RANDY_HOLLINES</td><td>OBJECK~1|Objeck Programming Language </td><td/><td>0</td><td/></row>
 		<row><td>ODBC</td><td>LIB</td><td>odbc</td><td/><td>0</td><td/></row>
@@ -1236,6 +1238,8 @@
 		<col def="l255">Name</col>
 		<col def="L255">Value</col>
 		<col def="s72">Component_</col>
+		<row><td>NewEnvironment1</td><td>##ID_STRING36##</td><td>##ID_STRING37##</td><td>ISX_DEFAULTCOMPONENT</td></row>
+		<row><td>NewEnvironment2</td><td>##ID_STRING38##</td><td>##ID_STRING39##</td><td>ISX_DEFAULTCOMPONENT</td></row>
 	</table>
 
 	<table name="Error">
@@ -1916,6 +1920,7 @@
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT16</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT17</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT18</td></row>
+		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT19</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT2</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT3</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT4</td></row>
@@ -2386,6 +2391,7 @@
 		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_094FDFC4_F227_4F9A_A4B9_15DC858662A1_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_4AD17F98_59C5_44E9_B5A4_FE99D093BCB1_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_2D543517_243B_4FCA_ACAE_A9399DD8B2A8_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT19</td><td/><td/><td>_008D9B4F_78FE_4CD6_996B_5D45EF445E22_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_9CD84834_8966_47BF_8295_E42CBDB4F925_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_F4EF9ABE_4CF1_4970_9F8C_25A6E6FC6353_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td/><td/><td>_5B84DF58_7183_477E_9229_5B3AC1C3B591_FILTER</td><td/><td/><td/><td/></row>
@@ -4141,7 +4147,7 @@
 		<row><td>ID_STRING17</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1839077072</td></row>
 		<row><td>ID_STRING18</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1713297580</td></row>
 		<row><td>ID_STRING19</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-979463538</td></row>
-		<row><td>ID_STRING2</td><td>1033</td><td>http://www.RandyHollines.com</td><td>0</td><td/><td>-1600004046</td></row>
+		<row><td>ID_STRING2</td><td>1033</td><td>http://rosettacode.org/wiki/Category:Objeck</td><td>0</td><td/><td>966866217</td></row>
 		<row><td>ID_STRING20</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-434204406</td></row>
 		<row><td>ID_STRING21</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-257996585</td></row>
 		<row><td>ID_STRING22</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-216017209</td></row>
@@ -4159,6 +4165,10 @@
 		<row><td>ID_STRING33</td><td>1033</td><td>Examples</td><td>0</td><td/><td>1092712852</td></row>
 		<row><td>ID_STRING34</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>497073333</td></row>
 		<row><td>ID_STRING35</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-165672469</td></row>
+		<row><td>ID_STRING36</td><td>1033</td><td>*=-OBJECK_LIB_PATH</td><td>0</td><td/><td>966889546</td></row>
+		<row><td>ID_STRING37</td><td>1033</td><td>[INSTALLDIR]bin</td><td>0</td><td/><td>966899241</td></row>
+		<row><td>ID_STRING38</td><td>1033</td><td>*=-PATH</td><td>0</td><td/><td>966893642</td></row>
+		<row><td>ID_STRING39</td><td>1033</td><td>[~];[INSTALLDIR]bin</td><td>0</td><td/><td>966893097</td></row>
 		<row><td>ID_STRING4</td><td>1033</td><td>Objeck</td><td>0</td><td/><td>-618621971</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
@@ -4439,7 +4449,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>ISTheme</td><td>InstallShield Blue.theme</td></row>
 		<row><td>ISUSLock</td><td>{3AC3EBB3-AC36-40FD-AE5A-EBBE27D0ED51}</td></row>
 		<row><td>ISUSSignature</td><td>{CCECEEEF-837A-46D0-8D14-08E07AE89F94}</td></row>
-		<row><td>ISVisitedViews</td><td>viewAssistant,viewShortcuts,viewAppFiles,viewISToday,viewProject,viewBillboards,viewUI,viewObjects,viewFeatureFiles,viewTextMessages,viewSystemSearch,viewInstallScriptStd,viewSupportFiles,viewCustomActions,viewRelease,viewRealSetupDesign,viewSetupDesign,viewSetupTypes,viewAppV,viewDependencies,viewRegistry,viewIniFiles,viewFileExtensions,viewDesignPatches,viewUpgradePaths</td></row>
+		<row><td>ISVisitedViews</td><td>viewAssistant,viewShortcuts,viewAppFiles,viewISToday,viewProject,viewBillboards,viewUI,viewObjects,viewFeatureFiles,viewTextMessages,viewSystemSearch,viewInstallScriptStd,viewSupportFiles,viewCustomActions,viewRelease,viewRealSetupDesign,viewSetupDesign,viewSetupTypes,viewAppV,viewDependencies,viewRegistry,viewIniFiles,viewFileExtensions,viewDesignPatches,viewUpgradePaths,viewEnvironmentVariables</td></row>
 		<row><td>Limited</td><td>1</td></row>
 		<row><td>LockPermissionMode</td><td>1</td></row>
 		<row><td>MsiExecCmdLineOptions</td><td/></row>
@@ -4812,8 +4822,8 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKVROOTS</td><td>##IDS_PROGMSG_IIS_ROLLBACKVROOTS##</td><td/></row>
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
-		<row><td>ProductName</td><td>Objeck Programming Language</td><td/></row>
-		<row><td>ProductVersion</td><td>3.1.8.4</td><td/></row>
+		<row><td>ProductName</td><td>Objeck</td><td/></row>
+		<row><td>ProductVersion</td><td>3.1.8.5</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
