@@ -1,0 +1,24 @@
+use ODBC;
+
+bundle Default {
+	class SqlTest {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+
+		function : native : Run() ~ Nil {
+			conn := Connection->New("test", "root", "helloworld");	
+			if(conn <> Nil) {
+				rs := conn->Select("SELECT * FROM world.city");
+				if(rs <> Nil) {
+					i := 0;	
+					while(rs->Next()) {
+						rs->GetVarchar("Name")->PrintLine();
+					};
+					rs->Close();
+				};
+				conn->Close();
+			};
+		}
+	}
+}

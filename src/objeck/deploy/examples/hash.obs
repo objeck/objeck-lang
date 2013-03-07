@@ -1,0 +1,23 @@
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			Run();
+		}
+		
+		function : Run() ~ Nil {
+			keys := ["1", "2", "3"];
+			vals := ["a", "b", "c"];
+			hash := StringHash->New();
+			each(i : vals) {			
+				hash->Insert(keys[i], vals[i]);
+			};
+			
+			each(i : vals) {
+				v := hash->Find(keys[i])->As(String);
+				v->PrintLine();
+			};
+		}
+	}
+}
