@@ -1,0 +1,77 @@
+use FastCgi;
+use System.IO;
+
+class FindName implements FastCgi.Handler {
+	function : Forward(req : Request, res : Response) ~ Nil {}
+	
+	function : Request(req : Request, res : Response) ~ Nil {
+		cmd := req->GetQueryValue("cmd");
+		if(cmd <> Nil & cmd->Equals("name")) {
+			names := String->New[31];
+			names[0] := "Vicky";
+			names[1] := "Anna";
+			names[2] := "Brittany";
+			names[3] := "Cinderella";
+			names[4] := "Diana";
+			names[5] := "Eva";
+			names[6] := "Fiona";
+			names[7] := "Gunda";
+			names[8] := "Hege";
+			names[9] := "Inga";
+			names[10] := "Johanna";
+			names[11] := "Kitty";
+			names[12] := "Linda";
+			names[13] := "Nina";
+			names[14] := "Ophelia";
+			names[15] := "Petunia";
+			names[16] := "Amanda";
+			names[17] := "Raquel";
+			names[18] := "Cindy";
+			names[19] := "Doris";
+			names[20] := "Eve";
+			names[21] := "Evita";
+			names[22] := "Sunniva";
+			names[23] := "Tove";
+			names[24] := "Unni";
+			names[25] := "Violet";
+			names[26] := "Liza";
+			names[27] := "Elizabeth";
+			names[28] := "Ellen";
+			names[29] := "Wenche";
+			names[30] := "Randy";
+			
+			match := "";
+			query := req->GetQueryValue("query");
+			each(i : names) {
+				name := names[i];
+				if(query->Size() <= name->Size()) {
+					count := 0;
+					each(j : query) {
+						if(query->Get(j)->ToUpper() = name->Get(j)->ToUpper()) {
+							count += 1;
+						};
+					};
+					
+					if(count = query->Size()) {
+						if(match->Size() = 0) {
+							match := name;
+						}
+						else {
+							match->Append(", ");
+							match->Append(name);
+						};
+					};
+				};
+			};
+			
+			res->AddBody("<i>");
+			res->AddBody(match);
+			res->AddBody("</i>");
+		}
+		else {
+			res->AddBody(FileReader->ReadFile("../compiler/rc/web/names.html"));
+		};
+		
+		res->Submit();
+	}
+}

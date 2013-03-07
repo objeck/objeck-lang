@@ -1,0 +1,32 @@
+use XML;
+use Collection;
+
+bundle Default {
+	class Test {
+		function : Main(args : String[]) ~ Nil {
+			# list of name
+			names := Vector->New();
+			names->AddBack("April");
+			names->AddBack("Tam O'Shanter");
+			names->AddBack("Emily");
+			# list of comments
+			comments := Vector->New();
+			comments->AddBack("Bubbly: I'm > Tam and <= Emily");
+			comments->AddBack("Burns: \"When chapman billies leave the street ...\"");
+			comments->AddBack("Short & shrift");
+			# build XML document
+			builder := XmlBuilder->New("CharacterRemarks");
+			root := builder->GetRoot();
+			if(names->Size() = comments->Size()) {
+				each(i : names) {
+					element := XmlElement->New(XmlElementType->ELEMENT, 
+						names->Get(i)->As(String), 
+						comments->Get(i)->As(String));
+					root->AddChild(element);
+				};
+			};			
+			XmlElement->DecodeString(builder->ToString())->PrintLine();
+		}
+	}
+}
+
