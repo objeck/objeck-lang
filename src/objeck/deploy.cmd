@@ -8,6 +8,7 @@ mkdir deploy\bin
 copy Release\*.exe deploy\bin
 copy ..\compiler\*.obl deploy\bin
 del deploy\bin\fcgi.obl
+del deploy\bin\gtk2.obl
 REM openssl support
 mkdir deploy\bin\lib\openssl
 cd ..\vm\lib\openssl\openssl
