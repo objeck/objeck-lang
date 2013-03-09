@@ -232,6 +232,11 @@ extern "C" {
     gtk_window_set_gravity(param_0, param_1);
   }
   
+  void og_gtk_window_get_gravity(VMContext& context) {
+    GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)gtk_window_get_gravity(param_1));
+  }
+  
   //
   // GdkRegion functions
   //  

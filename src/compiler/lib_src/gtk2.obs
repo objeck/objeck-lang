@@ -1377,6 +1377,17 @@ bundle Gtk2 {
 			array_args[1] := IntHolder->New(param_1->As(Int));
 			lib_proxy->CallFunction("og_gtk_window_set_gravity", array_args);
 		}
+
+		method : public : WindowGetGravity() ~ GdkGravity {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			lib_proxy->CallFunction("og_gtk_window_get_gravity", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get()->As(GdkGravity);
+		}
 	}
 
 	# Events class
