@@ -236,6 +236,42 @@ extern "C" {
     GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, (long)gtk_window_get_gravity(param_1));
   }
+
+  void og_gtk_window_set_geometry_hints(VMContext& context) {
+    GtkWindow* param_0 = (GtkWindow*)APITools_GetIntValue(context, 0);
+    GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+    long* param_2 = (long*)APITools_GetObjectValue(context, 2);
+    GdkWindowHints param_3 = (GdkWindowHints)APITools_GetIntValue(context, 3);
+
+    int i = 0;
+    GdkGeometry geo;
+    geo.min_width = param_2[i++];
+    geo.min_height = param_2[i++];
+    geo.max_width = param_2[i++];
+    geo.max_height = param_2[i++];
+    geo.base_width = param_2[i++];
+    geo.base_height = param_2[i++];
+    geo.width_inc = param_2[i++];
+    geo.height_inc = param_2[i++];
+    // set float
+    memcpy(&geo.min_aspect, &param_2[i], sizeof(geo.min_aspect));
+#ifdef _X64
+    i++;
+#else
+    i += 2;
+#endif
+    // set float
+    memcpy(&geo.max_aspect, &param_2[i], sizeof(geo.min_aspect));
+#ifdef _X64
+    i++;
+#else
+    i += 2;
+#endif
+    // set last element
+    geo.win_gravity = (GdkGravity)param_2[i++];
+    
+    gtk_window_set_geometry_hints(param_0, param_1, &geo, param_3);
+  }
   
   //
   // GdkRegion functions

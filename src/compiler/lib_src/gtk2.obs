@@ -333,6 +333,22 @@ bundle Gtk2 {
 	}
 	
 	# Value objects
+	class GdkGeometry {
+		min_width : Int;
+		height : Int;
+		max_width : Int;
+		max_height : Int;
+		base_width : Int;
+		base_height : Int;
+		width_inc : Int;
+		height_inc : Int;
+		min_aspect : Float;
+		max_aspect : Float;
+		win_gravity : GdkGravity;
+		
+		New() {}
+	}
+
 	class GtkRequisition {
 		@width : Int;
 		@height : Int;
@@ -1387,6 +1403,17 @@ bundle Gtk2 {
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get()->As(GdkGravity);
+		}
+
+		method : public : WindowSetGeometryHints(param_1 : GtkWidget, param_2 : GdkGeometry, 
+				param_3 : GdkWindowHints) ~ Nil {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[4];
+			array_args[0] := @self;
+			array_args[1] := param_1;
+			array_args[2] := param_2;
+			array_args[3] := IntHolder->New(param_3);
+			lib_proxy->CallFunction("og_gtk_window_set_geometry_hints", array_args);
 		}
 	}
 
