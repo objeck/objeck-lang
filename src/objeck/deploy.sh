@@ -108,7 +108,8 @@ fi
 # copy guide
 cd ../../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
-cp -r docs/syntax src/objeck/deploy/doc
+svn export docs/syntax src/objeck/deploy/doc/syntax
+
 cp docs/readme.rtf src/objeck/deploy
 # copy examples
 svn export src/compiler/rc src/objeck/deploy/examples
