@@ -1241,7 +1241,27 @@ bundle Gtk2 {
 			lib_proxy->CallFunction("og_button_get_label", array_args);
 			return array_args[0]->As(String);
 		}
-	}	
+	}
+
+	class GdkScreen {
+		@native_ptr : Int;
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("lib/gtk2/gtk2_objk");
+			};
+
+			return @lib_proxy;
+		}
+
+		New() {
+			lib_proxy := GetDllProxy();
+			array_args := Base->New[1];
+			array_args[0] := @self;
+			lib_proxy->CallFunction("og_gdk_region_new", array_args);
+		}
+	}
 
 	# GtkWindow class
 	class GtkWindow from GtkContainer {
