@@ -34,7 +34,7 @@ copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.rtf deploy
 REM finished
 if [%1] NEQ [deploy] goto end
-	rmdir /s /q %HOMEPATH%\Desktop\objeck-lang
-	mkdir %HOMEPATH%\Desktop\objeck-lang
-	xcopy /e deploy %HOMEPATH%\Desktop\objeck-lang
+	rmdir /s /q "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
+	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
+	xcopy /e deploy "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
 :end
