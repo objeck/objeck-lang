@@ -113,9 +113,12 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < bundles.size(); i++) {
     vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); j++) {
-      vector<Method*> methods = classes[j]->GetMethods();
+      Class* klass = classes[j];
+      vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); k++) {
-        methods[k]->EncodeSignature(program, linker);
+	Method* method =  methods[k];
+        method->EncodeSignature(program, linker);
+	CreateDefaultParameterMethods(klass, method);
       }
     }
   }
@@ -142,12 +145,14 @@ bool ContextAnalyzer::Analyze()
 	  if(parent) {
 	    klass->SetParent(parent);
 	    parent->AddChild(klass);
-	  } else {
+	  } 
+	  else {
 	    LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses());
 	    if(lib_parent) {
 	      klass->SetLibraryParent(lib_parent);
 	      lib_parent->AddChild(klass);
-	    } else {
+	    } 
+	    else {
 	      ProcessError(klass, "Attempting to inherent from an undefined class type");
 	    }
 	  }
@@ -210,6 +215,35 @@ bool ContextAnalyzer::Analyze()
        linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
       ProcessError(eenum, "Enum '" + eenum->GetName() +
 		   "' defined in program and shared libraries");
+    }
+  }
+
+  /****************************
+   * Expands and validates methods with
+   * default parameters
+   ****************************/
+  void ContextAnalyzer::CreateDefaultParameterMethods(Class* klass, Method* method) {
+    // declarations
+    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
+      bool default_params = true;
+      for(int i = declarations.size() - 1; i > -1; i--) {
+	if(declarations[i]->GetAssignment()) {
+	  if(!default_params) {
+	    ProcessError(declarations[0], "Only trailing parameters may have default values");
+	    return;
+	  }
+	}
+	else {
+	  default_params = false;
+	}
+      }
+      
+      // build new method
+      Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
+								 method->GetName(), method->GetMethodType(), 
+								 method->IsStatic(),  method->IsNative());
+
     }
   }
 

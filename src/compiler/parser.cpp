@@ -488,7 +488,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       const string &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, /*false*/true, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError("Expected ';'", TOKEN_SEMI_COLON);
       }
