@@ -50,6 +50,7 @@ namespace frontend {
    * ParseNode base class
    ****************************/
   class ParseNode {
+  protected:
     string file_name;
     int line_num;
 
