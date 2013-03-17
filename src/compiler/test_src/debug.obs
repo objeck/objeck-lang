@@ -1,14 +1,14 @@
 ﻿class Test {
-#~
 	function : Fie(a : Int, b : Int := 13) ~ Nil {
 	}
 
+#~
 	function : Fum(a : Int, b : Int := 13, c : Int := 7) ~ Nil {
 	}
-~#
 
 	function : Foo(a : Int := 13, b : Int, c : Int := 7) ~ Nil {
 	}
+~#
 
 	function : Main(args : String[]) ~ Nil {
 	}

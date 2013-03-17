@@ -248,3 +248,7 @@ Variable* Variable::Copy() {
   v->indices = indices;
   return v;
 }
+
+Declaration* Declaration::Copy() {
+  return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy());
+}
