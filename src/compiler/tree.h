@@ -1678,6 +1678,8 @@ namespace frontend {
       return assignment;
     }
 
+    Declaration* Copy();
+
     const StatementType GetStatementType() {
       return DECLARATION_STMT;
     }

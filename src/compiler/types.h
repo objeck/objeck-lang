@@ -100,8 +100,7 @@ namespace frontend {
   /****************************
    * Method types
    ****************************/
-  enum MethodCallType {
-    ENUM_CALL = -6000,
+  enum MethodCallType {    ENUM_CALL = -6000,
     NEW_INST_CALL,
     NEW_ARRAY_CALL,
     METHOD_CALL,

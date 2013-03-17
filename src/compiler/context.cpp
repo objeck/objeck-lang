@@ -107,18 +107,27 @@ bool ContextAnalyzer::Analyze()
       ProcessError("Bundle name '" + name + "' not defined in program or linked libraries");
     }
   }
-
-  // re-encode method signatures; i.e. fully expand class names
+  
   vector<ParsedBundle*> bundles = program->GetBundles();
+  // add methods for default parameters
   for(size_t i = 0; i < bundles.size(); i++) {
-    vector<Class*> classes = bundles[i]->GetClasses();
+    ParsedBundle* bundle = bundles[i];
+    vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); j++) {
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); k++) {
-	Method* method =  methods[k];
-        method->EncodeSignature(program, linker);
-	CreateDefaultParameterMethods(klass, method);
+	CreateDefaultParameterMethods(bundle, klass, methods[k]);
+      }
+    }
+  }
+  // re-encode method signatures; i.e. fully expand class names
+  for(size_t i = 0; i < bundles.size(); i++) {
+    vector<Class*> classes = bundles[i]->GetClasses();
+    for(size_t j = 0; j < classes.size(); j++) {
+      vector<Method*> methods = classes[j]->GetMethods();
+      for(size_t k = 0; k < methods.size(); k++) {
+	methods[k]->EncodeSignature(program, linker);
       }
     }
   }
@@ -126,8 +135,7 @@ bool ContextAnalyzer::Analyze()
   // associate re-encoded method signatures with methods
   for(size_t i = 0; i < bundles.size(); i++) {
     bundle = bundles[i];
-    vector<Class*> classes = bundle->GetClasses();
-    
+    vector<Class*> classes = bundle->GetClasses();    
     for(size_t j = 0; j < classes.size(); j++) {
       Class* klass = classes[j];
       string parent_name = klass->GetParentName();
@@ -222,7 +230,7 @@ bool ContextAnalyzer::Analyze()
    * Expands and validates methods with
    * default parameters
    ****************************/
-  void ContextAnalyzer::CreateDefaultParameterMethods(Class* klass, Method* method) {
+  void ContextAnalyzer::CreateDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) {
     // declarations
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
     if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
@@ -243,7 +251,32 @@ bool ContextAnalyzer::Analyze()
       Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
 								 method->GetName(), method->GetMethodType(), 
 								 method->IsStatic(),  method->IsNative());
+      param_method->SetReturn(method->GetReturn());
+      DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
 
+      // TODO: get right table
+      SymbolTable* table = bundle->GetSymbolTableManager()->GetSymbolTable(klass->GetName());
+      bool done = false;
+      size_t i = 0;
+      for(; !done && i < declarations.size(); i++) {
+	if(!declarations[i]->GetAssignment()) {
+	  Declaration* declaration = declarations[i]->Copy();
+	  table->AddEntry(declaration->GetEntry());
+	  param_declarations->AddDeclaration(declaration);
+	}
+	else {
+	  done = true;
+	}
+      }
+
+      StatementList* param_statements = TreeFactory::Instance()->MakeStatementList();
+      for(; i < declarations.size(); i++) {
+	param_statements->AddStatement(declarations[i]->GetAssignment());
+      }
+      param_method->SetStatements(param_statements);
+
+      param_method->SetDeclarations(param_declarations);
+      klass->AddMethod(param_method);
     }
   }
 
