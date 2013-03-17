@@ -225,6 +225,10 @@ ExpressionList* StaticArray::GetAllElements() {
   return all_elements;
 }
 
+/****************************
+ * Get the size for 
+ * multidimensional array
+ ****************************/
 vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
     int count = 0;
@@ -239,3 +243,8 @@ vector<int> StaticArray::GetSizes() {
   return sizes;
 }
 
+Variable* Variable::Copy() {
+  Variable* v = TreeFactory::Instance()->MakeVariable(file_name, line_num, name);
+  v->indices = indices;
+  return v;
+}

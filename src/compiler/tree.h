@@ -1020,6 +1020,8 @@ namespace frontend {
     ExpressionList* GetIndices() {
       return indices;
     }
+    
+    Variable* Copy();
   };
 
   /****************************
