@@ -59,6 +59,17 @@ TreeFactory* TreeFactory::Instance()
 }
 
 /****************************
+ * Creates a default copy of
+ * an entry
+ ****************************/
+SymbolEntry* SymbolEntry::Copy() 
+{
+  return TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+						  name, type, is_static,
+						  is_local, is_self);
+}
+
+/****************************
  * Sets the id for all
  * references to a variable.
  ****************************/
