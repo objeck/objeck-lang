@@ -123,6 +123,7 @@ namespace frontend {
     }
 
   public:
+    
     void SetType(Type* t) {
       type =  t;
     }
@@ -143,8 +144,6 @@ namespace frontend {
       return name;
     }
 
-    void SetId(int i);
-
     int GetId() {
       return id;
     }
@@ -156,6 +155,9 @@ namespace frontend {
     void AddVariable(Variable* v) {
       variables.push_back(v);
     }
+    
+    void SetId(int i);
+    SymbolEntry* Copy();
   };
 
   /****************************
