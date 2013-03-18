@@ -8,7 +8,7 @@ EXE=obu
 RES=utilities/objeck.res
 
 $(EXE): $(SRC) $(RES) 
-	$(CC) -m32 -o $(EXE) $(RES) $(SRC) $(OBJ_LIBS)  -L"../vm/lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
+	$(CC) -m32 -s -o $(EXE) $(RES) $(SRC) $(OBJ_LIBS)  -L"../vm/lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
 
 $(RES):
 	windres utilities/objeck.rc -O coff -o $(RES)
