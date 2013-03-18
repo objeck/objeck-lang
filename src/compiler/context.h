@@ -972,7 +972,7 @@ class ContextAnalyzer {
   
   // context operations
   void AnalyzeEnum(Enum* eenum, const int depth);
-  void AnalyzeClass(Class* klass, int id, const int depth);
+  void AnalyzeClass(Class* klass, const int id, const int depth);
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   int GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset);
   void AnalyzeMethods(Class* klass, const int depth);
