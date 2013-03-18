@@ -1,16 +1,22 @@
 ﻿class Test {
-#~
-	function : Fie(a : Int := 7, b : Int := 13) ~ Int {
+	function : Foo() ~ Int {
+		return 33;
+	}
+
+	function : Fie() ~ Int {
+		return 50;
+	}
+
+	function : Fie(a : Int := 7, b : Int := Foo()) ~ Int {
 		return a+b;
 	}
-~#
 
 	function : Fum(a : Int, b : Int := a, c : Int := 7) ~ Nil {
 		(a*b*c)->PrintLine();
 	}
 
 	function : Main(args : String[]) ~ Nil {
-#		Fie()->PrintLine();
+		Fie()->PrintLine();
 		Fum(10, 5);
 		Fum(10);
 	}
