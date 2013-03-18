@@ -971,74 +971,75 @@ class ContextAnalyzer {
   bool CheckErrors();
   
   // context operations
-  void AnalyzeEnum(Enum* eenum, int depth);
-  void AnalyzeClass(Class* klass, int id, int depth);
+  void AnalyzeEnum(Enum* eenum, const int depth);
+  void AnalyzeClass(Class* klass, int id, const int depth);
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
-  void AnalyzeMethods(Class* klass, int depth);
-  bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, int depth);
-  bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth);
+  int GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset);
+  void AnalyzeMethods(Class* klass, const int depth);
+  bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, const int depth);
+  bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, const int depth);
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 			    bool impl_is_static, bool impl_is_virtual, Method* virtual_method);
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 			    bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method);
-  void AnalyzeInterfaces(Class* klass, int depth);
-  void AnalyzeMethod(Method* method, int id, int depth);
-  void AnalyzeStatements(StatementList* statements, int depth);
-  void AnalyzeStatement(Statement* statement, int depth);
-  void AnalyzeIndices(ExpressionList* indices, int depth);
-  void AnalyzeExpressions(ExpressionList* parameters, int depth);
-  void AnalyzeExpression(Expression* expression, int depth);
-  void AnalyzeVariable(Variable* variable, int depth);
-  void AnalyzeCharacterString(CharacterString* char_str, int depth);
-  void AnalyzeConditional(Cond* conditional, int depth);
-  void AnalyzeStaticArray(StaticArray* array, int depth);
-  void AnalyzeCast(Expression* expression, int depth);
-  void AnalyzeClassCast(Type* left, Expression* expression, int depth);
-  void AnalyzeAssignment(Assignment* assignment, int depth);
-  void AnalyzeSimpleStatement(SimpleStatement* simple, int depth);
-  void AnalyzeIf(If* if_stmt, int depth);
-  void AnalyzeDoWhile(DoWhile* do_while_stmt, int depth);
-  void AnalyzeWhile(While* while_stmt, int depth);
-  void AnalyzeSelect(Select* select_stmt, int depth);
-  void AnalyzeCritical(CriticalSection* mutex, int depth);
-  void AnalyzeFor(For* for_stmt, int depth);
-  void AnalyzeReturn(Return* rtrn, int depth);
-  void AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, int depth);
-  void AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, int depth);
-  void AnalyzeCalculation(CalculatedExpression* expression, int depth);
-  void AnalyzeCalculationCast(CalculatedExpression* expression, int depth);
-  void AnalyzeDeclaration(Declaration* declaration, int depth);
+  void AnalyzeInterfaces(Class* klass, const int depth);
+  void AnalyzeMethod(Method* method, int id, const int depth);
+  void AnalyzeStatements(StatementList* statements, const int depth);
+  void AnalyzeStatement(Statement* statement, const int depth);
+  void AnalyzeIndices(ExpressionList* indices, const int depth);
+  void AnalyzeExpressions(ExpressionList* parameters, const int depth);
+  void AnalyzeExpression(Expression* expression, const int depth);
+  void AnalyzeVariable(Variable* variable, const int depth);
+  void AnalyzeCharacterString(CharacterString* char_str, const int depth);
+  void AnalyzeConditional(Cond* conditional, const int depth);
+  void AnalyzeStaticArray(StaticArray* array, const int depth);
+  void AnalyzeCast(Expression* expression, const int depth);
+  void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
+  void AnalyzeAssignment(Assignment* assignment, const int depth);
+  void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
+  void AnalyzeIf(If* if_stmt, const int depth);
+  void AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth);
+  void AnalyzeWhile(While* while_stmt, const int depth);
+  void AnalyzeSelect(Select* select_stmt, const int depth);
+  void AnalyzeCritical(CriticalSection* mutex, const int depth);
+  void AnalyzeFor(For* for_stmt, const int depth);
+  void AnalyzeReturn(Return* rtrn, const int depth);
+  void AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
+  void AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
+  void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
+  void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
+  void AnalyzeDeclaration(Declaration* declaration, const int depth);
   // checks for method calls, which includes new array and object allocation
-  void AnalyzeExpressionMethodCall(Expression* expression, int depth);
+  void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, string &encoding,
                                    Class* &klass, LibraryClass* &lib_klass);
   bool AnalyzeExpressionMethodCall(Expression* expression, string &encoding,
                                    Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   bool AnalyzeExpressionMethodCall(Type* type, const int dimension, string &encoding,
                                    Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
-  void AnalyzeMethodCall(MethodCall* method_call, int depth);
-  void AnalyzeNewArrayCall(MethodCall* method_call, int depth);
-  void AnalyzeParentCall(MethodCall* method_call, int depth);
-  LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, int depth);
-  Class* AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, int depth);
+  void AnalyzeMethodCall(MethodCall* method_call, const int depth);
+  void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
+  void AnalyzeParentCall(MethodCall* method_call, const int depth);
+  LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, const int depth);
+  Class* AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-                         bool is_expr, string &encoding, int depth);
+                         bool is_expr, string &encoding, const int depth);
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-                         bool is_expr, string &encoding, bool is_parent, int depth);
+                         bool is_expr, string &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-                         bool is_virtual, bool is_expr, int depth);
-  string EncodeMethodCall(ExpressionList* calling_params, int depth);
-  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, int depth);
-  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, int depth);
+                         bool is_virtual, bool is_expr, const int depth);
+  string EncodeMethodCall(ExpressionList* calling_params, const int depth);
+  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
+  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
-			    Class* klass, LibraryClass* lib_klass, int depth);
+			    Class* klass, LibraryClass* lib_klass, const int depth);
   string EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
-  string EncodeFunctionReference(ExpressionList* calling_params, int depth);
-  void AnalyzeDynamicFunctionCall(MethodCall* method_call, int depth);
+  string EncodeFunctionReference(ExpressionList* calling_params, const int depth);
+  void AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-				string &encoding, int depth);
+				string &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-				string &encoding, int depth);
+				string &encoding, const int depth);
   
 public:
   ContextAnalyzer(ParsedProgram* p, string lib_path, bool l, bool w) {
