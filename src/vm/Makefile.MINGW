@@ -13,7 +13,7 @@ EXE= obr
 RES=vm/vm.res
 
 $(EXE): $(SRC) $(RES) $(OBJ_LIBS) 
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(RES) $(SRC) $(OBJ_LIBS) -L"lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
+	$(CC) -m32 -D_MINGW -static -static-libstdc++ -s -o $(EXE) $(RES) $(SRC) $(OBJ_LIBS) -L"lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
 
 memory.a:
 	cd $(MEM_PATH); make    

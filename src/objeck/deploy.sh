@@ -1,5 +1,8 @@
 #!/bin/sh
 
+USER_HOME=C:\\Users\\rhollines
+# set USER_HOME=C:\\Documents and Settings\\Administrator
+
 # setup directories
 rm -rf deploy
 mkdir deploy
@@ -117,9 +120,9 @@ svn export src/compiler/rc src/objeck/deploy/examples
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	if [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-		rm -rf "C:\Documents and Settings\Administrator\Desktop\objeck-lang"
-		cp -rf src/objeck/deploy "C:\Documents and Settings\Administrator\Desktop\objeck-lang"
-		cd "C:\Documents and Settings\Administrator\Desktop"
+		rm -rf "$USER_HOME\Desktop\objeck-lang"
+		cp -rf src/objeck/deploy "$USER_HOME\Desktop\objeck-lang"
+		cd "$USER_HOME\Desktop"
 	else
 		rm -rf ~/Desktop/objeck-lang
 		cp -rf src/objeck/deploy ~/Desktop/objeck-lang

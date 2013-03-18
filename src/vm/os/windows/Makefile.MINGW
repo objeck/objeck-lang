@@ -1,15 +1,3 @@
-###############
-# For OSX only
-###############
-# ARGS=-mstackrealign -O3
-# ARGS=-D_TIMING -mstackrealign -O3
-# ARGS=-mstackrealign -g -D_DEBUG -Wunused
-
-###############
-# For Linux
-###############
-# ARGS=-g -D_DEBUG  -Wunused -Wno-deprecated
-# ARGS=-g -Wunused
 ARGS=-O3 -Wall
 
 CC=g++
@@ -18,7 +6,7 @@ SRC=memory.o
 LIB=../../memory.a
 
 $(LIB): $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+	$(AR) -cvq -s $(LIB) $(SRC)
 
 %.o: %.cpp
 	$(CC) -m32 -I"../../lib/openssl/win32/include" -D_MINGW -static -static-libstdc++ $(ARGS) -c $< 

@@ -7,7 +7,7 @@ EXE=obc
 RES=compiler/objeck.res
 
 $(EXE): $(SRC) $(RES)
-	$(CC) -m32 -D_MINGW -static -static-libstdc++ -o $(EXE) $(RES) $(SRC)
+	$(CC) -m32 -D_MINGW -static -static-libstdc++ -s -o $(EXE) $(RES) $(SRC)
 
 $(RES):
 	windres compiler/objeck.rc -O coff -o $(RES)
