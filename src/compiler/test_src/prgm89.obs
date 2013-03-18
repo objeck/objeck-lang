@@ -2,7 +2,9 @@
 
 class EthiopianMultiplication {
 	function : Main(args : String[]) ~ Nil {
+		"1st number: "->Print();
 		first := IO.Console->ReadString()->ToInt();
+		"2nd number: "->Print();
 		second := IO.Console->ReadString()->ToInt();
 		"----"->PrintLine();
 		Mul(first, second)->PrintLine();

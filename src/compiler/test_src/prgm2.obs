@@ -32,7 +32,7 @@ bundle Default {
 			(16 = 16.0)->PrintLine();
 			(16.0 <> 16)->PrintLine();
 			
-			(16 = 16)->PrintLine();
+			(16 = 0x10)->PrintLine();
 			(16 <> 16)->PrintLine();
 		
 			(16 < 16)->PrintLine();
