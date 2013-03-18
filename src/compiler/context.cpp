@@ -321,11 +321,15 @@ bool ContextAnalyzer::Analyze()
 	param_statement_list->AddStatement(mthd_call);
       }
 	
-      // set statements and add method
+      // set statements
       param_method->SetStatements(param_statement_list);
       param_method->SetDeclarations(param_declarations);
       bundle->GetSymbolTableManager()->PreviousParseScope(param_method->GetParsedName());
-      klass->AddMethod(param_method);
+
+      // add method
+      if(!klass->AddMethod(param_method)) {
+        ProcessError(method, "Method or function already overloaded '" + method->GetName() + "'");
+      }
     }
 
     return i;
