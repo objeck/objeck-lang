@@ -11,7 +11,7 @@ EXE=obd
 RES=debugger/objeck.res
 
 $(EXE): $(SRC) $(OBJ_LIBS) $(RES)
-	$(CC) -m32 -static -static-libstdc++ -o $(EXE) $(SRC) $(OBJ_LIBS) $(RES) -L"../lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
+	$(CC) -m32 -static -static-libstdc++ -s -o $(EXE) $(SRC) $(OBJ_LIBS) $(RES) -L"../lib/openssl/win32/lib_mingw" -lssl -lcrypto -lgdi32 -lws2_32 
 
 compiler.a:
 	cd $(COMPILER_PATH); make	
