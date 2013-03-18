@@ -11,7 +11,7 @@
 		(a*b*c)->PrintLine();
 	}
 
-	function : Blew(str : String, size : Int := str->Size()) ~ Nil {
+	function : native : Two(str : String, size : Int := str->Size()) ~ Nil {
 		size->PrintLine();
 	}
 
@@ -20,7 +20,7 @@
 		Fum(10, 5);
 		Fum(10);
 
-		Blew("Chucks");
-		Blew("Chucks", 101);
+		Two("Chains");
+		Two("Chains", 101);
 	}
 }
