@@ -5,12 +5,12 @@
 	}
 ~#
 
-	function : Fum(a : Int, b : Int := 13, c : Int := 7) ~ Nil {
+	function : Fum(a : Int, b : Int := a, c : Int := 7) ~ Nil {
 		(a*b*c)->PrintLine();
 	}
 
 	function : Main(args : String[]) ~ Nil {
 #		Fie()->PrintLine();
-		Fum(10);
+		Fum(10, 7, 8);
 	}
 }
