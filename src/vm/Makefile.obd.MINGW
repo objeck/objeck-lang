@@ -12,7 +12,7 @@ JIT_PATH=jit/ia32
 LIB=debugger/compiler.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
-	$(AR) -cvq $(LIB) $(SRC)
+	$(AR) -cvq -s $(LIB) $(SRC)
 
 memory.a:
 	cd $(MEM_PATH); make    
