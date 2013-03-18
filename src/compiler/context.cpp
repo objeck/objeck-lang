@@ -207,7 +207,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a class
    ****************************/
-  void ContextAnalyzer::AnalyzeEnum(Enum* eenum, int depth)
+  void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
   {
 #ifdef _DEBUG
     string msg = "[enum: name='" + eenum->GetName() + "']";
@@ -230,7 +230,8 @@ bool ContextAnalyzer::Analyze()
    * Expands and validates methods with
    * default parameters
    ****************************/
-  void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) {
+  void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) 
+  {
     // declarations
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
     if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
@@ -246,82 +247,94 @@ bool ContextAnalyzer::Analyze()
 	  default_params = false;
 	}
       }
-      
-      // create alternative method
-      // TODO: alternative method for each default parameter
-      Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
-								 method->GetName(), method->GetMethodType(), 
-								 method->IsStatic(),  method->IsNative());
-      param_method->SetReturn(method->GetReturn());
-      DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
 
-      // set declarations
-      bundle->GetSymbolTableManager()->NewParseScope();
-      bool done = false;
-      size_t i = 0;
-      ExpressionList* param_expressions = TreeFactory::Instance()->MakeExpressionList();
-      for(; !done && i < declarations.size(); i++) {
-	if(!declarations[i]->GetAssignment()) {
-	  Declaration* declaration = declarations[i]->Copy();
-	  bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
-	  param_declarations->AddDeclaration(declaration);
+      int start = -1;      
+      const int end = declarations.size();
+      do {
+	start = GenerateParameterMethods(bundle, klass, method, start);
+      }
+      while(start < end);
+    }
+  }
 
-	  const string &entry_name = declaration->GetEntry()->GetName();
-	  const size_t start = entry_name.find_last_of(':');
-	  if(start != string::npos) {
-	    const string &param_name = entry_name.substr(start + 1);
-	    param_expressions->AddExpression(TreeFactory::Instance()->MakeVariable(method->GetFileName(), 
-										   method->GetLineNumber() + 1,
-										   param_name));
-	  }
-	}
-	else {
-	  done = true;
+  int ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset) 
+  {
+    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
+							       method->GetName(), method->GetMethodType(), 
+							       method->IsStatic(),  method->IsNative());
+    param_method->SetReturn(method->GetReturn());
+    
+    // set declarations
+    DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
+    bundle->GetSymbolTableManager()->NewParseScope();
+    bool done = false;
+    const int end = declarations.size();
+    int i = 0;
+    ExpressionList* param_expressions = TreeFactory::Instance()->MakeExpressionList();
+    for(; !done && i < end; i++) {
+      if((!declarations[i]->GetAssignment() && offset == -1) || (offset != -1 && i < offset)) {
+      // if(declarations[i]->GetAssignment()) {
+	Declaration* declaration = declarations[i]->Copy();
+	bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+	param_declarations->AddDeclaration(declaration);
+
+	const string &entry_name = declaration->GetEntry()->GetName();
+	const size_t start = entry_name.find_last_of(':');
+	if(start != string::npos) {
+	  const string &param_name = entry_name.substr(start + 1);
+	  param_expressions->AddExpression(TreeFactory::Instance()->MakeVariable(method->GetFileName(), 
+										 method->GetLineNumber() + 1,
+										 param_name));
 	}
       }
-      
-      // set parameter statements
-      StatementList* param_statement_list = TreeFactory::Instance()->MakeStatementList();
-
-      for(--i; i < declarations.size(); i++) {
-	Assignment* assignment = declarations[i]->GetAssignment();
-	param_statement_list->AddStatement(assignment);
-	
-	param_expressions->AddExpression(assignment->GetVariable());
-      }
-      
-      // set method call
-      const string &method_name = method->GetName();
-      const size_t start = method_name.find_last_of(':');
-      if(start != string::npos) {
-	const string &param_method_name = method_name.substr(start + 1);
-	MethodCall* mthd_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), 
-									method->GetLineNumber() + 1, 
-									klass->GetName(), param_method_name, 
-									param_expressions);
-	// process return
-	if(method->GetReturn()->GetType() != NIL_TYPE) {
-	  param_statement_list->AddStatement(TreeFactory::Instance()->MakeReturn(method->GetFileName(), 
-										 method->GetLineNumber() + 1, 
-										 mthd_call));
-	}
-	else {
-	  param_statement_list->AddStatement(mthd_call);
-	}
-	
-	// set statements and add method
-	param_method->SetStatements(param_statement_list);
-	param_method->SetDeclarations(param_declarations);
-	bundle->GetSymbolTableManager()->PreviousParseScope(param_method->GetParsedName());
-	klass->AddMethod(param_method);
+      else {
+	done = true;
       }
     }
+      
+    // set parameter statements
+    StatementList* param_statement_list = TreeFactory::Instance()->MakeStatementList();
+    
+    for(size_t j = i - 1; j < declarations.size(); j++) {
+      Assignment* assignment = declarations[j]->GetAssignment();
+      param_statement_list->AddStatement(assignment);	
+      param_expressions->AddExpression(assignment->GetVariable());
+    }
+      
+    // set method call
+    const string &method_name = method->GetName();
+    const size_t start = method_name.find_last_of(':');
+    if(start != string::npos) {
+      const string &param_method_name = method_name.substr(start + 1);
+      MethodCall* mthd_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), 
+								      method->GetLineNumber() + 1, 
+								      klass->GetName(), param_method_name, 
+								      param_expressions);
+      // process return
+      if(method->GetReturn()->GetType() != NIL_TYPE) {
+	param_statement_list->AddStatement(TreeFactory::Instance()->MakeReturn(method->GetFileName(), 
+									       method->GetLineNumber() + 1, 
+									       mthd_call));
+      }
+      else {
+	param_statement_list->AddStatement(mthd_call);
+      }
+	
+      // set statements and add method
+      param_method->SetStatements(param_statement_list);
+      param_method->SetDeclarations(param_declarations);
+      bundle->GetSymbolTableManager()->PreviousParseScope(param_method->GetParsedName());
+      klass->AddMethod(param_method);
+    }
+
+    return i;
   }
 
   /****************************
    * Analyzes a class
    ****************************/
-  void ContextAnalyzer::AnalyzeClass(Class* klass, int id, int depth)
+  void ContextAnalyzer::AnalyzeClass(Class* klass, int id, const int depth)
   {
 #ifdef _DEBUG
     string msg = "[class: name='" + klass->GetName() + "'; id=" + ToString(id) +
@@ -367,7 +380,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes methods
    ****************************/
-  void ContextAnalyzer::AnalyzeMethods(Class* klass, int depth)
+  void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   {
 #ifdef _DEBUG
     string msg = "[class: name='" + klass->GetName() + "]";
@@ -402,7 +415,7 @@ bool ContextAnalyzer::Analyze()
    * Checks for interface
    * implementations
    ****************************/
-  void ContextAnalyzer::AnalyzeInterfaces(Class* klass, int depth)
+  void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
   {
     vector<string> interface_names = klass->GetInterfaceNames();
     vector<Class*> interfaces;
@@ -477,7 +490,7 @@ bool ContextAnalyzer::Analyze()
    * Checks for virutal method
    * implementations
    ****************************/
-  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, int depth)
+  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
   {
     // get virutal methods
     bool virtual_methods_defined = true;
@@ -585,7 +598,7 @@ bool ContextAnalyzer::Analyze()
    * are made when compiling shared 
    * libraries.
    ****************************/
-  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, int depth)
+  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
   {
     bool virtual_methods_defined = true;
 
@@ -693,7 +706,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a method
    ****************************/
-  void ContextAnalyzer::AnalyzeMethod(Method* method, int id, int depth)
+  void ContextAnalyzer::AnalyzeMethod(Method* method, int id, const int depth)
   {
 #ifdef _DEBUG
     string msg = "(method: name='" + method->GetName() +
@@ -786,7 +799,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a statements
    ****************************/
-  void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, int depth)
+  void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int depth)
   {
     current_table->NewScope();
     vector<Statement*> statements = statement_list->GetStatements();
@@ -799,7 +812,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a statement
    ****************************/
-  void ContextAnalyzer::AnalyzeStatement(Statement* statement, int depth)
+  void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
   {
     switch(statement->GetStatementType()) {
     case SYSTEM_STMT:
@@ -873,7 +886,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes an expression
    ****************************/
-  void ContextAnalyzer::AnalyzeExpression(Expression* expression, int depth)
+  void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
   {
     switch(expression->GetExpressionType()) {
     case STAT_ARY_EXPR:
@@ -967,7 +980,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a ternary
    * conditional
    ****************************/
-  void ContextAnalyzer::AnalyzeConditional(Cond* conditional, int depth) {
+  void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth) {
 #ifdef _DEBUG
     Show("conditional expression", conditional->GetLineNumber(), depth);
 #endif
@@ -1001,7 +1014,7 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
-  void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, int depth) {
+  void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth) {
 #ifdef _DEBUG
     Show("character string literal", char_str->GetLineNumber(), depth);
 #endif
@@ -1110,7 +1123,7 @@ bool ContextAnalyzer::Analyze()
     char_str->SetProcessed();
   }
 
-  void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, int depth) {
+  void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth) {
     // TOOD: support for 3d or 4d initialization
     if(array->GetDimension() > 2) {
       ProcessError(array, "Invalid static array declaration.");
@@ -1197,7 +1210,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a variable
    ****************************/
-  void ContextAnalyzer::AnalyzeVariable(Variable* variable, int depth)
+  void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
   {
     // explicitly defined variable
     SymbolEntry* entry = GetEntry(variable->GetName());
@@ -1262,7 +1275,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a method call
    ****************************/
-  void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, int depth)
+  void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
   {
 #ifdef _DEBUG
     string msg = "method/function call: class=" + method_call->GetVariableName() +
@@ -1517,7 +1530,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a new array method
    * call
    ****************************/
-  void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, int depth)
+  void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
   {
     // get parameters
     ExpressionList* call_params = method_call->GetCallingParameters();
@@ -1549,7 +1562,7 @@ bool ContextAnalyzer::Analyze()
   /*********************************
    * Analyzes a parent method call
    *********************************/
-  void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, int depth)
+  void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth)
   {
     // get parameters
     ExpressionList* call_params = method_call->GetCallingParameters();
@@ -1575,7 +1588,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a method call
    ****************************/
-  void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, int depth)
+  void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const int depth)
   {
     MethodCall* method_call = expression->GetMethodCall();
     if(method_call) {
@@ -1613,7 +1626,7 @@ bool ContextAnalyzer::Analyze()
    * is method call within the source
    * program.
    *********************************/
-  Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, int depth)
+  Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, string &encoding, const int depth)
   {
     Class* klass = NULL;
 
@@ -1648,7 +1661,7 @@ bool ContextAnalyzer::Analyze()
    * is method call within a linked
    * library
    *********************************/
-  LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, int depth)
+  LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, string &encoding, const int depth)
   {
     LibraryClass* klass = NULL;
     string variable_name = method_call->GetVariableName();
@@ -1688,7 +1701,7 @@ bool ContextAnalyzer::Analyze()
    * Resolve method call parameter
    *********************************/
   int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
-					     Class* klass, LibraryClass* lib_klass, int depth) {
+					     Class* klass, LibraryClass* lib_klass, const int depth) {
     // get calling type
     Type* calling_type = GetExpressionType(calling_param, depth + 1);
     
@@ -1797,7 +1810,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Resolves method calls
    ****************************/
-  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, int depth) {
+  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -1849,7 +1862,7 @@ bool ContextAnalyzer::Analyze()
    * program.
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-					  bool is_expr, string &encoding, int depth)
+					  bool is_expr, string &encoding, const int depth)
   {   
 #ifdef _DEBUG
     cout << "Checking program class call: |" << klass->GetName() << ":" 
@@ -1979,7 +1992,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Resolves library method calls
    ****************************/
-  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, int depth) {
+  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth) {
     const string &method_name = method_call->GetMethodName(); 				 
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -2024,7 +2037,7 @@ bool ContextAnalyzer::Analyze()
    * library
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-					  bool is_expr, string &encoding, bool is_parent, int depth)
+					  bool is_expr, string &encoding, bool is_parent, const int depth)
   {      
 #ifdef _DEBUG
     cout << "Checking library encoded name: |" << klass->GetName() << ":" 
@@ -2059,7 +2072,7 @@ bool ContextAnalyzer::Analyze()
    * library
    ****************************/
   void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-					  bool is_virtual, bool is_expr, int depth)
+					  bool is_virtual, bool is_expr, const int depth)
   {
     if(lib_method) {
       // public/private check
@@ -2098,7 +2111,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a dynamic function 
    * call
    ********************************/
-  void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, int depth) {
+  void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth) {
     // dynamic function call that is not bound to a class/function until runtime
     SymbolEntry* entry = GetEntry(method_call->GetMethodName());
     if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
@@ -2165,7 +2178,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a function reference
    ********************************/
   void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-						 string &encoding, int depth) {
+						 string &encoding, const int depth) {
     const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
     const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() +
       ":" + encoding + func_encoding;
@@ -2226,7 +2239,7 @@ bool ContextAnalyzer::Analyze()
    * Checks a function reference
    ****************************/
   void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-						 string &encoding, int depth) {
+						 string &encoding, const int depth) {
     const string func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
     const string encoded_name = klass->GetName() + ":" + method_call->GetMethodName() +
       ":" + encoding + func_encoding;
@@ -2286,7 +2299,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a cast
    ****************************/
-  void ContextAnalyzer::AnalyzeCast(Expression* expression, int depth)
+  void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   {
     // type cast
     if(expression->GetCastType()) {
@@ -2341,7 +2354,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes array indices
    ****************************/
-  void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, int depth)
+  void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
   {
     AnalyzeExpressions(indices, depth + 1);
 
@@ -2368,7 +2381,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a simple statement
    ****************************/
-  void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, int depth)
+  void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int depth)
   {
     Expression* expression = simple->GetExpression();
     AnalyzeExpression(expression, depth + 1);
@@ -2383,7 +2396,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'if' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeIf(If* if_stmt, int depth)
+  void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
   {
 #ifdef _DEBUG
     Show("if/else-if/else", if_stmt->GetLineNumber(), depth);
@@ -2413,7 +2426,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'select' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, int depth)
+  void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   {
     // expression
     Expression* expression = select_stmt->GetExpression();
@@ -2499,7 +2512,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'for' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, int depth)
+  void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
   {
     Variable* variable = mutex->GetVariable();
     AnalyzeVariable(variable, depth + 1);
@@ -2517,7 +2530,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'for' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeFor(For* for_stmt, int depth)
+  void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   {
     current_table->NewScope();
     // pre
@@ -2540,7 +2553,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'do/while' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, int depth)
+  void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
   {
 #ifdef _DEBUG
     Show("do/while", do_while_stmt->GetLineNumber(), depth);
@@ -2567,7 +2580,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a 'while' statement
    ****************************/
-  void ContextAnalyzer::AnalyzeWhile(While* while_stmt, int depth)
+  void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
   {
 #ifdef _DEBUG
     Show("while", while_stmt->GetLineNumber(), depth);
@@ -2588,7 +2601,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a return statement
    ****************************/
-  void ContextAnalyzer::AnalyzeReturn(Return* rtrn, int depth)
+  void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   {
 #ifdef _DEBUG
     Show("return", rtrn->GetLineNumber(), depth);
@@ -2619,7 +2632,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes an assignment statement
    ****************************/
-  void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, int depth)
+  void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, const int depth)
   {
 #ifdef _DEBUG
     Show("assignment", assignment->GetLineNumber(), depth);
@@ -2685,7 +2698,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a logical or mathematical
    * operation.
    ****************************/
-  void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, int depth)
+  void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const int depth)
   {
     Type* cls_type = NULL;
     Expression* left = expression->GetLeft();
@@ -2839,7 +2852,7 @@ bool ContextAnalyzer::Analyze()
    * operational expressions.  This
    * method uses execution simulation.
    ****************************/
-  void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, int depth)
+  void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, const int depth)
   {
     Expression* left_expr = expression->GetLeft();
     Expression* right_expr = expression->GetRight();
@@ -3252,12 +3265,12 @@ bool ContextAnalyzer::Analyze()
    * assignment statements.  This
    * method uses execution simulation.
    ****************************/
-  void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, int depth)
+  void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
   {
     AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
   }
 
-  void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, int depth)
+  void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
   {
     // assert(left && right);
     if(!expression || !left || !right) {
@@ -3685,7 +3698,7 @@ bool ContextAnalyzer::Analyze()
    * Analyzes a class cast. Up
    * casting is resolved a runtime.
    ****************************/
-  void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, int depth)
+  void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
   {
     Type* right = expression->GetCastType();
     if(!right) {
@@ -3858,7 +3871,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a declaration
    ****************************/
-  void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, int depth)
+  void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, const int depth)
   {
     SymbolEntry* entry = declaration->GetEntry();
     if(entry) {
@@ -3893,7 +3906,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a declaration
    ****************************/
-  void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, int depth)
+  void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int depth)
   {
     vector<Expression*> expressions = parameters->GetExpressions();
     for(size_t i = 0; i < expressions.size(); i++) {
@@ -3904,7 +3917,7 @@ bool ContextAnalyzer::Analyze()
   /********************************
    * Encodes a function definition
    ********************************/
-  string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, int depth)
+  string ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
   {
     string encoded_name;
     vector<Expression*> expressions = calling_params->GetExpressions();
@@ -4018,7 +4031,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Encodes a method call
    ****************************/
-  string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, int depth)
+  string ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
   {
     AnalyzeExpressions(calling_params, depth + 1);
 

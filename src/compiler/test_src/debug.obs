@@ -11,6 +11,7 @@
 
 	function : Main(args : String[]) ~ Nil {
 #		Fie()->PrintLine();
-		Fum(10, 7, 8);
+		Fum(10, 5);
+		Fum(10);
 	}
 }
