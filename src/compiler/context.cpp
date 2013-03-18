@@ -338,7 +338,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a class
    ****************************/
-  void ContextAnalyzer::AnalyzeClass(Class* klass, int id, const int depth)
+  void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
   {
 #ifdef _DEBUG
     string msg = "[class: name='" + klass->GetName() + "'; id=" + ToString(id) +
@@ -710,7 +710,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a method
    ****************************/
-  void ContextAnalyzer::AnalyzeMethod(Method* method, int id, const int depth)
+  void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
   {
 #ifdef _DEBUG
     string msg = "(method: name='" + method->GetName() +
