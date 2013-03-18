@@ -3,10 +3,6 @@
 		return 33;
 	}
 
-	function : Fie() ~ Int {
-		return 50;
-	}
-
 	function : Fie(a : Int := 7, b : Int := Foo()) ~ Int {
 		return a+b;
 	}
@@ -15,9 +11,16 @@
 		(a*b*c)->PrintLine();
 	}
 
+	function : Blew(str : String, size : Int := str->Size()) ~ Nil {
+		size->PrintLine();
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		Fie()->PrintLine();
 		Fum(10, 5);
 		Fum(10);
+
+		Blew("Chucks");
+		Blew("Chucks", 101);
 	}
 }
