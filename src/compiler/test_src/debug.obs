@@ -1,5 +1,6 @@
 ﻿class Test {
-	function : Fie(a : Int, b : Int := 13) ~ Nil {
+	function : Fie(a : Int := 7, b : Int := 13) ~ Int {
+		return a+b;
 	}
 
 #~
@@ -11,5 +12,6 @@
 ~#
 
 	function : Main(args : String[]) ~ Nil {
+		Fie()->PrintLine();
 	}
 }

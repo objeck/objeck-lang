@@ -973,7 +973,7 @@ class ContextAnalyzer {
   // context operations
   void AnalyzeEnum(Enum* eenum, int depth);
   void AnalyzeClass(Class* klass, int id, int depth);
-  void CreateDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
+  void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void AnalyzeMethods(Class* klass, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth);

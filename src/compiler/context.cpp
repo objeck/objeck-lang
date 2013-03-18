@@ -117,7 +117,7 @@ bool ContextAnalyzer::Analyze()
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); k++) {
-	CreateDefaultParameterMethods(bundle, klass, methods[k]);
+	AddDefaultParameterMethods(bundle, klass, methods[k]);
       }
     }
   }
@@ -230,7 +230,7 @@ bool ContextAnalyzer::Analyze()
    * Expands and validates methods with
    * default parameters
    ****************************/
-  void ContextAnalyzer::CreateDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) {
+  void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) {
     // declarations
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
     if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
@@ -247,36 +247,68 @@ bool ContextAnalyzer::Analyze()
 	}
       }
       
-      // build new method
+      // create new method
       Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
 								 method->GetName(), method->GetMethodType(), 
 								 method->IsStatic(),  method->IsNative());
       param_method->SetReturn(method->GetReturn());
       DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
 
-      // TODO: get right table
-      SymbolTable* table = bundle->GetSymbolTableManager()->GetSymbolTable(klass->GetName());
+      // set declarations
+      bundle->GetSymbolTableManager()->NewParseScope();
       bool done = false;
       size_t i = 0;
+      ExpressionList* param_expressions = TreeFactory::Instance()->MakeExpressionList();
       for(; !done && i < declarations.size(); i++) {
 	if(!declarations[i]->GetAssignment()) {
 	  Declaration* declaration = declarations[i]->Copy();
-	  table->AddEntry(declaration->GetEntry());
+	  bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
 	  param_declarations->AddDeclaration(declaration);
+
+	  param_expressions->AddExpression(TreeFactory::Instance()->MakeVariable(method->GetFileName(), 
+										 method->GetLineNumber() + 1,
+										 declaration->GetEntry()->GetName()));
 	}
 	else {
 	  done = true;
 	}
       }
+      
+      // set parameter statements
+      StatementList* param_statement_list = TreeFactory::Instance()->MakeStatementList();
 
-      StatementList* param_statements = TreeFactory::Instance()->MakeStatementList();
-      for(; i < declarations.size(); i++) {
-	param_statements->AddStatement(declarations[i]->GetAssignment());
+      for(--i; i < declarations.size(); i++) {
+	Assignment* assignment = declarations[i]->GetAssignment();
+	param_statement_list->AddStatement(assignment);
+	
+	param_expressions->AddExpression(assignment->GetVariable());
       }
-      param_method->SetStatements(param_statements);
-
-      param_method->SetDeclarations(param_declarations);
-      klass->AddMethod(param_method);
+      
+      // set method call
+      const string &method_name = method->GetName();
+      const size_t start = method_name.find_last_of(':');
+      if(start != string::npos) {
+	const string &param_method_name = method_name.substr(start + 1);
+	MethodCall* mthd_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), 
+									method->GetLineNumber() + 1, 
+									klass->GetName(), param_method_name, 
+									param_expressions);
+	// process return
+	if(method->GetReturn()->GetType() != NIL_TYPE) {
+	  param_statement_list->AddStatement(TreeFactory::Instance()->MakeReturn(method->GetFileName(), 
+										 method->GetLineNumber() + 1, 
+										 mthd_call));
+	}
+	else {
+	  param_statement_list->AddStatement(mthd_call);
+	}
+	
+	// set statements and add method
+	param_method->SetStatements(param_statement_list);
+	param_method->SetDeclarations(param_declarations);
+	bundle->GetSymbolTableManager()->PreviousParseScope(param_method->GetParsedName());
+	klass->AddMethod(param_method);
+      }
     }
   }
 
