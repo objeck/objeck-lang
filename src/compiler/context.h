@@ -977,13 +977,10 @@ class ContextAnalyzer {
   void AnalyzeMethods(Class* klass, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, int depth);
-
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 			    bool impl_is_static, bool impl_is_virtual, Method* virtual_method);
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
 			    bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method);
-  
-
   void AnalyzeInterfaces(Class* klass, int depth);
   void AnalyzeMethod(Method* method, int id, int depth);
   void AnalyzeStatements(StatementList* statements, int depth);

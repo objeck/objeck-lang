@@ -247,7 +247,8 @@ bool ContextAnalyzer::Analyze()
 	}
       }
       
-      // create new method
+      // create alternative method
+      // TODO: alternative method for each default parameter
       Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
 								 method->GetName(), method->GetMethodType(), 
 								 method->IsStatic(),  method->IsNative());
@@ -265,9 +266,14 @@ bool ContextAnalyzer::Analyze()
 	  bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
 	  param_declarations->AddDeclaration(declaration);
 
-	  param_expressions->AddExpression(TreeFactory::Instance()->MakeVariable(method->GetFileName(), 
-										 method->GetLineNumber() + 1,
-										 declaration->GetEntry()->GetName()));
+	  const string &entry_name = declaration->GetEntry()->GetName();
+	  const size_t start = entry_name.find_last_of(':');
+	  if(start != string::npos) {
+	    const string &param_name = entry_name.substr(start + 1);
+	    param_expressions->AddExpression(TreeFactory::Instance()->MakeVariable(method->GetFileName(), 
+										   method->GetLineNumber() + 1,
+										   param_name));
+	  }
 	}
 	else {
 	  done = true;
