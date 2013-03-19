@@ -3,6 +3,8 @@
 		return 33;
 	}
 
+	function : virtual : Free(a : Int := 7, b : Int := Foo()) ~ Int;
+
 	function : Fie(a : Int := 7, b : Int := Foo()) ~ Int {
 		return a+b;
 	}

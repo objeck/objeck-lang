@@ -238,6 +238,11 @@ bool ContextAnalyzer::Analyze()
       bool default_params = true;
       for(int i = declarations.size() - 1; i > -1; i--) {
 	if(declarations[i]->GetAssignment()) {
+	  if(method->IsVirtual()) {
+	    ProcessError(method, "Virtual methods and interfaces cannot contain default parameter values");
+	    return;
+	  }
+	  
 	  if(!default_params) {
 	    ProcessError(declarations[0], "Only trailing parameters may have default values");
 	    return;
