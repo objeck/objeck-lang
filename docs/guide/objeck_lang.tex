@@ -612,6 +612,12 @@ supports polymorphic methods and functions, meaning that there can be
 multiple methods with the same name within the same class as long as
 their declaration arguments vary.
 
+Method and function parameters may also be assigned default values.  For example:
+\begin{verbatim}
+function : Duplicate(str : String, max : Int := str->Size()) 
+         ~ String { ... }
+\end{verbatim}
+
 Methods and functions can either be executed in an interpreted or JIT
 compiled mode. Interpreted execution mimics microprocessor functions
 in a platform independent manner. JIT execution takes the compiled
