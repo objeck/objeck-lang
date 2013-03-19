@@ -173,7 +173,7 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
-  Declaration* ParseDeclaration(const string &ident, bool allow_assign, int depth);
+  Declaration* ParseDeclaration(const string &ident, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN,
                                       TokenType close = TOKEN_CLOSED_PAREN);
