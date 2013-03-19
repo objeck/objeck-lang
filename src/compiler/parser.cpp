@@ -488,7 +488,7 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
       const string &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, /*false*/true, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError("Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -784,7 +784,7 @@ Statement* Parser::ParseStatement(int depth)
 
     switch(GetToken()) {
     case TOKEN_COLON:
-      statement = ParseDeclaration(ident, true, depth + 1);
+      statement = ParseDeclaration(ident, depth + 1);
       break;
 
     case TOKEN_ASSESSOR:
@@ -1795,7 +1795,7 @@ Variable* Parser::ParseVariable(const string &ident, int depth)
 /****************************
  * Parses a declaration.
  ****************************/
-Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, int depth)
+Declaration* Parser::ParseDeclaration(const string &ident, int depth)
 {
   const int line_num = GetLineNumber();
   const string &file_name = GetFileName();
@@ -1828,7 +1828,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
       ProcessError("Variable already defined in this scope: '" + ident + "'");
     }
 
-    if(allow_assign && Match(TOKEN_ASSIGN)) {
+    if(Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       // FYI: can not specify array indices here
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
@@ -1869,7 +1869,7 @@ Declaration* Parser::ParseDeclaration(const string &ident, bool allow_assign, in
       ProcessError("Variable already defined in this scope: '" + ident + "'");
     }
   
-    if(allow_assign && Match(TOKEN_ASSIGN)) {
+    if(Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       // FYI: can not specify array indices here
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
@@ -1906,7 +1906,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     const string& ident = scanner->GetToken()->GetIdentifier();
     NextToken();
 
-    declarations->AddDeclaration(ParseDeclaration(ident, true, depth + 1));
+    declarations->AddDeclaration(ParseDeclaration(ident, depth + 1));
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
