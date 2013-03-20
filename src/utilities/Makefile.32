@@ -4,7 +4,7 @@
 # ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
 # ARGS=-O3 -D_DEBUGGER -Wunused -pthread
 # ARGS=-g -Wunused -pthread -D_DEBUG -D_UTILS
-ARGS=-O3 -Wunused -pthread -D_UTILS
+ARGS=-O3 -Wall -pthread -D_UTILS
 
 ##############
 # For Linux
