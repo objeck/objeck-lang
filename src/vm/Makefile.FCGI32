@@ -1,19 +1,5 @@
-##############
-# For OSX only
-##############
-# ARGS=-pthread -mstackrealign -O3
-# ARGS=-pthread -D_TIMING -mstackrealign -O3
-# ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
-# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
-
-##############
-# For Linux
-##############
-ARGS=-pthread -O3 -Wall
-# ARGS=-g -Wall -pthread
-# ARGS=-g -D_DEBUG -D_JIT_SERIAL -Wall -pthread
-# ARGS=-g -D_DEBUG -Wunused -pthread
-# ARGS=-O3 -pthread
+# ARGS=-pthread -O3 -Wall
+ARGS=-g -D_DEBUG -Wall -pthread
 
 CC=g++
 SRC=common.o interpreter.o loader.o fcgi_main.o
@@ -23,7 +9,7 @@ JIT_PATH=jit/ia32
 EXE=obr_fcgi
 
 $(EXE): $(SRC) $(OBJ_LIBS) $(FCGI)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lfcgi -ldl -pthread
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread -lfcgi
 
 memory.a:
 	cd $(MEM_PATH); make	
