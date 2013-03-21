@@ -47,8 +47,10 @@ void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 int main(const int argc, const char* argv[])
 {
   const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
-
-  // TODO: check of prgm_path
+  if(!prgm_path) {
+    cerr << "Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
+    exit(1);
+  }
   
   // load program
   srand(time(NULL)); rand();
