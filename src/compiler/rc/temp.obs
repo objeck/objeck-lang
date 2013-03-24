@@ -1,4 +1,4 @@
-﻿class Huh {
+﻿class Temperature {
 	function : Main(args : String[]) ~ Nil {
 		k := System.IO.Console->ReadString()->ToFloat();
 		c := KelvinToCelcius(k);
