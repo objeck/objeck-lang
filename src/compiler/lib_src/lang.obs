@@ -562,6 +562,11 @@ bundle System {
 
 		function : native : ToString(f : Float) ~ String {
 			str := String->New();
+			if(f < 0.0) {
+				str->Append('-');
+				f *= -1.0;
+			};
+			
 			remainder := f - f->Floor();
 			Number->IntToString(f->Floor()->As(Int), str);
 			str->Append('.');
