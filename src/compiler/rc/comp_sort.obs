@@ -32,7 +32,7 @@ class Sorter {
 		entries->AddBack(Entry->New("Krypton", 83.798));
 		entries->AddBack(Entry->New("Beryllium", 9.012182));
 		entries->AddBack(Entry->New("Silicon", 28.0855));
-            	entries->AddBack(Entry->New("Cobalt", 58.933195)); 
+		entries->AddBack(Entry->New("Cobalt", 58.933195)); 
 		entries->AddBack(Entry->New("Selenium", 78.96));
 		entries->AddBack(Entry->New("Germanium", 72.64));
 
