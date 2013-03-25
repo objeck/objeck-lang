@@ -581,6 +581,7 @@ void Scanner::ParseToken(int index)
     NextChar();
     // mark
     start_pos = buffer_pos - 1;
+    bool is_valid = true;
     while(cur_char != '\"' && cur_char != EOB) {
       if(cur_char == '\\') {
         NextChar();
@@ -607,10 +608,7 @@ void Scanner::ParseToken(int index)
           break;
 	  
         default:
-          tokens[index]->SetType(TOKEN_UNKNOWN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
-          NextChar();
+	  is_valid = false;
           break;
         }
       }
@@ -620,7 +618,7 @@ void Scanner::ParseToken(int index)
     end_pos = buffer_pos - 1;
     // check string
     NextChar();
-    CheckString(index);
+    CheckString(index, is_valid);
     return;
   }
   // character

@@ -93,6 +93,7 @@ enum TokenType {
   TOKEN_FLOAT_LIT,
   TOKEN_CHAR_LIT,
   TOKEN_CHAR_STRING_LIT,
+  TOKEN_BAD_CHAR_STRING_LIT,
   // reserved words
   TOKEN_AND_ID,
   TOKEN_OR_ID,
@@ -430,12 +431,17 @@ private:
   }
 
   // parsers a character string
-  inline void CheckString(int index) {
+  inline void CheckString(int index, bool is_valid) {
     // copy string
     const int length = end_pos - start_pos;
     string char_string(buffer, start_pos, length);
     // set string
-    tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
+    if(is_valid) {
+      tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_BAD_CHAR_STRING_LIT);
+    }
     tokens[index]->SetIdentifier(char_string);
   }
 
