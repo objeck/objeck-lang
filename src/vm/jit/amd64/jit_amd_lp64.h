@@ -1191,7 +1191,7 @@ namespace Runtime {
 	break;
       
       case THREAD_SLEEP:
-	sleep(PopInt(op_stack, stack_pos));
+	usleep(PopInt(op_stack, stack_pos));
 	break;
       
       case THREAD_MUTEX: {

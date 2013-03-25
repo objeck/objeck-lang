@@ -881,11 +881,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #endif
 
 #ifdef _WIN32
-      right = PopInt(op_stack, stack_pos) * 1000;
+      right = PopInt(op_stack, stack_pos);
       Sleep(right);
 #else
       right = PopInt(op_stack, stack_pos);
-      sleep(right);
+      usleep(right * 1000);
 #endif
       break;
 
