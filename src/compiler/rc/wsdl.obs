@@ -13,9 +13,36 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() >= 2) {
 				wsdl := Wsdl->New(args[0]);
+				
+				name := "GetEndorsingBoarder";
+				
+				port := wsdl->GetPort(name);
+method_name := port->GetName();
+				
+				# input operation
+				type := wsdl->GetType(name);
+method_parameters := type->GetParameters();
+				
+				# return operation
+				method_return : Vector;
+				output_message := port->GetOperation("wsdl:output");
+				if(output_message <> Nil) {
+					offset := output_message->Find(':') + 1;
+					length := output_message->Size() - offset;
+					method_return := wsdl->GetType(output_message->SubString(offset, length))->GetParameters();
+				};
+
+"----------"->PrintLine();
+
+method_name->PrintLine();
+method_parameters->Size()->PrintLine();
+method_return->Size()->PrintLine();
+				
+#~				
 				for(i := 1; i < args->Size(); i += 1;) {
 					wsdl->Query(args[i]);
 				};
+~#					
 			};
 		}
 		
@@ -24,6 +51,18 @@ bundle Default {
 			@messages := StringMap->New();
 			@ports := StringMap->New();
 			Parse(name);
+		}
+		
+		method : public : GetType(name : String) ~ Type {
+			return @types->Find(name)->As(Type);
+		}
+		
+		method : public : GetMessage(name : String) ~ String {
+			return @messages->Find(name)->As(String);
+		}
+		
+		method : public : GetPort(name : String) ~ Port {
+			return @ports->Find(name)->As(Port);
 		}
 		
 		method : public : native : Query(name : String) ~ Nil {
@@ -177,6 +216,10 @@ Console->Print("port count: ")->PrintLine(@ports->Size());
 		
 		method : public : AddOperation(name: String, value: String) ~ Nil {
 			@operations->Insert(name, value);
+		}
+		
+		method : public : GetOperation(name: String) ~ String {
+			return @operations->Find(name)->As(String);
 		}
 		
 		method : public : GetName() ~ String {
