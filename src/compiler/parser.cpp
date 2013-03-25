@@ -1746,6 +1746,11 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 	  NextToken();
 	}
 	  break;
+
+	case TOKEN_BAD_CHAR_STRING_LIT:
+	  ProcessError("Invalid escaped string literal", TOKEN_SEMI_COLON);
+	  NextToken();
+	  break;
 	
 	default:
 	  ProcessError("Expected literal expression", TOKEN_SEMI_COLON);
@@ -2438,7 +2443,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
     }
       break;
-    
+
+    case TOKEN_BAD_CHAR_STRING_LIT:
+      ProcessError("Invalid escaped string literal", TOKEN_SEMI_COLON);
+      NextToken();
+      break;
+      
     case TOKEN_OPEN_BRACKET:
       expression = ParseStaticArray(depth + 1);
       break;
