@@ -995,12 +995,12 @@ namespace Runtime {
 #endif
       }
 	break;
-      
+	
       case THREAD_SLEEP:
 #ifdef _WIN32
         Sleep(PopInt(op_stack, stack_pos));
 #else
-	sleep(PopInt(op_stack, stack_pos));
+	usleep(PopInt(op_stack, stack_pos)* 1000);
 #endif
 	break;
       
