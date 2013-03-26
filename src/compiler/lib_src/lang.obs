@@ -1032,9 +1032,24 @@ bundle System {
 		}
 		
 		method : public : native : Find(offset : Int, char : Char) ~ Int {
-			if(offset < @pos) {
-				found_index := -1;
+			if(offset < @pos & offset > -1) {
 				for(i := offset; i < @pos; i += 1;) {
+					if(@string[i] = char) {
+						return i;
+					};
+				};
+			};
+
+			return -1;
+		}
+		
+		method : public : FindLast(char : Char) ~ Int {
+			return FindLast(0, char);
+		}
+		
+		method : public : native : FindLast(offset : Int, char : Char) ~ Int {
+			if(offset < @pos & offset > -1) {
+				for(i := @pos - 1; i > -1; i -= 1;) {
 					if(@string[i] = char) {
 						return i;
 					};

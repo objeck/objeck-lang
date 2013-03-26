@@ -2,6 +2,7 @@
 * compiler now detects invalid escaped strings
 * Sleep method now uses milli secs
 * Fixed debugger bug that caused crashing during some stack traces
+* Added 'FindLast' to the String class
 
 9/9/12 - now
 * added support for 'null' JSON types and escaped character values

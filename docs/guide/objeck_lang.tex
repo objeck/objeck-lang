@@ -1090,8 +1090,13 @@ Base class for all objects.
   given Character; -1 if not found
   \begin{itemize}
   \item method : public : native : Find(c : Char) \textasciitilde Int
-  \item method : public : native : Find(offset : Int, c : Char)
-    \textasciitilde Int
+  \item method : public : native : Find(offset : Int, c : Char) \textasciitilde Int
+  \end{itemize}
+\item \texttt{Find} - returns the index of the last occurrence of a
+  given Character; -1 if not found
+  \begin{itemize}
+  \item method : public : native : FindLast(c : Char) \textasciitilde Int
+  \item method : public : native : FindLast(offset : Int, c : Char) \textasciitilde Int
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given String; -1 if not found
