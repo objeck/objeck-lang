@@ -113,14 +113,24 @@ namespace Runtime {
 #ifdef _DEBUGGER
       cerr << "Unwinding local stack (" << this << "):" << endl;
       StackMethod* method =  frame->GetMethod();
-      cerr << "  method: pos=" << pos << ", file="
-	   << frame->GetMethod()->GetClass()->GetFileName() << ", line=" 
-	   << method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() << endl;
-      while(--pos) {
-	StackMethod* method =  call_stack[pos]->GetMethod();
-	cerr << "  method: pos=" << pos << ", file=" 
-	     << call_stack[pos]->GetMethod()->GetClass()->GetFileName() << ", line=" 
-	     << method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() << endl;
+      if(frame->GetIp() > 0 && pos > -1 && 
+	 method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() > 0) {
+	cerr << "  method: pos=" << pos << ", file="
+	     << frame->GetMethod()->GetClass()->GetFileName() << ", name='" 
+	     << frame->GetMethod()->GetName() << "', line=" 
+	     << method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() << endl;
+      }
+      if(pos != 0) {
+	while(--pos) {
+	  StackMethod* method =  call_stack[pos]->GetMethod();
+	  if(call_stack[pos]->GetIp() > 0 && pos > -1 && 
+	     method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() > 0) {
+	    cerr << "  method: pos=" << pos << ", file=" 
+		 << call_stack[pos]->GetMethod()->GetClass()->GetFileName() << ", name='"
+		 << call_stack[pos]->GetMethod()->GetName() << "', line=" 
+		 << method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() << endl;
+	  }
+	}
       }
       cerr << "  ..." << endl;
 #else
@@ -128,11 +138,9 @@ namespace Runtime {
       cerr << "  method: pos=" << pos << ", name=" 
 	   << frame->GetMethod()->GetName() << endl;
       if(pos != 0) {
-	while(--pos) {
-	  if(pos > - 1) {
-	    cerr << "  method: pos=" << pos << ", name="
-		 << call_stack[pos]->GetMethod()->GetName() << endl;
-	  }
+	while(--pos && pos > -1) {
+	  cerr << "  method: pos=" << pos << ", name="
+	       << call_stack[pos]->GetMethod()->GetName() << endl;
 	}
       }
       cerr << "  ..." << endl;
