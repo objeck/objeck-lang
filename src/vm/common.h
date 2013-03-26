@@ -673,6 +673,12 @@ class StackMethod {
 
     return mthd;
   }
+
+#ifdef _DEBUGGER
+  static void ClearVirtualEntries() {
+    virutal_cache.clear();
+  }
+#endif
 };
 
 /********************************

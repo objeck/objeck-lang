@@ -1617,7 +1617,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 #endif
   StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
 #ifdef _DEBUG
-  cout << "=== Binding funcion call: to: '" << called->GetName() << "' ===" << endl;
+  cout << "=== Binding function call: to: '" << called->GetName() << "' ===" << endl;
 #endif
 
 #ifndef _NO_JIT

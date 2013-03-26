@@ -180,7 +180,7 @@ void Runtime::Debugger::ProcessRun() {
     op_stack = new long[CALC_STACK_SIZE];
     stack_pos = new long;
     (*stack_pos) = 0;
-
+    
 #ifdef _TIMING
     long start = clock();
 #endif
@@ -1268,6 +1268,7 @@ void Runtime::Debugger::ClearProgram() {
   */
 
   MemoryManager::Instance()->Clear();
+  StackMethod::ClearVirtualEntries();
 
   cur_line_num = -2;
   cur_frame = NULL;
