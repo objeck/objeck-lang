@@ -1212,7 +1212,6 @@ bundle Collection {
 				@head := node;
 				@tail := @head;
 				@cursor := @head;
-				
 			}
 			else {
 				@tail->SetNext(node);
