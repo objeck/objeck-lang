@@ -62,7 +62,7 @@ void Loader::Load()
 {
   const int ver_num = ReadInt();
   if(ver_num != VER_NUM) {
-    cerr << "This executable appears to be compiled with a different version of the toolchain.  Please recompile the executable." << endl;
+    cerr << "This executable appears to be invalid or compiled with a different version of the toolchain." << endl;
     exit(1);
   } 
   
