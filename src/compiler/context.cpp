@@ -1403,6 +1403,7 @@ bool ContextAnalyzer::Analyze()
     if(expression->GetCastType()) {
       if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
 	while(expression->GetMethodCall()) {
+	  AnalyzeExpressionMethodCall(expression, 0);
 	  expression = expression->GetMethodCall();
 	}
 	type = expression->GetEvalType();	
@@ -1604,14 +1605,6 @@ bool ContextAnalyzer::Analyze()
       string encoding;
       Class* klass = NULL;
       LibraryClass* lib_klass = NULL;
-      
-      /*
-      // TODO: fix need to change intermediate emit code so that element value
-      // is loaded instead of instance      
-      if(expression->GetEvalType() && expression->GetEvalType()->GetDimension() > 0) {      
-	AnalyzeClassCast(expression->GetEvalType(), expression, depth + 1);
-      }
-      */
       
       // check expression class
       bool is_enum_call = false;
@@ -1855,6 +1848,7 @@ bool ContextAnalyzer::Analyze()
       for(size_t j = 0; j < expr_params.size(); j++) {
 	Expression* expression = expr_params[j];
 	while(expression->GetMethodCall()) {
+	  AnalyzeExpressionMethodCall(expression, depth + 1);
 	  expression = expression->GetMethodCall();
 	}
 	AnalyzeRightCast(method_parms[j]->GetEntry()->GetType(), expression, 
@@ -2031,6 +2025,7 @@ bool ContextAnalyzer::Analyze()
       for(size_t j = 0; j < expr_params.size(); j++) {
 	Expression* expression = expr_params[j];
 	while(expression->GetMethodCall()) {
+	  AnalyzeExpressionMethodCall(expression, depth + 1);
 	  expression = expression->GetMethodCall();
 	}
 	AnalyzeRightCast(method_parms[j], expression, IsScalar(expression), depth + 1);
@@ -2620,6 +2615,11 @@ bool ContextAnalyzer::Analyze()
     Type* type = current_method->GetReturn();
     if(expression) {
       AnalyzeExpression(expression, depth + 1);
+      while(expression->GetMethodCall()) {
+	AnalyzeExpressionMethodCall(expression, depth + 1);
+	expression = expression->GetMethodCall();
+      }
+      
       AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
       
       if(type->GetType() == CLASS_TYPE) {
@@ -4049,6 +4049,7 @@ bool ContextAnalyzer::Analyze()
     for(size_t i = 0; i < expressions.size(); i++) {
       Expression* expression = expressions[i];
       while(expression->GetMethodCall()) {
+	AnalyzeExpressionMethodCall(expression, depth + 1);
 	expression = expression->GetMethodCall();
       }
 
