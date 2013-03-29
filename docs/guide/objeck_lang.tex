@@ -2677,9 +2677,17 @@ DOM. This class in the `XML' bundle:
   \begin{itemize}
   \item method : public : GetName() \textasciitilde String
   \end{itemize}
+\item \texttt{GetNamespace} - Returns the element namespace prefix.
+  \begin{itemize}
+  \item method : public : GetNamespace() \textasciitilde String
+  \end{itemize}
 \item \texttt{SetName} - Sets the element name.
   \begin{itemize}
   \item method : public : SetName(name : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{SetNamespace} - Sets the element namespace.
+  \begin{itemize}
+  \item method : public : SetNamespace(namespace : String) \textasciitilde Nil
   \end{itemize}
 \item \texttt{GetRoot} - Returns the root element.
   \begin{itemize}
@@ -2744,15 +2752,14 @@ DOM. This class in the `XML' bundle:
   \item method : public : AddChild(child : XmlElement) \textasciitilde
     Nil
   \end{itemize}
-\item \texttt{GetAttribute} - Returns the value of a given attribute.
+\item \texttt{GetAttribute} - Returns an attribute.
   \begin{itemize}
   \item method : public : GetAttribute(name : String) \textasciitilde
-    String
+    XmlAttribute
   \end{itemize}
-\item \texttt{SetAttribute} - Sets the name/value of a given
-  attribute.
+\item \texttt{SetAttribute} - Sets an attribute.
   \begin{itemize}
-  \item method : public : SetAttribute(name : String, value : String),
+  \item method : public : SetAttribute(attrib : XmlAttribute),
     Nil
   \end{itemize}
 \item \texttt{ToString} - Serializes an element into a string
@@ -2766,6 +2773,39 @@ DOM. This class in the `XML' bundle:
 \item \texttt{EncodeString} - Encodes an XML encoded string
   \begin{itemize}
   \item function : EncodeString(in : String) \textasciitilde String
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{XmlAttribute}
+The XmlAttribute class represents an XML attribute entity.
+\begin{itemize}
+\item \texttt{New}
+  \begin{itemize}
+  \item New(name : String, value : String)
+  \end{itemize}
+\item \texttt{GetName} - Returns the element name.
+  \begin{itemize}
+  \item method : public : GetName() \textasciitilde String
+  \end{itemize}
+\item \texttt{SetName} - Sets the element name.
+  \begin{itemize}
+  \item method : public : SetName(name : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{GetNamespace} - Returns the element namespace prefix.
+  \begin{itemize}
+  \item method : public : GetNamespace() \textasciitilde String
+  \end{itemize}
+\item \texttt{SetNamespace} - Sets the element namespace.
+  \begin{itemize}
+  \item method : public : SetNamespace(namespace : String) \textasciitilde Nil
+  \end{itemize}
+\item \texttt{GetValue} - Return the value
+  \begin{itemize}
+  \item method : public : GetValue() \textasciitilde String
+  \end{itemize}
+\item \texttt{SetValue} - Sets the value
+  \begin{itemize}
+  \item method : public : SetValue(value : String) \textasciitilde Nil
   \end{itemize}
 \end{itemize}
 
