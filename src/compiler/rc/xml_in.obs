@@ -19,7 +19,7 @@ bundle Default {
 				children := root->GetChildren("Student");
 				each(i : children) {
 					child : XmlElement := children->Get(i)->As(XmlElement);
-					XmlElement->DecodeString(child->GetAttribute("Name"))->PrintLine();
+					XmlElement->DecodeString(child->GetAttribute("Name")->GetValue())->PrintLine();
 				};
 			};
 		}

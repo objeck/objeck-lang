@@ -97,7 +97,10 @@ bundle XML {
 		method : public : GetVersion() ~ String {
 			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
-				return element->GetAttribute("version");
+				attrib := element->GetAttribute("version");
+				if(attrib <> Nil) {
+					return attrib->GetValue();
+				};
 			};
 			
 			return "1.0";
@@ -106,7 +109,10 @@ bundle XML {
 		method : public : GetEncoding() ~ String {
 			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
-				return element->GetAttribute("encoding");
+				attrib := element->GetAttribute("encoding");
+				if(attrib <> Nil) {
+					return attrib->GetValue();
+				};
 			};
 			
 			return "iso-8859-1";
@@ -589,28 +595,29 @@ bundle XML {
 			
 # Console->Print("key: ")->PrintLine(attrib_key);    
 					
-				IgnoreWhiteSpace();
-				if(Unmatch('=')) {
-					@error_msg := "Expected '='...";
-					return Nil;
-				};
-				@buffer_pos += 1;
+					IgnoreWhiteSpace();
+					if(Unmatch('=')) {
+						@error_msg := "Expected '='...";
+						return Nil;
+					};
+					@buffer_pos += 1;
 				
-				# looks for tag value
-				IgnoreWhiteSpace();
-				attrib_value := ParseValue();
-				if(attrib_value = Nil) {
-					@error_msg := "Invalid tag name...";
-					return Nil;
-				};
+					# looks for tag value
+					IgnoreWhiteSpace();
+					attrib_value := ParseValue();
+					if(attrib_value = Nil) {
+						@error_msg := "Invalid tag name...";
+						return Nil;
+					};
 			
 # Console->Print("value: ")->PrintLine(attrib_value);    
 			
-				attribs->Insert(attrib_key, attrib_value);
+					attrib := XmlAttribute->New(attrib_key, attrib_value);
+					attribs->Insert(attrib->GetName(), attrib);
 			
-				# update
-				IgnoreWhiteSpace();
-				attrib_key := ParseName();
+					# update
+					IgnoreWhiteSpace();
+					attrib_key := ParseName();
 				};
 			};
 		  
@@ -688,12 +695,64 @@ bundle XML {
 		CLOSING_ELEMENT, # control type not used for DOM creation
 		UNARY_ELEMENT
 	}
+
+	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# XmlAttribute class
+	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	class XmlAttribute {
+		@name : String;
+		@value : String;
+		@namespace : String;
+
+		New(name : String, value : String) {
+			SetNames(name);
+			@value := value;
+		}
+
+		method : SetNames(name : String) ~ Nil {
+		 offset := name->FindLast(':');
+		 if(offset > 0) {
+		   @namespace := name->SubString(offset);
+		   offset += 1;
+		   @name := name->SubString(offset, name->Size() - offset);
+		  }
+			else {
+				@namespace := "";
+				@name := name;
+			};
+		}
+
+		method : public : GetName() ~ String {
+			return String->New(@name);
+		}
+
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+
+		method : public : GetValue() ~ String {
+			return String->New(@value);
+		}
+
+		method : public : SetValue(value : String) ~ Nil {
+			@value := value;
+		}
+
+		method : public : GetNamespace() ~ String {
+			return String->New(@namespace);
+		}
+		
+		method : public : SetNamespace(namespace : String) ~ Nil {
+			@namespace := namespace;
+		}
+	}
 	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# XmlElement class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 	class XmlElement {
 		@name : String;
+		@namespace : String;
 		@type : XmlElementType;
 		@attribs : StringHash;
 		@content : String;
@@ -702,20 +761,33 @@ bundle XML {
 		
 		New(type : XmlElementType, name : String) {
 			@type := type;
-			@name := name;
+			SetNames(name);
 		}
 		
 		New(type : XmlElementType, name : String, content : String) {
 			@type := type;
-			@name := name;
 			@content := content;
+			SetNames(name);			
 		}
 		
 		New(type : XmlElementType, name : String, attribs : StringHash, content : String) {
 			@type := type;
-			@name := name;
 			@attribs := attribs;
 			@content := content;
+			SetNames(name);
+		}
+		
+		method : SetNames(name : String) ~ Nil {
+		 offset := name->FindLast(':');
+		 if(offset > 0) {
+		   @namespace := name->SubString(offset);
+		   offset += 1;
+		   @name := name->SubString(offset, name->Size() - offset);
+		  }
+			else {
+				@namespace := "";
+				@name := name;
+			};
 		}
 		
 		method : public : GetName() ~ String {
@@ -724,6 +796,14 @@ bundle XML {
 		
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
+		}
+
+		method : public : GetNamespace() ~ String {
+			return String->New(@namespace);
+		}
+
+		method : public : SetNamespace(namespace : String) ~ Nil {
+			@namespace := namespace;
 		}
 		
 		method : public : GetType() ~ XmlElementType {
@@ -742,16 +822,16 @@ bundle XML {
 			@content := content;
 		}
 		
-		method : public : AddAttribute(key : String, value : String) ~ Nil {
+		method : public : AddAttribute(attrib : XmlAttribute) ~ Nil {
 			if(@attribs = Nil) {
 				@attribs := StringHash->New();
 			};
-			@attribs->Insert(key, value);
+			@attribs->Insert(attrib->GetName(), attrib);
 		}
 		
-		method : public : GetAttribute(key : String) ~ String {
+		method : public : GetAttribute(key : String) ~ XmlAttribute {
 			if(@attribs <> Nil) {
-				return String->New(@attribs->Find(key)->As(String));
+				return @attribs->Find(key)->As(XmlAttribute);
 			};
 			
 			return Nil;
@@ -802,18 +882,29 @@ bundle XML {
 			# element
 			if(@name <> Nil & @type = XmlElementType->ELEMENT) {
 				in->Append('<');
+				# name and namespace
+				if(@namespace <> Nil & @namespace->Size() > 0) {
+					in->Append(@namespace);
+					in->Append(':');
+				};				
 				in->Append(@name);
+				
 				# attribs
 				if(@attribs <> Nil) {
 					keys := @attribs->GetKeys();
 					each(i : keys) {
 						key : String := keys->Get(i)->As(String);
-						value : String := @attribs->Find(key)->As(String);
+						attrib := @attribs->Find(key)->As(XmlAttribute);
 						in->Append(' ');
+						namespace := attrib->GetNamespace();
+						if(namespace <> Nil & namespace->Size() > 0) {
+							in->Append(namespace);
+							in->Append(':');
+						};
 						in->Append(key);
 						in->Append('=');
 						in->Append('"');
-						in->Append(value);
+						in->Append(attrib->GetValue());
 						in->Append('"');
 					};
 				};
