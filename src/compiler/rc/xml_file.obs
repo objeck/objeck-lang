@@ -12,7 +12,7 @@ bundle Default {
 					if(results <> Nil) {
 						each(i : results) {					
 							element := results->Get(i)->As(XmlElement);
-							element->GetAttribute("total")->PrintLine();
+							element->GetAttribute("total")->GetValue()->PrintLine();
 						};
 					};
 				}

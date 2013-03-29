@@ -1,11 +1,25 @@
-﻿class Test {
-	function : Main(args : String[]) ~ Nil {
-		r := "ship";
-		c := "car";
-		b := "bike";
-		l := "lol";
+﻿class Bar {
+	New() {}
+
+	method : public : Value() ~ String {
+		return "hello";
+	}
+}
 	
-		l->FindLast(3, 'l')->PrintLine();		
+class Test {
+	New() {}
+
+	function : Foo(s : String) ~ Bar {
+		return Bar->New();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Run()->PrintLine();
+	}
+
+	function : Run() ~ String {
+		t := Test->New();
+		return t->Foo("bar")->Value();
 	}
 }
 
