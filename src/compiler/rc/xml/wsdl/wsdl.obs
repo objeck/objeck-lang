@@ -14,58 +14,7 @@ bundle Default {
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() > 0) {
 				wsdl := Wsdl->New(args[0]);
-				
-				# name
-				name := "GetEndorsingBoarder";
-				
-				port := wsdl->GetPort(name);
-				method_name := port->GetName();
-				
-				# input operation
-				type := wsdl->GetType(name);
-				method_parameters := type->GetParameters();
-				
-				# return operation
-				method_return : Vector;
-				output_message := port->GetOperation("wsdl:output");
-				if(output_message <> Nil) {
-					offset := output_message->Find(':') + 1;
-					length := output_message->Size() - offset;
-					method_return := wsdl->GetType(output_message->SubString(offset, length))->GetParameters();
-				};
-
-"----------"->PrintLine();
-wsdl->GetNamespace()->PrintLine();
-method_name->PrintLine();
-method_parameters->Size()->PrintLine();
-method_return->Size()->PrintLine();
-				
-				signature := "method : public : {$method_name}(";
-				each(i : method_parameters) {
-					parameter := method_parameters->Get(i)->As(Parameter);
-					signature->Append(parameter->GetName());
-					signature->Append(" : ");
-					# TODO map types
-					signature->Append(parameter->GetType());
-					if(i + i < method_parameters->Size()) {
-						signature->Append(", ");
-					};
-				}; 
-				signature->Append(") ~ ");
-				
-				if(method_return->Size() = 1) {
-					return_parameter := method_parameters->Get(0)->As(Parameter);
-					signature->Append(return_parameter->GetType());
-				};
-				
-								
-				signature->PrintLine();
-				
-#~				
-				for(i := 1; i < args->Size(); i += 1;) {
-					wsdl->Query(args[i]);
-				};
-~#					
+				wsdl->GetNamespace();
 			};
 		}
 		
@@ -92,106 +41,45 @@ method_return->Size()->PrintLine();
 		method : public : GetPort(name : String) ~ Port {
 			return @ports->Find(name)->As(Port);
 		}
-		
-		method : public : native : Query(name : String) ~ Nil {
-"===== QUERY ====="->PrintLine();
-			port := @ports->Find(name)->As(Port);
-			if(port <> Nil) {
-				message_name := port->GetInputName();
-				index := message_name->Find(':');
-				if(index > 0) {
-					message_name := message_name->SubString(index + 1, message_name->Size() - index - 1);
-					type_name := @messages->Find(message_name)->As(String);
-					if(type_name <> Nil) {
-						type_name := type_name->SubString(index + 1, type_name->Size() - index - 1);
-						type := @types->Find(type_name)->As(Type);
-						if(type <> Nil) {
-							params := type->GetParameters();
-							each(i : params) {
-								param := params->Get(i)->As(Parameter);
-param->ToString()->PrintLine();
-							};
-						};
-					};
-				};
-			};
-		}
-		
+				
 		method : Parse(name : String) ~ Nil {
 			parser := XmlParser->New(FileReader->ReadFile(name));
 			if(parser->Parse()) {
-				definitions := parser->FindElements("/wsdl:definitions");
-				if(definitions->Size() > 0) {
+				definitions := parser->FindElements("/definitions/service/port");
+				if(definitions <> Nil & definitions->Size() > 0) {
 					definition := definitions->Get(0)->As(XmlElement);
-					@namespace := definition->GetAttribute("targetNamespace");
-				};
-
-				results := parser->FindElements("/wsdl:definitions/wsdl:types");
-				if(results->Size() > 0) {
-# "===== TYPES ====="->PrintLine();
-					types := results->Get(0)->As(XmlElement);
-					elem_name := types->GetName();
-					elem_name->Append("/xsd:schema/xsd:element");
-					results := types->FindElements(elem_name);
-					each(i : results) {
-						elem := results->Get(i)->As(XmlElement);
-						type_name := elem->GetAttribute("name");
-						elem_type := elem->GetChild(0)->GetChild(0);
-						type_type := elem_type->GetName();						
-# Console->Print("type: name=")->Print(type_name)->Print(", ctype=")->PrintLine(type_type);
-						type := Type->New(type_name, type_type);
-						elems := elem_type->GetChildren("xsd:element");
-						each(j : elems) {	
-							elem := elems->Get(j)->As(XmlElement);
-# Console->Print("\tname=")->Print(elem->GetAttribute("name"))->Print(", type=")->PrintLine(elem->GetAttribute("type"));
-							type->AddParameter(Parameter->New(elem->GetAttribute("name"), elem->GetAttribute("type")));
-							
-						};
-# "----"->PrintLine();
-						@types->Insert(type_name, type);
-					};
-					
+					binding := definition->GetAttribute("binding")->GetValue();
+					name := definition->GetAttribute("name")->GetValue();
+					"Service: binding={$binding}, name={$name}"->PrintLine();			
 				};
 				
-# "===== MESSAGES ====="->PrintLine();
-				results := parser->FindElements("/wsdl:definitions/wsdl:message");
-				each(i : results) {
-					message := results->Get(i)->As(XmlElement);
-					message_name := message->GetAttribute("name");
-# Console->Print("message: name=")->PrintLine(message_name);
-					parts := message->GetChildren();
-					each(j : parts) {
-						part := parts->Get(j)->As(XmlElement);
-						part_name := part->GetAttribute("name");
-						part_elem := part->GetAttribute("element");
-# Console->Print("\tpart: name=")->Print(part_name)->Print(", element=")->PrintLine(part_elem);
-						@messages->Insert(message_name, part_elem);
-					};
+				bindings := parser->FindElements("/definitions/binding/binding");
+				if(bindings <> Nil & bindings->Size() > 0) {
+					binding := bindings->Get(0)->As(XmlElement);
+					style := binding->GetAttribute("style")->GetValue();
+					"Bindings: style={$style}"->PrintLine();
 				};
-# Console->Print("message count: ")->PrintLine(@messages->Size());
 				
-				results := parser->FindElements("/wsdl:definitions/wsdl:portType");
-				if(results->Size() > 0) {
-# "===== PORTS ====="->PrintLine();
-					port := results->Get(0)->As(XmlElement);
-					port_name := port->GetAttribute("name");
-# Console->Print("port: name=")->PrintLine(port_name);
-					operations := port->GetChildren("wsdl:operation");
-					each(i : operations) {
-						operation := operations->Get(i)->As(XmlElement);
-						operation_name := operation->GetAttribute("name");
-# Console->Print("\toperation: name=")->PrintLine(operation_name);
-						p := Port->New(operation_name);
-						ios := operation->GetChildren();
-						each(j : ios) {
-							io := ios->Get(j)->As(XmlElement);
-# Console->Print("\t\tio: type=")->Print(io->GetName())->Print(", message=")->PrintLine(io->GetAttribute("message"));
-							p->AddOperation(io->GetName(), io->GetAttribute("message"));
-						};
-						@ports->Insert(operation_name, p);
+				operations := parser->FindElements("/definitions/portType/operation");
+				if(operations <> Nil & operations->Size() > 0) {
+					operation := operations->Get(0)->As(XmlElement);
+					name := operation->GetAttribute("name")->GetValue();
+					"Operation: name={$name}"->PrintLine();
+					#input
+					inputs := operation->FindElements("/operation/input");
+					if(inputs <> Nil & inputs->Size() > 0) {
+						input := inputs->Get(0)->As(XmlElement);
+						message := input->GetAttribute("message")->GetValue();
+						"\tinput: message={$message}"->PrintLine();
+					};
+					# output
+					outputs := operation->FindElements("/operation/output");
+					if(outputs <> Nil & outputs->Size() > 0) {
+						output := outputs->Get(0)->As(XmlElement);
+						message := output->GetAttribute("message")->GetValue();
+						"\toutput: message={$message}"->PrintLine();
 					};
 				};
-# Console->Print("port count: ")->PrintLine(@ports->Size());
 			};
 		}
 	}
