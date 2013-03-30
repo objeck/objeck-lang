@@ -1,7 +1,7 @@
 ##############
 # For OSX only
 ##############
-ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUGGER
+ARGS=-pthread -O3 -Wall -Wno-deprecated-declarations -D_X64 -D_DEBUGGER
 # ARGS=-pthread -D_TIMING -mstackrealign -O3
 # ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused -D_DEBUGGER
 

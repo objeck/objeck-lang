@@ -114,23 +114,24 @@ namespace Runtime {
       cerr << "Unwinding local stack (" << this << "):" << endl;
       StackMethod* method =  frame->GetMethod();
       if(frame->GetIp() > 0 && pos > -1 && 
-	 method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() > 0) {
+	 method->GetInstruction(frame->GetIp())->GetLineNumber() > 0) {
 	cerr << "  method: pos=" << pos << ", file="
 	     << frame->GetMethod()->GetClass()->GetFileName() << ", name='" 
 	     << frame->GetMethod()->GetName() << "', line=" 
-	     << method->GetInstruction(frame->GetIp() - 1)->GetLineNumber() << endl;
+	     << method->GetInstruction(frame->GetIp())->GetLineNumber() << endl;
       }
       if(pos != 0) {
 	while(--pos) {
 	  StackMethod* method =  call_stack[pos]->GetMethod();
 	  if(call_stack[pos]->GetIp() > 0 && pos > -1 && 
-	     method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() > 0) {
+	     method->GetInstruction(call_stack[pos]->GetIp())->GetLineNumber() > 0) {
 	    cerr << "  method: pos=" << pos << ", file=" 
 		 << call_stack[pos]->GetMethod()->GetClass()->GetFileName() << ", name='"
 		 << call_stack[pos]->GetMethod()->GetName() << "', line=" 
-		 << method->GetInstruction(call_stack[pos]->GetIp() - 1)->GetLineNumber() << endl;
+		 << method->GetInstruction(call_stack[pos]->GetIp())->GetLineNumber() << endl;
 	  }
 	}
+	pos = 0;
       }
       cerr << "  ..." << endl;
 #else
