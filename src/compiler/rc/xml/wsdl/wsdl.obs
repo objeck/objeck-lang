@@ -53,31 +53,46 @@ bundle Default {
 					"Service: binding={$binding}, name={$name}"->PrintLine();			
 				};
 				
-				bindings := parser->FindElements("/definitions/binding/binding");
-				if(bindings <> Nil & bindings->Size() > 0) {
-					binding := bindings->Get(0)->As(XmlElement);
-					style := binding->GetAttribute("style")->GetValue();
-					"Bindings: style={$style}"->PrintLine();
-				};
+				# handling bindings (soap, soap12, http, etc.)
 				
 				operations := parser->FindElements("/definitions/portType/operation");
-				if(operations <> Nil & operations->Size() > 0) {
-					operation := operations->Get(0)->As(XmlElement);
-					name := operation->GetAttribute("name")->GetValue();
-					"Operation: name={$name}"->PrintLine();
-					#input
-					inputs := operation->FindElements("/operation/input");
-					if(inputs <> Nil & inputs->Size() > 0) {
-						input := inputs->Get(0)->As(XmlElement);
-						message := input->GetAttribute("message")->GetValue();
-						"\tinput: message={$message}"->PrintLine();
+				if(operations <> Nil) {
+					count := operations->Size();
+					"Operations: count={$count}"->PrintLine();
+					each(i : operations) {
+						operation := operations->Get(i)->As(XmlElement);
+						name := operation->GetAttribute("name")->GetValue();
+						"\toperation: name={$name}"->PrintLine();
+						#input
+						inputs := operation->FindElements("/operation/input");
+						if(inputs <> Nil & inputs->Size() > 0) {
+							input := inputs->Get(0)->As(XmlElement);
+							message := input->GetAttribute("message")->GetValue();
+							"\t\tinput: message={$message}"->PrintLine();
+						};
+						# output
+						outputs := operation->FindElements("/operation/output");
+						if(outputs <> Nil & outputs->Size() > 0) {
+							output := outputs->Get(0)->As(XmlElement);
+							message := output->GetAttribute("message")->GetValue();
+							"\t\toutput: message={$message}"->PrintLine();
+						};
 					};
-					# output
-					outputs := operation->FindElements("/operation/output");
-					if(outputs <> Nil & outputs->Size() > 0) {
-						output := outputs->Get(0)->As(XmlElement);
-						message := output->GetAttribute("message")->GetValue();
-						"\toutput: message={$message}"->PrintLine();
+				};
+				# types
+				schemas := parser->FindElements("/definitions/types/schema");
+				if(schemas <> Nil & schemas->Size() > 0) {
+					schema := schemas->Get(0)->As(XmlElement);
+					namespace := schema->GetAttribute("targetNamespace")->GetValue();
+					"Types: namespace={$namespace}"->PrintLine();
+					
+					elements := schema->FindElements("/schema/element");
+					if(elements <> Nil) {
+						each(i : elements) {
+							element := elements->Get(i)->As(XmlElement);
+							name := element->GetAttribute("name")->GetValue();
+							"\telement: name={$name}"->PrintLine();
+						};
 					};
 				};
 			};
