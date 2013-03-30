@@ -53,7 +53,19 @@ bundle Default {
 					"Service: binding={$binding}, name={$name}"->PrintLine();			
 				};
 				
-				# handling bindings (soap, soap12, http, etc.)
+				# bindings
+				bindings := parser->FindElements("/definitions/binding/binding");
+				if(bindings <> Nil) {
+					found := false;
+					for(i := 0; found = false & i < bindings->Size(); i +=1;) {
+						binding := bindings->Get(i)->As(XmlElement);
+						namespace := binding->GetNamespace();
+						if(namespace = Nil | namespace->Size() = 0 | namespace->Equals("soap")) {							
+							"Binding: namespace={$namespace}"->PrintLine();
+							found := true;
+						};
+					};
+				};
 				
 				operations := parser->FindElements("/definitions/portType/operation");
 				if(operations <> Nil) {
@@ -80,7 +92,7 @@ bundle Default {
 					};
 				};
 				
-				
+				# messages
 				messages := parser->FindElements("/definitions/message");
 				if(messages <> Nil) {
 					count := messages->Size();
