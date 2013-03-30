@@ -79,6 +79,33 @@ bundle Default {
 						};
 					};
 				};
+				
+				
+				messages := parser->FindElements("/definitions/message");
+				if(messages <> Nil) {
+					count := messages->Size();
+					"Messages: count={$count}"->PrintLine();
+					each(i : messages) {
+						message := messages->Get(i)->As(XmlElement);
+						name := message->GetAttribute("name")->GetValue();
+						"\tmessage: name={$name}"->PrintLine();
+						parts := message->GetChildren();
+						if(parts <> Nil & parts->Size() > 0) {
+							part := parts->Get(0)->As(XmlElement);
+							name := part->GetAttribute("name")->GetValue();							
+							element_node := part->GetAttribute("element");
+							if(element_node <> Nil) {
+								element := element_node->GetValue();
+								"\t\tpart: name={$name}, element={$element}"->PrintLine();
+							}
+							else {
+								type := part->GetAttribute("type")->GetValue();							
+								"\t\tpart: name={$name}, type={$type}"->PrintLine();
+							};
+						};
+					};
+				};
+				
 				# types
 				schemas := parser->FindElements("/definitions/types/schema");
 				if(schemas <> Nil & schemas->Size() > 0) {
