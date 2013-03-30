@@ -60,9 +60,19 @@ bundle Default {
 					for(i := 0; found = false & i < bindings->Size(); i +=1;) {
 						binding := bindings->Get(i)->As(XmlElement);
 						namespace := binding->GetNamespace();
-						if(namespace = Nil | namespace->Size() = 0 | namespace->Equals("soap")) {							
+						if(namespace = Nil | namespace->Size() = 0 | namespace->Equals("soap")) {	
 							"Binding: namespace={$namespace}"->PrintLine();
-							found := true;
+							operations := binding->FindElements("/binding/operation");
+							if(operations <> Nil) {
+#~							
+								each(j : operations) {
+									operation := operations->Get(j)->As(XmlElement);
+									name := operation->GetAttribute("name")->GetValue();	
+							 		"\toperation: name={$name}"->PrintLine();
+							 	};							 	
+								found := true;
+~#								
+							};							
 						};
 					};
 				};

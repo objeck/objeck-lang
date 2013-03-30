@@ -1,6 +1,6 @@
-# ARGS=-g -Wall -D_X64 -D_DEBUG
-# ARGS=-g -Wall -D_X64 -D_DEBUG -D_GC_SERIAL
-ARGS=-O3 -Wall -D_X64 
+# ARGS=-g -Wall -Wno-deprecated-declarations -D_X64 -D_DEBUG
+# ARGS=-g -Wall -Wno-deprecated-declarations -D_X64 -D_DEBUG -D_GC_SERIAL
+ARGS=-O3 -Wall -Wno-deprecated-declarations -D_X64 
 
 CC=g++
 AR=ar

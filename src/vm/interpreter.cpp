@@ -165,7 +165,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!cls_inst_mem) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
+#ifdef _DEBUGGER
+	return;
+#else
 	exit(1);
+#endif
       }
       long mem = PopInt(op_stack, stack_pos);
       cls_inst_mem[instr->GetOperand()] = mem;
@@ -198,7 +202,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!cls_inst_mem) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
+#ifdef _DEBUGGER
+	return;
+#else
 	exit(1);
+#endif
       }
       cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
     }
@@ -259,7 +267,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!cls_inst_mem) {
 	cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 	StackErrorUnwind();
+#ifdef _DEBUGGER
+	return;
+#else
 	exit(1);
+#endif
       }
       PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
     }
@@ -519,7 +531,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!src_array || !dest_array) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 
       const long src_array_len = src_array[2];
@@ -547,7 +563,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!src_array || !dest_array) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 
       const long src_array_len = src_array[0];
@@ -574,7 +594,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!src_array || !dest_array) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 
       const long src_array_len = src_array[0];
@@ -709,7 +733,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )
 	     << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+
       }
       PushInt(result, op_stack, stack_pos);
     }
@@ -750,7 +774,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!impl_class) {
         cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 	  
       const string& mthd_name = impl_class->GetName() + ":Run:o.System.Base,";
@@ -855,21 +883,33 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 
 #ifdef _WIN32
       HANDLE vm_thread = (HANDLE)instance[0];
       if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
         cerr << ">>> Unable to join thread! <<<" << endl;
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 #else
       void* status;
       pthread_t vm_thread = (pthread_t)instance[0];      
       if(pthread_join(vm_thread, &status)) {
         cerr << ">>> Unable to join thread! <<<" << endl;
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif
       }
 #endif
     }
@@ -897,7 +937,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+
       }
 #ifdef _WIN32
       InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -915,7 +955,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+#ifdef _DEBUGGER
+	return;
+#else
+	exit(1);
+#endif        
       }
 #ifdef _WIN32
       EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -933,7 +977,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+
       }
 #ifdef _WIN32
       LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -1234,7 +1278,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, long* &op_stack, l
     if(!cls_inst_mem) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
-      exit(1);
+
     }
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
@@ -1260,7 +1304,11 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
     if(!cls_inst_mem) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     memcpy(&value, &cls_inst_mem[instr->GetOperand()], sizeof(FLOAT_VALUE));
   }
@@ -1287,7 +1335,11 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, long* &op_stack, 
     if(!cls_inst_mem) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
     cls_inst_mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
@@ -1313,7 +1365,11 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
     if(!cls_inst_mem) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
     memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
@@ -1339,7 +1395,11 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
     if(!cls_inst_mem) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
     memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
@@ -1479,7 +1539,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)_beginthreadex(NULL, 0, AsyncMethodCall, holder, 0, NULL);
   if(!vm_thread) {
-    cerr << ">>> Unable to create garbage collection thread! <<<" << endl;
+    cerr << ">>> Internal error: Unable to create garbage collection thread! <<<" << endl;
     exit(-1);
   }
 #else
@@ -1490,14 +1550,14 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
   // execute thread
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
-    cerr << ">>> Unable to create runtime thread! <<<" << endl;
+    cerr << ">>> Internal error: Internal error: Unable to create runtime thread! <<<" << endl;
     exit(-1);
   }
 #endif  
   
   // assign thread ID
   if(!instance) {
-    cerr << ">>> Unable to create runtime thread! <<<" << endl;
+    cerr << ">>> Internal error: Unable to create runtime thread! <<<" << endl;
     exit(-1);
   }
 
@@ -1653,9 +1713,9 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((long*)instance);
     if(!impl_class) {
-      cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
+      cerr << ">>> Internal error: Attempting to envoke a virtual method! <<<" << endl;
       StackErrorUnwind();
-      exit(1);
+      exit(-1);
     }
 
 #ifdef _DEBUG
@@ -1724,7 +1784,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
         break;
       }
       StackErrorUnwind(called);
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     // restore previous state
     frame = PopFrame();
@@ -1760,7 +1824,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
         break;
       }
       StackErrorUnwind(called);
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     // restore previous state
     frame = PopFrame();
@@ -1802,7 +1870,11 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, long* &op_s
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   const long size = array[0];
   array += 2;
@@ -1824,7 +1896,11 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   
   const long size = array[0];
@@ -1846,7 +1922,11 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, long* &op_
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   const long size = array[0];
   array += 2;
@@ -1868,7 +1948,11 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, long* &op
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   const long size = array[0];
   array += 2;
@@ -1890,7 +1974,11 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, long* &op
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   const long size = array[0];
   array += 2;
@@ -1913,7 +2001,11 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, long* &o
   if(!array) {
     cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   const long size = array[0];
   array += 2;
@@ -1935,13 +2027,21 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   long* instance = (long*)frame->GetMemory()[0];
   if(!instance) {
     cerr << ">>> Unable to load shared library! <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
 
   long* str_obj = (long*)instance[0];
   if(!str_obj || !(long*)str_obj[0]) {
     cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
 
   long* array = (long*)str_obj[0];
@@ -1949,7 +2049,11 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   string dll_string(str);
   if(dll_string.size() == 0) {
     cerr << ">>> Name of runtime shared library was not specified! <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
 
 #ifdef _MINGW
@@ -1968,7 +2072,11 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
     cerr << ">>> Runtime error loading shared library: " << dll_string.c_str() << " <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   instance[1] = (long)dll_handle;
 
@@ -1977,14 +2085,22 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(!ext_load) {
     cerr << ">>> Runtime error calling function: load_lib <<<" << endl;
     FreeLibrary(dll_handle);
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   (*ext_load)();
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
     cerr << ">>> Runtime error loading shared library: " << dlerror() << " <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   instance[1] = (long)dll_handle;
 
@@ -1993,7 +2109,11 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   char* error;
   if((error = dlerror()) != NULL)  {
     cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
   // call function
   (*ext_load)();
@@ -2016,7 +2136,11 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     if(!ext_unload) {
       cerr << ">>> Runtime error calling function: unload_lib <<<" << endl;
       FreeLibrary(dll_handle);
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     (*ext_unload)();
     // free handle
@@ -2030,7 +2154,11 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     char* error;
     if((error = dlerror()) != NULL)  {
       cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     // call function
     (*ext_unload)();
@@ -2051,7 +2179,11 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* 
   long* array = (long*)str_obj[0];
   if(!array) {
     cerr << ">>> Runtime error calling function <<<" << endl;
+#ifdef _DEBUGGER
     exit(1);
+#else
+    return;
+#endif
   }
 
   const char* str = (char*)(array + 3);
@@ -2066,7 +2198,11 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* 
     if(!ext_func) {
       cerr << ">>> Runtime error calling function: " << str << " <<<" << endl;
       FreeLibrary(dll_handle);
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     // call function
     VMContext context;
@@ -2087,7 +2223,11 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* 
     char* error;
     if((error = dlerror()) != NULL)  {
       cerr << ">>> Runtime error calling function: " << error << " <<<" << endl;
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     // call function
     VMContext context;
@@ -2143,7 +2283,7 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!cls) {
       cerr << ">>> Internal error: looking up class instance " << inst << " <<<" << endl;
       StackErrorUnwind();
-      exit(1);
+      exit(-1);
     }
     /// set name and create 'Class' instance
     long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
@@ -2159,7 +2299,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     PushInt(array[2], op_stack, stack_pos);
   }
@@ -2170,7 +2314,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     
     // allocate 'size' array and copy metadata
@@ -2198,7 +2346,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     const long size = array[2];
     BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
@@ -2216,7 +2368,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     const long size = array[0];
     const long dim = array[1];
@@ -2240,7 +2396,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     const long size = array[0];
     const long dim = array[1];    
@@ -2263,7 +2423,11 @@ void StackInterpreter::ProcessTrap(StackInstr* instr, long* &op_stack, long* &st
     if(!array) {
       cerr << ">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
+#ifdef _DEBUGGER
+      return;
+#else
       exit(1);
+#endif
     }
     const long size = array[0];
     const long dim = array[1];    

@@ -1152,7 +1152,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     return command;
   }
   else {
-    cout << "unable to process command." << endl;
+    cout << "-- Unable to process command --" << endl;
   }
 
   is_error = false;

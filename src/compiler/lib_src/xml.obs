@@ -943,13 +943,15 @@ bundle XML {
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : public : native : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
-			each(i : @children) {
-				element : XmlElement := @children->Get(i);
-				if(element->GetName()->Equals(name)) {
-					filtered->AddBack(element);
+			if(@children <> Nil) {
+				each(i : @children) {
+					element : XmlElement := @children->Get(i);
+					if(element->GetName()->Equals(name)) {
+						filtered->AddBack(element);
+					};
 				};
 			};
-			
+						
 			return filtered;
 		}
 		

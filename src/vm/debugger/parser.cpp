@@ -291,7 +291,7 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
     file_name = char_string->GetString();
   }
   else {
-    ProcessError("Expected filename");
+    ProcessError("Expected filename (ensure the argument is wrapped in double quotes)");
   }
   NextToken();
 
