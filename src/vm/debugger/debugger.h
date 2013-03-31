@@ -320,7 +320,7 @@ namespace Runtime {
     void ClearBreaks();
 
     void EvaluateExpression(Expression* expression);
-    void EvaluateReference(Reference* reference, bool is_instance);
+    void EvaluateReference(Reference* &reference, bool is_instance);
     void EvaluateObjectReference(Reference* reference, int index);
     void EvaluateByteReference(Reference* reference, int index);
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);

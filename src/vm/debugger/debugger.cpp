@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck Team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -440,7 +440,8 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   switch(expression->GetExpressionType()) {
   case REF_EXPR:
     if(interpreter) {
-      EvaluateReference(static_cast<Reference*>(expression), false);
+      Reference* reference = static_cast<Reference*>(expression);
+      EvaluateReference(reference, false);
     }
     break;
 
@@ -688,7 +689,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   }
 }
 
-void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance) {
+void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instance) {
   StackMethod* method = cur_frame->GetMethod();
   //
   // instance reference
@@ -757,7 +758,7 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
     if(ref_mem) {
       StackDclr dclr_value;
 
-      // process check self
+      // process explicit '@self' reference
       if(reference->IsSelf()) {
 	dclr_value.name = "@self";
 	dclr_value.type = OBJ_PARM;
@@ -813,8 +814,15 @@ void Runtime::Debugger::EvaluateReference(Reference* reference, bool is_instance
 	  }
 	}
 	else {
-	  cout << "unknown variable (or no debug information for class)." << endl;
-	  is_error = true;
+	  // process implicit '@self' reference
+	  Reference* next_reference = TreeFactory::Instance()->MakeReference();
+	  next_reference->SetReference(reference);
+	  reference = next_reference;
+	  
+	  dclr_value.name = "@self";
+	  dclr_value.type = OBJ_PARM;
+	  reference->SetDeclaration(dclr_value);
+	  EvaluateObjectReference(reference, 0);
 	}
       }
     }
@@ -831,7 +839,8 @@ void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index)
     ref_mem = (long*)ref_mem[index];
     ref_klass = MemoryManager::GetClass(ref_mem);
     if(reference->GetReference()) {
-      EvaluateReference(reference->GetReference(), true);
+      Reference* next_reference = reference->GetReference();
+      EvaluateReference(next_reference, true);
     }
   }
   else {
