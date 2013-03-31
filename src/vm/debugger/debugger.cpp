@@ -55,7 +55,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 	// step command
 	(is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
 	 // next line
-	 (is_next_line && (cur_frame && frame->GetMethod()->GetName() == cur_frame->GetMethod()->GetName() ||
+	(is_next_line && (cur_frame && frame->GetMethod() == cur_frame->GetMethod() ||
 			   (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
@@ -1130,14 +1130,26 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 
     case STACK_COMMAND:
       if(interpreter) {
-	long pos = cur_call_stack_pos;
 	cout << "stack:" << endl;
+	StackMethod* method = cur_frame->GetMethod();
+	cerr << "  frame: pos=" << cur_call_stack_pos << ", class=" << method->GetClass()->GetName() 
+	     << ", method=" << PrintMethod(method);
+	const long ip = cur_frame->GetIp();
+	if(ip > -1) {
+	  StackInstr* instr = cur_frame->GetMethod()->GetInstruction(ip);
+	  cerr << ", file=" << method->GetClass()->GetFileName() << ":" << instr->GetLineNumber() << endl;
+	}
+	else {
+	  cerr << endl;
+	}
+
+	long pos = cur_call_stack_pos - 1;
 	do {
 	  StackMethod* method = cur_call_stack[pos]->GetMethod();
 	  cerr << "  frame: pos=" << pos << ", class=" << method->GetClass()->GetName() 
 	       << ", method=" << PrintMethod(method);
 	  const long ip = cur_call_stack[pos]->GetIp();
-	  if(ip > 0) {
+	  if(ip > -1) {
 	    StackInstr* instr = cur_call_stack[pos]->GetMethod()->GetInstruction(ip);
 	    cerr << ", file=" << method->GetClass()->GetFileName() << ":" << instr->GetLineNumber() << endl;
 	  }
