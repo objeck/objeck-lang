@@ -55,8 +55,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 	// step command
 	(is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
 	 // next line
-	(is_next_line && (cur_frame && frame->GetMethod() == cur_frame->GetMethod() ||
-			   (call_stack_pos < cur_call_stack_pos))))) {
+	(is_next_line && ((cur_frame && frame->GetMethod() == cur_frame->GetMethod()) ||
+			  (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -441,7 +441,7 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
   case REF_EXPR:
     if(interpreter) {
       Reference* reference = static_cast<Reference*>(expression);
-      EvaluateReference(reference, false);
+      EvaluateReference(reference, LOCL);
     }
     break;
 
@@ -689,16 +689,24 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   }
 }
 
-void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instance) {
+void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext context) {
   StackMethod* method = cur_frame->GetMethod();
   //
   // instance reference
   //
-  if(is_instance) {
+  if(context != LOCL) {
     if(ref_mem && ref_klass) {
       // check reference name
+      bool found;
       StackDclr dclr_value;
-      bool found = ref_klass->GetDeclaration(reference->GetVariableName(), dclr_value);
+      if(context == INST) {
+	found = ref_klass->GetInstanceDeclaration(reference->GetVariableName(), dclr_value);
+      }
+      else {
+	found = ref_klass->GetClassDeclaration(reference->GetVariableName(), dclr_value);	
+      }
+      
+      // set reference
       if(found) {
 	reference->SetDeclaration(dclr_value);
 	
@@ -720,7 +728,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
 	  break;
 
 	case OBJ_PARM:
-	  EvaluateObjectReference(reference, dclr_value.id);
+	  EvaluateInstanceReference(reference, dclr_value.id);
 	  break;
 
 	case BYTE_ARY_PARM:
@@ -763,12 +771,12 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
 	dclr_value.name = "@self";
 	dclr_value.type = OBJ_PARM;
 	reference->SetDeclaration(dclr_value);
-	EvaluateObjectReference(reference, 0);
+	EvaluateInstanceReference(reference, 0);
       }
       // process method reference
       else {
 	// check reference name
-	bool found = method->GetDeclaration(reference->GetVariableName(), dclr_value);
+	bool found = method->GetLocalDeclaration(reference->GetVariableName(), dclr_value);
 	reference->SetDeclaration(dclr_value);
 	if(found) {
 	  if(method->HasAndOr()) {
@@ -793,7 +801,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
 	    break;
 
 	  case OBJ_PARM:
-	    EvaluateObjectReference(reference, dclr_value.id + 1);
+	    EvaluateInstanceReference(reference, dclr_value.id + 1);
 	    break;
 
 	  case BYTE_ARY_PARM:
@@ -814,15 +822,25 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
 	  }
 	}
 	else {
-	  // process implicit '@self' reference
-	  Reference* next_reference = TreeFactory::Instance()->MakeReference();
-	  next_reference->SetReference(reference);
-	  reference = next_reference;
-	  
-	  dclr_value.name = "@self";
-	  dclr_value.type = OBJ_PARM;
-	  reference->SetDeclaration(dclr_value);
-	  EvaluateObjectReference(reference, 0);
+	  // class for class reference
+	  StackClass* klass = cur_program->GetClass(reference->GetVariableName());
+	  if(klass) {
+	    dclr_value.name = klass->GetName();
+	    dclr_value.type = OBJ_PARM;
+	    reference->SetDeclaration(dclr_value);
+	    EvaluateClassReference(reference, klass, 0);
+	  }
+	  else {
+	    // process implicit '@self' reference
+	    Reference* next_reference = TreeFactory::Instance()->MakeReference();
+	    next_reference->SetReference(reference);
+	    reference = next_reference;
+	    // set declaration
+	    dclr_value.name = "@self";
+	    dclr_value.type = OBJ_PARM;
+	    reference->SetDeclaration(dclr_value);
+	    EvaluateInstanceReference(reference, 0);
+	  }
 	}
       }
     }
@@ -833,19 +851,30 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
   }
 }
 
-void Runtime::Debugger::EvaluateObjectReference(Reference* reference, int index) {
+void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int index) {
   if(ref_mem) {
     reference->SetIntValue(ref_mem[index]);
-    ref_mem = (long*)ref_mem[index];
+    ref_mem =(long*)ref_mem[index];
     ref_klass = MemoryManager::GetClass(ref_mem);
     if(reference->GetReference()) {
       Reference* next_reference = reference->GetReference();
-      EvaluateReference(next_reference, true);
+      EvaluateReference(next_reference, INST);
     }
   }
   else {
     cout << "current object reference is Nil" << endl;
     is_error = true;
+  }
+}
+
+void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
+  long* cls_mem = klass->GetClassMemory();
+  reference->SetIntValue((long)cls_mem);
+  ref_mem  =cls_mem;
+  ref_klass = klass;
+  if(reference->GetReference()) {
+    Reference* next_reference = reference->GetReference();
+    EvaluateReference(next_reference, CLS);
   }
 }
 
