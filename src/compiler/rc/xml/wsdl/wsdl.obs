@@ -6,6 +6,7 @@ use Collection;
 
 bundle Default {
 	class Wsdl {
+		@binding_type : String;
 		@namespace : String;
 		@types : StringMap;
 		@messages : StringMap;
@@ -41,6 +42,16 @@ bundle Default {
 		method : public : GetPort(name : String) ~ Port {
 			return @ports->Find(name)->As(Port);
 		}
+		
+		function : GetName(name : String) ~ String {
+			offset := name->FindLast(':');
+			if(offset > 0) {
+				offset += 1;
+				name := name->SubString(offset, name->Size() - offset);
+			};
+			
+			return name;
+		}
 				
 		method : Parse(name : String) ~ Nil {
 			parser := XmlParser->New(FileReader->ReadFile(name));
@@ -61,8 +72,8 @@ bundle Default {
 						binding := bindings->Get(i)->As(XmlElement);
 						binding_parent := binding->GetParent();
 						if(binding_parent <> Nil) {
-							type := binding_parent->GetAttribute("type")->GetValue();
-							"Bindings: type={$type}"->PrintLine();
+							@binding_type := GetName(binding_parent->GetAttribute("type")->GetValue());
+							"Bindings: type={$@binding_type}"->PrintLine();
 						};
 						operations := parser->FindElements("/definitions/binding/operation");
 						if(operations <> Nil) {						
@@ -78,28 +89,32 @@ bundle Default {
 					};
 				};
 				
-				operations := parser->FindElements("/definitions/portType/operation");
-				if(operations <> Nil) {
-					count := operations->Size();
-					"Operations: count={$count}"->PrintLine();
-					# TODO: check parent 'name'
-					each(i : operations) {
-						operation := operations->Get(i)->As(XmlElement);
-						name := operation->GetAttribute("name")->GetValue();
-						"\toperation: name={$name}"->PrintLine();
-						#input
-						inputs := operation->FindElements("/operation/input");
-						if(inputs <> Nil & inputs->Size() > 0) {
-							input := inputs->Get(0)->As(XmlElement);
-							message := input->GetAttribute("message")->GetValue();
-							"\t\tinput: message={$message}"->PrintLine();
-						};
-						# output
-						outputs := operation->FindElements("/operation/output");
-						if(outputs <> Nil & outputs->Size() > 0) {
-							output := outputs->Get(0)->As(XmlElement);
-							message := output->GetAttribute("message")->GetValue();
-							"\t\toutput: message={$message}"->PrintLine();
+				ports := parser->FindElements("/definitions/portType");
+				if(ports <> Nil) {
+					port := ports->Get(0)->As(XmlElement);
+					name := port->GetAttribute("name")->GetValue();
+					if(name <> Nil & name->Equals(@binding_type)) {
+						"Port: name={$name}"->PrintLine();
+						operations := port->GetChildren();
+						# TODO: check parent 'name'
+						each(i : operations) {
+							operation := operations->Get(i)->As(XmlElement);
+							name := operation->GetAttribute("name")->GetValue();
+							"\toperation: name={$name}"->PrintLine();
+							#input
+							inputs := operation->FindElements("/operation/input");
+							if(inputs <> Nil & inputs->Size() > 0) {
+								input := inputs->Get(0)->As(XmlElement);
+								message := input->GetAttribute("message")->GetValue();
+								"\t\tinput: message={$message}"->PrintLine();
+							};
+							# output
+							outputs := operation->FindElements("/operation/output");
+							if(outputs <> Nil & outputs->Size() > 0) {
+								output := outputs->Get(0)->As(XmlElement);
+								message := output->GetAttribute("message")->GetValue();
+								"\t\toutput: message={$message}"->PrintLine();
+							};
 						};
 					};
 				};
