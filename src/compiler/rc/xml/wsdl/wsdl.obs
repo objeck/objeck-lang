@@ -125,7 +125,8 @@ bundle Default {
 									"\t\tpart: name={$name}, element={$element}"->PrintLine();
 								}
 								else {
-									type := part->GetAttribute("type")->GetValue();							
+									type := part->GetAttribute("type")->GetValue();
+									@elements->AddBack(GetName(type));							
 									"\t\tpart: name={$name}, type={$type}"->PrintLine();
 								};
 							};
@@ -141,6 +142,17 @@ bundle Default {
 					"Types: namespace={$namespace}"->PrintLine();
 					
 					elements := schema->FindElements("/schema/element");
+					if(elements <> Nil) {
+						each(i : elements) {
+							element := elements->Get(i)->As(XmlElement);
+							name := element->GetAttribute("name")->GetValue();
+							if(@elements->Has(name)) {
+								"\telement: name={$name}"->PrintLine();
+							};
+						};
+					};
+					
+					elements := schema->FindElements("/schema/complexType");
 					if(elements <> Nil) {
 						each(i : elements) {
 							element := elements->Get(i)->As(XmlElement);
