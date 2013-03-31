@@ -7,40 +7,23 @@ use Collection;
 bundle Default {
 	class Wsdl {
 		@binding_type : String;
-		@namespace : String;
-		@types : StringMap;
-		@messages : StringMap;
-		@ports : StringMap;
+		@messages : CompareVector;
+		@elements : CompareVector;
 		
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() > 0) {
 				wsdl := Wsdl->New(args[0]);
-				wsdl->GetNamespace();
+				wsdl->Foo();
 			};
 		}
 		
 		New(name : String) {
-			@types := StringMap->New();
-			@messages := StringMap->New();
-			@ports := StringMap->New();
-			
+			@messages := CompareVector->New();
+			@elements := CompareVector->New();
 			Parse(name);
 		}
 		
-		method : public : GetNamespace() ~ String {
-			return @namespace;
-		}
-
-		method : public : GetType(name : String) ~ Type {
-			return @types->Find(name)->As(Type);
-		}
-		
-		method : public : GetMessage(name : String) ~ String {
-			return @messages->Find(name)->As(String);
-		}
-		
-		method : public : GetPort(name : String) ~ Port {
-			return @ports->Find(name)->As(Port);
+		method : public : Foo() ~ Nil {
 		}
 		
 		function : GetName(name : String) ~ String {
@@ -106,6 +89,7 @@ bundle Default {
 							if(inputs <> Nil & inputs->Size() > 0) {
 								input := inputs->Get(0)->As(XmlElement);
 								message := input->GetAttribute("message")->GetValue();
+								@messages->AddBack(GetName(message));
 								"\t\tinput: message={$message}"->PrintLine();
 							};
 							# output
@@ -113,6 +97,7 @@ bundle Default {
 							if(outputs <> Nil & outputs->Size() > 0) {
 								output := outputs->Get(0)->As(XmlElement);
 								message := output->GetAttribute("message")->GetValue();
+								@messages->AddBack(GetName(message));
 								"\t\toutput: message={$message}"->PrintLine();
 							};
 						};
@@ -127,19 +112,22 @@ bundle Default {
 					each(i : messages) {
 						message := messages->Get(i)->As(XmlElement);
 						name := message->GetAttribute("name")->GetValue();
-						"\tmessage: name={$name}"->PrintLine();
-						parts := message->GetChildren();
-						if(parts <> Nil & parts->Size() > 0) {
-							part := parts->Get(0)->As(XmlElement);
-							name := part->GetAttribute("name")->GetValue();							
-							element_node := part->GetAttribute("element");
-							if(element_node <> Nil) {
-								element := element_node->GetValue();
-								"\t\tpart: name={$name}, element={$element}"->PrintLine();
-							}
-							else {
-								type := part->GetAttribute("type")->GetValue();							
-								"\t\tpart: name={$name}, type={$type}"->PrintLine();
+						if(@messages->Has(name)) {
+							"\tmessage: name={$name}"->PrintLine();
+							parts := message->GetChildren();
+							if(parts <> Nil & parts->Size() > 0) {
+								part := parts->Get(0)->As(XmlElement);
+								name := part->GetAttribute("name")->GetValue();							
+								element_node := part->GetAttribute("element");
+								if(element_node <> Nil) {
+									element := element_node->GetValue();
+									@elements->AddBack(GetName(element));
+									"\t\tpart: name={$name}, element={$element}"->PrintLine();
+								}
+								else {
+									type := part->GetAttribute("type")->GetValue();							
+									"\t\tpart: name={$name}, type={$type}"->PrintLine();
+								};
 							};
 						};
 					};
@@ -157,7 +145,9 @@ bundle Default {
 						each(i : elements) {
 							element := elements->Get(i)->As(XmlElement);
 							name := element->GetAttribute("name")->GetValue();
-							"\telement: name={$name}"->PrintLine();
+							if(@elements->Has(name)) {
+								"\telement: name={$name}"->PrintLine();
+							};
 						};
 					};
 				};
