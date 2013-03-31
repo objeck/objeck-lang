@@ -1,8 +1,15 @@
 ﻿class Bar {
-	New() {}
+	@value : String;
+	@s_value : static : String;
+
+	New() { @value := "Hello"; }
 
 	method : public : Value() ~ String {
-		return "hello";
+		return @value;
+	}
+
+	function : Set() ~ Nil {
+		@s_value := "im static";
 	}
 }
 	
@@ -18,6 +25,7 @@ class Test {
 	}
 
 	function : Run() ~ String {
+		Bar->Set();
 		t := Test->New();
 		return t->Foo("bar")->Value();
 	}
