@@ -741,12 +741,12 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
 	}
       }
       else {
-	cout << "unknown variable (or no debug information for class)." << endl;
+	cout << "unknown variable (or no debug information available)." << endl;
 	is_error = true;
       }
     }
     else {
-      cout << "unable to deference empty frame." << endl;
+      cout << "unable to de-reference empty frame." << endl;
       is_error = true;
     }
   }
@@ -827,7 +827,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, bool is_instanc
       }
     }
     else {
-      cout << "unable to deference empty frame." << endl;
+      cout << "unable to de-reference empty frame." << endl;
       is_error = true;
     }
   }
