@@ -190,6 +190,7 @@ bundle XML {
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XmlElement);
 						parent->AddChild(tag);
+						tag->SetParent(parent);
 					};
 				}
 				else if(tag->GetType() = XmlElementType->CLOSING_ELEMENT) {

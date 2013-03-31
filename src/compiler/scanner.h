@@ -429,7 +429,7 @@ private:
 
     return buffer;
   }
-
+  
   // parsers a character string
   inline void CheckString(int index, bool is_valid) {
     // copy string
@@ -443,8 +443,10 @@ private:
       tokens[index]->SetType(TOKEN_BAD_CHAR_STRING_LIT);
     }
     tokens[index]->SetIdentifier(char_string);
+    tokens[index]->SetLineNbr(line_nbr);
+    tokens[index]->SetFileName(filename);
   }
-
+  
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
     // copy string
