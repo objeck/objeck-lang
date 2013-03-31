@@ -531,7 +531,7 @@ class StackMethod {
   }
 
 #ifdef _DEBUGGER
-  int GetDeclaration(const string& name, StackDclr& found) {
+  int GetLocalDeclaration(const string& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
@@ -908,12 +908,35 @@ class StackClass {
   }
 
 #ifdef _DEBUGGER
-  bool GetDeclaration(const string& name, StackDclr& found) {
+  bool GetInstanceDeclaration(const string& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < inst_num_dclrs; i++, index++) {
 	StackDclr* dclr = inst_dclrs[i];
+	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+	if(dclr_name == name) {
+	  found.name = dclr->name;
+	  found.type = dclr->type;
+	  found.id = index;
+	  return true;
+	}
+	// update
+	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+	  index++;
+	}
+      }
+    }
+    
+    return false;
+  }
+  
+  bool GetClassDeclaration(const string& name, StackDclr& found) {
+    if(name.size() > 0) {
+      // search for name
+      int index = 0;
+      for(int i = 0; i < cls_num_dclrs; i++, index++) {
+	StackDclr* dclr = cls_dclrs[i];
 	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
 	if(dclr_name == name) {
 	  found.name = dclr->name;
