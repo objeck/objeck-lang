@@ -776,7 +776,6 @@ within methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
-
 \subsection{Debugging Commands}
 \begin{center}
   \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
@@ -793,7 +792,7 @@ constants. The following commands are currently supported:
     \texttt{args} &  specifies program arguments & \texttt{args "Hello World"} \\ \hline
     \texttt{[r]un} &  runs a loaded program &  \\ \hline
     \texttt{[p]rint} &  prints the value of an expression, along with
-    metadata & \texttt{p locl\ref \newline p @self$\rightarrow$inst\ref \newline p Klass$\rightarrow$class\ref} \\ \hline
+    metadata & \texttt{p locl\_ref \newline p @inst\_ref \newline p Klass$\rightarrow$class\_ref} \\ \hline
     \texttt{[l]ist} &  lists a range of lines in a source file or the
     lines near the current breakpoint & \texttt{l \newline l hello.obs:10} \\ \hline
     \texttt{[i]nfo} &  displays the variables for a class & \texttt{i
