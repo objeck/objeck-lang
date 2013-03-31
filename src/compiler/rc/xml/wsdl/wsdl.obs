@@ -60,7 +60,10 @@ bundle Default {
 					for(i := 0; found = false & i < bindings->Size(); i +=1;) {
 						binding := bindings->Get(i)->As(XmlElement);
 						binding_parent := binding->GetParent();
-						"Bindings:"->PrintLine();
+						if(binding_parent <> Nil) {
+							type := binding_parent->GetAttribute("type")->GetValue();
+							"Bindings: type={$type}"->PrintLine();
+						};
 						operations := parser->FindElements("/definitions/binding/operation");
 						if(operations <> Nil) {						
 							each(j : operations) {
@@ -79,6 +82,7 @@ bundle Default {
 				if(operations <> Nil) {
 					count := operations->Size();
 					"Operations: count={$count}"->PrintLine();
+					# TODO: check parent 'name'
 					each(i : operations) {
 						operation := operations->Get(i)->As(XmlElement);
 						name := operation->GetAttribute("name")->GetValue();
