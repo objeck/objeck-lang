@@ -2431,31 +2431,36 @@ bundle HTTP {
 		}	
 		
 		method : public : Post(url : String, data : String) ~ Vector {
-			return Post(url, 80, "text/plain", data);
+			return Post(url, "text/plain", data);
 		}
 		
-		method : public : Post(url : String, port : Int, data : String) ~ Vector {
-			return Post(url, port, "text/plain", data);
-		}
-		
-		method : public : Post(url : String, port : Int, content_type : String, data : String) ~ Vector {
+		method : public : Post(url : String, content_type : String, data : String) ~ Vector {
 			@headers := Hash->New();
 					
 			content := Vector->New();
 			if(url->StartsWith("http://")) {
 				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
-				index := url->Find('/');
 				address := "";
 				location := "/";
+				index := url->Find('/');
+				port := "80";
 				if(index > -1) {
-					address := url->SubString(index);
-					location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				  address := url->SubString(index);
+				  port_index := address->Find(':');
+				  if(port_index > -1) {
+				    port_index += 1;
+				    port := address->SubString(port_index, address->Size() - port_index);
+				    address := address->SubString(port_index - 1);
+				  }
+				  else {
+				    location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				  };
 				}
 				else {
-					address := url;
+				  address := url;
 				};
 				
-				socket := TCPSocket->New(address, port);
+				socket := TCPSocket->New(address, port->ToInt());
 				if(socket->IsOpen()) {
 					post := "POST ";
 					post->Append(location);
@@ -2550,31 +2555,36 @@ bundle HTTP {
 		}
 		
 		method : public : Get(url : String) ~ Vector {
-			return Get(url, 80 , "text/plain");
+			return Get(url, "text/plain");
 		}
 		
-		method : public : Get(url : String, port : Int) ~ Vector {
-			return Get(url, port, "text/plain");
-		}
-		
-		method : public : Get(url : String, port : Int, content_type : String) ~ Vector {
+		method : public : Get(url : String, content_type : String) ~ Vector {
 			@headers := Hash->New();
 			content := Vector->New();
 			
 			if(url->StartsWith("http://")) {
 				url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
-				index := url->Find('/');
 				address := "";
 				location := "/";
+				index := url->Find('/');
+				port := "80";
 				if(index > -1) {
-					address := url->SubString(index);
-					location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				  address := url->SubString(index);
+				  port_index := address->Find(':');
+				  if(port_index > -1) {
+				    port_index += 1;
+				    port := address->SubString(port_index, address->Size() - port_index);
+				    address := address->SubString(port_index - 1);
+				  }
+				  else {
+				    location->Append(url->SubString(index + 1, url->Size() - index - 1));
+				  };
 				}
 				else {
-					address := url;
+				  address := url;
 				};
 				
-				socket := TCPSocket->New(address, port);
+				socket := TCPSocket->New(address, port->ToInt());
 				if(socket->IsOpen()) {
 					get := "GET ";
 					get->Append(location);
