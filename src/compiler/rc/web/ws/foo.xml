@@ -1,0 +1,10 @@
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Header>
+    <Action s:mustUnderstand="1" xmlns="http://schemas.microsoft.com/ws/2005/05/addressing/none">http://tempuri.org/IService/GetData</Action>
+  </s:Header>
+  <s:Body>
+    <GetData xmlns="http://tempuri.org/">
+      <value>32</value>
+    </GetData>
+  </s:Body>
+</s:Envelope>
