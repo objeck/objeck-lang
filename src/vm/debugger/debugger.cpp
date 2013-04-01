@@ -1325,7 +1325,7 @@ void Runtime::Debugger::ClearProgram() {
   cur_program = NULL;
   is_error = false;
   ref_mem = NULL;
-  ref_mem = NULL;
+  ref_klass = NULL;
   is_jmp_out = false;
 }
 
