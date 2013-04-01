@@ -2472,20 +2472,14 @@ The HttpClient class allows programmers access web servers via HTTP.
   returns true is successful
   \begin{itemize}
   \item method : public : Post(url : String, content : String) \textasciitilde Vector
-  \item method : public : Post(url : String, port : Int, content :
-    String) \textasciitilde Vector
-  \item method : public : Post(url : String, content\_type: String,
-    port : Int, content : String) \textasciitilde Vector
+  \item method : public : Post(url : String, content\_type: String, content : String) \textasciitilde Vector
   \end{itemize}
 
 \item \texttt{Get} - Performs a HTTP(S) GET from the connected website,
   returns a \texttt{Vector} of strings
   \begin{itemize}
   \item method : public : Get(url : String) \textasciitilde Vector
-  \item method : public : Get(url : String, port : Int)
-    \textasciitilde Vector
-  \item method : public : Get(url : String, content\_type: String,
-    port : Int) \textasciitilde Vector
+  \item method : public : Get(url : String, content\_type: String) \textasciitilde Vector
   \end{itemize}
 
 \item \texttt{GetHeaders} - Returns a \texttt{Map} of headers
