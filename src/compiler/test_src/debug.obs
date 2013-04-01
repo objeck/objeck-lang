@@ -1,35 +1,34 @@
-﻿class Bar {
-	@value : String;
-	@s_value : static : String;
-
-	New() { @value := "Hello"; }
-
-	method : public : Value() ~ String {
-		return @value;
-	}
-
-	function : Set() ~ Nil {
-		@s_value := "im static";
-	}
-}
-	
-class Test {
-	New() {}
-
-	function : Foo(s : String) ~ Bar {
-		return Bar->New();
-	}
-
+﻿class Test {
 	function : Main(args : String[]) ~ Nil {
-		Run()->PrintLine();
-	}
+		#
+		# TODO: add to HTTP class
+		# 
+		:
+#		url := "http://10.0.1.5:52216/Service.svc?GetData";
+		url := "http://10.0.1.5/Service.svc?GetData";
 
-	function : Run() ~ String {
-		value := 3.157;
-		Bar->Set();
-		t := Test->New();
-		value->PrintLine();
-		return t->Foo("bar")->Value();
+		url := url->SubString("http://"->Size(), url->Size() - "http://"->Size());
+		address := "";
+		location := "/";
+		index := url->Find('/');
+		port := "";
+		if(index > -1) {
+			address := url->SubString(index);
+			port_index := address->Find(':');
+			if(port_index > -1) {
+				address := address->SubString(index);
+				port_index += 1;
+				port := address->SubString(port_index, address->Size() - port_index);
+			}
+			else {
+				location->Append(url->SubString(index + 1, url->Size() - index - 1));
+			};
+		}
+		else {
+			address := url;
+		};
+
+		"address='{$address}' port={$port}"->PrintLine();
 	}
 }
 
