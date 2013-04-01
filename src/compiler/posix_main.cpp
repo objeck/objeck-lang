@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 	    not_end = path[pos] != '\'';
 	  }
 	  else {
-	    not_end = path[pos] != ' ' && path[pos] != '\t';
+	    not_end = path[pos] != ' ' && path[pos] != '\t' && path[pos] != '-';
 	  }
 	  // update position
 	  if(not_end) {
