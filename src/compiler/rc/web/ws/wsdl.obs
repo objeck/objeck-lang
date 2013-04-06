@@ -36,7 +36,7 @@ bundle Default {
 			return name;
 		}
 				
-		method : Parse(name : String) ~ Nil {
+		method : native : Parse(name : String) ~ Nil {
 			parser := XmlParser->New(FileReader->ReadFile(name));
 			if(parser->Parse()) {
 				definitions := parser->FindElements("/definitions/service/port");
@@ -145,8 +145,9 @@ bundle Default {
 					if(elements <> Nil) {
 						each(i : elements) {
 							element := elements->Get(i)->As(XmlElement);
-							name := element->GetAttribute("name")->GetValue();
-							if(@elements->Has(name)) {
+							xsd_element := XsdElement->New(element);
+							name := xsd_element->GetName();
+							if(name <> Nil & @elements->Has(name)) {
 								"\telement: name={$name}"->PrintLine();
 							};
 						};
@@ -155,12 +156,14 @@ bundle Default {
 					elements := schema->FindElements("/schema/complexType");
 					if(elements <> Nil) {
 						each(i : elements) {
+#~						
 							element := elements->Get(i)->As(XmlElement);
 							name := element->GetAttribute("name")->GetValue();
 							if(@elements->Has(name)) {
 								"\telement: name={$name}"->PrintLine();
 							};
-						};
+~#
+						};					
 					};
 				};
 			};
@@ -237,6 +240,49 @@ bundle Default {
 		
 		method : public : GetInputName() ~ String {
 			return @operations->Find("wsdl:input");
+		}
+	}
+	
+	class Xsd {}
+	
+	class XsdElement from Xsd {
+		@name : String;
+		@type : String;
+		@ref : String;
+		
+		New() {
+			Parent();
+		}
+		
+		New(element : XmlElement) {
+			Parent();
+			
+			attrib := element->GetAttribute("name");
+			if(attrib <> Nil) {
+				@name := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("type");
+			if(attrib <> Nil) {
+				@type := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("ref");
+			if(attrib <> Nil) {
+				@type := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetType() ~ String {
+			return @type;
+		}
+		
+		method : public : GetRef() ~ String {
+			return @ref;
 		}
 	}
 }
