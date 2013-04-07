@@ -1304,24 +1304,51 @@ bool ContextAnalyzer::Analyze()
 	EnumItem* item = eenum->GetItem(method_call->GetMethodName());
 	if(item) {
 	  method_call->SetEnumItem(item, eenum->GetName());
-	} else {
+	} 
+	else {
 	  ProcessError(static_cast<Expression*>(method_call), "Undefined enum item: '" +
 		       method_call->GetMethodName() + "'");
 	}
-      } else {
+      } 
+      else {
 	LibraryEnum* lib_eenum = linker->SearchEnumLibraries(method_call->GetVariableName(),
 							     program->GetUses());
 	if(lib_eenum) {
 	  LibraryEnumItem* lib_item = lib_eenum->GetItem(method_call->GetMethodName());
 	  if(lib_item) {
 	    method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-	  } else {
+	  } 
+	  else {
 	    ProcessError(static_cast<Expression*>(method_call), "Undefined enum item: '" +
 			 method_call->GetMethodName() + "'");
 	  }
-	} else {
-	  ProcessError(static_cast<Expression*>(method_call), "Undefined enum: '" +
-		       method_call->GetVariableName() + "'");
+	} 
+	else {
+	  if(method_call->GetVariableName() == SELF_ID) {
+	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+	    if(!entry->IsLocal() && !entry->IsLocal()) {
+	      const string &entry_name = entry->GetName();
+	      const size_t start = entry_name.find_last_of(':');
+	      if(start != string::npos) {
+		const string &param_name = entry_name.substr(start + 1);
+		Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(), 
+									   static_cast<Expression*>(method_call)->GetLineNumber(),
+									   param_name);
+		method_call->SetVariable(variable);
+		AnalyzeVariable(variable, depth + 1);
+	      }
+	    }
+	    else {
+	      // TODO: scope error
+	    }
+	  }
+	  else if(method_call->GetVariableName() == PARENT_ID) {
+	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+	  }
+	  else {	  
+	    ProcessError(static_cast<Expression*>(method_call), "Undefined enum: '" +
+			 method_call->GetVariableName() + "'");
+	  }
 	}
       }
       AnalyzeExpressionMethodCall(method_call, depth + 1);

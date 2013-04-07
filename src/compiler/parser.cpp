@@ -31,8 +31,6 @@
 
 #include "parser.h"
 
-#define SELF_ID "@self"
-
 /****************************
  * Loads parsing error codes.
  ****************************/
@@ -465,9 +463,16 @@ Class* Parser::ParseClass(const string &bundle_name, int depth)
 
   // add '@self' entry
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
-								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), false, false, true);
+								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
+								false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
-
+  
+  // add '@parent' entry
+  entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(PARENT_ID),
+						   TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
+						   false, false, true);
+  symbol_table->CurrentParseScope()->AddEntry(entry);
+  
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
     if(Match(TOKEN_FUNCTION_ID)) {

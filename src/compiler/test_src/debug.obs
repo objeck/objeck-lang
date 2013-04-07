@@ -9,7 +9,7 @@ class Bar from Foo {
 	New() { Parent(); @id := 7; }
 
 	method : public : GetId() ~ Int {
-		return parent->@id;
+		return @self->@id;
 	}
 }
 
