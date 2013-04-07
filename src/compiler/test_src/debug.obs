@@ -8,14 +8,19 @@ class Bar from Foo {
 
 	New() { Parent(); @id := 7; }
 
+	method : public : GetParentId() ~ Int {
+		return @parent->@id;
+	}
+
 	method : public : GetId() ~ Int {
-		return @self->@id;
+		return @id;
 	}
 }
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		b := Bar->New();
+		b->GetParentId()->PrintLine();
 		b->GetId()->PrintLine();
 	}
 }
