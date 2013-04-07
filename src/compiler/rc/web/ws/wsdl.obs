@@ -141,6 +141,11 @@ bundle Default {
 					namespace := schema->GetAttribute("targetNamespace")->GetValue();
 					"Types: namespace={$namespace}"->PrintLine();
 					
+					children := schema->GetChildren();
+					each(i : children) {
+						XsdFactory->Make(children->Get(i)->As(XmlElement));
+					};
+#~					
 					elements := schema->FindElements("/schema/element");
 					if(elements <> Nil) {
 						each(i : elements) {
@@ -156,15 +161,14 @@ bundle Default {
 					elements := schema->FindElements("/schema/complexType");
 					if(elements <> Nil) {
 						each(i : elements) {
-#~						
 							element := elements->Get(i)->As(XmlElement);
 							name := element->GetAttribute("name")->GetValue();
 							if(@elements->Has(name)) {
 								"\telement: name={$name}"->PrintLine();
 							};
-~#
 						};					
 					};
+~#					
 				};
 			};
 		}
@@ -243,10 +247,116 @@ bundle Default {
 		}
 	}
 	
-	class Xsd {}
+	class XsdFactory {
+		function : Make(element : XmlElement) ~ Xsd {
+			name := element->GetName();
+			if(name->Equals("all")) {
+"-- ALL --"->PrintLine();			
+				return XsdAll->New(element);
+			}
+			else if(name->Equals("complexType")) {
+"-- COMPLEX --"->PrintLine();
+				return XsdComplexType->New(element);
+			}
+			else if(name->Equals("element")) {
+"-- ELEMENT --"->PrintLine();			
+				return XsdElement->New(element);
+			};
+"-- OTHER: {$name} --"->PrintLine();			
+			
+			return Nil;
+		}
+	}
+		
+	class Xsd {
+		@children : Vector;
+		
+		New() {}
+		
+		New(element : XmlElement) {
+			@children := Vector->New();
+			ProcessChildren(element);
+		}
+		
+		method : virtual : public : GetXsdType() ~ XsdType;
+		
+		method : ProcessChildren(element : XmlElement) ~ Nil {
+			children := element->GetChildren();
+			each(i : children) {
+				@children->AddBack(XsdFactory->Make(children->Get(i)->As(XmlElement)));
+			};
+		}
+	}
+	
+	enum XsdType {
+		ALL,
+		COMPLEX_TYPE,
+		ELEMENT
+	}
+	
+	class XsdAll from Xsd {
+		@id : String;
+				
+		New() {
+			Parent();
+		}
+		
+		New(element : XmlElement) {
+			Parent(element);
+			
+			attrib := element->GetAttribute("id");
+			if(attrib <> Nil) {
+				@id := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->ALL;
+		}
+		
+		method : public : GetId() ~ String {
+			return @id;
+		}
+	}
+	
+	class XsdComplexType from Xsd {
+		@id : String;
+		@name : String;
+				
+		New() {
+			Parent();
+		}
+		
+		New(element : XmlElement) {
+			Parent(element);
+			
+			attrib := element->GetAttribute("name");
+			if(attrib <> Nil) {
+				@name := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("id");
+			if(attrib <> Nil) {
+				@id := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->ELEMENT;
+		}
+		
+		method : public : GetId() ~ String {
+			return @id;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+	}
 	
 	class XsdElement from Xsd {
-		@name : String;
+		@id : String;
+		@name : String;		
 		@type : String;
 		@ref : String;
 		
@@ -255,11 +365,16 @@ bundle Default {
 		}
 		
 		New(element : XmlElement) {
-			Parent();
+			Parent(element);
 			
 			attrib := element->GetAttribute("name");
 			if(attrib <> Nil) {
 				@name := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("id");
+			if(attrib <> Nil) {
+				@id := attrib->GetValue();
 			};
 			
 			attrib := element->GetAttribute("type");
@@ -273,8 +388,16 @@ bundle Default {
 			};
 		}
 		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->COMPLEX_TYPE;
+		}
+		
 		method : public : GetName() ~ String {
 			return @name;
+		}
+		
+		method : public : GetId() ~ String {
+			return @id;
 		}
 		
 		method : public : GetType() ~ String {
