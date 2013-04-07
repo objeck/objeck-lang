@@ -37,6 +37,7 @@
 		<string>Int</string>
 		<string>Parent</string>
 		<string>from</string>
+		<string>implements</string>
 		<string>Float</string>
 		<string>Char</string>
 		<string>Bool</string>

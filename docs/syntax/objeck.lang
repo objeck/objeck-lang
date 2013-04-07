@@ -168,6 +168,7 @@
                     <keyword>Int</keyword>
                     <keyword>Parent</keyword>
                     <keyword>from</keyword>
+					<keyword>implements</keyword>
                     <keyword>Float</keyword>
                     <keyword>Char</keyword>
                     <keyword>Bool</keyword>

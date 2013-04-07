@@ -43,7 +43,7 @@ $language_data = array(
     'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
     'QUOTEMARKS' => array('"'),
     'ESCAPE_CHAR' => '\\',
-    'KEYWORDS' => array(1 => array('virtual', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'static', 'public', 'private', 'class', 'interface', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
+    'KEYWORDS' => array(1 => array('virtual', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'static', 'public', 'private', 'class', 'interface', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'implements', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
         ),
     'SYMBOLS' => array(
         1 => array(
