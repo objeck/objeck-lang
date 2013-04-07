@@ -757,7 +757,7 @@ bundle XML {
 		@type : XmlElementType;
 		@attribs : StringHash;
 		@content : String;
-		@parent : XmlElement;
+		@elem_parent : XmlElement;
 		@children : Vector;
 		
 		New(type : XmlElementType, name : String) {
@@ -862,11 +862,11 @@ bundle XML {
 		}
 		
 		method : public : GetParent() ~ XmlElement {
-			return @parent;
+			return @elem_parent;
 		}
 		
 		method : public : SetParent(parent : XmlElement) ~ Nil {
-			@parent := parent;
+			@elem_parent := parent;
 		}
 		
 		method : public : ToString() ~ String {
