@@ -1324,26 +1324,21 @@ bool ContextAnalyzer::Analyze()
 	  }
 	} 
 	else {
+	  // '@self' reference
 	  if(method_call->GetVariableName() == SELF_ID) {
 	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
 	    if(!entry->IsLocal() && !entry->IsLocal()) {
-	      const string &entry_name = entry->GetName();
-	      const size_t start = entry_name.find_last_of(':');
-	      if(start != string::npos) {
-		const string &param_name = entry_name.substr(start + 1);
-		Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(), 
-									   static_cast<Expression*>(method_call)->GetLineNumber(),
-									   param_name);
-		method_call->SetVariable(variable);
-		AnalyzeVariable(variable, depth + 1);
-	      }
+	      AddMethodParameter(method_call, entry);
 	    }
 	    else {
-	      // TODO: scope error
+	      ProcessError(static_cast<Expression*>(method_call), "Invalid '@self' reference for variable: '" +
+			   method_call->GetVariableName() + "'");
 	    }
 	  }
+	  // '@parent' reference
 	  else if(method_call->GetVariableName() == PARENT_ID) {
 	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+	    // TODO: parent check
 	  }
 	  else {	  
 	    ProcessError(static_cast<Expression*>(method_call), "Undefined enum: '" +

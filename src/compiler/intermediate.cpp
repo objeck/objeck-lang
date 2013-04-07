@@ -3521,9 +3521,16 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     if(method_call->GetEnumItem()) {
       INT_VALUE value = method_call->GetEnumItem()->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
-    } else {
-      INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+    } 
+    else {
+      // '@self' or '@parent' reference
+      if(method_call->GetVariable()) {
+	EmitVariable(method_call->GetVariable());  
+      }
+      else {
+	INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      }
     }
     is_new_inst = false;
   }
