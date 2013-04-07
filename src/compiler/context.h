@@ -964,6 +964,19 @@ class ContextAnalyzer {
       }
     }
   }
+
+  void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry) {
+    const string &entry_name = entry->GetName();
+    const size_t start = entry_name.find_last_of(':');
+    if(start != string::npos) {
+      const string &param_name = entry_name.substr(start + 1);
+      Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(), 
+								 static_cast<Expression*>(method_call)->GetLineNumber(),
+								 param_name);
+      method_call->SetVariable(variable);
+      AnalyzeVariable(variable, depth + 1);
+    }
+  }
   
   // error processing
   void ProcessError(ParseNode* n, const string &msg);
