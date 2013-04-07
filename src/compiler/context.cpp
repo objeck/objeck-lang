@@ -1336,7 +1336,7 @@ bool ContextAnalyzer::Analyze()
 	    }
 	    else {
 	      ProcessError(static_cast<Expression*>(method_call), "Invalid '@self' reference for variable: '" +
-			   method_call->GetVariableName() + "'");
+			   method_call->GetMethodName() + "'");
 	    }
 	  }
 	  // '@parent' reference
@@ -1347,7 +1347,7 @@ bool ContextAnalyzer::Analyze()
 	    }
 	    else {
 	      ProcessError(static_cast<Expression*>(method_call), "Invalid '@parent' reference for variable: '" +
-			   method_call->GetVariableName() + "'");
+			   method_call->GetMethodName() + "'");
 	    }
 	  }
 	  else {	  
