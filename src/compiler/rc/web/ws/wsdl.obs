@@ -376,6 +376,7 @@ bundle Default {
 		}
 	}
 	
+	# main link to and from elements
 	class XsdElement from Xsd {
 		@name : String;		
 		@type : String;
