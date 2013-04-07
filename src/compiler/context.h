@@ -459,21 +459,22 @@ class ContextAnalyzer {
   }
 
   // returns a symbol table entry by name
-  SymbolEntry* GetEntry(string name) {
+  SymbolEntry* GetEntry(string name, bool is_parent = false) {
     // check locally
     SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + ":" + name);
-    if(entry) {
+    if(!is_parent && entry) {
       return entry;
     } 
     else {
       // check class
       SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
       entry = table->GetEntry(current_class->GetName() + ":" + name);
-      if(entry) {
+      if(!is_parent && entry) {
         return entry;
       } 
-      else {
+      else {	
         // check parents
+	entry = NULL;
 	const string& bundle_name = bundle->GetName();
         Class* parent;
 	if(bundle_name.size() > 0) {
@@ -965,7 +966,7 @@ class ContextAnalyzer {
     }
   }
 
-  void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry) {
+  void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth) {
     const string &entry_name = entry->GetName();
     const size_t start = entry_name.find_last_of(':');
     if(start != string::npos) {
@@ -974,7 +975,7 @@ class ContextAnalyzer {
 								 static_cast<Expression*>(method_call)->GetLineNumber(),
 								 param_name);
       method_call->SetVariable(variable);
-      AnalyzeVariable(variable, depth + 1);
+      AnalyzeVariable(variable, entry, depth + 1);
     }
   }
   
@@ -1002,6 +1003,7 @@ class ContextAnalyzer {
   void AnalyzeIndices(ExpressionList* indices, const int depth);
   void AnalyzeExpressions(ExpressionList* parameters, const int depth);
   void AnalyzeExpression(Expression* expression, const int depth);
+  void AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth);
   void AnalyzeVariable(Variable* variable, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);
   void AnalyzeConditional(Cond* conditional, const int depth);

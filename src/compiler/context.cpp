@@ -1219,10 +1219,14 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a variable
    ****************************/
-  void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
+  void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth) 
+  {
+    AnalyzeVariable(variable, GetEntry(variable->GetName()), depth); 
+  }
+  
+  void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
   {
     // explicitly defined variable
-    SymbolEntry* entry = GetEntry(variable->GetName());
     if(entry) {
 #ifdef _DEBUG
       string msg = "variable reference: name='" + variable->GetName() + "' local=" +
@@ -1327,8 +1331,8 @@ bool ContextAnalyzer::Analyze()
 	  // '@self' reference
 	  if(method_call->GetVariableName() == SELF_ID) {
 	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
-	    if(!entry->IsLocal() && !entry->IsLocal()) {
-	      AddMethodParameter(method_call, entry);
+	    if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+	      AddMethodParameter(method_call, entry, depth + 1);
 	    }
 	    else {
 	      ProcessError(static_cast<Expression*>(method_call), "Invalid '@self' reference for variable: '" +
@@ -1337,8 +1341,14 @@ bool ContextAnalyzer::Analyze()
 	  }
 	  // '@parent' reference
 	  else if(method_call->GetVariableName() == PARENT_ID) {
-	    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
-	    // TODO: parent check
+	    SymbolEntry* entry = GetEntry(method_call->GetMethodName(), true);
+	    if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+	      AddMethodParameter(method_call, entry, depth + 1);
+	    }
+	    else {
+	      ProcessError(static_cast<Expression*>(method_call), "Invalid '@parent' reference for variable: '" +
+			   method_call->GetVariableName() + "'");
+	    }
 	  }
 	  else {	  
 	    ProcessError(static_cast<Expression*>(method_call), "Undefined enum: '" +
