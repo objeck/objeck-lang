@@ -142,8 +142,10 @@ bundle Default {
 					"Types: namespace={$namespace}"->PrintLine();
 					
 					children := schema->GetChildren();
-					each(i : children) {
-						XsdFactory->Make(children->Get(i)->As(XmlElement));
+					if(children <> Nil) {
+						each(i : children) {
+							XsdFactory->Make(children->Get(i)->As(XmlElement));
+						};
 					};
 #~					
 					elements := schema->FindElements("/schema/element");
@@ -282,8 +284,10 @@ bundle Default {
 		
 		method : ProcessChildren(element : XmlElement) ~ Nil {
 			children := element->GetChildren();
-			each(i : children) {
-				@children->AddBack(XsdFactory->Make(children->Get(i)->As(XmlElement)));
+			if(children <> Nil) {
+				each(i : children) {
+					@children->AddBack(XsdFactory->Make(children->Get(i)->As(XmlElement)));
+				};
 			};
 		}
 	}
