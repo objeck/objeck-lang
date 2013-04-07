@@ -263,6 +263,10 @@ bundle Default {
 			else if(name->Equals("element")) {
 "-- ELEMENT --"->PrintLine();			
 				return XsdElement->New(element);
+			}
+			else if(name->Equals("sequence")) {
+"-- SEQUENCE --"->PrintLine();			
+				return XsdSequence->New(element);
 			};
 "-- OTHER: {$name} --"->PrintLine();			
 			
@@ -271,13 +275,24 @@ bundle Default {
 	}
 		
 	class Xsd {
+		@id : String;
 		@children : Vector;
 		
 		New() {}
 		
 		New(element : XmlElement) {
 			@children := Vector->New();
+			
+			attrib := element->GetAttribute("id");
+			if(attrib <> Nil) {
+				@id := attrib->GetValue();
+			};
+			
 			ProcessChildren(element);
+		}
+		
+		method : public : GetId() ~ String {
+			return @id;
 		}
 		
 		method : virtual : public : GetXsdType() ~ XsdType;
@@ -295,42 +310,54 @@ bundle Default {
 	enum XsdType {
 		ALL,
 		COMPLEX_TYPE,
-		ELEMENT
+		ELEMENT,
+		SEQUENCE
 	}
 	
-	class XsdAll from Xsd {
-		@id : String;
-				
-		New() {
-			Parent();
-		}
+	class XsdSequence from Xsd {
+		@min_occurs : String;
+		@max_occurs : String;
 		
 		New(element : XmlElement) {
 			Parent(element);
 			
-			attrib := element->GetAttribute("id");
+			attrib := element->GetAttribute("maxOccurs");
 			if(attrib <> Nil) {
-				@id := attrib->GetValue();
+				@max_occurs := attrib->GetValue();
 			};
+			
+			attrib := element->GetAttribute("minOccurs");
+			if(attrib <> Nil) {
+				@min_occurs := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->SEQUENCE;
+		}
+		
+		method : public : GetMinOccurs() ~ String {
+			return @min_occurs;
+		}
+		
+		method : public : GetMaxOccurs() ~ String {
+			return @max_occurs;
+		}
+	}
+	
+	class XsdAll from Xsd {
+		New(element : XmlElement) {
+			Parent(element);
 		}
 		
 		method : public : GetXsdType() ~ XsdType {
 			return XsdType->ALL;
 		}
-		
-		method : public : GetId() ~ String {
-			return @id;
-		}
 	}
 	
 	class XsdComplexType from Xsd {
-		@id : String;
 		@name : String;
 				
-		New() {
-			Parent();
-		}
-		
 		New(element : XmlElement) {
 			Parent(element);
 			
@@ -338,19 +365,10 @@ bundle Default {
 			if(attrib <> Nil) {
 				@name := attrib->GetValue();
 			};
-			
-			attrib := element->GetAttribute("id");
-			if(attrib <> Nil) {
-				@id := attrib->GetValue();
-			};
 		}
 		
 		method : public : GetXsdType() ~ XsdType {
 			return XsdType->ELEMENT;
-		}
-		
-		method : public : GetId() ~ String {
-			return @id;
 		}
 		
 		method : public : GetName() ~ String {
@@ -359,14 +377,9 @@ bundle Default {
 	}
 	
 	class XsdElement from Xsd {
-		@id : String;
 		@name : String;		
 		@type : String;
 		@ref : String;
-		
-		New() {
-			Parent();
-		}
 		
 		New(element : XmlElement) {
 			Parent(element);
@@ -374,11 +387,6 @@ bundle Default {
 			attrib := element->GetAttribute("name");
 			if(attrib <> Nil) {
 				@name := attrib->GetValue();
-			};
-			
-			attrib := element->GetAttribute("id");
-			if(attrib <> Nil) {
-				@id := attrib->GetValue();
 			};
 			
 			attrib := element->GetAttribute("type");
@@ -398,10 +406,6 @@ bundle Default {
 		
 		method : public : GetName() ~ String {
 			return @name;
-		}
-		
-		method : public : GetId() ~ String {
-			return @id;
 		}
 		
 		method : public : GetType() ~ String {
