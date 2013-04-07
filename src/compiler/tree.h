@@ -52,6 +52,8 @@
 #include <mcheck.h>
 #endif
 
+#define SELF_ID "@self"
+#define PARENT_ID "@parent"
 #define BOOL_CLASS_ID "System.$Bool"
 #define BYTE_CLASS_ID "System.$Byte"
 #define INT_CLASS_ID "System.$Int"
@@ -2368,6 +2370,10 @@ namespace frontend {
 
     Variable* GetVariable() {
       return variable;
+    }
+
+    void SetVariable(Variable* v) {
+      variable = v;
     }
 
     SymbolEntry* GetEntry() {
