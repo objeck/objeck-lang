@@ -772,7 +772,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 
       StackClass* impl_class = MemoryManager::GetClass(instance);
       if(!impl_class) {
-        cerr << ">>> Attempting to envoke a virtual method! <<<" << endl;
+        cerr << ">>> Invalid instance reference! ref=" << instance << " << " << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
 	return;
@@ -1713,7 +1713,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((long*)instance);
     if(!impl_class) {
-      cerr << ">>> Internal error: Attempting to envoke a virtual method! <<<" << endl;
+      cerr << ">>> Invalid instance reference! ref=" << instance << " << " << endl;
       StackErrorUnwind();
       exit(-1);
     }

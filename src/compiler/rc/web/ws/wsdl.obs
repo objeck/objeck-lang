@@ -15,6 +15,17 @@ bundle Default {
 			if(args->Size() > 0) {
 				wsdl := Wsdl->New(args[0]);
 				wsdl->Foo();
+				
+				"-----------------------------------------------\n"->PrintLine();
+				
+				keys := wsdl->GetKeys();
+				if(keys->Size() > 0) {
+					"Named type(s):"->PrintLine();
+					each(i : keys) {
+						key := keys->Get(i)->As(String);
+						"  type='{$key}'"->PrintLine();
+					};
+				};
 			};
 		}
 		
@@ -27,6 +38,10 @@ bundle Default {
 		}
 		
 		method : public : Foo() ~ Nil {
+		}
+		
+		method : public : GetKeys() ~ Vector {
+			return @types->GetKeys();
 		}
 		
 		function : GetName(name : String) ~ String {
@@ -343,7 +358,8 @@ bundle Default {
 				buffer->Append(" minOccurs='");
 				buffer->Append(@min_occurs);
 				buffer->Append("'");
-			};			
+			};
+			
 			if(@max_occurs <> Nil) {
 				buffer->Append(" maxOccurs='");
 				buffer->Append(@max_occurs);
@@ -353,7 +369,10 @@ bundle Default {
 			
 			if(@children->Size() > 0) {
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
 				};				
 			};
 			
@@ -379,7 +398,10 @@ bundle Default {
 			
 			if(@children->Size() > 0) {
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
 				};
 			};
 		
@@ -424,7 +446,10 @@ bundle Default {
 			
 			if(@children->Size() > 0) {
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
 				};
 			};
 			
@@ -485,11 +510,13 @@ bundle Default {
 				buffer->Append(@ref);
 				buffer->Append("'");
 			};
+			
 			if(@name <> Nil) {
 				buffer->Append(" name='");
 				buffer->Append(@name);
 				buffer->Append("'");
 			};
+			
 			if(@type <> Nil) {
 				type := Wsdl->GetName(@type);
 				buffer->Append(" type='");
@@ -500,7 +527,10 @@ bundle Default {
 			
 			if(@children->Size() > 0) {
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
 				};
 			};
 			
