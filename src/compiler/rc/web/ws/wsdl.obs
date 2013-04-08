@@ -144,7 +144,8 @@ bundle Default {
 					children := schema->GetChildren();
 					if(children <> Nil) {
 						each(i : children) {
-							XsdFactory->Make(children->Get(i)->As(XmlElement));
+							child := XsdFactory->Make(children->Get(i)->As(XmlElement));
+							child->ToString()->PrintLine();
 						};
 					};
 #~					
@@ -253,23 +254,19 @@ bundle Default {
 		function : Make(element : XmlElement) ~ Xsd {
 			name := element->GetName();
 			if(name->Equals("all")) {
-"-- ALL --"->PrintLine();			
 				return XsdAll->New(element);
 			}
 			else if(name->Equals("complexType")) {
-"-- COMPLEX --"->PrintLine();
 				return XsdComplexType->New(element);
 			}
 			else if(name->Equals("element")) {
-"-- ELEMENT --"->PrintLine();			
 				return XsdElement->New(element);
 			}
 			else if(name->Equals("sequence")) {
-"-- SEQUENCE --"->PrintLine();			
 				return XsdSequence->New(element);
 			};
-"-- OTHER: {$name} --"->PrintLine();			
 			
+"-- OTHER: {$name} --"->PrintLine();						
 			return Nil;
 		}
 	}
@@ -305,6 +302,8 @@ bundle Default {
 				};
 			};
 		}
+		
+		method : virtual : public : ToString() ~ String;
 	}
 	
 	enum XsdType {
@@ -343,6 +342,31 @@ bundle Default {
 		method : public : GetMaxOccurs() ~ String {
 			return @max_occurs;
 		}
+		
+		method : public : ToString() ~ String {
+			buffer := "<sequence";			
+			if(@min_occurs <> Nil) {
+				buffer->Append(" minOccurs='");
+				buffer->Append(@min_occurs);
+				buffer->Append("'");
+			};			
+			if(@max_occurs <> Nil) {
+				buffer->Append(" maxOccurs='");
+				buffer->Append(@max_occurs);
+				buffer->Append("'");
+			};
+			buffer->Append("/>");
+			
+			if(@children->Size() > 0) {
+				buffer->Append("[");
+				each(i : @children) {
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+				};
+				buffer->Append("]");
+			};
+			
+			return buffer;
+		}
 	}
 	
 	class XsdAll from Xsd {
@@ -353,8 +377,23 @@ bundle Default {
 		method : public : GetXsdType() ~ XsdType {
 			return XsdType->ALL;
 		}
+		
+		method : public : ToString() ~ String {
+			buffer := "<all/>";
+			
+			if(@children->Size() > 0) {
+				buffer->Append("[");
+				each(i : @children) {
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+				};
+				buffer->Append("]");
+			};
+		
+			return buffer;
+		}
 	}
 	
+	# define a type that may be referenced
 	class XsdComplexType from Xsd {
 		@name : String;
 				
@@ -373,6 +412,26 @@ bundle Default {
 		
 		method : public : GetName() ~ String {
 			return @name;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "<complexType";			
+			if(@name <> Nil) {
+				buffer->Append(" name='");
+				buffer->Append(@name);
+				buffer->Append("'");
+			};
+			buffer->Append("/>");
+			
+			if(@children->Size() > 0) {
+				buffer->Append("[");
+				each(i : @children) {
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+				};
+				buffer->Append("]");
+			};
+			
+			return buffer;
 		}
 	}
 	
@@ -415,6 +474,36 @@ bundle Default {
 		
 		method : public : GetRef() ~ String {
 			return @ref;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "<complexType";			
+			if(@ref <> Nil) {
+				buffer->Append(" ref='");
+				buffer->Append(@ref);
+				buffer->Append("'");
+			};
+			if(@name <> Nil) {
+				buffer->Append(" name='");
+				buffer->Append(@name);
+				buffer->Append("'");
+			};
+			if(@type <> Nil) {
+				buffer->Append(" type='");
+				buffer->Append(@type);
+				buffer->Append("'");
+			};
+			buffer->Append("/>");
+			
+			if(@children->Size() > 0) {
+				buffer->Append("[");
+				each(i : @children) {
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+				};
+				buffer->Append("]");
+			};
+			
+			return buffer;
 		}
 	}
 }
