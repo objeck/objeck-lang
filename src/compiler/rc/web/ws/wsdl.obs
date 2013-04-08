@@ -147,31 +147,7 @@ bundle Default {
 							child := XsdFactory->Make(children->Get(i)->As(XmlElement));
 							child->ToString()->PrintLine();
 						};
-					};
-#~					
-					elements := schema->FindElements("/schema/element");
-					if(elements <> Nil) {
-						each(i : elements) {
-							element := elements->Get(i)->As(XmlElement);
-							xsd_element := XsdElement->New(element);
-							name := xsd_element->GetName();
-							if(name <> Nil & @elements->Has(name)) {
-								"\telement: name={$name}"->PrintLine();
-							};
-						};
-					};
-					
-					elements := schema->FindElements("/schema/complexType");
-					if(elements <> Nil) {
-						each(i : elements) {
-							element := elements->Get(i)->As(XmlElement);
-							name := element->GetAttribute("name")->GetValue();
-							if(@elements->Has(name)) {
-								"\telement: name={$name}"->PrintLine();
-							};
-						};					
-					};
-~#					
+					};				
 				};
 			};
 		}
