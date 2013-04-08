@@ -145,7 +145,7 @@ bundle Default {
 					if(children <> Nil) {
 						each(i : children) {
 							child := XsdFactory->Make(children->Get(i)->As(XmlElement));
-							child->ToString()->PrintLine();
+							child->ToString(0)->PrintLine();
 						};
 					};				
 				};
@@ -279,7 +279,7 @@ bundle Default {
 			};
 		}
 		
-		method : virtual : public : ToString() ~ String;
+		method : virtual : public : ToString(offset : Int) ~ String;
 	}
 	
 	enum XsdType {
@@ -319,8 +319,13 @@ bundle Default {
 			return @max_occurs;
 		}
 		
-		method : public : ToString() ~ String {
-			buffer := "<sequence";			
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append('\t');
+			};
+			
+			buffer->Append("<sequence");			
 			if(@min_occurs <> Nil) {
 				buffer->Append(" minOccurs='");
 				buffer->Append(@min_occurs);
@@ -331,14 +336,12 @@ bundle Default {
 				buffer->Append(@max_occurs);
 				buffer->Append("'");
 			};
-			buffer->Append("/>");
+			buffer->Append("/>\n");
 			
 			if(@children->Size() > 0) {
-				buffer->Append("[");
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
-				};
-				buffer->Append("]");
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
+				};				
 			};
 			
 			return buffer;
@@ -354,15 +357,17 @@ bundle Default {
 			return XsdType->ALL;
 		}
 		
-		method : public : ToString() ~ String {
-			buffer := "<all/>";
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append('\t');
+			};
+			buffer->Append("<all/>\n");
 			
 			if(@children->Size() > 0) {
-				buffer->Append("[");
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
 				};
-				buffer->Append("]");
 			};
 		
 			return buffer;
@@ -390,21 +395,24 @@ bundle Default {
 			return @name;
 		}
 		
-		method : public : ToString() ~ String {
-			buffer := "<complexType";			
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append('\t');
+			};		
+			buffer->Append("<complexType");
+			
 			if(@name <> Nil) {
 				buffer->Append(" name='");
 				buffer->Append(@name);
 				buffer->Append("'");
 			};
-			buffer->Append("/>");
+			buffer->Append("/>\n");
 			
 			if(@children->Size() > 0) {
-				buffer->Append("[");
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
 				};
-				buffer->Append("]");
 			};
 			
 			return buffer;
@@ -452,8 +460,13 @@ bundle Default {
 			return @ref;
 		}
 		
-		method : public : ToString() ~ String {
-			buffer := "<complexType";			
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append('\t');
+			};		
+			buffer->Append("<complexType");
+			
 			if(@ref <> Nil) {
 				buffer->Append(" ref='");
 				buffer->Append(@ref);
@@ -469,14 +482,12 @@ bundle Default {
 				buffer->Append(@type);
 				buffer->Append("'");
 			};
-			buffer->Append("/>");
+			buffer->Append("/>\n");
 			
 			if(@children->Size() > 0) {
-				buffer->Append("[");
 				each(i : @children) {
-					buffer->Append(@children->Get(i)->As(Xsd)->ToString());
+					buffer->Append(@children->Get(i)->As(Xsd)->ToString(offset + 1));
 				};
-				buffer->Append("]");
 			};
 			
 			return buffer;
