@@ -9,6 +9,7 @@ bundle Default {
 		@binding_type : String;
 		@messages : CompareVector;
 		@elements : CompareVector;
+		@types : StringMap;
 		
 		function : Main(args : String[]) ~ Nil {
 			if(args->Size() > 0) {
@@ -20,6 +21,8 @@ bundle Default {
 		New(name : String) {
 			@messages := CompareVector->New();
 			@elements := CompareVector->New();
+			@types := StringMap->New();
+			
 			Parse(name);
 		}
 		
@@ -139,12 +142,12 @@ bundle Default {
 				if(schemas <> Nil & schemas->Size() > 0) {
 					schema := schemas->Get(0)->As(XmlElement);
 					namespace := schema->GetAttribute("targetNamespace")->GetValue();
-					"Types: namespace={$namespace}"->PrintLine();
-					
+					"\n-----------------------------------------------\n"->PrintLine();
+					"Types: namespace='{$namespace}'"->PrintLine();					
 					children := schema->GetChildren();
 					if(children <> Nil) {
 						each(i : children) {
-							child := XsdFactory->Make(children->Get(i)->As(XmlElement));
+							child := XsdFactory->Make(children->Get(i)->As(XmlElement), @types);
 							child->ToString(0)->PrintLine();
 						};
 					};				
@@ -228,12 +231,22 @@ bundle Default {
 	
 	class XsdFactory {
 		function : Make(element : XmlElement) ~ Xsd {
+			return Make(element, Nil);
+		}
+		
+		function : Make(element : XmlElement, types : StringMap) ~ Xsd {
 			name := element->GetName();
 			if(name->Equals("all")) {
 				return XsdAll->New(element);
 			}
 			else if(name->Equals("complexType")) {
-				return XsdComplexType->New(element);
+				complex_type := XsdComplexType->New(element);
+				name := complex_type->GetName();
+				if(types <> Nil & name <> Nil) {					
+					"--- Added '{$name}' ---"->PrintLine();
+					types->Insert(name, complex_type);
+				};				
+				return complex_type;
 			}
 			else if(name->Equals("element")) {
 				return XsdElement->New(element);
@@ -322,7 +335,7 @@ bundle Default {
 		method : public : ToString(offset : Int) ~ String {
 			buffer := "";
 			for(i := 0; i < offset; i += 1;) {
-				buffer->Append('\t');
+				buffer->Append("  ");
 			};
 			
 			buffer->Append("<sequence");			
@@ -360,7 +373,7 @@ bundle Default {
 		method : public : ToString(offset : Int) ~ String {
 			buffer := "";
 			for(i := 0; i < offset; i += 1;) {
-				buffer->Append('\t');
+				buffer->Append("  ");
 			};
 			buffer->Append("<all/>\n");
 			
@@ -398,7 +411,7 @@ bundle Default {
 		method : public : ToString(offset : Int) ~ String {
 			buffer := "";
 			for(i := 0; i < offset; i += 1;) {
-				buffer->Append('\t');
+				buffer->Append("  ");
 			};		
 			buffer->Append("<complexType");
 			
@@ -440,7 +453,7 @@ bundle Default {
 			
 			attrib := element->GetAttribute("ref");
 			if(attrib <> Nil) {
-				@type := attrib->GetValue();
+				@ref := attrib->GetValue();
 			};
 		}
 		
@@ -463,7 +476,7 @@ bundle Default {
 		method : public : ToString(offset : Int) ~ String {
 			buffer := "";
 			for(i := 0; i < offset; i += 1;) {
-				buffer->Append('\t');
+				buffer->Append("  ");
 			};		
 			buffer->Append("<complexType");
 			
@@ -478,8 +491,9 @@ bundle Default {
 				buffer->Append("'");
 			};
 			if(@type <> Nil) {
+				type := Wsdl->GetName(@type);
 				buffer->Append(" type='");
-				buffer->Append(@type);
+				buffer->Append(type);
 				buffer->Append("'");
 			};
 			buffer->Append("/>\n");
