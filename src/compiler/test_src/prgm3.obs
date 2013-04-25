@@ -49,14 +49,22 @@ bundle Default {
 #			ii[0,1,1]->PrintLine();
 #			ii[1,1,1]->PrintLine();
 
-			ii[0,0,0]->PrintLine();
-			ii[1,0,0]->PrintLine();
-			ii[0,1,0]->PrintLine();
-			ii[0,0,1]->PrintLine();
-			ii[1,0,1]->PrintLine();
-			ii[1,1,0]->PrintLine();
-			ii[0,1,1]->PrintLine();
-			ii[1,1,1]->PrintLine();
+			a := ii[0,0,0];
+			a->As(Int)->PrintLine();
+			a := ii[1,0,0];
+			a->As(Int)->PrintLine();
+			a := ii[0,1,0];
+			a->As(Int)->PrintLine();
+			a := ii[0,0,1];
+			a->As(Int)->PrintLine();
+			a := ii[1,0,1];
+			a->As(Int)->PrintLine();
+			a := ii[1,1,0];
+			a->As(Int)->PrintLine();
+			a := ii[0,1,1];
+			a->As(Int)->PrintLine();
+			a := ii[1,1,1];
+			a->As(Int)->PrintLine();
 
 #			ss->PrintLine();
 		}

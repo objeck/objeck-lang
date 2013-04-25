@@ -13,7 +13,6 @@ bundle Default {
 			b : Int := 13;
 			(b-9.33)->PrintLine();
 
-#~
 			x := 1;
 			x += (8 * 2);
 			x->PrintLine();
@@ -43,7 +42,7 @@ bundle Default {
 			(9 % a)->PrintLine();
 			(a % 9)->PrintLine();
 
-			b : Int := 13;
+			b := 13;
 			(a-b)->PrintLine();
 			(b-a)->PrintLine();
 			(13.5 - 5.0)->PrintLine();
@@ -67,7 +66,6 @@ bundle Default {
 
 			(g-h)->PrintLine();
 			(h-g)->PrintLine();		
-~#
 		}
 	}
 }
