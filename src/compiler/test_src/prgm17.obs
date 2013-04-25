@@ -49,7 +49,7 @@ bundle Default {
 			(f->GetFloat2() + 3)->PrintLine();
 			(f->GetInt2() + 3)->PrintLine();
 			f->GetFloat()->PrintLine();		
-			bb[0,1]->PrintLine();
+#			bb[0,1]->PrintLine();
 			# f->GetFloat2();
 			f->GetFloat2()->PrintLine();		
 		}
