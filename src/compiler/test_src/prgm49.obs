@@ -22,7 +22,8 @@ bundle Default {
       reserved->Insert("bundle"->As(Compare), "keyword: bundle"->As(Base));
       reserved->Insert("native"->As(Compare), "keyword: native"->As(Base));
 
-      reader := FileReader->New("../compiler/test_src/prgm1.obs");
+#      reader := FileReader->New("../compiler/test_src/prgm1.obs");
+  reader := FileReader->New("/Users/randy/Documents/Code/main/src/compiler/test_src/prgm1.obs");
       line_num := 0;
       while(reader->IsEOF() <> true) {
         line := reader->ReadString();
