@@ -1,25 +1,7 @@
-﻿class Fie {
-	@id : Int;
-	New() { @id := 13; }
-}
-
-class Foo from Fie {
-	@id : Int;
-	New() { Parent(); @id := 7; }
-
-	method : public : GetMyId() ~ Int {
-		return @self->@id;
-	}
-	
-	method : public : GetParentId() ~ Int {
-		return @parent->@id;
-	}
-}
-
-class Fum {
+﻿class Fum {
 	function : Main(args : String[]) ~ Nil {
-		b := Foo->New();
-		(b->GetMyId() + b->GetParentId())->PrintLine();
+		ii : Int[,] := [[2,3][4,5][6,7][8,9]];
+      ii[1,1]->PrintLine();
 	}
 }
 
