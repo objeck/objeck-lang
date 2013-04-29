@@ -1,27 +1,10 @@
 ﻿bundle Default {
 	class Hello {
 		function : Main(args : String[]) ~ Nil {
-			while(false) {
-				while(false) {
-					select(0) {
-						other: {
-							if(false) {
-								"-f-"->PrintLine();
-							} else {
-								"-t-"->PrintLine();
-							};
-						}
-
-						label 1: {	
-							"-1-"->PrintLine();
-						}
-
-						label 2: {	
-							"-2-"->PrintLine();
-						}
-					};
-				};
-			};
+			a := 13;
+			b := "Hello";
+			c := a + b->Size();
+			c->PrintLine();
 		}
 	}
 }
