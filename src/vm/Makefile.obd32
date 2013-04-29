@@ -1,6 +1,6 @@
-# ARGS=-g -D_DEBUG -D_DEBUGGER -pthread -Wall
-ARGS=-O3 -Wall -D_DEBUGGER -pthread -Wall
-# ARGS=-g -Wall -D_DEBUGGER -pthread -Wall
+ARGS=-g -pthread -Wall -D_DEBUG -D_DEBUGGER -D_NO_JIT
+# ARGS=-O3 -pthread -Wall -D_DEBUGGER -D_NO_JIT
+# ARGS=-g -pthread -Wall -D_DEBUGGER -D_NO_JIT
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
