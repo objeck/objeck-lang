@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -29,6 +29,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 #include "compiler.h"
 
 using namespace std;
@@ -42,101 +46,110 @@ using namespace std;
  * Starts the compilation
  * process.
  ****************************/
-int Compile(map<const string, string> &arguments, list<string> &argument_options, const string usage)
+int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_options, const wstring usage)
 {
+  // set UTF-8 environment
+#ifdef _WIN32
+  _setmode(_fileno(stdout), _O_U16TEXT);
+#else
+  setlocale(LC_ALL, "");
+  setlocale(LC_CTYPE, "UTF-8");
+#endif
+  
   // check source input
-  string run_string;
-  map<const string, string>::iterator result = arguments.find("src");
+  wstring run_string;
+  map<const wstring, wstring>::iterator result = arguments.find(L"src");
   if(result == arguments.end()) {
-    result = arguments.find("run");
+    result = arguments.find(L"run");
     if(result == arguments.end()) {
-      cerr << usage << endl << endl;
+      wcerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
-    run_string = "bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
-    run_string += arguments["run"];
-    run_string += "} } }";
-    argument_options.remove("run");
+    run_string = L"bundle Default { class Run { function : Main(args : wstring[]) ~ Nil {";
+    run_string += arguments[L"run"];
+    run_string += L"} } }";
+    argument_options.remove(L"run");
   }
   else {
-    argument_options.remove("src");
+    argument_options.remove(L"src");
   }
   
   // check program output
-  result = arguments.find("dest");
+  result = arguments.find(L"dest");
   if(result == arguments.end()) {
-    cerr << usage << endl << endl;
+    wcerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
-  argument_options.remove("dest");
+  argument_options.remove(L"dest");
   
   // check program libraries path
-  string sys_lib_path;
+  wstring sys_lib_path;
   const char* sys_lib_env_path = getenv("OBJECK_LIBS");
   if(sys_lib_env_path) {
-    sys_lib_path = sys_lib_env_path;
-    sys_lib_path += "/lang.obl";
+    string temp = sys_lib_env_path;
+    sys_lib_path.append(temp.begin(), temp.end());
+    sys_lib_path += L"/lang.obl";
   }
   else {
-    sys_lib_path = "lang.obl";
+    sys_lib_path = L"lang.obl";
   }
   
-  result = arguments.find("lib");
+  result = arguments.find(L"lib");
   if(result != arguments.end()) {
-    sys_lib_path += "," + result->second;
-    argument_options.remove("lib");
+    sys_lib_path += L"," + result->second;
+    argument_options.remove(L"lib");
   }
   
   // check for optimize flag
-  string optimize;
-  result = arguments.find("opt");
+  wstring optimize;
+  result = arguments.find(L"opt");
   if(result != arguments.end()) {
     optimize = result->second;
-    if(optimize != "s0" && optimize != "s1" && optimize != "s2" && optimize != "s3") {
-      cerr << usage << endl << endl;
+    if(optimize != L"s0" && optimize != L"s1" && optimize != L"s2" && optimize != L"s3") {
+      wcerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
-    argument_options.remove("opt");
+    argument_options.remove(L"opt");
   }
   
   // check program libraries path
-  string target;
-  result = arguments.find("tar");
+  wstring target;
+  result = arguments.find(L"tar");
   if(result != arguments.end()) {
     target = result->second;
-    if(target != "lib" && target != "web" && target != "exe") {
-      cerr << usage << endl << endl;
+    if(target != L"lib" && target != L"web" && target != L"exe") {
+      wcerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
-    argument_options.remove("tar");
+    argument_options.remove(L"tar");
   }
   
   // check for debug flag
   bool is_debug = false;
-  result = arguments.find("debug");
+  result = arguments.find(L"debug");
   if(result != arguments.end()) {
     is_debug = true;
-    argument_options.remove("debug");
+    argument_options.remove(L"debug");
   }
 
   if(argument_options.size() != 0) {
-    cerr << usage << endl << endl;
+    wcerr << usage << endl << endl;
     return COMMAND_ERROR;
   }
-
-  // parse source code
-  Parser parser(arguments["src"], run_string);
+  
+  // parse source code  
+  Parser parser(arguments[L"src"], run_string);
   if(parser.Parse()) {
     bool is_lib = false;
     bool is_web = false;
     
-    if(target == "lib") {
+    if(target == L"lib") {
       is_lib = true;
     }
-    else if(target == "web") {
+    else if(target == L"web") {
       is_web = true;
     }
-    
+  
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
     ContextAnalyzer analyzer(program, sys_lib_path, is_lib, is_web);
@@ -145,12 +158,11 @@ int Compile(map<const string, string> &arguments, list<string> &argument_options
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments["opt"]);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"]);
       optimizer.Optimize();
       // emit target code
-      TargetEmitter target(optimizer.GetProgram(), is_lib, is_web, arguments["dest"]);;
+      TargetEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);;
       target.Emit();
-      
       return SUCCESS;
     }
     else {

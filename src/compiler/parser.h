@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -38,7 +38,7 @@ using namespace frontend;
 
 #define SECOND_INDEX 1
 #define THIRD_INDEX 2
-#define DEFAULT_BUNDLE_NAME "Default"
+#define DEFAULT_BUNDLE_NAME L"Default"
 
 /****************************
  * Parsers source files.
@@ -50,20 +50,20 @@ class Parser {
   Method* current_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
-  map<TokenType, string> error_msgs;
-  map<int, string> errors;
-  string src_path;
-  string run_prgm;
+  map<ScannerTokenType, wstring> error_msgs;
+  map<int, wstring> errors;
+  wstring src_path;
+  wstring run_prgm;
   
   inline void NextToken() {
     scanner->NextToken();
   }
 
-  inline bool Match(TokenType type, int index = 0) {
+  inline bool Match(ScannerTokenType type, int index = 0) {
     return scanner->GetToken(index)->GetType() == type;
   }
 
-  inline bool IsBasicType(TokenType type) {
+  inline bool IsBasicType(ScannerTokenType type) {
     switch(GetToken()) {
     case TOKEN_BOOLEAN_ID:
     case TOKEN_BYTE_ID:
@@ -79,7 +79,7 @@ class Parser {
     return false;
   }
 
-  inline TokenType GetToken(int index = 0) {
+  inline ScannerTokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
   }
 
@@ -87,47 +87,47 @@ class Parser {
     return scanner->GetToken()->GetLineNumber();
   }
 
-  inline const string GetFileName() {
+  inline const wstring GetFileName() {
     return scanner->GetToken()->GetFileName();
   }
 
-  inline const string GetScopeName(const string &ident) {
-    string scope_name;
+  inline const wstring GetScopeName(const wstring &ident) {
+    wstring scope_name;
     if(current_method) {
-      scope_name = current_method->GetName() + ":" + ident;
+      scope_name = current_method->GetName() + L":" + ident;
     } else {
-      scope_name = current_class->GetName() + ":" + ident;
+      scope_name = current_class->GetName() + L":" + ident;
     }
 
     return scope_name;
   }
 
-  void Show(const string &msg, int depth) {
-    cout << setw(4) << GetLineNumber() << ": ";
+  void Show(const wstring &msg, int depth) {
+    wcout << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; i++) {
-      cout << "  ";
+      wcout << L"  ";
     }
-    cout << msg << endl;
+    wcout << msg << endl;
   }
 
-  inline string ToString(int v) {
-    ostringstream str;
+  inline wstring ToString(int v) {
+    wostringstream str;
     str << v;
     return str.str();
   }
 
-  inline string ParseBundleName() {
-    string name;
+  inline wstring ParseBundleName() {
+    wstring name;
     if(Match(TOKEN_IDENT)) {
       while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
         name += scanner->GetToken()->GetIdentifier();
         NextToken();
         if(Match(TOKEN_PERIOD)) {
-          name += '.';
+          name += L'.';
           NextToken();
         }
 	else if(Match(TOKEN_IDENT)) {
-	  ProcessError("Expected period", TOKEN_SEMI_COLON);
+	  ProcessError(L"Expected period", TOKEN_SEMI_COLON);
 	  NextToken();
 	}
       }
@@ -141,23 +141,23 @@ class Parser {
 
   // error processing
   void LoadErrorCodes();
-  void ProcessError(const TokenType type);
-  void ProcessError(const string &msg);
-  void ProcessError(const string &msg, ParseNode* node);
-  void ProcessError(const string &msg, const TokenType sync);
+  void ProcessError(const ScannerTokenType type);
+  void ProcessError(const wstring &msg);
+  void ProcessError(const wstring &msg, ParseNode* node);
+  void ProcessError(const wstring &msg, const ScannerTokenType sync);
   bool CheckErrors();
 
   // parsing operations
-  void ParseFile(const string& file_name);
+  void ParseFile(const wstring& file_name);
   void ParseProgram();
   void ParseBundle(int depth);
-  string ParseBundleName(int depth);
-  Class* ParseClass(const string &bundle_id, int depth);
-  Class* ParseInterface(const string &bundle_id, int depth);
+  wstring ParseBundleName(int depth);
+  Class* ParseClass(const wstring &bundle_id, int depth);
+  Class* ParseInterface(const wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Variable* ParseVariable(const string &ident, int depth);
+  Variable* ParseVariable(const wstring &ident, int depth);
   MethodCall* ParseMethodCall(int depth);
-  MethodCall* ParseMethodCall(const string &ident, int depth);
+  MethodCall* ParseMethodCall(const wstring &ident, int depth);
   void ParseMethodCall(Expression* expression, int depth);
   MethodCall* ParseMethodCall(Variable* variable, int depth);
   StatementList* ParseStatementList(int depth);
@@ -173,10 +173,10 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
-  Declaration* ParseDeclaration(const string &ident, int depth);
+  Declaration* ParseDeclaration(const wstring &ident, int depth);
   DeclarationList* ParseDecelerationList(int depth);
-  ExpressionList* ParseExpressionList(int depth, TokenType open = TOKEN_OPEN_PAREN,
-                                      TokenType close = TOKEN_CLOSED_PAREN);
+  ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
+                                      ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
   void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);
@@ -187,10 +187,10 @@ class Parser {
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
 
-public:
-  Parser(const string &p, const string &r) {
+ public:
+  Parser(const wstring &p, const wstring &r) {
     src_path = p;
-    run_prgm = r;
+    run_prgm = wstring(r.begin(), r.end());
     program = new ParsedProgram;
     LoadErrorCodes();
     current_class = NULL;

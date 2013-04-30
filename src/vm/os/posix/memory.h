@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM memory manager. Implements a simple "mark and sweep" collection algorithm.
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -155,7 +155,7 @@ public:
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
   
-  static long* AllocateObject(const char* obj_name, long* op_stack, 
+  static long* AllocateObject(const wchar_t* obj_name, long* op_stack, 
 			      long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {

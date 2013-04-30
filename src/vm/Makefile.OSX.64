@@ -1,6 +1,5 @@
-# ARGS=-g -Wall -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_JIT_SERIAL -D_DEBUG 
-# ARGS=-g -Wall -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_JIT_SERIAL -D_DTIMING 
-ARGS=-O3 -Wall -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_JIT_SERIAL
+# ARGS=-g -Wall -Wno-unused-function -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_NO_JIT -D_DEBUG 
+ARGS=-O3 -Wall -Wno-unused-function -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_NO_JIT
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 

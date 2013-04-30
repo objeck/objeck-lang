@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -40,11 +40,15 @@
 #include "intermediate.h"
 #include "optimization.h"
 #include "target.h"
+
 #include <list>
+#include <vector>
+#include <map>
+#include <string>
 
 extern "C"
 {
-  int Compile(map<const string, string> &arguments, list<string> &argument_options, const string usage);
+  int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_options, const wstring usage);
 }
 
 #endif

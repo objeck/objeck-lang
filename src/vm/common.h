@@ -1,33 +1,33 @@
 /***************************************************************************
- * Defines the VM execution model.
- *
- * Copyright (c) 2008-2013, Randy Hollines
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * - Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck Team nor the names of its
- * contributors may be used to endorse or promote products derived
- * from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
- * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ***************************************************************************/
+* Defines the VM execution model.
+*
+* Copyright (c) 2008-2013, Randy Hollines
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* - Redistributions of source code must retain the above copyright
+* notice, this list of conditions and the following disclaimer.
+* - Redistributions in binary form must reproduce the above copyright
+* notice, this list of conditions and the following disclaimer in
+* the documentation and/or other materials provided with the distribution.
+* - Neither the name of the Objeck Team nor the names of its
+* contributors may be used to endorse or promote products derived
+* from this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+***************************************************************************/
 
 #ifndef __COMMON_H__
 #define __COMMON_H__
@@ -44,7 +44,6 @@
 #include <string>
 #include <string.h>
 #include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <time.h>
 #include "../shared/instrs.h"
@@ -79,26 +78,26 @@ using namespace instructions;
 
 class StackClass;
 
-inline string IntToString(int v)
+inline wstring IntToString(int v)
 {
-  ostringstream str;
+  wostringstream str;
   str << v;
   return str.str();
 }
 
 /********************************
- * StackDclr struct
- ********************************/
+* StackDclr struct
+********************************/
 struct StackDclr 
 {
-  string name;
+  wstring name;
   ParamType type;
   long id;
 };
 
 /********************************
- * StackInstr class
- ********************************/
+* StackInstr class
+********************************/
 class StackInstr 
 {
   InstructionType type;
@@ -108,8 +107,8 @@ class StackInstr
   FLOAT_VALUE float_operand;
   long native_offset;
   int line_num;
-  
- public:
+
+public:
   StackInstr(int l, InstructionType t) {
     line_num = l;
     type = t;
@@ -200,16 +199,16 @@ class StackInstr
 };
 
 /********************************
- * JIT compile code
- ********************************/
+* JIT compile code
+********************************/
 class NativeCode 
 {
-  BYTE_VALUE* code;
+  unsigned char* code;
   long size;
   FLOAT_VALUE* floats;
 
- public:
-  NativeCode(BYTE_VALUE* c, long s, FLOAT_VALUE* f) {
+public:
+  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f) {
     code = c;
     size = s;
     floats = f;
@@ -217,7 +216,6 @@ class NativeCode
 
   ~NativeCode() {
 #ifdef _WIN32
-    // TODO: needs to be fixed... hard to debug
     free(code);
     code = NULL;
 #endif
@@ -235,25 +233,25 @@ class NativeCode
     floats = NULL;
   }
 
-  BYTE_VALUE* GetCode() const {
+  unsigned char* GetCode() const {
     return code;
   }
 
   long GetSize() {
     return size;
   }
-  
+
   FLOAT_VALUE* GetFloats() const {
     return floats;
   }
 };
 
 /********************************
- * StackMethod class
- ********************************/
+* StackMethod class
+********************************/
 class StackMethod {
   long id;
-  string name;
+  wstring name;
   bool is_virtual;
   bool has_and_or;
   StackInstr** instrs;  
@@ -271,13 +269,13 @@ class StackMethod {
 #else 
   static pthread_mutex_t virtual_mutex;
 #endif
-  static unordered_map<string, StackMethod*> virutal_cache;
-  
-  const string& ParseName(const string &name) const {
+  static unordered_map<wstring, StackMethod*> virutal_cache;
+
+  const wstring& ParseName(const wstring &name) const {
     int state;
     size_t index = name.find_last_of(':');
     if(index > 0) {
-      string params_name = name.substr(index + 1);
+      wstring params_name = name.substr(index + 1);
 
       // check return type
       index = 0;
@@ -285,9 +283,9 @@ class StackMethod {
 #ifdef _DEBUG
         ParamType param;
 #endif
-	
+
         switch(params_name[index]) {
-	  // bool
+          // bool
         case 'l':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -296,7 +294,7 @@ class StackMethod {
           index++;
           break;
 
-	  // byte
+          // byte
         case 'b':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -305,7 +303,7 @@ class StackMethod {
           index++;
           break;
 
-	  // int
+          // int
         case 'i':
 #ifdef _DEBUG
           param = INT_PARM;
@@ -314,7 +312,7 @@ class StackMethod {
           index++;
           break;
 
-	  // float
+          // float
         case 'f':
 #ifdef _DEBUG
           param = FLOAT_PARM;
@@ -323,16 +321,16 @@ class StackMethod {
           index++;
           break;
 
-	  // char
+          // char
         case 'c':
 #ifdef _DEBUG
-          param = INT_PARM;
+          param = CHAR_PARM;
 #endif
           state = 4;
           index++;
           break;
 
-	  // obj
+          // obj
         case 'o':
 #ifdef _DEBUG
           param = OBJ_PARM;
@@ -344,8 +342,8 @@ class StackMethod {
           }
           break;
 
-	  // func
-	case 'm':
+          // func
+        case 'm':
 #ifdef _DEBUG
           param = FUNC_PARM;
 #endif
@@ -354,18 +352,18 @@ class StackMethod {
           while(index < params_name.size() && params_name[index] != '~') {
             index++;
           }
-	  while(index < params_name.size() && params_name[index] != ',') {
+          while(index < params_name.size() && params_name[index] != ',') {
             index++;
           }
           break;
-	  
-	default:
+
+        default:
 #ifdef _DEBUG
-	  assert(false);
+          assert(false);
 #endif
-	  break;
+          break;
         }
-	
+
         // check array
         int dimension = 0;
         while(index < params_name.size() && params_name[index] == '*') {
@@ -377,12 +375,17 @@ class StackMethod {
           switch(state) {
           case 0:
           case 1:
-          case 4:
 #ifdef _DEBUG
             param = BYTE_ARY_PARM;
 #endif
             break;
-	    
+
+          case 4:
+#ifdef _DEBUG
+            param = CHAR_ARY_PARM;
+#endif
+            break;
+
           case 2:
 #ifdef _DEBUG
             param = INT_ARY_PARM;
@@ -402,44 +405,52 @@ class StackMethod {
             break;
           }
         }
-	
+
 #ifdef _DEBUG
         switch(param) {
+        case CHAR_PARM:
+          wcout << L"  CHAR_PARM" << endl;
+          break;
+
         case INT_PARM:
-          cout << "  INT_PARM" << endl;
+          wcout << L"  INT_PARM" << endl;
           break;
 
         case FLOAT_PARM:
-          cout << "  FLOAT_PARM" << endl;
+          wcout << L"  FLOAT_PARM" << endl;
           break;
 
         case BYTE_ARY_PARM:
-          cout << "  BYTE_ARY_PARM" << endl;
+          wcout << L"  BYTE_ARY_PARM" << endl;
+          break;
+
+        case CHAR_ARY_PARM:
+          wcout << L"  CHAR_ARY_PARM" << endl;
           break;
 
         case INT_ARY_PARM:
-          cout << "  INT_ARY_PARM" << endl;
+          wcout << L"  INT_ARY_PARM" << endl;
           break;
 
         case FLOAT_ARY_PARM:
-          cout << "  FLOAT_ARY_PARM" << endl;
+          wcout << L"  FLOAT_ARY_PARM" << endl;
           break;
 
         case OBJ_PARM:
-          cout << "  OBJ_PARM" << endl;
+          wcout << L"  OBJ_PARM" << endl;
           break;
 
         case OBJ_ARY_PARM:
-          cout << "  OBJ_ARY_PARM" << endl;
+          wcout << L"  OBJ_ARY_PARM" << endl;
           break;
 
-	case FUNC_PARM:
-          cout << "  FUNC_PARM" << endl;
+        case FUNC_PARM:
+          wcout << L"  FUNC_PARM" << endl;
           break;
 
-	default:
-	  assert(false);
-	  break;
+        default:
+          assert(false);
+          break;
         }
 #endif
 
@@ -450,8 +461,8 @@ class StackMethod {
 
     return name;
   }
-  
- public:
+
+public:
   // mutex variable used to support 
   // concurrent JIT compiling
 #ifdef _WIN32
@@ -460,28 +471,28 @@ class StackMethod {
   pthread_mutex_t jit_mutex;
 #endif
 
-  StackMethod(long i, const string &n, bool v, bool h, StackDclr** d, long nd,
-              long p, long m, MemoryType r, StackClass* k) {
+  StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd,
+    long p, long m, MemoryType r, StackClass* k) {
 #ifdef _WIN32
-    InitializeCriticalSection(&jit_cs);
+      InitializeCriticalSection(&jit_cs);
 #else
-    pthread_mutex_init(&jit_mutex, NULL);
+      pthread_mutex_init(&jit_mutex, NULL);
 #endif
-    id = i;
-    name = ParseName(n);
-    is_virtual = v;
-    has_and_or = h;
-    native_code = NULL;
-    dclrs = d;
-    num_dclrs = nd;
-    param_count = p;
-    mem_size = m;
-    rtrn_type = r;
-    cls = k;
-    instrs = NULL;
-    instr_count = 0;
+      id = i;
+      name = ParseName(n);
+      is_virtual = v;
+      has_and_or = h;
+      native_code = NULL;
+      dclrs = d;
+      num_dclrs = nd;
+      param_count = p;
+      mem_size = m;
+      rtrn_type = r;
+      cls = k;
+      instrs = NULL;
+      instr_count = 0;
   }
-  
+
   ~StackMethod() {
     // clean up
     if(dclrs) {
@@ -493,17 +504,17 @@ class StackMethod {
       delete[] dclrs;
       dclrs = NULL;
     }
-    
+
 #ifdef _WIN32
     DeleteCriticalSection(&jit_cs); 
 #endif
-    
+
     // clean up
     if(native_code) {
       delete native_code;
       native_code = NULL;
     }
-    
+
     // clean up
     for(int i = 0; i < instr_count; i++) {
       StackInstr* tmp = instrs[i];
@@ -513,8 +524,8 @@ class StackMethod {
     delete[] instrs;
     instrs = NULL;
   }
-  
-  inline const string& GetName() {
+
+  inline const wstring& GetName() {
     return name;
   }
 
@@ -531,30 +542,32 @@ class StackMethod {
   }
 
 #ifdef _DEBUGGER
-  int GetLocalDeclaration(const string& name, StackDclr& found) {
+  // TODO: might have 1 or more variables with the same name
+  bool GetLocalDeclaration(const wstring& name, StackDclr& found) {
+    vector<int> results;
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < num_dclrs; i++, index++) {
-	StackDclr* dclr = dclrs[i];
-	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
-	if(dclr_name == name) {
-	  found.name = dclr->name;
-	  found.type = dclr->type;
-	  found.id = index;	  
-	  return true;
-	}
-	
-	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
-	  index++;
-	}
+        StackDclr* dclr = dclrs[i];
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;	  
+          return true;
+        }
+
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
       }
     }
-    
+
     return false;
   }
 #endif
-  
+
   inline StackDclr** GetDeclarations() const {
     return dclrs;
   }
@@ -562,7 +575,7 @@ class StackMethod {
   inline const int GetNumberDeclarations() {
     return num_dclrs;
   }
-  
+
   void SetNativeCode(NativeCode* c) {
     native_code = c;
   }
@@ -574,25 +587,25 @@ class StackMethod {
   MemoryType GetReturn() const {
     return rtrn_type;
   }
-  
+
   inline void AddLabel(long label_id, long index) {
     jump_table.insert(pair<long, long>(label_id, index));
   }
-  
+
   inline long GetLabelIndex(long label_id) {
     unordered_map<long, long>::iterator found = jump_table.find(label_id);
     if(found != jump_table.end()) {
       return found->second;
     }    
-    
+
     return -1;
   }
-  
+
   void SetInstructions(StackInstr** ii, int ic) {
     instrs = ii;
     instr_count = ic;
   }
-  
+
   long GetId() const {
     return id;
   }
@@ -617,7 +630,7 @@ class StackMethod {
   inline long GetMemorySize() const {
     return mem_size;
   }
-  
+
   inline long GetInstructionCount() const {
     return instr_count;
   }
@@ -635,15 +648,15 @@ class StackMethod {
     InitializeCriticalSection(&virutal_cs);
   }
 #endif
-  
-  static void AddVirtualEntry(const string &key, StackMethod* mthd) { 
+
+  static void AddVirtualEntry(const wstring &key, StackMethod* mthd) { 
 #ifdef _WIN32
     EnterCriticalSection(&virutal_cs);
 #else
     pthread_mutex_lock(&virtual_mutex);
 #endif
-    
-    virutal_cache.insert(pair<string, StackMethod*>(key, mthd));
+
+    virutal_cache.insert(pair<wstring, StackMethod*>(key, mthd));
 
 #ifdef _WIN32
     LeaveCriticalSection(&virutal_cs);
@@ -652,19 +665,19 @@ class StackMethod {
 #endif
   }
 
-  static StackMethod* GetVirtualEntry(const string &key) {
+  static StackMethod* GetVirtualEntry(const wstring &key) {
     StackMethod* mthd = NULL;
 #ifdef _WIN32
     EnterCriticalSection(&virutal_cs);
 #else
     pthread_mutex_lock(&virtual_mutex);
 #endif
-    
-    unordered_map<string, StackMethod*>::iterator found = virutal_cache.find(key);
+
+    unordered_map<wstring, StackMethod*>::iterator found = virutal_cache.find(key);
     if(found != virutal_cache.end()) {
       mthd = found->second;
     }    
-    
+
 #ifdef _WIN32
     LeaveCriticalSection(&virutal_cs);
 #else
@@ -682,18 +695,18 @@ class StackMethod {
 };
 
 /********************************
- * ByteBuffer class
- ********************************/
+* ByteBuffer class
+********************************/
 class ByteBuffer {
-  BYTE_VALUE* buffer;
+  char* buffer;
   int pos;
   int max;
 
- public:
+public:
   ByteBuffer() {
     pos = 0;
     max = 4;
-    buffer = new BYTE_VALUE[sizeof(long) * max];
+    buffer = new char[sizeof(long) * max];
   }
 
   ~ByteBuffer() {
@@ -701,10 +714,10 @@ class ByteBuffer {
     buffer = NULL;
   }
 
-  inline void AddByte(BYTE_VALUE b) {
+  inline void AddByte(char b) {
     if(pos >= max) {
       max *= 2;
-      BYTE_VALUE* temp = new BYTE_VALUE[sizeof(long) * max];
+      char* temp = new char[sizeof(long) * max];
       int i = pos;
       while(--i > -1) { 
         temp[i] = buffer[i];
@@ -715,7 +728,7 @@ class ByteBuffer {
     buffer[pos++] = b;
   }
 
-  inline BYTE_VALUE* GetBuffer() const {
+  inline char* GetBuffer() const {
     return buffer;
   }
 
@@ -725,15 +738,15 @@ class ByteBuffer {
 };
 
 /********************************
- * StackClass class
- ********************************/
+* StackClass class
+********************************/
 class StackClass {
-  unordered_map<string, StackMethod*> method_name_map;
+  unordered_map<wstring, StackMethod*> method_name_map;
   StackMethod** methods;
   int method_num;
   long id;
-  string name;
-  string file_name;
+  wstring name;
+  wstring file_name;
   long pid;
   bool is_virtual;
   long cls_space;
@@ -744,29 +757,29 @@ class StackClass {
   long inst_num_dclrs;
   long* cls_mem;
   bool is_debug;
-  
+
   long InitMemory(long size) {
     cls_mem = new long[size];
     memset(cls_mem, 0, size * sizeof(long));    
     return size;
   }
-  
- public:
-  StackClass(long i, const string &ne, const string &fn, long p, 
-	     bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
-	     long cs, long is, bool b) {
-    id = i;
-    name = ne;
-    file_name = fn;
-    pid = p;
-    is_virtual = v;
-    cls_dclrs = cdclr;
-    cls_num_dclrs = cn;
-    inst_dclrs = idclr;
-    inst_num_dclrs = in;
-    cls_space = InitMemory(cs);
-    inst_space  = is;
-    is_debug = b;
+
+public:
+  StackClass(long i, const wstring &ne, const wstring &fn, long p, 
+    bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
+    long cs, long is, bool b) {
+      id = i;
+      name = ne;
+      file_name = fn;
+      pid = p;
+      is_virtual = v;
+      cls_dclrs = cdclr;
+      cls_num_dclrs = cn;
+      inst_dclrs = idclr;
+      inst_num_dclrs = in;
+      cls_space = InitMemory(cs);
+      inst_space  = is;
+      is_debug = b;
   }
 
   ~StackClass() {
@@ -780,7 +793,7 @@ class StackClass {
       delete[] cls_dclrs;
       cls_dclrs = NULL;
     }
-    
+
     if(inst_dclrs) {
       for(int i = 0; i < inst_num_dclrs; i++) {
         StackDclr* tmp = inst_dclrs[i];
@@ -813,11 +826,11 @@ class StackClass {
     return is_debug;
   }
 
-  inline const string& GetName() {
+  inline const wstring& GetName() {
     return name;
   }
 
-  inline const string& GetFileName() {
+  inline const wstring& GetFileName() {
     return file_name;
   }
 
@@ -836,7 +849,7 @@ class StackClass {
   inline int GetNumberInstanceDeclarations() const {
     return inst_num_dclrs;
   }
-  
+
   inline long GetParentId() const {
     return pid;
   }
@@ -868,30 +881,30 @@ class StackClass {
 #endif
     return methods[id];
   }
-  
-  vector<StackMethod*> GetMethods(const string &n) {
+
+  vector<StackMethod*> GetMethods(const wstring &n) {
     vector<StackMethod*> found;
     for(int i = 0; i < method_num; i++) {
-      if(methods[i]->GetName().find(n) != string::npos) {
-	found.push_back(methods[i]);
+      if(methods[i]->GetName().find(n) != wstring::npos) {
+        found.push_back(methods[i]);
       }
     }
 
     return found;
   }
-  
+
 #ifdef _UTILS
   void List() {
-    unordered_map<string, StackMethod*>::iterator iter;
+    unordered_map<wstring, StackMethod*>::iterator iter;
     for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
       StackMethod* mthd = iter->second;
-      cout << "  method='" << mthd->GetName() << "'" << endl;
+      wcout << L"  method='" << mthd->GetName() << "'" << endl;
     }
   }
 #endif
 
-  inline StackMethod* GetMethod(const string &n) {
-    unordered_map<string, StackMethod*>::iterator result = method_name_map.find(n);
+  inline StackMethod* GetMethod(const wstring &n) {
+    unordered_map<wstring, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
       return result->second;
     }
@@ -908,59 +921,59 @@ class StackClass {
   }
 
 #ifdef _DEBUGGER
-  bool GetInstanceDeclaration(const string& name, StackDclr& found) {
+  bool GetInstanceDeclaration(const wstring& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < inst_num_dclrs; i++, index++) {
-	StackDclr* dclr = inst_dclrs[i];
-	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
-	if(dclr_name == name) {
-	  found.name = dclr->name;
-	  found.type = dclr->type;
-	  found.id = index;
-	  return true;
-	}
-	// update
-	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
-	  index++;
-	}
+        StackDclr* dclr = inst_dclrs[i];
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          return true;
+        }
+        // update
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
       }
     }
-    
+
     return false;
   }
-  
-  bool GetClassDeclaration(const string& name, StackDclr& found) {
+
+  bool GetClassDeclaration(const wstring& name, StackDclr& found) {
     if(name.size() > 0) {
       // search for name
       int index = 0;
       for(int i = 0; i < cls_num_dclrs; i++, index++) {
-	StackDclr* dclr = cls_dclrs[i];
-	const string &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
-	if(dclr_name == name) {
-	  found.name = dclr->name;
-	  found.type = dclr->type;
-	  found.id = index;
-	  return true;
-	}
-	// update
-	if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
-	  index++;
-	}
+        StackDclr* dclr = cls_dclrs[i];
+        const wstring &dclr_name = dclr->name.substr(dclr->name.find_last_of(':') + 1);       
+        if(dclr_name == name) {
+          found.name = dclr->name;
+          found.type = dclr->type;
+          found.id = index;
+          return true;
+        }
+        // update
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          index++;
+        }
       }
     }
-    
+
     return false;
   }
 #endif
 };
 
 /********************************
- * StackProgram class
- ********************************/
+* StackProgram class
+********************************/
 class StackProgram {
-  map<string, StackClass*> cls_map;
+  map<wstring, StackClass*> cls_map;
   StackClass** classes;
   int class_num;
   int* cls_hierarchy;
@@ -971,17 +984,17 @@ class StackProgram {
   int sock_cls_id;
   int data_type_cls_id;
   StackMethod* init_method;
-  static map<string, string> properties_map;
-  
+  static map<wstring, wstring> properties_map;
+
   FLOAT_VALUE** float_strings;
   int num_float_strings;
-  
+
   INT_VALUE** int_strings;
   int num_int_strings;
-  
-  BYTE_VALUE** char_strings;
+
+  wchar_t** char_strings;
   int num_char_strings;
-  
+
 #ifdef _WIN32
   static list<HANDLE> thread_ids;
   static CRITICAL_SECTION program_cs;
@@ -992,7 +1005,7 @@ class StackProgram {
   static pthread_mutex_t prop_mutex;
 #endif
 
- public:
+public:
   StackProgram() {
     cls_hierarchy = NULL;
     cls_interfaces = NULL;
@@ -1004,13 +1017,13 @@ class StackProgram {
     InitializeCriticalSection(&prop_cs);
 #endif
   }
-  
+
   ~StackProgram() {
     if(classes) {
       for(int i = 0; i < class_num; i++) {
-	StackClass* klass = classes[i];
-	delete klass;
-	klass = NULL;
+        StackClass* klass = classes[i];
+        delete klass;
+        klass = NULL;
       }
       delete[] classes;
       classes = NULL;
@@ -1023,13 +1036,13 @@ class StackProgram {
 
     if(cls_interfaces) {
       for(int i = 0; i < class_num; i++) {
-	delete[] cls_interfaces[i];
-	cls_interfaces[i] = NULL;
+        delete[] cls_interfaces[i];
+        cls_interfaces[i] = NULL;
       }
       delete[] cls_interfaces;
       cls_interfaces = NULL;
     }
-    
+
     if(float_strings) {
       for(int i = 0; i < num_float_strings; i++) {
         FLOAT_VALUE* tmp = float_strings[i];
@@ -1052,14 +1065,14 @@ class StackProgram {
 
     if(char_strings) {
       for(int i = 0; i < num_char_strings; i++) {
-	BYTE_VALUE* tmp = char_strings[i];
-	delete [] tmp;
-	tmp = NULL;
+        wchar_t* tmp = char_strings[i];
+        delete [] tmp;
+        tmp = NULL;
       }
       delete[] char_strings;
       char_strings = NULL;
     }
-    
+
     if(init_method) {
       delete init_method;
       init_method = NULL;
@@ -1083,32 +1096,32 @@ class StackProgram {
     thread_ids.remove(h);
     LeaveCriticalSection(&program_cs);
   }
-  
+
   static list<HANDLE> GetThreads() {
     list<HANDLE> temp;
     EnterCriticalSection(&program_cs);
     temp = thread_ids;
     LeaveCriticalSection(&program_cs);
-    
+
     return temp;
   }
 
-  static string GetProperty(string key) {
-    string value;
-    
+  static wstring GetProperty(wstring key) {
+    wstring value;
+
     EnterCriticalSection(&prop_cs);
-    map<string, string>::iterator find = properties_map.find(key);
+    map<wstring, wstring>::iterator find = properties_map.find(key);
     if(find != properties_map.end()) {
       value = find->second;
     }
     LeaveCriticalSection(&prop_cs);
-    
+
     return value;
   }
 
-  static void SetProperty(string key, string value) {
+  static void SetProperty(wstring key, wstring value) {
     EnterCriticalSection(&prop_cs);
-    properties_map.insert(pair<string, string>(key, value));
+    properties_map.insert(pair<wstring, wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
 
@@ -1124,38 +1137,38 @@ class StackProgram {
     thread_ids.remove(t);
     pthread_mutex_unlock(&program_mutex);
   }
-  
+
   static list<pthread_t> GetThreads() {
     list<pthread_t> temp;
     pthread_mutex_lock(&program_mutex);
     temp = thread_ids;
     pthread_mutex_unlock(&program_mutex);
-    
+
     return temp;
   }
 
 
-  static string GetProperty(string key) {
-    string value;
-    
+  static wstring GetProperty(wstring key) {
+    wstring value;
+
     pthread_mutex_lock(&prop_mutex);
-    map<string, string>::iterator find = properties_map.find(key);
+    map<wstring, wstring>::iterator find = properties_map.find(key);
     if(find != properties_map.end()) {
       value = find->second;
     }
     pthread_mutex_unlock(&prop_mutex);
-    
+
     return value;
   }
-  
-  static void SetProperty(string key, string value) {
+
+  static void SetProperty(wstring key, wstring value) {
     pthread_mutex_lock(&prop_mutex);
-    properties_map.insert(pair<string, string>(key, value));
+    properties_map.insert(pair<wstring, wstring>(key, value));
     pthread_mutex_unlock(&prop_mutex);
   }
 
 #endif
-  
+
   void SetInitializationMethod(StackMethod* i) {
     init_method = i;
   }
@@ -1163,82 +1176,82 @@ class StackProgram {
   StackMethod* GetInitializationMethod() const {
     return init_method;
   }
-  
+
   int GetStringObjectId() const {
     return string_cls_id;
   }
-  
+
   void SetStringObjectId(int id) {
     string_cls_id = id;
   }
-  
+
   int GetClassObjectId() {
     if(cls_cls_id < 0) {
-      StackClass* cls = GetClass("System.Introspection.Class");
+      StackClass* cls = GetClass(L"System.Introspection.Class");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.Introspection.Class <<<" << endl;
-	exit(1);
+        cerr << ">>> Internal error: unable to find class: System.Introspection.Class <<<" << endl;
+        exit(1);
       }
       cls_cls_id = cls->GetId();
     }
-    
+
     return cls_cls_id;
   }
-  
+
   int GetMethodObjectId() {
     if(mthd_cls_id < 0) {
-      StackClass* cls = GetClass("System.Introspection.Method");
+      StackClass* cls = GetClass(L"System.Introspection.Method");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.Introspection.Method <<<" << endl;
-	exit(1);
+        cerr << ">>> Internal error: unable to find class: System.Introspection.Method <<<" << endl;
+        exit(1);
       }
       mthd_cls_id = cls->GetId();
     }
-    
+
     return mthd_cls_id;
   }
-  
+
   int GetSocketObjectId() {
     if(sock_cls_id < 0) {
-      StackClass* cls = GetClass("System.IO.Net.TCPSocket");
+      StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
-	exit(1);
+        cerr << ">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
+        exit(1);
       }
       sock_cls_id = cls->GetId();
     }
-    
+
     return sock_cls_id;
   }
-  
+
   int GetDataTypeObjectId() {
     if(data_type_cls_id < 0) {
-      StackClass* cls = GetClass("System.Introspection.DataType");
+      StackClass* cls = GetClass(L"System.Introspection.DataType");
       if(!cls) {
-	cerr << ">>> Internal error: unable to find class: System.Introspection.DataType <<<" << endl;
-	exit(1);
+        cerr << ">>> Internal error: unable to find class: System.Introspection.DataType <<<" << endl;
+        exit(1);
       }
       data_type_cls_id = cls->GetId();
     }
-    
+
     return data_type_cls_id;
   }
-  
+
   void SetFloatStrings(FLOAT_VALUE** s, int n) {
     float_strings = s;
     num_float_strings = n;
   }
-  
+
   void SetIntStrings(INT_VALUE** s, int n) {
     int_strings = s;
     num_int_strings = n;
   }
 
-  void SetCharStrings(BYTE_VALUE** s, int n) {
+  void SetCharStrings(wchar_t** s, int n) {
     char_strings = s;
     num_char_strings = n;
   }  
-  
+
   FLOAT_VALUE** GetFloatStrings() const {
     return float_strings;
   }
@@ -1247,46 +1260,46 @@ class StackProgram {
     return int_strings;
   }
 
-  BYTE_VALUE** GetCharStrings() const {
+  wchar_t** GetCharStrings() const {
     return char_strings;
   }
-  
+
   void SetClasses(StackClass** clss, const int num) {
     classes = clss;
     class_num = num;
-    
+
     for(int i = 0; i < num; i++) {
-      const string &name = clss[i]->GetName();
+      const wstring &name = clss[i]->GetName();
       if(name.size() > 0) {	
-	cls_map.insert(pair<string, StackClass*>(name, clss[i]));
+        cls_map.insert(pair<wstring, StackClass*>(name, clss[i]));
       }
     }
   }
 
 #ifdef _UTILS
   void List() {
-    map<string, StackClass*>::iterator iter;
+    map<wstring, StackClass*>::iterator iter;
     for(iter = cls_map.begin(); iter != cls_map.end(); ++iter) {
       StackClass* cls = iter->second;
-      cout << "==================================" << endl;
-      cout << "class='" << cls->GetName() << "'" << endl;
-      cout << "==================================" << endl;
+      wcout << L"==================================" << endl;
+      wcout << L"class='" << cls->GetName() << "'" << endl;
+      wcout << L"==================================" << endl;
       cls->List();
     }
   }
 #endif
-  
-  StackClass* GetClass(const string &n) {
+
+  StackClass* GetClass(const wstring &n) {
     if(classes) {
-      map<string, StackClass*>::iterator find = cls_map.find(n);
+      map<wstring, StackClass*>::iterator find = cls_map.find(n);
       if(find != cls_map.end()) {
-	return find->second;
+        return find->second;
       }
     }
-    
+
     return NULL;
   }
-  
+
   void SetHierarchy(int* h) {
     cls_hierarchy = h;
   }
@@ -1314,13 +1327,13 @@ class StackProgram {
   inline StackClass** GetClasses() const {
     return classes;
   }
-  
+
   inline int GetClassNumber() const {  
     return class_num;
   }
-  
+
 #ifdef _DEBUGGER
-  bool HasFile(const string &fn) {
+  bool HasFile(const wstring &fn) {
     for(int i = 0; i < class_num; i++) {
       if(classes[i]->GetFileName() == fn) {
         return true;
@@ -1333,15 +1346,15 @@ class StackProgram {
 };
 
 /********************************
- * StackFrame class
- ********************************/
+* StackFrame class
+********************************/
 class StackFrame {
   StackMethod* method;
   long* mem;
   long ip;
   bool jit_called;
-  
- public:
+
+public:
   StackFrame(StackMethod* md, long* inst) {
     method = md;
     mem = md->NewMemory();
@@ -1349,12 +1362,12 @@ class StackFrame {
     ip = -1;
     jit_called = false;
   }
-  
+
   ~StackFrame() {
     delete[] mem;
     mem = NULL;
   }
-  
+
   inline StackMethod* GetMethod() const {
     return method;
   }
@@ -1381,15 +1394,15 @@ class StackFrame {
 };
 
 /********************************
- * ObjectSerializer class
- ********************************/
+* ObjectSerializer class
+********************************/
 class ObjectSerializer 
 {
-  vector<BYTE_VALUE> values;
+  vector<char> values;
   map<long*, long> serial_ids;
   long next_id;
   long cur_id;
-  
+
   void CheckObject(long* mem, bool is_obj, long depth);
   void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(long* inst);
@@ -1399,64 +1412,74 @@ class ObjectSerializer
     if(find != serial_ids.end()) {
       cur_id = find->second;
       SerializeInt(cur_id);
-      
+
       return true;
     }
     next_id++;
     cur_id = next_id * -1;
     serial_ids.insert(pair<long*, long>(mem, next_id));
     SerializeInt(cur_id);
-    
+
     return false;
   }
-  
-  inline void SerializeByte(BYTE_VALUE v) {
-    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(size_t i = 0; i < sizeof(v); i++) {
-      values.push_back(*(bp + i));
-    }
-  }
-  
-  inline void SerializeInt(INT_VALUE v) {
-    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
-    for(size_t i = 0; i < sizeof(v); i++) {
-      values.push_back(*(bp + i));
-    }
-  }
-  
-  inline void SerializeFloat(FLOAT_VALUE v) {
-    BYTE_VALUE* bp = (BYTE_VALUE*)&v;
+
+  inline void SerializeByte(const char v) {
+    char* bp = (char*)&v;
     for(size_t i = 0; i < sizeof(v); i++) {
       values.push_back(*(bp + i));
     }
   }
 
-  inline void SerializeBytes(void* array, const long len) {
-    BYTE_VALUE* bp = (BYTE_VALUE*)array;
+  // TODO: unicode 
+  inline void SerializeChar(const wchar_t v) {
+    string out;
+    CharacterToBytes(v, out);
+    SerializeInt(out.size());
+    for(size_t i = 0; i < out.size(); i++) {
+      values.push_back(out[i]); 
+    }
+  }
+
+  inline void SerializeInt(const INT_VALUE v) {
+    char* bp = (char*)&v;
+    for(size_t i = 0; i < sizeof(v); i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+
+  inline void SerializeFloat(const FLOAT_VALUE v) {
+    char* bp = (char*)&v;
+    for(size_t i = 0; i < sizeof(v); i++) {
+      values.push_back(*(bp + i));
+    }
+  }
+
+  inline void SerializeBytes(const void* array, const long len) {
+    char* bp = (char*)array;
     for(long i = 0; i < len; i++) {
       values.push_back(*(bp + i));
     }
   }
-  
- public:
+
+public:
   ObjectSerializer(long* i) {
     Serialize(i);
   }
-  
+
   ~ObjectSerializer() {
   }
-  
-  vector<BYTE_VALUE>& GetValues() {
+
+  vector<char>& GetValues() {
     return values;
   }
 };
 
 /********************************
- *  ObjectDeserializer class
- ********************************/
+*  ObjectDeserializer class
+********************************/
 class ObjectDeserializer 
 {
-  const BYTE_VALUE* buffer;
+  const char* buffer;
   long buffer_offset;
   long buffer_array_size;
   long* op_stack;
@@ -1465,13 +1488,31 @@ class ObjectDeserializer
   long* instance;
   long instance_pos;
   map<INT_VALUE, long*> mem_cache;
-  
-  BYTE_VALUE DeserializeByte() {
-    BYTE_VALUE value;
+
+  char DeserializeByte() {
+    char value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
 
     return value;
+  }
+
+  // TODO: unicode
+  wchar_t DeserializeChar() {
+    // read
+    const int num = DeserializeInt();
+    char* in = new char[num + 1];
+    memcpy(in, buffer + buffer_offset, num);
+    in[num] = '\0';
+
+    // convert
+    wchar_t out = L'\0';
+    BytesToCharacter(in, out);
+    delete[] in;
+    in = NULL;
+
+    buffer_offset += num;
+    return out;
   }
 
   INT_VALUE DeserializeInt() {
@@ -1481,7 +1522,7 @@ class ObjectDeserializer
 
     return value;
   }
-  
+
   FLOAT_VALUE DeserializeFloat() {
     FLOAT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
@@ -1489,9 +1530,9 @@ class ObjectDeserializer
 
     return value;
   }
-  
- public:
-  ObjectDeserializer(const BYTE_VALUE* b, long s, long* stack, long* pos) {
+
+public:
+  ObjectDeserializer(const char* b, long s, long* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
@@ -1501,23 +1542,23 @@ class ObjectDeserializer
     instance = NULL;
     instance_pos = 0;
   }
-  
-  ObjectDeserializer(const BYTE_VALUE* b, long o, map<INT_VALUE, long*> &c, 
-		     long s, long* stack, long* pos) {
-    op_stack = stack;
-    stack_pos = pos;
-    buffer = b;
-    buffer_array_size = s;
-    buffer_offset = o;
-    mem_cache = c;
-    cls = NULL;
-    instance = NULL;
-    instance_pos = 0;
+
+  ObjectDeserializer(const char* b, long o, map<INT_VALUE, long*> &c, 
+    long s, long* stack, long* pos) {
+      op_stack = stack;
+      stack_pos = pos;
+      buffer = b;
+      buffer_array_size = s;
+      buffer_offset = o;
+      mem_cache = c;
+      cls = NULL;
+      instance = NULL;
+      instance_pos = 0;
   }
-  
+
   ~ObjectDeserializer() {    
   }
-  
+
   inline long GetOffset() const {
     return buffer_offset;
   }
@@ -1525,14 +1566,488 @@ class ObjectDeserializer
   map<INT_VALUE, long*> GetMemoryCache() {
     return mem_cache;
   }
-  
+
   long* DeserializeObject();
 };
 
-// call back for DLL method calls
+/********************************
+*  TrapManager class
+********************************/
+enum TimeInterval {
+  DAY_TIME,
+  HOUR_TIME,
+  MIN_TIME,
+  SEC_TIME
+};
+
+class TrapProcessor {
+  //
+  // pops an integer from the calculation stack.  this code
+  // in normally inlined and there's a macro version available.
+  //
+  static inline long PopInt(long* op_stack, long* stack_pos) {    
+#ifdef _DEBUG
+    long v = op_stack[--(*stack_pos)];
+    wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+      << (void*)v << L")]" << endl;
+    return v;
+#else
+    return op_stack[--(*stack_pos)];
+#endif
+  }
+
+  //
+  // pushes an integer onto the calculation stack.  this code
+  // in normally inlined and there's a macro version available.
+  //
+  static inline void PushInt(long v, long* op_stack, long* stack_pos) {
+#ifdef _DEBUG
+    wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
+      << (void*)v << L")]" << endl;
+#endif
+    op_stack[(*stack_pos)++] = v;
+  }
+
+  //
+  // pushes an double onto the calculation stack.
+  //
+  static inline void PushFloat(FLOAT_VALUE v, long* op_stack, long* stack_pos) {
+#ifdef _DEBUG
+    wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+#endif
+    memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
+
+#ifdef _X64
+    (*stack_pos)++;
+#else
+    (*stack_pos) += 2;
+#endif
+  }
+
+  //
+  // swaps two integers on the calculation stack
+  //
+  static inline void SwapInt(long* op_stack, long* stack_pos) {
+    long v = op_stack[(*stack_pos) - 2];
+    op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
+    op_stack[(*stack_pos) - 1] = v;
+  }
+
+  //
+  // pops a double from the calculation stack
+  //
+  static inline FLOAT_VALUE PopFloat(long* op_stack, long* stack_pos) {
+    FLOAT_VALUE v;
+
+#ifdef _X64
+    (*stack_pos)--;
+#else
+    (*stack_pos) -= 2;
+#endif
+
+    memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
+#ifdef _DEBUG
+    wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+#endif
+
+    return v;
+  }
+
+  //
+  // peeks at the integer on the top of the
+  // execution stack.
+  //
+  static inline long TopInt(long* op_stack, long* stack_pos) {
+#ifdef _DEBUG
+    long v = op_stack[(*stack_pos) - 1];
+    wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v << L")]" << endl;
+    return v;
+#else
+    return op_stack[(*stack_pos) - 1];
+#endif
+  }
+
+  //
+  // peeks at the double on the top of the
+  // execution stack.
+  //
+  static inline FLOAT_VALUE TopFloat(long* op_stack, long* stack_pos) {
+    FLOAT_VALUE v;
+
+#ifdef _X64
+    long index = (*stack_pos) - 1;
+#else
+    long index = (*stack_pos) - 2;
+#endif
+
+    memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
+#ifdef _DEBUG
+    wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
+#endif
+
+    return v;
+  }
+
+  //
+  // writes out serialized objects
+  // 
+  static inline void WriteSerializedBytes(const char* array, const long src_buffer_size, long* inst,
+    long* &op_stack, long* &stack_pos) {
+      long* dest_buffer = (long*)inst[0];
+      const long dest_pos = inst[1];
+
+      // expand buffer, if needed
+      dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+      inst[0] = (long)dest_buffer;
+
+      // copy content
+      char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+      memcpy(dest_buffer_ptr + dest_pos, array, src_buffer_size);
+      inst[1] = dest_pos + src_buffer_size;
+  }
+
+  //
+  // serializes an array
+  // 
+  static inline void SerializeArray(const long* array, ParamType type, long* inst, 
+    long* &op_stack, long* &stack_pos) {
+      if(array) {
+        SerializeByte(1, inst, op_stack, stack_pos);
+        const long array_size = array[0];
+
+        // write values
+        switch(type) {
+        case BYTE_ARY_PARM: {
+          // write metadata
+          char* array_ptr = (char*)(array + 3);
+          SerializeInt(array[0], inst, op_stack, stack_pos);
+          SerializeInt(array[1], inst, op_stack, stack_pos);
+          SerializeInt(array[2], inst, op_stack, stack_pos);	
+          // write data
+          WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
+                            }
+                            break;
+
+        case CHAR_ARY_PARM: {
+          // convert
+          char* array_ptr = (char*)(array + 3);
+          const string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
+          // write metadata	
+          SerializeInt(buffer.size(), inst, op_stack, stack_pos);
+          SerializeInt(array[1], inst, op_stack, stack_pos);
+          SerializeInt(buffer.size(), inst, op_stack, stack_pos);	
+          // write data
+          WriteSerializedBytes((const char*)buffer.c_str(), buffer.size(), inst, op_stack, stack_pos);
+                            }
+                            break;
+
+        case INT_ARY_PARM: {
+          // write metadata
+          char* array_ptr = (char*)(array + 3);
+          SerializeInt(array[0], inst, op_stack, stack_pos);
+          SerializeInt(array[1], inst, op_stack, stack_pos);
+          SerializeInt(array[2], inst, op_stack, stack_pos);	
+          // write data
+          WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
+                           }
+                           break;
+
+        case FLOAT_ARY_PARM: {
+          // write metadata
+          char* array_ptr = (char*)(array + 3);
+          SerializeInt(array[0], inst, op_stack, stack_pos);
+          SerializeInt(array[1], inst, op_stack, stack_pos);
+          SerializeInt(array[2], inst, op_stack, stack_pos);	
+          // write data
+          WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
+                             }
+                             break;
+
+        default:
+          break;
+        }
+      }
+      else {
+        SerializeByte(0, inst, op_stack, stack_pos);
+      }
+  }
+
+  //
+  // reads a serialized array
+  // 
+  static inline void ReadSerializedBytes(long* dest_array, const long* src_array, 
+    ParamType type, long* inst) {
+      const long dest_pos = inst[1];
+      const long src_array_size = src_array[0];
+      long dest_array_size = dest_array[0];
+
+      if(dest_pos < src_array_size) {
+        const char* src_array_ptr = (char*)(src_array + 3);	
+        char* dest_array_ptr = (char*)(dest_array + 3);
+
+        switch(type) {
+        case BYTE_ARY_PARM:
+          memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+          break;
+
+        case CHAR_ARY_PARM: {
+          // convert
+          const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
+          const wstring out = BytesToUnicode(in);	
+          // copy
+          dest_array[0] = out.size();
+          dest_array[2] = out.size();
+          dest_array_size *= sizeof(wchar_t);
+          memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
+                            }
+                            break;
+
+        case INT_ARY_PARM:
+          dest_array_size *= sizeof(INT_VALUE);
+          memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+          break;
+
+        case FLOAT_ARY_PARM:
+          dest_array_size *= sizeof(FLOAT_VALUE);
+          memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+          break;
+
+        default:
+          break;
+        }
+
+        inst[1] = dest_pos + dest_array_size;
+      }
+  }
+
+  //
+  // deserializes an array of objects
+  // 
+  static inline long* DeserializeArray(ParamType type, long* inst, long* &op_stack, long* &stack_pos);
+
+  //
+  // expand buffer
+  //
+  static long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst, 
+    long* &op_stack, long* &stack_pos);
+
+  // 
+  // serializes a byte
+  // 
+  static void SerializeByte(char value, long* inst, long* &op_stack, long* &stack_pos) {
+    const long src_buffer_size = sizeof(value);
+    long* dest_buffer = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (long)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+
+  // 
+  // deserializes a byte
+  // 
+  static char DeserializeByte(long* inst) {
+    long* byte_array = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    if(dest_pos < byte_array[0]) {
+      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      char value;
+      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+      inst[1] = dest_pos + sizeof(value);
+
+      return value;
+    }
+
+    return 0;
+  }
+
+  // 
+  // serializes a char
+  // 
+  static void SerializeChar(wchar_t value, long* inst, long* &op_stack, long* &stack_pos) {
+    // convert to bytes
+    string out;
+    CharacterToBytes(value, out);
+    const long src_buffer_size = out.size();
+    SerializeInt(out.size(), inst, op_stack, stack_pos);
+
+    // prepare copy   
+    long* dest_buffer = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (long)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, out.c_str(), src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+
+  // 
+  // deserializes a char
+  // 
+  static wchar_t DeserializeChar(long* inst) {
+    const int num = DeserializeInt(inst);      
+    long* byte_array = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    if(dest_pos < byte_array[0]) {
+      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      char* in = new char[num + 1];
+      memcpy(in, byte_array_ptr + dest_pos, num);
+      in[num] = '\0';
+
+      wchar_t out = L'\0';
+      BytesToCharacter(in, out);
+
+      // clean up
+      delete[] in;
+      in = NULL;
+
+      inst[1] = dest_pos + num;
+
+      return out;
+    }
+
+    return 0;
+  }
+
+  // 
+  // serializes an int
+  // 
+  static void SerializeInt(INT_VALUE value, long* inst, long* &op_stack, long* &stack_pos) {
+    const long src_buffer_size = sizeof(value);
+    long* dest_buffer = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (long)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+
+  // 
+  // deserializes an int
+  // 
+  static INT_VALUE DeserializeInt(long* inst) {
+    long* byte_array = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    if(dest_pos < byte_array[0]) {
+      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      INT_VALUE value;
+      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+      inst[1] = dest_pos + sizeof(value);
+
+      return value;
+    }
+
+    return 0;
+  }
+
+  // 
+  // serializes a float
+  // 
+  static void SerializeFloat(FLOAT_VALUE value, long* inst, long* &op_stack, long* &stack_pos) {
+    const long src_buffer_size = sizeof(value);
+    long* dest_buffer = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (long)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+
+  // 
+  // deserializes a float
+  // 
+  static FLOAT_VALUE DeserializeFloat(long* inst) {
+    long* byte_array = (long*)inst[0];
+    const long dest_pos = inst[1];
+
+    if(dest_pos < byte_array[0]) {
+      const char* byte_array_ptr = (char*)(byte_array + 3);
+      FLOAT_VALUE value;
+      memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+      inst[1] = dest_pos + sizeof(value);      
+      return value;
+    }
+
+    return 0.0;
+  }
+
+  //
+  // serialize and deserialize object instances
+  //
+  static void SerializeObject(long* inst, StackFrame* frame, long* &op_stack, long* &stack_pos);
+  static void DeserializeObject(long* inst, long* &op_stack, long* &stack_pos);
+
+  //
+  // time functions
+  //
+  static inline void ProcessCurrentTime(StackFrame* frame, bool is_gmt);
+  static inline void ProcessSetTime1(long* &op_stack, long* &stack_pos);
+  static inline void ProcessSetTime2(long* &op_stack, long* &stack_pos);
+  static inline void ProcessSetTime3(long* &op_stack, long* &stack_pos);
+  static inline void ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos);
+
+  // 
+  // platform string
+  //
+  static inline void ProcessPlatform(StackProgram* program, long* &op_stack, long* &stack_pos);
+
+  //
+  // creates new object and call default constructor
+  //
+  static inline void CreateNewObject(const wstring &cls_id, long* &op_stack, long* &stack_pos);
+
+  //
+  // creates a new class instance
+  //
+  static inline void CreateClassObject(StackClass* cls, long* cls_obj, long* &op_stack, 
+    long* &stack_pos, StackProgram* program);
+
+  //
+  // creates an instance of the 'Method' class
+  //
+  static inline long* CreateMethodObject(long* cls_obj, StackMethod* mthd, StackProgram* program, 
+    long* &op_stack, long* &stack_pos);
+
+  //
+  // creates a wstring object instance
+  //
+  static inline long* CreateStringObject(const wstring &value_str, StackProgram* program, 
+    long* &op_stack, long* &stack_pos);
+public:
+
+  static bool ProcessTrap(StackProgram* program, long* inst, 
+    long* &op_stack, long* &stack_pos, StackFrame* frame);
+};
+
+/********************************
+* Call back for DLL method calls
+********************************/
 void APITools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
-			 const char* cls_id, const char* mthd_id);
+                         const wchar_t* cls_id, const wchar_t* mthd_id);
 void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance, 
-			   const int cls_id, const int mthd_id);			 
+                           const int cls_id, const int mthd_id);			 
 
 #endif

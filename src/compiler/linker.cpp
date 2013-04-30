@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -35,51 +35,55 @@
 
 using namespace instructions;
 
+/****************************
+ * Creates associations with instructions
+ * that reference library classes
+ ****************************/
 void Linker::ResloveExternalClass(LibraryClass* klass) 
 {
-  map<const string, LibraryMethod*> methods = klass->GetMethods();
-  map<const string, LibraryMethod*>::iterator mthd_iter;
+  map<const wstring, LibraryMethod*> methods = klass->GetMethods();
+  map<const wstring, LibraryMethod*>::iterator mthd_iter;
   for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
     vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
     for(size_t j = 0; j < instrs.size(); j++) {
       LibraryInstr* instr = instrs[j];
       // check library call
       switch(instr->GetType()) {
-	// test
+        // test
       case LIB_NEW_OBJ_INST:
       case LIB_OBJ_INST_CAST:
       case LIB_MTHD_CALL: {
-	LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
-	if(lib_klass) {
-	  if(!lib_klass->GetCalled()) {
-	    lib_klass->SetCalled(true);
-	    ResloveExternalClass(lib_klass);
-	  }
-	} 
-	else {
-	  cerr << "Error: Unable to resolve external library class: '"
-	       << instr->GetOperand5() << "'; check library path" << endl;
-	  exit(1);
-	}
+        LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+        if(lib_klass) {
+          if(!lib_klass->GetCalled()) {
+            lib_klass->SetCalled(true);
+            ResloveExternalClass(lib_klass);
+          }
+        } 
+        else {
+          wcerr << L"Error: Unable to resolve external library class: '"
+		<< instr->GetOperand5() << L"'; check library path" << endl;
+          exit(1);
+        }
       }
 	break;
 
       default:
-	break;
+        break;
       }
     }
   }
-  
+
 }
 
 void Linker::ResloveExternalClasses()
 {
   // all libraries
-  map<const string, Library*>::iterator lib_iter;
+  map<const wstring, Library*>::iterator lib_iter;
   for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
-    for(size_t i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
       if(classes[i]->GetCalled()) {
         ResloveExternalClass(classes[i]);
@@ -91,14 +95,14 @@ void Linker::ResloveExternalClasses()
 void Linker::ResolveExternalMethodCalls()
 {
   // all libraries
-  map<const string, Library*>::iterator lib_iter;
+  map<const wstring, Library*>::iterator lib_iter;
   for(lib_iter = libraries.begin(); lib_iter != libraries.end(); ++lib_iter) {
     // all classes
     vector<LibraryClass*> classes = lib_iter->second->GetClasses();
-    for(size_t i = 0; i < classes.size(); i++) {
+    for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
-      map<const string, LibraryMethod*> methods = classes[i]->GetMethods();
-      map<const string, LibraryMethod*>::iterator mthd_iter;
+      map<const wstring, LibraryMethod*> methods = classes[i]->GetMethods();
+      map<const wstring, LibraryMethod*>::iterator mthd_iter;
       for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
         vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
         for(size_t j = 0; j < instrs.size(); j++) {
@@ -113,11 +117,11 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetType(instructions::NEW_OBJ_INST);
               instr->SetOperand(lib_klass->GetId());
             } else {
-              cerr << "Error: Unable to resolve external library class: '"
-                   << instr->GetOperand5() << "'; check library path" << endl;
+              wcerr << L"Error: Unable to resolve external library class: '"
+		    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-          }
+	  }
 	    break;
 
           case LIB_OBJ_INST_CAST: {
@@ -126,11 +130,11 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetType(instructions::OBJ_INST_CAST);
               instr->SetOperand(lib_klass->GetId());
             } else {
-              cerr << "Error: Unable to resolve external library class: '"
-                   << instr->GetOperand5() << "'; check library path" << endl;
+              wcerr << L"Error: Unable to resolve external library class: '"
+		    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-          }
+	  }
 	    break;
 
 	    // MTHD_CALL
@@ -144,46 +148,46 @@ void Linker::ResolveExternalMethodCalls()
                 instr->SetOperand2(lib_method->GetId());
               } else {
                 // TODO: better error handling
-                cerr << "Error: Unable to resolve external library method: '"
-                     << instr->GetOperand6() << "'; check library path" << endl;
+                wcerr << L"Error: Unable to resolve external library method: '"
+		      << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
             } else {
-              cerr << "Error: Unable to resolve external library class: '"
-                   << instr->GetOperand5() << "'; check library path" << endl;
+              wcerr << L"Error: Unable to resolve external library class: '"
+		    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-          }
+	  }
 	    break;
-	    
-	  case instructions::LIB_FUNC_DEF: {
+
+          case instructions::LIB_FUNC_DEF: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
               if(lib_method) {
-		// set method
+                // set method
                 instr->SetType(instructions::LOAD_INT_LIT);
                 instr->SetOperand(lib_method->GetId());
-		// set class
-		instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
-		instrs[j + 1]->SetOperand(lib_klass->GetId());
+                // set class
+                instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
+                instrs[j + 1]->SetOperand(lib_klass->GetId());
               } else {
                 // TODO: better error handling
-                cerr << "Error: Unable to resolve external library method: '"
-                     << instr->GetOperand6() << "'; check library path" << endl;
+                wcerr << L"Error: Unable to resolve external library method: '"
+		      << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
             } else {
-              cerr << "Error: Unable to resolve external library class: '"
-                   << instr->GetOperand5() << "'; check library path" << endl;
+              wcerr << L"Error: Unable to resolve external library class: '"
+		    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-          }
+	  }
 	    break;
 
 
-	  default:
-	    break;
+          default:
+            break;
           }
         }
       }
@@ -198,8 +202,8 @@ void Linker::ResolveExternalMethodCalls()
 vector<LibraryClass*> LibraryClass::GetLibraryChildren()
 {
   if(!lib_children.size()) {
-    map<const string, const string> hierarchies = library->GetHierarchies();
-    map<const string, const string>::iterator iter;
+    map<const wstring, const wstring> hierarchies = library->GetHierarchies();
+    map<const wstring, const wstring>::iterator iter;
     for(iter = hierarchies.begin(); iter != hierarchies.end(); ++iter) {
       if(iter->second == name) {
         lib_children.push_back(library->GetClass(iter->first));
@@ -216,7 +220,7 @@ vector<LibraryClass*> LibraryClass::GetLibraryChildren()
 void Library::Load()
 {
 #ifdef _DEBUG
-  const string &msg = "=== Loading file: '" + lib_path + "' ===";
+  const wstring &msg = L"=== Loading file: '" + lib_path + L"' ===";
   Linker::Show(msg, 0, 0);
 #endif
   LoadFile(lib_path);
@@ -225,29 +229,29 @@ void Library::Load()
 /****************************
  * Reads a file
  ****************************/
-void Library::LoadFile(const string &file_name)
+void Library::LoadFile(const wstring &file_name)
 {
   // read file into memory
   ReadFile(file_name);
-  
+
   int ver_num = ReadInt();
   if(ver_num != VER_NUM) {
-    cerr << "The " << lib_path << " library appears to be compiled with a different version of the toolchain.  Please recompile the libraries or link the correct version." << endl;
+    wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the toolchain.  Please recompile the libraries or link the correct version." << endl;
     exit(1);
   } 
-  
+
   int magic_num = ReadInt();
   if(magic_num ==  0xdddd) {
-    cerr << "Unable to use executable '" << file_name << "' as linked library." << endl;
+    wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << endl;
     exit(1);
   } else if(magic_num !=  0xddde) {
-    cerr << "Unable to link invalid library file '" << file_name << "'." << endl;
+    wcerr << L"Unable to link invalid library file '" << file_name << L"'." << endl;
     exit(1);
   }
 
-  // read float strings
-  const int num_float_strings = ReadInt();
-  for(int i = 0; i < num_float_strings; i++) {
+  // read float wstrings
+  const int num_float_wstrings = ReadInt();
+  for(int i = 0; i < num_float_wstrings; i++) {
     frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
     holder->length = ReadInt();
     holder->value = new FLOAT_VALUE[holder->length];
@@ -255,19 +259,19 @@ void Library::LoadFile(const string &file_name)
       holder->value[i] = ReadDouble();
     }
 #ifdef _DEBUG
-    cout << "float string: id=" << i << "; value=";
+    wcout << L"float string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      cout << holder->value[i] << ",";
+      wcout << holder->value[i] << L",";
     }
-    cout << endl;
+    wcout << endl;
 #endif
     FloatStringInstruction* str_instr = new FloatStringInstruction;
     str_instr->value = holder;
     float_strings.push_back(str_instr);
   }
-  // read int strings
-  const int num_int_strings = ReadInt();
-  for(int i = 0; i < num_int_strings; i++) {
+  // read int wstrings
+  const int num_int_wstrings = ReadInt();
+  for(int i = 0; i < num_int_wstrings; i++) {
     frontend::IntStringHolder* holder = new frontend::IntStringHolder;
     holder->length = ReadInt();
     holder->value = new INT_VALUE[holder->length];
@@ -275,22 +279,22 @@ void Library::LoadFile(const string &file_name)
       holder->value[i] = ReadInt();
     }
 #ifdef _DEBUG
-    cout << "int string: id=" << i << "; value=";
+    wcout << L"int string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      cout << holder->value[i] << ",";
+      wcout << holder->value[i] << L",";
     }
-    cout << endl;
+    wcout << endl;
 #endif
     IntStringInstruction* str_instr = new IntStringInstruction;
     str_instr->value = holder;
     int_strings.push_back(str_instr);
   }
-  // read char strings
-  const int num_char_strings = ReadInt();
-  for(int i = 0; i < num_char_strings; i++) {
-    const string &char_str_value = ReadString();
+  // read char wstrings
+  const int num_char_wstrings = ReadInt();
+  for(int i = 0; i < num_char_wstrings; i++) {
+    const wstring &char_str_value = ReadString();
 #ifdef _DEBUG
-    cout << "char string: id=" << i << "; value='" << char_str_value << "'" << endl;
+    wcout << L"char string: id=" << i << L"; value='" << char_str_value << L"'" << endl;
 #endif
     CharStringInstruction* str_instr = new CharStringInstruction;
     str_instr->value = char_str_value;
@@ -300,10 +304,10 @@ void Library::LoadFile(const string &file_name)
   // read bundle names
   const int num_bundle_name = ReadInt();
   for(int i = 0; i < num_bundle_name; i++) {
-    const string &str_value = ReadString();
+    const wstring &str_value = ReadString();
     bundle_names.push_back(str_value);
 #ifdef _DEBUG
-    cout << "bundle name='" << str_value << "'" << endl;
+    wcout << L"bundle name='" << str_value << L"'" << endl;
 #endif
   }
 
@@ -320,13 +324,13 @@ void Library::LoadEnums()
   const int number = ReadInt();
   for(int i = 0; i < number; i++) {
     // read enum
-    const string &enum_name = ReadString();
+    const wstring &enum_name = ReadString();
     const INT_VALUE enum_offset = ReadInt();
     LibraryEnum* eenum = new LibraryEnum(enum_name, enum_offset);
     // read enum items
     const INT_VALUE num_items = ReadInt();
     for(int i = 0; i < num_items; i++) {
-      const string &item_name = ReadString();
+      const wstring &item_name = ReadString();
       const INT_VALUE item_id = ReadInt();
       eenum->AddItem(new LibraryEnumItem(item_name, item_id, eenum));
     }
@@ -345,50 +349,50 @@ void Library::LoadClasses()
   for(int i = 0; i < number; i++) {
     // id
     ReadInt();
-    const string &name = ReadString();
-    
+    const wstring &name = ReadString();
+
     // pid
     ReadInt();
-    const string &parent_name = ReadString();
-    
+    const wstring &parent_name = ReadString();
+
     // read interface ids
     const int interface_size = ReadInt();
     for(int i = 0; i < interface_size; i++) {
       ReadInt();
     }
-    
+
     // read interface names
-    vector<string> interface_names;
+    vector<wstring> interface_names;
     const int interface_names_size = ReadInt();
     for(int i = 0; i < interface_names_size; i++) {
       interface_names.push_back(ReadString());
     }
-    
+
     bool is_interface = (bool)ReadInt();
     bool is_virtual = (bool)ReadInt();
     bool is_debug = (bool)ReadInt();
-    string file_name;
+    wstring file_name;
     if(is_debug) {
       file_name = ReadString();
     }
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
-    
+
     // read type parameters
     backend::IntermediateDeclarations* cls_entries = LoadEntries(is_debug);
     backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);      
-    hierarchies.insert(pair<const string, const string>(name, parent_name));
-    
+    hierarchies.insert(pair<const wstring, const wstring>(name, parent_name));
+
 #ifdef _DEBUG
-    const string& msg = "[class: name=" + name + "; parent=" + parent_name + 
-      "; interface=" + Linker::ToString(is_interface) +       
-      "; virtual=" + Linker::ToString(is_virtual) + 
-      "; class_mem_size=" + Linker::ToString(cls_space) +
-      "; instance_mem_size=" + Linker::ToString(inst_space) + 
-      "; is_debug=" + Linker::ToString(is_debug) + "]";
+    const wstring& msg = L"[class: name=" + name + L"; parent=" + parent_name + 
+      L"; interface=" + Linker::ToString(is_interface) +       
+      L"; virtual=" + Linker::ToString(is_virtual) + 
+      L"; class_mem_size=" + Linker::ToString(cls_space) +
+      L"; instance_mem_size=" + Linker::ToString(inst_space) + 
+      L"; is_debug=" + Linker::ToString(is_debug) + L"]";
     Linker::Show(msg, 0, 0);
 #endif
-    
+
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
 					 cls_space, inst_space, cls_entries, inst_entries, this, 
 					 file_name, is_debug);
@@ -412,8 +416,8 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     bool has_and_or = (bool)ReadInt();
     bool is_native = (bool)ReadInt();
     bool is_static = (bool)ReadInt();
-    const string &name = ReadString();
-    const string &rtrn_name = ReadString();
+    const wstring &name = ReadString();
+    const wstring &rtrn_name = ReadString();
     int params = ReadInt();
     int mem_size = ReadInt();
 
@@ -422,22 +426,22 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     int num_params = ReadInt();
     for(int i = 0; i < num_params; i++) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
-      string var_name;
+      wstring var_name;
       if(is_debug) {
-	var_name = ReadString();
+        var_name = ReadString();
       }
       entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
     }
 
 #ifdef _DEBUG
-    const string &msg = "(method: name=" + name + "; id=" + Linker::ToString(id) + "; num_params: " +
-      Linker::ToString(params) + "; mem_size=" + Linker::ToString(mem_size) + "; is_native=" +
-      Linker::ToString(is_native) +  "; is_debug=" + Linker::ToString(is_debug) + "]";
+    const wstring &msg = L"(method: name=" + name + L"; id=" + Linker::ToString(id) + L"; num_params: " +
+      Linker::ToString(params) + L"; mem_size=" + Linker::ToString(mem_size) + L"; is_native=" +
+      Linker::ToString(is_native) +  L"; is_debug=" + Linker::ToString(is_debug) + L"]";
     Linker::Show(msg, 0, 1);
 #endif
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
-                                            is_native, is_static, params, mem_size, cls, entries);
+					    is_native, is_static, params, mem_size, cls, entries);
     // load statements
     LoadStatements(mthd, is_debug);
 
@@ -462,7 +466,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, (INT_VALUE)ReadInt()));
       break;
-
+      
+    case LOAD_CHAR_LIT:
+      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (INT_VALUE)ReadChar()));
+      break;
+      
     case SHL_INT:
       instrs.push_back(new LibraryInstr(line_num, SHL_INT));
       break;
@@ -477,14 +485,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
       break;
-      
+
     case LOAD_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
     }
       break;
-      
+
     case LOAD_FLOAT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -498,14 +506,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
       break;
-    
+
     case STOR_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FUNC_VAR, id, mem_context));
     }
       break;
-      
+
     case STOR_FLOAT_VAR: {
       INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -546,12 +554,19 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
       break;
 
+    case NEW_CHAR_ARY: {
+      INT_VALUE dim = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, NEW_CHAR_ARY, dim));
+      
+    }
+      break;
+      
     case NEW_OBJ_INST: {
       INT_VALUE obj_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
-      
+
     case JMP: {
       INT_VALUE label = ReadInt();
       INT_VALUE cond = ReadInt();
@@ -579,11 +594,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
     }
       break;
-    
+
     case LIB_OBJ_INST_CAST: {
-      const string& cls_name = ReadString();
+      const wstring& cls_name = ReadString();
 #ifdef _DEBUG
-      const string &msg = "LIB_OBJ_INST_CAST: class=" + cls_name;
+      const wstring &msg = L"LIB_OBJ_INST_CAST: class=" + cls_name;
       Linker::Show(msg, 0, 2);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_INST_CAST, cls_name));
@@ -591,9 +606,9 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LIB_NEW_OBJ_INST: {
-      const string& cls_name = ReadString();
+      const wstring& cls_name = ReadString();
 #ifdef _DEBUG
-      const string &msg = "LIB_NEW_OBJ_INST: class=" + cls_name;
+      const wstring &msg = L"LIB_NEW_OBJ_INST: class=" + cls_name;
       Linker::Show(msg, 0, 2);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_NEW_OBJ_INST, cls_name));
@@ -602,21 +617,21 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case LIB_MTHD_CALL: {
       int is_native = ReadInt();
-      const string& cls_name = ReadString();
-      const string& mthd_name = ReadString();
+      const wstring& cls_name = ReadString();
+      const wstring& mthd_name = ReadString();
 #ifdef _DEBUG
-      const string &msg = "LIB_MTHD_CALL: class=" + cls_name + ", method=" + mthd_name;
+      const wstring &msg = L"LIB_MTHD_CALL: class=" + cls_name + L", method=" + mthd_name;
       Linker::Show(msg, 0, 2);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name));
     }
       break;
-      
+
     case LIB_FUNC_DEF: {
-      const string& cls_name = ReadString();
-      const string& mthd_name = ReadString();
+      const wstring& cls_name = ReadString();
+      const wstring& mthd_name = ReadString();
 #ifdef _DEBUG
-      const string &msg = "LIB_FUNC_DEF: class=" + cls_name + ", method=" + mthd_name;
+      const wstring &msg = L"LIB_FUNC_DEF: class=" + cls_name + L", method=" + mthd_name;
       Linker::Show(msg, 0, 2);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name));
@@ -629,17 +644,24 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
     }
       break;
-      
+
     case OBJ_TYPE_OF: {
       INT_VALUE check_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
     }
       break;
-      
+
     case LOAD_BYTE_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
+    }
+      break;
+
+    case LOAD_CHAR_ARY_ELM: {
+      INT_VALUE dim = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
 
@@ -664,6 +686,13 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
       break;
 
+    case STOR_CHAR_ARY_ELM: {
+      INT_VALUE dim = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
+    }
+      break;
+      
     case STOR_INT_ARY_ELM: {
       INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -696,12 +725,12 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       else if(id == instructions::CPY_INT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         IntStringInstruction* str_instr = int_strings[cpy_instr->GetOperand()];
-	str_instr->instrs.push_back(cpy_instr);
+        str_instr->instrs.push_back(cpy_instr);
       }
       else if(id == instructions::CPY_FLOAT_STR_ARY) {
         LibraryInstr* cpy_instr = instrs[instrs.size() - 2];
         FloatStringInstruction* str_instr = float_strings[cpy_instr->GetOperand()];
-	str_instr->instrs.push_back(cpy_instr);
+        str_instr->instrs.push_back(cpy_instr);
       }
       instrs.push_back(new LibraryInstr(line_num, TRAP_RTRN, ReadInt()));
       break;
@@ -739,10 +768,18 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, CPY_BYTE_ARY));
       break;
       
+    case LOAD_ARY_SIZE:
+      instrs.push_back(new LibraryInstr(line_num, LOAD_ARY_SIZE));
+      break;
+      
+    case CPY_CHAR_ARY:
+      instrs.push_back(new LibraryInstr(line_num, CPY_CHAR_ARY));
+      break;
+      
     case CPY_INT_ARY:
       instrs.push_back(new LibraryInstr(line_num, CPY_INT_ARY));
       break;
-      
+
     case CPY_FLOAT_ARY:
       instrs.push_back(new LibraryInstr(line_num, CPY_FLOAT_ARY));
       break;
@@ -758,23 +795,23 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case COS_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, COS_FLOAT));
       break;
-      
+
     case TAN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, TAN_FLOAT));
       break;
-      
+
     case ASIN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, ASIN_FLOAT));
       break;
-      
+
     case ACOS_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, ACOS_FLOAT));
       break;
-      
+
     case ATAN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, ATAN_FLOAT));
       break;
-      
+
     case LOG_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LOG_FLOAT));
       break;
@@ -790,7 +827,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case RAND_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, RAND_FLOAT));
       break;
-      
+
     case F2I:
       instrs.push_back(new LibraryInstr(line_num, F2I));
       break;
@@ -826,11 +863,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case BIT_AND_INT:
       instrs.push_back(new LibraryInstr(line_num, BIT_AND_INT));
       break;
-      
+
     case BIT_OR_INT:
       instrs.push_back(new LibraryInstr(line_num, BIT_OR_INT));
       break;
-      
+
     case BIT_XOR_INT:
       instrs.push_back(new LibraryInstr(line_num, BIT_XOR_INT));
       break;
@@ -890,7 +927,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case GTR_EQL_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, GTR_EQL_FLOAT));
       break;
-      
+
     case LES_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LES_FLOAT));
       break;
@@ -910,7 +947,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
-      
+
     case DLL_LOAD:
       instrs.push_back(new LibraryInstr(line_num, DLL_LOAD));
       break;
@@ -922,11 +959,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case DLL_FUNC_CALL:
       instrs.push_back(new LibraryInstr(line_num, DLL_FUNC_CALL));
       break;
-      
+
     case THREAD_JOIN:
       instrs.push_back(new LibraryInstr(line_num, THREAD_JOIN));
       break;
-      
+
     case THREAD_SLEEP:
       instrs.push_back(new LibraryInstr(line_num, THREAD_SLEEP));
       break;
@@ -934,7 +971,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case THREAD_MUTEX:
       instrs.push_back(new LibraryInstr(line_num, THREAD_MUTEX));
       break;
-      
+
     case CRITICAL_START:
       instrs.push_back(new LibraryInstr(line_num, CRITICAL_START));
       break;
@@ -942,11 +979,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case CRITICAL_END:
       instrs.push_back(new LibraryInstr(line_num, CRITICAL_END));
       break;
-      
+
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;
-      cerr << ">>> unknown instruction: " << instr << " <<<" << endl;
+      wcerr << L">>> unknown instruction: " << instr << L" <<<" << endl;
 #endif
       exit(1);
     }

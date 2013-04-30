@@ -4,7 +4,7 @@ use System.IO.File;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		len := File->Size("./in.txt");
-len->PrintLine();
+		len->PrintLine();
 		buffer : Byte[] := Byte->New[len];
 
 		in := FileReader->New("in.txt");

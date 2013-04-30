@@ -36,19 +36,23 @@
 int main(int argc, const char* argv[])
 {
   if(argc == 2) {
-    string file_name(argv[1]);
-    if(file_name.rfind(".obe") != string::npos) {
-      cout << "[Contents of Objeck executable file: '" << file_name << "']" << endl << endl;
-
+    string in(argv[1]);
+    wstring file_name(in.begin(), in.end());
+    if(file_name.rfind(L".obe") != string::npos) {
+      wcout << L"[Contents of Objeck executable file: '" << file_name << L"']" << endl << endl;
       // loader; when this goes out of scope program memory is released
-      Loader loader(argc, argv);
+      wchar_t** wargv = ProcessCommandLine(argc, argv);
+      Loader loader(argc, wargv);
       loader.Load();      
       // list contents
       StackProgram* program = Loader::GetProgram();      
       program->List();
+      // clean up
+      delete[] wargv;
+      wargv = NULL;
     }
-    else if(file_name.rfind(".obl") != string::npos) {
-      cout << "*** [Contains of the Objeck library file: '" << file_name << "'] ***" << endl << endl;
+    else if(file_name.rfind(L".obl") != string::npos) {
+      wcout << L"*** [Contains of the Objeck library file: '" << file_name << L"'] ***" << endl << endl;
 
       Library linker(file_name);
       linker.Load();
@@ -56,20 +60,20 @@ int main(int argc, const char* argv[])
       linker.List();
     }
     else {
-      cerr << "Files must end in '.obe' or 'obl'" << endl;
+      cerr << L"Files must end in '.obe' or 'obl'" << endl;
     }
   }
   else {
-    string usage = "Copyright (c) 2008-2011, Randy Hollines. All rights reserved.\n";
-    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += "FOR MORE INFORMATION.\n\n";
+    wstring usage = L"Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
+    usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += L"FOR MORE INFORMATION.\n\n";
     usage += VERSION_STRING;
-    usage += "\n\n";
-    usage += "usage: obu <program>\n\n";
-    usage += "example: \"obu hello.obe\"";
-    cerr << usage << endl << endl;
-
+    usage += L"\n\n";
+    usage += L"usage: obu <program>\n\n";
+    usage += L"example: \"obu hello.obe\"";
+    wcerr << usage << endl << endl;
+    
     return 1;
   }
 }
