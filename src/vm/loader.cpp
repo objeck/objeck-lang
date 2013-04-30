@@ -48,9 +48,9 @@ void Loader::LoadConfiguration()
       getline(in, line);
       size_t pos = line.find('=');
       if(pos != string::npos) {
-	string name = line.substr(0, pos);
-	string value = line.substr(pos + 1);
-	params.insert(pair<const string, int>(name, atoi(value.c_str())));
+        string name = line.substr(0, pos);
+        string value = line.substr(pos + 1);
+        params.insert(pair<const wstring, int>(BytesToUnicode(name), atoi(value.c_str())));
       }
     }
     while(!in.eof());
@@ -62,25 +62,25 @@ void Loader::Load()
 {
   const int ver_num = ReadInt();
   if(ver_num != VER_NUM) {
-    cerr << "This executable appears to be invalid or compiled with a different version of the toolchain." << endl;
+    wcerr << L"This executable appears to be invalid or compiled with a different version of the toolchain." << endl;
     exit(1);
   } 
-  
+
   const int magic_num = ReadInt();
   switch(magic_num) {
   case MAGIC_NUM_LIB:
-    cerr << "Unable to use execute shared library '" << filename << "'." << endl;
+    wcerr << L"Unable to use execute shared library '" << filename << L"'." << endl;
     exit(1);
-    
+
   case MAGIC_NUM_EXE:
     break;
 
   case MAGIC_NUM_WEB:
     is_web = true;
     break;
-    
+
   default:
-    cerr << "Unknown file type for '" << filename << "'." << endl;
+    wcerr << L"Unknown file type for '" << filename << L"'." << endl;
     exit(1);
   }
 
@@ -96,21 +96,21 @@ void Loader::Load()
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
-    cout << "Loaded static float string[" << i << "]: '";
+    wcout << L"Loaded static float string[" << i << L"]: '";
 #endif
     for(int j = 0; j < float_string_length; j++) {
       float_string[j] = ReadDouble();
 #ifdef _DEBUG
-      cout << float_string[j] << ",";
+      wcout << float_string[j] << L",";
 #endif
     }
 #ifdef _DEBUG
-    cout << "'" << endl;
+    wcout << L"'" << endl;
 #endif
     float_strings[i] = float_string;
   }
   program->SetFloatStrings(float_strings, num_float_strings);
-  
+
   // read int strings
   num_int_strings = ReadInt();
   INT_VALUE** int_strings = new INT_VALUE*[num_int_strings];
@@ -119,67 +119,72 @@ void Loader::Load()
     INT_VALUE* int_string = new INT_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
-    cout << "Loaded static int string[" << i << "]: '";
+    wcout << L"Loaded static int string[" << i << L"]: '";
 #endif
     for(int j = 0; j < int_string_length; j++) {
       int_string[j] = ReadInt();
 #ifdef _DEBUG
-      cout << int_string[j] << ",";
+      wcout << int_string[j] << L",";
 #endif
     }
 #ifdef _DEBUG
-    cout << "'" << endl;
+    wcout << L"'" << endl;
 #endif
     int_strings[i] = int_string;
   }
   program->SetIntStrings(int_strings, num_int_strings);
-  
+
   // read char strings
   num_char_strings = ReadInt();
-  BYTE_VALUE** char_strings = new BYTE_VALUE*[num_char_strings + arguments.size()];
+  wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
   for(i = 0; i < num_char_strings; i++) {
-    string value = ReadString();
-    BYTE_VALUE* char_string = new BYTE_VALUE[value.size() + 1];
+    const wstring value = ReadString();
+    wchar_t* char_string = new wchar_t[value.size() + 1];
     // copy string
     size_t j = 0;
     for(; j < value.size(); j++) {
       char_string[j] = value[j];
     }
-    char_string[j] = '\0';
+    char_string[j] = L'\0';
 #ifdef _DEBUG
-    cout << "Loaded static character string[" << i << "]: '" << char_string << "'" << endl;
+    wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << endl;
 #endif
     char_strings[i] = char_string;
   }
-  
+
   // copy command line params
   for(size_t j = 0; j < arguments.size(); i++, j++) {
-    char_strings[i] = (BYTE_VALUE*)strdup((arguments[j]).c_str());
+#ifdef _WIN32
+    char_strings[i] = _wcsdup((arguments[j]).c_str());
+#else
+    char_strings[i] = wcsdup((arguments[j]).c_str());
+#endif
+
 #ifdef _DEBUG
-    cout << "Loaded static string: '" << char_strings[i] << "'" << endl;
+    wcout << L"Loaded static string: '" << char_strings[i] << L"'" << endl;
 #endif
   }
   program->SetCharStrings(char_strings, num_char_strings);
 
 #ifdef _DEBUG
-  cout << "=======================================" << endl;
+  wcout << L"=======================================" << endl;
 #endif
-
+  
   // read start class and method ids
   start_class_id = ReadInt();
   start_method_id = ReadInt();
 #ifdef _DEBUG
-  cout << "Program starting point: " << start_class_id << ","
-       << start_method_id << endl;
+  wcout << L"Program starting point: " << start_class_id << L","
+	<< start_method_id << endl;
 #endif
 
   LoadEnums();
   LoadClasses();
 
-  string name = "$Initialization$:";
+  wstring name = L"$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
   dclrs[0] = new StackDclr;
-  dclrs[0]->name = "args";
+  dclrs[0]->name = L"args";
   dclrs[0]->type = OBJ_ARY_PARM;
 
   init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
@@ -219,23 +224,23 @@ void Loader::LoadClasses()
   StackClass** classes = new StackClass*[number];
 
 #ifdef _DEBUG
-  cout << "Reading " << number << " classe(s)..." << endl;
+  wcout << L"Reading " << number << L" classe(s)..." << endl;
 #endif
 
   for(int i = 0; i < number; i++) {
     // read id and pid
     const int id = ReadInt();
-    string name = ReadString();
+    wstring name = ReadString();
     const int pid = ReadInt();
-    string parent_name = ReadString();
-    
+    wstring parent_name = ReadString();
+
     // read interface ids
     const int interface_size = ReadInt();
     if(interface_size > 0) {
       int* interfaces = new int[interface_size + 1];
       int i = 0;
       while(i < interface_size) {
-	interfaces[i++] = ReadInt();
+        interfaces[i++] = ReadInt();
       }
       interfaces[i] = -1;
       cls_interfaces[id] = interfaces;
@@ -249,21 +254,21 @@ void Loader::LoadClasses()
     for(int i = 0; i < interface_names_size; i++) {
       ReadString();
     }
-    
+
     // is interface (covered by is virtual)
     ReadInt();
-    
-    const bool is_virtual = ReadInt();
-    const bool is_debug = ReadInt();
-    string file_name;
+
+    const bool is_virtual = (bool)ReadInt();
+    const bool is_debug = (bool)ReadInt();
+    wstring file_name;
     if(is_debug) {
       file_name = ReadString();
     }
-    
+
     // space
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
-    
+
     // read class types
     const int cls_num_dclrs = ReadInt();
     StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
@@ -271,9 +276,9 @@ void Loader::LoadClasses()
       // set type
       int type = ReadInt();
       // set name
-      string name;
+      wstring name;
       if(is_debug) {
-	name = ReadString();
+        name = ReadString();
       }
       cls_dclrs[i] = new StackDclr;
       cls_dclrs[i]->name = name;
@@ -287,9 +292,9 @@ void Loader::LoadClasses()
       // set type
       int type = ReadInt();
       // set name
-      string name;
+      wstring name;
       if(is_debug) {
-	name = ReadString();
+        name = ReadString();
       }
       inst_dclrs[i] = new StackDclr;
       inst_dclrs[i]->name = name;
@@ -302,9 +307,9 @@ void Loader::LoadClasses()
 				     inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
-    cout << "Class(" << cls << "): id=" << id << "; name='" << name << "'; parent='"
-         << parent_name << "'; class_bytes=" << cls_space << "'; instance_bytes="
-         << inst_space << endl;
+    wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
+	  << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
+	  << inst_space << endl;
 #endif
 
     // load methods
@@ -315,7 +320,7 @@ void Loader::LoadClasses()
 #endif
     classes[id] = cls;
   }
-  
+
   // set class hierarchy and interfaces
   program->SetClasses(classes, number);
   program->SetHierarchy(cls_hierarchy);
@@ -326,7 +331,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 {
   const int number = ReadInt();
 #ifdef _DEBUG
-  cout << "Reading " << number << " method(s)..." << endl;
+  wcout << L"Reading " << number << L" method(s)..." << endl;
 #endif
 
   StackMethod** methods = new StackMethod*[number];
@@ -336,32 +341,32 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // method type
     ReadInt();
     // virtual
-    const bool is_virtual = ReadInt();
+    const bool is_virtual = (bool)ReadInt();
     // has and/or
-    const bool has_and_or = ReadInt();
+    const bool has_and_or = (bool)ReadInt();
     // is native
     ReadInt();
     // is static
     ReadInt();
     // name
-    const string name = ReadString();
+    const wstring name = ReadString();
     // return
-    const string rtrn_name = ReadString();
+    const wstring rtrn_name = ReadString();
     // params
     const int params = ReadInt();
     // space
     const int mem_size = ReadInt();
     // read type parameters
     const int num_dclrs = ReadInt();
-    
+
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int i = 0; i < num_dclrs; i++) {
       // set type
       const int type = ReadInt();
       // set name
-      string name;
+      wstring name;
       if(is_debug) {
-	name = ReadString();
+        name = ReadString();
       }
       dclrs[i] = new StackDclr;
       dclrs[i]->name = name;
@@ -371,15 +376,15 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // parse return
     MemoryType rtrn_type;
     switch(rtrn_name[0]) {
-    case 'l': // bool
-    case 'b': // byte
-    case 'c': // character
-    case 'i': // int
-    case 'o': // object
+    case L'l': // bool
+    case L'b': // byte
+    case L'c': // character
+    case L'i': // int
+    case L'o': // object
       rtrn_type = INT_TYPE;
       break;
 
-    case 'f': // float
+    case L'f': // float
       if(rtrn_name.size() > 1) {
         rtrn_type = INT_TYPE;
       } else {
@@ -387,30 +392,30 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       }
       break;
 
-    case 'n': // nil
+    case L'n': // nil
       rtrn_type = NIL_TYPE;
       break;
 
-    case 'm': // function
+    case L'm': // function
       rtrn_type = FUNC_TYPE;
       break;
-      
+
     default:
-      cerr << ">>> unknown type <<<" << endl;
+      wcerr << L">>> unknown type <<<" << endl;
       exit(1);
       break;
     }
 
     StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
-                                        num_dclrs, params, mem_size, rtrn_type, cls);    
+					num_dclrs, params, mem_size, rtrn_type, cls);    
     // load statements
 #ifdef _DEBUG
-    cout << "Method(" << mthd << "): id=" << id << "; name='" << name << "'; return='" 
-	 << rtrn_name << "'; params=" << params << "; bytes=" 
-	 << mem_size << endl;
+    wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
+	  << rtrn_name << L"'; params=" << params << L"; bytes=" 
+	  << mem_size << endl;
 #endif    
     LoadStatements(mthd, is_debug);
-    
+
     // add method
 #ifdef _DEBUG
     assert(id < number);
@@ -423,14 +428,14 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 void Loader::LoadInitializationCode(StackMethod* method)
 {
   vector<StackInstr*> instrs;
-  
+
   instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
   instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
   instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
   for(size_t i = 0; i < arguments.size(); i++) {
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
-    instrs.push_back(new StackInstr(-1, NEW_BYTE_ARY, 1L));
+    instrs.push_back(new StackInstr(-1, NEW_CHAR_ARY, 1L));
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
     instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
@@ -459,7 +464,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   vector<StackInstr*> instrs;
-  
+
   int index = 0;
   int type = ReadByte();
   int line_num = -1;
@@ -470,6 +475,10 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt()));
+      break;
+
+    case LOAD_CHAR_LIT:
+      instrs.push_back(new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar()));
       break;
 
     case SHL_INT:
@@ -495,7 +504,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
     }
       break;
-      
+
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -518,14 +527,14 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
     }
       break;
-      
+
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
       instrs.push_back(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
-      
+
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -549,6 +558,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case LOAD_CHAR_ARY_ELM: {
+      long dim = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
+    }
+      break;
+      
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
@@ -567,6 +583,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
+    }
+      break;
+
+    case STOR_CHAR_ARY_ELM: {
+      long dim = ReadInt();
+      MemoryContext mem_context = (MemoryContext)ReadInt();
+      instrs.push_back(new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
 
@@ -603,19 +626,26 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     }
       break;
 
+    case NEW_CHAR_ARY: {
+      long dim = ReadInt();
+      instrs.push_back(new StackInstr(line_num, NEW_CHAR_ARY, dim));
+
+    }
+      break;
+
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
       instrs.push_back(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
-      
+
     case DYN_MTHD_CALL: {
       long num_params = ReadInt();
       long rtrn_type = ReadInt();
       instrs.push_back(new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
     }
       break;
-      
+
     case MTHD_CALL: {
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
@@ -631,17 +661,17 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
     }
       break;
-      
+
     case LIB_OBJ_INST_CAST:
-      cerr << ">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
+      wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
       exit(1);
 
     case LIB_NEW_OBJ_INST:
-      cerr << ">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << endl;
+      wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << endl;
       exit(1);
 
     case LIB_MTHD_CALL:
-      cerr << ">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << endl;
+      wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << endl;
       exit(1);
 
     case JMP: {
@@ -663,13 +693,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, OBJ_INST_CAST, to));
     }
       break;
-      
+
     case OBJ_TYPE_OF: {
       long check = ReadInt();
       instrs.push_back(new StackInstr(line_num, OBJ_TYPE_OF, check));
     }
       break;
-      
+
     case OR_INT:
       instrs.push_back(new StackInstr(line_num, OR_INT));
       break;
@@ -690,42 +720,46 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       instrs.push_back(new StackInstr(line_num, CPY_BYTE_ARY));
       break;
       
+    case CPY_CHAR_ARY:
+      instrs.push_back(new StackInstr(line_num, CPY_CHAR_ARY));
+      break;
+      
     case CPY_INT_ARY:
       instrs.push_back(new StackInstr(line_num, CPY_INT_ARY));
       break;
-      
+
     case CPY_FLOAT_ARY:
       instrs.push_back(new StackInstr(line_num, CPY_FLOAT_ARY));
       break;
-      
+
     case FLOR_FLOAT:
       instrs.push_back(new StackInstr(line_num, FLOR_FLOAT));
       break;
-      
+
     case SIN_FLOAT:
       instrs.push_back(new StackInstr(line_num, SIN_FLOAT));
       break;
-      
+
     case COS_FLOAT:
       instrs.push_back(new StackInstr(line_num, COS_FLOAT));
       break;
-      
+
     case TAN_FLOAT:
       instrs.push_back(new StackInstr(line_num, TAN_FLOAT));
       break;
-      
+
     case ASIN_FLOAT:
       instrs.push_back(new StackInstr(line_num, ASIN_FLOAT));
       break;
-      
+
     case ACOS_FLOAT:
       instrs.push_back(new StackInstr(line_num, ACOS_FLOAT));
       break;
-      
+
     case ATAN_FLOAT:
       instrs.push_back(new StackInstr(line_num, ATAN_FLOAT));
       break;
-      
+
     case LOG_FLOAT:
       instrs.push_back(new StackInstr(line_num, LOG_FLOAT));
       break;
@@ -741,7 +775,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case RAND_FLOAT:
       instrs.push_back(new StackInstr(line_num, RAND_FLOAT));
       break;
-      
+
     case F2I:
       instrs.push_back(new StackInstr(line_num, F2I));
       break;
@@ -769,7 +803,11 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LOAD_INST_MEM:
       instrs.push_back(new StackInstr(line_num, LOAD_INST_MEM));
       break;
-      
+
+    case LOAD_ARY_SIZE:
+      instrs.push_back(new StackInstr(line_num, LOAD_ARY_SIZE));
+      break;
+
     case SUB_INT:
       instrs.push_back(new StackInstr(line_num, SUB_INT));
       break;
@@ -789,15 +827,15 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case BIT_AND_INT:
       instrs.push_back(new StackInstr(line_num, BIT_AND_INT));
       break;
-      
+
     case BIT_OR_INT:
       instrs.push_back(new StackInstr(line_num, BIT_OR_INT));
       break;
-      
+
     case BIT_XOR_INT:
       instrs.push_back(new StackInstr(line_num, BIT_XOR_INT));
       break;
-      
+
     case EQL_INT:
       instrs.push_back(new StackInstr(line_num, EQL_INT));
       break;
@@ -864,34 +902,34 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LOAD_FLOAT_LIT:
       instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_LIT,
-                                            ReadDouble()));
+				      ReadDouble()));
       break;
-      
+
     case RTRN:
       if(is_debug) {
-	instrs.push_back(new StackInstr(line_num + 1, RTRN));
+        instrs.push_back(new StackInstr(line_num + 1, RTRN));
       }
       else {
-	instrs.push_back(new StackInstr(line_num, RTRN));
+        instrs.push_back(new StackInstr(line_num, RTRN));
       }
       break;
-      
+
     case DLL_LOAD:
       instrs.push_back(new StackInstr(line_num, DLL_LOAD));
       break;
-      
+
     case DLL_UNLOAD:
       instrs.push_back(new StackInstr(line_num, DLL_UNLOAD));
       break;
-      
+
     case DLL_FUNC_CALL:
       instrs.push_back(new StackInstr(line_num, DLL_FUNC_CALL));
       break;
-      
+
     case THREAD_JOIN:
       instrs.push_back(new StackInstr(line_num, THREAD_JOIN));
       break;
-      
+
     case THREAD_SLEEP:
       instrs.push_back(new StackInstr(line_num, THREAD_SLEEP));
       break;
@@ -899,7 +937,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case THREAD_MUTEX:
       instrs.push_back(new StackInstr(line_num, THREAD_MUTEX));
       break;
-      
+
     case CRITICAL_START:
       instrs.push_back(new StackInstr(line_num, CRITICAL_START));
       break;
@@ -923,7 +961,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;
-      cout << ">>> unknown instruction: id=" << instr << " <<<" << endl;
+      wcout << L">>> unknown instruction: id=" << instr << L" <<<" << endl;
 #endif
       exit(1);
     }

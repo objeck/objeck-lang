@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -113,8 +113,8 @@ class ItermediateOptimizer {
     }
     
     // don't inline method calls for primitive objects
-    const string called_cls_name = mthd_called->GetClass()->GetName();
-    if(called_cls_name.find('$') != string::npos) {
+    const wstring called_cls_name = mthd_called->GetClass()->GetName();
+    if(called_cls_name.find(L'$') != wstring::npos) {
       return false;
     }
     
@@ -129,15 +129,15 @@ class ItermediateOptimizer {
     }
     
     // ignore constructors
-    const string called_mthd_name = mthd_called->GetName();
-    if(called_mthd_name.find(":New:") != string::npos) {
+    const wstring called_mthd_name = mthd_called->GetName();
+    if(called_mthd_name.find(L":New:") != wstring::npos) {
       return false;
     }
 
-    // const string curr_mthd_name = current_method->GetName();
+    // const wstring curr_mthd_name = current_method->GetName();
     // don't inline into "main" since it's not JTI compiled
-    const string curr_mthd_name = current_method->GetName();
-    if(curr_mthd_name.find(":Main:o.System.String*,") != string::npos) {
+    const wstring curr_mthd_name = current_method->GetName();
+    if(curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
       return false;
     }
     
@@ -170,6 +170,7 @@ class ItermediateOptimizer {
       case instructions::TRAP:
       case instructions::TRAP_RTRN:
       case instructions::CPY_BYTE_ARY:
+      case instructions::CPY_CHAR_ARY:
       case instructions::CPY_INT_ARY:
       case instructions::CPY_FLOAT_ARY:
       case instructions::DLL_LOAD:
@@ -224,7 +225,7 @@ class ItermediateOptimizer {
     vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
     
     int offset = 0;
-    for(size_t i = 0; i < instrs.size(); i++) {
+    for(size_t i = 0; i < instrs.size(); ++i) {
       IntermediateInstruction* instr = instrs[i];
       switch(instr->GetType()) {
       case LOAD_INT_VAR:
@@ -320,19 +321,19 @@ class ItermediateOptimizer {
   }
   
  public:
-  ItermediateOptimizer(IntermediateProgram* p, int u, string o) {
+  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o) {
     program = p;
     cur_line_num = -1;
     merge_blocks = false;
     unconditional_label = u; 
 
-    if(o == "s1") {
+    if(o == L"s1") {
       optimization_level = 1;
     } 
-    else if(o == "s2") {
+    else if(o == L"s2") {
       optimization_level = 2;
     } 
-    else if(o == "s3") {
+    else if(o == L"s3") {
       optimization_level = 3;
     } 
     else {

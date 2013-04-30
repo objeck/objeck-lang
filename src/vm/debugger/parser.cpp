@@ -36,18 +36,18 @@
  ****************************/
 void Parser::LoadErrorCodes()
 {
-  error_msgs[TOKEN_IDENT] = "Expected identifier";
-  error_msgs[TOKEN_OPEN_PAREN] = "Expected '('";
-  error_msgs[TOKEN_CLOSED_PAREN] = "Expected ')'";
-  error_msgs[TOKEN_OPEN_BRACKET] = "Expected '['";
-  error_msgs[TOKEN_CLOSED_BRACKET] = "Expected ']'";
-  error_msgs[TOKEN_OPEN_BRACE] = "Expected '{'";
-  error_msgs[TOKEN_CLOSED_BRACE] = "Expected '}'";
-  error_msgs[TOKEN_COLON] = "Expected ':'";
-  error_msgs[TOKEN_COMMA] = "Expected ','";
-  error_msgs[TOKEN_ASSIGN] = "Expected ':='";
-  error_msgs[TOKEN_SEMI_COLON] = "Expected ';'";
-  error_msgs[TOKEN_ASSESSOR] = "Expected '->'";
+  error_msgs[TOKEN_IDENT] = L"Expected identifier";
+  error_msgs[TOKEN_OPEN_PAREN] = L"Expected '('";
+  error_msgs[TOKEN_CLOSED_PAREN] = L"Expected ')'";
+  error_msgs[TOKEN_OPEN_BRACKET] = L"Expected '['";
+  error_msgs[TOKEN_CLOSED_BRACKET] = L"Expected ']'";
+  error_msgs[TOKEN_OPEN_BRACE] = L"Expected '{'";
+  error_msgs[TOKEN_CLOSED_BRACE] = L"Expected '}'";
+  error_msgs[TOKEN_COLON] = L"Expected ':'";
+  error_msgs[TOKEN_COMMA] = L"Expected ','";
+  error_msgs[TOKEN_ASSIGN] = L"Expected ':='";
+  error_msgs[TOKEN_SEMI_COLON] = L"Expected ';'";
+  error_msgs[TOKEN_ASSESSOR] = L"Expected '->'";
 }
 
 /****************************
@@ -55,9 +55,9 @@ void Parser::LoadErrorCodes()
  ****************************/
 void Parser::ProcessError(enum TokenType type)
 {
-  string msg = error_msgs[type];
+  wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  cout << "\tError: "
+  wcout << L"\tError: "
        << msg << endl;
 #endif
 
@@ -67,10 +67,10 @@ void Parser::ProcessError(enum TokenType type)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const string &msg)
+void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
-  cout << "\tError: " << msg << endl;
+  wcout << L"\tError: " << msg << endl;
 #endif
 
   errors.push_back(msg);
@@ -84,7 +84,7 @@ bool Parser::CheckErrors()
   // check and process errors
   if(errors.size()) {
     for(size_t i = 0; i < errors.size(); i++) {
-      cerr << errors[i] << endl;
+      wcerr << errors[i] << endl;
     }
     // clean up
     return false;
@@ -96,18 +96,16 @@ bool Parser::CheckErrors()
 /****************************
  * Starts the parsing process.
  ****************************/
-Command* Parser::Parse(const string &line)
+Command* Parser::Parse(const wstring &line)
 {
 #ifdef _DEBUG
-  cout << "\n---------- Scanning/Parsing ---------" << endl;
+  wcout << L"\n---------- Scanning/Parsing ---------" << endl;
 #endif
   scanner = new Scanner(line);
   NextToken();
 
   // parse input
   Command* command = ParseLine(line);
-
-
   if(CheckErrors()) {
     return command;
   }
@@ -118,11 +116,11 @@ Command* Parser::Parse(const string &line)
 /****************************
  * Parses a file.
  ****************************/
-Command* Parser::ParseLine(const string &line)
+Command* Parser::ParseLine(const wstring &line)
 {
   Command* command = ParseStatement(0);
   if(!Match(TOKEN_END_OF_STREAM)) {
-    ProcessError("Expected statement end");
+    ProcessError(L"Expected statement end");
   }
 
   // clean up
@@ -196,7 +194,11 @@ Command* Parser::ParseStatement(int depth)
     break;
 
   case TOKEN_BREAK_ID:
-    command = ParseBreak(depth + 1);
+    command = ParseBreakDelete(true, depth + 1);
+    break;
+    
+  case TOKEN_DELETE_ID:
+    command = ParseBreakDelete(false, depth + 1);
     break;
 
   case TOKEN_PRINT_ID:
@@ -216,10 +218,6 @@ Command* Parser::ParseStatement(int depth)
     command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
     break;
 
-  case TOKEN_DELETE_ID:
-    command = ParseDelete(depth + 1);
-    break;
-
   default:
     command = NULL;
     break;
@@ -230,11 +228,11 @@ Command* Parser::ParseStatement(int depth)
 
 Command* Parser::ParseList(int depth) {
 #ifdef _DEBUG
-  Show("List", depth);
+  Show(L"List", depth);
 #endif
   NextToken();
 
-  string file_name;
+  wstring file_name;
   int line_num = -1;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
@@ -249,7 +247,7 @@ Command* Parser::ParseList(int depth) {
       line_num = scanner->GetToken()->GetIntLit();
     }
     else {
-      ProcessError("Expected line number");
+      ProcessError(L"Expected line number");
     }
   }
   else if(Match(TOKEN_CHAR_STRING_LIT)) {
@@ -267,7 +265,7 @@ Command* Parser::ParseList(int depth) {
       line_num = scanner->GetToken()->GetIntLit();
     }
     else {
-      ProcessError("Expected line number");
+      ProcessError(L"Expected line number");
     }
   }
   NextToken();
@@ -277,11 +275,11 @@ Command* Parser::ParseList(int depth) {
 
 Command* Parser::ParseLoad(CommandType type, int depth) {
 #ifdef _DEBUG
-  Show("Load", depth);
+  Show(L"Load", depth);
 #endif
   NextToken();
 
-  string file_name;
+  wstring file_name;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
   }
@@ -291,54 +289,21 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
     file_name = char_string->GetString();
   }
   else {
-    ProcessError("Expected filename (ensure the argument is wrapped in double quotes)");
+    ProcessError(L"Expected filename (ensure the argument is wrapped in double quotes)");
   }
   NextToken();
 
   return TreeFactory::Instance()->MakeLoad(type, file_name);
 }
 
-Command* Parser::ParseDelete(int depth) {
+Command* Parser::ParseBreakDelete(bool is_break, int depth) {
 #ifdef _DEBUG
-  Show("Break", depth);
+  Show(L"Break", depth);
 #endif
   NextToken();
 
   // file name
-  if(!Match(TOKEN_IDENT)) {
-    ProcessError(TOKEN_IDENT);
-    NextToken();
-  }
-
-  const string &file_name = scanner->GetToken()->GetIdentifier();
-  NextToken();
-  if(!Match(TOKEN_COLON)) {
-    ProcessError(TOKEN_COLON);
-  }
-  NextToken();
-
-  // line number
-  int line_num = -1;
-  if(Match(TOKEN_INT_LIT)) {
-    line_num = scanner->GetToken()->GetIntLit();
-    NextToken();
-  }
-  else {
-    ProcessError("Expected line number");
-    NextToken();
-  }
-
-  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);
-}
-
-Command* Parser::ParseBreak(int depth) {
-#ifdef _DEBUG
-  Show("Break", depth);
-#endif
-  NextToken();
-
-  // file name
-  string file_name;
+  wstring file_name;
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
     NextToken();
@@ -359,7 +324,11 @@ Command* Parser::ParseBreak(int depth) {
     NextToken();
   }
 
-  return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num);
+  if(is_break) {
+    return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num);
+  }
+  
+  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);  
 }
 
 Command* Parser::ParsePrint(int depth) {
@@ -368,8 +337,8 @@ Command* Parser::ParsePrint(int depth) {
 }
 
 Command* Parser::ParseInfo(int depth) {
-  string cls_name;
-  string mthd_name;
+  wstring cls_name;
+  wstring mthd_name;
 
   NextToken();
 
@@ -377,7 +346,7 @@ Command* Parser::ParseInfo(int depth) {
   if(Match(TOKEN_CLASS_ID)) {
     NextToken();
     if(!Match(TOKEN_EQL)) {
-      ProcessError("Expected equal sign");
+      ProcessError(L"Expected equal sign");
     }
     NextToken();
     // name
@@ -398,7 +367,7 @@ Command* Parser::ParseInfo(int depth) {
     if(Match(TOKEN_METHOD_ID)) {
       NextToken();
       if(!Match(TOKEN_EQL)) {
-	ProcessError("Expected equal sign");
+	ProcessError(L"Expected equal sign");
       }
       NextToken();
       // name
@@ -443,7 +412,7 @@ ExpressionList* Parser::ParseIndices(int depth)
         NextToken();
       }
       else if(!Match(TOKEN_CLOSED_BRACKET)) {
-        ProcessError("Expected comma or semi-colon");
+        ProcessError(L"Expected comma or semi-colon");
         NextToken();
       }
     }
@@ -463,7 +432,7 @@ ExpressionList* Parser::ParseIndices(int depth)
 Expression* Parser::ParseExpression(int depth)
 {
 #ifdef _DEBUG
-  Show("Expression", depth);
+  Show(L"Expression", depth);
 #endif
 
   return ParseLogic(depth + 1);
@@ -477,7 +446,7 @@ Expression* Parser::ParseExpression(int depth)
 Expression* Parser::ParseLogic(int depth)
 {
 #ifdef _DEBUG
-  Show("Boolean logic", depth);
+  Show(L"Boolean logic", depth);
 #endif
 
   Expression* left = ParseMathLogic(depth + 1);
@@ -525,7 +494,7 @@ Expression* Parser::ParseMathLogic(int depth)
 {
 
 #ifdef _DEBUG
-  Show("Boolean math", depth);
+  Show(L"Boolean math", depth);
 #endif
 
   Expression* left = ParseTerm(depth + 1);
@@ -581,7 +550,7 @@ Expression* Parser::ParseTerm(int depth)
 {
 
 #ifdef _DEBUG
-  Show("Term", depth);
+  Show(L"Term", depth);
 #endif
 
   Expression* left = ParseFactor(depth + 1);
@@ -640,7 +609,7 @@ Expression* Parser::ParseFactor(int depth)
 {
 
 #ifdef _DEBUG
-  Show("Factor", depth);
+  Show(L"Factor", depth);
 #endif
 
   Expression* left = ParseSimpleExpression(depth + 1);
@@ -695,12 +664,12 @@ Expression* Parser::ParseFactor(int depth)
 Expression* Parser::ParseSimpleExpression(int depth)
 {
 #ifdef _DEBUG
-  Show("Simple expression", depth);
+  Show(L"Simple expression", depth);
 #endif
   Expression* expression = NULL;
 
   if(Match(TOKEN_IDENT)) {
-    const string &ident = scanner->GetToken()->GetIdentifier();
+    const wstring &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
     expression = ParseReference(ident, depth + 1);
   }
@@ -723,7 +692,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     default:
-      ProcessError("Expected expression");
+      ProcessError(L"Expected expression");
       NextToken();
       break;
     }
@@ -754,14 +723,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_CHAR_STRING_LIT: {
-      const string &ident = scanner->GetToken()->GetIdentifier();
+      const wstring &ident = scanner->GetToken()->GetIdentifier();
       expression = TreeFactory::Instance()->MakeCharacterString(ident);
       NextToken();
     }
       break;
 
     default:
-      ProcessError("Expected expression");
+      ProcessError(L"Expected expression");
       NextToken();
       break;
     }
@@ -773,7 +742,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       ParseReference(static_cast<Reference*>(expression), depth + 1);
     }
     else {
-      ProcessError("Expected reference");
+      ProcessError(L"Expected reference");
       NextToken();
     }
   }
@@ -787,7 +756,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 Reference* Parser::ParseReference(int depth)
 {
 #ifdef _DEBUG
-  Show("Instance reference", depth);
+  Show(L"Instance reference", depth);
 #endif
 
   // self reference
@@ -804,10 +773,10 @@ Reference* Parser::ParseReference(int depth)
 /****************************
  * Parses a instance reference.
  ****************************/
-Reference* Parser::ParseReference(const string &ident, int depth)
+Reference* Parser::ParseReference(const wstring &ident, int depth)
 {
 #ifdef _DEBUG
-  Show("Instance reference", depth);
+  Show(L"Instance reference", depth);
 #endif
 
   Reference* inst_ref = TreeFactory::Instance()->MakeReference(ident);
@@ -829,7 +798,7 @@ Reference* Parser::ParseReference(const string &ident, int depth)
 void Parser::ParseReference(Reference* reference, int depth)
 {
 #ifdef _DEBUG
-  Show("Instance reference", depth);
+  Show(L"Instance reference", depth);
 #endif
 
   NextToken();
@@ -837,7 +806,7 @@ void Parser::ParseReference(Reference* reference, int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  const string &ident = scanner->GetToken()->GetIdentifier();
+  const wstring &ident = scanner->GetToken()->GetIdentifier();
   NextToken();
 
   if(reference) {

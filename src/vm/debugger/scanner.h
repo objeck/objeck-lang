@@ -116,12 +116,12 @@ enum TokenType {
 class Token {
  private:
   enum TokenType token_type;
-  string ident;
+  wstring ident;
 
   INT_VALUE int_lit;
   FLOAT_VALUE double_lit;
-  CHAR_VALUE char_lit;
-  BYTE_VALUE byte_lit;
+  wchar_t char_lit;
+  char byte_lit;
 
  public:
 
@@ -141,15 +141,15 @@ class Token {
     double_lit = d;
   }
 
-  inline void SetByteLit(BYTE_VALUE b) {
+  inline void SetByteLit(char b) {
     byte_lit = b;
   }
 
-  inline void SetCharLit(CHAR_VALUE c) {
+  inline void SetCharLit(wchar_t c) {
     char_lit = c;
   }
 
-  inline void SetIdentifier(string i) {
+  inline void SetIdentifier(wstring i) {
     ident = i;
   }
 
@@ -161,15 +161,15 @@ class Token {
     return double_lit;
   }
 
-  inline const BYTE_VALUE GetByteLit() {
+  inline const char GetByteLit() {
     return byte_lit;
   }
 
-  inline const CHAR_VALUE GetCharLit() {
+  inline const wchar_t GetCharLit() {
     return char_lit;
   }
 
-  inline const string GetIdentifier() {
+  inline const wstring GetIdentifier() {
     return ident;
   }
 
@@ -189,7 +189,7 @@ class Token {
 class Scanner {
  private:
   // input buffer
-  char* buffer;
+  wchar_t* buffer;
   // buffer size
   std::streamoff buffer_size;
   // input buffer position
@@ -199,62 +199,63 @@ class Scanner {
   // end marker position
   int end_pos;
   // input characters
-  char cur_char, nxt_char, nxt_nxt_char;
+  wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  map<const string, enum TokenType> ident_map;
+  map<const wstring, enum TokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
 
   // warning message
   void ProcessWarning() {
-    cout << "Parse warning: Unknown token: '" << cur_char << "'" << endl;
+    wcout << L"Parse warning: Unknown token: '" << cur_char << L"'" << endl;
   }
 
-  // parsers a character string
+  // parsers a character wstring
   inline void CheckString(int index) {
-    // copy string
+    // copy wstring
     const int length = end_pos - start_pos;
-    string char_string(buffer, start_pos, length);
-    // set string
+    wstring char_string(buffer, start_pos, length);
+    // set wstring
     tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
     tokens[index]->SetIdentifier(char_string);
   }
 
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
-    // copy string
+    // copy wstring
     int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
+    wstring ident(buffer, start_pos, length);
 
     // set token
-    char* end;
+    wchar_t* end;
     tokens[index]->SetType(TOKEN_INT_LIT);
-    tokens[index]->SetIntLit(strtol(ident.c_str(), &end, base));
+    tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
   }
 
   // parse a double
   inline void ParseDouble(int index) {
-    // copy string
+    // copy wstring
     const int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
+    wstring wident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
+    const string ident(wident.begin(), wident.end());
     tokens[index]->SetFloatLit(atof(ident.c_str()));
   }
 
   // parsers an unicode character
   inline void ParseUnicodeChar(int index) {
-    // copy string
+    // copy wstring
     const int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
+    wstring ident(buffer, start_pos, length);
     // set token
-    char* end;
+    wchar_t* end;
     tokens[index]->SetType(TOKEN_CHAR_LIT);
-    tokens[index]->SetCharLit((CHAR_VALUE)strtol(ident.c_str(), &end, 16));
+    tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), &end, 16));
   }
 
   // reads a line as input
-  void ReadLine(const string &line);
+  void ReadLine(const wstring &line);
   // ignore white space
   void Whitespace();
   // next character
@@ -268,7 +269,7 @@ class Scanner {
 
  public:
   // default constructor
-  Scanner(const string &line);
+  Scanner(const wstring &line);
   // default destructor
   ~Scanner();
 

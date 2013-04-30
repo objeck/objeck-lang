@@ -42,7 +42,7 @@
 #define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
 #define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO
 #define COL_NAME_MAX 64
-#define VARCHAR_MAX 256
+#define VARCHAR_MAX 1024
 
 extern "C" {
   static SQLHENV env;
@@ -55,6 +55,21 @@ extern "C" {
     SQLSMALLINT decimal_length;
     SQLSMALLINT nullable;
   } ColumnDescription;
+
+  void ShowError(SQLSMALLINT type, SQLHSTMT hstmt) {
+    SQLCHAR SqlState[6];
+    SQLCHAR SQLStmt[100];
+    SQLCHAR Msg[SQL_MAX_MESSAGE_LENGTH];
+    SQLINTEGER NativeError;
+    SQLSMALLINT MsgLen;
+    SQLRETURN result;
+
+    SQLSMALLINT i = 1;
+    while((result = SQLGetDiagRec(SQL_HANDLE_DBC, hstmt, i, SqlState, &NativeError, Msg, sizeof(Msg), &MsgLen)) != SQL_NO_DATA) {
+      cout << NativeError << " - " << Msg << endl;
+      i++;
+    }
+  }
 }
 
 #endif

@@ -1,7 +1,7 @@
 ##############
 # MinGW
 ##############
-ARGS=-O3 -Wall
+ARGS=-O3 -Wall -Wno-unused-function
 # ARGS=-D_DEBUG -Wall -g
 
 CC=g++

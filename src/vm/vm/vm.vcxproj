@@ -79,7 +79,7 @@
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Program Files %28x86%29\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Program Files %28x86%29\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Users\Randy Hollines\Documents\Temp\experimental\src\vm\lib\openssl\win32\lib;C:\Program Files %28x86%29\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -189,18 +189,17 @@
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\instrs.h" />
+    <ClInclude Include="..\..\shared\sys.h" />
+    <ClInclude Include="..\..\shared\traps.h" />
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\interpreter.h" />
     <ClInclude Include="..\jit\ia32\jit_intel_lp32.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
-    <ClInclude Include="..\os\stx\btree.h" />
-    <ClInclude Include="..\os\stx\btree_map.h" />
-    <ClInclude Include="..\os\stx\btree_set.h" />
     <ClInclude Include="..\os\windows\memory.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="..\vm.h" />
     <ClInclude Include="..\os\windows\windows.h" />
+    <ClInclude Include="..\vm.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="objeck.rc" />

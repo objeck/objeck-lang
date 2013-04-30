@@ -250,18 +250,18 @@
     <ClCompile Include="..\types.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\compiler.h" />
     <ClInclude Include="..\context.h" />
     <ClInclude Include="..\intermediate.h" />
     <ClInclude Include="..\linker.h" />
     <ClInclude Include="..\optimization.h" />
-    <ClInclude Include="..\optimize.h" />
     <ClInclude Include="..\parser.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="..\scanner.h" />
     <ClInclude Include="..\target.h" />
     <ClInclude Include="..\tree.h" />
     <ClInclude Include="..\types.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="..\scanner.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="objeck.rc" />

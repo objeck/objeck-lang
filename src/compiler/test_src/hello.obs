@@ -1,10 +1,105 @@
-﻿bundle Default {
-	class Hello {
+﻿class Hello {
 		function : Main(args : String[]) ~ Nil {
-			a := 13;
-			b := "Hello";
-			c := a + b->Size();
-			c->PrintLine();
+		a := 13;
+		b := 7;
+		c := b * a;
+
+		gg := Char->New[3];
+		gg[0] := 'ᐅ';
+		gg[1] := 'H';
+		gg[2] := 'ᐊ';
+		
+		k := 1;
+		zzzb := gg[k];
+		
+		bb := Byte->New[3];
+		bb[0] := 'a';
+		bb[1] := 'b';
+		bb[2] := 'z';
+		
+		foo := "我愛 UTF-8 أحِبّ";
+		foo->Get(4)->PrintLine();
+		
+		aa := Byte->New[5];
+		aa->Size()->PrintLine();
+
+		ss := "GET ";
+		ss->Append(" www.foo.com");
+		ss->ToCharArray()->PrintLine();
+		in := Char->New[3];
+		in[0] := '☢';
+		in[1] := 'ዥ';
+		in[2] := '❄';
+
+		
+		"こんにちは世界"->PrintLine();
+		"こんにちは世界"->Size()->PrintLine();
+
+		line := IO.Console->ReadString();
+		line->PrintLine();
+
+		"こんにちは世界"->PrintLine();
+		"こんにちは世界"->Size()->PrintLine();
+
+		hip_hop := "こつんとたたくこと";
+
+		h := hip_hop->Get(0);
+		h->PrintLine();
+		hip_hop->Size()->PrintLine();
+
+
+		s := "こんにちは世界"->Size();
+		s->PrintLine();
+
+		pi := '\u03C0';
+		pi->PrintLine();
+		3.14->PrintLine();
+
+		s3 := Char->New[3];
+		s3[0] := 'ち';
+		s3[1] := 'は';
+		s3[2] := '۸';
+
+		Run(in);
+
+		bb := Byte->New[4];
+		bb[0] := 68;
+		bb[1] := 73;
+		bb[2] := 78;
+		bb[3] := 59;
+
+		sb := String->New(bb);
+		sb->PrintLine();
+
+		cc := Byte->New[2];
+		cc[0] := 0xC2;
+		cc[1] := 0xA9;
+		cs := cc->ToUnicode();
+		cs->PrintLine();
+
+		ccc := Char->New[1];
+		ccc[0] := '≠';
+		bbb := ccc->ToBytes();
+		each(i : bbb) {
+			bbb[i]->PrintLine();
+		};	
 		}
+	
+	function : native : Run(in : Char[]) ~ Nil {
+#	function : Run(in : Char[]) ~ Nil {
+		out := Char->New[3];
+		
+		out[1] := in[1];
+		out[2] := in[2];
+		out[0] := '\u1100';
+#~		
+		each(i : in) {
+			out[i] := in[i];
+		};
+~#
+		out[0]->PrintLine();
+		out[1]->PrintLine();
+		out[2]->PrintLine();
 	}
 }
+

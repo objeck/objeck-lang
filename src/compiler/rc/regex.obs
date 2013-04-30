@@ -3,7 +3,6 @@
 bundle Default {
 	class RegExTest {
 		function : Main(args : String[]) ~ Nil {
-#~
 			string := "I am a string";
 			# exact match
 			regex := RegEx->New(".*string");
@@ -19,7 +18,6 @@ bundle Default {
 			each(i : found) {
 				found->Get(i)->As(String)->PrintLine();
 			};
-~#
 			regex := RegEx->New("1[3-5]?9");
 			match := regex->Match("149");
 			if(match <> Nil) {

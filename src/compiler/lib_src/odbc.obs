@@ -34,9 +34,13 @@ bundle ODBC {
 			@native_connection := value->Get();
 		}
       	
+		method : public : IsOpen() ~ Bool {
+			return @native_connection <> 0;
+		}
+		
 		method : public : Close() ~ Nil {
 			if(@native_connection <> 0) {
-     		array_args := Base->New[1];
+				array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_disconnect", array_args);

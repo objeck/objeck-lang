@@ -20,7 +20,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that's part of v3.1.10.  For additional information
+  functionality that's part of v3.2.  For additional information
   please refer to the
   \htmladdnormallink{general}{http://rosettacode.org/wiki/Category:Objeck},
   \htmladdnormallink{technical}{http://sourceforge.net/apps/mediawiki/objeck-lang/index.php?title=Objeck_Programming_Language}
@@ -46,10 +46,10 @@ intuitive way to do things. Features include:
 \item Support for object-oriented programming (all data types are
   treated as objects)
 \item Functional support (higher-order functions)
+\item Unicode support and UTF-8 encoding/decoding
 \item Cross platform (support for OS X, Linux and Windows)
-\item Concurrent runtime JIT support for Intel processors (x86 and
-  x64)
-\item Multi-threaded memory management (garbage collector)
+\item Concurrent runtime JIT support
+\item Multi-threaded memory garbage collector
 \item Local optimizations including method inlining
 \item Support for static libraries
 \item Command line debugger
@@ -910,6 +910,10 @@ Base class for all objects.
   \begin{itemize}
   \item method : native : ToString() \textasciitilde String
   \end{itemize}
+\item \texttt{ToBytes} - converts \texttt{Char} array to a UTF-8 \texttt{Byte} stream (\texttt{Char[]} only)
+  \begin{itemize}
+  \item method : native : ToBytes() \textasciitilde Byte[]
+  \end{itemize}
 \end{itemize}
 
 \subsubsection{Byte/Int}
@@ -957,6 +961,10 @@ Base class for all objects.
   \texttt{String}
   \begin{itemize}
   \item method : native : ToString() \textasciitilde String
+  \end{itemize}
+\item \texttt{ToUnicode} - converts a UTF-8 \texttt{Byte} array to \texttt{Char} array (\texttt{Byte[]} only)
+  \begin{itemize}
+  \item method : native : ToUnicode() \textasciitilde Char[]
   \end{itemize}
 \end{itemize}
 
@@ -1135,9 +1143,9 @@ Base class for all objects.
   \item method : public : native : ToCharArray() \textasciitilde
     Char[]
   \end{itemize}
-\item \texttt{ToBytteArray} - converts a string to a \texttt{Bytte[]}
+\item \texttt{ToByteArray} - converts a string to a \texttt{Bytte[]}
   \begin{itemize}
-  \item method : public : native : ToBytteArray() \textasciitilde
+  \item method : public : native : ToByteArray() \textasciitilde
     Bytte[]
   \end{itemize}
 \item \texttt{ToInt} - converts a string to a \texttt{Int}
@@ -1558,9 +1566,6 @@ class supports the following operations:
   \end{itemize}
   \begin{itemize}
   \item method : public : Write(o : Base) \textasciitilde Nil
-  \end{itemize}
-  \begin{itemize}
-  \item method : public : Write(b : Bool[]) \textasciitilde Nil
   \end{itemize}
   \begin{itemize}
   \item method : public : Write(b : Bool[]) \textasciitilde Nil
@@ -2813,6 +2818,10 @@ The Connection class allow programmers to connect to ODBC sources.
 \item \texttt{New} - Establishes a database connection
   \begin{itemize}
   \item New(ds : String, username : String, password : String)
+  \end{itemize}
+\item \texttt{IsOpen} - Returns true of the connection is open, false otherwise
+  \begin{itemize}
+  \item method : public : IsOpen() \textasciitilde Bool
   \end{itemize}
 \item \texttt{Close} - Closes a database connection
   \begin{itemize}

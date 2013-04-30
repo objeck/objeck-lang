@@ -13,7 +13,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -293,14 +293,14 @@ class IntermediateEmitter {
     return -1;
   }
 
-  inline Class* SearchProgramClasses(const string &klass_name) {
+  inline Class* SearchProgramClasses(const wstring &klass_name) {
     Class* klass = parsed_program->GetClass(klass_name);
     if(!klass) {
-      klass = parsed_program->GetClass(parsed_bundle->GetName() + "." + klass_name);
+      klass = parsed_program->GetClass(parsed_bundle->GetName() + L"." + klass_name);
       if(!klass) {
-        vector<string> uses = parsed_program->GetUses();
-        for(size_t i = 0; !klass && i < uses.size(); i++) {
-          klass = parsed_program->GetClass(uses[i] + "." + klass_name);
+        vector<wstring> uses = parsed_program->GetUses();
+        for(size_t i = 0; !klass && i < uses.size(); ++i) {
+          klass = parsed_program->GetClass(uses[i] + L"." + klass_name);
         }
       }
     }
@@ -308,14 +308,14 @@ class IntermediateEmitter {
     return klass;
   }
 
-  inline Enum* SearchProgramEnums(const string &eenum_name) {
+  inline Enum* SearchProgramEnums(const wstring &eenum_name) {
     Enum* eenum = parsed_program->GetEnum(eenum_name);
     if(!eenum) {
-      eenum = parsed_program->GetEnum(parsed_bundle->GetName() + "." + eenum_name);
+      eenum = parsed_program->GetEnum(parsed_bundle->GetName() + L"." + eenum_name);
       if(!eenum) {
-        vector<string> uses = parsed_program->GetUses();
-        for(size_t i = 0; !eenum && i < uses.size(); i++) {
-          eenum = parsed_program->GetEnum(uses[i] + "." + eenum_name);
+        vector<wstring> uses = parsed_program->GetUses();
+        for(size_t i = 0; !eenum && i < uses.size(); ++i) {
+          eenum = parsed_program->GetEnum(uses[i] + L"." + eenum_name);
         }
       }
     }
@@ -323,22 +323,22 @@ class IntermediateEmitter {
     return eenum;
   }
 
-  void Show(const string &msg, const int line_num, int depth) {
-    cout << setw(4) << line_num << ": ";
+  void Show(const wstring &msg, const int line_num, int depth) {
+    wcout << setw(4) << line_num << ": ";
     for(int i = 0; i < depth; i++) {
-      cout << "  ";
+      wcout << "  ";
     }
-    cout << msg << endl;
+    wcout << msg << endl;
   }
 
-  string ToString(int v) {
-    ostringstream str;
+  wstring ToString(int v) {
+    wostringstream str;
     str << v;
     return str.str();
   }
 
-  string ToString(double d) {
-    ostringstream str;
+  wstring ToString(double d) {
+    wostringstream str;
     str << d;
     return str.str();
   }
@@ -400,11 +400,15 @@ class IntermediateEmitter {
 
       switch(variable->GetBaseType()->GetType()) {
       case frontend::BYTE_TYPE:
-      case frontend::CHAR_TYPE:
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
 	break;
 
+      case frontend::CHAR_TYPE:
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_ARY_ELM, dimension, mem_context));
+	break;
+	
       case frontend::INT_TYPE:
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_ARY_ELM, dimension, mem_context));

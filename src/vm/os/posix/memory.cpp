@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM memory manager. Implements a "mark and sweep" collection algorithm.
  *
- * Copyright (c) 2008-2012, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -111,8 +111,8 @@ inline bool MemoryManager::MarkMemory(long* mem)
 void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 {
 #ifdef _DEBUG
-  cout << "adding PDA method: frame=" << frame << ", self="
-       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+  wcout << L"adding PDA method: frame=" << frame << L", self="
+       << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -127,8 +127,8 @@ void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
 void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
 {
 #ifdef _DEBUG
-  cout << "removing PDA method: frame=" << frame << ", self="
-       << (long*)frame->GetMemory()[0] << "(" << frame->GetMemory()[0] << ")" << endl;
+  wcout << L"removing PDA method: frame=" << frame << L", self="
+       << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -144,8 +144,8 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
                                      long* self, long* mem, long offset)
 {
 #ifdef _DEBUG
-  cout << "adding JIT root: class=" << cls_id << ", method=" << mthd_id << ", self=" << self
-       << "(" << (long)self << "), mem=" << mem << ", offset=" << offset << endl;
+  wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
+       << L"(" << (long)self << L"), mem=" << mem << L", offset=" << offset << endl;
 #endif
 
   // zero out memory
@@ -175,14 +175,14 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   
   unordered_map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
   if(found == jit_roots.end()) {
-    cerr << "Unable to find JIT root!" << endl;
+    cerr << L"Unable to find JIT root!" << endl;
     exit(-1);
   }
   id = found->second;
   
 #ifdef _DEBUG  
-  cout << "removing JIT method: mem=" << id->mem << ", self=" 
-       << id->self << "(" << (long)id->self << ")" << endl;
+  wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
+       << id->self << L"(" << (long)id->self << L")" << endl;
 #endif
   jit_roots.erase(found);
   
@@ -214,10 +214,10 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 
     // collect memory
     if(collect && allocation_size + size > mem_max_size) {
-      // CollectMemory(op_stack, stack_pos);
+      CollectMemory(op_stack, stack_pos);
     }
     // allocate memory
-    mem = (long*)calloc(size * 2 + sizeof(long) * 2, sizeof(BYTE_VALUE));
+    mem = (long*)calloc(size * 2 + sizeof(long) * 2, sizeof(char));
     mem[0] = (long)cls;
     mem += 2;
     
@@ -232,8 +232,8 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     
 #ifdef _DEBUG
-    cout << "# allocating object: addr=" << mem << "(" << (long)mem << "), size="
-         << size << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+    wcout << L"# allocating object: addr=" << mem << L"(" << (long)mem << L"), size="
+         << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
   }
 
@@ -247,7 +247,11 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   long* mem;
   switch(type) {
   case BYTE_ARY_TYPE:
-    calc_size = size * sizeof(BYTE_VALUE);
+    calc_size = size * sizeof(char);
+    break;
+    
+  case CHAR_ARY_TYPE:
+    calc_size = size * sizeof(wchar_t);
     break;
 
   case INT_TYPE:
@@ -259,16 +263,16 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
 
   default:
-    cerr << "internal error" << endl;
+    cerr << L"internal error" << endl;
     exit(1);
     break;
   }
   // collect memory
   if(collect && allocation_size + calc_size > mem_max_size) {
-    //CollectMemory(op_stack, stack_pos);
+    CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
-  mem = (long*)calloc(calc_size + sizeof(long) * 2, sizeof(BYTE_VALUE));
+  mem = (long*)calloc(calc_size + sizeof(long) * 2, sizeof(char));
   mem += 2;
 
 #ifndef _GC_SERIAL
@@ -284,8 +288,8 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   
 #ifdef _DEBUG
-  cout << "# allocating array: addr=" << mem << "(" << (long)mem << "), size=" << calc_size
-       << " byte(s), used=" << allocation_size << " byte(s) #" << endl;
+  wcout << L"# allocating array: addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
+       << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
 
   return mem;
@@ -374,7 +378,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   
   pthread_t collect_thread;
   if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 #else
@@ -385,7 +389,7 @@ void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
   // wait until collection is complete before perceeding
   void* status;
   if(pthread_join(collect_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
+    cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
   pthread_attr_destroy(&attrs);
@@ -403,10 +407,10 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _DEBUG
   long start = allocation_size;
-  cout << dec << endl << "=========================================" << endl;
-  cout << "Starting Garbage Collection; thread=" << pthread_self() << endl;
-  cout << "=========================================" << endl;
-  cout << "## Marking memory ##" << endl;
+  cout << dec << endl << L"=========================================" << endl;
+  wcout << L"Starting Garbage Collection; thread=" << pthread_self() << endl;
+  wcout << L"=========================================" << endl;
+  wcout << L"## Marking memory ##" << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -417,25 +421,25 @@ void* MemoryManager::CollectMemory(void* arg)
   
   pthread_t static_thread;
   if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   
   pthread_t pda_thread;
   if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   
   pthread_t jit_thread;
   if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
-    cerr << "Unable to create garbage collection thread!" << endl;
+    cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
   pthread_attr_destroy(&attrs);
@@ -444,22 +448,22 @@ void* MemoryManager::CollectMemory(void* arg)
   void *status;
 
   if(pthread_join(static_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
+    cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
   
   if(pthread_join(stack_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
+    cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
 
   if(pthread_join(pda_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
+    cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
 
   if(pthread_join(jit_thread, &status)) {
-    cerr << "Unable to join garbage collection threads!" << endl;
+    cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
 #else
@@ -471,16 +475,16 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _TIMING
   clock_t end = clock();
-  cout << dec << endl << "=========================================" << endl;
-  cout << "Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
-       << " second(s)." << endl;
-  cout << "=========================================" << endl;
+  cout << dec << endl << L"=========================================" << endl;
+  wcout << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
+       << L" second(s)." << endl;
+  wcout << L"=========================================" << endl;
   start = clock();
 #endif
   
   // sweep memory
 #ifdef _DEBUG
-  cout << "## Sweeping memory ##" << endl;
+  wcout << L"## Sweeping memory ##" << endl;
 #endif
   vector<long*> erased_memory;
   
@@ -490,10 +494,10 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   
 #ifdef _DEBUG
-  cout << "-----------------------------------------" << endl;
-  cout << "Marked " << marked_memory.size() << " of " 
-       << allocated_memory.size() << " items." << endl;
-  cout << "-----------------------------------------" << endl;
+  wcout << L"-----------------------------------------" << endl;
+  wcout << L"Marked " << marked_memory.size() << L" of " 
+       << allocated_memory.size() << L" items." << endl;
+  wcout << L"-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
   btree_map<long*, long>::iterator iter;
@@ -533,8 +537,8 @@ void* MemoryManager::CollectMemory(void* arg)
       }
       
 #ifdef _DEBUG
-      cout << "# releasing memory: addr=" << iter->first << "(" << (long)iter->first
-           << "), size=" << dec << mem_size << " byte(s) #" << endl;
+      wcout << L"# releasing memory: addr=" << iter->first << L"(" << (long)iter->first
+           << L"), size=" << dec << mem_size << L" byte(s) #" << endl;
 #endif
       
       // account for deallocated memory
@@ -583,20 +587,20 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif
   
 #ifdef _DEBUG
-  cout << "===============================================================" << endl;
-  cout << "Finished Collection: collected=" << (start - allocation_size)
-       << " of " << start << " byte(s) - " << showpoint << setprecision(3)
+  wcout << L"===============================================================" << endl;
+  wcout << L"Finished Collection: collected=" << (start - allocation_size)
+       << L" of " << start << L" byte(s) - " << showpoint << setprecision(3)
        << (((double)(start - allocation_size) / (double)start) * 100.0)
-       << "%" << endl;
-  cout << "===============================================================" << endl;
+       << L"%" << endl;
+  wcout << L"===============================================================" << endl;
 #endif
 
 #ifdef _TIMING
   end = clock();
-  cout << dec << endl << "=========================================" << endl;
-  cout << "Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
-       << " second(s)." << endl;
-  cout << "=========================================" << endl;
+  cout << dec << endl << L"=========================================" << endl;
+  wcout << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
+       << L" second(s)." << endl;
+  wcout << L"=========================================" << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -622,8 +626,8 @@ void* MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
-  cout << "----- Marking Stack: stack: pos=" << info->stack_pos 
-       << "; thread=" << pthread_self() << " -----" << endl;
+  wcout << L"----- Marking Stack: stack: pos=" << info->stack_pos 
+       << L"; thread=" << pthread_self() << L" -----" << endl;
 #endif
   while(info->stack_pos > -1) {
     CheckObject((long*)info->op_stack[info->stack_pos--], false, 1);
@@ -643,9 +647,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #endif  
   
 #ifdef _DEBUG
-  cout << "---- Marking JIT method root(s): num=" << jit_roots.size() 
-       << "; thread=" << pthread_self() << " ------" << endl;
-  cout << "memory types: " << endl;
+  wcout << L"---- Marking JIT method root(s): num=" << jit_roots.size() 
+       << L"; thread=" << pthread_self() << L" ------" << endl;
+  wcout << L"memory types: " << endl;
 #endif
   
   unordered_map<long*, ClassMethodId*>::iterator jit_iter;
@@ -656,10 +660,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
     const long dclrs_num = mthd->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    cout << "\t===== JIT method: name=" << mthd->GetName() << ", id=" << id->cls_id << "," 
-	 << id->mthd_id << "; addr=" << mthd << "; mem=" << mem << "; self=" << id->self 
-	 << "; num=" << mthd->GetNumberDeclarations() 
-	 << " =====" << endl;
+    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << id->cls_id << L"," 
+	 << id->mthd_id << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << id->self 
+	 << L"; num=" << mthd->GetNumberDeclarations() 
+	 << L" =====" << endl;
 #endif
 
     // check self
@@ -688,8 +692,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": FUNC_PARM: value=" << (*mem) 
-	     << "," << *(mem + 1) << endl;
+        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) 
+	     << L"," << *(mem + 1) << endl;
 #endif
         // update
         mem += 2;
@@ -697,7 +701,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 	
       case INT_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": INT_PARM: value=" << (*mem) << endl;
+        wcout << L"\t" << j << L": INT_PARM: value=" << (*mem) << endl;
 #endif
         // update
         mem++;
@@ -707,7 +711,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG
         FLOAT_VALUE value;
         memcpy(&value, mem, sizeof(FLOAT_VALUE));
-        cout << "\t" << j << ": FLOAT_PARM: value=" << value << endl;
+        wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
 #endif
         // update
 #ifdef _X64
@@ -721,8 +725,19 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": BYTE_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (long*)(*mem)
+             << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+#endif
+        // mark data
+        MarkMemory((long*)(*mem));
+        // update
+        mem++;
+        break;
+
+      case CHAR_ARY_PARM:
+#ifdef _DEBUG
+        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem)
+             << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -732,8 +747,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case INT_ARY_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": INT_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (long*)(*mem)
+             << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -743,8 +758,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), size=" << " byte(s)" << array_size << endl;
+        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
+             << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" << array_size << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -754,8 +769,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case OBJ_PARM:
 #ifdef _DEBUG
-        cout << "\t" << j << ": OBJ_PARM: addr=" << (long*)(*mem)
-             << "(" << (long)(*mem) << "), id=" << array_size << endl;
+        wcout << L"\t" << j << L": OBJ_PARM: addr=" << (long*)(*mem)
+             << L"(" << (long)(*mem) << L"), id=" << array_size << endl;
 #endif
         // check object
         CheckObject((long*)(*mem), true, 1);
@@ -766,8 +781,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
-        cout << "\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << "(" << (long)(*mem)
-             << "), size=" << array_size << " byte(s)" << endl;
+        wcout << L"\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem)
+             << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
         if(MarkMemory((long*)(*mem))) {
@@ -808,9 +823,9 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
   
 #ifdef _DEBUG
-  cout << "----- PDA method root(s): num=" << pda_roots.size() 
-       << "; thread=" << pthread_self()<< " -----" << endl;
-  cout << "memory types:" <<  endl;
+  wcout << L"----- PDA method root(s): num=" << pda_roots.size() 
+       << L"; thread=" << pthread_self()<< L" -----" << endl;
+  wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
   unordered_map<StackFrame*, StackFrame*>::iterator pda_iter;
@@ -819,8 +834,8 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     long* mem = pda_iter->second->GetMemory();
 
 #ifdef _DEBUG
-    cout << "\t===== PDA method: name=" << mthd->GetName() << ", addr="
-         << mthd << ", num=" << mthd->GetNumberDeclarations() << " =====" << endl;
+    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+         << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
     // mark self
@@ -864,7 +879,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
-      cout << "\t";
+      wcout << L"\t";
     }
 #endif
 
@@ -872,8 +887,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     switch(dclrs[i]->type) {
     case FUNC_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": FUNC_PARM: value=" << (*mem) 
-	   << "," << *(mem + 1)<< endl;
+      wcout << L"\t" << i << L": FUNC_PARM: value=" << (*mem) 
+	   << L"," << *(mem + 1)<< endl;
 #endif
       // update
       mem += 2;
@@ -881,7 +896,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case INT_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": INT_PARM: value=" << (*mem) << endl;
+      wcout << L"\t" << i << L": INT_PARM: value=" << (*mem) << endl;
 #endif
       // update
       mem++;
@@ -891,7 +906,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 #ifdef _DEBUG
       FLOAT_VALUE value;
       memcpy(&value, mem, sizeof(FLOAT_VALUE));
-      cout << "\t" << i << ": FLOAT_PARM: value=" << value << endl;
+      wcout << L"\t" << i << L": FLOAT_PARM: value=" << value << endl;
 #endif
       // update
       mem += 2;
@@ -900,8 +915,19 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": BYTE_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+#endif
+      // mark data
+      MarkMemory((long*)(*mem));
+      // update
+      mem++;
+      break;
+
+    case CHAR_ARY_PARM:
+#ifdef _DEBUG
+      wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -911,8 +937,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case INT_ARY_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": INT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -922,8 +948,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -933,8 +959,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case OBJ_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": OBJ_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), id=" << array_size << endl;
+      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), id=" << array_size << endl;
 #endif
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
@@ -944,8 +970,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
-      cout << "\t" << i << ": OBJ_ARY_PARM: addr=" << (long*)(*mem) << "("
-           << (long)(*mem) << "), size=" << array_size << " byte(s)" << endl;
+      wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
+           << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
       if(MarkMemory((long*)(*mem))) {
@@ -975,10 +1001,10 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
     if(cls) {
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
-        cout << "\t";
+        wcout << L"\t";
       }
-      cout << "\t----- object: addr=" << mem << "(" << (long)mem << "), num="
-           << cls->GetNumberInstanceDeclarations() << " -----" << endl;
+      wcout << L"\t----- object: addr=" << mem << L"(" << (long)mem << L"), num="
+           << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
 #endif
 
       // mark data
@@ -992,7 +1018,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // register variables
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
-        cout << "\t";
+        wcout << L"\t";
       }
       cout <<"$: addr/value=" << mem << endl;
       if(is_obj) {

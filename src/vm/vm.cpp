@@ -40,20 +40,21 @@ int Execute(const int argc, const char* argv[])
   if(argc > 1) {
     // loader; when this goes out of scope program memory is released
     srand((unsigned int)time(NULL)); rand(); // calling rand() once improves random number generation
-    Loader loader(argc, argv);
+    wchar_t** commands = ProcessCommandLine(argc, argv);
+    Loader loader(argc, commands);
     loader.Load();
 
     // ignore web applications
     if(loader.IsWeb()) {
-      cerr << "Web applications must be executed in a FCGI environment." << endl;
+      cerr << L"Web applications must be executed in a FCGI environment." << endl;
       exit(1);
     }
 
     // execute
     long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
-    (*stack_pos) = 0;
-
+    (*stack_pos) = 0;    
+    
 #ifdef _TIMING
     clock_t start = clock();
 #endif
@@ -61,10 +62,10 @@ int Execute(const int argc, const char* argv[])
     intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
 
 #ifdef _DEBUG
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); i++) {
-	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+	wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
 #endif
@@ -76,7 +77,7 @@ int Execute(const int argc, const char* argv[])
       iter != thread_ids.end(); iter++) {
       HANDLE id = (*iter);
       if(WaitForSingleObject(id, INFINITE) != WAIT_OBJECT_0) {
-        cerr << "Unable to join garbage collection threads!" << endl;
+        cerr << L"Unable to join garbage collection threads!" << endl;
         exit(-1);
       }
       CloseHandle(id);
@@ -87,17 +88,17 @@ int Execute(const int argc, const char* argv[])
     for(list<pthread_t>::iterator iter = thread_ids.begin();
 	iter != thread_ids.end(); iter++) {
       if(pthread_join((*iter), &status)) {
-	cerr << "Unable to join program thread!" << endl;
+	cerr << L"Unable to join program thread!" << endl;
 	exit(-1);
       }
     }
 #endif
 
 #ifdef _TIMING
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); i++) {
-	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+	wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
 #endif
@@ -113,11 +114,12 @@ int Execute(const int argc, const char* argv[])
 
 #ifdef _TIMING
     clock_t end = clock();
-    cout << "---------------------------" << endl;
-    cout << "CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
-         << " second(s)." << endl;
+    wcout << L"---------------------------" << endl;
+    wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
+         << L" second(s)." << endl;
 #endif
 
+    CleanUpCommandLine(argc, commands);
     return SUCCESS;
   } 
   else {

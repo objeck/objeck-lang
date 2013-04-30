@@ -1,7 +1,7 @@
 /***************************************************************************
  * JIT compiler for the AMD64 architecture.
  *
- * Copyright (c) 2008-2012 Randy Hollines
+ * Copyright (c) 2008-2013 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -165,6 +165,7 @@ namespace Runtime {
     
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
+      case LOAD_CHAR_LIT:
       case LOAD_INT_LIT:
 	type = IMM_INT;
 	operand = si->GetOperand();
@@ -259,7 +260,7 @@ namespace Runtime {
     long org_local_space, local_space;
     StackMethod* method;
     long instr_count;
-    BYTE_VALUE* code;
+    unsigned char* code;
     long code_index;   
     double* floats;     
     long floats_index;
@@ -293,7 +294,9 @@ namespace Runtime {
     void ProcessFloatCallParameter(); 
     void ProcessReturnParameters(MemoryType type);
     void ProcessLoadByteElement(StackInstr* instr);
+    void ProcessLoadCharElement(StackInstr* instr);
     void ProcessStoreByteElement(StackInstr* instr);
+    void ProcessStoreCharElement(StackInstr* instr);
     void ProcessLoadIntElement(StackInstr* instr);
     void ProcessStoreIntElement(StackInstr* instr);
     void ProcessLoadFloatElement(StackInstr* instr);
@@ -308,11 +311,11 @@ namespace Runtime {
     /********************************
      * Add byte code to buffer
      ********************************/
-    void AddMachineCode(BYTE_VALUE b) {
+    void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
-	BYTE_VALUE* tmp;	
+	unsigned char* tmp;	
 	if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
-	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  wcerr << L"Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
 	memcpy(tmp, code, code_index);
@@ -320,7 +323,7 @@ namespace Runtime {
 	code = tmp;
 	code_buf_max *= 2;
 	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-	  cerr << "Unable to mprotect" << endl;
+	  wcerr << L"Unable to mprotect" << endl;
 	  exit(1);
 	}
       }
@@ -332,7 +335,7 @@ namespace Runtime {
      * integer values; note sizeof(int)
      ********************************/
     inline void AddImm(int imm) {
-      BYTE_VALUE buffer[sizeof(int)];
+      unsigned char buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
       for(size_t i = 0; i < sizeof(int); i++) {
 	AddMachineCode(buffer[i]);
@@ -344,7 +347,7 @@ namespace Runtime {
      * integer values
      ********************************/
     inline void AddImm64(long imm) {
-      BYTE_VALUE buffer[sizeof(long)];
+      unsigned char buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
       for(size_t i = 0; i < sizeof(long); i++) {
 	AddMachineCode(buffer[i]);
@@ -355,7 +358,7 @@ namespace Runtime {
     /********************************
      * Encoding for AMD64 "B" bits
      ********************************/
-    inline BYTE_VALUE B(Register b) {
+    inline unsigned char B(Register b) {
       if((b > RSP && b < XMM0) || b > XMM7) {
 	return 0x49;
       }
@@ -366,7 +369,7 @@ namespace Runtime {
     /********************************
      * Encoding for AMD64 "XB" bits
      ********************************/
-    inline BYTE_VALUE XB(Register b) {
+    inline unsigned char XB(Register b) {
       if((b > RSP && b < XMM0) || b > XMM7) {
 	return 0x4b;
       }
@@ -375,10 +378,37 @@ namespace Runtime {
     }
     
     /********************************
+     * Encoding for AMD64 "XB" bits
+     ********************************/
+    inline unsigned char XB32(Register b) {
+      if((b > RSP && b < XMM0) || b > XMM7) {
+	return 0x66;
+      }
+      
+      return 0x67;
+    }
+    
+    /********************************
      * Encoding for AMD64 "RXB" bits
      ********************************/
-    inline BYTE_VALUE RXB(Register r, Register b) {
-      BYTE_VALUE value = 0x4a;
+    inline unsigned char RXB(Register r, Register b) {
+      unsigned char value = 0x4a;
+      if((r > RSP && r < XMM0) || r > XMM7) {
+	value += 0x4;
+      }
+      
+      if((b > RSP && b < XMM0) || b > XMM7) {
+	value += 0x1;
+      }
+      
+      return value;
+    }
+
+    /********************************
+     * Encoding for AMD64 "RXB" bits
+     ********************************/
+    inline unsigned char RXB32(Register r, Register b) {
+      unsigned char value = 0x42;
       if((r > RSP && r < XMM0) || r > XMM7) {
 	value += 0x4;
       }
@@ -393,8 +423,8 @@ namespace Runtime {
     /********************************
      * Encoding for AMD64 "ROB" bits
      ********************************/
-    inline BYTE_VALUE ROB(Register r, Register b) {
-      BYTE_VALUE value = 0x48;
+    inline unsigned char ROB(Register r, Register b) {
+      unsigned char value = 0x48;
       if((r > RSP && r < XMM0) || r > XMM7) {
 	value += 0x4;
       }
@@ -410,8 +440,8 @@ namespace Runtime {
      * Caculates the AMD64 MOD R/M
      * offset
      ********************************/
-    inline BYTE_VALUE ModRM(Register eff_adr, Register mod_rm) {
-      BYTE_VALUE byte;
+    inline unsigned char ModRM(Register eff_adr, Register mod_rm) {
+      unsigned char byte;
 
       switch(mod_rm) {
       case RSP:
@@ -471,7 +501,7 @@ namespace Runtime {
 	break;
 
       default:
-	cerr << "internal error" << endl;
+	wcerr << L"internal error" << endl;
 	exit(1);
 	break;
       }
@@ -533,12 +563,12 @@ namespace Runtime {
 	
 	// should never happen for esp
       case RSP:
-	cerr << "invalid register reference" << endl;
+	wcerr << L"invalid register reference" << endl;
 	exit(1);
 	break;
 
       default:
-	cerr << "internal error" << endl;
+	wcerr << L"internal error" << endl;
 	exit(1);
 	break;
       }
@@ -549,113 +579,113 @@ namespace Runtime {
     /********************************
      * Returns the name of a register
      ********************************/
-    string GetRegisterName(Register reg) {
+    wstring GetRegisterName(Register reg) {
       switch(reg) {
       case RAX:
-	return "rax";
+	return L"rax";
 
       case RBX:
-	return "rbx";
+	return L"rbx";
 
       case RCX:
-	return "rcx";
+	return L"rcx";
 
       case RDX:
-	return "rdx";
+	return L"rdx";
 
       case RDI:
-	return "rdi";
+	return L"rdi";
 
       case RSI:
-	return "rsi";
+	return L"rsi";
 
       case RBP:
-	return "rbp";
+	return L"rbp";
 
       case RSP:
-	return "rsp";
+	return L"rsp";
 
       case R8:
-	return "r8";
+	return L"r8";
 
       case R9:
-	return "r9";
+	return L"r9";
 	
       case R10:
-	return "r10";
+	return L"r10";
 
       case R11:
-	return "r11";
+	return L"r11";
 
       case R12:
-	return "r12";
+	return L"r12";
 	
       case R13:
-	return "r13";
+	return L"r13";
 	
       case R14:
-	return "r14";
+	return L"r14";
 	
       case R15:
-	return "r15";
+	return L"r15";
 
       case XMM0:
-	return "xmm0";
+	return L"xmm0";
 
       case XMM1:
-	return "xmm1";
+	return L"xmm1";
 
       case XMM2:
-	return "xmm2";
+	return L"xmm2";
 
       case XMM3:
-	return "xmm3";
+	return L"xmm3";
 
       case XMM4:
-	return "xmm4";
+	return L"xmm4";
 
       case XMM5:
-	return "xmm5";
+	return L"xmm5";
 
       case XMM6:
-	return "xmm6";
+	return L"xmm6";
 	
       case XMM7:
-	return "xmm7";
+	return L"xmm7";
 	
       case XMM8:
-	return "xmm8";
+	return L"xmm8";
 
       case XMM9:
-	return "xmm9";
+	return L"xmm9";
 
       case XMM10:
-	return "xmm10";
+	return L"xmm10";
 
       case XMM11:
-	return "xmm11";
+	return L"xmm11";
 
       case XMM12:
-	return "xmm12";
+	return L"xmm12";
 
       case XMM13:
-	return "xmm13";
+	return L"xmm13";
 
       case XMM14:
-	return "xmm14";
+	return L"xmm14";
 	
       case XMM15:
-	return "xmm15";
+	return L"xmm15";
       }
 
-      return "?";
+      return L"?";
     }
 
     /********************************
      * Encodes a byte array with a
      * 32-bit value
      ********************************/
-    inline void ByteEncode32(BYTE_VALUE buffer[], int value) {
+    inline void ByteEncode32(unsigned char buffer[], int value) {
       memcpy(buffer, &value, sizeof(int));
     }
 
@@ -663,7 +693,7 @@ namespace Runtime {
      * Encodes a byte array with a
      * 64-bit value
      ********************************/
-    inline void ByteEncode64(BYTE_VALUE buffer[], long value) {
+    inline void ByteEncode64(unsigned char buffer[], long value) {
       memcpy(buffer, &value, sizeof(long));
     }
     
@@ -671,12 +701,12 @@ namespace Runtime {
      * Encodes an array with the 
      * binary ID of a register
      ********************************/
-    inline void RegisterEncode3(BYTE_VALUE& code, long offset, Register reg) {
+    inline void RegisterEncode3(unsigned char& code, long offset, Register reg) {
 #ifdef _DEBUG
       assert(offset == 2 || offset == 5);
 #endif
       
-      BYTE_VALUE reg_id;
+      unsigned char reg_id;
       switch(reg) {
       case RAX:
       case XMM0:
@@ -735,7 +765,7 @@ namespace Runtime {
 	break;
 	
       default:
-	cerr << "internal error" << endl;
+	wcerr << L"internal error" << endl;
 	exit(1);
 	break;
       }
@@ -753,7 +783,7 @@ namespace Runtime {
       const long offset = 43;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
-      cout << "  " << (++instr_count) << ": [jne $" << offset << "]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -771,7 +801,7 @@ namespace Runtime {
       // less than zero
       cmp_imm_reg(-1, reg);
 #ifdef _DEBUG
-      cout << "  " << (++instr_count) << ": [jg $" << offset << "]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jg $" << offset << L"]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -782,7 +812,7 @@ namespace Runtime {
       // greater than max
       cmp_reg_reg(max_reg, reg);
 #ifdef _DEBUG
-      cout << "  " << (++instr_count) << ": [jl $" << offset << "]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
@@ -803,7 +833,7 @@ namespace Runtime {
 	else {
 	  compile_success = false;
 #ifdef _DEBUG
-	  cout << ">>> No general registers avaiable! <<<" << endl;
+	  wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
 	  aux_regs.push(new RegisterHolder(RAX));
 	  holder = aux_regs.top();
@@ -816,8 +846,8 @@ namespace Runtime {
         used_regs.push_back(holder);
       }
 #ifdef _VERBOSE
-      cout << "\t * allocating " << GetRegisterName(holder->GetRegister())
-	   << " *" << endl;
+      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
+	    << L" *" << endl;
 #endif
 
       return holder;
@@ -826,8 +856,8 @@ namespace Runtime {
     // Returns a register to the pool
     void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
-      cout << "\t * releasing " << GetRegisterName(h->GetRegister())
-	   << " *" << endl;
+      wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
+	    << L" *" << endl;
 #endif
 
 #ifdef _DEBUG
@@ -853,7 +883,7 @@ namespace Runtime {
       if(aval_xregs.empty()) {
 	compile_success = false;
 #ifdef _DEBUG
-	cout << ">>> No XMM registers avaiable! <<<" << endl;
+	wcout << L">>> No XMM registers avaiable! <<<" << endl;
 #endif
 	aval_xregs.push_back(new RegisterHolder(XMM0));
 	holder = aval_xregs.back();
@@ -866,8 +896,8 @@ namespace Runtime {
         used_xregs.push_back(holder);
       }
 #ifdef _VERBOSE
-      cout << "\t * allocating " << GetRegisterName(holder->GetRegister())
-	   << " *" << endl;
+      wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
+	    << L" *" << endl;
 #endif
 
       return holder;
@@ -883,8 +913,8 @@ namespace Runtime {
 #endif
       
 #ifdef _VERBOSE
-      cout << "\t * releasing: " << GetRegisterName(h->GetRegister())
-	   << " * " << endl;
+      wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister())
+	    << L" * " << endl;
 #endif
       aval_xregs.push_back(h);
       used_xregs.remove(h);
@@ -900,6 +930,9 @@ namespace Runtime {
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
+    void move_imm_mem32(long imm, long offset, Register dest);
+    void move_reg_mem32(Register src, long offset, Register dest);
+    void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
@@ -980,12 +1013,11 @@ namespace Runtime {
     
     // shift instructions
     void shl_reg_reg(Register src, Register dest);
-    void shl_mem_reg(int32_t offset, Register src, Register dest);
-    void shl_imm_reg(int32_t value, Register dest);
-
+    void shl_mem_reg(long offset, Register src, Register dest);
+    void shl_imm_reg(long value, Register dest);
     void shr_reg_reg(Register src, Register dest);
-    void shr_mem_reg(int32_t offset, Register src, Register dest);
-    void shr_imm_reg(int32_t value, Register dest);
+    void shr_mem_reg(long offset, Register src, Register dest);
+    void shr_imm_reg(long value, Register dest);
     
     // push/pop instructions
     void push_imm(long value);
@@ -1013,7 +1045,7 @@ namespace Runtime {
     static long PopInt(long* op_stack, long *stack_pos) {
       long value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
-      cout << "\t[pop_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[pop_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
 
       return value;
@@ -1022,33 +1054,39 @@ namespace Runtime {
     static void PushInt(long* op_stack, long *stack_pos, long value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
-      cout << "\t[push_i: value=" << (long*)value << "(" << value << ")]" << "; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[push_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
 
-    // TODO: return value and unwind whole program
-    // TOOD: time to refactor... too large!!!
-    // ....
-    // Process call backs from ASM
-    // code
     static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id, 
 			      const long mthd_id, long* inst, long* op_stack, 
 			      long *stack_pos, const long ip) {
 #ifdef _DEBUG
-      cout << "Stack Call: instr=" << instr_id
-	   << ", oper_1=" << instr->GetOperand() << ", oper_2=" << instr->GetOperand2() 
-	   << ", oper_3=" << instr->GetOperand3() << ", self=" << inst << "(" 
-	   << (long)inst << "), stack=" << op_stack << ", stack_addr=" << stack_pos 
-	   << ", stack_pos=" << (*stack_pos) << endl;
+      wcout << L"Stack Call: instr=" << instr_id
+	    << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2() 
+	    << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"(" 
+	    << (long)inst << L"), stack=" << op_stack << L", stack_addr=" << stack_pos 
+	    << L", stack_pos=" << (*stack_pos) << endl;
 #endif
       switch(instr_id) {
       case MTHD_CALL: 
       case DYN_MTHD_CALL: {
 #ifdef _DEBUG
-        cout << "jit oper: MTHD_CALL: cls=" << instr->GetOperand() << ", mthd=" << instr->GetOperand2() << endl;
+        wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
 	StackInterpreter intpr;
 	intpr.Execute((long*)op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
+      }
+	break;
+
+      case LOAD_ARY_SIZE: {
+	long* array = (long*)PopInt(op_stack, stack_pos);
+	if(!array) {
+	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  exit(1);
+	}
+	PushInt(op_stack, stack_pos, array[2]);
       }
 	break;
 	
@@ -1072,12 +1110,38 @@ namespace Runtime {
 	PushInt(op_stack, stack_pos, (long)mem);
 	
 #ifdef _DEBUG
-	cout << "jit oper: NEW_BYTE_ARY: dim=" << dim << "; size=" << size 
-	     << "; index=" << (*stack_pos) << "; mem=" << mem << endl;
+	wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size 
+	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
       }
 	break;
 
+      case NEW_CHAR_ARY: {
+	long indices[8];
+	long value = PopInt(op_stack, stack_pos);
+	long size = value;
+	indices[0] = value;
+	long dim = 1;
+	for(long i = 1; i < instr->GetOperand(); i++) {
+	  long value = PopInt(op_stack, stack_pos);
+	  size *= value;
+	  indices[dim++] = value;
+	}
+	size++;
+	long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), 
+							CHAR_ARY_TYPE, (long*)op_stack, *stack_pos);
+	mem[0] = size - 1;
+	mem[1] = dim;
+	memcpy(mem + 2, indices, dim * sizeof(long));
+	PushInt(op_stack, stack_pos, (long)mem);
+	
+#ifdef _DEBUG
+	wcout << L"jit oper: NEW_CHAR_ARY: dim=" << dim << L"; size=" << size 
+	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
+#endif
+      }
+	break;
+	
       case NEW_INT_ARY: {
 	long indices[8];
 	long value = PopInt(op_stack, stack_pos);
@@ -1092,8 +1156,8 @@ namespace Runtime {
 	long* mem = (long*)MemoryManager::
 	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
-	cout << "jit oper: NEW_INT_ARY: dim=" << dim << "; size=" << size 
-	     << "; index=" << (*stack_pos) << "; mem=" << mem << endl;
+	wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
+	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
 	mem[0] = size;
 	mem[1] = dim;
@@ -1117,8 +1181,8 @@ namespace Runtime {
 	long* mem = (long*)MemoryManager::
 	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
-	cout << "jit oper: NEW_FLOAT_ARY: dim=" << dim << "; size=" << size 
-	     << "; index=" << (*stack_pos) << "; mem=" << mem << endl; 
+	wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size 
+	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl; 
 #endif
 	mem[0] = size / 2;
 	mem[1] = dim;
@@ -1129,7 +1193,7 @@ namespace Runtime {
 	
       case NEW_OBJ_INST: {
 #ifdef _DEBUG
-	cout << "jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
+	wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
 	long* mem = (long*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
 								     (long*)op_stack, *stack_pos);
@@ -1155,16 +1219,16 @@ namespace Runtime {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
 	long to_id = instr->GetOperand();
 #ifdef _DEBUG
-	cout << "jit oper: OBJ_INST_CAST: from=" << mem << ", to=" << to_id << endl; 
+	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
 	long result = (long)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
 								       program->GetHierarchy(),
 								       program->GetInterfaces());
 	if(!result && mem) {
 	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
-	  cerr << ">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : "?" )  
-	       << "' to '" << program->GetClass(to_id)->GetName() << "' <<<" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?" )  
+		<< L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 	PushInt(op_stack, stack_pos, result);
@@ -1176,15 +1240,15 @@ namespace Runtime {
       case THREAD_JOIN: {
 	long* instance = inst;
 	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
 	void* status;
 	pthread_t vm_thread = (pthread_t)instance[0];      
 	if(pthread_join(vm_thread, &status)) {
-	  cerr << "Unable to join thread!" << endl;
+	  wcerr << L"Unable to join thread!" << endl;
 	  exit(-1);
 	}
       }
@@ -1197,8 +1261,8 @@ namespace Runtime {
       case THREAD_MUTEX: {
 	long* instance = inst;
 	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
 	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
@@ -1208,8 +1272,8 @@ namespace Runtime {
       case CRITICAL_START: {
 	long* instance = (long*)PopInt(op_stack, stack_pos);
 	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}      
 	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
@@ -1219,8 +1283,8 @@ namespace Runtime {
       case CRITICAL_END: {
 	long* instance = (long*)PopInt(op_stack, stack_pos);
 	if(!instance) {
-	  cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}      
 	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
@@ -1236,8 +1300,8 @@ namespace Runtime {
 	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
 	
 	if(!src_array || !dest_array) {
-	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
     
@@ -1255,6 +1319,34 @@ namespace Runtime {
       }
 	break;
 
+      case CPY_CHAR_ARY: {
+	long length = PopInt(op_stack, stack_pos);;
+	const long src_offset = PopInt(op_stack, stack_pos);;
+	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	const long dest_offset = PopInt(op_stack, stack_pos);;
+	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+
+	if(!src_array || !dest_array) {
+	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  exit(1);
+	}
+
+	const long src_array_len = src_array[2];
+	const long dest_array_len = dest_array[2];
+
+	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+	  const wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
+	  wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
+	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
+	  PushInt(op_stack, stack_pos, 1);
+	}
+	else {
+	  PushInt(op_stack, stack_pos, 0);
+	}
+      }
+	break;
+
       case CPY_INT_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
@@ -1263,8 +1355,8 @@ namespace Runtime {
 	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
       
 	if(!src_array || !dest_array) {
-	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1290,8 +1382,8 @@ namespace Runtime {
 	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
       
 	if(!src_array || !dest_array) {
-	  cerr << ">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
-	  cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
       
@@ -1309,1019 +1401,24 @@ namespace Runtime {
       }
 	break;
 	
-	////////////////////////
-	// trap
-	////////////////////////
-      case TRAP: 
-#ifdef _DEBUG
-	cout << "jit oper: TRAP: id=" << op_stack[(*stack_pos) - 1] << endl; 
-#endif
-	switch(PopInt(op_stack, stack_pos)) {
-	  // ---------------- standard i/o ----------------
-	case STD_OUT_BOOL: {
-#ifdef _DEBUG
-	  cout << "  STD_OUT_BOOL" << endl;
-#endif
-	  long value = PopInt(op_stack, stack_pos);
-	  cout << ((value == 0) ? "false" : "true");
-	}
-	  break;
-	  
-	case STD_OUT_BYTE:
-#ifdef _DEBUG
-	  cout << "  STD_OUT_BYTE" << endl;
-#endif
-	  cout <<  (unsigned char)PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_OUT_CHAR:
-#ifdef _DEBUG
-	  cout << "  STD_OUT_CHAR" << endl;
-#endif
-	  cout <<  (char)PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_OUT_INT:
-#ifdef _DEBUG
-	  cout << "  STD_OUT_INT" << endl;
-#endif
-	  cout << PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_OUT_FLOAT: {
-#ifdef _DEBUG
-	  cout << "  STD_OUT_FLOAT" << endl;
-#endif
-	  double value = 0.0;
-	  --(*stack_pos);	  
-	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
-	  cout.precision(9);
-	  cout << value;
-	  break;
-	}
-	  break;
-
-	case STD_OUT_CHAR_ARY: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-#ifdef _DEBUG
-	    cout << "  STD_OUT_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
-#endif
-	    cout << str;
-	  }
-	  else {
-	    cout << "Nil";
-	  }
-	}
-	  break;
-
-	case STD_OUT_BYTE_ARY: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long num = PopInt(op_stack, stack_pos);
-	  const long offset = PopInt(op_stack, stack_pos);
-	  
-#ifdef _DEBUG
-	  cout << "  STD_OUT_BYTE_ARY: addr=" << array << "(" << long(array) << ")" << endl;
-#endif	  
-	  
-	  if(array && offset >= 0 && offset + num < array[0]) {
-	    char* buffer = (char*)(array + 3);
-	    cout.write(buffer + offset, num);
-	    PushInt(op_stack, stack_pos, 1);
-	  } 
-	  else {
-	    cout << "Nil";
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	  
-	  // ---------------- standard error i/o ----------------
-	case STD_ERR_BOOL: {
-#ifdef _DEBUG
-	  cout << "  STD_ERR_BOOL" << endl;
-#endif
-	  int32_t value = PopInt(op_stack, stack_pos);
-	  cerr << ((value == 0) ? "false" : "true");
-	}
-	  break;
-	  
-	case STD_ERR_BYTE:
-#ifdef _DEBUG
-	  cout << "  STD_ERR_BYTE" << endl;
-#endif
-	  cerr <<  (unsigned char)PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_ERR_CHAR:
-#ifdef _DEBUG
-	  cout << "  STD_ERR_CHAR" << endl;
-#endif
-	  cerr <<  (char)PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_ERR_INT:
-#ifdef _DEBUG
-	  cout << "  STD_ERR_INT" << endl;
-#endif
-	  cerr <<  PopInt(op_stack, stack_pos);
-	  break;
-
-	case STD_ERR_FLOAT: {
-#ifdef _DEBUG
-	  cout << "  STD_ERR_FLOAT" << endl;
-#endif
-	  double value;      
-	  (*stack_pos) -= 2;
-	  memcpy(&value, &op_stack[(*stack_pos)], sizeof(double));
-	  cerr.precision(9);
-	  cerr << value;
-	  break;
-	}
-	  break;
-
-	case STD_ERR_CHAR_ARY: {
-	  int32_t* array = (int32_t*)PopInt(op_stack, stack_pos);
-	  if(array) {
-#ifdef _DEBUG
-	    cout << "  STD_ERR_CHAR_ARY: addr=" << array << "(" << long(array) << ")" << endl;
-#endif
-	    char* str = (char*)(array + 3);
-	    cerr << str;
-	  }
-	  else {
-	    cerr << "Nil";
-	  }
-	}
-	  break;
-	  
-	case STD_ERR_BYTE_ARY: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long num = PopInt(op_stack, stack_pos);
-	  const long offset = PopInt(op_stack, stack_pos);
-	  
-	  if(array && offset >= 0 && offset + num < array[0]) {
-	    char* buffer = (char*)(array + 3);
-	    cerr.write(buffer + offset, num);
-	    PushInt(op_stack, stack_pos, 1);
-	  } 
-	  else {
-	    cerr << "Nil";
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	  	  
-	  // ---------------- system time ----------------
-	case SYS_TIME: {
-	  time_t raw_time;
-	  time (&raw_time);
-	  
-	  struct tm* local_time = localtime (&raw_time);
-	  long* time = (long*)inst;
-	  time[0] = local_time->tm_mday; // day
-	  time[1] = local_time->tm_mon; // month
-	  time[2] = local_time->tm_year; // year
-	  time[3] = local_time->tm_hour; // hours
-	  time[4] = local_time->tm_min; // mins
-	  time[5] = local_time->tm_sec; // secs
-	  time[6] = local_time->tm_isdst > 0; // savings time
-	}
-	  break;
-	  
-	  // ---------------- ip socket i/o ----------------
-	case SOCK_TCP_CONNECT: {
-	  long port = PopInt(op_stack, stack_pos);
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && array) {
-	    array = (long*)array[0];
-	    const char* addr = (char*)(array + 3);
-	    SOCKET sock = IPSocket::Open(addr, port);
-#ifdef _DEBUG
-	    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance=" << instance << "(" << (long)instance << ")" <<
-	      "; addr=" << sock << "(" << (long)sock << ") #" << endl;
-#endif
-	    instance[0] = (long)sock;
-	  }
-	}
-	  break;  
-    
-	case SOCK_TCP_CLOSE: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (SOCKET)instance[0] > -1) {
-	    SOCKET sock = (SOCKET)instance[0];
-#ifdef _DEBUG
-	    cout << "# socket close: addr=" << sock << "(" << (long)sock << ") #" << endl;
-#endif
-	    instance[0] = (long)NULL;
-	    IPSocket::Close(sock);
-	  }
-	}
-	  break;
-
-	case SOCK_TCP_OUT_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    SOCKET sock = (SOCKET)instance[0];
-	    char* data = (char*)(array + 3);	    
-	    if(sock > -1) {
-	      IPSocket::WriteBytes(data, strlen(data), sock);
-	    }
-	  }
-	}
-	  break;
-	  
-	case SOCK_TCP_IN_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  char* buffer = (char*)(array + 3);
-	  const long num = array[0] - 1;
-	  SOCKET sock = (SOCKET)instance[0];
-
-	  int status;
-	  if(sock > -1) {
-	    int index = 0;
-	    BYTE_VALUE value;
-	    bool end_line = false;
-	    do {
-	      value = IPSocket::ReadByte(sock, status);
-	      if(value != '\r' && value != '\n' && index < num && status > 0) {
-		buffer[index++] = value;
-	      }
-	      else {
-		end_line = true;
-	      }
-	    }
-	    while(!end_line);
-      
-	    // assume LF
-	    if(value == '\r') {
-	      IPSocket::ReadByte(sock, status);
-	    }
-	  }
-	}
-	  break;
-	  
-	  // ---------------- secure ip socket i/o ----------------
-	case SOCK_TCP_SSL_CONNECT: {
-	  long port = PopInt(op_stack, stack_pos);
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    array = (long*)array[0];
-	    const char* addr = (char*)(array + 3);
-      
-	    SSL_CTX* ctx;
-	    BIO* bio;
-	    instance[2] = IPSecureSocket::Open(addr, port, ctx, bio);
-	    instance[0] = (long)ctx;
-	    instance[1] = (long)bio;
-#ifdef _DEBUG
-	    cout << "# socket connect: addr='" << addr << ":" << port << "'; instance="
-		 << instance << "(" << (long)instance << ")" << "; addr=" << ctx << "|" << bio << "(" 
-		 << (long)ctx << "|"  << (long)bio << ") #" << endl;
-#endif
-	  }
-	}
-	  break;  
-
-	case SOCK_TCP_SSL_CLOSE: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-
-	  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	  BIO* bio = (BIO*)instance[1];
-    
-#ifdef _DEBUG
-	  cout << "# socket close: addr=" << ctx << "|" << bio << "(" 
-	       << (long)ctx << "|"  << (long)bio << ") #" << endl;
-#endif
-    
-	  IPSecureSocket::Close(ctx, bio);    
-	  instance[0] = instance[1] = instance[2] = 0;
-
-	}
-	  break;
-	  
-	case SOCK_TCP_SSL_OUT_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	    BIO* bio = (BIO*)instance[1];      
-	    char* data = (char*)(array + 3);
-	    if(instance[2]) {
-	      IPSecureSocket::WriteBytes(data, strlen(data), ctx, bio);
-	    }
-	  }
-	}
-	  break;
-
-	case SOCK_TCP_SSL_IN_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    char* buffer = (char*)(array + 3);
-	    const long num = array[0] - 1;
-	    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	    BIO* bio = (BIO*)instance[1]; 
-	    int status;
-	    if(instance[2]) {
-	      int index = 0;
-	      BYTE_VALUE value;
-	      bool end_line = false;
-	      do {
-		value = IPSecureSocket::ReadByte(ctx, bio, status);
-		if(value != '\r' && value != '\n' && index < num && status > 0) {
-		  buffer[index++] = value;
-		}
-		else {
-		  end_line = true;
-		}
-	      }
-	      while(!end_line);
-
-	      // assume LF
-	      if(value == '\r') {
-		IPSecureSocket::ReadByte(ctx, bio, status);
-	      }
-	    }
-	  }
-	}
-	  break;
-	  
-	  // ---------------- file i/o ----------------
-	case FILE_OPEN_READ: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && array) {
-	    array = (long*)array[0];	
-	    const char* name = (char*)(array + 3);
-	    instance[0] = (long)File::FileOpen(name, "r");
-	  }
-	}
-	  break;
-	
-	case FILE_OPEN_WRITE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    instance[0] = (long)File::FileOpen(name, "w");
-	  }
-	}
-	  break;
-	
-	case FILE_OPEN_READ_WRITE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    instance[0] = (long)File::FileOpen(name, "w+");
-	  }
-	}
-	  break;
-	  
-	case FILE_CLOSE: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    instance[0] = (long)NULL;
-	    fclose(file);
-	  }
-	}
-	  break;
-
-	case FILE_FLUSH: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    instance[0] = (long)NULL;
-	    fflush(file);
-	  }
-	}
-	  break;
-	  
-	case FILE_IN_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);	
-	  if(array && instance) {
-	    char* buffer = (char*)(array + 3);
-	    const long num = array[0] - 1;
-	    FILE* file = (FILE*)instance[0];
-	  
-	    if(file && fgets(buffer, num, file)) {
-	      long end_index = strlen(buffer) - 1;
-	      if(end_index >= 0) {
-		if(buffer[end_index] == '\n') {
-		  buffer[end_index] = '\0';
-		}
-	      }
-	      else {
-		buffer[0] = '\0';
-	      }
-	    }
-	  }
-	}
-	  break;
-	  
-	case FILE_OUT_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance) {
-	    FILE* file = (FILE*)instance[0];	
-	    const char* name = (char*)(array + 3);	    
-	    if(file) {
-	      fputs(name, file);
-	    }
-	  }
-	}
-	  break;
-	
-	case FILE_REWIND: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);	
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];	
-	    rewind(file);
-	  }
-	}
-	  break;
-	  // --- END TRAP --- //
-      }
-	break;
-	
-	////////////////////////
-	// trap and return value
-	////////////////////////
+      case TRAP:
       case TRAP_RTRN:
-#ifdef _DEBUG
-	cout << "jit oper: TRAP_RTRN: id=" << op_stack[(*stack_pos) - 1] << endl; 
-#endif
-	switch(PopInt(op_stack, stack_pos)) {
-	case LOAD_CLS_INST_ID: {
-#ifdef _DEBUG
-	  cout << "  LOAD_CLS_INST_ID" << endl;
-#endif
-	  long value = (long)MemoryManager::GetObjectID((long*)PopInt(op_stack, stack_pos));
-	  PushInt(op_stack, stack_pos, value);
-	}
-	  break;
-	  
-	case LOAD_ARY_SIZE: {
-#ifdef _DEBUG
-	  cout << "  LOAD_ARY_SIZE" << endl;
-#endif
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(!array) {
-	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
-	    exit(1);
-	  }
-	  PushInt(op_stack, stack_pos, (long)array[2]);
-	}  
-	  break;
-	  
-	case LOAD_MULTI_ARY_SIZE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(!array) {
-	    cerr << "Atempting to dereference a 'Nil' memory instance" << endl;
-	    cerr << "  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
-	    exit(1);
-	  }
-    
-	  // allocate 'size' array and copy metadata
-	  long size = array[1];
-	  long dim = 1;
-	  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-							  op_stack, *stack_pos);
-	  int i, j;
-	  for(i = 0, j = size + 2; i < size; i++) {
-	    mem[i + 3] = array[--j];
-	  }
-	  mem[0] = size;
-	  mem[1] = dim;
-	  mem[2] = size;
-
-	  PushInt(op_stack, stack_pos, (long)mem);
-	}
-	  break;
-	  
-	case CPY_CHAR_STR_ARY: {
- 	  long index = PopInt(op_stack, stack_pos);
-	  BYTE_VALUE* value_str = program->GetCharStrings()[index];
-	  // copy array
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    const long size = array[2];
-	    BYTE_VALUE* str = (BYTE_VALUE*)(array + 3);
-	    memcpy(str, value_str, size);
-#ifdef _DEBUG
-	    cout << "  CPY_CHAR_STR_ARY: addr=" << array << "(" << long(array) 
-		 << "), from='" << value_str << "', to='" << str << "'" << endl;
-#endif
-	    PushInt(op_stack, stack_pos, (long)array);
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-
-	case CPY_CHAR_STR_ARYS: {
-	  // copy array
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long size = array[0];
-	  const long dim = array[1];
-	  // copy elements
-	  long* str = (long*)(array + dim + 2);
-	  for(long i = 0; i < size; i++) {
-	    str[i] = PopInt(op_stack, stack_pos);
-	  }
-#ifdef _DEBUG
-	  cout << "stack oper: CPY_CHAR_STR_ARYS" << endl;
-#endif
-	  PushInt(op_stack, stack_pos, (long)array);
-	}
-	  break;
-    
-	case CPY_INT_STR_ARY: {
-	  long index = PopInt(op_stack, stack_pos);
-	  int32_t* value_str = program->GetIntStrings()[index];
-	  // copy array
-	  long* array = (long*)PopInt(op_stack, stack_pos);    
-	  const long size = array[0];
-	  const long dim = array[1];    
-	  long* str = (long*)(array + dim + 2);
-	  for(long i = 0; i < size; i++) {
-	    str[i] = value_str[i];
-	  }
-#ifdef _DEBUG
-	  cout << "stack oper: CPY_INT_STR_ARY" << endl;
-#endif
-	  PushInt(op_stack, stack_pos, (long)array);
-	}
-	  break;
-    
-	case CPY_FLOAT_STR_ARY: {
-	  long index = PopInt(op_stack, stack_pos);
-	  double* value_str = program->GetFloatStrings()[index];
-	  // copy array
-	  long* array = (long*)PopInt(op_stack, stack_pos);    
-	  const long size = array[0];
-	  const long dim = array[1];    
-	  double* str = (double*)(array + dim + 2);
-	  for(long i = 0; i < size; i++) {
-	    str[i] = value_str[i];
-	  }
-    
-#ifdef _DEBUG
-	  cout << "stack oper: CPY_FLOAT_STR_ARY" << endl;
-#endif
-	  PushInt(op_stack, stack_pos, (long)array);
-	}
-	  break;
-	  
-	case STD_IN_STRING: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    char* buffer = (char*)(array + 3);
-	    const long num = array[0];
-	    cin.getline(buffer, num);
-	  }
-	}
-	  break;
-	  
-          // ---------------- socket i/o ----------------
-        case SOCK_TCP_IS_CONNECTED: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-#ifdef _WIN32
-	  if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
-#else
-	  if(instance && (SOCKET)instance[0] > -1) {
-#endif
-	    PushInt(op_stack, stack_pos, 1);
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	  
-        case SOCK_TCP_IN_BYTE: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance) {
-	   SOCKET sock = (SOCKET)instance[0];
-	   int status;
-	   PushInt(op_stack, stack_pos, IPSocket::ReadByte(sock, status));
-	 }
-	 else {
-	   PushInt(op_stack, stack_pos, 0);
-	 }
-       }
-         break;
-
-       case SOCK_TCP_IN_BYTE_ARY: {
-	 long* array = (long*)PopInt(op_stack, stack_pos);
-	 const long num = PopInt(op_stack, stack_pos);
-	 const long offset = PopInt(op_stack, stack_pos);
-	 long* instance = (long*)PopInt(op_stack, stack_pos);
-	 
-#ifdef _WIN32    
-	 if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-	 if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-	   SOCKET sock = (SOCKET)instance[0];
-	   char* buffer = (char*)(array + 3);
-	   PushInt(op_stack, stack_pos, IPSocket::ReadBytes(buffer + offset, num, sock));
-	 }
-	 else {
-	   PushInt(op_stack, stack_pos, -1);
-	 }
-      }
-        break;
-
-      case SOCK_TCP_OUT_BYTE: {
-	long value = PopInt(op_stack, stack_pos);
-	long* instance = (long*)PopInt(op_stack, stack_pos);
-	if(instance) {
-	  SOCKET sock = (SOCKET)instance[0];
-	  IPSocket::WriteByte((char)value, sock);
-	  PushInt(op_stack, stack_pos, 1);
-	}
-	else {
-	  PushInt(op_stack, stack_pos, 0);
-	}
-      }
-	break;
-
-     case SOCK_TCP_OUT_BYTE_ARY: {
-       long* array = (long*)PopInt(op_stack, stack_pos);
-       const long num = PopInt(op_stack, stack_pos);
-       const long offset = PopInt(op_stack, stack_pos);
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-        
-#ifdef _WIN32
-       if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
-#else
-       if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
-#endif
-	 SOCKET sock = (SOCKET)instance[0];
-	 char* buffer = (char*)(array + 3);
-	 PushInt(op_stack, stack_pos, IPSocket::WriteBytes(buffer + offset, num, sock));
-       } 
-       else {
-	 PushInt(op_stack, stack_pos, -1);
-       }
-     } 
-       break;
-
-       // ---------------- secure socket i/o ----------------
-     case SOCK_TCP_SSL_IN_BYTE: {
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-       if(instance) {
-	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	 BIO* bio = (BIO*)instance[1];      
-	 int status;
-	 PushInt(op_stack, stack_pos, IPSecureSocket::ReadByte(ctx, bio, status));
-       }
-       else {
-	 PushInt(op_stack, stack_pos, 0);
-       }
-     }
-       break;
-
-     case SOCK_TCP_SSL_IN_BYTE_ARY: {
-       long* array = (long*)PopInt(op_stack, stack_pos);
-       const long num = PopInt(op_stack, stack_pos);
-       const long offset = PopInt(op_stack, stack_pos);
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-       
-       if(array && instance && instance[2] && offset + num < array[0]) {
-	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	 BIO* bio = (BIO*)instance[1];
-	 char* buffer = (char*)(array + 3);
-	 PushInt(op_stack, stack_pos, IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio));
-       }
-       else {
-	 PushInt(op_stack, stack_pos, -1);
-       }
-     }
-       break;
-
-     case SOCK_TCP_SSL_OUT_BYTE: {
-       long value = PopInt(op_stack, stack_pos);
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-       if(instance) {
-	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	 BIO* bio = (BIO*)instance[1];
-	 IPSecureSocket::WriteByte((char)value, ctx, bio);
-	 PushInt(op_stack, stack_pos, 1);
-       }
-       else {
-	 PushInt(op_stack, stack_pos, 0);
-       }
-     }
-       break;
-
-     case SOCK_TCP_SSL_OUT_BYTE_ARY: {
-       long* array = (long*)PopInt(op_stack, stack_pos);
-       const long num = PopInt(op_stack, stack_pos);
-       const long offset = PopInt(op_stack, stack_pos);
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-       
-       if(array && instance && instance[2] && offset + num < array[0]) {
-	 SSL_CTX* ctx = (SSL_CTX*)instance[0];
-	 BIO* bio = (BIO*)instance[1];
-	 char* buffer = (char*)(array + 3);
-	 PushInt(op_stack, stack_pos, IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio));
-       } 
-       else {
-	 PushInt(op_stack, stack_pos, -1);
-       }
-     } 
-       break;
-       
-       // ---------------- file i/o ----------------
-     case FILE_IN_BYTE: {
-       long* instance = (long*)PopInt(op_stack, stack_pos);
-       if(instance && (FILE*)instance[0]) {
-	 FILE* file = (FILE*)instance[0];	  
-	 if(fgetc(file) == EOF) {
-	   PushInt(op_stack, stack_pos, 0);
-	 }
-	 else {
-	   PushInt(op_stack, stack_pos, 1);
-	 }
-       }
-       else {
-	 PushInt(op_stack, stack_pos, 0);
-       }
-     }
-       break;
-
-
-	case FILE_IN_BYTE_ARY: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long num = PopInt(op_stack, stack_pos);
-	  const long offset = PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    char* buffer = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, fread(buffer + offset, 1, num, file));        
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, -1);
-	  }
-	}
-	  break;
-
-	case FILE_OUT_BYTE: {
-	  long value = PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    if(fputc(value, file) != value) {
-	      PushInt(op_stack, stack_pos, 0);
-	    } 
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-
-	case FILE_OUT_BYTE_ARY: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  const long num = PopInt(op_stack, stack_pos);
-	  const long offset = PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num < array[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    char* buffer = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, fwrite(buffer + offset, 1, num, file));
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, -1);
-	  }
-	}
-	  break;
-	  
-	case FILE_SEEK: {
-	  long pos = PopInt(op_stack, stack_pos);
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    if(fseek(file, pos, SEEK_CUR) != 0) {
-	      PushInt(op_stack, stack_pos, 0);
-	    } 
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	  
-	case FILE_EOF: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    FILE* file = (FILE*)instance[0];
-	    PushInt(op_stack, stack_pos, feof(file) != 0);
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 1);
-	  }
-	}
-	  break;
-
-	case FILE_IS_OPEN: {
-	  long* instance = (long*)PopInt(op_stack, stack_pos);
-	  if(instance && (FILE*)instance[0]) {
-	    PushInt(op_stack, stack_pos, 1);
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-
-	case FILE_EXISTS: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, File::FileExists(name));
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-
-	case FILE_SIZE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, File::FileSize(name));
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, -1);
-	  }
-	}
-	  break;
-
-	case FILE_DELETE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    if(remove(name) != 0) {
-	      PushInt(op_stack, stack_pos, 0);
-	    } 
-	    else {
-	      PushInt(op_stack, stack_pos, 1);
-	    }
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-
-	case FILE_RENAME: {
-	  long* to = (long*)PopInt(op_stack, stack_pos);
-	  long* from = (long*)PopInt(op_stack, stack_pos);
-
-	  if(!to || !from) {
-	    PushInt(op_stack, stack_pos, 0);
-	    return;
-	  }
-	  
-	  to = (long*)to[0];
-	  const char* to_name = (char*)(to + 3);
-
-	  from = (long*)from[0];
-	  const char* from_name = (char*)(from + 3);
-
-	  if(rename(from_name, to_name) != 0) {
-	    PushInt(op_stack, stack_pos, 0);
-	  } 
-	  else {
-	    PushInt(op_stack, stack_pos, 1);
-	  }
-	}
-	  break;
-	  
-	  //----------- directory functions -----------
-	case DIR_CREATE: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, File::MakeDir(name));
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	
-	case DIR_EXISTS: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    const char* name = (char*)(array + 3);
-	    PushInt(op_stack, stack_pos, File::IsDir(name));
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	
-	case DIR_LIST: {
-	  long* array = (long*)PopInt(op_stack, stack_pos);
-	  if(array) {
-	    array = (long*)array[0];
-	    char* name = (char*)(array + 3);
-
-	    vector<string> files = File::ListDir(name);
-
-	    // create 'System.String' object array
-	    const long str_obj_array_size = files.size();
-	    const long str_obj_array_dim = 1;  
-	    long* str_obj_array = (long*)MemoryManager::Instance()->AllocateArray(str_obj_array_size + 
-										  str_obj_array_dim + 2, 
-										  INT_TYPE, 
-										  (long*)op_stack, 
-										  *stack_pos, false);
-	    str_obj_array[0] = str_obj_array_size;
-	    str_obj_array[1] = str_obj_array_dim;
-	    str_obj_array[2] = str_obj_array_size;
-	    long* str_obj_array_ptr = str_obj_array + 3;
-    
-	    // create and assign 'System.String' instances to array
-	    for(size_t i = 0; i < files.size(); i++) {
-	      // get value string
-	      string &value_str = files[i];
-      
-	      // create character array
-	      const long char_array_size = value_str.size();
-	      const long char_array_dim = 1;
-	      long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 + 
-										 ((char_array_dim + 2) * 
-										  sizeof(long)),  
-										 BYTE_ARY_TYPE, 
-										 (long*)op_stack, 
-										 *stack_pos, false);
-	      char_array[0] = char_array_size;
-	      char_array[1] = char_array_dim;
-	      char_array[2] = char_array_size;
-      
-	      // copy string
-	      char* char_array_ptr = (char*)(char_array + 3);
-	      strcpy(char_array_ptr, value_str.c_str()); 
-      
-	      // create 'System.String' object instance
-	      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(), 
-									(long*)op_stack, *stack_pos,
-									false);
-	      str_obj[0] = (long)char_array;
-	      str_obj[1] = char_array_size;
-
-	      // add to object array
-	      str_obj_array_ptr[i] = (long)str_obj;
-	    }
-	  
-	    PushInt(op_stack, stack_pos, (long)str_obj_array);
-	  }
-	  else {
-	    PushInt(op_stack, stack_pos, 0);
-	  }
-	}
-	  break;
-	  // --- END TRAP_RTRN --- //
+	if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, NULL)) {
+	  wcerr << L"  JIT compiled machine code..." << endl;
+	  exit(1);
 	}
 	break;
-      }
+	
 #ifdef _DEBUG
-      cout << "  ending stack: pos=" << (*stack_pos) << endl;
+      default:
+	wcerr << L"Unknown callback!" << endl;
+	break;
+	
+	wcout << L"  ending stack: pos=" << (*stack_pos) << endl;
 #endif
-    } 
-    
+      } 
+    }
+      
     // Calculates array element offset. 
     // Note: this code must match up 
     // with the interpreter's 'ArrayIndex'
@@ -2333,7 +1430,7 @@ namespace Runtime {
       RegisterHolder* array_holder;
       switch(holder->GetType()) {
       case IMM_INT:
-	cerr << ">>> trying to index a constant! <<<" << endl;
+	wcerr << L">>> trying to index a constant! <<<" << endl;
 	exit(1);
 	break;
 
@@ -2347,11 +1444,10 @@ namespace Runtime {
 	break;
 	
       default:
-	cerr << "internal error" << endl;
+	wcerr << L"internal error" << endl;
 	exit(1);
 	break;
       }
-      
       CheckNilDereference(array_holder->GetRegister());
       
       /* Algorithm:
@@ -2359,14 +1455,14 @@ namespace Runtime {
 	 const long dim = instr->GetOperand();
 	
 	 for(int i = 1; i < dim; i++) {
-	   index *= array[i];
-	   index += PopInt();
+	 index *= array[i];
+	 index += PopInt();
 	 }
       */
 
       if(holder) {
-        delete holder;
-        holder = NULL;
+	delete holder;
+	holder = NULL;
       }
 
       // get initial index
@@ -2389,7 +1485,7 @@ namespace Runtime {
 	break;
 	
       default:
-	cerr << "internal error" << endl;
+	wcerr << L"internal error" << endl;
 	exit(1);
 	break;
       }
@@ -2397,16 +1493,16 @@ namespace Runtime {
       const long dim = instr->GetOperand();
       for(int i = 1; i < dim; i++) {
 	// index *= array[i];
-        mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(), 
+	mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(), 
 		    index_holder->GetRegister());
-        if(holder) {
-          delete holder;
-          holder = NULL;
-        }
+	if(holder) {
+	  delete holder;
+	  holder = NULL;
+	}
 
-        holder = working_stack.front();
-        working_stack.pop_front();
-        switch(holder->GetType()) {
+	holder = working_stack.front();
+	working_stack.pop_front();
+	switch(holder->GetType()) {
 	case IMM_INT:
 	  add_imm_reg(holder->GetOperand(), index_holder->GetRegister());
 	  break;
@@ -2422,7 +1518,7 @@ namespace Runtime {
 
 	default:
 	  break;
-        }
+	}
       }
       
       // bounds check
@@ -2434,6 +1530,11 @@ namespace Runtime {
       case BYTE_ARY_TYPE:
 	break;
 
+      case CHAR_ARY_TYPE:
+	shl_imm_reg(2, index_holder->GetRegister());
+	shl_imm_reg(2, bounds_holder->GetRegister());
+	break;
+	      
       case INT_TYPE:
       case FLOAT_TYPE:
 	shl_imm_reg(3, index_holder->GetRegister());
@@ -2461,7 +1562,7 @@ namespace Runtime {
     // memory references.
     void ProcessIndices() {
 #ifdef _DEBUG
-      cout << "Calculating indices for variables..." << endl;
+      wcout << L"Calculating indices for variables..." << endl;
 #endif
       multimap<long, StackInstr*> values;
       for(long i = 0; i < method->GetInstructionCount(); i++) {
@@ -2524,19 +1625,19 @@ namespace Runtime {
 	}
 #ifdef _DEBUG
 	if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-	  cout << "native memory: index=" << instr->GetOperand() << "; jit index="
-	       << instr->GetOperand3() << endl;
+	  wcout << L"native memory: index=" << instr->GetOperand() << L"; jit index="
+		<< instr->GetOperand3() << endl;
 	}
 	else {
-	  cout << "native stack: index=" << instr->GetOperand() << "; jit index="
-	       << instr->GetOperand3() << endl;
+	  wcout << L"native stack: index=" << instr->GetOperand() << L"; jit index="
+		<< instr->GetOperand3() << endl;
 	}
 #endif
       }
       org_local_space = local_space = -(index + TMP_REG_5);
       
 #ifdef _DEBUG
-      cout << "Local space required: " << (local_space + 16) << " byte(s)" << endl;
+      wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
 #endif
     }
     
@@ -2548,8 +1649,8 @@ namespace Runtime {
     
     ~JitCompilerIA64() {
       while(!working_stack.empty()) {
-        RegInstr* instr = working_stack.front();
-        working_stack.pop_front();
+	RegInstr* instr = working_stack.front();
+	working_stack.pop_front();
 	if(instr) {
 	  delete instr;
 	  instr = NULL;
@@ -2557,8 +1658,8 @@ namespace Runtime {
       }      
       
       while(!aval_regs.empty()) {
-        RegisterHolder* holder = aval_regs.back();
-        aval_regs.pop_back();
+	RegisterHolder* holder = aval_regs.back();
+	aval_regs.pop_back();
 	if(holder) {
 	  delete holder;
 	  holder = NULL;
@@ -2566,8 +1667,8 @@ namespace Runtime {
       }
 
       while(!aval_xregs.empty()) {
-        RegisterHolder* holder = aval_xregs.back();
-        aval_xregs.pop_back();
+	RegisterHolder* holder = aval_xregs.back();
+	aval_xregs.pop_back();
 	if(holder) {
 	  delete holder;
 	  holder = NULL;
@@ -2575,34 +1676,34 @@ namespace Runtime {
       }
 
       while(!used_regs.empty()) {
-        RegisterHolder* holder = used_regs.front();
+	RegisterHolder* holder = used_regs.front();
 	if(holder) {
 	  delete holder;
 	  holder = NULL;
 	}
-        // next
-        used_regs.pop_front();
+	// next
+	used_regs.pop_front();
       }
       used_regs.clear();
 
       while(!used_xregs.empty()) {
-        RegisterHolder* holder = used_xregs.front();
+	RegisterHolder* holder = used_xregs.front();
 	if(holder) {
 	  delete holder;
 	  holder = NULL;
 	}
-        // next
-        used_xregs.pop_front();
+	// next
+	used_xregs.pop_front();
       }
       used_xregs.clear();
       
       while(!aux_regs.empty()) {
-        RegisterHolder* holder = aux_regs.top();
+	RegisterHolder* holder = aux_regs.top();
 	if(holder) {
 	  delete holder;
 	  holder = NULL;
-        }
-        aux_regs.pop();
+	}
+	aux_regs.pop();
       }
     }
 
@@ -2622,23 +1723,23 @@ namespace Runtime {
 #ifdef _DEBUG
 	long cls_id = method->GetClass()->GetId();
 	long mthd_id = method->GetId();	
-	cout << "---------- Compiling Native Code: method_id=" << cls_id << "," 
-	     << mthd_id << "; mthd_name='" << method->GetName() << "'; params=" 
-	     << method->GetParamCount() << " ----------" << endl;
+	wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L"," 
+	      << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params=" 
+	      << method->GetParamCount() << L" ----------" << endl;
 #endif	
 	// code buffer memory
 	code_buf_max = PAGE_SIZE;
 	if(posix_memalign((void**)&code, PAGE_SIZE, PAGE_SIZE)) {
-	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  wcerr << L"Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
 	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-	  cerr << "Unable to mprotect" << endl;
+	  wcerr << L"Unable to mprotect" << endl;
 	  exit(1);
 	}
 	// floats memory
 	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
-	  cerr << "Unable to reallocate JIT memory!" << endl;
+	  wcerr << L"Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
 	floats_index = instr_index = code_index = instr_count = 0;
@@ -2666,7 +1767,7 @@ namespace Runtime {
 	aval_xregs.push_back(new RegisterHolder(XMM11));
 	aval_xregs.push_back(new RegisterHolder(XMM10));   
 #ifdef _DEBUG
-	cout << "Compiling code for AMD64 architecture..." << endl;
+	wcout << L"Compiling code for AMD64 architecture..." << endl;
 #endif
 	
 	// process offsets
@@ -2703,13 +1804,13 @@ namespace Runtime {
 	  long offset = dest_offset - src_offset - 4; // 64-bit jump offset
 	  memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
-	  cout << "jump update: src=" << src_offset 
-	       << "; dest=" << dest_offset << endl;
+	  wcout << L"jump update: src=" << src_offset 
+		<< L"; dest=" << dest_offset << endl;
 #endif
 	}
 #ifdef _DEBUG
-	cout << "Caching JIT code: actual=" << code_index 
-	     << ", buffer=" << code_buf_max << " byte(s)" << endl;
+	wcout << L"Caching JIT code: actual=" << code_index 
+	      << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
 	// store compiled code
 	method->SetNativeCode(new NativeCode(code, code_index, floats));
@@ -2721,8 +1822,8 @@ namespace Runtime {
 #endif
 
 #ifdef _TIMING
-	cout << "JIT compiling: method='" << method->GetName() << "', time=" 
-	     << (double)(clock() - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+	wcout << L"JIT compiling: method='" << method->GetName() << L"', time=" 
+	      << (double)(clock() - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
 #endif
       }
       
@@ -2736,12 +1837,12 @@ namespace Runtime {
   class JitExecutorIA32 {
     static StackProgram* program;
     StackMethod* method;
-    BYTE_VALUE* code;
+    unsigned char* code;
     long code_index; 
     double* floats;
     
     long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, 
-			    BYTE_VALUE* code, const long code_size, 
+			    unsigned char* code, const long code_size, 
 			    long* op_stack, long *stack_pos);
     
   public:
@@ -2765,15 +1866,15 @@ namespace Runtime {
       floats = native_code->GetFloats();
       
 #ifdef _DEBUG
-      cout << "=== MTHD_CALL (native): id=" << cls_id << "," << mthd_id 
-	   << "; name='" << method->GetName() << "'; self=" << inst << "(" << (long)inst 
-	   << "); stack=" << op_stack << "; stack_pos=" << (*stack_pos) << "; params=" 
-	   << method->GetParamCount() << "; code=" << (void*)code << "; code_index=" 
-	   << code_index << " ===" << endl;
+      wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id 
+	    << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (long)inst 
+	    << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
+	    << method->GetParamCount() << L"; code=" << (void*)code << L"; code_index=" 
+	    << code_index << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
 
-      if(method->GetName() == "System.String:Append:c*,") {
-	cout << "..." << endl;
+      if(method->GetName() == L"System.String:Append:c*,") {
+	wcout << L"..." << endl;
       }
 #endif
       

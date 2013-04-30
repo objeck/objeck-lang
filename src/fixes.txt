@@ -1,3 +1,9 @@
+Unicode refactor
+
+1) C APIs (add notes about 32-bit odbc driver/dll)
+
+========================
+
 3/25/13
 * compiler now detects invalid escaped strings
 * Sleep method now uses milli secs

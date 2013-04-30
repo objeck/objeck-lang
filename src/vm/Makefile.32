@@ -1,9 +1,5 @@
-##############
-# For Posix
-##############
-ARGS=-O3 -pthread -Wall
-# ARGS=-g -pthread -Wall -pg
-# ARGS=-g -D_DEBUG -Wall -pthread -Wall
+ARGS=-O3 -pthread -Wall -Wno-unused-function
+# ARGS=-g -D_DEBUG -Wall -pthread -Wall -Wno-unused-function
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 

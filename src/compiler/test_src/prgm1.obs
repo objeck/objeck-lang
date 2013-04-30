@@ -10,7 +10,7 @@ bundle Default {
 
 		function : native : Run(args : String[]) ~ Nil {		
 #		function : Run(args : String[]) ~ Nil {		
-			b : Int := 13;
+			b := 13;
 			(b-9.33)->PrintLine();
 
 			x := 1;

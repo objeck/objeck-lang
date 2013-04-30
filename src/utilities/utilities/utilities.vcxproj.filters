@@ -50,6 +50,9 @@
     <ClInclude Include="..\..\vm\os\windows\memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\vm\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="objeck.rc">

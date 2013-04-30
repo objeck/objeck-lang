@@ -7,8 +7,8 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "helloworld");	
-			if(conn <> Nil) {
+			conn := Connection->New("test", "root", "helloworld");
+			if(conn->IsOpen()) {
 				rs := conn->Select("SELECT * FROM world.city");
 				if(rs <> Nil) {
 					i := 0;	

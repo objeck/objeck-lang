@@ -67,7 +67,7 @@ extern "C" {
     // get parameters
     long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // hash 
     unsigned char output[SHA256_DIGEST_LENGTH];
@@ -77,7 +77,7 @@ extern "C" {
     SHA256_Final(output, &sha256);
 
     // copy output
-    long* output_byte_array = APITools_MakeCharArray(context, SHA256_DIGEST_LENGTH);
+    long* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -97,7 +97,7 @@ extern "C" {
     // get parameters
     long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // hash 
     unsigned char output[RIPEMD160_DIGEST_LENGTH];
@@ -107,7 +107,7 @@ extern "C" {
     RIPEMD160_Final(output, &sha256);
 
     // copy output
-    long* output_byte_array = APITools_MakeCharArray(context, RIPEMD160_DIGEST_LENGTH);
+    long* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -124,14 +124,14 @@ extern "C" {
     // get parameters
     long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // hash 
     unsigned char output[MD5_DIGEST_LENGTH];
     MD5(input, input_size, output);
     
     // copy output
-    long* output_byte_array = APITools_MakeCharArray(context, MD5_DIGEST_LENGTH);
+    long* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -151,11 +151,11 @@ extern "C" {
     // get parameters
     long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetCharArray(key_array);
+    const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
     
     long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // TODO: add salt
     unsigned char* salt = NULL;
@@ -199,7 +199,7 @@ extern "C" {
     
     // copy output
     const int total_size = output_size + final_size;
-    long* output_byte_array = APITools_MakeCharArray(context, total_size);
+    long* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < total_size; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -221,11 +221,11 @@ extern "C" {
     // get parameters
     long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
-    const unsigned char* key =  (unsigned char*)APITools_GetCharArray(key_array);
+    const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
     
     long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array) - 1;
-    const unsigned char* input =  (unsigned char*)APITools_GetCharArray(input_array);
+    const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
     // TODO: add salt
     unsigned char* salt = NULL;
@@ -268,7 +268,7 @@ extern "C" {
     
     // copy output
     const int total_size = output_size + final_size;
-    long* output_byte_array = APITools_MakeCharArray(context, total_size);
+    long* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < total_size; i++) {
       output_byte_array_buffer[i] = output[i];

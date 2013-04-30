@@ -45,8 +45,8 @@ using namespace frontend;
  ****************************/
 class Parser {
   Scanner* scanner;
-  map<enum TokenType, string> error_msgs;
-  vector<string> errors;
+  map<enum TokenType, wstring> error_msgs;
+  vector<wstring> errors;
   
   inline void NextToken() {
     scanner->NextToken();
@@ -60,15 +60,15 @@ class Parser {
     return scanner->GetToken(index)->GetType();
   }
 
-  void Show(const string &msg, int depth) {
+  void Show(const wstring &msg, int depth) {
     for(int i = 0; i < depth; i++) {
-      cout << "  ";
+      wcout << L"  ";
     }
-    cout << msg << endl;
+    wcout << msg << endl;
   }
   
-  inline string ToString(int v) {
-    ostringstream str;
+  inline wstring ToString(int v) {
+    wostringstream str;
     str << v;
     return str.str();
   }
@@ -76,16 +76,15 @@ class Parser {
   // error processing
   void LoadErrorCodes();
   void ProcessError(const enum TokenType type);
-  void ProcessError(const string &msg);
+  void ProcessError(const wstring &msg);
   bool CheckErrors();
 
   // parsing operations
-  Command* ParseLine(const string& file_name);
+  Command* ParseLine(const wstring& file_name);
   Command* ParseStatement(int depth);
   Command* ParseLoad(CommandType type, int depth);
   Command* ParseList(int depth);
-  Command* ParseBreak(int depth);
-  Command* ParseDelete(int depth);
+  Command* ParseBreakDelete(bool is_break, int depth);
   Command* ParsePrint(int depth);
   Command* ParseInfo(int depth);
   Command* ParseFrame(int depth);
@@ -97,7 +96,7 @@ class Parser {
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
   Reference* ParseReference(int depth);
-  Reference* ParseReference(const string &ident, int depth);
+  Reference* ParseReference(const wstring &ident, int depth);
   void ParseReference(Reference* reference, int depth);
   
  public:
@@ -108,7 +107,7 @@ class Parser {
   ~Parser() {
   }
   
-  Command* Parse(const string &line);
+  Command* Parse(const wstring &line);
 };
 
 #endif

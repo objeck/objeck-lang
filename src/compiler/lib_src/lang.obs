@@ -158,6 +158,10 @@ bundle System {
 		function : Size(b : Byte[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
+		
+		function : ToUnicode(b : Byte[]) ~ Char[] {
+			BYTES_TO_UNICODE;
+		}
 
 		function : Size(b : Byte[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
@@ -303,7 +307,11 @@ bundle System {
 		function : Size(c : Char[]) ~ Int {
 			LOAD_ARY_SIZE;
 		}
-
+		
+		function : ToBytes(c : Char[]) ~ Byte[] {		
+			UNICODE_TO_BYTES;
+		}
+		
 		function : Size(c : Char[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
@@ -1621,7 +1629,7 @@ bundle System {
 		}
 		
 		function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
-			CPY_BYTE_ARY;
+			CPY_CHAR_ARY;
 		}
 		
 		function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
@@ -2266,6 +2274,10 @@ bundle System.IO {
 			SERL_INT;
 		}
 
+		method : public : Write(c : Char) ~ Nil {
+			SERL_CHAR;
+		}
+		
 		method : public : Write(i : Int) ~ Nil {
 			SERL_INT;
 		}
@@ -2287,7 +2299,7 @@ bundle System.IO {
 		}
 
 		method : public : Write(c : Char[]) ~ Nil {
-			SERL_BYTE_ARY;
+			SERL_CHAR_ARY;
 		}
 
 		method : public : Write(i : Int[]) ~ Nil {
@@ -2322,6 +2334,10 @@ bundle System.IO {
 			DESERL_INT;
 		}
 
+		method : public : ReadChar() ~ Char {
+			DESERL_CHAR;
+		}
+		
 		method : public : ReadInt() ~ Int {
 			DESERL_INT;
 		}
@@ -2343,7 +2359,7 @@ bundle System.IO {
 		}
 
 		method : public : ReadCharArray() ~ Char[] {
-			DESERL_BYTE_ARY;
+			DESERL_CHAR_ARY;
 		}
 
 		method : public : ReadIntArray() ~ Int[] {
@@ -2466,7 +2482,7 @@ bundle System.IO.File {
 		}
 
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-			FILE_IN_BYTE_ARY;
+			FILE_IN_CHAR_ARY;
 		}
 
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {

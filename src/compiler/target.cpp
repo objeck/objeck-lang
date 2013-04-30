@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -54,40 +54,41 @@ IntermediateFactory* IntermediateFactory::Instance()
 void TargetEmitter::Emit()
 {
 #ifdef _DEBUG
-  cout << "\n--------- Emitting Target Code ---------" << endl;
+  wcout << L"\n--------- Emitting Target Code ---------" << endl;
   program->Debug();
 #endif
 
   // library target
   if(is_lib) {
-    if(!EndsWith(file_name, ".obl")) {
-      cerr << "Error: Libraries must end in '.obl'" << endl;
+    if(!EndsWith(file_name, L".obl")) {
+      cerr << L"Error: Libraries must end in '.obl'" << endl;
       exit(1);
     }
   } 
   // web target
   else if(is_web) {
-    if(!EndsWith(file_name, ".obw")) {
-      cerr << "Error: Web applications must end in '.obw'" << endl;
+    if(!EndsWith(file_name, L".obw")) {
+      cerr << L"Error: Web applications must end in '.obw'" << endl;
       exit(1);
     }
   } 
   // application target
   else {
-    if(!EndsWith(file_name, ".obe")) {
-      cerr << "Error: Executables must end in '.obe'" << endl;
+    if(!EndsWith(file_name, L".obe")) {
+      cerr << L"Error: Executables must end in '.obe'" << endl;
       exit(1);
     }
   }
   
-  ofstream* file_out = new ofstream(file_name.c_str(), ofstream::binary);
+  string open_filename(file_name.begin(), file_name.end());
+  ofstream* file_out = new ofstream(open_filename.c_str(), ofstream::binary);
   if(file_out && file_out->is_open()) {
-    program->Write(file_out, is_lib, is_web);
+    program->Write(file_out, is_lib, is_debug, is_web);
     file_out->close();
-    cout << "Wrote target file: '" << file_name << "'" << endl;
+    wcout << L"Wrote target file: '" << file_name << L"'" << endl;
   }
   else {
-    cerr << "Unable to write file: '" << file_name << "'" << endl;
+    wcerr << L"Unable to write file: '" << file_name << L"'" << endl;
   }
   
   delete file_out;

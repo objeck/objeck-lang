@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -38,6 +38,9 @@
 #include <fstream>
 #ifndef _WIN32
 #include <stdint.h>
+#include <stdlib.h>
+#else
+#include <windows.h>
 #endif
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
@@ -51,11 +54,11 @@ namespace frontend {
    ****************************/
   class ParseNode {
   protected:
-    string file_name;
+    std::wstring file_name;
     int line_num;
 
   public:
-    ParseNode(const string &f, const int l) {
+    ParseNode(const std::wstring &f, const int l) {
       file_name = f;
       line_num = l;
     }
@@ -63,7 +66,7 @@ namespace frontend {
     virtual ~ParseNode() {
     }
     
-    const string GetFileName() {
+    const std::wstring GetFileName() {
       return file_name;
     }
 
@@ -114,7 +117,7 @@ namespace frontend {
     friend class TypeFactory;
     EntryType type;
     int dimension;
-    string class_name;
+    std::wstring class_name;
     vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
@@ -137,7 +140,7 @@ namespace frontend {
       func_param_count = -1;
     }
 
-    Type(EntryType t, const string &n) {
+    Type(EntryType t, const std::wstring &n) {
       type = t;
       class_name = n;
       dimension = 0;
@@ -199,11 +202,11 @@ namespace frontend {
       return dimension;
     }
 
-    void SetClassName(const string &n) {
+    void SetClassName(const std::wstring &n) {
       class_name = n;
     }
 
-    const string GetClassName() {
+    const std::wstring GetClassName() {
       return class_name;
     }
   };
@@ -243,7 +246,7 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const string &name) {
+    Type* MakeType(EntryType type, const std::wstring &name) {
       Type* tmp = new Type(type, name);
       types.push_back(tmp);
       return tmp;
@@ -281,10 +284,10 @@ namespace backend {
    ****************************/
   class IntermediateDeclaration {
     instructions::ParamType type;
-    string name;
+    std::wstring name;
 
   public:
-    IntermediateDeclaration(const string &n, instructions::ParamType t) {
+    IntermediateDeclaration(const std::wstring &n, instructions::ParamType t) {
       type = t;
       name = n;
     }
@@ -293,7 +296,7 @@ namespace backend {
       return type;
     }
 
-    const string GetName() {
+    const std::wstring GetName() {
       return name;
     }
   };
@@ -309,10 +312,14 @@ namespace backend {
       file_out->write((char*)&value, sizeof(value));
     }
 
-    void WriteString(const string &value, ofstream* file_out) {
-      int size = (int)value.size();
-      file_out->write((char*)&size, sizeof(size));
-      file_out->write(value.c_str(), value.size());
+    void WriteString(const std::wstring &in, ofstream* file_out) {
+      string out;
+      if(!UnicodeToBytes(in, out)) {
+        wcerr << L">>> Unable to write unicode string <<<" << endl;
+        exit(1);
+      }
+      WriteInt(out.size(), file_out);
+      file_out->write(out.c_str(), out.size());
     }
 
   public:
@@ -339,41 +346,49 @@ namespace backend {
     
     void Debug() {
       if(declarations.size() > 0) {	 
-	cout << "memory types:" << endl;	 
-	for(size_t i = 0; i < declarations.size(); i++) {	 
+	wcout << L"memory types:" << endl;	 
+	for(size_t i = 0; i < declarations.size(); ++i) {	 
 	  IntermediateDeclaration* entry = declarations[i];	 
  	 
-	  switch(entry->GetType()) {	 
+	  switch(entry->GetType()) {	
+	  case instructions::CHAR_PARM:	 
+	    wcout << L"  " << i << L": CHAR_PARM" << endl;	 
+	    break;
+	    
 	  case instructions::INT_PARM:	 
-	    cout << "  " << i << ": INT_PARM" << endl;	 
+	    wcout << L"  " << i << L": INT_PARM" << endl;	 
 	    break;	 
  	 
 	  case instructions::FLOAT_PARM:	 
-	    cout << "  " << i << ": FLOAT_PARM" << endl;	 
+	    wcout << L"  " << i << L": FLOAT_PARM" << endl;	 
 	    break;	 
  	 
 	  case instructions::BYTE_ARY_PARM:	 
-	    cout << "  " << i << ": BYTE_ARY_PARM" << endl;	 
+	    wcout << L"  " << i << L": BYTE_ARY_PARM" << endl;	 
 	    break;	 
  	 
+    case instructions::CHAR_ARY_PARM:	 
+	    wcout << L"  " << i << L": CHAR_ARY_PARM" << endl;	 
+	    break;
+
 	  case instructions::INT_ARY_PARM:	 
-	    cout << "  " << i << ": INT_ARY_PARM" << endl;	 
+	    wcout << L"  " << i << L": INT_ARY_PARM" << endl;	 
 	    break;	 
  	 
 	  case instructions::FLOAT_ARY_PARM:	 
-	    cout << "  " << i << ": FLOAT_ARY_PARM" << endl;	 
+	    wcout << L"  " << i << L": FLOAT_ARY_PARM" << endl;	 
 	    break;	 
  	 
 	  case instructions::OBJ_PARM:	 
-	    cout << "  " << i << ": OBJ_PARM" << endl;	 
+	    wcout << L"  " << i << L": OBJ_PARM" << endl;	 
 	    break;
 	     
 	  case instructions::OBJ_ARY_PARM:	 
-	    cout << "  " << i << ": OBJ_ARY_PARM" << endl;	 
+	    wcout << L"  " << i << L": OBJ_ARY_PARM" << endl;	 
 	    break;
 	    
 	  case instructions::FUNC_PARM:	 
-	    cout << "  " << i << ": FUNC_PARM" << endl;	 
+	    wcout << L"  " << i << L": FUNC_PARM" << endl;	 
 	    break;
  	 
 	  default:	 
@@ -382,13 +397,13 @@ namespace backend {
 	}	 
       }	
       else {
-	cout << "memory types: none" << endl;
+	wcout << L"memory types: none" << endl;
       }
     }
     
     void Write(bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
-      for(size_t i = 0; i < declarations.size(); i++) {
+      for(size_t i = 0; i < declarations.size(); ++i) {
 	IntermediateDeclaration* entry = declarations[i];
 	WriteInt(entry->GetType(), file_out);
 	if(is_debug) {

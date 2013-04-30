@@ -13,7 +13,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/cor other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -114,7 +114,7 @@ void SelectArrayTree::Emit()
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     vector<Statement*> statements = statement_list->GetStatements();
-    for(size_t i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
@@ -124,7 +124,7 @@ void SelectArrayTree::Emit()
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, other_label));
     StatementList* statement_list = select->GetOther();
     vector<Statement*> statements = statement_list->GetStatements();
-    for(size_t i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); ++i) {
       emitter->EmitStatement(statements[i]);
     }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
@@ -200,10 +200,10 @@ void IntermediateEmitter::Translate()
   
 #ifndef _SYSTEM
   vector<LibraryClass*> lib_classes = parsed_program->GetLinker()->GetAllClasses();
-  for(size_t i = 0; i < lib_classes.size(); i++) {
+  for(size_t i = 0; i < lib_classes.size(); ++i) {
     LibraryClass* lib_class = lib_classes[i];    
     // find "System.String"
-    if(string_cls_id < 0 && lib_class->GetName() == "System.String") {
+    if(string_cls_id < 0 && lib_class->GetName() == L"System.String") {
       string_cls = lib_class;
       string_cls_id = class_id;
     }
@@ -216,7 +216,7 @@ void IntermediateEmitter::Translate()
   
   // process bundles
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
-  for(size_t i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); ++i) {
     vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); j++) {
       classes[j]->SetId(class_id++);
@@ -256,12 +256,12 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
     linker->ResolveExternalMethodCalls();
     // write enums
     vector<LibraryEnum*> lib_enums = linker->GetAllEnums();
-    for(size_t i = 0; i < lib_enums.size(); i++) {
+    for(size_t i = 0; i < lib_enums.size(); ++i) {
       imm_program->AddEnum(new IntermediateEnum(lib_enums[i]));
     }
     // write classes
     vector<LibraryClass*> lib_classes = linker->GetAllClasses();
-    for(size_t i = 0; i < lib_classes.size(); i++) {
+    for(size_t i = 0; i < lib_classes.size(); ++i) {
       if(is_lib || lib_classes[i]->GetCalled()) {
         imm_program->AddClass(new IntermediateClass(lib_classes[i]));
       }
@@ -274,23 +274,23 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
  ****************************/
 void IntermediateEmitter::EmitStrings()
 {
-  vector<string> char_string_values = parsed_program->GetCharStrings();
+  vector<wstring> char_string_values = parsed_program->GetCharStrings();
   vector<IntStringHolder*> int_string_values = parsed_program->GetIntStrings();
   vector<FloatStringHolder*> float_string_values = parsed_program->GetFloatStrings();
   
   Linker* linker = parsed_program->GetLinker();
   if(linker && !is_lib) {
-    map<const string, Library*> libraries = linker->GetAllLibraries();
-    map<const string, Library*>::iterator iter;
+    map<const wstring, Library*> libraries = linker->GetAllLibraries();
+    map<const wstring, Library*>::iterator iter;
     
     // create master list of library strings
-    vector<string> lib_char_string_values;
+    vector<wstring> lib_char_string_values;
     vector<IntStringHolder*> lib_int_string_values;
     vector<FloatStringHolder*> lib_float_string_values;
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      // char string processing
+      // char wstring processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
-      for(size_t i = 0; i < char_str_insts.size(); i++) {
+      for(size_t i = 0; i < char_str_insts.size(); ++i) {
 	// check for dups
 	bool found = false;
 	for(size_t j = 0; !found && j < lib_char_string_values.size(); j++) {
@@ -298,14 +298,14 @@ void IntermediateEmitter::EmitStrings()
 	    found = true;
 	  }
 	}
-	// add string
+	// add wstring
 	if(!found) {
 	  lib_char_string_values.push_back(char_str_insts[i]->value);
 	}
       }      
-      // int string processing
+      // int wstring processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
-      for(size_t i = 0; i < int_str_insts.size(); i++) {
+      for(size_t i = 0; i < int_str_insts.size(); ++i) {
 	// check for dups
 	bool found = false;
 	for(size_t j = 0; !found && j < lib_int_string_values.size(); j++) {
@@ -313,14 +313,14 @@ void IntermediateEmitter::EmitStrings()
 	    found = true;
 	  }
 	}
-	// add string
+	// add wstring
 	if(!found) {
 	  lib_int_string_values.push_back(int_str_insts[i]->value);
 	}
       }
-      // float string processing
+      // float wstring processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
-      for(size_t i = 0; i < float_str_insts.size(); i++) {
+      for(size_t i = 0; i < float_str_insts.size(); ++i) {
 	// check for dups
 	bool found = false;
 	for(size_t j = 0; !found && j < lib_float_string_values.size(); j++) {
@@ -328,7 +328,7 @@ void IntermediateEmitter::EmitStrings()
 	    found = true;
 	  }
 	}
-	// add string
+	// add wstring
 	if(!found) {
 	  lib_float_string_values.push_back(float_str_insts[i]->value);
 	}
@@ -336,7 +336,7 @@ void IntermediateEmitter::EmitStrings()
     }
 
     // merge in library strings
-    for(size_t i = 0; i < lib_char_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_char_string_values.size(); ++i) {
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < char_string_values.size(); j++) {
@@ -344,12 +344,12 @@ void IntermediateEmitter::EmitStrings()
 	  found = true;
 	}
       }
-      // add string
+      // add wstring
       if(!found) {
 	char_string_values.push_back(lib_char_string_values[i]);
       }
     }
-    for(size_t i = 0; i < lib_int_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_int_string_values.size(); ++i) {
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < int_string_values.size(); j++) {
@@ -357,12 +357,12 @@ void IntermediateEmitter::EmitStrings()
 	  found = true;
 	}
       }
-      // add string
+      // add wstring
       if(!found) {
 	int_string_values.push_back(lib_int_string_values[i]);
       }
     }
-    for(size_t i = 0; i < lib_float_string_values.size(); i++) {
+    for(size_t i = 0; i < lib_float_string_values.size(); ++i) {
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < float_string_values.size(); j++) {
@@ -370,7 +370,7 @@ void IntermediateEmitter::EmitStrings()
 	  found = true;
 	}
       }
-      // add string
+      // add wstring
       if(!found) {
 	float_string_values.push_back(lib_float_string_values[i]);
       }
@@ -378,9 +378,9 @@ void IntermediateEmitter::EmitStrings()
     
     // update indices
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      // char string processing
+      // char wstring processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
-      for(size_t i = 0; i < char_str_insts.size(); i++) {
+      for(size_t i = 0; i < char_str_insts.size(); ++i) {
 	bool found = false;
 	for(size_t j = 0; !found && j < char_string_values.size(); j++) {
 	  if(char_str_insts[i]->value == char_string_values[j]) {
@@ -395,9 +395,9 @@ void IntermediateEmitter::EmitStrings()
 	assert(found);
 #endif
       }
-      // int string processing
+      // int wstring processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
-      for(size_t i = 0; i < int_str_insts.size(); i++) {
+      for(size_t i = 0; i < int_str_insts.size(); ++i) {
 	bool found = false;
 	for(size_t j = 0; !found && j < int_string_values.size(); j++) {
 	  if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
@@ -412,9 +412,9 @@ void IntermediateEmitter::EmitStrings()
 	assert(found);
 #endif
       }
-      // float string processing
+      // float wstring processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
-      for(size_t i = 0; i < float_str_insts.size(); i++) {
+      for(size_t i = 0; i < float_str_insts.size(); ++i) {
 	bool found = false;
 	for(size_t j = 0; !found && j < float_string_values.size(); j++) {
 	  if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
@@ -443,9 +443,9 @@ void IntermediateEmitter::EmitStrings()
 void IntermediateEmitter::EmitBundles()
 {
   // translate program into intermediate form process bundles
-  vector<string> bundle_names;
+  vector<wstring> bundle_names;
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
-  for(size_t i = 0; i < bundles.size(); i++) {
+  for(size_t i = 0; i < bundles.size(); ++i) {
     parsed_bundle = bundles[i];
     bundle_names.push_back(parsed_bundle->GetName());
     // emit enums
@@ -478,9 +478,9 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
   cur_line_num = eenum->GetLineNumber();
   
   IntermediateEnum* imm_eenum = new IntermediateEnum(eenum->GetName(), eenum->GetOffset());
-  map<const string, EnumItem*>items =  eenum->GetItems();
+  map<const wstring, EnumItem*>items =  eenum->GetItems();
   // copy items
-  map<const string, EnumItem*>::iterator iter;
+  map<const wstring, EnumItem*>::iterator iter;
   for(iter = items.begin(); iter != items.end(); ++iter) {
     imm_eenum->AddItem(new IntermediateEnumItem(iter->second->GetName(), iter->second->GetId()));
   }
@@ -502,20 +502,20 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   // entries
 #ifdef _DEBUG
-  cout << "---------- Intermediate ---------" << endl;
-  cout << "Class variables (class): name=" << klass->GetName() << endl;
+  wcout << L"---------- Intermediate ---------" << endl;
+  wcout << L"Class variables (class): name=" << klass->GetName() << endl;
 #endif
   IntermediateDeclarations* cls_entries = new IntermediateDeclarations;
   int cls_space = CalculateEntrySpace(cls_entries, true);
   
 #ifdef _DEBUG
-  cout << "Class variables (instance): name=" << klass->GetName() << endl;
+  wcout << L"Class variables (instance): name=" << klass->GetName() << endl;
 #endif
   IntermediateDeclarations* inst_entries = new IntermediateDeclarations;
   int inst_space = CalculateEntrySpace(inst_entries, false);
   
   // set parent id
-  string parent_name;
+  wstring parent_name;
   int pid = -1;
   Class* parent = current_class->GetParent();
   if(parent) {
@@ -533,18 +533,18 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   // process interfaces
   vector<int> interface_ids;
   vector<Class*> interfaces = current_class->GetInterfaces();
-  for(size_t i = 0; i < interfaces.size(); i++) {
+  for(size_t i = 0; i < interfaces.size(); ++i) {
     interface_ids.push_back(interfaces[i]->GetId());
   }
   vector<LibraryClass*> lib_interfaces = current_class->GetLibraryInterfaces();
-  for(size_t i = 0; i < lib_interfaces.size(); i++) {
+  for(size_t i = 0; i < lib_interfaces.size(); ++i) {
     interface_ids.push_back(lib_interfaces[i]->GetId());
   }
 
   // get short file name
-  const string &file_name = current_class->GetFileName();
-  int offset = file_name.find_last_of("/\\");
-  string short_file_name;
+  const wstring &file_name = current_class->GetFileName();
+  int offset = file_name.find_last_of(L"/\\");
+  wstring short_file_name;
   if(offset < 0) {
     short_file_name = file_name;
   }
@@ -562,13 +562,13 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   // declarations
   vector<Statement*> statements = klass->GetStatements();
-  for(size_t i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); ++i) {
     EmitDeclaration(static_cast<Declaration*>(statements[i]));
   }
 
   // methods
   vector<Method*> methods = klass->GetMethods();
-  for(size_t i = 0; i < methods.size(); i++) {
+  for(size_t i = 0; i < methods.size(); ++i) {
     imm_klass->AddMethod(EmitMethod(methods[i]));
   }
 
@@ -591,12 +591,12 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   IntermediateDeclarations* entries = new IntermediateDeclarations;
 
 #ifdef _DEBUG
-  cout << "Method variables (local): name=" << method->GetName() << endl;
+  wcout << L"Method variables (local): name=" << method->GetName() << endl;
 #endif
   int space = CalculateEntrySpace(entries, false);
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
-  for(size_t i = 0; i < declarations.size(); i++) {
+  for(size_t i = 0; i < declarations.size(); ++i) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
       num_params += 2;
     }
@@ -651,7 +651,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     StatementList* statement_list = method->GetStatements();
     if(statement_list) {
       vector<Statement*> statements = statement_list->GetStatements();
-      for(size_t i = 0; i < statements.size(); i++) {
+      for(size_t i = 0; i < statements.size(); ++i) {
         EmitStatement(statements[i]);
       }
       // check to see if the last statement was a return statement
@@ -751,7 +751,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   default:
-    cerr << "internal error" << endl;
+    cerr << L"internal error" << endl;
     exit(1);
     break;
   }
@@ -1022,6 +1022,15 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 4, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CPY_BYTE_ARY));
     break;
+
+  case CPY_CHAR_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 2, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 3, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 4, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CPY_CHAR_ARY));
+    break;
     
   case CPY_INT_ARY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
@@ -1044,6 +1053,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     //----------- math instructions -----------
   case instructions::LOAD_INST_UID:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    break;
+    
+  case instructions::LOAD_ARY_SIZE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_ARY_SIZE));
     break;
     
   case instructions::FLOR_FLOAT:
@@ -1146,19 +1160,24 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     /////////////////////////////////////////
     // -------------- traps -------------- //
     /////////////////////////////////////////
-    
-  case instructions::LOAD_ARY_SIZE:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_ARY_SIZE));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
-    break;
-    
   case instructions::LOAD_MULTI_ARY_SIZE:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_MULTI_ARY_SIZE));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+    break;   
+    
+  case instructions::BYTES_TO_UNICODE:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::BYTES_TO_UNICODE));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
     break;
     
+  case instructions::UNICODE_TO_BYTES:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::UNICODE_TO_BYTES));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
+    break;
+
   case instructions::LOAD_NEW_OBJ_INST:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::LOAD_NEW_OBJ_INST));
@@ -1370,12 +1389,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::SOCK_TCP_HOST_NAME: {
     // copy and create Char[]
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)256 + 1));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_CHAR_ARY, (INT_VALUE)1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::SOCK_TCP_HOST_NAME));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 2));
 #ifdef _SYSTEM
     if(string_cls_id < 0) {
-      Class* klass = SearchProgramClasses("System.String");
+      Class* klass = SearchProgramClasses(L"System.String");
 #ifdef _DEBUG
       assert(klass);
 #endif
@@ -1385,7 +1404,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     
     // create 'System.String' instance
     if(is_lib) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, L"System.String"));
     } 
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
@@ -1393,7 +1412,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										 "System.String", "System.String:New:c*,"));
+										 L"System.String", L"System.String:New:c*,"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
@@ -1575,6 +1594,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     break;
     
     //----------- serialization methods -----------  
+  case SERL_CHAR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_CHAR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
+    break;
+    
   case SERL_INT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
@@ -1595,6 +1619,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
 
+  case SERL_CHAR_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
+    break;
+    
   case SERL_INT_ARY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_INT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
@@ -1602,6 +1631,11 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 
   case SERL_FLOAT_ARY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)SERL_FLOAT_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
+    break;
+
+  case DESERL_CHAR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_CHAR));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
     
@@ -1624,7 +1658,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_BYTE_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
     break;
-    
+
+  case DESERL_CHAR_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_CHAR_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
+    break;
+
   case DESERL_INT_ARY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)DESERL_INT_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 1));
@@ -1669,6 +1708,15 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 2, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::FILE_IN_BYTE_ARY));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 5));
+    break;
+
+  case instructions::FILE_IN_CHAR_ARY:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 2, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::FILE_IN_CHAR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 5));
     break;
 
@@ -1843,7 +1891,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
 
     // label statements
     vector<Statement*> statements = statement_list->GetStatements();
-    for(size_t i = 0; i < statements.size(); i++) {
+    for(size_t i = 0; i < statements.size(); ++i) {
       EmitStatement(statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
@@ -1854,7 +1902,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, other_label));
       StatementList* statement_list = select_stmt->GetOther();
       vector<Statement*> statements = statement_list->GetStatements();
-      for(size_t i = 0; i < statements.size(); i++) {
+      for(size_t i = 0; i < statements.size(); ++i) {
         EmitStatement(statements[i]);
       }
     }
@@ -1879,7 +1927,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 
   // statements
   vector<Statement*> do_while_statements = do_while_stmt->GetStatements()->GetStatements();
-  for(size_t i = 0; i < do_while_statements.size(); i++) {
+  for(size_t i = 0; i < do_while_statements.size(); ++i) {
     EmitStatement(do_while_statements[i]);
   }
   
@@ -1911,7 +1959,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
 
   // statements
   vector<Statement*> while_statements = while_stmt->GetStatements()->GetStatements();
-  for(size_t i = 0; i < while_statements.size(); i++) {
+  for(size_t i = 0; i < while_statements.size(); ++i) {
     EmitStatement(while_statements[i]);
   }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
@@ -1935,7 +1983,7 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_START));
   
-  for(size_t i = 0; i < statements.size(); i++) {
+  for(size_t i = 0; i < statements.size(); ++i) {
     EmitStatement(statements[i]);
   }
 
@@ -1964,7 +2012,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
 
   // statements
   vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
-  for(size_t i = 0; i < for_statements.size(); i++) {
+  for(size_t i = 0; i < for_statements.size(); ++i) {
     EmitStatement(for_statements[i]);
   }
 
@@ -2010,7 +2058,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     
     // statements
     vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
-    for(size_t i = 0; i < if_statements.size(); i++) {
+    for(size_t i = 0; i < if_statements.size(); ++i) {
       EmitStatement(if_statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, -1));
@@ -2030,7 +2078,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
       // statements
       vector<Statement*> else_statements = if_stmt->GetElseStatements()->GetStatements();
-      for(size_t i = 0; i < else_statements.size(); i++) {
+      for(size_t i = 0; i < else_statements.size(); ++i) {
         EmitStatement(else_statements[i]);
       }
     }
@@ -2066,7 +2114,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
 
   case CHAR_LIT_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, static_cast<CharacterLiteral*>(expression)->GetValue()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_LIT, static_cast<CharacterLiteral*>(expression)->GetValue()));
     EmitCast(expression);
     break;
 
@@ -2131,7 +2179,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     while(method_call) {
       // declarations
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
 	// need to swap values
 	if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
@@ -2429,7 +2477,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       break;
     
     case frontend::CHAR_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)array->GetDimension()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_CHAR_ARY, (INT_VALUE)array->GetDimension()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)array->GetId()));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
@@ -2440,7 +2488,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     }
   }
   else {
-    // create string literals
+    // create wstring literals
     is_str_array = true;
     vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
     for(int i = all_elements.size() - 1; i > -1; i--) {
@@ -2450,11 +2498,11 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
 
     // emit dimensions
     vector<int> sizes = array->GetSizes();
-    for(size_t i = 0; i < sizes.size(); i++) {      
+    for(size_t i = 0; i < sizes.size(); ++i) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
     
-    // create string array
+    // create wstring array
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)array->GetDimension()));        
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARYS));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, (INT_VALUE)(all_elements.size() + 2)));
@@ -2489,7 +2537,7 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
 }
 
 /****************************
- * Translates character string.
+ * Translates character wstring.
  * This creates a new byte array
  * and copies content.
  ****************************/
@@ -2498,7 +2546,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
   cur_line_num = char_str->GetLineNumber();
   
   vector<CharacterStringSegment*> segments = char_str->GetSegments();
-  for(size_t i = 0; i < segments.size(); i++) {
+  for(size_t i = 0; i < segments.size(); ++i) {
     if(i == 0) {
       EmitCharacterStringSegment(segments[i], char_str);
     }
@@ -2524,11 +2572,11 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 									       concat_entry->GetId(), LOCL));    
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										 "System.String", 
-										 "System.String:Append:o.System.String,"));
-      }
+										 L"System.String", 
+										 L"System.String:Append:o.System.String,"));
+    }
     else {
-      LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:o.System.String,");
+      LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
       assert(string_append_method);
 #endif
@@ -2566,10 +2614,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   "System.String", "System.String:Append:l,"));
+										   L"System.String", L"System.String:Append:l,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:l,");
+	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
 #ifdef _DEBUG
 	assert(string_append_method);
 #endif
@@ -2587,10 +2635,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   "System.String", "System.String:Append:b,"));
+										   L"System.String", L"System.String:Append:b,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:b,");
+	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
 #ifdef _DEBUG
 	assert(string_append_method);
 #endif
@@ -2608,10 +2656,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   "System.String", "System.String:Append:c,"));
+										   L"System.String", L"System.String:Append:c,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:c,");
+	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
 #ifdef _DEBUG
 	assert(string_append_method);
 #endif
@@ -2629,10 +2677,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   "System.String", "System.String:Append:i,"));
+										   L"System.String", L"System.String:Append:i,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:i,");
+	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
 	assert(string_append_method);
 #endif
@@ -2644,19 +2692,19 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       break;
       
     case frontend::CLASS_TYPE:
-      // process string instance
-      if(var_entry->GetType()->GetClassName() == "System.String" || var_entry->GetType()->GetClassName() == "String") {
+      // process wstring instance
+      if(var_entry->GetType()->GetClassName() == L"System.String" || var_entry->GetType()->GetClassName() == L"String") {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										   var_entry->GetId(), mem_context));
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										   concat_entry->GetId(), LOCL));     
 	if(is_lib) {
 	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										     "System.String", 
-										     "System.String:Append:o.System.String,"));
+										     L"System.String", 
+										     L"System.String:Append:o.System.String,"));
 	}
 	else {
-	  LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:o.System.String,");
+	  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
 	  assert(string_append_method);
 #endif
@@ -2707,16 +2755,16 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 	  }
 	}
 
-	// append string value
+	// append wstring value
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
 										   concat_entry->GetId(), LOCL));     
 	if(is_lib) {
 	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										     "System.String", 
-										     "System.String:Append:o.System.String,"));
+										     L"System.String", 
+										     L"System.String:Append:o.System.String,"));
 	}
 	else {
-	  LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:o.System.String,");
+	  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
 	  assert(string_append_method);
 #endif
@@ -2735,10 +2783,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 										 concat_entry->GetId(), LOCL));     
       if(is_lib) {
 	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   "System.String", "System.String:Append:f,"));
+										   L"System.String", L"System.String:Append:f,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod("System.String:Append:f,");
+	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
 #ifdef _DEBUG
 	assert(string_append_method);
 #endif
@@ -2759,7 +2807,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
 {
 #ifdef _SYSTEM
   if(string_cls_id < 0) {
-    Class* klass = SearchProgramClasses("System.String");
+    Class* klass = SearchProgramClasses(L"System.String");
 #ifdef _DEBUG
     assert(klass);
 #endif
@@ -2769,15 +2817,15 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
   
   if(segment->GetString().size() > 0) {
     // copy and create Char[]
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetString().size() + 1));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetString().size()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_CHAR_ARY, (INT_VALUE)1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)segment->GetId()));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::CPY_CHAR_STR_ARY));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP_RTRN, 3));
   
     // create 'System.String' instance
     if(is_lib) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, L"System.String"));
     } 
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
@@ -2785,7 +2833,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
-										 "System.String", "System.String:New:c*,"));
+										 L"System.String", L"System.String:New:c*,"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
@@ -2794,7 +2842,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
   else {
     // create 'System.String' instance
     if(is_lib) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, "System.String"));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, L"System.String"));
     } 
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
@@ -2802,7 +2850,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
-										 "System.String", "System.String:New:"));
+										 L"System.String", L"System.String:New:"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 0L, 0L)); 
@@ -3194,12 +3242,16 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
 
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BYTE_TYPE:
-    case frontend::CHAR_TYPE:
     case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
       break;
-
+      
+    case frontend::CHAR_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_ARY_ELM, dimension, mem_context));
+      break;
+      
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
@@ -3355,11 +3407,15 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     switch(variable->GetBaseType()->GetType()) {
     case frontend::BYTE_TYPE:
     case frontend::BOOLEAN_TYPE:
-    case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_BYTE_ARY_ELM, dimension, mem_context));
       break;
 
+    case frontend::CHAR_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_CHAR_ARY_ELM, dimension, mem_context));
+      break;
+      
     case frontend::INT_TYPE:
     case frontend::CLASS_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
@@ -3511,7 +3567,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); i++) {
+    for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
     }
     is_new_inst = false;
@@ -3538,7 +3594,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   else if(method_call->GetCallType() == NEW_INST_CALL) {
     // declarations
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); i++) {
+    for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
       new_char_str_count = 0;
     }
@@ -3555,7 +3611,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
 
       if(is_lib) {
-        const string& klass_name = lib_method->GetLibraryClass()->GetName();
+        const wstring& klass_name = lib_method->GetLibraryClass()->GetName();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, klass_name));
       } else {
         int klass_id = lib_method->GetLibraryClass()->GetId();
@@ -3569,7 +3625,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     // declarations
     if(method_call->GetCallingParameters()) {
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < expressions.size(); i++) {
+      for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
 	new_char_str_count = 0;
       }
@@ -3592,10 +3648,13 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     switch(method_call->GetArrayType()->GetType()) {
     case frontend::BYTE_TYPE:
     case frontend::BOOLEAN_TYPE:
-    case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_BYTE_ARY, (INT_VALUE)expressions.size()));
       break;
-
+      
+    case frontend::CHAR_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_CHAR_ARY, (INT_VALUE)expressions.size()));
+      break;
+      
     case frontend::CLASS_TYPE:
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_INT_ARY, (INT_VALUE)expressions.size()));
@@ -3806,7 +3865,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
 void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
 {
   vector<Expression*> expressions = declarations->GetExpressions();
-  for(size_t i = 0; i < expressions.size(); i++) {
+  for(size_t i = 0; i < expressions.size(); ++i) {
     EmitExpression(expressions[i]);
   }
 }
@@ -3822,21 +3881,21 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
   if(table) {
     int var_space = 0;
     vector<SymbolEntry*> entries = table->GetEntries();
-    for(size_t i = 0; i < entries.size(); i++) {
+    for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       if(!entry->IsSelf() && entry->IsStatic() == is_static) {
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName()
-                 << ", dim=" << entry->GetType()->GetDimension() << endl;
+            wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
+		  << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -3847,13 +3906,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::BYTE_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            cout << "\t" << index << ": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -3864,14 +3923,14 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::INT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName()
-                 << ", dim=" << entry->GetType()->GetDimension() << endl;
+            wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
+		  << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
 	  else {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -3882,14 +3941,15 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::CHAR_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            cout << "\t" << index << ": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
-          } else {
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
+          } 
+	  else {
 #ifdef _DEBUG
-            cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3900,25 +3960,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
             if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
 	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
 	    else {
 #ifdef _DEBUG
-              cout << "\t" << index << ": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
@@ -3927,25 +3987,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           else {
             if(SearchProgramClasses(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
 	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
 	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              cout << "\t" << index << ": INT_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
 	    else {
 #ifdef _DEBUG
-              cout << "\t" << index << ": OBJ_PARM: name=" << entry->GetName() << endl;
+              wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
 	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
@@ -3957,7 +4017,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::FLOAT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            cout << "\t" << index << ": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
             entry->SetId(index++);
@@ -3965,7 +4025,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           } 
 	  else {
 #ifdef _DEBUG
-            cout << "\t" << index << ": FLOAT_PARM: name=" << entry->GetName() << endl;
+            wcout << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
 	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
             entry->SetId(index);
@@ -3976,7 +4036,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 	  
 	case frontend::FUNC_TYPE:          
 #ifdef _DEBUG
-	  cout << "\t" << index << ": FUNC_PARM: name=" << entry->GetName() << endl;
+	  wcout << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
 #endif
 	  declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
