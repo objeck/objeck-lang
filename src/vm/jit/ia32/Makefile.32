@@ -1,16 +1,5 @@
-###############
-# For OSX only
-###############
-# ARGS=-mstackrealign -O3
-# ARGS=-D_TIMING -mstackrealign -O3
-# ARGS=-mstackrealign -g -D_DEBUG -Wunused
-
-###############
-# For Linux
-###############
-# ARGS=-g -D_DEBUG  -Wunused -Wall
-# ARGS=-g -Wunused
-ARGS=-O3 -Wall
+# ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function
+ARGS=-O3 -Wall -Wno-unused-function -Wno-unused-function
 
 CC=g++
 AR=ar

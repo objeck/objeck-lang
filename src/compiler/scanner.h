@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -33,22 +33,25 @@
 #define __SCANNER_H__
 
 #include "tree.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 using namespace std;
 
 // comment
-#define COMMENT '#'
-#define EXTENDED_COMMENT '~'
+#define COMMENT L'#'
+#define EXTENDED_COMMENT L'~'
 
 // look ahead value
 #define LOOK_AHEAD 3
 // white space
-#define WHITE_SPACE (cur_char == ' ' || cur_char == '\t' || cur_char == '\r' || cur_char == '\n')
+#define WHITE_SPACE (cur_char == L' ' || cur_char == L'\t' || cur_char == L'\r' || cur_char == L'\n' || cur_char == 0x200b || cur_char == 0xfeff)
 
 /****************************
  * Token types
  ****************************/
-enum TokenType {
+enum ScannerTokenType {
   // misc
   TOKEN_END_OF_STREAM = -1000,
   TOKEN_NO_INPUT,
@@ -137,7 +140,9 @@ enum TokenType {
   TOKEN_NIL_ID,
   TOKEN_CRITICAL_ID,
 #ifdef _SYSTEM
+  LOAD_ARY_SIZE,
   CPY_BYTE_ARY,
+  CPY_CHAR_ARY,
   CPY_INT_ARY,
   CPY_FLOAT_ARY,
   FLOR_FLOAT,
@@ -156,7 +161,6 @@ enum TokenType {
   LOAD_CLS_BY_INST,
   LOAD_NEW_OBJ_INST,
   LOAD_INST_UID,
-  LOAD_ARY_SIZE,
   LOAD_MULTI_ARY_SIZE,
   // standard i/o
   STD_OUT_BOOL,
@@ -184,6 +188,7 @@ enum TokenType {
   // file-in
   FILE_IN_BYTE,
   FILE_IN_BYTE_ARY,
+  FILE_IN_CHAR_ARY,
   FILE_IN_STRING,
   // file-out
   FILE_OUT_BYTE,
@@ -236,16 +241,20 @@ enum TokenType {
   SOCK_TCP_SSL_OUT_BYTE_ARY,
   SOCK_TCP_SSL_OUT_STRING,
   // serialization
+  SERL_CHAR,
   SERL_INT,
   SERL_FLOAT,
   SERL_OBJ_INST,
   SERL_BYTE_ARY,
+  SERL_CHAR_ARY,
   SERL_INT_ARY,
   SERL_FLOAT_ARY,
   DESERL_INT,
+  DESERL_CHAR,
   DESERL_FLOAT,
   DESERL_OBJ_INST,
   DESERL_BYTE_ARY,
+  DESERL_CHAR_ARY,
   DESERL_INT_ARY,
   DESERL_FLOAT_ARY,
   // shared library support
@@ -257,6 +266,9 @@ enum TokenType {
   THREAD_MUTEX,
   THREAD_SLEEP,
   THREAD_JOIN,
+  // strings
+  BYTES_TO_UNICODE,
+  UNICODE_TO_BYTES,
   // time
   SYS_TIME,
   GMT_TIME,
@@ -285,18 +297,18 @@ enum TokenType {
  * Token class
  ****************************/
 class Token {
-private:
-  TokenType token_type;
+ private:
+  ScannerTokenType token_type;
   int line_nbr;
-  string filename;
-  string ident;
+  wstring filename;
+  wstring ident;
 
   INT_VALUE int_lit;
   FLOAT_VALUE double_lit;
-  CHAR_VALUE char_lit;
-  BYTE_VALUE byte_lit;
+  wchar_t char_lit;
+  char byte_lit;
 
-public:
+ public:
 
   inline void Copy(Token* token) {
     line_nbr = token->GetLineNumber();
@@ -308,11 +320,11 @@ public:
     filename = token->GetFileName();
   }
 
-  inline const string GetFileName() {
+  inline const wstring GetFileName() {
     return filename;
   }
 
-  inline void SetFileName(string f) {
+  inline void SetFileName(wstring f) {
     filename = f;
   }
 
@@ -332,15 +344,15 @@ public:
     double_lit = d;
   }
 
-  inline void SetByteLit(BYTE_VALUE b) {
+  inline void SetByteLit(char b) {
     byte_lit = b;
   }
 
-  inline void SetCharLit(CHAR_VALUE c) {
+  inline void SetCharLit(wchar_t c) {
     char_lit = c;
   }
 
-  inline void SetIdentifier(string i) {
+  inline void SetIdentifier(wstring i) {
     ident = i;
   }
 
@@ -352,23 +364,23 @@ public:
     return double_lit;
   }
 
-  inline const BYTE_VALUE GetByteLit() {
+  inline const char GetByteLit() {
     return byte_lit;
   }
 
-  inline const CHAR_VALUE GetCharLit() {
+  inline const wchar_t GetCharLit() {
     return char_lit;
   }
 
-  inline const string GetIdentifier() {
+  inline const wstring GetIdentifier() {
     return ident;
   }
 
-  inline const TokenType GetType() {
+  inline const ScannerTokenType GetType() {
     return token_type;
   }
 
-  inline void SetType(TokenType t) {
+  inline void SetType(ScannerTokenType t) {
     token_type = t;
   }
 };
@@ -378,11 +390,11 @@ public:
  * tokens
  **********************************/
 class Scanner {
-private:
+ private:
   // input file name
-  string filename;
+  wstring filename;
   // input buffer
-  char* buffer;
+  wchar_t* buffer;
   // buffer size
   size_t buffer_size;
   // input buffer position
@@ -393,9 +405,9 @@ private:
   // end marker position
   int end_pos;
   // input characters
-  char cur_char, nxt_char, nxt_nxt_char;
+  wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  map<const string, TokenType> ident_map;
+  map<const wstring, ScannerTokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
   // line number
@@ -403,15 +415,19 @@ private:
 
   // warning message
   void ProcessWarning() {
-    cout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
-         << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
+    wcout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
+	  << ": Parse warning: Unknown token: '" << (int)cur_char << "'" << endl;
   }
 
-  // loads a file into memory
-  char* LoadFileBuffer(string filename, size_t& buffer_size) {
-    char* buffer = NULL;
-    // open file
-    ifstream in(filename.c_str(), ifstream::binary);
+  /****************************
+   * Load a UTF-8 source file (text)
+   * into memory.
+   ****************************/
+  wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size) {
+    char* buffer;
+    string open_filename(filename.begin(), filename.end());
+    
+    ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
     if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
@@ -421,20 +437,52 @@ private:
       in.read(buffer, buffer_size);
       // close file
       in.close();
-    } 
+    }
     else {
-      cerr << "Unable to open source file: " << filename << endl;
+      wcerr << L"Unable to open source file: " << filename << endl;
       exit(1);
     }
 
-    return buffer;
+    // convert unicode
+#ifdef _WIN32
+    int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, NULL, 0);
+    if(!wsize) {
+      wcerr << L"Unable to open source file: " << filename << endl;
+      exit(1);
+    }
+    wchar_t* wbuffer = new wchar_t[wsize];
+    int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
+    if(!check) {
+      wcerr << L"Unable to open source file: " << filename << endl;
+      exit(1);
+    }
+#else
+    size_t wsize = mbstowcs(NULL, buffer, buffer_size);
+    if(wsize == (size_t)-1) {
+      delete buffer;
+      wcerr << L"Unable to open source file: " << filename << endl;
+      exit(1);
+    }
+    wchar_t* wbuffer = new wchar_t[wsize + 1];
+    size_t check = mbstowcs(wbuffer, buffer, buffer_size);
+    if(check == (size_t)-1) {
+      delete buffer;
+      delete wbuffer;
+      wcerr << L"Unable to open source file: " << filename << endl;
+      exit(1);
+    }
+    wbuffer[wsize] = L'\0';
+#endif
+    
+    free(buffer);
+    return wbuffer;
   }
-  
+
   // parsers a character string
   inline void CheckString(int index, bool is_valid) {
     // copy string
     const int length = end_pos - start_pos;
-    string char_string(buffer, start_pos, length);
+    wstring char_string(buffer, start_pos, length);
     // set string
     if(is_valid) {
       tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
@@ -446,17 +494,17 @@ private:
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
   }
-  
+
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
     // copy string
     int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
+    wstring ident(buffer, start_pos, length);
 
     // set token
-    char* end;
+    wchar_t* end;
     tokens[index]->SetType(TOKEN_INT_LIT);
-    tokens[index]->SetIntLit(strtol(ident.c_str(), &end, base));
+    tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
   }
@@ -465,10 +513,10 @@ private:
   inline void ParseDouble(int index) {
     // copy string
     const int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
+    wstring ident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    tokens[index]->SetFloatLit(atof(ident.c_str()));
+    tokens[index]->SetFloatLit(wcstod(ident.c_str(), NULL));
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
   }
@@ -477,13 +525,19 @@ private:
   inline void ParseUnicodeChar(int index) {
     // copy string
     const int length = end_pos - start_pos;
-    string ident(buffer, start_pos, length);
-    // set token
-    char* end;
-    tokens[index]->SetType(TOKEN_CHAR_LIT);
-    tokens[index]->SetCharLit((CHAR_VALUE)strtol(ident.c_str(), &end, 16));
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetFileName(filename);
+    if(length < 5) {
+      wstring ident(buffer, start_pos, length);
+      // set token
+      tokens[index]->SetType(TOKEN_CHAR_LIT);
+      tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), NULL, 16));
+      tokens[index]->SetLineNbr(line_nbr);
+      tokens[index]->SetFileName(filename);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+      tokens[index]->SetLineNbr(line_nbr);
+      tokens[index]->SetFileName(filename);
+    }
   }
 
   // read input file into memory
@@ -499,9 +553,9 @@ private:
   // check identifier
   void CheckIdentifier(int index);
 
-public:
+ public:
   // default constructor
-  Scanner(string f, bool p = false);
+  Scanner(wstring f, bool p = false);
   // default destructor
   ~Scanner();
 
@@ -512,7 +566,7 @@ public:
   Token* GetToken(int index = 0);
 
   // gets the file name
-  string GetFileName() {
+  wstring GetFileName() {
     return filename;
   }
 };

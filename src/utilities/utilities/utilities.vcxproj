@@ -80,6 +80,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\compiler\linker.h" />
     <ClInclude Include="..\..\compiler\types.h" />
+    <ClInclude Include="..\..\vm\common.h" />
     <ClInclude Include="..\..\vm\loader.h" />
     <ClInclude Include="..\..\vm\os\windows\memory.h" />
     <ClInclude Include="resource.h" />

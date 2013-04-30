@@ -36,6 +36,7 @@
 #include "../../common.h"
 #include <sys/utsname.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/types.h>
@@ -220,11 +221,11 @@ class IPSocket {
     return client;
   }
 
-  static void WriteByte(char value, SOCKET sock) {
+  static void WriteByte(const char value, SOCKET sock) {
     send(sock, &value, 1, 0);
   }
 
-  static int WriteBytes(char* values, int len, SOCKET sock) {
+  static int WriteBytes(const char* values, int len, SOCKET sock) {
     return send(sock, values, len, 0);
   }
 
@@ -266,7 +267,7 @@ class IPSecureSocket {
       return false;
     }    
     ssl_address += ":";
-    ssl_address += IntToString(port);
+    ssl_address += UnicodeToBytes(IntToString(port));
     BIO_set_conn_hostname(bio, ssl_address.c_str());
     
     if(BIO_do_connect(bio) <= 0) {
@@ -288,7 +289,7 @@ class IPSecureSocket {
     BIO_write(bio, &value, 1);
   }
 
-  static int WriteBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
+  static int WriteBytes(const char* values, int len, SSL_CTX* ctx, BIO* bio) {
     return BIO_write(bio, values, len);
   }
 

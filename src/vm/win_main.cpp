@@ -43,12 +43,16 @@
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    // enable Unicode console support
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
+
     WSADATA data;
     int version = MAKEWORD(2, 2);
 
     int status;
     if(WSAStartup(version, &data)) {
-      cerr << "Unable to load Winsock 2.2!" << endl;
+      cerr << L"Unable to load Winsock 2.2!" << endl;
       status = SYSTEM_ERROR;
     }
     else {
@@ -65,15 +69,15 @@ int main(const int argc, const char* argv[])
     return status;
   }
   else {
-    string usage = "Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
-    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += "FOR MORE INFORMATION.\n\n";
+    wstring usage = L"Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
+    usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += L"FOR MORE INFORMATION.\n\n";
     usage += VERSION_STRING;
-    usage += "\n\n";
-    usage += "usage: obr <program>\n\n";
-    usage += "example: \"obr hello.obe\"";
-    cerr << usage << endl << endl;
+    usage += L"\n\n";
+    usage += L"usage: obr <program>\n\n";
+    usage += L"example: \"obr hello.obe\"";
+    wcerr << usage << endl << endl;
   }
 
   return 1;

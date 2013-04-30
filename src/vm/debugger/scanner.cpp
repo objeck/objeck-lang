@@ -31,12 +31,12 @@
 
 #include "scanner.h"
 
-#define EOB '\0'
+#define EOB L'\0'
 
 /****************************
-* Scanner constructor
-****************************/
-Scanner::Scanner(const string &line)
+ * Scanner constructor
+ ****************************/
+Scanner::Scanner(const wstring &line)
 {
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; i++) {
@@ -48,8 +48,8 @@ Scanner::Scanner(const string &line)
 }
 
 /****************************
-* Scanner destructor
-****************************/
+ * Scanner destructor
+ ****************************/
 Scanner::~Scanner()
 {
   // delete buffer
@@ -57,7 +57,7 @@ Scanner::~Scanner()
     delete[] buffer;
     buffer = NULL;
   }
-  
+
   for(int i = 0; i < LOOK_AHEAD; i++) {
     Token* temp = tokens[i];
     delete temp;
@@ -66,55 +66,55 @@ Scanner::~Scanner()
 }
 
 /****************************
-* Loads language keywords
-****************************/
+ * Loads language keywords
+ ****************************/
 void Scanner::LoadKeywords()
 {
-  ident_map["?next"] = TOKEN_NEXT_LINE_ID;
-  ident_map["?n"] = TOKEN_NEXT_LINE_ID;
-  ident_map["?step"] = TOKEN_NEXT_ID;
-  ident_map["?s"] = TOKEN_NEXT_ID;
-  ident_map["?jump"] = TOKEN_OUT_ID;
-  ident_map["?j"] = TOKEN_OUT_ID;
-  ident_map["?cont"] = TOKEN_CONT_ID;
-  ident_map["?c"] = TOKEN_CONT_ID;
-  ident_map["?exe"] = TOKEN_EXE_ID;
-  ident_map["?src"] = TOKEN_SRC_ID;
-  ident_map["?args"] = TOKEN_ARGS_ID;
-  ident_map["?quit"] = TOKEN_QUIT_ID;
-  ident_map["?q"] = TOKEN_QUIT_ID;  
-  ident_map["?break"] = TOKEN_BREAK_ID;
-  ident_map["?b"] = TOKEN_BREAK_ID;
-  ident_map["?breaks"] = TOKEN_BREAKS_ID;
-  ident_map["?stack"] = TOKEN_STACK_ID;
-  ident_map["?print"] = TOKEN_PRINT_ID;
-  ident_map["?p"] = TOKEN_PRINT_ID;
-  ident_map["?info"] = TOKEN_INFO_ID;
-  ident_map["?i"] = TOKEN_INFO_ID;
-  ident_map["?frame"] = TOKEN_FRAME_ID;
-  ident_map["?f"] = TOKEN_FRAME_ID;
-  ident_map["?clear"] = TOKEN_CLEAR_ID;
-  ident_map["?delete"] = TOKEN_DELETE_ID;
-  ident_map["?d"] = TOKEN_DELETE_ID;
-  ident_map["?run"] = TOKEN_RUN_ID;
-  ident_map["?r"] = TOKEN_RUN_ID;
-  ident_map["?list"] = TOKEN_LIST_ID;
-  ident_map["?l"] = TOKEN_LIST_ID;
-  ident_map["@self"] = TOKEN_SELF_ID;
-  ident_map["class"] = TOKEN_CLASS_ID;
-  ident_map["method"] = TOKEN_METHOD_ID;
+  ident_map[L"?next"] = TOKEN_NEXT_LINE_ID;
+  ident_map[L"?n"] = TOKEN_NEXT_LINE_ID;
+  ident_map[L"?step"] = TOKEN_NEXT_ID;
+  ident_map[L"?s"] = TOKEN_NEXT_ID;
+  ident_map[L"?jump"] = TOKEN_OUT_ID;
+  ident_map[L"?j"] = TOKEN_OUT_ID;
+  ident_map[L"?cont"] = TOKEN_CONT_ID;
+  ident_map[L"?c"] = TOKEN_CONT_ID;
+  ident_map[L"?exe"] = TOKEN_EXE_ID;
+  ident_map[L"?src"] = TOKEN_SRC_ID;
+  ident_map[L"?args"] = TOKEN_ARGS_ID;
+  ident_map[L"?quit"] = TOKEN_QUIT_ID;
+  ident_map[L"?q"] = TOKEN_QUIT_ID;  
+  ident_map[L"?break"] = TOKEN_BREAK_ID;
+  ident_map[L"?b"] = TOKEN_BREAK_ID;
+  ident_map[L"?breaks"] = TOKEN_BREAKS_ID;
+  ident_map[L"?stack"] = TOKEN_STACK_ID;
+  ident_map[L"?print"] = TOKEN_PRINT_ID;
+  ident_map[L"?p"] = TOKEN_PRINT_ID;
+  ident_map[L"?info"] = TOKEN_INFO_ID;
+  ident_map[L"?i"] = TOKEN_INFO_ID;
+  ident_map[L"?frame"] = TOKEN_FRAME_ID;
+  ident_map[L"?f"] = TOKEN_FRAME_ID;
+  ident_map[L"?clear"] = TOKEN_CLEAR_ID;
+  ident_map[L"?delete"] = TOKEN_DELETE_ID;
+  ident_map[L"?d"] = TOKEN_DELETE_ID;
+  ident_map[L"?run"] = TOKEN_RUN_ID;
+  ident_map[L"?r"] = TOKEN_RUN_ID;
+  ident_map[L"?list"] = TOKEN_LIST_ID;
+  ident_map[L"?l"] = TOKEN_LIST_ID;
+  ident_map[L"@self"] = TOKEN_SELF_ID;
+  ident_map[L"class"] = TOKEN_CLASS_ID;
+  ident_map[L"method"] = TOKEN_METHOD_ID;
 }
 
 /****************************
-* Processes language
-* identifies
-****************************/
+ * Processes language
+ * identifies
+ ****************************/
 void Scanner::CheckIdentifier(int index)
 {
-  // copy string
+  // copy wstring
   const int length = end_pos - start_pos;
-  string ident(buffer, start_pos, length);
-  // check string
+  wstring ident(buffer, start_pos, length);
+  // check wstring
   enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
   case TOKEN_STACK_ID:
@@ -148,25 +148,25 @@ void Scanner::CheckIdentifier(int index)
 }
 
 /****************************
-* Reads a source input file
-****************************/
-void Scanner::ReadLine(const string &line)
+ * Reads a source input file
+ ****************************/
+void Scanner::ReadLine(const wstring &line)
 {
   buffer_pos = 0;
-  buffer = new char[line.size() + 1];
-  const char* src = line.c_str();
-  strcpy(buffer, src);
+  buffer = new wchar_t[line.size() + 1];
+  wcsncpy(buffer, line.c_str(), line.size());
+  buffer[line.size()] = '\0';
   buffer_size = line.size() + 1;
 #ifdef _DEBUG
-  cout << "---------- Source ---------" << endl;
-  cout << buffer << endl;
-  cout << "---------------------------" << endl;
+  wcout << L"---------- Source ---------" << endl;
+  wcout << buffer << endl;
+  wcout << L"---------------------------" << endl;
 #endif
 }
 
 /****************************
-* Processes the next token
-****************************/
+ * Processes the next token
+ ****************************/
 void Scanner::NextToken()
 {
   if(buffer_pos == 0) {
@@ -184,22 +184,22 @@ void Scanner::NextToken()
 }
 
 /****************************
-* Gets the current token
-****************************/
+ * Gets the current token
+ ****************************/
 Token* Scanner::GetToken(int index)
 {
   if(index < LOOK_AHEAD) {
     return tokens[index];
   }
-  
+
   return NULL;
 }
 
 /****************************
-* Gets the next character.
-* Note, EOB is returned at
-* end of a stream
-****************************/
+ * Gets the next character.
+ * Note, EOB is returned at
+ * end of a stream
+ ****************************/
 void Scanner::NextChar()
 {
   if(buffer_pos < buffer_size) {
@@ -229,8 +229,8 @@ void Scanner::NextChar()
 }
 
 /****************************
-* Processes white space
-****************************/
+ * Processes white space
+ ****************************/
 void Scanner::Whitespace()
 {
   while(WHITE_SPACE && cur_char != EOB) {
@@ -240,8 +240,8 @@ void Scanner::Whitespace()
 }
 
 /****************************
-* Parses a token
-****************************/
+ * Parses a token
+ ****************************/
 void Scanner::ParseToken(int index)
 {
   // unable to load buffer
@@ -265,37 +265,37 @@ void Scanner::ParseToken(int index)
     }
     // line comment
     else {
-      while(cur_char != '\n' && cur_char != EOB) {
+      while(cur_char != L'\n' && cur_char != EOB) {
         NextChar();
       }
     }
     Whitespace();
   }
-  // character string
-  if(cur_char == '\"') {
+  // character wstring
+  if(cur_char == L'\"') {
     NextChar();
     // mark
     start_pos = buffer_pos - 1;
-    while(cur_char != '\"' && cur_char != EOB) {
-      if(cur_char == '\\') {
+    while(cur_char != L'\"' && cur_char != EOB) {
+      if(cur_char == L'\\') {
         NextChar();
         switch(cur_char) {
-        case '"':
+        case L'"':
           break;
 
-        case '\\':
+        case L'\\':
           break;
 
-        case 'n':
+        case L'n':
           break;
 
-        case 'r':
+        case L'r':
           break;
 
-        case 't':
+        case L't':
           break;
 
-        case '0':
+        case L'0':
           break;
 
         default:
@@ -308,61 +308,61 @@ void Scanner::ParseToken(int index)
     }
     // mark
     end_pos = buffer_pos - 1;
-    // check string
+    // check wstring
     NextChar();
     CheckString(index);
     return;
   }
   // character
-  else if(cur_char == '\'') {
+  else if(cur_char == L'\'') {
     NextChar();
     // escape or hex/unicode encoding
-    if(cur_char == '\\') {
+    if(cur_char == L'\\') {
       NextChar();
-      // read unicode string
-      if(cur_char == 'u') {
+      // read unicode wstring
+      if(cur_char == L'u') {
         NextChar();
         start_pos = buffer_pos - 1;
-        while(isdigit(cur_char) || (cur_char >= 'a' && cur_char <= 'f') ||
-              (cur_char >= 'A' && cur_char <= 'F')) {
-          NextChar();
+        while(isdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') ||
+	      (cur_char >= L'A' && cur_char <= L'F')) {
+	  NextChar();
         }
         end_pos = buffer_pos - 1;
         ParseUnicodeChar(index);
-        if(cur_char != '\'') {
+        if(cur_char != L'\'') {
           tokens[index]->SetType(TOKEN_UNKNOWN);
         }
         NextChar();
         return;
       }
       // escape
-      else if(nxt_char == '\'') {
+      else if(nxt_char == L'\'') {
         switch(cur_char) {
-        case 'n':
+        case L'n':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\n');
           NextChar();
           NextChar();
           return;
-        case 'r':
+        case L'r':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\r');
           NextChar();
           NextChar();
           return;
-        case 't':
+        case L't':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\t');
           NextChar();
           NextChar();
           return;
-        case '\\':
+        case L'\\':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\\');
           NextChar();
           NextChar();
           return;
-        case '0':
+        case L'0':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit('\0');
           NextChar();
@@ -378,7 +378,7 @@ void Scanner::ParseToken(int index)
       }
     } else {
       // error
-      if(nxt_char != '\'') {
+      if(nxt_char != L'\'') {
         tokens[index]->SetType(TOKEN_UNKNOWN);
         NextChar();
         return;
@@ -392,12 +392,12 @@ void Scanner::ParseToken(int index)
     }
   }
   // identifier
-  else if(isalpha(cur_char) || cur_char == '@' || cur_char == '?') {
+  else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'?') {
     // mark
     start_pos = buffer_pos - 1;
-    
-    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == '_' || 
-	   cur_char == '@' || cur_char == '?' || cur_char == '.') && cur_char != EOB) {
+
+    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == L'_' || 
+	   cur_char == L'@' || cur_char == L'?' || cur_char == L'.') && cur_char != EOB) {
       NextChar();
     }
     // mark
@@ -407,31 +407,31 @@ void Scanner::ParseToken(int index)
     return;
   }
   // number
-  else if(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char))) {
+  else if(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char))) {
     bool is_double = false;
     int hex_state = 0;
     // mark
     start_pos = buffer_pos - 1;
-    
+
     // test hex state
-    if(cur_char == '0') {
+    if(cur_char == L'0') {
       hex_state = 1;
     }
-    while(isdigit(cur_char) || (cur_char == '.' && isdigit(nxt_char)) || cur_char == 'x' ||
-          (cur_char >= 'a' && cur_char <= 'f') ||
-          (cur_char >= 'A' && cur_char <= 'F')) {
+    while(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char)) || cur_char == L'x' ||
+	  (cur_char >= L'a' && cur_char <= L'f') ||
+	  (cur_char >= L'A' && cur_char <= L'F')) {
       // decimal double
-      if(cur_char == '.') {
-        // error
-        if(is_double) {
-          tokens[index]->SetType(TOKEN_UNKNOWN);
-          NextChar();
-          break;
-        }
-        is_double = true;
+      if(cur_char == L'.') {
+	// error
+	if(is_double) {
+	  tokens[index]->SetType(TOKEN_UNKNOWN);
+	  NextChar();
+	  break;
+	}
+	is_double = true;
       }
       // hex integer
-      if(cur_char == 'x') {
+      if(cur_char == L'x') {
 	if(hex_state == 1) {
 	  hex_state = 2;
 	}
@@ -464,8 +464,8 @@ void Scanner::ParseToken(int index)
   // other
   else {
     switch(cur_char) {
-    case ':':
-      if(nxt_char == '=') {
+    case L':':
+      if(nxt_char == L'=') {
         NextChar();
         tokens[index]->SetType(TOKEN_ASSIGN);
         NextChar();
@@ -476,8 +476,8 @@ void Scanner::ParseToken(int index)
       }
       break;
 
-    case '-':
-      if(nxt_char == '>') {
+    case L'-':
+      if(nxt_char == L'>') {
         NextChar();
         tokens[index]->SetType(TOKEN_ASSESSOR);
         NextChar();
@@ -488,72 +488,72 @@ void Scanner::ParseToken(int index)
       }
       break;
 
-    case '{':
+    case L'{':
       tokens[index]->SetType(TOKEN_OPEN_BRACE);
       NextChar();
       break;
 
-    case '.':
+    case L'.':
       tokens[index]->SetType(TOKEN_PERIOD);
       NextChar();
       break;
 
-    case '}':
+    case L'}':
       tokens[index]->SetType(TOKEN_CLOSED_BRACE);
       NextChar();
       break;
 
-    case '[':
+    case L'[':
       tokens[index]->SetType(TOKEN_OPEN_BRACKET);
       NextChar();
       break;
 
-    case ']':
+    case L']':
       tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
       NextChar();
       break;
 
-    case '(':
+    case L'(':
       tokens[index]->SetType(TOKEN_OPEN_PAREN);
       NextChar();
       break;
 
-    case ')':
+    case L')':
       tokens[index]->SetType(TOKEN_CLOSED_PAREN);
       NextChar();
       break;
 
-    case ',':
+    case L',':
       tokens[index]->SetType(TOKEN_COMMA);
       NextChar();
       break;
 
-    case ';':
+    case L';':
       tokens[index]->SetType(TOKEN_SEMI_COLON);
       NextChar();
       break;
 
-    case '&':
+    case L'&':
       tokens[index]->SetType(TOKEN_AND);
       NextChar();
       break;
 
-    case '|':
+    case L'|':
       tokens[index]->SetType(TOKEN_OR);
       NextChar();
       break;
 
-    case '=':
+    case L'=':
       tokens[index]->SetType(TOKEN_EQL);
       NextChar();
       break;
 
-    case '<':
-      if(nxt_char == '>') {
+    case L'<':
+      if(nxt_char == L'>') {
         NextChar();
         tokens[index]->SetType(TOKEN_NEQL);
         NextChar();
-      } else if(nxt_char == '=') {
+      } else if(nxt_char == L'=') {
         NextChar();
         tokens[index]->SetType(TOKEN_LEQL);
         NextChar();
@@ -563,8 +563,8 @@ void Scanner::ParseToken(int index)
       }
       break;
 
-    case '>':
-      if(nxt_char == '=') {
+    case L'>':
+      if(nxt_char == L'=') {
         NextChar();
         tokens[index]->SetType(TOKEN_GEQL);
         NextChar();
@@ -574,22 +574,22 @@ void Scanner::ParseToken(int index)
       }
       break;
 
-    case '+':
+    case L'+':
       tokens[index]->SetType(TOKEN_ADD);
       NextChar();
       break;
 
-    case '*':
+    case L'*':
       tokens[index]->SetType(TOKEN_MUL);
       NextChar();
       break;
 
-    case '/':
+    case L'/':
       tokens[index]->SetType(TOKEN_DIV);
       NextChar();
       break;
 
-    case '%':
+    case L'%':
       tokens[index]->SetType(TOKEN_MOD);
       NextChar();
       break;

@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -84,50 +84,50 @@ void SymbolEntry::SetId(int i)
 /****************************
  * Encodes a method parameter
  ****************************/
-string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
+std::wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 {
-  string name;
+  std::wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
     case BOOLEAN_TYPE:
-      name = 'l';
+      name = L'l';
       break;
 
     case BYTE_TYPE:
-      name = 'b';
+      name = L'b';
       break;
 
     case INT_TYPE:
-      name = 'i';
+      name = L'i';
       break;
 
     case FLOAT_TYPE:
-      name = 'f';
+      name = L'f';
       break;
 
     case CHAR_TYPE:
-      name = 'c';
+      name = L'c';
       break;
 
     case NIL_TYPE:
-      name = 'n';
+      name = L'n';
       break;
 
     case VAR_TYPE:
-      name = 'v';
+      name = L'v';
       break;
 
     case CLASS_TYPE: {
-      name = "o.";
+      name = L"o.";
 
       // search program
-      string klass_name = type->GetClassName();
+      std::wstring klass_name = type->GetClassName();
       Class* klass = program->GetClass(klass_name);
       if(!klass) {
-        vector<string> uses = program->GetUses();
-        for(size_t i = 0; !klass && i < uses.size(); i++) {
-          klass = program->GetClass(uses[i] + "." + klass_name);
+        vector<std::wstring> uses = program->GetUses();
+        for(size_t i = 0; !klass && i < uses.size(); ++i) {
+          klass = program->GetClass(uses[i] + L"." + klass_name);
         }
       }
       if(klass) {
@@ -138,15 +138,16 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
         LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
         if(lib_klass) {
           name += lib_klass->GetName();
-        } else {
-          name += type->GetClassName();
+        } 
+        else {
+	  name += type->GetClassName();
         }
       }
     }
       break;
       
     case FUNC_TYPE:  {
-      name = "m.";
+      name = L"m.";
       if(type->GetClassName().size() == 0) {
 	name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(),
 				   program, linker);
@@ -159,7 +160,7 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
     }
     // dimension
     for(int i = 0; i < type->GetDimension(); i++) {
-      name += '*';
+      name += L'*';
     }
   }
 
@@ -171,7 +172,7 @@ string Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(size_t i = 0; i < static_array.size(); i++) { 
+  for(size_t i = 0; i < static_array.size(); ++i) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
 	if(i == 0) {
