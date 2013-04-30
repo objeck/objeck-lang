@@ -8,6 +8,8 @@ bundle Default {
 			chars[2] := 'r';
 			chars[3] := 'p';
 			chars[4] := 'h';
+			c := 'H';
+			cc := 'ᐃ';
 			
 			ints := Int->New[5];
 			ints[0] := 80;
@@ -22,6 +24,7 @@ bundle Default {
 			floats[2] := 3.78;
 			floats[3] := 77.657;
 			floats[4] := 49.76;
+			f := 3.145;
 
 			dest_chars := Char->New[5];
 			Runtime->Copy(dest_chars, 3, chars, 0, 2)->PrintLine();

@@ -39,6 +39,10 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
+    // enable UTF-8 enviroment
+    setlocale(LC_ALL, "");
+    setlocale(LC_CTYPE, "UTF-8");
+
     // Initialize OpenSSL
     CRYPTO_malloc_init();
     SSL_library_init();
@@ -46,15 +50,15 @@ int main(const int argc, const char* argv[])
     return Execute(argc, argv);
   } 
   else {
-    string usage = "Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
-    usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += "FOR MORE INFORMATION.\n\n";
+    wstring usage = L"Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
+    usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    usage += L"FOR MORE INFORMATION.\n\n";
     usage += VERSION_STRING;
-    usage += "\n\n";
-    usage += "usage: obr <program>\n\n";
-    usage += "example: \"obr hello.obe\"";
-    cerr << usage << endl << endl;
+    usage += L"\n\n";
+    usage += L"usage: obr <program>\n\n";
+    usage += L"example: \"obr hello.obe\"";
+    wcerr << usage << endl << endl;
 
     return 1;
   }

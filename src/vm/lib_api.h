@@ -41,10 +41,10 @@ using namespace std;
 
 // function declaration for native C++ callbacks
 typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
-					const char* cls_name, const char* mthd_name);
+					const wchar_t* cls_name, const wchar_t* mthd_name);
 typedef void(*APITools_MethodCallId_Ptr) (long* op_stack, long *stack_pos, long *instance, 
 					const int cls_id, const int mthd_id);
-typedef long*(*APITools_AllocateObject_Ptr) (const char*, long* op_stack, long stack_pos, bool collect);
+typedef long*(*APITools_AllocateObject_Ptr) (const wchar_t*, long* op_stack, long stack_pos, bool collect);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
 					    long* op_stack, long stack_pos, bool collect);
 // context structure
@@ -134,9 +134,17 @@ void APITools_SetFloatArrayElement(long* array, int index, double value) {
   }
 }
 
-char* APITools_GetCharArray(long* array) {
+unsigned char* APITools_GetByteArray(long* array) {
   if(array) {
-    return (char*)(array + 3);
+    return (unsigned char*)(array + 3);
+  }
+  
+  return NULL;
+}
+
+wchar_t* APITools_GetCharArray(long* array) {
+  if(array) {
+    return (wchar_t*)(array + 3);
   }
   
   return NULL;
@@ -150,13 +158,28 @@ int APITools_GetArraySize(long* array) {
   return -1;
 }
 
-long* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
+long* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
   long* char_array = (long*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
 						 sizeof(long)),
 						BYTE_ARY_TYPE,
+						context.op_stack, *context.stack_pos, false);
+  char_array[0] = char_array_size + 1;
+  char_array[1] = char_array_dim;
+  char_array[2] = char_array_size;
+
+  return char_array;
+}
+
+long* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
+  // create character array
+  const long char_array_dim = 1;
+  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+						((char_array_dim + 2) *
+						 sizeof(long)),
+						CHAR_ARY_TYPE,
 						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
@@ -305,25 +328,25 @@ void APITools_SetObjectValue(VMContext &context, int index, long* obj) {
 
 // sets the requested String object for an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void APITools_SetStringValue(VMContext &context, int index, const char* value) {
+void APITools_SetStringValue(VMContext &context, int index, const wstring &value) {
   // create character array
-  const long char_array_size = strlen(value);
+  const long char_array_size = value.size();
   const long char_array_dim = 1;
   long* char_array = (long*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
 						 sizeof(long)),
-						BYTE_ARY_TYPE,
+						CHAR_ARY_TYPE,
 						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
   
   // copy string
-  char* char_array_ptr = (char*)(char_array + 3);
-  strcpy(char_array_ptr, value);
+  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+  wcsncpy(char_array_ptr, value.c_str(), char_array_size);
   
   // create 'System.String' object instance
-  long* str_obj = context.alloc_obj("System.String", (long*)context.op_stack, 
+  long* str_obj = context.alloc_obj(L"System.String", (long*)context.op_stack, 
 				    *context.stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
@@ -333,7 +356,7 @@ void APITools_SetStringValue(VMContext &context, int index, const char* value) {
 }
 
 // get the requested string value from an Object[].
-char* APITools_GetStringValue(VMContext &context, int index) {
+wchar_t* APITools_GetStringValue(VMContext &context, int index) {
   long* data_array = context.data_array;
   if(data_array && index < data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -343,7 +366,7 @@ char* APITools_GetStringValue(VMContext &context, int index) {
     assert(string_holder);
 #endif
     long* char_array = (long*)string_holder[0];
-    char* str = (char*)(char_array + 3);
+    wchar_t* str = (wchar_t*)(char_array + 3);
     return str;
   }
   
@@ -367,11 +390,11 @@ long* APITools_GetObjectValue(VMContext &context, int index) {
 
 
 // invokes a runtime Objeck method
-void APITools_CallMethod(VMContext &context, long* instance, const char* mthd_name) {
-  string qualified_method_name(mthd_name);
+void APITools_CallMethod(VMContext &context, long* instance, const wchar_t* mthd_name) {
+  const wstring qualified_method_name(mthd_name);
   size_t delim = qualified_method_name.find(':');
-  if(delim != string::npos) {
-    string cls_name = qualified_method_name.substr(0, delim);
+  if(delim != wstring::npos) {
+    wstring cls_name = qualified_method_name.substr(0, delim);
     (*context.call_method_by_name)(context.op_stack, context.stack_pos, instance, cls_name.c_str(), mthd_name);
     
 #ifdef _DEBUG

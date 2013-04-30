@@ -1,7 +1,5 @@
 /***************************************************************************
- *
- *
- * Copyright (c) 2008-2011, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +35,7 @@ namespace instructions {
   typedef enum _InstructionType {
     // loads operations
     LOAD_INT_LIT  = 0,
+    LOAD_CHAR_LIT,
     LOAD_FLOAT_LIT,
     LOAD_INT_VAR,
     LOAD_LOCL_INT_VAR, // only used by the VM
@@ -59,11 +58,14 @@ namespace instructions {
     COPY_FUNC_VAR,
     // array operations
     LOAD_BYTE_ARY_ELM,
+    LOAD_CHAR_ARY_ELM,
     LOAD_INT_ARY_ELM,
     LOAD_FLOAT_ARY_ELM,
     STOR_BYTE_ARY_ELM,
+    STOR_CHAR_ARY_ELM,
     STOR_INT_ARY_ELM,
     STOR_FLOAT_ARY_ELM,
+		LOAD_ARY_SIZE,
     // logical operations
     EQL_INT,
     NEQL_INT,
@@ -117,10 +119,12 @@ namespace instructions {
     RTRN,
     // memory operations
     NEW_BYTE_ARY,
+    NEW_CHAR_ARY,
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
     NEW_OBJ_INST,
     CPY_BYTE_ARY,
+    CPY_CHAR_ARY,
     CPY_INT_ARY,
     CPY_FLOAT_ARY,
     // casting & type check

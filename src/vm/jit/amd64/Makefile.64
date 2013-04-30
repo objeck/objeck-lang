@@ -1,6 +1,6 @@
-# ARGS=-g -D_DEBUG -D_X64 -Wall
-ARGS=-O3 -D_X64 -Wall
-# ARGS=-O3 -D_TIMING -D_X64
+# ARGS=-g -D_DEBUG -D_X64 -Wall -Wno-unused-function -Wno-deprecated-declarations
+ARGS=-O3 -D_X64 -Wall -Wno-unused-function -Wno-deprecated-declarations
+# ARGS=-O3 -D_TIMING -D_X64 -Wno-unused-function -Wno-deprecated-declarations
 
 CC=g++
 AR=ar

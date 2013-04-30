@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the Objeck Team nor the names of its
+ * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
  *
@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "debugger.h"
+#include "../../shared/sys.h"
 #include "../../shared/version.h"
 
 /********************************
@@ -37,25 +38,25 @@
  * debugger
  ********************************/
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-					   long call_stack_pos, StackFrame* frame)
+                                           long call_stack_pos, StackFrame* frame)
 {
   if(frame->GetMethod()->GetClass()) {
     const int line_num = instr->GetLineNumber();
-    const string &file_name = frame->GetMethod()->GetClass()->GetFileName();
+    const wstring &file_name = frame->GetMethod()->GetClass()->GetFileName();
 
     /*
       #ifdef _DEBUG
-      cout << "### file=" << file_name << ", line=" << line_num << " ###" << endl;
+      wcout << L"### file=" << file_name << L", line=" << line_num << L" ###" << endl;
       #endif
     */
 
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
        (FindBreak(line_num, file_name) ||
-	// step command
-	(is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
-	 // next line
-	(is_next_line && ((cur_frame && frame->GetMethod() == cur_frame->GetMethod()) ||
+        // step command
+        (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
+        // next line
+        (is_next_line && ((cur_frame && frame->GetMethod() == cur_frame->GetMethod()) ||
 			  (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
@@ -66,24 +67,30 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       is_jmp_out = is_next_line = false;
 
       // prompt for input
-      const string &long_name = cur_frame->GetMethod()->GetName();
+      const wstring &long_name = cur_frame->GetMethod()->GetName();
       int end_index = long_name.find_last_of(':');
-      const string &cls_mthd_name = long_name.substr(0, end_index);
+      const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
       int mid_index = cls_mthd_name.find_last_of(':');
-      const string &cls_name = cls_mthd_name.substr(0, mid_index);
-      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);
-      cout << "break: file='" << file_name << ":" << line_num << "', method='"
-	   << cls_name << "->" << mthd_name << "(..)'" << endl;
+      const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
+      const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
+      wcout << L"break: file='" << file_name << L":" << line_num << L"', method='"
+            << cls_name << L"->" << mthd_name << L"(..)'" << endl;
 
       // prompt for break command
       Command* command;
+      wcout << L"> ";
       do {
-	cout << "> ";
-	string line;
-	getline(cin, line);
-	command = ProcessCommand(line);
+	wstring line;
+	getline(wcin, line);
+	if(line.size() > 0) {
+	  command = ProcessCommand(line);
+	  wcout << L"> ";
+	}
+	else {
+	  command = NULL;
+	}
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND &&
 			 command->GetCommandType() != NEXT_COMMAND &&
@@ -95,7 +102,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
 void Runtime::Debugger::ProcessSrc(Load* load) {
   if(interpreter) {
-    cout << "unable to modify source path while program is running." << endl;
+    wcout << L"unable to modify source path while program is running." << endl;
     return;
   }
 
@@ -111,10 +118,10 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
       base_path += '/';
     }
 #endif
-    cout << "source files: path='" << base_path << "'" << endl << endl;
+    wcout << L"source files: path='" << base_path << L"'" << endl << endl;
   }
   else {
-    cout << "unable to locate base path." << endl;
+    wcout << L"unable to locate base path." << endl;
     is_error = true;
   }
 }
@@ -122,18 +129,27 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
 void Runtime::Debugger::ProcessArgs(Load* load) {
   // clear
   arguments.clear();
-  arguments.push_back("obr");
+  arguments.push_back(L"obr");
   arguments.push_back(program_file);
   // parse arguments
-  const char* temp = load->GetFileName().c_str();
-  char* buffer = new char[load->GetFileName().size() + 1];
-  strcpy(buffer, temp);
-  char* token = strtok(buffer, " ");
+  const wstring temp = load->GetFileName();
+  wchar_t* buffer = new wchar_t[temp.size() + 1];
+  wcsncpy(buffer, temp.c_str(), temp.size());
+#ifdef WIN32
+  wchar_t* token = wcstok(buffer, L" ");
+#else
+  wchar_t* token = wcstok(buffer, L" ", NULL);
+#endif
   while(token) {
     arguments.push_back(token);
-    token = strtok(NULL, " ");
+#ifdef WIN32
+    token = wcstok(NULL, L" ");
+#else
+    token = wcstok(NULL, L" ", NULL);
+#endif
   }
-  cout << "program arguments sets." << endl;
+  wcout << L"program arguments sets." << endl;
+
   // clean up
   delete[] buffer;
   buffer = NULL;
@@ -141,7 +157,7 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
 
 void Runtime::Debugger::ProcessExe(Load* load) {
   if(interpreter) {
-    cout << "unable to load executable while program is running." << endl;
+    wcout << L"unable to load executable while program is running." << endl;
     return;
   }
 
@@ -152,12 +168,12 @@ void Runtime::Debugger::ProcessExe(Load* load) {
     program_file = load->GetFileName();
     // reset arguments
     arguments.clear();
-    arguments.push_back("obr");
+    arguments.push_back(L"obr");
     arguments.push_back(program_file);
-    cout << "loaded executable: file='" << program_file << "'" << endl;
+    wcout << L"loaded executable: file='" << program_file << L"'" << endl;
   }
   else {
-    cout << "program file doesn't exist." << endl;
+    wcout << L"program file doesn't exist." << endl;
     is_error = true;
   }
 }
@@ -166,9 +182,13 @@ void Runtime::Debugger::ProcessRun() {
   if(program_file.size() > 0) {
     // process program parameters
     const int argc = arguments.size();
-    const char** argv = new const char*[argc];
+    wchar_t** argv = new wchar_t*[argc];
     for(int i = 0; i < argc; i++) {
-      argv[i] = arguments[i].c_str();
+#ifdef _WIN32
+      argv[i] = _wcsdup(arguments[i].c_str());
+#else
+      argv[i] = wcsdup(arguments[i].c_str());
+#endif
     }
 
     // envoke loader
@@ -180,30 +200,35 @@ void Runtime::Debugger::ProcessRun() {
     op_stack = new long[CALC_STACK_SIZE];
     stack_pos = new long;
     (*stack_pos) = 0;
-    
+
 #ifdef _TIMING
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), NULL, false);
 #ifdef _TIMING
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
-    cout << "---------------------------" << endl;
-    cout << "Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
-	 << " second(s)." << endl;
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    wcout << L"---------------------------" << endl;
+    wcout << L"Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
+	  << L" second(s)." << endl;
 #endif
 
 #ifdef _DEBUG
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
 #endif
 
     // clear old program
+    for(int i = 0; i < argc; i++) {
+      wchar_t* param = argv[i];
+      free(param);
+      param = NULL;
+    }
     delete[] argv;
     argv = NULL;
     ClearProgram();
   }
   else {
-    cout << "program file not specified." << endl;
+    wcout << L"program file not specified." << endl;
   }
 }
 
@@ -212,23 +237,23 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   if(line_num < 0) {
     line_num = cur_line_num;
   }
-  
-  string file_name = break_command->GetFileName();
+
+  wstring file_name = break_command->GetFileName();
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
-  
-  const string &path = base_path + file_name;
+
+  const wstring &path = base_path + file_name;
   if(file_name.size() != 0 && FileExists(path)) {
     if(AddBreak(line_num, file_name)) {
-      cout << "added breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
+      wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
     }
     else {
-      cout << "breakpoint already exist." << endl;
+      wcout << L"breakpoint already exist." << endl;
     }
   }
   else {
-    cout << "file doesn't exist or isn't loaded." << endl;
+    wcout << L"file doesn't exist or isn't loaded." << endl;
     is_error = true;
   }
 }
@@ -238,25 +263,32 @@ void Runtime::Debugger::ProcessBreaks() {
     ListBreaks();
   }
   else {
-    cout << "no breakpoints defined." << endl;
+    wcout << L"no breakpoints defined." << endl;
   }
 }
 
 void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
-  const string &file_name = delete_command->GetFileName();
-  const string &path = base_path + file_name;
+  if(line_num < 0) {
+    line_num = cur_line_num;
+  }
 
-  if(FileExists(path)) {
+  wstring file_name = delete_command->GetFileName();
+  if(file_name.size() == 0) {
+    file_name = cur_file_name;
+  }
+
+  const wstring &path = base_path + file_name;
+  if(file_name.size() != 0 && FileExists(path)) {
     if(DeleteBreak(line_num, file_name)) {
-      cout << "deleted breakpoint: file='" << file_name << ":" << line_num << "'" << endl;
+      wcout << L"removed breakpoint: file='" << file_name << L":" << line_num << L"'" << endl;
     }
     else {
-      cout << "breakpoint doesn't exist." << endl;
+      wcout << L"breakpoint doesn't exist." << endl;
     }
   }
   else {
-    cout << "file doesn't exist." << endl;
+    wcout << L"file doesn't exist or isn't loaded." << endl;
     is_error = true;
   }
 }
@@ -269,141 +301,181 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     switch(expression->GetExpressionType()) {
     case REF_EXPR:
       if(interpreter) {
-	Reference* reference = static_cast<Reference*>(expression);
-	while(reference->GetReference()) {
-	  reference = reference->GetReference();
+        Reference* reference = static_cast<Reference*>(expression);
+        while(reference->GetReference()) {
+          reference = reference->GetReference();
+        }
+
+        const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
+        switch(dclr_value.type) {
+        case CHAR_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"cannot reference scalar variable" << endl;
+          }
+          else {
+            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
+          }
+          break;
+
+        case INT_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"cannot reference scalar variable" << endl;
+          }
+          else {
+            wcout << L"print: type=Int, value=" << reference->GetIntValue() << endl;
+          }
+          break;
+
+
+        case FLOAT_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"cannot reference scalar variable" << endl;
+          }
+          else {
+            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
+          }
+          break;
+
+        case BYTE_ARY_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"print: type=Int, value=" << (unsigned char)reference->GetIntValue() << endl;
+          }
+          else {
+            wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
+		  << L"(" << (void*)reference->GetIntValue() << L")";
+            if(reference->GetArrayDimension()) {
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
+		    << reference->GetArraySize();
+            }
+            wcout << endl;
+          }
+          break;
+
+        case CHAR_ARY_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
+          }
+          else {
+            wcout << L"print: type=Char[], value=" << reference->GetIntValue()
+		  << L"(" << (void*)reference->GetIntValue() << L")";
+            if(reference->GetArrayDimension()) {
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
+		    << reference->GetArraySize();
+            }
+            wcout << endl;
+          }
+          break;
+
+        case INT_ARY_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"print: type=Int, value=" << reference->GetIntValue() << endl;
+          }
+          else {
+            wcout << L"print: type=Int[], value=" << reference->GetIntValue()
+		  << L"(" << (void*)reference->GetIntValue() << L")";
+            if(reference->GetArrayDimension()) {
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
+		    << reference->GetArraySize();
+            }
+            wcout << endl;
+          }
+          break;
+
+        case FLOAT_ARY_PARM:
+          if(reference->GetIndices()) {
+            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
+          }
+          else {
+            wcout << L"print: type=Float[], value=" << reference->GetIntValue()
+		  << L"(" << (void*)reference->GetIntValue() << L")";
+            if(reference->GetArrayDimension()) {
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
+		    << reference->GetArraySize();
+            }
+            wcout << endl;
+          }
+          break;
+
+        case OBJ_PARM:
+          if(ref_klass && ref_klass->GetName() == L"System.String") {
+            long* instance = (long*)reference->GetIntValue();
+            if(instance) {
+              long* string_instance = (long*)instance[0];
+              const wchar_t* char_string = (wchar_t*)(string_instance + 3);
+              wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
+		    << char_string << L"\"" << endl;
+            }
+            else {
+              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
+		    << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else {
+            wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
+		  << (void*)reference->GetIntValue() << endl;
+          }
+          break;
+
+        case OBJ_ARY_PARM:
+          if(reference->GetIndices()) {
+            StackClass* klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
+            if(klass) {	      
+              long* instance = (long*)reference->GetIntValue();
+              if(instance) {
+                wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
+              }
+              else {
+                wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
+              }
+            }
+            else {
+              wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
+            }
+          }
+          else {
+            wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
+            if(reference->GetArrayDimension()) {
+              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
+		    << reference->GetArraySize();
+            }
+            wcout << endl;
+          }
+          break;
+
+        case FUNC_PARM: {
+          StackClass* klass = cur_program->GetClass(reference->GetIntValue());
+          if(klass) {
+            wcout << L"print: type=Functon, class=" << klass->GetName() 
+		  << L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+          }
 	}
-
-	const StackDclr& dclr_value =  static_cast<Reference*>(reference)->GetDeclaration();
-	switch(dclr_value.type) {
-	case INT_PARM:
-	  cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
 	  break;
-
-	case FUNC_PARM: {
-	  StackClass* klass = cur_program->GetClass(reference->GetIntValue());
-	  if(klass) {
-	    cout << "print: type=Functon, class=" << klass->GetName() 
-		 << ", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
-	  }
-	}
-	  break;
-	  
-	case FLOAT_PARM:
-	  cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
-	  break;
-
-	case BYTE_ARY_PARM:
-	  cout << "print: type=Byte[], value=" << (char)reference->GetIntValue()
-	       << "(" << (void*)reference->GetIntValue() << ")";
-	  if(reference->GetArrayDimension()) {
-	    cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		 << reference->GetArraySize();
-	  }
-	  cout << endl;
-	  break;
-
-	case INT_ARY_PARM:
-	  if(reference->GetIndices()) {
-	    cout << "print: type=Int, value=" << reference->GetIntValue() << endl;
-	  }
-	  else {
-	    cout << "print: type=Int[], value=" << reference->GetIntValue()
-	         << "(" << (void*)reference->GetIntValue() << ")";
-	    if(reference->GetArrayDimension()) {
-	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		   << reference->GetArraySize();
-	    }
-	    cout << endl;
-	  }
-	  break;
-
-	case FLOAT_ARY_PARM:
-	  if(reference->GetIndices()) {
-	    cout << "print: type=Float, value=" << reference->GetFloatValue() << endl;
-	  }
-	  else {
-	    cout << "print: type=Float[], value=" << reference->GetFloatValue()
-	         << "(" << (void*)reference->GetIntValue() << ")" << endl;
-	    if(reference->GetArrayDimension()) {
-	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		   << reference->GetArraySize();
-	    }
-	    cout << endl;
-	  }
-	  break;
-
-	case OBJ_PARM:
-	  if(ref_klass && ref_klass->GetName() == "System.String") {
-	    long* instance = (long*)reference->GetIntValue();
-	    if(instance) {
-	      long* string_instance = (long*)instance[0];
-	      const char* char_string = (char*)(string_instance + 3);
-	      cout << "print: type=" << ref_klass->GetName() << ", value=\""
-		   << char_string << "\"" << endl;
-	    }
-	    else {
-	      cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "System.Base") << ", value="
-		   << (void*)reference->GetIntValue() << endl;
-	    }
-	  }
-	  else {
-	    cout << "print: type=" << (ref_klass ? ref_klass->GetName() : "System.Base") << ", value="
-		 << (void*)reference->GetIntValue() << endl;
-	  }
-	  break;
-	  
-	case OBJ_ARY_PARM:
-	  if(reference->GetIndices()) {
-	    StackClass* klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
-	    if(klass) {	      
-	      long* instance = (long*)reference->GetIntValue();
-	      if(instance) {
-		cout << "print: type=" << klass->GetName() << ", value=" << (void*)reference->GetIntValue() << endl;
-	      }
-	      else {
-		cout << "print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
-	      }
-	    }
-	    else {
-	      cout << "print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
-	    }
-	  }
-	  else {
-	    cout << "print: type=System.Base[], value=" << (void*)reference->GetIntValue();
-	    if(reference->GetArrayDimension()) {
-	      cout << ", dimension=" << reference->GetArrayDimension() << ", size="
-		   << reference->GetArraySize();
-	    }
-	    cout << endl;
-	  }
-	  break;
-	}
+        }
       }
       else {
-	cout << "program is not running." << endl;
-	is_error = true;
+        wcout << L"program is not running." << endl;
+        is_error = true;
       }
       break;
 
     case NIL_LIT_EXPR:
-      cout << "print: type=Nil, value=Nil" << endl;
+      wcout << L"print: type=Nil, value=Nil" << endl;
       break;
 
     case CHAR_LIT_EXPR:
-      cout << "print: type=Char, value=" << (char)expression->GetIntValue() << endl;
+      wcout << L"print: type=Char, value=" << (char)expression->GetIntValue() << endl;
       break;
 
     case INT_LIT_EXPR:
-      cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
+      wcout << L"print: type=Int, value=" << expression->GetIntValue() << endl;
       break;
 
     case FLOAT_LIT_EXPR:
-      cout << "print: type=Float, value=" << expression->GetFloatValue() << endl;
+      wcout << L"print: type=Float, value=" << expression->GetFloatValue() << endl;
       break;
 
     case BOOLEAN_LIT_EXPR:
-      cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
 
     case AND_EXPR:
@@ -414,7 +486,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case GTR_EQL_EXPR:
     case LES_EQL_EXPR:
     case GTR_EXPR:
-      cout << "print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
+      wcout << L"print: type=Bool, value=" << (expression->GetIntValue() ? "true" : "false" ) << endl;
       break;
 
     case ADD_EXPR:
@@ -423,10 +495,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
     case DIV_EXPR:
     case MOD_EXPR:
       if(expression->GetFloatEval()) {
-	cout << "print: type=Float, value=" << expression->GetFloatValue() << endl;
+        wcout << L"print: type=Float, value=" << expression->GetFloatValue() << endl;
       }
       else {
-	cout << "print: type=Int, value=" << expression->GetIntValue() << endl;
+        wcout << L"print: type=Int, value=" << expression->GetIntValue() << endl;
       }
       break;
 
@@ -679,11 +751,11 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
     }
     else {
-      cout << "modulus operation requires integer values." << endl;
+      wcout << L"modulus operation requires integer values." << endl;
       is_error = true;
     }
     break;
-      
+
   default:
     break;
   }
@@ -700,61 +772,65 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       bool found;
       StackDclr dclr_value;
       if(context == INST) {
-	found = ref_klass->GetInstanceDeclaration(reference->GetVariableName(), dclr_value);
+        found = ref_klass->GetInstanceDeclaration(reference->GetVariableName(), dclr_value);
       }
       else {
-	found = ref_klass->GetClassDeclaration(reference->GetVariableName(), dclr_value);	
+        found = ref_klass->GetClassDeclaration(reference->GetVariableName(), dclr_value);	
       }
-      
+
       // set reference
       if(found) {
-	reference->SetDeclaration(dclr_value);
-	
-	switch(dclr_value.type) {
-	case INT_PARM:
-	  reference->SetIntValue(ref_mem[dclr_value.id]);
-	  break;
+        reference->SetDeclaration(dclr_value);
+        switch(dclr_value.type) {
+        case CHAR_PARM:
+        case INT_PARM:
+          reference->SetIntValue(ref_mem[dclr_value.id]);
+          break;
 
-	case FUNC_PARM:
-	  reference->SetIntValue(ref_mem[dclr_value.id]);
-	  reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
-	  break;
+        case FUNC_PARM:
+          reference->SetIntValue(ref_mem[dclr_value.id]);
+          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
+          break;
 
-	case FLOAT_PARM: {
-	  FLOAT_VALUE value;
-	  memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
-	  reference->SetFloatValue(value);
+        case FLOAT_PARM: {
+          FLOAT_VALUE value;
+          memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
+          reference->SetFloatValue(value);
 	}
 	  break;
 
-	case OBJ_PARM:
-	  EvaluateInstanceReference(reference, dclr_value.id);
-	  break;
+        case OBJ_PARM:
+          EvaluateInstanceReference(reference, dclr_value.id);
+          break;
 
-	case BYTE_ARY_PARM:
-	  EvaluateByteReference(reference, dclr_value.id);
-	  break;
-	  
-	case INT_ARY_PARM:
-	  EvaluateIntFloatReference(reference, dclr_value.id, false);
-	  break;
+        case BYTE_ARY_PARM:
+          EvaluateByteReference(reference, dclr_value.id);
+          break;
 
-	case OBJ_ARY_PARM:
-	  EvaluateIntFloatReference(reference, dclr_value.id, false);
-	  break;
+        case CHAR_ARY_PARM:
+          EvaluateCharReference(reference, dclr_value.id);
+          break;
 
-	case FLOAT_ARY_PARM:
-	  EvaluateIntFloatReference(reference, dclr_value.id, true);
-	  break;
-	}
+        case INT_ARY_PARM:
+          EvaluateIntFloatReference(reference, dclr_value.id, false);
+          break;
+
+        case OBJ_ARY_PARM:
+          EvaluateIntFloatReference(reference, dclr_value.id, false);
+          break;
+
+        case FLOAT_ARY_PARM:
+          EvaluateIntFloatReference(reference, dclr_value.id, true);
+          break;
+        }
       }
       else {
-	cout << "unknown variable (or no debug information available)." << endl;
-	is_error = true;
+        wcout << L"unknown variable (or no debug information available)." << endl;
+        is_error = true;
       }
     }
     else {
-      cout << "unable to de-reference empty frame." << endl;
+      wcout << L"unable to find reference." << endl;
       is_error = true;
     }
   }
@@ -768,84 +844,89 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
       // process explicit '@self' reference
       if(reference->IsSelf()) {
-	dclr_value.name = "@self";
-	dclr_value.type = OBJ_PARM;
-	reference->SetDeclaration(dclr_value);
-	EvaluateInstanceReference(reference, 0);
+        dclr_value.name = L"@self";
+        dclr_value.type = OBJ_PARM;
+        reference->SetDeclaration(dclr_value);
+        EvaluateInstanceReference(reference, 0);
       }
       // process method reference
       else {
-	// check reference name
-	bool found = method->GetLocalDeclaration(reference->GetVariableName(), dclr_value);
-	reference->SetDeclaration(dclr_value);
-	if(found) {
-	  if(method->HasAndOr()) {
-	    dclr_value.id++;
+        // check reference name
+        bool found = method->GetLocalDeclaration(reference->GetVariableName(), dclr_value);
+        reference->SetDeclaration(dclr_value);
+        if(found) {
+          if(method->HasAndOr()) {
+            dclr_value.id++;
+          }
+
+          switch(dclr_value.type) {
+          case CHAR_PARM:
+          case INT_PARM:
+            reference->SetIntValue(ref_mem[dclr_value.id + 1]);
+            break;
+
+          case FUNC_PARM:
+            reference->SetIntValue(ref_mem[dclr_value.id + 1]);
+            reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
+            break;
+
+          case FLOAT_PARM: {
+            FLOAT_VALUE value;
+            memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
+            reference->SetFloatValue(value);
 	  }
-	  
-	  switch(dclr_value.type) {
-	  case INT_PARM:
-	    reference->SetIntValue(ref_mem[dclr_value.id + 1]);
 	    break;
 
-	  case FUNC_PARM:
-	    reference->SetIntValue(ref_mem[dclr_value.id + 1]);
-	    reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
-	    break;
+          case OBJ_PARM:
+            EvaluateInstanceReference(reference, dclr_value.id + 1);
+            break;
 
-	  case FLOAT_PARM: {
-	    FLOAT_VALUE value;
-	    memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
-	    reference->SetFloatValue(value);
-	  }
-	    break;
+          case BYTE_ARY_PARM:
+            EvaluateByteReference(reference, dclr_value.id + 1);
+            break;
 
-	  case OBJ_PARM:
-	    EvaluateInstanceReference(reference, dclr_value.id + 1);
-	    break;
+          case CHAR_ARY_PARM:
+            EvaluateCharReference(reference, dclr_value.id + 1);
+            break;
 
-	  case BYTE_ARY_PARM:
-	    EvaluateByteReference(reference, dclr_value.id + 1);
-	    break;
-	    
-	  case INT_ARY_PARM:
-	    EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
-	    break;
+          case INT_ARY_PARM:
+            EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
+            break;
 
-	  case OBJ_ARY_PARM:
-	    EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
-	    break;
+          case OBJ_ARY_PARM:
+            EvaluateIntFloatReference(reference, dclr_value.id + 1, false);
+            break;
 
-	  case FLOAT_ARY_PARM:
-	    EvaluateIntFloatReference(reference, dclr_value.id + 1, true);
-	    break;
-	  }
-	}
-	else {
-	  // class for class reference
-	  StackClass* klass = cur_program->GetClass(reference->GetVariableName());
-	  if(klass) {
-	    dclr_value.name = klass->GetName();
-	    dclr_value.type = OBJ_PARM;
-	    reference->SetDeclaration(dclr_value);
-	    EvaluateClassReference(reference, klass, 0);
-	  }
-	  else {
-	    // process implicit '@self' reference
-	    Reference* next_reference = TreeFactory::Instance()->MakeReference();
-	    next_reference->SetReference(reference);
-	    reference = next_reference;
-	    // set declaration
-	    dclr_value.name = "@self";
-	    dclr_value.type = OBJ_PARM;
-	    reference->SetDeclaration(dclr_value);
-	    EvaluateInstanceReference(reference, 0);
-	  }
-	}
+          case FLOAT_ARY_PARM:
+            EvaluateIntFloatReference(reference, dclr_value.id + 1, true);
+            break;
+          }
+        }
+        else {
+          // class for class reference
+          StackClass* klass = cur_program->GetClass(reference->GetVariableName());
+          if(klass) {
+            dclr_value.name = klass->GetName();
+            dclr_value.type = OBJ_PARM;
+            reference->SetDeclaration(dclr_value);
+            EvaluateClassReference(reference, klass, 0);
+          }
+          else {
+            // process implicit '@self' reference
+            Reference* next_reference = TreeFactory::Instance()->MakeReference();
+            next_reference->SetReference(reference);
+            reference = next_reference;
+            // set declaration
+            dclr_value.name = L"@self";
+            dclr_value.type = OBJ_PARM;
+            reference->SetDeclaration(dclr_value);
+            EvaluateInstanceReference(reference, 0);
+          }
+        }
       }
     }
     else {
-      cout << "unable to de-reference empty frame." << endl;
+      wcout << L"unable to de-reference empty frame." << endl;
       is_error = true;
     }
   }
@@ -862,7 +943,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
     }
   }
   else {
-    cout << "current object reference is Nil" << endl;
+    wcout << L"current object reference is Nil" << endl;
     is_error = true;
   }
 }
@@ -891,55 +972,119 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
       vector<Expression*> expressions = indices->GetExpressions();
       vector<int> values;
       for(size_t i = 0; i < expressions.size(); i++) {
-	EvaluateExpression(expressions[i]);
-	// update values
-	if(expressions[i]->GetFloatEval()) {
-	  values.push_back((int)expressions[i]->GetFloatValue());
-	}
-	else {
-	  values.push_back(expressions[i]->GetIntValue());
-	}
+        EvaluateExpression(expressions[i]);
+        if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
+          values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
+        }
+        else {
+          values.push_back(expressions[i]->GetIntValue());
+        }
       }
       // match the dimensions
       if(expressions.size() == (size_t)dim) {
-	// calculate indices
-	array += 2;
-	int j = dim - 1;
-	long array_index = values[j--];
-	for(long i = 1; i < dim; i++) {
-	  array_index *= array[i];
-	  array_index += values[j--];
-	}
-	array += dim;
-	
-	if(array_index > -1 && array_index < max) {
-	  reference->SetIntValue(((char*)array)[array_index]);
-	}
-	else {
-	  cout << "array index out of bounds." << endl;
-	  is_error = true;
-	}
+        // calculate indices
+        array += 2;
+        int j = dim - 1;
+        long array_index = values[j--];
+        for(long i = 1; i < dim; i++) {
+          array_index *= array[i];
+          array_index += values[j--];
+        }
+        array += dim;
+
+        if(array_index > -1 && array_index < max) {
+          reference->SetIntValue(((char*)array)[array_index]);
+        }
+        else {
+          wcout << L"array index out of bounds." << endl;
+          is_error = true;
+        }
       }
       else {
-	cout << "array dimension mismatch." << endl;
-	is_error = true;
+        wcout << L"array dimension mismatch." << endl;
+        is_error = true;
       }
     }
     // set array address
     else {
       if(ref_mem) {
-	reference->SetArrayDimension(dim);
-	reference->SetArraySize(max);
-	reference->SetIntValue(ref_mem[index]);
+        reference->SetArrayDimension(dim);
+        reference->SetArraySize(max);
+        reference->SetIntValue(ref_mem[index]);
       }
       else {
-	cout << "current reference is Nil" << endl;
-	is_error = true;
+        wcout << L"current reference is Nil" << endl;
+        is_error = true;
       }
     }
   }
   else {
-    cout << "current array value is Nil" << endl;
+    wcout << L"current array value is Nil" << endl;
+    is_error = true;
+  }
+}
+
+void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
+  long* array = (long*)ref_mem[index];
+  if(array) {
+    const int max = array[0];
+    const int dim = array[1];
+
+    // de-reference array value
+    ExpressionList* indices = reference->GetIndices();
+    if(indices) {
+      // calculate indices values
+      vector<Expression*> expressions = indices->GetExpressions();
+      vector<int> values;
+      for(size_t i = 0; i < expressions.size(); i++) {
+        EvaluateExpression(expressions[i]);
+        if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
+          values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
+        }
+        else {
+          values.push_back(expressions[i]->GetIntValue());
+        }
+      }
+      // match the dimensions
+      if(expressions.size() == (size_t)dim) {
+        // calculate indices
+        array += 2;
+        int j = dim - 1;
+        long array_index = values[j--];
+        for(long i = 1; i < dim; i++) {
+          array_index *= array[i];
+          array_index += values[j--];
+        }
+        array += dim;
+
+        if(array_index > -1 && array_index < max) {
+          reference->SetIntValue(((wchar_t*)array)[array_index]);
+        }
+        else {
+          wcout << L"array index out of bounds." << endl;
+          is_error = true;
+        }
+      }
+      else {
+        wcout << L"array dimension mismatch." << endl;
+        is_error = true;
+      }
+    }
+    // set array address
+    else {
+      if(ref_mem) {
+        reference->SetArrayDimension(dim);
+        reference->SetArraySize(max);
+        reference->SetIntValue(ref_mem[index]);
+      }
+      else {
+        wcout << L"current reference is Nil" << endl;
+        is_error = true;
+      }
+    }
+  }
+  else {
+    wcout << L"current array value is Nil" << endl;
     is_error = true;
   }
 }
@@ -957,84 +1102,83 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
       vector<Expression*> expressions = indices->GetExpressions();
       vector<int> values;
       for(size_t i = 0; i < expressions.size(); i++) {
-	EvaluateExpression(expressions[i]);
-	// update values
-	if(expressions[i]->GetFloatEval()) {
-	  values.push_back((int)expressions[i]->GetFloatValue());
-	}
-	else {
-	  values.push_back(expressions[i]->GetIntValue());
-	}
+        EvaluateExpression(expressions[i]);
+        if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
+          values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
+        }
+        else {
+          values.push_back(expressions[i]->GetIntValue());
+        }
       }
       // match the dimensions
       if(expressions.size() == (size_t)dim) {
-	// calculate indices
-	array += 2;
-	int j = dim - 1;
-	long array_index = values[j--];
-	for(long i = 1; i < dim; i++) {
-	  array_index *= array[i];
-	  array_index += values[j--];
-	}
-	array += dim;
+        // calculate indices
+        array += 2;
+        int j = dim - 1;
+        long array_index = values[j--];
+        for(long i = 1; i < dim; i++) {
+          array_index *= array[i];
+          array_index += values[j--];
+        }
+        array += dim;
 
-	// check float array bounds
-	if(is_float) {
-	  array_index *= 2;
-	  if(array_index > -1 && array_index < max * 2) {
-	    FLOAT_VALUE value;
-	    memcpy(&value, &array[array_index], sizeof(FLOAT_VALUE));
-	    reference->SetFloatValue(value);
-	  }
-	  else {
-	    cout << "array index out of bounds." << endl;
-	    is_error = true;
-	  }
-	}
-	// check int array bounds
-	else {
-	  if(array_index > -1 && array_index < max) {
-	    reference->SetIntValue(array[array_index]);
-	  }
-	  else {
-	    cout << "array index out of bounds." << endl;
-	    is_error = true;
-	  }
-	}
+        // check float array bounds
+        if(is_float) {
+          array_index *= 2;
+          if(array_index > -1 && array_index < max * 2) {
+            FLOAT_VALUE value;
+            memcpy(&value, &array[array_index], sizeof(FLOAT_VALUE));
+            reference->SetFloatValue(value);
+          }
+          else {
+            wcout << L"array index out of bounds." << endl;
+            is_error = true;
+          }
+        }
+        // check int array bounds
+        else {
+          if(array_index > -1 && array_index < max) {
+            reference->SetIntValue(array[array_index]);
+          }
+          else {
+            wcout << L"array index out of bounds." << endl;
+            is_error = true;
+          }
+        }
       }
       else {
-	cout << "array dimension mismatch." << endl;
-	is_error = true;
+        wcout << L"array dimension mismatch." << endl;
+        is_error = true;
       }
     }
     // set array address
     else {
       if(ref_mem) {
-	reference->SetArrayDimension(dim);
-	reference->SetArraySize(max);
-	reference->SetIntValue(ref_mem[index]);
+        reference->SetArrayDimension(dim);
+        reference->SetArraySize(max);
+        reference->SetIntValue(ref_mem[index]);
       }
       else {
-	cout << "current reference is Nil" << endl;
-	is_error = true;
+        wcout << L"current reference is Nil" << endl;
+        is_error = true;
       }
     }
   }
   else {
-    cout << "current array value is Nil" << endl;
+    wcout << L"current array value is Nil" << endl;
     is_error = true;
   }
 }
 
-Command* Runtime::Debugger::ProcessCommand(const string &line) {
+Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 #ifdef _DEBUG
-  cout << "input: |" << line << "|" << endl;
+  wcout << L"input: |" << line << L"|" << endl;
 #endif
 
   // parser input
   is_next = is_next_line = false;
   Parser parser;
-  Command* command = parser.Parse("?" + line);
+  Command* command = parser.Parse(L"?" + line);
   if(command) {
     switch(command->GetCommandType()) {
     case EXE_COMMAND:
@@ -1052,40 +1196,40 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
-      cout << "goodbye." << endl;
+      wcout << L"goodbye." << endl;
       exit(0);
       break;
 
     case LIST_COMMAND: {
       FilePostion* file_pos = static_cast<FilePostion*>(command);
 
-      string file_name;
+      wstring file_name;
       if(file_pos->GetFileName().size() > 0) {
-	file_name = file_pos->GetFileName();
+        file_name = file_pos->GetFileName();
       }
       else {
-	file_name = cur_file_name;
+        file_name = cur_file_name;
       }
 
       int line_num;
       if(file_pos->GetLineNumber() > 0) {
-	line_num = file_pos->GetLineNumber();
+        line_num = file_pos->GetLineNumber();
       }
       else {
-	line_num = cur_line_num;
+        line_num = cur_line_num;
       }
 
-      const string &path = base_path + file_name;
+      const wstring &path = base_path + file_name;
       if(FileExists(path) && line_num > 0) {
-	SourceFile src_file(path, cur_line_num);
-	if(!src_file.Print(line_num)) {
-	  cout << "invalid line number." << endl;
-	  is_error = true;
-	}
+        SourceFile src_file(path, cur_line_num);
+        if(!src_file.Print(line_num)) {
+          wcout << L"invalid line number." << endl;
+          is_error = true;
+        }
       }
       else {
-	cout << "source file or line number doesn't exist. (is the program running?)" << endl;
-	is_error = true;
+        wcout << L"source file or line number doesn't exist, ensure the program is running." << endl;
+        is_error = true;
       }
     }
       break;
@@ -1103,15 +1247,21 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
       break;
 
     case RUN_COMMAND:
-      ProcessRun();
+      if(!cur_program) {
+        ProcessRun();
+      }
+      else {
+        wcout << L"instance already running." << endl;
+        is_error = true;
+      }
       break;
 
     case CLEAR_COMMAND: {
-      cout << "  are sure you want to clear all breakpoints? [y/n] ";
-      string line;
-      getline(cin, line);
-      if(line == "y" || line == "yes") {
-	ClearBreaks();
+      wcout << L"  are sure you want to clear all breakpoints? [y/n] ";
+      wstring line;
+      getline(wcin, line);
+      if(line == L"y" || line == L"yes") {
+        ClearBreaks();
       }
     }
       break;
@@ -1122,34 +1272,34 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 
     case NEXT_COMMAND:
       if(interpreter) {
-	is_next = true;
+        is_next = true;
       }
       else {
-	cout << "program is not running." << endl;
+        wcout << L"program is not running." << endl;
       }
       break;
 
     case NEXT_LINE_COMMAND:
       if(interpreter) {
-	is_next_line = true;
+        is_next_line = true;
       }
       else {
-	cout << "program is not running." << endl;
+        wcout << L"program is not running." << endl;
       }
       break;
 
     case JUMP_OUT_COMMAND:
       if(interpreter) {
-	is_jmp_out = true;
+        is_jmp_out = true;
       }
       else {
-	cout << "program is not running." << endl;
+        wcout << L"program is not running." << endl;
       }
       break;
 
     case CONT_COMMAND:
       if(!interpreter) {
-	cout << "program is not running." << endl;
+        wcout << L"program is not running." << endl;
       }
       break;
 
@@ -1159,40 +1309,40 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 
     case STACK_COMMAND:
       if(interpreter) {
-	cout << "stack:" << endl;
-	StackMethod* method = cur_frame->GetMethod();
-	cerr << "  frame: pos=" << cur_call_stack_pos << ", class=" << method->GetClass()->GetName() 
-	     << ", method=" << PrintMethod(method);
-	const long ip = cur_frame->GetIp();
-	if(ip > -1) {
-	  StackInstr* instr = cur_frame->GetMethod()->GetInstruction(ip);
-	  cerr << ", file=" << method->GetClass()->GetFileName() << ":" << instr->GetLineNumber() << endl;
-	}
-	else {
-	  cerr << endl;
-	}
+        wcout << L"stack:" << endl;
+        StackMethod* method = cur_frame->GetMethod();
+        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
+	      << L", method=" << PrintMethod(method);
+        const long ip = cur_frame->GetIp();
+        if(ip > -1) {
+          StackInstr* instr = cur_frame->GetMethod()->GetInstruction(ip);
+          wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+        }
+        else {
+          wcerr << endl;
+        }
 
-	long pos = cur_call_stack_pos - 1;
-	do {
-	  StackMethod* method = cur_call_stack[pos]->GetMethod();
-	  cerr << "  frame: pos=" << pos << ", class=" << method->GetClass()->GetName() 
-	       << ", method=" << PrintMethod(method);
-	  const long ip = cur_call_stack[pos]->GetIp();
-	  if(ip > -1) {
-	    StackInstr* instr = cur_call_stack[pos]->GetMethod()->GetInstruction(ip);
-	    cerr << ", file=" << method->GetClass()->GetFileName() << ":" << instr->GetLineNumber() << endl;
-	  }
-	  else {
-	    cerr << endl;
-	  }
-	}
-	while(--pos);
+        long pos = cur_call_stack_pos - 1;
+        do {
+          StackMethod* method = cur_call_stack[pos]->GetMethod();
+          wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
+		<< L", method=" << PrintMethod(method);
+          const long ip = cur_call_stack[pos]->GetIp();
+          if(ip > -1) {
+            StackInstr* instr = cur_call_stack[pos]->GetMethod()->GetInstruction(ip);
+            wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+          }
+          else {
+            wcerr << endl;
+          }
+        }
+        while(--pos);
       }
       else {
-	cout << "program is not running." << endl;
+        wcout << L"program is not running." << endl;
       }
       break;
-	
+
     default:
       break;
     }
@@ -1202,7 +1352,7 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
     return command;
   }
   else {
-    cout << "-- Unable to process command --" << endl;
+    wcout << L"-- Unable to process command --" << endl;
   }
 
   is_error = false;
@@ -1211,11 +1361,11 @@ Command* Runtime::Debugger::ProcessCommand(const string &line) {
 }
 
 void Runtime::Debugger::ProcessInfo(Info* info) {
-  const string &cls_name = info->GetClassName();
-  const string &mthd_name = info->GetMethodName();
+  const wstring &cls_name = info->GetClassName();
+  const wstring &mthd_name = info->GetMethodName();
 
 #ifdef _DEBUG
-  cout << "--- info class=" << cls_name << ", method=" << mthd_name << " ---" << endl;
+  wcout << L"--- info class=" << cls_name << L", method=" << mthd_name << L" ---" << endl;
 #endif
 
   if(interpreter) {
@@ -1223,66 +1373,70 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
     if(cls_name.size() > 0 && mthd_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass && klass->IsDebug()) {
-	vector<StackMethod*> methods = klass->GetMethods(mthd_name);
-	if(methods.size() > 0) {
-	  for(size_t i = 0; i < methods.size(); i++) {
-	    StackMethod* method = methods[i];
-	    cout << "  class: type=" << klass->GetName() << ", method="
-		 << PrintMethod(method) << endl;
-	    cout << "  parameters:" << endl;
-	    PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations(), cls_name);
-	  }
-	}
-	else {
-	  cout << "unable to find method." << endl;
-	  is_error = true;
-	}
+        vector<StackMethod*> methods = klass->GetMethods(mthd_name);
+        if(methods.size() > 0) {
+          for(size_t i = 0; i < methods.size(); i++) {
+            StackMethod* method = methods[i];
+            wcout << L"  class: type=" << klass->GetName() << L", method="
+		  << PrintMethod(method) << endl;
+	    if(method->GetNumberDeclarations() > 0) {
+	      wcout << L"  parameters:" << endl;
+	      PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+	    }
+          }
+        }
+        else {
+          wcout << L"unable to find method." << endl;
+          is_error = true;
+        }
       }
       else {
-	cout << "unable to find class." << endl;
-	is_error = true;
+        wcout << L"unable to find class." << endl;
+        is_error = true;
       }
     }
     // class info
     else if(cls_name.size() > 0) {
       StackClass* klass = cur_program->GetClass(cls_name);
       if(klass && klass->IsDebug()) {
-	cout << "  class: type=" << klass->GetName() << endl;
-	// print
-	cout << "  parameters:" << endl;
-	PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations(), klass->GetName());
+        wcout << L"  class: type=" << klass->GetName() << endl;
+        // print
+        wcout << L"  parameters:" << endl;
+	if(klass->GetNumberInstanceDeclarations() > 0) {
+	  PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+	}
       }
       else {
-	cout << "unable to find class." << endl;
-	is_error = true;
+        wcout << L"unable to find class." << endl;
+        is_error = true;
       }
     }
     // general info
     else {
-      cout << "general info:" << endl;
-      cout << "  program executable: file='" << program_file << "'" << endl;
+      wcout << L"general info:" << endl;
+      wcout << L"  program executable: file='" << program_file << L"'" << endl;
 
       // parse method and class names
-      const string &long_name = cur_frame->GetMethod()->GetName();
+      const wstring &long_name = cur_frame->GetMethod()->GetName();
       int end_index = long_name.find_last_of(':');
-      const string &cls_mthd_name = long_name.substr(0, end_index);
+      const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       int mid_index = cls_mthd_name.find_last_of(':');
-      const string &cls_name = cls_mthd_name.substr(0, mid_index);
-      const string &mthd_name = cls_mthd_name.substr(mid_index + 1);
+      const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
+      const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
 
       // print
-      cout << "  current file='" << cur_file_name << ":" << cur_line_num << "', method='"
-	   << cls_name << "->" << mthd_name << "(..)'" << endl;
+      wcout << L"  current file='" << cur_file_name << L":" << cur_line_num << L"', method='"
+	    << cls_name << L"->" << mthd_name << L"(..)'" << endl;
     }
   }
   else {
-    cout << "program is not running." << endl;
+    wcout << L"program is not running." << endl;
   }
 }
 
 void Runtime::Debugger::ClearBreaks() {
-  cout << "breakpoints cleared." << endl;
+  wcout << L"breakpoints cleared." << endl;
   while(!breaks.empty()) {
     UserBreak* tmp = breaks.front();
     breaks.erase(breaks.begin());
@@ -1330,29 +1484,33 @@ void Runtime::Debugger::ClearProgram() {
 }
 
 void Runtime::Debugger::Debug() {
-  cout << "-------------------------------------" << endl;
-  cout << "Objeck " << VERSION_STRING << " - Interactive Debugger" << endl;
-  cout << "-------------------------------------" << endl << endl;
+  wcout << L"-------------------------------------" << endl;
+  wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << endl;
+  wcout << L"-------------------------------------" << endl << endl;
 
   if(FileExists(program_file, true) && DirectoryExists(base_path)) {
-    cout << "loaded executable: file='" << program_file << "'" << endl;
-    cout << "source files: path='" << base_path << "'" << endl << endl;
+    wcout << L"loaded executable: file='" << program_file << L"'" << endl;
+    wcout << L"source files: path='" << base_path << L"'" << endl << endl;
     // clear arguments
     arguments.clear();
-    arguments.push_back("obr");
+    arguments.push_back(L"obr");
     arguments.push_back(program_file);
   }
   else {
-    cerr << "unable to load executable or locate base path." << endl;
+    wcerr << L"unable to load executable or locate base path." << endl;
     exit(1);
   }
 
   // enter feedback loop
-  while(true) {
-    cout << "> ";
-    string line;
-    getline(cin, line);
-    ProcessCommand(line);
+  ClearProgram();
+  wcout << L"> ";
+  while(true) {    
+    wstring line;
+    getline(wcin, line);
+    if(line.size() > 0) {
+      ProcessCommand(line);
+      wcout << L"> ";
+    }
   }
 }
 
@@ -1361,109 +1519,62 @@ void Runtime::Debugger::Debug() {
  ********************************/
 int main(int argc, char** argv)
 {
-  string usage;
-  usage += "Copyright (c) 2010-2013, Randy Hollines. All rights reserved.\n";
-  usage += "THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-  usage += "license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-  usage += "FOR MORE INFORMATION.\n\n";
+  wstring usage;
+  usage += L"Copyright (c) 2010-2013, Randy Hollines. All rights reserved.\n";
+  usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+  usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+  usage += L"FOR MORE INFORMATION.\n\n";
   usage += VERSION_STRING;
-  usage += "\n\n";
-  usage += "usage: obd -exe <executable> [-src <source directory>]\n";
-  usage += "example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\n";
-  usage += "options:\n";
-  usage += "  -exe: executable file\n";
-  usage += "  -src: source directory path";
+  usage += L"\n\n";
+  usage += L"usage: obd -exe <executable> [-src <source directory>]\n";
+  usage += L"example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\n";
+  usage += L"options:\n";
+  usage += L"  -exe: executable file\n";
+  usage += L"  -src: source directory path";
 
   if(argc >= 3) {
+#ifdef _WIN32
+    // enable Unicode console support
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
+
+    WSADATA data;
+    int version = MAKEWORD(2, 2);
+    if(WSAStartup(version, &data)) {
+      cerr << L"Unable to load Winsock 2.2!" << endl;
+      exit(1);
+    }
+#else
+    // enable UTF-8 enviroment
+    setlocale(LC_ALL, "");
+    setlocale(LC_CTYPE, "UTF-8");
+#endif
+
     // Initialize OpenSSL
     CRYPTO_malloc_init();
     SSL_library_init();
 
-#ifdef _WIN32
-	WSADATA data;
-    int version = MAKEWORD(2, 2);
-#endif
-
     // reconstruct path
-    string path;
+    string buffer;
     for(int i = 1; i < argc; i++) {
-      path += " ";
-      path += argv[i];
+      buffer += " ";
+      buffer += argv[i];
     }
+    const wstring path_string(buffer.begin(), buffer.end());
+    map<const wstring, wstring> arguments = ParseCommnadLine(path_string);
 
-    // parse path
-    int end = (int)path.size();
-    map<const string, string> arguments;
-    int pos = 0;
-    while(pos < end) {
-      // ignore leading white space
-      while( pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-	pos++;
-      }
-      if(path[pos] == '-') {
-	// parse key
-	int start =  ++pos;
-	while( pos < end && path[pos] != ' ' && path[pos] != '\t') {
-	  pos++;
-	}
-	string key = path.substr(start, pos - start);
-	// parse value
-	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-	  pos++;
-	}
-	start = pos;
-	bool is_string = false;
-	if(pos < end && path[pos] == '\'') {
-	  is_string = true;
-	  start++;
-	}
-	bool not_end = true;
-	while(pos < end && not_end) {
-	  // check for end
-	  if(is_string) {
-	    not_end = path[pos] != '\'';
-	  }
-	  else {
-	    not_end = path[pos] != ' ' && path[pos] != '\t';
-	  }
-	  // update position
-	  if(not_end) {
-	    pos++;
-	  }
-	}
-	string value;
-	if(is_string) {
-	  value = path.substr(start, pos - start - 1);
-	}
-	else {
-	  value = path.substr(start, pos - start);
-	}
-	arguments.insert(pair<string, string>(key, value));
-      }
-      else {
-	while(pos < end && (path[pos] == ' ' || path[pos] == '\t')) {
-	  pos++;
-	}
-	int start = pos;
-	while(pos < end && path[pos] != ' ' && path[pos] != '\t') {
-	  pos++;
-	}
-	string value = path.substr(start, pos - start);
-	arguments.insert(pair<string, string>("-", value));
-      }
-    }
     // start debugger
-    map<const string, string>::iterator result = arguments.find("exe");
+    map<const wstring, wstring>::iterator result = arguments.find(L"exe");
     if(result == arguments.end()) {
-      cerr << usage << endl << endl;
+      wcerr << usage << endl << endl;
       return 1;
     }
-    const string &file_name = arguments["exe"];
+    const wstring &file_name = arguments[L"exe"];
 
-    string base_path = ".";
-    result = arguments.find("src");
+    wstring base_path = L".";
+    result = arguments.find(L"src");
     if(result != arguments.end()) {
-      base_path = arguments["src"];
+      base_path = arguments[L"src"];
     }
 
 #ifdef _WIN32
@@ -1480,16 +1591,16 @@ int main(int argc, char** argv)
     Runtime::Debugger debugger(file_name, base_path);
     debugger.Debug();
 #ifdef _WIN32
-	WSACleanup();
+    WSACleanup();
 #endif
 
     return 0;
   }
   else {
 #ifdef _WIN32
-	WSACleanup();
+    WSACleanup();
 #endif
-    cerr << usage << endl << endl;
+    wcerr << usage << endl << endl;
     return 1;
   }
 

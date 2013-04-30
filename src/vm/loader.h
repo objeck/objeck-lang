@@ -40,13 +40,13 @@ using namespace std;
 class Loader {
   static StackProgram* program;
   int arg_count;
-  vector<string> arguments;
+  vector<wstring> arguments;
   int num_float_strings;
   int num_int_strings;
   int num_char_strings;
   StackMethod* init_method;
   int string_cls_id;
-  string filename;
+  wstring filename;
   char* buffer;
   char* alloc_buffer;
   size_t buffer_size;
@@ -54,7 +54,7 @@ class Loader {
   int start_class_id;
   int start_method_id;
   bool is_web;
-  map<const string, const int> params;
+  map<const wstring, const int> params;
 
   int ReadInt() {
     int32_t value;
@@ -70,11 +70,37 @@ class Loader {
     return value;
   }
 
-  string ReadString() {
+  wstring ReadString() {
     int size = ReadInt();
-    string value(buffer, size);
-    buffer += size;
-    return value;
+    string in(buffer, size);
+    buffer += size;    
+   
+    wstring out;
+    if(!BytesToUnicode(in, out)) {
+      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      exit(1);
+    }
+    
+    return out;
+  }
+
+  wchar_t ReadChar() {
+    wchar_t out;
+    
+    int size = ReadInt(); 
+    if(size) {
+      string in(buffer, size);
+      buffer += size;
+      if(!BytesToCharacter(in, out)) {
+	wcerr << L">>> Unable to read character <<<" << endl;
+	exit(1);
+      }
+    }
+    else {
+      out = L'\0';
+    }
+    
+    return out;
   }
 
   FLOAT_VALUE ReadDouble() {
@@ -85,22 +111,23 @@ class Loader {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(string filename, size_t &buffer_size) {
-    char* buffer = NULL;
-    // open file
-    ifstream in(filename.c_str(), ifstream::binary);
+  char* LoadFileBuffer(wstring filename, size_t &buffer_size) {
+    char* buffer;
+    string open_filename(filename.begin(), filename.end());
+    
+    ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
     if(in.good()) {
       // get file size
       in.seekg(0, ios::end);
       buffer_size = (size_t)in.tellg();
       in.seekg(0, ios::beg);
-      buffer = new char[buffer_size];
+      buffer = (char*)calloc(buffer_size + 1, sizeof(char));
       in.read(buffer, buffer_size);
       // close file
       in.close();
-    } 
+    }
     else {
-      cerr << "Unable to open file: " << filename << endl;
+      wcerr << L"Unable to open source file: " << filename << endl;
       exit(1);
     }
     
@@ -121,7 +148,7 @@ class Loader {
   void LoadConfiguration();
   
 public:
-  Loader(const char* arg) {
+  Loader(wchar_t* arg) {
     filename = arg;
     string_cls_id = -1;
     is_web = false;
@@ -129,7 +156,7 @@ public:
     program = new StackProgram;
   }
 
-  Loader(const int argc, const char** argv) {
+  Loader(const int argc, wchar_t** argv) {
     filename = argv[1];
     for(int i = 2; i < argc; i++) {
       arguments.push_back(argv[i]);
@@ -142,7 +169,7 @@ public:
 
   ~Loader() {
     if(alloc_buffer) {
-      delete[] alloc_buffer;
+      free(alloc_buffer);
       alloc_buffer = NULL;
     }
 
@@ -161,8 +188,8 @@ public:
     return NULL;
   }
   
-  int GetConfigurationParameter(const string key) {
-    map<const string, const int>::iterator result = params.find(key);
+  int GetConfigurationParameter(const wstring key) {
+    map<const wstring, const int>::iterator result = params.find(key);
     if(result != params.end()) {
       return result->second;
     }

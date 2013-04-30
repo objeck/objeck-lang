@@ -1,7 +1,5 @@
 /***************************************************************************
- *
- *
- * Copyright (c) 2008-2011, Randy Hollines
+ * Copyright (c) 2008-2013, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,17 +32,16 @@
 
 // define windows type
 #ifdef _WIN32
+#include <windows.h>
 #include <stdint.h>
 #endif
+#include <string>
+#include <map>
 
 #ifdef _MINGW
-#define BYTE_VALUE unsigned char
-#define CHAR_VALUE char
 #define INT_VALUE int
 #define FLOAT_VALUE double
 #else
-#define BYTE_VALUE uint8_t
-#define CHAR_VALUE int8_t
 #define INT_VALUE int32_t
 #define FLOAT_VALUE double
 #endif
@@ -54,6 +51,7 @@ namespace instructions {
   typedef enum _MemoryType {
     NIL_TYPE = -1000,
     BYTE_ARY_TYPE,
+    CHAR_ARY_TYPE,
     INT_TYPE,
     FLOAT_TYPE,
     FUNC_TYPE
@@ -62,9 +60,11 @@ namespace instructions {
 
   // garbage types
   typedef enum _ParamType {
-    INT_PARM = -1500,
+    CHAR_PARM = -1500,
+    INT_PARM,
     FLOAT_PARM,
     BYTE_ARY_PARM,
+    CHAR_ARY_PARM,
     INT_ARY_PARM,
     FLOAT_ARY_PARM,
     OBJ_PARM,
@@ -74,4 +74,226 @@ namespace instructions {
   ParamType;
 }
 
+static std::map<const std::wstring, std::wstring> ParseCommnadLine(const std::wstring &path_string) {    
+  std::map<const std::wstring, std::wstring> arguments;
+
+  size_t pos = 0;
+  size_t end = path_string.size();  
+  while(pos < end) {
+    // ignore leading white space
+    while( pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+      pos++;
+    }
+    if(path_string[pos] == '-') {
+      // parse key
+      int start =  ++pos;
+      while( pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
+        pos++;
+      }
+      std::wstring key = path_string.substr(start, pos - start);
+      // parse value
+      while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
+        pos++;
+      }
+      start = pos;
+      bool is_string = false;
+      if(pos < end && path_string[pos] == L'\'') {
+        is_string = true;
+        start++;
+        pos++;
+      }
+      bool not_end = true;
+      while(pos < end && not_end) {
+        // check for end
+        if(is_string) {
+          not_end = path_string[pos] != L'\'';
+        }
+        else {
+          not_end = path_string[pos] != L' ' && path_string[pos] != L'\t' && path_string[pos] != L'-';
+        }
+        // update position
+        if(not_end) {
+          pos++;
+        }
+      }
+      std::wstring value = path_string.substr(start, pos - start);
+      
+      // close string and add
+      if(path_string[pos] == L'\'') {
+        pos++;
+      }
+      arguments.insert(std::pair<std::wstring, std::wstring>(key, value));
+    }
+    else {
+      pos++;
+    }
+  }
+
+  return arguments;
+}
+
+/****************************
+ * Converts a UTF-8 bytes to
+ * native a unicode string
+ ****************************/
+static bool BytesToUnicode(const std::string &in, std::wstring &out) {    
+#ifdef _WIN32
+  // allocate space
+  int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
+  if(!wsize) {
+    return false;
+  }
+  wchar_t* buffer = new wchar_t[wsize];
+
+  // convert
+  int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
+  if(!check) {
+    delete[] buffer;
+    buffer = NULL;
+    return false;
+  }
+  
+  // create string
+  out.append(buffer, wsize - 1);
+
+  // clean up
+  delete[] buffer;
+  buffer = NULL;  
+#else
+  // allocate space
+  size_t size = mbstowcs(NULL, in.c_str(), in.size());
+  if(size == (size_t)-1) {
+    return false;
+  }
+  wchar_t* buffer = new wchar_t[size + 1];
+
+  // convert
+  size_t check = mbstowcs(buffer, in.c_str(), in.size());
+  if(check == (size_t)-1) {
+    delete[] buffer;
+    buffer = NULL;
+    return false;
+  }
+  buffer[size] = L'\0';
+
+  // create string
+  out.append(buffer, size);
+
+  // clean up
+  delete[] buffer;
+  buffer = NULL;
+#endif
+
+  return true;
+}
+
+static std::wstring BytesToUnicode(const std::string &in) {
+  std::wstring out;
+  if(BytesToUnicode(in, out)) {
+    return out;
+  }
+
+  return L"";
+}
+
+/****************************
+ * Converts UTF-8 bytes to
+ * native a unicode character
+ ****************************/
+static bool BytesToCharacter(const std::string &in, wchar_t &out) {
+  std::wstring buffer;
+  if(!BytesToUnicode(in, buffer)) {
+    return false;
+  }
+  
+  if(buffer.size() != 1) {
+    return false;
+  }
+  
+  out = buffer[0];  
+  return true;
+}
+
+/****************************
+ * Converts a native string
+ * to UTF-8 bytes
+ ****************************/
+static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
+#ifdef _WIN32
+  // allocate space
+  int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, NULL, 0, NULL, NULL);
+  if(!size) {
+    return false;
+  }
+  char* buffer = new char[size];
+  
+  // convert std::string
+  int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, NULL, NULL);
+  if(!check) {
+    delete[] buffer;
+    buffer = NULL;
+    return false;
+  }
+  
+  // append output
+  out.append(buffer, size - 1);
+
+  // clean up
+  delete[] buffer;
+  buffer = NULL;
+#else
+  // convert std::string
+  size_t size = wcstombs(NULL, in.c_str(), in.size());
+  if(size == (size_t)-1) {
+    return false;
+  }
+  char* buffer = new char[size + 1];
+  
+  wcstombs(buffer, in.c_str(), size);
+  if(size == (size_t)-1) {
+    delete[] buffer;
+    buffer = NULL;
+    return false;
+  }
+  buffer[size] = '\0';
+  
+  // create std::string      
+  out.append(buffer, size);
+
+  // clean up
+  delete[] buffer;
+  buffer = NULL;
+#endif
+  
+  return true;
+}
+
+static std::string UnicodeToBytes(const std::wstring &in) {
+  std::string out;
+  if(UnicodeToBytes(in, out)) {
+    return out;
+  }
+
+  return "";
+}
+
+/****************************
+ * Converts a native character
+ * to UTF-8 bytes
+ ****************************/
+static bool CharacterToBytes(wchar_t in, std::string &out) {
+  if(in == L'\0') {
+    return true;
+  }
+  
+  wchar_t buffer[2];
+  buffer[0] = in;
+  buffer[1] = L'\0';
+
+  if(!UnicodeToBytes(buffer, out)) {
+    return false;
+  }
+  
+  return true;
+}
 #endif
