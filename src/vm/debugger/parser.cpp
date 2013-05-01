@@ -377,7 +377,7 @@ Command* Parser::ParseInfo(int depth) {
       else if(Match(TOKEN_CHAR_STRING_LIT)) {
 	CharacterString* char_string =
 	  TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
-	cls_name = char_string->GetString();
+	mthd_name = char_string->GetString();
       }
       else {
 	ProcessError(TOKEN_IDENT);
@@ -738,7 +738,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
   // subsequent instance references
   if(Match(TOKEN_ASSESSOR)) {
-    if(expression->GetExpressionType() == REF_EXPR) {
+    if(expression && expression->GetExpressionType() == REF_EXPR) {
       ParseReference(static_cast<Reference*>(expression), depth + 1);
     }
     else {
