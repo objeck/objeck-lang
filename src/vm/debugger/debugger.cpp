@@ -1007,15 +1007,9 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     }
     // set array address
     else {
-      if(ref_mem) {
-        reference->SetArrayDimension(dim);
-        reference->SetArraySize(max);
-        reference->SetIntValue(ref_mem[index]);
-      }
-      else {
-        wcout << L"current reference is Nil" << endl;
-        is_error = true;
-      }
+      reference->SetArrayDimension(dim);
+      reference->SetArraySize(max);
+      reference->SetIntValue(ref_mem[index]);
     }
   }
   else {
@@ -1072,15 +1066,9 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
     }
     // set array address
     else {
-      if(ref_mem) {
-        reference->SetArrayDimension(dim);
-        reference->SetArraySize(max);
-        reference->SetIntValue(ref_mem[index]);
-      }
-      else {
-        wcout << L"current reference is Nil" << endl;
-        is_error = true;
-      }
+      reference->SetArrayDimension(dim);
+      reference->SetArraySize(max);
+      reference->SetIntValue(ref_mem[index]);
     }
   }
   else {
@@ -1153,15 +1141,9 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     }
     // set array address
     else {
-      if(ref_mem) {
-        reference->SetArrayDimension(dim);
-        reference->SetArraySize(max);
-        reference->SetIntValue(ref_mem[index]);
-      }
-      else {
-        wcout << L"current reference is Nil" << endl;
-        is_error = true;
-      }
+      reference->SetArrayDimension(dim);
+      reference->SetArraySize(max);
+      reference->SetIntValue(ref_mem[index]);
     }
   }
   else {
