@@ -530,7 +530,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   }
 
   // remove references from allocated pool
-  for(size_t i = 0; i < erased_memory.size(); i++) {
+  for(size_t i = 0; i < erased_memory.size(); ++i) {
     allocated_memory.erase(erased_memory[i]);
     allocated_int_obj_array.erase(erased_memory[i]);
   }
@@ -593,7 +593,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #endif
 
   unordered_map<long*, ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); jit_iter++) {
+  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = jit_iter->second;
     long* mem = id->mem;
     StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
