@@ -121,7 +121,7 @@ public:
 
   static void Clear() {
     unordered_map<long*, ClassMethodId*>::iterator id_iter;
-    for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); id_iter++) {
+    for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); ++id_iter) {
       ClassMethodId* tmp = id_iter->second;
       // delete
       delete tmp;
@@ -129,7 +129,7 @@ public:
     }
     
     btree_map<long*, long>::iterator iter;
-    for(iter = allocated_memory.begin(); iter != allocated_memory.end(); iter++) {
+    for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
       long* temp = iter->first;
       
       temp -= 2;
