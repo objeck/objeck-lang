@@ -3,5 +3,8 @@
 		"Hello World"->PrintLine();
 		"Καλημέρα κόσμε"->PrintLine();
 		"こんにちは 世界"->PrintLine();
+		
+		ஃ := 3;
+		ஃ->PrintLine();
 	}
 }
