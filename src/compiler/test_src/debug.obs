@@ -1,6 +1,8 @@
-﻿class Fum {
-	function : Main(args : String[]) ~ Nil {
-		args[0]->PrintLine();
+﻿class Hello {
+#	function : Main(args : String[]) ~ Nil {
+	function : Run() ~ Nil {
+		"Hello World"->PrintLine();
+		"Καλημέρα κόσμε"->PrintLine();
+		"こんにちは 世界"->PrintLine();
 	}
 }
-
