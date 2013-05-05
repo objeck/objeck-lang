@@ -46,7 +46,7 @@ using namespace std;
 // look ahead value
 #define LOOK_AHEAD 3
 // white space
-#define WHITE_SPACE (cur_char == L' ' || cur_char == L'\t' || cur_char == L'\r' || cur_char == L'\n' || cur_char == 0x200b || cur_char == 0xfeff)
+#define WHITE_SPACE (iswspace(cur_char) || cur_char == 0x200b || cur_char == 0xfeff)
 
 /****************************
  * Token types
