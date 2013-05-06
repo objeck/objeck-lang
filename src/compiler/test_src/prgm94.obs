@@ -1,16 +1,16 @@
-bundle Default {
-	class Hello {
-		function : Foo() ~ Int {
-			return 10;
-		}
+﻿use Collection;
 
-		function : Main(args : String[]) ~ Nil {
-			a : Int := Foo();
-			a := 9;
-#~
-			if(a < 10) {
-			};
-~#
-		}
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		v := Vector->New();
+		v->AddBack(IntHolder->New(7));
+		v->AddBack(IntHolder->New(13));
+		Run(v);
+	}
+
+	function : Run(v : Vector) ~ Nil {
+		l := v->Get(0)->As(IntHolder);
+		r := v->Get(1)->As(IntHolder);
+		(l->Get() + r->Get())->PrintLine();
 	}
 }
