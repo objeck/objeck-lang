@@ -1624,59 +1624,19 @@ bundle Collection {
 			@map->Empty();
 		}
 		
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
-	}
 
-	class IntSet {
-		@map : Map;
-
-		New() {
-			@map := Map->New();
-		}
-
-		method : public : Insert(key : Int) ~ Nil {
-			@map->Insert(IntHolder->New(key), Base->New());
-		}
-		
-		method : public : Remove(key : Int) ~ Nil {
-			@map->Remove(IntHolder->New(key));
-		}
-    
-		method : public : Has(key : Int) ~ Bool {
-			result := @map->Find(IntHolder->New(key))->As(IntHolder);
-			return result <> Nil;
-		}
-    
-		method : public : native : GetKeys() ~ IntVector {
-			keys := IntVector->New();
-			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i += 1;) {
-				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
-				keys->AddBack(holder_value->Get());   
-			};
-
-			return keys;
-		}
-    
-		method : public : Empty() ~ Nil {
-			@map->Empty();
-		}
-		
-		method : public : native : IsEmpty() ~ Bool {
-			return @map->IsEmpty();
-		}
-		
-		method : public : native : Size() ~ Int {
-			return @map->Size();
+		method : public : GetMap() ~ Map {
+			return @map;
 		}
 	}
-
+	
 	class FloatMap {
 		@map : Map;
 
@@ -1725,12 +1685,16 @@ bundle Collection {
 			@map->Empty();
 		}
 		
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
+		}
+
+		method : public : GetMap() ~ Map {
+			return @map;
 		}
 	}
 	
@@ -2145,6 +2109,10 @@ bundle Collection {
 
 		method : public : native : Size() ~ Int {
 			return @map->Size();
+		}
+
+		method : public : GetMap() ~ Map {
+			return @map;
 		}
 	}
 	
