@@ -529,6 +529,7 @@ class LibraryClass {
   wstring name;
   wstring parent_name;
   vector<wstring>interface_names;
+  vector<int>interface_ids;
   int cls_space;
   int inst_space;
   map<const wstring, LibraryMethod*> methods;
@@ -624,6 +625,14 @@ class LibraryClass {
   
   vector<wstring> GetInterfaceNames() {
     return interface_names;
+  }
+
+  vector<int> GetInterfaceIds() {
+    return interface_ids;
+  }
+  
+  void AddInterfaceId(int id) {
+    interface_ids.push_back(id);
   }
 
   bool IsInterface() {

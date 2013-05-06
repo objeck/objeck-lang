@@ -1,8 +1,16 @@
-﻿class Hello {
-#	function : Main(args : String[]) ~ Nil {
-	function : Run() ~ Nil {
-		"Hello World"->PrintLine();
-		"Καλημέρα κόσμε"->PrintLine();
-		"こんにちは 世界"->PrintLine();
+﻿use Collection;
+
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		v := Vector->New();
+		v->AddBack(IntHolder->New(7));
+		v->AddBack(IntHolder->New(13));
+		Run(v);
+	}
+
+	function : Run(v : Vector) ~ Nil {
+		l := v->Get(0)->As(IntHolder);
+		r := v->Get(1)->As(IntHolder);
+		(l->Get() + r->Get())->PrintLine();
 	}
 }
