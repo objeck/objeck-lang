@@ -212,6 +212,18 @@ void IntermediateEmitter::Translate()
       lib_class->SetId(class_id++);
     }    
   }
+
+  // resolve referenced interfaces
+  for(size_t i = 0; i < lib_classes.size(); ++i) {
+    LibraryClass* lib_class = lib_classes[i]; 
+    vector<wstring> interface_names = lib_class->GetInterfaceNames();
+    for(size_t j = 0; j < interface_names.size(); ++j) {
+      LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetUses());
+      if(inf_klass) {
+	lib_class->AddInterfaceId(inf_klass->GetId());
+      }
+    }
+  }
 #endif
   
   // process bundles
