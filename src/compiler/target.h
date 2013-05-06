@@ -1019,11 +1019,12 @@ namespace backend {
     bool is_virtual;
     bool is_debug;
     wstring file_name;
-
+    
   public:
-    IntermediateClass(int i, const wstring &n, int pi, const wstring &p, vector<int> infs, vector<wstring> in, 
-      bool is_inf, bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
-      IntermediateDeclarations* ie, const wstring &fn, bool d) {
+    IntermediateClass(int i, const wstring &n, int pi, const wstring &p, 
+		      vector<int> infs, vector<wstring> in, bool is_inf, 
+		      bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
+		      IntermediateDeclarations* ie, const wstring &fn, bool d) {
         id = i;
         name = n;
         pid = pi;
@@ -1046,6 +1047,7 @@ namespace backend {
       id = lib_klass->GetId();
       name = lib_klass->GetName();
       pid = -1;
+      interface_ids = lib_klass->GetInterfaceIds();
       parent_name = lib_klass->GetParentName();
       interface_names = lib_klass->GetInterfaceNames();
       is_interface = lib_klass->IsInterface();
