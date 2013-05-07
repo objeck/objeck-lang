@@ -33,7 +33,6 @@ class MovingAverage {
 		each(i : windowSizes) {
 			windSize := windowSizes[i];
 			ma := MovingAverage->New(windSize);
-	
 			each(j : testData) {
 				x := testData[j];
 				ma->NewNum(x);
