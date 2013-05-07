@@ -1120,7 +1120,7 @@ class Linker {
     }
 
     for(size_t i = 0; i < classes.size(); ++i) {
-      for(size_t j = 0; j < uses.size(); j++) {
+      for(size_t j = 0; j < uses.size(); ++j) {
         if(classes[i]->GetName() == uses[j] + L"." + name) {
           return classes[i];
         }
