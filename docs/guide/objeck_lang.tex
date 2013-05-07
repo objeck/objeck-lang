@@ -152,7 +152,7 @@ below defines the basic objects that are supported in the language:
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
-    \texttt{Char} &  Posix 1--byte character, Windows 2--byte character, External UTF-8 1--byte stream \\ \hline
+    \texttt{Char} & 2 or 4 byte character \\ \hline
     \texttt{Char[]} &  character array \\ \hline
     \texttt{Bool} &  boolean value \\ \hline
     \texttt{Bool[]} &  boolean array \\ \hline
@@ -307,18 +307,7 @@ The size of an array can be obtained by calling the array's
 \texttt{Size()} method.  The \texttt{Size()} method will return the
 number of elements in a given array.  For a multi-dimensional array
 the \texttt{Size()} method returns an array of sizes for each
-dimension.  Character array literals are allocated as \texttt{String}
-objects.  The \texttt{String} class provides support for advanced
-string operations.
-
-\begin{verbatim}
-string := "Hello World!";
-string->Size()->PrintLine();
-strings := ["Hello","World!"];
-sizes := strings->Size();
-sizes[0]->PrintLine();
-sizes[1]->PrintLine();
-\end{verbatim}
+dimension. 
 
 The following example allocates an array of \texttt{Widget} objects.
 An object must implment it's \texttt{New} method if it's going to be
@@ -338,6 +327,20 @@ class MakeWidgets {
     };
   }
 }
+\end{verbatim}
+
+\subsubsection{Characters and Strings}
+All characters are Unicode encoded and stored internally in the format of the host operating system.  On Windows characters are stored internally as UTF-16 (2-byte) values.  On Linux and OS X characters are stored internally as UTF-32 (4-byte) values.  On all platforms characters are read and written in UTF-8, which is ASCII compatible.  
+
+Methods are provided to convert Unicode character arrays to UTF-8 bytes and vice versa.  Character array literals are allocated as \texttt{String} objects.  The \texttt{String} class provides support for advanced string operations (see below).
+
+\begin{verbatim}
+string := "Hello World!";
+string->Size()->PrintLine();
+strings := ["Hello","World!"];
+sizes := strings->Size();
+sizes[0]->PrintLine();
+sizes[1]->PrintLine();
 \end{verbatim}
 
 \subsubsection{Conditional Expressions}
@@ -1099,12 +1102,6 @@ Base class for all objects.
   \begin{itemize}
   \item method : public : native : Find(c : Char) \textasciitilde Int
   \item method : public : native : Find(offset : Int, c : Char) \textasciitilde Int
-  \end{itemize}
-\item \texttt{Find} - returns the index of the last occurrence of a
-  given Character; -1 if not found
-  \begin{itemize}
-  \item method : public : native : FindLast(c : Char) \textasciitilde Int
-  \item method : public : native : FindLast(offset : Int, c : Char) \textasciitilde Int
   \end{itemize}
 \item \texttt{Find} - returns the index of the first occurrence of a
   given String; -1 if not found
