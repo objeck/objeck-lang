@@ -46,7 +46,7 @@ intuitive way to do things. Features include:
 \item Support for object-oriented programming (all data types are
   treated as objects)
 \item Functional support (higher-order functions)
-\item Unicode support and UTF-8 encoding/decoding
+\item Unicode support with external UTF-8 encoding/decoding
 \item Cross platform (support for OS X, Linux and Windows)
 \item Concurrent runtime JIT support
 \item Multi-threaded memory garbage collector
@@ -152,7 +152,7 @@ below defines the basic objects that are supported in the language:
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
-    \texttt{Char} &  1--byte character \\ \hline
+    \texttt{Char} &  Posix 1--byte character, Windows 2--byte character, External UTF-8 1--byte stream \\ \hline
     \texttt{Char[]} &  character array \\ \hline
     \texttt{Bool} &  boolean value \\ \hline
     \texttt{Bool[]} &  boolean array \\ \hline
