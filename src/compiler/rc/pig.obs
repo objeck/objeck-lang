@@ -1,0 +1,8 @@
+﻿class Hello {
+	function : Main(args : String[]) ~ Nil {
+		for(i := 0; i < 10; i += 1;) {
+			roll := ((Float->Random() * 100.0)->As(Int) % 6) + 1;
+			roll->PrintLine();
+		};
+	}
+}
