@@ -1476,7 +1476,16 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       // read input
       const long max = array[2];
       wchar_t* buffer = new wchar_t[max];
+      
+#ifdef _WIN32
+      int in = wcin.peek();
+      while(in == '\r' || in == '\n') {
+        wcin.get();
+        in = wcin.peek();
+      }
+#endif
       wcin.getline(buffer, max);
+      
       wchar_t* dest = (wchar_t*)(array + 3);
       wcsncpy(dest, buffer, max - 1);
       // clean up
