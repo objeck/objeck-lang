@@ -1,8 +1,45 @@
 ﻿class Hello {
 	function : Main(args : String[]) ~ Nil {
-		for(i := 0; i < 10; i += 1;) {
-			roll := ((Float->Random() * 100.0)->As(Int) % 6) + 1;
-			roll->PrintLine();
+		player_count := 2;
+		max_score := 100;
+		safe_score := Int->New[player_count];
+		player := 0; 
+		score := 0;
+		new_player := false;
+
+		while(true) {
+			safe := safe_score[player];
+			" Player {$player}: ({$safe}, {$score}) Rolling? (y/n) "->PrintLine();
+			rolling := IO.Console->ReadString();
+			if(safe_score[player] + score < max_score & (rolling->Equals("y") | rolling->Equals("yes"))) {
+				rolled := ((Float->Random() * 100.0)->As(Int) % 6) + 1;
+				" Rolled {$rolled}"->PrintLine();
+				if(rolled = 1) {
+					safe := safe_score[player];
+					"  Bust! you lose {$score} but still keep your previous {$safe}"->PrintLine();
+					new_player := true;
+				}
+				else {
+					score += rolled;
+				};
+			}
+			else {
+				safe_score[player] += score;
+				if(safe_score[player] >= max_score) {
+                    break;
+				};
+				safe := safe_score[player];
+				" Sticking with {$safe}\n"->PrintLine();
+				new_player := true;
+			};
+
+			if(new_player) {
+				score := 0;
+		        player := (player + 1) % player_count;
+				new_player := false;
+			};
 		};
+		safe := safe_score[player];
+		"\n\nPlayer {$player} wins with a score of {$safe}"->PrintLine();
 	}
 }
