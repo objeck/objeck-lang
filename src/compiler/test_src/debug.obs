@@ -1,6 +1,9 @@
 ﻿class Hello {
 	function : Main(args : String[]) ~ Nil {
-		"aaaaiebbbaa"->Find("ie")->PrintLine();
-		"aaaabbbaa"->Find("ie")->PrintLine();
+		while(true) {
+			"> "->Print();
+			in := IO.Console->ReadString();
+			in->PrintLine();
+		};
 	}
 }
