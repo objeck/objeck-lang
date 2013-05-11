@@ -1,12 +1,10 @@
-﻿class Hello {
+﻿class Pig {
 	function : Main(args : String[]) ~ Nil {
 		player_count := 2;
 		max_score := 100;
 		safe_score := Int->New[player_count];
-		player := 0; 
-		score := 0;
-		new_player := false;
-
+		player := 0; score := 0;
+		
 		while(true) {
 			safe := safe_score[player];
 			" Player {$player}: ({$safe}, {$score}) Rolling? (y/n) "->PrintLine();
@@ -16,8 +14,9 @@
 				" Rolled {$rolled}"->PrintLine();
 				if(rolled = 1) {
 					safe := safe_score[player];
-					"  Bust! you lose {$score} but still keep your previous {$safe}"->PrintLine();
-					new_player := true;
+					"  Bust! you lose {$score} but still keep your previous {$safe}\n"->PrintLine();
+					score := 0;
+		        	player := (player + 1) % player_count;
 				}
 				else {
 					score += rolled;
@@ -30,13 +29,8 @@
 				};
 				safe := safe_score[player];
 				" Sticking with {$safe}\n"->PrintLine();
-				new_player := true;
-			};
-
-			if(new_player) {
 				score := 0;
 		        player := (player + 1) % player_count;
-				new_player := false;
 			};
 		};
 		safe := safe_score[player];
