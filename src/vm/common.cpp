@@ -1483,7 +1483,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
         wcin.get();
       }
 #endif
-            
+      
       wchar_t* dest = (wchar_t*)(array + 3);
       wcsncpy(dest, buffer, max - 1);
       // clean up
