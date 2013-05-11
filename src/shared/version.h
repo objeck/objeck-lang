@@ -37,6 +37,6 @@
 #define MAGIC_NUM_EXE 0xdddd
 #define VER_NUM 3202
 
-#define VERSION_STRING L"v3.2.0_2"
+#define VERSION_STRING L"v3.2.0_3"
 
 #endif
