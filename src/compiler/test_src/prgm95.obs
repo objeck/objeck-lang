@@ -1,15 +1,14 @@
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			'a'->ToUpper()->PrintLine();
-			'Z'->ToUpper()->PrintLine();
-			'R'->ToUpper()->PrintLine();
-			'q'->ToUpper()->PrintLine();
+﻿class Foo {
+	method: virtual : Go(a : Int) ~ Float;
+	
+}
 
-			'a'->ToLower()->PrintLine();
-			'Z'->ToLower()->PrintLine();
-			'R'->ToLower()->PrintLine();
-			'q'->ToLower()->PrintLine();
-		}
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		c := Foo->New() {
+			method: : Go(a : Int) ~ Float {
+				return 3.145;
+			}
+		};
 	}
 }
