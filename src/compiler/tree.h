@@ -2181,6 +2181,7 @@ namespace frontend {
     friend class TreeFactory;
     EnumItem* enum_item;
     Class* original_klass;
+    Class* anonymous_klass;
     Method* method;
     LibraryClass* original_lib_klass;
     LibraryMethod* lib_method;
@@ -2442,6 +2443,14 @@ namespace frontend {
       return lib_method;
     }
 
+    void SetAnonymousClass(Class* c) {
+      anonymous_klass = c;
+    }
+
+    Class* GetAnonymousClass() {
+      return anonymous_klass;
+    }
+    
     void SetOriginalClass(Class* c) {
       original_klass = c;
     }
