@@ -2663,6 +2663,9 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
 							      ParseExpressionList(depth + 1));
+	if(Match(TOKEN_OPEN_BRACE)) {
+	  ParseAnonymousClass(method_call, depth);
+	} 
       }
     }
     else if(Match(TOKEN_AS_ID)) {
@@ -2797,6 +2800,82 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   }
 
   return call;
+}
+
+void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
+{
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+  
+  // statement list
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  const wstring cls_name = method_call->GetVariableName() + L".#Anonymous#";
+
+  vector<wstring> interface_strings;
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", interface_strings, true);
+  
+  Class* prev_class = current_class;
+  current_class = klass;
+
+  // add '@self' entry
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
+								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
+								false, false, true);
+  symbol_table->CurrentParseScope()->AddEntry(entry);
+
+  // add '@parent' entry
+  entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(PARENT_ID),
+						   TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
+						   false, false, true);
+  symbol_table->CurrentParseScope()->AddEntry(entry);
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    // parse 'method | function | declaration'
+    if(Match(TOKEN_FUNCTION_ID)) {
+      Method* method = ParseMethod(true, false, depth + 1);
+      bool was_added = klass->AddMethod(method);
+      if(!was_added) {
+        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+      }
+    } 
+    else if(Match(TOKEN_METHOD_ID) || Match(TOKEN_NEW_ID)) {
+      Method* method = ParseMethod(false, false, depth + 1);
+      bool was_added = klass->AddMethod(method);
+      if(!was_added) {
+        ProcessError(L"Method or function already defined or overloaded '" + method->GetName() + L"'", method);
+      }
+    } 
+    else if(Match(TOKEN_IDENT)) {
+      const wstring &ident = scanner->GetToken()->GetIdentifier();
+      NextToken();
+
+      klass->AddStatement(ParseDeclaration(ident, depth + 1));
+      if(!Match(TOKEN_SEMI_COLON)) {
+        ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+      }
+      NextToken();
+    } 
+    else {
+      ProcessError(L"Expected declaration", TOKEN_SEMI_COLON);
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+  
+  symbol_table->PreviousParseScope(current_class->GetName());
+  
+  method_call->SetAnonymousClass(klass);
+  current_bundle->AddClass(klass);
+  
+  current_class = prev_class;
 }
 
 /****************************
