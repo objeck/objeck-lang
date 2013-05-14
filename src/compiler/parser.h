@@ -160,6 +160,7 @@ class Parser {
   MethodCall* ParseMethodCall(const wstring &ident, int depth);
   void ParseMethodCall(Expression* expression, int depth);
   MethodCall* ParseMethodCall(Variable* variable, int depth);
+  void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
