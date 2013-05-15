@@ -54,6 +54,7 @@ class Parser {
   map<int, wstring> errors;
   wstring src_path;
   wstring run_prgm;
+  unsigned int anonymous_class_id;
   
   inline void NextToken() {
     scanner->NextToken();
@@ -196,6 +197,7 @@ class Parser {
     LoadErrorCodes();
     current_class = NULL;
     current_method = NULL;
+    anonymous_class_id = 0;
   }
 
   ~Parser() {
