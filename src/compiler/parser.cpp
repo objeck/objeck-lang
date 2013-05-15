@@ -2813,7 +2813,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
 
-  const wstring cls_name = method_call->GetVariableName() + L".#Anonymous#";
+  const wstring cls_name = L'#' + method_call->GetVariableName() + L".Anonymous." + ToString(anonymous_class_id++) + L'#';
 
   vector<wstring> interface_strings;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", interface_strings, true);
@@ -2875,6 +2875,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   symbol_table->PreviousParseScope(current_class->GetName());
   
   method_call->SetAnonymousClass(klass);
+  method_call->SetVariableName(cls_name);
   current_bundle->AddClass(klass);
   
   current_class = prev_class;

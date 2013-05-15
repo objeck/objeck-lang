@@ -1,15 +1,28 @@
 ﻿class Foo {
-	method: virtual : Go(a : Int) ~ Float;
+	method : public : virtual : Go(a : Int) ~ Float;
 	
 }
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		c := Foo->New() {
-			method : Go(a : Int) ~ Float {
+			New() {}
+			method : public : Go(a : Int) ~ Float {
 				return 3.145;
 			}
 		};
-		c->Go(2);
+
+		d := Foo->New() {
+			New() {}
+			method : public : Go(a : Int) ~ Float {
+				return a * 67.95;
+			}
+		};
+
+		c->Go(13)->PrintLine();
+		c->GetClass()->GetName()->PrintLine();
+
+		d->Go(13)->PrintLine();
+		d->GetClass()->GetName()->PrintLine();
 	}
 }
