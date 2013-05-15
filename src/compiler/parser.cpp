@@ -2820,18 +2820,20 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   
   Class* prev_class = current_class;
   current_class = klass;
+  symbol_table->NewParseScope();
 
   // add '@self' entry
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
 								TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
 								false, false, true);
+
   symbol_table->CurrentParseScope()->AddEntry(entry);
 
   // add '@parent' entry
   entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(PARENT_ID),
 						   TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
 						   false, false, true);
-  symbol_table->CurrentParseScope()->AddEntry(entry);
+
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
