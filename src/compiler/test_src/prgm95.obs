@@ -10,5 +10,6 @@ class Test {
 				return 3.145;
 			}
 		};
+		c->Go(2);
 	}
 }
