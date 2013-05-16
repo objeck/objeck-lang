@@ -1,19 +1,42 @@
 ﻿class Foo {
+	@z : Int;
 	New() { "Hello"->PrintLine(); }
 	method : virtual : public : Go(a : Int) ~ Float;
+
+	method : public : Go2(a : Int) ~ Nil {
+		@z := 101;	
+	}
 }
 
 class Test {
 
 	function : Main(args : String[]) ~ Nil {
+s :=				String->New() {
+	#				New() { Parent(); }
+
+					method : public : Bar() ~ Nil {
+						"barred"->PrintLine();
+					}
+				};
+		s->Bar();
+		s->Append("GGG");
+		s->PrintLine();
+		s->GetClass()->GetName()->PrintLine();
+
 		e := 2;
-		c := Foo->New() {
+		c := Foo->New(10) {
 			@m : Int;
+			@e : Int;
 			# TODO: make an explicit call...
-			New() { Parent(); @m := 31; }
+			New(e : Int) { Parent(); @e := e; @m := 31; }
 
 			method : public : Go(a : Int) ~ Float {
-				return e * 3.145;
+				Go2(4);
+			
+						
+					
+
+				return @z + @e * 3.145;
 #				return 3.145;
 			}
 		};
