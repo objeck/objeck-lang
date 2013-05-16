@@ -2802,6 +2802,9 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   return call;
 }
 
+/****************************
+ * Parses an anonymous class
+ ****************************/
 void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
   const int line_num = GetLineNumber();
@@ -2883,6 +2886,8 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   
   symbol_table->PreviousParseScope(current_class->GetName());
   
+  // TODO: flag anonymous class; ensure a "New" method has been defined
+
   method_call->SetAnonymousClass(klass);
   method_call->SetVariableName(cls_name);
   current_bundle->AddClass(klass);
