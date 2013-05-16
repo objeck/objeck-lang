@@ -12,7 +12,7 @@ class Test {
 
 	function : Main(args : String[]) ~ Nil {
 s :=				String->New() {
-	#				New() { Parent(); }
+					New() { Parent(); }
 
 					method : public : Bar() ~ Nil {
 						"barred"->PrintLine();

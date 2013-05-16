@@ -1979,6 +1979,7 @@ namespace frontend {
     bool is_virtual;
     bool was_called;
     bool is_interface;
+    bool is_anonymous;
     vector<std::wstring> interface_strings;
 
     Class(const std::wstring &f, const int l, const std::wstring &n, 
@@ -1992,6 +1993,7 @@ namespace frontend {
         lib_parent = NULL;
         is_virtual = false;
         was_called = false;
+	is_anonymous = false;
     }
 
     ~Class() {
@@ -2038,6 +2040,14 @@ namespace frontend {
       return symbol_table;
     }
 
+    void SetAnonymous() {
+      is_anonymous = true;
+    }
+
+    bool IsAnonymous() {
+      return is_anonymous;
+    }
+    
     bool AddMethod(Method* m) {
       const std::wstring &parsed_name = m->GetParsedName();
       for(size_t i = 0; i < method_list.size(); ++i) {
