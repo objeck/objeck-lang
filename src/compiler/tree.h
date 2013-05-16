@@ -349,7 +349,6 @@ namespace frontend {
     }
 
     void PreviousParseScope(const std::wstring &namescope) {
-      // assert(!GetSymbolTable(namescope));
       if(GetSymbolTable(namescope)) {
         return;
       }
@@ -2218,6 +2217,7 @@ namespace frontend {
       original_lib_klass = NULL;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
+      anonymous_klass = NULL;
 
       if(variable_name == BOOL_CLASS_ID) {
         array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
@@ -2267,6 +2267,7 @@ namespace frontend {
       original_lib_klass = NULL;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
+      anonymous_klass = NULL;
     }
 
     MethodCall(const std::wstring &f, const int l,
@@ -2288,6 +2289,7 @@ namespace frontend {
       original_lib_klass = NULL;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
+      anonymous_klass = NULL;
     }
 
     MethodCall(const std::wstring &f, const int l,
@@ -2309,6 +2311,7 @@ namespace frontend {
       original_lib_klass = NULL;
       is_enum_call = is_func_def = is_dyn_func_call = false;
       func_rtrn = NULL;
+      anonymous_klass = NULL;
     }
 
     ~MethodCall() {

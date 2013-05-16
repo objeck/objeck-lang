@@ -2819,6 +2819,8 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", interface_strings, true);
   
   Class* prev_class = current_class;
+  prev_method = current_method;
+  current_method = NULL;
   current_class = klass;
   symbol_table->NewParseScope();
 
@@ -2879,6 +2881,8 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   current_bundle->AddClass(klass);
   
   current_class = prev_class;
+  current_method = prev_method;
+  prev_method = NULL;
 }
 
 /****************************
