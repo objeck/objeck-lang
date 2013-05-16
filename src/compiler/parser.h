@@ -48,6 +48,7 @@ class Parser {
   ParsedBundle* current_bundle;
   Class* current_class;
   Method* current_method;
+  Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
   map<ScannerTokenType, wstring> error_msgs;
@@ -196,7 +197,7 @@ class Parser {
     program = new ParsedProgram;
     LoadErrorCodes();
     current_class = NULL;
-    current_method = NULL;
+    current_method = prev_method = NULL;
     anonymous_class_id = 0;
   }
 

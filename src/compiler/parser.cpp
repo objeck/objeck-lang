@@ -2806,7 +2806,12 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
-  
+
+  if(prev_method && current_method) {
+    ProcessError(L"Invalid nested anonymous classes");
+    return;
+  }
+
   // statement list
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
