@@ -5,10 +5,13 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		e := 2;
 		c := Foo->New() {
-			New() {}
+			@m : Int;
+			New() { @m := 31; }
+
 			method : public : Go(a : Int) ~ Float {
-				return 3.145;
+				return e * 3.145;
 			}
 		};
 
