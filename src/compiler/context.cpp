@@ -192,6 +192,33 @@ bool ContextAnalyzer::Analyze()
 	AnalyzeMethods(classes[j], 0);
       }
     }
+    
+    // process anonymous classes
+    for(size_t i = 0; i < anonymous_classes.size(); ++i) {
+      bool found = false;
+      Class* anonymous_class = anonymous_classes[i];
+      MethodCall* anonymous_call = anonymous_class->GetAnonymousCall();
+      
+      if(anonymous_call->GetMethod()) {
+	const wstring calling_name = anonymous_call->GetMethod()->GetEncodedName();	
+	if(anonymous_class->GetMethod(calling_name)) {
+	  found = true;
+	}
+      }
+      else if(anonymous_call->GetLibraryMethod()) {
+	const wstring calling_name = anonymous_call->GetLibraryMethod()->GetName();
+	if(anonymous_class->GetMethod(calling_name)) {
+	  found = true;
+	}
+      }
+      else {
+	ProcessError(anonymous_class, L"Invalid anonymous class instantiation");
+      }
+      
+      if(!found) {
+	ProcessError(anonymous_class, L"Calling 'New(..)' method signature is not defined for anonymous class");
+      }
+    }
 
     if(!main_found && !is_lib && !is_web) {
       ProcessError(L"The 'Main(args)' function was not defined");
@@ -423,7 +450,10 @@ bool ContextAnalyzer::Analyze()
     }
 
     // check anonymous methods
-    if(klass->IsAnonymous()) {
+    if(klass->GetAnonymousCall()) {
+      anonymous_classes.push_back(klass);
+      
+/*
       bool found = false;
       if(klass->GetParent()) {
 	vector<Method*> parent_methods = klass->GetParent()->GetMethods();
@@ -467,6 +497,7 @@ bool ContextAnalyzer::Analyze()
       if(found) {
 	wcout << L"Found..." << endl;
       }
+*/
     }
   }
 
