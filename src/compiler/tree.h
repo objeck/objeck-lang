@@ -1979,7 +1979,7 @@ namespace frontend {
     bool is_virtual;
     bool was_called;
     bool is_interface;
-    bool is_anonymous;
+    MethodCall* anonymous_call;
     vector<std::wstring> interface_strings;
 
     Class(const std::wstring &f, const int l, const std::wstring &n, 
@@ -1993,7 +1993,7 @@ namespace frontend {
         lib_parent = NULL;
         is_virtual = false;
         was_called = false;
-	is_anonymous = false;
+	anonymous_call = NULL;
     }
 
     ~Class() {
@@ -2039,13 +2039,13 @@ namespace frontend {
     SymbolTable* GetSymbolTable() {
       return symbol_table;
     }
-
-    void SetAnonymous() {
-      is_anonymous = true;
+    
+    void SetAnonymousCall(MethodCall* c) {
+      anonymous_call = c;
     }
-
-    bool IsAnonymous() {
-      return is_anonymous;
+    
+    MethodCall* GetAnonymousCall() {
+      return anonymous_call;
     }
     
     bool AddMethod(Method* m) {

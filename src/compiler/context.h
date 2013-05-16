@@ -274,6 +274,7 @@ class ContextAnalyzer {
   int int_str_index;
   int float_str_index;
   bool in_loop;
+  vector<Class*> anonymous_classes;
 
   void Show(const wstring &msg, const int line_num, int depth) {
     wcout << setw(4) << line_num << L": ";

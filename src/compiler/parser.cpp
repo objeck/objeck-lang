@@ -2886,12 +2886,9 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   
   symbol_table->PreviousParseScope(current_class->GetName());
   
-  // TODO: flag anonymous class; ensure a "New" method has been defined
-
   method_call->SetAnonymousClass(klass);
   method_call->SetVariableName(cls_name);
-
-  klass->SetAnonymous();
+  klass->SetAnonymousCall(method_call);
   current_bundle->AddClass(klass);
   
   current_class = prev_class;
