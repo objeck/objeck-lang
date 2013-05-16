@@ -1,22 +1,25 @@
 ﻿class Foo {
-	method : public : virtual : Go(a : Int) ~ Float;
-	
+	New() { "Hello"->PrintLine(); }
+	method : virtual : public : Go(a : Int) ~ Float;
 }
 
 class Test {
+
 	function : Main(args : String[]) ~ Nil {
 		e := 2;
 		c := Foo->New() {
 			@m : Int;
-			New() { @m := 31; }
+			# TODO: make an explicit call...
+			New() { Parent(); @m := 31; }
 
 			method : public : Go(a : Int) ~ Float {
 				return e * 3.145;
+#				return 3.145;
 			}
 		};
 
 		d := Foo->New() {
-			New() {}
+			New() { Parent(); }
 			method : public : Go(a : Int) ~ Float {
 				return a * 67.95;
 			}
