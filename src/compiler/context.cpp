@@ -421,6 +421,53 @@ bool ContextAnalyzer::Analyze()
 		     current_class->GetLibraryParent()->GetName());
       }
     }
+
+    // check anonymous methods
+    if(klass->IsAnonymous()) {
+      bool found = false;
+      if(klass->GetParent()) {
+	vector<Method*> parent_methods = klass->GetParent()->GetMethods();
+	for(size_t i = 0; i < parent_methods.size(); ++i) {
+	  Method* parent_method = parent_methods[i];
+	  if(parent_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+	     parent_method->GetMethodType() == NEW_PRIVATE_METHOD) {
+	    const wstring parent_name = parent_method->GetName();
+	    const int start = parent_name.find(':');
+	    if(start > -1) {
+	      const wstring child_name = klass->GetName() + parent_name.substr(start, parent_name.size() - start);
+	      if(klass->GetMethod(child_name)) {
+		found = true;
+	      }	     
+	    }
+	  }
+	}
+      }
+      else if(klass->GetLibraryParent()) {
+	map<const wstring, LibraryMethod*> parent_lib_methods = klass->GetLibraryParent()->GetMethods();
+	map<const wstring, LibraryMethod*>::iterator iter;
+	for(iter = parent_lib_methods.begin(); iter != parent_lib_methods.end(); ++iter) {
+	  LibraryMethod* parent_lib_method = iter->second;
+	  if(parent_lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+	     parent_lib_method->GetMethodType() == NEW_PRIVATE_METHOD) {
+	    const wstring parent_name = parent_lib_method->GetName();
+	    const int start = parent_name.find(':');
+	    if(start > -1) {
+	      const wstring child_name = klass->GetName() + parent_name.substr(start, parent_name.size() - start);
+	      if(klass->GetMethod(child_name)) {
+		found = true;
+	      }	     
+	    }
+	  }
+	}
+      }
+      else {
+	ProcessError(klass, L"Anonymous classes must have a base class");
+      }
+
+      if(found) {
+	wcout << L"Found..." << endl;
+      }
+    }
   }
 
   /****************************
@@ -746,6 +793,7 @@ bool ContextAnalyzer::Analyze()
       for(size_t i = 0; i < statements.size(); ++i) {
 	AnalyzeStatement(statements[i], depth + 1);
       }
+
       // check for parent call
       if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
 	  current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
