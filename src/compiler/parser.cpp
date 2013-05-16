@@ -2890,6 +2890,8 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 
   method_call->SetAnonymousClass(klass);
   method_call->SetVariableName(cls_name);
+
+  klass->SetAnonymous();
   current_bundle->AddClass(klass);
   
   current_class = prev_class;
