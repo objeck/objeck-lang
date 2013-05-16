@@ -2917,6 +2917,7 @@ bool ContextAnalyzer::Analyze()
     Expression* left_expr = expression->GetLeft();
     Expression* right_expr = expression->GetRight();
 
+
     Type* left = GetExpressionType(left_expr, depth + 1);
     Type* right = GetExpressionType(right_expr, depth + 1);
 
