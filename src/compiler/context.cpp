@@ -448,56 +448,10 @@ bool ContextAnalyzer::Analyze()
 		     current_class->GetLibraryParent()->GetName());
       }
     }
-
-    // check anonymous methods
+    
+    // collect anonymous classes
     if(klass->GetAnonymousCall()) {
       anonymous_classes.push_back(klass);
-      
-/*
-      bool found = false;
-      if(klass->GetParent()) {
-	vector<Method*> parent_methods = klass->GetParent()->GetMethods();
-	for(size_t i = 0; i < parent_methods.size(); ++i) {
-	  Method* parent_method = parent_methods[i];
-	  if(parent_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-	     parent_method->GetMethodType() == NEW_PRIVATE_METHOD) {
-	    const wstring parent_name = parent_method->GetName();
-	    const int start = parent_name.find(':');
-	    if(start > -1) {
-	      const wstring child_name = klass->GetName() + parent_name.substr(start, parent_name.size() - start);
-	      if(klass->GetMethod(child_name)) {
-		found = true;
-	      }	     
-	    }
-	  }
-	}
-      }
-      else if(klass->GetLibraryParent()) {
-	map<const wstring, LibraryMethod*> parent_lib_methods = klass->GetLibraryParent()->GetMethods();
-	map<const wstring, LibraryMethod*>::iterator iter;
-	for(iter = parent_lib_methods.begin(); iter != parent_lib_methods.end(); ++iter) {
-	  LibraryMethod* parent_lib_method = iter->second;
-	  if(parent_lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-	     parent_lib_method->GetMethodType() == NEW_PRIVATE_METHOD) {
-	    const wstring parent_name = parent_lib_method->GetName();
-	    const int start = parent_name.find(':');
-	    if(start > -1) {
-	      const wstring child_name = klass->GetName() + parent_name.substr(start, parent_name.size() - start);
-	      if(klass->GetMethod(child_name)) {
-		found = true;
-	      }	     
-	    }
-	  }
-	}
-      }
-      else {
-	ProcessError(klass, L"Anonymous classes must have a base class");
-      }
-
-      if(found) {
-	wcout << L"Found..." << endl;
-      }
-*/
     }
   }
 
@@ -674,13 +628,9 @@ bool ContextAnalyzer::Analyze()
       }
     }
     // check function vs. method
-    if(impl_is_static != virtual_method->IsStatic()) {
+    if(impl_is_static != virtual_method->IsStatic() || impl_is_virtual) {
       ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
 		   virtual_method->GetClass()->GetName());
-    }
-    // check virtual
-    if(impl_is_virtual) {
-      ProcessError(impl_class, L"Implementation method cannot be virtual");
     }
   }
 
