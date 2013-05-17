@@ -5,12 +5,14 @@
 
 	method : public : Go2(a : Int) ~ Nil {
 		@z := 101;	
+		@z->PrintLine();
 	}
 }
 
 class Test {
 
 	function : Main(args : String[]) ~ Nil {
+#~
 s :=				String->New() {
 					New() { Parent(); }
 
@@ -37,6 +39,10 @@ s :=				String->New() {
 			}
 		};
 
+		c->Go2(13);
+		c->GetClass()->GetName()->PrintLine();
+~#
+
 		d := Foo->New(10) {
 			New(a : Int) { Parent(); }
 			method : public : Go(a : Int) ~ Float {
@@ -44,10 +50,8 @@ s :=				String->New() {
 			}
 		};
 
-		c->Go2(13);
-		c->GetClass()->GetName()->PrintLine();
-
 		d->Go2(13);
+		d->Go(31)->PrintLine();
 		d->GetClass()->GetName()->PrintLine();
 	}
 }

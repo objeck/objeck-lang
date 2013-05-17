@@ -1,3 +1,9 @@
+Support for anonymous classes
+1) more testing
+2 update docs
+
+========================
+
 Unicode refactor
 
 1) C APIs (add notes about 32-bit odbc driver/dll)
