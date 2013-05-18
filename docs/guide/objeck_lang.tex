@@ -675,6 +675,33 @@ class Ufo implements Vehicle, Color {
 }
 \end{verbatim}
 
+\subsubsection{Anonymous Classes}
+An anonymous class can be used to define inline interface methods.  An anonymous class must implement all virtual methods for an interface.  Variables that are within the scope of the anonymous class statement can be referenced by the anonymous class if they're passed as parameters the constructor.
+
+\begin{verbatim}
+interface Greetings {
+  method : virtual : public : SayHi() ~ Nil;
+}
+
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    english := Greetings->New() {
+      New() {}
+      method : public : SayHi() ~ Nil {
+        "Hey..."->PrintLine();
+      }
+    };
+
+    greek := Greetings->New() {
+      New() {}
+      method : public : SayHi() ~ Nil {
+        "Howdy!"->PrintLine();
+      }
+    };
+    ...
+
+\end{verbatim}
+
 \subsection{Higher-Order Functions}
 The Objeck language supports the notion of higher-order functions such
 that a given function may be bound to a variable at runtime.
