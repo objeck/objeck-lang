@@ -195,10 +195,10 @@ bool ContextAnalyzer::Analyze()
     
     // process anonymous classes
     for(size_t i = 0; i < anonymous_classes.size(); ++i) {
-      bool found = false;
       Class* anonymous_class = anonymous_classes[i];
       MethodCall* anonymous_call = anonymous_class->GetAnonymousCall();
       
+      bool found = false;      
       if(anonymous_call->GetMethod()) {
 	const wstring calling_name = anonymous_call->GetMethod()->GetEncodedName();	
 	if(anonymous_class->GetMethod(calling_name)) {
