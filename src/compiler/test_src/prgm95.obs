@@ -1,12 +1,6 @@
-﻿class Foo {
-	@z : Int;
-	New(a : Int) { "Hello"->PrintLine(); }
+﻿interface Foo {
 	method : virtual : public : Go(a : Int) ~ Float;
-
-	method : public : Go2(a : Int) ~ Nil {
-		@z := 101;	
-		@z->PrintLine();
-	}
+	method : virtual : public : Go2() ~ Int;
 }
 
 class Test {
@@ -35,7 +29,10 @@ s :=				String->New() {
 			method : public : Go(a : Int) ~ Float {
 				Go2(4);
 				return @z + @e * 3.145;
-#				return 3.145;
+			}
+
+			method : public : Go2() ~ Int {
+				return 13;
 			}
 		};
 
@@ -44,13 +41,18 @@ s :=				String->New() {
 ~#
 
 		d := Foo->New(10) {
-			New(a : Int) { Parent(); }
+#			New(a : Int) { }
+			New(a : Int) { }
 			method : public : Go(a : Int) ~ Float {
 				return a * 67.95;
 			}
+
+			method : public : Go2() ~ Int {
+				return 101;
+			}
 		};
 
-		d->Go2(13);
+		d->Go2()->PrintLine();
 		d->Go(31)->PrintLine();
 		d->GetClass()->GetName()->PrintLine();
 	}

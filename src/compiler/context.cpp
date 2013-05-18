@@ -211,15 +211,13 @@ bool ContextAnalyzer::Analyze()
 	  found = true;
 	}
       }
-      else {
-	ProcessError(anonymous_class, L"Invalid anonymous class instantiation");
-      }
       
       if(!found) {
-	ProcessError(anonymous_class, L"Calling 'New(..)' method signature is not defined for anonymous class");
+	ProcessError(anonymous_class, L"Callers 'New(..)' method signature not defined in anonymous class");
       }
     }
-
+    
+    // check for entry points
     if(!main_found && !is_lib && !is_web) {
       ProcessError(L"The 'Main(args)' function was not defined");
     }
@@ -469,6 +467,11 @@ bool ContextAnalyzer::Analyze()
       Class* inf_klass = SearchProgramClasses(interface_name);
 
       if(inf_klass) {
+	if(!inf_klass->IsInterface()) {
+	  ProcessError(klass, L"Expected an interface type");
+	  return;
+	}
+
 	// ensure interface methods are virtual
 	vector<Method*> methods = inf_klass->GetMethods();
 	for(size_t i = 0; i < methods.size(); ++i) {
@@ -481,10 +484,6 @@ bool ContextAnalyzer::Analyze()
 	  ProcessError(klass, L"Not all methods have been implemented for the interface: " +
 		       inf_klass->GetName());
 	}
-
-	if(!inf_klass->IsInterface()) {
-	  ProcessError(klass, L"Classes cannot be implemented, however classes may be derived from other classes");
-	}
 	else {
 	  // add interface
 	  inf_klass->SetCalled(true);
@@ -495,6 +494,11 @@ bool ContextAnalyzer::Analyze()
       else {
 	LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses());
 	if(inf_lib_klass) {
+	  if(!inf_lib_klass->IsInterface()) {
+	    ProcessError(klass, L"Expected an interface type");
+	    return;
+	  }
+
 	  // ensure interface methods are virtual
 	  map<const wstring, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
 	  map<const wstring, LibraryMethod*>::iterator iter;
@@ -508,11 +512,7 @@ bool ContextAnalyzer::Analyze()
 	  if(!AnalyzeVirtualMethods(klass, inf_lib_klass, depth)) {
 	    ProcessError(klass, L"Not all methods have been implemented for the interface: " +
 			 inf_lib_klass->GetName());
-	  }
-
-	  if(!inf_lib_klass->IsInterface()) {
-	    ProcessError(klass, L"Classes cannot be implemented, however classes may be derived from other classes");
-	  }
+	  }	  
 	  else {
 	    // add interface
 	    inf_lib_klass->SetCalled(true);
