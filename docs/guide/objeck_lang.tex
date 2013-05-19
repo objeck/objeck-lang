@@ -685,14 +685,14 @@ interface Greetings {
 
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    hey := Greetings->New() {
+    hey := Base->New() implements Greetings {
       New() {}
       method : public : SayHi() ~ Nil {
         "Hey..."->PrintLine();
       }
     };
 
-    howdy := Greetings->New() {
+    howdy := Base->New() implements Greetings {
       New() {}
       method : public : SayHi() ~ Nil {
         "Howdy!"->PrintLine();
