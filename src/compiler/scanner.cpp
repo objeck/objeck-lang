@@ -93,7 +93,7 @@ void Scanner::LoadKeywords()
   ident_map[L"and"] = TOKEN_AND_ID,
   ident_map[L"or"] = TOKEN_OR_ID,
   ident_map[L"xor"] = TOKEN_XOR_ID,
-  ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
+ ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
   ident_map[L"if"] = TOKEN_IF_ID;
   ident_map[L"else"] = TOKEN_ELSE_ID;
   ident_map[L"do"] = TOKEN_DO_ID;

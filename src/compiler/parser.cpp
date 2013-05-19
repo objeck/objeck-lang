@@ -2663,7 +2663,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
 							      ParseExpressionList(depth + 1));
-	if(Match(TOKEN_OPEN_BRACE)) {
+	if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
 	  ParseAnonymousClass(method_call, depth);
 	} 
       }
@@ -2814,19 +2814,42 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
     ProcessError(L"Invalid nested anonymous classes");
     return;
   }
+  
+  const wstring cls_name = method_call->GetVariableName() + L".#Anonymous." + 
+    ToString(anonymous_class_id++) + L'#';
+  
+  vector<wstring> interface_names;
+  if(Match(TOKEN_IMPLEMENTS_ID)) {
+    NextToken();
+    while(!Match(TOKEN_OPEN_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+      // identifier
+      const wstring& ident = ParseBundleName();
+      interface_names.push_back(ident);      
+      if(Match(TOKEN_COMMA)) {
+        NextToken();
+        if(!Match(TOKEN_IDENT)) {
+          ProcessError(TOKEN_IDENT);
+        }
+      } 
+      else if(!Match(TOKEN_OPEN_BRACE)) {
+        ProcessError(L"Expected ',' or '{'", TOKEN_OPEN_BRACE);
+        NextToken();
+      }
+    }
+  }
 
   // statement list
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
   }
   NextToken();
-
-  const wstring cls_name = method_call->GetVariableName() + L".#Anonymous." + 
-    ToString(anonymous_class_id++) + L'#';
   
-  vector<wstring> interface_strings;
-  interface_strings.push_back(method_call->GetVariableName());
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", interface_strings, true);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
+						    method_call->GetVariableName(),
+						    interface_names, true);
   
   Class* prev_class = current_class;
   prev_method = current_method;

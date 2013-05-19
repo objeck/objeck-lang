@@ -396,12 +396,12 @@ bool ContextAnalyzer::Analyze()
     // check parent class
     Class* parent_klass = klass->GetParent();
     if(parent_klass && parent_klass->IsInterface()) {
-      ProcessError(klass, L"Classes cannot be derived from interfaces, however classes may implement interfaces");
+      ProcessError(klass, L"Classes cannot be derived from interfaces");
     }
     else {
       LibraryClass* parent_lib_klass = klass->GetLibraryParent();
       if(parent_lib_klass && parent_lib_klass->IsInterface()) {
-	ProcessError(klass, L"Classes cannot be derived from interfaces, however classes may implement interfaces");
+	ProcessError(klass, L"Classes cannot be derived from interfaces");
       }
     }
     // check interfaces
@@ -781,11 +781,13 @@ bool ContextAnalyzer::Analyze()
 	 (current_class->GetParent() || (current_class->GetLibraryParent() &&
 					 current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
         if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
-          ProcessError(current_method, L"Parent call required");
+	  if(!current_class->IsInterface()) {
+            ProcessError(current_method, L"Parent call required");
+	  }
         }
         else {
           MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
-          if(mthd_call->GetCallType() != PARENT_CALL) {
+          if(mthd_call->GetCallType() != PARENT_CALL && !current_class->IsInterface()) {
             ProcessError(current_method, L"Parent call required");
           }
         }

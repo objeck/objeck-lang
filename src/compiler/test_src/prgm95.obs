@@ -40,7 +40,7 @@ s :=				String->New() {
 		c->GetClass()->GetName()->PrintLine();
 ~#
 
-		d := Foo->New(10) {
+		Base->New(10) implements Foo {
 #			New(a : Int) { }
 			New(a : Int) { }
 			method : public : Go(a : Int) ~ Float {
@@ -50,10 +50,11 @@ s :=				String->New() {
 			method : public : Go2() ~ Int {
 				return 101;
 			}
-		};
+		}->Go2()->PrintLine();
 
-		d->Go2()->PrintLine();
+#~
 		d->Go(31)->PrintLine();
 		d->GetClass()->GetName()->PrintLine();
+~#
 	}
 }
