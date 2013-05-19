@@ -44,7 +44,6 @@ class IntermediateEmitter;
 /****************************
  * Creates a binary search tree
  * for case statements.
- * Searches are log2(n).
  ****************************/
 enum SelectOperation {
   CASE_LESS,
