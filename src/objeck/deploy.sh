@@ -129,10 +129,7 @@ if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 		cd ~/Desktop
 	fi;
 
-	if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-		rm -f objeck.zip
-		zip -b . -r objeck-lang/* objeck-lang 
-	elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
+	if [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 		rm -f objeck.zip
 		"C:\Program Files\7-Zip\7z.exe" a -tzip objeck-lang
 	else 
