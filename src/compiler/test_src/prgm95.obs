@@ -6,7 +6,6 @@
 class Test {
 
 	function : Main(args : String[]) ~ Nil {
-#~
 s :=				String->New() {
 					New() { Parent(); }
 
@@ -20,15 +19,20 @@ s :=				String->New() {
 		s->GetClass()->GetName()->PrintLine();
 
 		e := 2;
-		c := Foo->New(10) {
+		c := Base->New(10) implements Foo {
 			@m : Int;
 			@e : Int;
 			# TODO: make an explicit call...
-			New(a : Int) { Parent(a); @m := 31; }
+			New(a : Int) { Parent(); @m := 31; }
 
 			method : public : Go(a : Int) ~ Float {
 				Go2(4);
-				return @z + @e * 3.145;
+				return @m + @e * 3.145;
+			}
+
+			method : public : Go2(a : Int) ~ Int {
+				"Fake"->PrintLine();
+				return -1;
 			}
 
 			method : public : Go2() ~ Int {
@@ -38,7 +42,6 @@ s :=				String->New() {
 
 		c->Go2(13);
 		c->GetClass()->GetName()->PrintLine();
-~#
 
 		Base->New(10) implements Foo {
 #			New(a : Int) { }
