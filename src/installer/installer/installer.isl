@@ -341,7 +341,7 @@
 		<col def="S0">ISDotNetInstallerArgsRollback</col>
 		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.rtf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{8B3789E0-DECB-4A71-9A09-86A2B47FD937}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{C8E2D470-7265-4706-9E69-8D344E09C08C}</td><td>CLBG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{613D3577-A431-481A-AA38-657D896D0DB0}</td><td>DATA</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
@@ -1080,7 +1080,7 @@
 		<col key="yes" def="s72">Component_</col>
 		<row><td>DATABASEDIR</td><td>ISX_DEFAULTCOMPONENT1</td></row>
 		<row><td>LIB</td><td>ISX_DEFAULTCOMPONENT3</td></row>
-		<row><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>ISX_DEFAULTCOMPONENT10</td></row>
+		<row><td>OBJECK</td><td>ISX_DEFAULTCOMPONENT10</td></row>
 		<row><td>ODBC</td><td>ISX_DEFAULTCOMPONENT5</td></row>
 		<row><td>OPENSSL</td><td>ISX_DEFAULTCOMPONENT6</td></row>
 		<row><td>ProgramFilesFolder</td><td>ISX_DEFAULTCOMPONENT19</td></row>
@@ -1165,9 +1165,9 @@
 		<col def="S255">ISDescription</col>
 		<col def="I4">ISAttributes</col>
 		<col def="S255">ISFolderName</col>
-		<row><td>ALLUSERSPROFILE</td><td>TARGETDIR</td><td>.:ALLUSE~1|All Users</td><td/><td>0</td><td/></row>
+		<row><td>ALLUSERSPROFILE</td><td>TARGETDIR</td><td>.:ALLUSE~1|All Users</td><td/><td>2</td><td/></row>
 		<row><td>AdminToolsFolder</td><td>TARGETDIR</td><td>.:Admint~1|AdminTools</td><td/><td>0</td><td/></row>
-		<row><td>AppDataFolder</td><td>TARGETDIR</td><td>.:APPLIC~1|Application Data</td><td/><td>0</td><td/></row>
+		<row><td>AppDataFolder</td><td>TARGETDIR</td><td>.:APPLIC~1|Application Data</td><td/><td>3</td><td/></row>
 		<row><td>BIN</td><td>INSTALLDIR</td><td>bin</td><td/><td>0</td><td/></row>
 		<row><td>CLBG</td><td>EXAMPLES</td><td>clbg</td><td/><td>0</td><td/></row>
 		<row><td>CommonAppDataFolder</td><td>TARGETDIR</td><td>.:Common~1|CommonAppData</td><td/><td>0</td><td/></row>
@@ -1183,27 +1183,22 @@
 		<row><td>GlobalAssemblyCache</td><td>TARGETDIR</td><td>.:Global~1|GlobalAssemblyCache</td><td/><td>0</td><td/></row>
 		<row><td>INSTALLDIR</td><td>OBJECK_PROGRAMMING_LANGUAGE</td><td>.</td><td/><td>0</td><td/></row>
 		<row><td>ISCommonFilesFolder</td><td>CommonFilesFolder</td><td>Instal~1|InstallShield</td><td/><td>0</td><td/></row>
-		<row><td>ISMyCompanyDir</td><td>ProgramFilesFolder</td><td>MYCOMP~1|My Company Name</td><td/><td>0</td><td/></row>
-		<row><td>ISMyProductDir</td><td>ISMyCompanyDir</td><td>MYPROD~1|My Product Name</td><td/><td>0</td><td/></row>
-		<row><td>ISYourDataBaseDir</td><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>Database</td><td/><td>0</td><td/></row>
+		<row><td>ISYourDataBaseDir</td><td>OBJECK</td><td>Database</td><td/><td>0</td><td/></row>
 		<row><td>JSON</td><td>EXAMPLES</td><td>json</td><td/><td>0</td><td/></row>
 		<row><td>LIB</td><td>BIN</td><td>lib</td><td/><td>0</td><td/></row>
-		<row><td>LocalAppDataFolder</td><td>TARGETDIR</td><td>.:LocalA~1|LocalAppData</td><td/><td>0</td><td/></row>
-		<row><td>MY_PRODUCT_NAME</td><td>RANDY_HOLLINES</td><td>MYPROD~1|My Product Name</td><td/><td>0</td><td/></row>
+		<row><td>LocalAppDataFolder</td><td>TARGETDIR</td><td>.:LocalA~1|LocalAppData</td><td/><td>2</td><td/></row>
 		<row><td>MyPicturesFolder</td><td>TARGETDIR</td><td>.:MyPict~1|MyPictures</td><td/><td>0</td><td/></row>
 		<row><td>NetHoodFolder</td><td>TARGETDIR</td><td>.:NetHood</td><td/><td>0</td><td/></row>
+		<row><td>OBJECK</td><td>AppDataFolder</td><td>Objeck</td><td/><td>0</td><td/></row>
 		<row><td>OBJECK_PROGRAMMING_LANGUAGE</td><td>ProgramFilesFolder</td><td>Objeck</td><td/><td>0</td><td/></row>
-		<row><td>OBJECK_PROGRAMMING_LANGUAGE1</td><td>AppDataFolder</td><td>OBJECK~1|Objeck Programming Language</td><td/><td>0</td><td/></row>
-		<row><td>OBJECK_PROGRAMMING_LANGUAGE_</td><td>RANDY_HOLLINES</td><td>OBJECK~1|Objeck Programming Language </td><td/><td>0</td><td/></row>
 		<row><td>ODBC</td><td>LIB</td><td>odbc</td><td/><td>0</td><td/></row>
 		<row><td>ODBC1</td><td>EXAMPLES</td><td>odbc</td><td/><td>0</td><td/></row>
 		<row><td>OPENSSL</td><td>LIB</td><td>openssl</td><td/><td>0</td><td/></row>
 		<row><td>PersonalFolder</td><td>TARGETDIR</td><td>.:Personal</td><td/><td>0</td><td/></row>
 		<row><td>PrimaryVolumePath</td><td>TARGETDIR</td><td>.:Primar~1|PrimaryVolumePath</td><td/><td>0</td><td/></row>
 		<row><td>PrintHoodFolder</td><td>TARGETDIR</td><td>.:PRINTH~1|PrintHood</td><td/><td>0</td><td/></row>
-		<row><td>ProgramFilesFolder</td><td>TARGETDIR</td><td>.:PROGRA~1|program files</td><td/><td>0</td><td/></row>
+		<row><td>ProgramFilesFolder</td><td>TARGETDIR</td><td>.:PROGRA~1|program files</td><td/><td>2</td><td/></row>
 		<row><td>ProgramMenuFolder</td><td>TARGETDIR</td><td>.:Programs</td><td/><td>3</td><td/></row>
-		<row><td>RANDY_HOLLINES</td><td>ProgramFilesFolder</td><td>RANDYH~1|Randy Hollines</td><td/><td>0</td><td/></row>
 		<row><td>RecentFolder</td><td>TARGETDIR</td><td>.:Recent</td><td/><td>0</td><td/></row>
 		<row><td>SERVER</td><td>WEB</td><td>server</td><td/><td>0</td><td/></row>
 		<row><td>SYNTAX</td><td>DOC</td><td>syntax</td><td/><td>0</td><td/></row>
@@ -4208,7 +4203,17 @@
 		<row><td>ID_STRING39</td><td>1033</td><td>[~];[INSTALLDIR]bin</td><td>0</td><td/><td>966893097</td></row>
 		<row><td>ID_STRING4</td><td>1033</td><td>Objeck</td><td>0</td><td/><td>-618621971</td></row>
 		<row><td>ID_STRING40</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1717487279</td></row>
+		<row><td>ID_STRING41</td><td>1033</td><td>MICROS~1|Microsoft</td><td>0</td><td/><td>-1700682318</td></row>
+		<row><td>ID_STRING42</td><td>1033</td><td>Windows</td><td>0</td><td/><td>-1700663886</td></row>
+		<row><td>ID_STRING43</td><td>1033</td><td>STARTM~1|Start Menu</td><td>0</td><td/><td>-1700715054</td></row>
+		<row><td>ID_STRING44</td><td>1033</td><td>Programs</td><td>0</td><td/><td>-1700706862</td></row>
+		<row><td>ID_STRING45</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>-1700702766</td></row>
+		<row><td>ID_STRING46</td><td>1033</td><td>MICROS~1|Microsoft</td><td>0</td><td/><td>-1700702350</td></row>
+		<row><td>ID_STRING47</td><td>1033</td><td>Windows</td><td>0</td><td/><td>-1700692110</td></row>
+		<row><td>ID_STRING48</td><td>1033</td><td>STARTM~1|Start Menu</td><td>0</td><td/><td>-1700679822</td></row>
+		<row><td>ID_STRING49</td><td>1033</td><td>Programs</td><td>0</td><td/><td>-1700667534</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
+		<row><td>ID_STRING50</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>-1700663438</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
 		<row><td>ID_STRING7</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-736210891</td></row>
 		<row><td>ID_STRING8</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>337554475</td></row>
