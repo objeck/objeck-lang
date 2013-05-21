@@ -60,14 +60,15 @@ namespace Runtime {
     long* self;
     long* param;
   };
-
+  
   class StackInterpreter {
     // program
     static StackProgram* program;
     // call stack and current frame pointer
-    StackFrame* call_stack[CALL_STACK_SIZE];
-    long call_stack_pos;
-    StackFrame* frame;
+    StackFrame** call_stack;
+    long* call_stack_pos;
+    StackFrame** frame;
+    StackFrameMonitor* monitor;
     // halt
     bool halt;
 #ifdef _DEBUGGER
@@ -78,40 +79,40 @@ namespace Runtime {
     // push call frame
     //
     inline void PushFrame(StackFrame* f) {
-      if(call_stack_pos >= CALL_STACK_SIZE) {
+      if((*call_stack_pos) >= CALL_STACK_SIZE) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
         exit(1);
       }
       
-      call_stack[call_stack_pos++] = f;
+      call_stack[(*call_stack_pos)++] = f;
     }
 
     //
     // pop call frame
     //
     inline StackFrame* PopFrame() {
-      if(call_stack_pos <= 0) {
+      if((*call_stack_pos) <= 0) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
         exit(1);
       }
       
-      return call_stack[--call_stack_pos];
+      return call_stack[--(*call_stack_pos)];
     }
     
     //
     // generates a stack dump if an error occurs
     //
     inline void StackErrorUnwind() {
-      long pos = call_stack_pos;
+      long pos = (*call_stack_pos);
 #ifdef _DEBUGGER
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-      StackMethod* method =  frame->GetMethod();
-      if(frame->GetIp() > 0 && pos > -1 && 
-	 method->GetInstruction(frame->GetIp())->GetLineNumber() > 0) {
+      StackMethod* method =  (*frame)->GetMethod();
+      if((*frame)->GetIp() > 0 && pos > -1 && 
+	 method->GetInstruction((*frame)->GetIp())->GetLineNumber() > 0) {
 	wcerr << L"  method: pos=" << pos << L", file="
-	      << frame->GetMethod()->GetClass()->GetFileName() << L", name='" 
-	      << frame->GetMethod()->GetName() << L"', line=" 
-	      << method->GetInstruction(frame->GetIp())->GetLineNumber() << endl;
+	      << (*frame)->GetMethod()->GetClass()->GetFileName() << L", name='" 
+	      << (*frame)->GetMethod()->GetName() << L"', line=" 
+	      << method->GetInstruction((*frame)->GetIp())->GetLineNumber() << endl;
       }
       if(pos != 0) {
 	while(--pos) {
@@ -130,7 +131,7 @@ namespace Runtime {
 #else
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name=" 
-	    << frame->GetMethod()->GetName() << endl;
+	    << (*frame)->GetMethod()->GetName() << endl;
       if(pos != 0) {
 	while(--pos && pos > -1) {
 	  wcerr << L"  method: pos=" << pos << L", name="
@@ -145,7 +146,7 @@ namespace Runtime {
     // generates a stack dump if an error occurs
     //
     inline void StackErrorUnwind(StackMethod* method) {
-      long pos = call_stack_pos;
+      long pos = (*call_stack_pos);
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name="
 	    << method->GetName() << endl;
@@ -162,7 +163,7 @@ namespace Runtime {
     // is call stack empty?
     //
     inline bool StackEmpty() {
-      return call_stack_pos == 0;
+      return (*call_stack_pos) == 0;
     }
 
     //
@@ -173,7 +174,7 @@ namespace Runtime {
 #ifdef _DEBUG
       long v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (void*)v << L")]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -187,7 +188,7 @@ namespace Runtime {
     inline void PushInt(long v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (void*)v << L")]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -198,7 +199,7 @@ namespace Runtime {
     inline void PushFloat(FLOAT_VALUE v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
 
@@ -233,7 +234,7 @@ namespace Runtime {
       memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
 
       return v;
@@ -247,7 +248,7 @@ namespace Runtime {
 #ifdef _DEBUG
       long v = op_stack[(*stack_pos) - 1];
       wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
-	    << L")]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[(*stack_pos) - 1];
@@ -270,7 +271,7 @@ namespace Runtime {
       memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
 #ifdef _DEBUG
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << frame << L"; frame_pos=" << call_stack_pos << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
 
       return v;
@@ -397,24 +398,73 @@ namespace Runtime {
 #endif
 
     StackInterpreter() {
+      // setup frame
+      call_stack = new StackFrame*[CALL_STACK_SIZE];
+      call_stack_pos = new long;
+      frame = new StackFrame*;
+
+      // register monitor
+      monitor = new StackFrameMonitor;
+      monitor->call_stack = call_stack;
+      monitor->call_stack_pos = call_stack_pos;
+      monitor->cur_frame = frame;
+      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
     }
   
     StackInterpreter(StackProgram* p) {
       Initialize(p);
+      
+      // setup frame
+      call_stack = new StackFrame*[CALL_STACK_SIZE];
+      call_stack_pos = new long;
+      frame = new StackFrame*;
+
+      // register monitor
+      monitor = new StackFrameMonitor;
+      monitor->call_stack = call_stack;
+      monitor->call_stack_pos = call_stack_pos;
+      monitor->cur_frame = frame;      
+      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
     }
   
 #ifdef _DEBUGGER
     StackInterpreter(StackProgram* p, Debugger* d) {
-      debugger = d;
       Initialize(p);
+      
+      debugger = d;
+      
+      // setup frame
+      call_stack = new StackFrame*[CALL_STACK_SIZE];
+      call_stack_pos = new long;
+      frame = new StackFrame*;
+
+      // register monitor
+      monitor = new StackFrameMonitor;
+      monitor->call_stack = call_stack;
+      monitor->call_stack_pos = call_stack_pos;
+      monitor->cur_frame = frame;
+      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
     }
 #endif
-  
+    
     ~StackInterpreter() {
-      if(frame) {
-	delete frame;
-	frame = NULL;
+      MemoryManager::Instance()->RemovePdaMethodRoot(monitor);
+      
+      delete[] call_stack;
+      call_stack = NULL;
+
+      delete call_stack_pos;
+      call_stack_pos = NULL;
+
+      delete monitor;
+      monitor = NULL;
+      
+      if((*frame)) {
+	delete (*frame);
+	(*frame) = NULL;
       }
+      delete frame;
+      frame = NULL;
     }
 
     // execute method
