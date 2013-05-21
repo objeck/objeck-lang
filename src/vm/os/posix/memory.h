@@ -49,6 +49,12 @@ struct CollectionInfo {
   long stack_pos;
 };
 
+struct StackFrameMonitor {
+  StackFrame** call_stack;
+  long* call_stack_pos;
+  StackFrame** cur_frame;
+};
+
 struct ClassMethodId {
   long* self;
   long* mem;
@@ -61,7 +67,7 @@ class MemoryManager {
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
+  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static btree_map<long*, long> allocated_memory;
   static btree_set<long*> allocated_int_obj_array;
   static vector<long*> marked_memory;
@@ -149,8 +155,8 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  void AddPdaMethodRoot(StackFrame* frame);
-  void RemovePdaMethodRoot(StackFrame* frame);
+  void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);

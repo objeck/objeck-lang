@@ -35,7 +35,7 @@
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
-unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
+unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
 btree_map<long*, long> MemoryManager::allocated_memory;
 btree_set<long*> MemoryManager::allocated_int_obj_array;
 vector<long*> MemoryManager::marked_memory;
@@ -108,33 +108,31 @@ inline bool MemoryManager::MarkMemory(long* mem)
   return false;
 }
 
-void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
+void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-  wcout << L"adding PDA method: frame=" << frame << L", self="
-       << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
+  wcout << L"adding PDA method: monitor=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_mutex);
 #endif
-  pda_roots.insert(pair<StackFrame*, StackFrame*>(frame, frame));
+  pda_roots.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_mutex);
 #endif
 }
 
-void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
+void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-  wcout << L"removing PDA method: frame=" << frame << L", self="
-       << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
+  wcout << L"removing PDA method: monitor=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_mutex);
 #endif
-  pda_roots.erase(frame);
+  pda_roots.erase(monitor);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_mutex);
 #endif
@@ -828,27 +826,43 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
-  unordered_map<StackFrame*, StackFrame*>::iterator pda_iter;
+  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
-    StackMethod* mthd = pda_iter->second->GetMethod();
-    long* mem = pda_iter->second->GetMemory();
-
-#ifdef _DEBUG
-    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-         << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
-#endif
-
-    // mark self
-    CheckObject((long*)(*mem), true, 1);
-
-    if(mthd->HasAndOr()) {
-      mem += 2;
-    } else {
-      mem++;
+    // gather stack frames
+    StackFrameMonitor* monitor = pda_iter->first;
+    StackFrame** call_stack = monitor->call_stack;
+    long call_stack_pos = *(monitor->call_stack_pos);
+    StackFrame* cur_frame = *(monitor->cur_frame);
+    
+    // copy frames locally
+    vector<StackFrame*> frames;
+    frames.push_back(cur_frame);
+    while(--call_stack_pos > -1) {
+      frames.push_back(call_stack[call_stack_pos]);
     }
 
-    // mark rest of memory
-    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    for(size_t i = 0; i < frames.size(); ++i) {    
+      StackMethod* mthd = frames[i]->GetMethod();
+      long* mem = frames[i]->GetMemory();
+
+#ifdef _DEBUG
+      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+	    << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+#endif
+
+      // mark self
+      CheckObject((long*)(*mem), true, 1);
+
+      if(mthd->HasAndOr()) {
+	mem += 2;
+      } 
+      else {
+	mem++;
+      }
+    
+      // mark rest of memory
+      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    }
   }
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_mutex);
