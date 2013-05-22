@@ -35,7 +35,7 @@
 MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
-unordered_map<StackFrame*, StackFrame*> MemoryManager::pda_roots;
+unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
 stx::btree_map<long*, long> MemoryManager::allocated_memory;
 btree_set<long*> MemoryManager::allocated_int_obj_array;
 stx::btree_map<long*, long> MemoryManager::static_memory;
@@ -75,8 +75,28 @@ MemoryManager* MemoryManager::Instance()
   return instance;
 }
 
+inline void MemoryManager::MarkMemory(long* mem)
+{
+  if(mem) {
+    // check if memory has been marked
+    if(mem[-1]) {
+      return;
+    }
+
+    // mark & add to list
+#ifndef _SERIAL
+    EnterCriticalSection(&marked_cs);
+#endif
+    mem[-1] = 1L;
+    marked_memory.push_back(mem);
+#ifndef _SERIAL
+    LeaveCriticalSection(&marked_cs);
+#endif
+  }
+}
+
 // if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkMemory(long* mem)
+inline bool MemoryManager::MarkMemoryStatus(long* mem)
 {
   if(mem) {
 #ifndef _SERIAL
@@ -115,33 +135,31 @@ inline bool MemoryManager::MarkMemory(long* mem)
   return false;
 }
 
-void MemoryManager::AddPdaMethodRoot(StackFrame* frame)
+void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-  wcout << L"adding PDA method: frame=" << frame << L", self="
-    << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
+  wcout << L"adding PDA method: monitor=" << monitor << endl;
 #endif
 
 #ifndef _SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
-  pda_roots.insert(pair<StackFrame*, StackFrame*>(frame, frame));
+  pda_roots.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
 #ifndef _SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
 }
 
-void MemoryManager::RemovePdaMethodRoot(StackFrame* frame)
+void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-  wcout << L"removing PDA method: frame=" << frame << L", self="
-    << (long*)frame->GetMemory()[0] << L"(" << frame->GetMemory()[0] << L")" << endl;
+  wcout << L"removing PDA method: monitor=" << monitor << endl;
 #endif
 
 #ifndef _SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
-  pda_roots.erase(frame);
+  pda_roots.erase(monitor);
 #ifndef _SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
@@ -719,7 +737,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
           << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
-        if(MarkMemory((long*)(*mem))) {
+        if(MarkMemoryStatus((long*)(*mem))) {
           long* array = (long*)(*mem);
           const long size = array[0];
           const long dim = array[1];
@@ -763,27 +781,42 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
-  unordered_map<StackFrame*, StackFrame*>::iterator pda_iter;
+  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
-    StackMethod* mthd = pda_iter->second->GetMethod();
-    long* mem = pda_iter->second->GetMemory();
-    
-#ifdef _DEBUG
-    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-      << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
-#endif
+    // gather stack frames
+    StackFrameMonitor* monitor = pda_iter->first;
+    StackFrame** call_stack = monitor->call_stack;
+    long call_stack_pos = *(monitor->call_stack_pos);
+    StackFrame* cur_frame = *(monitor->cur_frame);
 
-    // mark self
-    CheckObject((long*)(*mem), true, 1);
-
-    if(mthd->HasAndOr()) {
-      mem += 2;
-    } else {
-      mem++;
+    // copy frames locally
+    vector<StackFrame*> frames;
+    frames.push_back(cur_frame);
+    while(--call_stack_pos > -1) {
+      frames.push_back(call_stack[call_stack_pos]);
     }
 
-    // mark rest of memory
-    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    for(size_t i = 0; i < frames.size(); ++i) {    
+      StackMethod* mthd = frames[i]->GetMethod();
+      long* mem = frames[i]->GetMemory();
+
+#ifdef _DEBUG
+      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+        << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+#endif
+
+      // mark self
+      CheckObject((long*)(*mem), true, 1);
+
+      if(mthd->HasAndOr()) {
+        mem += 2;
+      } else {
+        mem++;
+      }
+
+      // mark rest of memory
+      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    }
   }
 #ifndef _SERIAL
   LeaveCriticalSection(&pda_cs);
@@ -910,7 +943,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
         << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
-      if(MarkMemory((long*)(*mem))) {
+      if(MarkMemoryStatus((long*)(*mem))) {
         long* array = (long*)(*mem);
         const long size = array[0];
         const long dim = array[1];
@@ -932,20 +965,30 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
-    // TODO: optimize so this is not a double call.. see below
-    StackClass* cls = GetClassMapping(mem);
+    StackClass* cls;
+#ifdef _DEBUG
+    cls = GetClassMapping(mem);
+#else
+    if(is_obj) {
+      cls = GetClass(mem);
+    }
+    else {
+      cls = GetClassMapping(mem);
+    }
+#endif
+
     if(cls) {
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
         wcout << L"\t";
       }
-      wcout << L"\t----- object: addr=" << mem << L"(" << (long)mem << L") -----" << endl;
+      wcout << L"\t----- object: addr=" << mem << L"(" << (long)mem << L"), num="
+        << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
 #endif
 
       // mark data
-      if(MarkMemory(mem)) {
-        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
-      }
+      MarkMemory(mem);
+      CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
     } 
     else {
       // NOTE: this happens when we are trying to mark unidentified memory
@@ -955,13 +998,13 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       for(int i = 0; i < depth; i++) {
         wcout << L"\t";
       }
-      wcout <<"$: addr/value=" << mem << endl;
+      cout <<"$: addr/value=" << mem << endl;
       if(is_obj) {
         assert(cls);
       }
 #endif
       // primitive or object array
-      if(MarkMemory(mem)) {
+      if(MarkMemoryStatus(mem)) {
         // ensure we're only checking int and obj arrays
         btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
         if(result != allocated_int_obj_array.end()) {
