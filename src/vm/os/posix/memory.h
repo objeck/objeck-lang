@@ -90,7 +90,8 @@ class MemoryManager {
   }
 
   // if return true, trace memory otherwise do not
-  static inline bool MarkMemory(long* mem);
+  static inline void MarkMemory(long* mem);
+  static inline bool MarkMemoryStatus(long* mem);
 
   // mark memory
   static void* CheckStatic(void* arg);
