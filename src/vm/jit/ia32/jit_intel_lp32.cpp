@@ -1498,7 +1498,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   int32_t xmm_offset = TMP_XMM_0;
   
   int32_t i = 0;     
-  for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
+  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
       iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
@@ -1592,7 +1592,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
 #endif
     
     int32_t i = 0;     
-    for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
+    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
 	iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);

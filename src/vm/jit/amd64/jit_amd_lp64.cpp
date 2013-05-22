@@ -8,7 +8,7 @@
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright 
- * notice, this list of conditions and the following disclaimer.
+ * notice, this lis  of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright 
  * notice, this list of conditions and the following disclaimer in 
  * the documentation and/or other materials provided with the distribution.
@@ -1533,7 +1533,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   long xmm_offset = TMP_XMM_0;
   
   long i = 0;     
-  for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
+  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
       iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
@@ -1643,7 +1643,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 #endif
     
     long i = 0;     
-    for(list<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
+    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
 	iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
