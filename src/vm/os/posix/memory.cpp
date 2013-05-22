@@ -1033,12 +1033,16 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
     StackClass* cls;
+#ifdef _DEBUG
+    cls = GetClassMapping(mem);
+#else
     if(is_obj) {
       cls = GetClass(mem);
     }
     else {
       cls = GetClassMapping(mem);
     }
+#endif
     
     if(cls) {
 #ifdef _DEBUG
