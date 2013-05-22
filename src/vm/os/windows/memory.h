@@ -57,12 +57,18 @@ struct ClassMethodId {
   long mthd_id;
 };
 
+struct StackFrameMonitor {
+  StackFrame** call_stack;
+  long* call_stack_pos;
+  StackFrame** cur_frame;
+};
+
 class MemoryManager {
   static MemoryManager* instance;
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static unordered_map<StackFrame*, StackFrame*> pda_roots; // deleted elsewhere
+  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static btree_map<long*, long> static_memory;
   static btree_map<long*, long> allocated_memory;
   static btree_set<long*> allocated_int_obj_array;
@@ -85,7 +91,8 @@ class MemoryManager {
   }
 
   // if return true, trace memory otherwise do not
-  static inline bool MarkMemory(long* mem);
+  static inline void MarkMemory(long* mem);
+  static inline bool MarkMemoryStatus(long* mem);
 
   static inline StackClass* GetClassMapping(long* mem) {
     #ifndef _SERIAL
@@ -155,8 +162,8 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  void AddPdaMethodRoot(StackFrame* frame);
-  void RemovePdaMethodRoot(StackFrame* frame);
+  void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
