@@ -240,7 +240,7 @@ namespace Runtime {
   ********************************/
   class JitCompilerIA32 {
     static StackProgram* program;
-    list<RegInstr*> working_stack;
+    deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
