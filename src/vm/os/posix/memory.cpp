@@ -69,7 +69,28 @@ MemoryManager* MemoryManager::Instance()
 }
 
 // if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkMemory(long* mem)
+inline void MemoryManager::MarkMemory(long* mem)
+{
+  if(mem) {
+    // check if memory has been marked
+    if(mem[-1]) {
+      return;
+    }
+    
+    // mark & add to list
+#ifndef _GC_SERIAL
+    pthread_mutex_lock(&marked_mutex);
+#endif
+    mem[-1] = 1L;
+    marked_memory.push_back(mem);
+#ifndef _GC_SERIAL
+    pthread_mutex_unlock(&marked_mutex);      
+#endif
+  }
+}
+
+// if return true, trace memory otherwise do not
+inline bool MemoryManager::MarkMemoryStatus(long* mem)
 {
   if(mem) {
 #ifndef _GC_SERIAL
@@ -107,6 +128,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
   
   return false;
 }
+
 
 void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
@@ -783,7 +805,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
              << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
-        if(MarkMemory((long*)(*mem))) {
+        if(MarkMemoryStatus((long*)(*mem))) {
           long* array = (long*)(*mem);
           const long size = array[0];
           const long dim = array[1];
@@ -988,7 +1010,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
            << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
-      if(MarkMemory((long*)(*mem))) {
+      if(MarkMemoryStatus((long*)(*mem))) {
         long* array = (long*)(*mem);
         const long size = array[0];
         const long dim = array[1];
@@ -1010,8 +1032,14 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
-    // TODO: optimize so this is not a double call.. see below
-    StackClass* cls = GetClassMapping(mem);
+    StackClass* cls;
+    if(is_obj) {
+      cls = GetClass(mem);
+    }
+    else {
+      cls = GetClassMapping(mem);
+    }
+    
     if(cls) {
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
@@ -1022,9 +1050,8 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 #endif
 
       // mark data
-      if(MarkMemory(mem)) {
-        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
-      }
+      MarkMemory(mem);
+      CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
     } 
     else {
       // NOTE: this happens when we are trying to mark unidentified memory
@@ -1040,7 +1067,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       }
 #endif
       // primitive or object array
-      if(MarkMemory(mem)) {
+      if(MarkMemoryStatus(mem)) {
 	// ensure we're only checking int and obj arrays
 	btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
       	if(result != allocated_int_obj_array.end()) {
