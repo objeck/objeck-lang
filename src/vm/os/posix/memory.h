@@ -104,20 +104,20 @@ class MemoryManager {
   static void* CollectMemory(void* arg);
 
   static inline StackClass* GetClassMapping(long* mem) {
-    if(mem) {
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
-      if(mem[-3] == NIL_TYPE && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
+    if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+       mem[-3] == NIL_TYPE) {
 #ifndef _GC_SERIAL
-	pthread_mutex_unlock(&allocated_mutex);
+      pthread_mutex_unlock(&allocated_mutex);
 #endif
-        return (StackClass*)mem[-2];
-      }
+      return (StackClass*)mem[-2];
     }
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
 #endif
+    
     return NULL;
   }
 

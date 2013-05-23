@@ -398,7 +398,16 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _TIMING
   clock_t start = clock();
 #endif
-  
+
+
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&allocated_mutex);
+#endif
+  std::sort(allocated_memory.begin(), allocated_memory.end());
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&allocated_mutex);
+#endif  
+
   CollectionInfo* info = (CollectionInfo*)arg;
   
 #ifdef _DEBUG
@@ -496,17 +505,16 @@ void* MemoryManager::CollectMemory(void* arg)
   wcout << L"-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
-  btree_map<long*, long>::iterator iter;
-
+  
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
-  for(size_t i = 0; i < allocated_memory.size(); ++iter) {
+  for(size_t i = 0; i < allocated_memory.size(); ++i) {
     long* mem = allocated_memory[i];
     
     // check dynamic memory
     bool found = false;
-    if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
+    if(std::binary_search(marked_memory.begin(), marked_memory.end(), mem)) {
       long* tmp = mem;
       tmp[-1] = 0L;
       found = true;
@@ -516,8 +524,8 @@ void* MemoryManager::CollectMemory(void* arg)
     if(!found) {
       long mem_size;
       // object or array
-      if(iter->second <= 0) {
-        StackClass* cls = prgm->GetClass(-iter->second);
+      if(mem[-3] == NIL_TYPE) {
+        StackClass* cls = (StackClass*)mem[-2];
 #ifdef _DEBUG
         assert(cls);
 #endif
@@ -534,14 +542,14 @@ void* MemoryManager::CollectMemory(void* arg)
       }
       
 #ifdef _DEBUG
-      wcout << L"# releasing memory: addr=" << iter->first << L"(" << (long)iter->first
+      wcout << L"# releasing memory: addr=" << mem << L"(" << (long)mem
            << L"), size=" << dec << mem_size << L" byte(s) #" << endl;
 #endif
       
       // account for deallocated memory
       allocation_size -= mem_size;
       // erase memory
-      long* tmp = iter->first;
+      long* tmp = mem;
       erased_memory.push_back(tmp);
       
       tmp -= 3;
@@ -1012,7 +1020,13 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
-    StackClass* cls = GetClass(mem);
+    StackClass* cls;
+    if(is_obj) {
+      cls = GetClass(mem);
+    }
+    else {
+      cls = GetClassMapping(mem);
+    }
     
     if(cls) {
 #ifdef _DEBUG
