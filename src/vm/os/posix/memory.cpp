@@ -491,7 +491,6 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _DEBUG
   wcout << L"## Sweeping memory ##" << endl;
 #endif
-  vector<long*> erased_memory;
   
   // sort and search
 #ifndef _GC_SERIAL
@@ -509,6 +508,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
+  vector<long*> live_memory;
   for(size_t i = 0; i < allocated_memory.size(); ++i) {
     long* mem = allocated_memory[i];
     
@@ -520,8 +520,12 @@ void* MemoryManager::CollectMemory(void* arg)
       found = true;
     }
     
-    // not found, will be collected
-    if(!found) {
+    // live
+    if(found) {
+      live_memory.push_back(mem);
+    }
+    // will be collected
+    else {
       long mem_size;
       // object or array
       if(mem[-3] == NIL_TYPE) {
@@ -549,10 +553,7 @@ void* MemoryManager::CollectMemory(void* arg)
       // account for deallocated memory
       allocation_size -= mem_size;
       // erase memory
-      long* tmp = mem;
-      erased_memory.push_back(tmp);
-      
-      tmp -= 3;
+      long* tmp = mem - 3;
       free(tmp);
       tmp = NULL;
     }
@@ -563,7 +564,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif  
   
   // did not collect memory; ajust constraints
-  if(erased_memory.empty()) {
+  if(live_memory.size() == allocated_memory.size()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     } else {
@@ -581,14 +582,8 @@ void* MemoryManager::CollectMemory(void* arg)
     }
   }
   
-  // remove references from allocated pool
-  // TODO...
-  for(size_t i = 0; i < erased_memory.size(); ++i) {
-    /*
-    allocated_int_obj_array.erase(erased_memory[i]);
-    allocated_memory.erase(erased_memory[i]);
-    */
-  }
+  // copy live memory to allocated memory
+  allocated_memory = live_memory;
   
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
