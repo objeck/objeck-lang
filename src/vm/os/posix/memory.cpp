@@ -509,6 +509,7 @@ void* MemoryManager::CollectMemory(void* arg)
   pthread_mutex_lock(&allocated_mutex);
 #endif
   vector<long*> live_memory;
+  live_memory.reserve(allocated_memory.size());
   for(size_t i = 0; i < allocated_memory.size(); ++i) {
     long* mem = allocated_memory[i];
     
