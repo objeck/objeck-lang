@@ -37,8 +37,8 @@
 #include "../stx/btree_set.h"
 
 // basic vm tuning parameters
-// #define MEM_MAX 1024
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 1024
+// #define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 3
 #define COLLECTED_COUNT 9
 
@@ -68,7 +68,7 @@ class MemoryManager {
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
-  static btree_map<long*, long> allocated_memory;
+  static vector<long*> allocated_memory;
   static btree_set<long*> allocated_int_obj_array;
   static vector<long*> marked_memory;
   
@@ -108,12 +108,11 @@ class MemoryManager {
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
-      btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-      if(result != allocated_memory.end()) {
+      if(mem[-3] == NIL_TYPE && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
 #ifndef _GC_SERIAL
 	pthread_mutex_unlock(&allocated_mutex);
 #endif
-        return prgm->GetClass(-result->second);
+        return (StackClass*)mem[-2];
       }
     }
 #ifndef _GC_SERIAL
@@ -135,11 +134,10 @@ public:
       tmp = NULL;
     }
     
-    btree_map<long*, long>::iterator iter;
-    for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-      long* temp = iter->first;
-      
-      temp -= 2;
+    while(!allocated_memory.empty()) {
+      long* temp = allocated_memory.front();
+      allocated_memory.erase(allocated_memory.begin());      
+      temp -= 3;
       free(temp);
       temp = NULL;
     }
@@ -184,7 +182,7 @@ public:
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(long* mem) {
-    if(mem) {
+    if(mem && mem[-3] == NIL_TYPE) {
       return (StackClass*)*(mem - 2);
     }
     return NULL;

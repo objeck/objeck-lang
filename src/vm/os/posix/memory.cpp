@@ -36,7 +36,7 @@ MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
-btree_map<long*, long> MemoryManager::allocated_memory;
+vector<long*> MemoryManager::allocated_memory;
 btree_set<long*> MemoryManager::allocated_int_obj_array;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
@@ -96,8 +96,7 @@ inline bool MemoryManager::MarkMemoryStatus(long* mem)
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
-    btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
+    if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
       // check if memory has been marked
       if(mem[-1]) {
 #ifndef _GC_SERIAL
@@ -238,15 +237,16 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     }
     // allocate memory
     mem = (long*)calloc(size * 2 + sizeof(long) * 2, sizeof(char));
-    mem[0] = (long)cls;
-    mem += 2;
+    mem[0] = NIL_TYPE;
+    mem[1] = (long)cls;
+    mem += 3;
     
     // record
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
     allocation_size += size;
-    allocated_memory.insert(pair<long*, long>(mem, -obj_id));
+    allocated_memory.push_back(mem);
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -293,16 +293,20 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   }
   // allocate memory
   mem = (long*)calloc(calc_size + sizeof(long) * 2, sizeof(char));
-  mem += 2;
-
+  mem[0] = type;
+  mem[1] = calc_size;
+  mem += 3;
+  
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
   allocation_size += calc_size;
-  allocated_memory.insert(pair<long*, long>(mem, calc_size));
+  allocated_memory.push_back(mem);
+  /*
   if(type == INT_TYPE) {
     allocated_int_obj_array.insert(mem);
   }
+  */
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -317,27 +321,9 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 
 long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&allocated_mutex);
-#endif
-  
-  long id;  
-  btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-  if(result != allocated_memory.end()) {
-    id = -result->second;
-  } 
-  else {
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&allocated_mutex);
-#endif
-    return NULL;
-  }
-  
-  // invalid array cast
+  // invalid array cast  
+  long id = GetObjectID(mem);
   if(id < 0) {
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&allocated_mutex);
-#endif
     return NULL;
   }
   
@@ -345,9 +331,6 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
   int tmp_id = id;
   while(tmp_id != -1) {
     if(tmp_id == to_id) {
-#ifndef _GC_SERIAL
-      pthread_mutex_unlock(&allocated_mutex);
-#endif
       return mem;
     }
     // update
@@ -362,18 +345,11 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
     tmp_id = interfaces[i];
     while(tmp_id > -1) {
       if(tmp_id == to_id) {
-#ifndef _GC_SERIAL
-	pthread_mutex_unlock(&allocated_mutex);
-#endif
 	return mem;
       }
       tmp_id = interfaces[++i];
     }
   }
-  
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&allocated_mutex);
-#endif
   
   return NULL;
 }
@@ -525,12 +501,13 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
-  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-    bool found = false;
+  for(size_t i = 0; i < allocated_memory.size(); ++iter) {
+    long* mem = allocated_memory[i];
     
     // check dynamic memory
+    bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
-      long* tmp = iter->first;
+      long* tmp = mem;
       tmp[-1] = 0L;
       found = true;
     }
@@ -548,12 +525,12 @@ void* MemoryManager::CollectMemory(void* arg)
           mem_size = cls->GetInstanceMemorySize();
         }
 	else {
-	  mem_size = iter->second;
+	  mem_size = mem[-2];
 	}
       } 
       // array
       else {
-        mem_size = iter->second;
+        mem_size = mem[-2];
       }
       
 #ifdef _DEBUG
@@ -567,7 +544,7 @@ void* MemoryManager::CollectMemory(void* arg)
       long* tmp = iter->first;
       erased_memory.push_back(tmp);
       
-      tmp -= 2;
+      tmp -= 3;
       free(tmp);
       tmp = NULL;
     }
@@ -597,9 +574,12 @@ void* MemoryManager::CollectMemory(void* arg)
   }
   
   // remove references from allocated pool
+  // TODO...
   for(size_t i = 0; i < erased_memory.size(); ++i) {
+    /*
     allocated_int_obj_array.erase(erased_memory[i]);
     allocated_memory.erase(erased_memory[i]);
+    */
   }
   
 #ifndef _GC_SERIAL
@@ -691,23 +671,23 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {
+#ifdef _DEBUG
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
-      
-#ifdef _DEBUG
       // get memory size
       long array_size = 0;
+      /*
       btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
       if(result != allocated_memory.end()) {
         array_size = result->second;
       }
-#endif
-      
+      */
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
 #endif
-      
+#endif
+            
       // update address based upon type
       switch(dclrs[j]->type) {
       case FUNC_PARM:
@@ -895,24 +875,24 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
-  for(long i = 0; i < dcls_size; i++) {
+  for(long i = 0; i < dcls_size; i++) {    
+#ifdef _DEBUG
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
-    
-#ifdef _DEBUG
     // get memory size
     long array_size = 0;
+    /*
     btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
     if(result != allocated_memory.end()) {
       array_size = result->second;
     }
-#endif
-    
+    */
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
 #endif
-    
+#endif
+        
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       wcout << L"\t";
@@ -1032,17 +1012,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
-    StackClass* cls;
-#ifdef _DEBUG
-    cls = GetClassMapping(mem);
-#else
-    if(is_obj) {
-      cls = GetClass(mem);
-    }
-    else {
-      cls = GetClassMapping(mem);
-    }
-#endif
+    StackClass* cls = GetClass(mem);
     
     if(cls) {
 #ifdef _DEBUG
@@ -1073,8 +1043,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // primitive or object array
       if(MarkMemoryStatus(mem)) {
 	// ensure we're only checking int and obj arrays
-	btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
-      	if(result != allocated_int_obj_array.end()) {
+	if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
 	  long* array = mem;
 	  const long size = array[0];
 	  const long dim = array[1];
