@@ -67,7 +67,7 @@ struct ClassMethodId {
 };
 
 class MemoryManager {
-  static MemoryManager* instance;
+  static bool initialized;
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
@@ -88,9 +88,6 @@ class MemoryManager {
   static long mem_max_size;
   static long uncollected_count;
   static long collected_count;
-
-  MemoryManager() {
-  }
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(long* mem);
@@ -126,7 +123,6 @@ class MemoryManager {
 
 public:
   static void Initialize(StackProgram* p);
-  static MemoryManager* Instance();
 
   static void Clear() {
     unordered_map<long*, ClassMethodId*>::iterator id_iter;
@@ -146,8 +142,7 @@ public:
     }
     allocated_memory.clear();
 
-    delete instance;
-    instance = NULL;
+    initialized = false;
   }
 
   static void AddStaticMemory(long* mem);
@@ -157,8 +152,8 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  void AddPdaMethodRoot(StackFrameMonitor* monitor);
-  void RemovePdaMethodRoot(StackFrameMonitor* monitor);
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
@@ -179,7 +174,7 @@ public:
 			     long* op_stack, long stack_pos, bool collect = true);
   
   // object verification
-  long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
+  static long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   //
   // returns the class reference for an object instance

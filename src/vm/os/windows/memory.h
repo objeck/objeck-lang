@@ -35,8 +35,8 @@
 #include "../../common.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 1024
-// #define MEM_MAX 1048576 * 2
+// #define MEM_MAX 1024
+#define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
@@ -87,9 +87,6 @@ class MemoryManager {
   static long uncollected_count;
   static long collected_count;
 
-  MemoryManager() {
-  }
-
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(long* mem);
   static inline bool MarkValidMemory(long* mem);
@@ -113,9 +110,6 @@ class MemoryManager {
   }
 
 public:
-  ~MemoryManager() {
-  }
-
   static void Initialize(StackProgram* p);
 
   // recover memory

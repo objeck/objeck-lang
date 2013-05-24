@@ -32,7 +32,7 @@
 #include "memory.h"
 #include <iomanip>
 
-MemoryManager* MemoryManager::instance;
+bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
@@ -56,15 +56,7 @@ void MemoryManager::Initialize(StackProgram* p)
   allocation_size = 0;
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
-}
-
-MemoryManager* MemoryManager::Instance()
-{
-  if(!instance) {
-    instance = new MemoryManager;
-  }
-
-  return instance;
+  initialized = true;
 }
 
 // if return true, trace memory otherwise do not
@@ -131,9 +123,12 @@ inline bool MemoryManager::MarkValidMemory(long* mem)
   return false;
 }
 
-
 void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
+  if(!initialized) {
+    return;
+  }
+
 #ifdef _DEBUG
   wcout << L"adding PDA method: monitor=" << monitor << endl;
 #endif
