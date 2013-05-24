@@ -33,12 +33,10 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
-#include "../stx/btree_map.h"
-#include "../stx/btree_set.h"
 
 // basic vm tuning parameters
-// #define MEM_MAX 1024
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 1024
+// #define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 3
 #define COLLECTED_COUNT 9
 
@@ -46,17 +44,18 @@
 #define SIZE_OR_CLS -2
 #define TYPE -3
 
-using namespace stx;
-
-struct CollectionInfo {
-  long* op_stack;
-  long stack_pos;
-};
-
+// used to monitor the state of
+// active stack frames
 struct StackFrameMonitor {
   StackFrame** call_stack;
   long* call_stack_pos;
   StackFrame** cur_frame;
+};
+
+// holders
+struct CollectionInfo {
+  long* op_stack;
+  long stack_pos;
 };
 
 struct ClassMethodId {
@@ -73,7 +72,6 @@ class MemoryManager {
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static vector<long*> allocated_memory;
-  static btree_set<long*> allocated_int_obj_array;
   static vector<long*> marked_memory;
   
 #ifndef _GC_SERIAL
@@ -94,8 +92,8 @@ class MemoryManager {
   }
 
   // if return true, trace memory otherwise do not
-  static inline void MarkMemory(long* mem);
-  static inline bool MarkMemoryStatus(long* mem);
+  static inline bool MarkMemory(long* mem);
+  static inline bool MarkValidMemory(long* mem);
 
   // mark memory
   static void* CheckStatic(void* arg);
