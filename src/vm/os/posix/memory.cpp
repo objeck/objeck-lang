@@ -239,10 +239,10 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
       CollectMemory(op_stack, stack_pos);
     }
     // allocate memory
-    mem = (long*)calloc(size * 2 + sizeof(long) * 3, sizeof(char));
+    mem = (long*)calloc(size * 2 + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
     mem[0] = NIL_TYPE;
     mem[1] = (long)cls;
-    mem += 3;
+    mem += EXTRA_BUF_SIZE;
     
     // record
 #ifndef _GC_SERIAL
@@ -295,10 +295,10 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
-  mem = (long*)calloc(calc_size + sizeof(long) * 3, sizeof(char));
+  mem = (long*)calloc(calc_size + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
   mem[0] = type;
   mem[1] = calc_size;
-  mem += 3;
+  mem += EXTRA_BUF_SIZE;
   
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
@@ -557,7 +557,7 @@ void* MemoryManager::CollectMemory(void* arg)
       // account for deallocated memory
       allocation_size -= mem_size;
       // erase memory
-      long* tmp = mem - 3;
+      long* tmp = mem - EXTRA_BUF_SIZE;
       free(tmp);
       tmp = NULL;
     }
