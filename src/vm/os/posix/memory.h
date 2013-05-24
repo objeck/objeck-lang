@@ -42,6 +42,10 @@
 #define UNCOLLECTED_COUNT 3
 #define COLLECTED_COUNT 9
 
+#define MARKED_FLAG -1
+#define SIZE_OR_CLS -2
+#define TYPE -3
+
 using namespace stx;
 
 struct CollectionInfo {
@@ -108,11 +112,11 @@ class MemoryManager {
       pthread_mutex_lock(&allocated_mutex);
 #endif
     if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-       mem[-3] == NIL_TYPE) {
+       mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
 #endif
-      return (StackClass*)mem[-2];
+      return (StackClass*)mem[SIZE_OR_CLS];
     }
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
@@ -182,7 +186,7 @@ public:
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(long* mem) {
-    if(mem && mem[-3] == NIL_TYPE) {
+    if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)*(mem - 2);
     }
     return NULL;
