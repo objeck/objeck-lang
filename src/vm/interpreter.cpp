@@ -771,7 +771,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 
     case OBJ_TYPE_OF: {
       long* mem = (long*)PopInt(op_stack, stack_pos);
-      long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+      long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
 								program->GetHierarchy(),
 								program->GetInterfaces());
       if(result) {
@@ -785,7 +785,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt(op_stack, stack_pos);
-      long result = (long)MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+      long result = (long)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
 								     program->GetHierarchy(),
 								     program->GetInterfaces());
 #ifdef _DEBUG
