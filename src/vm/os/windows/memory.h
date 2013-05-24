@@ -34,12 +34,17 @@
 
 #include "../../common.h"
 
-// basic vm tuning parameters
+// initial threshold
 // #define MEM_MAX 1024
 #define MEM_MAX 1048576 * 2
+// when this limit is met the garbage collect threshold
+// is increased
 #define UNCOLLECTED_COUNT 4
+// when this limit is met the garbage collect threshold
+// is lowered
 #define COLLECTED_COUNT 8
 
+// memory meta data tags
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
@@ -155,7 +160,10 @@ public:
   static void AddPdaMethodRoot(StackFrameMonitor* monitor);
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
+  // sweeps memory
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
+
+  // sweeps an object and it's references
   static void CheckObject(long* mem, bool is_obj, const long depth);
 
   // memory allocation
@@ -167,6 +175,8 @@ public:
 
     return NULL;
   }
+  
+  // object and array allocation
   static long* AllocateObject(const long obj_id, long* op_stack, long stack_pos, bool collect = true);
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos, bool collect = true);
 
