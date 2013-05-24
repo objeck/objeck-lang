@@ -611,7 +611,7 @@ void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance,
  *  TrapManager class
  ********************************/
 void TrapProcessor::CreateNewObject(const wstring &cls_id, long* &op_stack, long* &stack_pos) {
-  long* obj = MemoryManager::Instance()->AllocateObject(cls_id.c_str(), (long*)op_stack, *stack_pos, false);
+  long* obj = MemoryManager::AllocateObject(cls_id.c_str(), (long*)op_stack, *stack_pos, false);
   if(obj) {
     // instance will be put on stack by method call
     const wstring mthd_name = cls_id + L":New:";
@@ -627,7 +627,7 @@ void TrapProcessor::CreateNewObject(const wstring &cls_id, long* &op_stack, long
  ********************************/
 long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackProgram* program, 
 					long* &op_stack, long* &stack_pos) {
-  long* mthd_obj = MemoryManager::Instance()->AllocateObject(program->GetMethodObjectId(),
+  long* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
 							     (long*)op_stack, *stack_pos,
 							     false);
   // method and class object
@@ -656,7 +656,7 @@ long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackP
   const wstring &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
   vector<long*> data_type_obj_holder;
   while(index < (int)params_string.size()) {
-    long* data_type_obj = MemoryManager::Instance()->AllocateObject(program->GetDataTypeObjectId(),
+    long* data_type_obj = MemoryManager::AllocateObject(program->GetDataTypeObjectId(),
 								    (long*)op_stack, *stack_pos,
 								    false);
     data_type_obj_holder.push_back(data_type_obj);
@@ -732,7 +732,7 @@ long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackP
   // create type array
   const long type_obj_array_size = (long)data_type_obj_holder.size();
   const long type_obj_array_dim = 1;
-  long* type_obj_array = (long*)MemoryManager::Instance()->AllocateArray(type_obj_array_size +
+  long* type_obj_array = (long*)MemoryManager::AllocateArray(type_obj_array_size +
 									 type_obj_array_dim + 2,
 									 INT_TYPE, op_stack,
 									 *stack_pos, false);
@@ -758,7 +758,7 @@ void TrapProcessor::CreateClassObject(StackClass* cls, long* cls_obj, long* &op_
   // create and set methods
   const long mthd_obj_array_size = cls->GetMethodCount();
   const long mthd_obj_array_dim = 1;
-  long* mthd_obj_array = (long*)MemoryManager::Instance()->AllocateArray(mthd_obj_array_size +
+  long* mthd_obj_array = (long*)MemoryManager::AllocateArray(mthd_obj_array_size +
 									 mthd_obj_array_dim + 2,
 									 INT_TYPE, op_stack,
 									 *stack_pos, false);
@@ -784,7 +784,7 @@ long* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* 
   // create character array
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
 								     ((char_array_dim + 2) *
 								      sizeof(long)),
 								     CHAR_ARY_TYPE,
@@ -799,7 +799,7 @@ long* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* 
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
       
   // create 'System.String' object instance
-  long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
+  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
 							    (long*)op_stack, *stack_pos,
 							    false);
   str_obj[0] = (long)char_array;
@@ -1055,7 +1055,7 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
 
     long* dest_array;
     if(type == BYTE_ARY_PARM) {
-      dest_array = (long*)MemoryManager::Instance()->AllocateArray(dest_array_size +
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size +
 								   ((dest_array_dim + 2) *
 								    sizeof(long)),
 								   BYTE_ARY_TYPE,
@@ -1063,7 +1063,7 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
 								   false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = (long*)MemoryManager::Instance()->AllocateArray(dest_array_size +
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size +
 								   ((dest_array_dim + 2) *
 								    sizeof(long)),
 								   CHAR_ARY_TYPE,
@@ -1108,7 +1108,7 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
     // create byte array
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
-    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size + 1 +
+    long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 +
 								       ((byte_array_dim + 2) *
 									sizeof(long)),
 								       BYTE_ARY_TYPE,
@@ -1234,7 +1234,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     // create character array
     const long char_array_size = out.size();
     const long char_array_dim = 1;
-    long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
 								       ((char_array_dim + 2) *
 									sizeof(long)),
 								       CHAR_ARY_TYPE,
@@ -1264,7 +1264,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     // create byte array
     const long byte_array_size = out.size();
     const long byte_array_dim = 1;
-    long* byte_array = (long*)MemoryManager::Instance()->AllocateArray(byte_array_size + 1 +
+    long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 +
 								       ((byte_array_dim + 2) *
 									sizeof(long)),
 								       BYTE_ARY_TYPE,

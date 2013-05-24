@@ -67,7 +67,7 @@ struct ClassMethodId {
 };
 
 class MemoryManager {
-  static MemoryManager* instance;
+  static bool initialized;
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
@@ -117,7 +117,6 @@ public:
   }
 
   static void Initialize(StackProgram* p);
-  static MemoryManager* Instance();
 
   // recover memory
   static void CollectAllMemory(long* op_stack, long stack_pos);
@@ -139,7 +138,7 @@ public:
     while(!allocated_memory.empty()) {
       long* temp = allocated_memory.front();
       allocated_memory.erase(allocated_memory.begin());      
-      temp -= 3;
+      temp -= EXTRA_BUF_SIZE;
       free(temp);
       temp = NULL;
     }
@@ -151,8 +150,7 @@ public:
     DeleteCriticalSection(&marked_cs);
     DeleteCriticalSection(&marked_sweep_cs);
 
-    delete instance;
-    instance = NULL;
+    initialized = false;
   }
 
   // add and remove jit roots
@@ -160,8 +158,8 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  void AddPdaMethodRoot(StackFrameMonitor* monitor);
-  void RemovePdaMethodRoot(StackFrameMonitor* monitor);
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
@@ -179,7 +177,7 @@ public:
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos, bool collect = true);
 
   // object verification
-  long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
+  static long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   //
   // returns the class reference for an object instance
