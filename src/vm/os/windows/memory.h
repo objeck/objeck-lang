@@ -35,8 +35,8 @@
 #include "../../common.h"
 
 // basic vm tuning parameters
-// #define MEM_MAX 1024
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 1024
+// #define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
@@ -75,7 +75,6 @@ class MemoryManager {
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
   
-  static CRITICAL_SECTION static_cs;
   static CRITICAL_SECTION jit_cs;
   static CRITICAL_SECTION pda_cs;
   static CRITICAL_SECTION allocated_cs;
@@ -187,7 +186,7 @@ public:
   //
   static inline StackClass* GetClass(long* mem) {
     if(mem && mem[TYPE] == NIL_TYPE) {
-      return (StackClass*)*(mem - 2);
+      return (StackClass*)mem[SIZE_OR_CLS];
     }
     
     return NULL;
