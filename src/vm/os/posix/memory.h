@@ -186,7 +186,7 @@ public:
   //
   static inline StackClass* GetClass(long* mem) {
     if(mem && mem[TYPE] == NIL_TYPE) {
-      return (StackClass*)*(mem - 2);
+      return (StackClass*)mem[SIZE_OR_CLS];
     }
     return NULL;
   }
