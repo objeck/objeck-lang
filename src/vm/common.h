@@ -57,6 +57,7 @@
 
 #if defined(_WIN32) && !defined(_MINGW)
 #include <windows.h>
+#include <process.h>
 #include <unordered_map>
 using namespace stdext;
 #else
