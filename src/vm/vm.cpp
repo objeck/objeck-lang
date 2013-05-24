@@ -34,10 +34,10 @@
 #define SUCCESS 0
 #define USAGE_ERROR -1
 
+// common execution point for all platforms
 int Execute(const int argc, const char* argv[])
 {
   if(argc > 1) {
-    // loader; when this goes out of scope program memory is released
     srand((unsigned int)time(NULL)); rand(); // calling rand() once improves random number generation
     wchar_t** commands = ProcessCommandLine(argc, argv);
     Loader loader(argc, commands);
@@ -57,6 +57,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _TIMING
     clock_t start = clock();
 #endif
+    // start the interpreter...
     Runtime::StackInterpreter intpr(Loader::GetProgram());
     intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
 

@@ -40,6 +40,7 @@
 #include "../shared/version.h"
 #include <iostream>
 
+// program start
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
@@ -47,10 +48,10 @@ int main(const int argc, const char* argv[])
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
 
+    // initialize Winsock
     WSADATA data;
-    int version = MAKEWORD(2, 2);
-
     int status;
+    int version = MAKEWORD(2, 2);
     if(WSAStartup(version, &data)) {
       cerr << L"Unable to load Winsock 2.2!" << endl;
       status = SYSTEM_ERROR;
@@ -63,9 +64,9 @@ int main(const int argc, const char* argv[])
       // execute program
       status = Execute(argc, argv);
     }
-    // release winsock
-    WSACleanup();
 
+    // release Winsock
+    WSACleanup();
     return status;
   }
   else {
