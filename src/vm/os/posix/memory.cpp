@@ -37,7 +37,6 @@ StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
 vector<long*> MemoryManager::allocated_memory;
-btree_set<long*> MemoryManager::allocated_int_obj_array;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
@@ -73,7 +72,7 @@ inline void MemoryManager::MarkMemory(long* mem)
 {
   if(mem) {
     // check if memory has been marked
-    if(mem[-1]) {
+    if(mem[MARKED_FLAG]) {
       return;
     }
     
@@ -81,7 +80,7 @@ inline void MemoryManager::MarkMemory(long* mem)
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&marked_mutex);
 #endif
-    mem[-1] = 1L;
+    mem[MARKED_FLAG] = 1L;
     marked_memory.push_back(mem);
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&marked_mutex);      
@@ -98,7 +97,7 @@ inline bool MemoryManager::MarkMemoryStatus(long* mem)
 #endif
     if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
       // check if memory has been marked
-      if(mem[-1]) {
+      if(mem[MARKED_FLAG]) {
 #ifndef _GC_SERIAL
 	pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -109,7 +108,7 @@ inline bool MemoryManager::MarkMemoryStatus(long* mem)
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&marked_mutex);
 #endif
-      mem[-1] = 1L;
+      mem[MARKED_FLAG] = 1L;
       marked_memory.push_back(mem);
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&marked_mutex);      
@@ -517,7 +516,7 @@ void* MemoryManager::CollectMemory(void* arg)
     bool found = false;
     if(std::binary_search(marked_memory.begin(), marked_memory.end(), mem)) {
       long* tmp = mem;
-      tmp[-1] = 0L;
+      tmp[MARKED_FLAG] = 0L;
       found = true;
     }
     
@@ -529,8 +528,8 @@ void* MemoryManager::CollectMemory(void* arg)
     else {
       long mem_size;
       // object or array
-      if(mem[-3] == NIL_TYPE) {
-        StackClass* cls = (StackClass*)mem[-2];
+      if(mem[TYPE] == NIL_TYPE) {
+        StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
 #ifdef _DEBUG
         assert(cls);
 #endif
@@ -538,12 +537,12 @@ void* MemoryManager::CollectMemory(void* arg)
           mem_size = cls->GetInstanceMemorySize();
         }
 	else {
-	  mem_size = mem[-2];
+	  mem_size = mem[SIZE_OR_CLS];
 	}
       } 
       // array
       else {
-        mem_size = mem[-2];
+        mem_size = mem[SIZE_OR_CLS];
       }
       
 #ifdef _DEBUG
