@@ -71,7 +71,8 @@ int Execute(const int argc, const char* argv[])
 #endif
     
     // wait for outstanding threads
-#ifdef _WIN32        
+#ifdef _DEBUG
+#ifdef _WIN32     
     list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
     for(list<HANDLE>::iterator iter = thread_ids.begin();
       iter != thread_ids.end(); iter++) {
@@ -92,6 +93,7 @@ int Execute(const int argc, const char* argv[])
 	exit(-1);
       }
     }
+#endif
 #endif
 
 #ifdef _TIMING
