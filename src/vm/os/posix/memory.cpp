@@ -286,7 +286,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
 
   default:
-    cerr << L"internal error" << endl;
+    wcerr << L"internal error" << endl;
     exit(1);
     break;
   }
@@ -305,11 +305,6 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   allocation_size += calc_size;
   allocated_memory.push_back(mem);
-  /*
-  if(type == INT_TYPE) {
-    allocated_int_obj_array.insert(mem);
-  }
-  */
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif
@@ -401,8 +396,9 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _TIMING
   clock_t start = clock();
 #endif
-
-
+  
+  CollectionInfo* info = (CollectionInfo*)arg;
+  
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
@@ -410,12 +406,10 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif  
-
-  CollectionInfo* info = (CollectionInfo*)arg;
   
 #ifdef _DEBUG
   long start = allocation_size;
-  cout << dec << endl << L"=========================================" << endl;
+  wcout << dec << endl << L"=========================================" << endl;
   wcout << L"Starting Garbage Collection; thread=" << pthread_self() << endl;
   wcout << L"=========================================" << endl;
   wcout << L"## Marking memory ##" << endl;
@@ -483,7 +477,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _TIMING
   clock_t end = clock();
-  cout << dec << endl << L"=========================================" << endl;
+  wcout << dec << endl << L"=========================================" << endl;
   wcout << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
        << L" second(s)." << endl;
   wcout << L"=========================================" << endl;
@@ -530,8 +524,8 @@ void* MemoryManager::CollectMemory(void* arg)
     }
     // will be collected
     else {
-      long mem_size;
       // object or array
+      long mem_size;
       if(mem[TYPE] == NIL_TYPE) {
         StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
 #ifdef _DEBUG
@@ -556,6 +550,7 @@ void* MemoryManager::CollectMemory(void* arg)
       
       // account for deallocated memory
       allocation_size -= mem_size;
+      
       // erase memory
       long* tmp = mem - EXTRA_BUF_SIZE;
       free(tmp);
@@ -604,7 +599,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifdef _TIMING
   end = clock();
-  cout << dec << endl << L"=========================================" << endl;
+  wcout << dec << endl << L"=========================================" << endl;
   wcout << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
        << L" second(s)." << endl;
   wcout << L"=========================================" << endl;
@@ -784,9 +779,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem)
-             << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
-	      << L" byte(s)" << endl;
+	wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
+	      << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
         if(MarkValidMemory((long*)(*mem))) {
@@ -982,12 +976,11 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       mem++;
     }
       break;
-
+      
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
-	    << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
       if(MarkValidMemory((long*)(*mem))) {
@@ -1042,7 +1035,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       for(int i = 0; i < depth; i++) {
         wcout << L"\t";
       }
-      cout <<"$: addr/value=" << mem << endl;
+      wcout <<"$: addr/value=" << mem << endl;
       if(is_obj) {
         assert(cls);
       }

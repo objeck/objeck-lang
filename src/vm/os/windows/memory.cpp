@@ -75,57 +75,61 @@ MemoryManager* MemoryManager::Instance()
   return instance;
 }
 
-inline void MemoryManager::MarkMemory(long* mem)
+// if return true, trace memory otherwise do not
+inline bool MemoryManager::MarkMemory(long* mem)
 {
   if(mem) {
     // check if memory has been marked
-    if(mem[-1]) {
-      return;
+    if(mem[MARKED_FLAG]) {
+      return false;
     }
-
+    
     // mark & add to list
-#ifndef _SERIAL
+#ifndef GC_SERIAL
     EnterCriticalSection(&marked_cs);
 #endif
-    mem[-1] = 1L;
+    mem[MARKED_FLAG] = 1L;
     marked_memory.push_back(mem);
-#ifndef _SERIAL
-    LeaveCriticalSection(&marked_cs);
+#ifndef GC_SERIAL
+    LeaveCriticalSection(&marked_cs);     
 #endif
+
+    return true;
   }
+
+  return false;
 }
 
 // if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkMemoryStatus(long* mem)
+inline bool MemoryManager::MarkValidMemory(long* mem)
 {
   if(mem) {
-#ifndef _SERIAL
+#ifndef GC_SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
-    stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-    if(result != allocated_memory.end()) {
+    if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
       // check if memory has been marked
-      if(mem[-1]) {
-#ifndef _SERIAL
-        LeaveCriticalSection(&allocated_cs);
+      if(mem[MARKED_FLAG]) {
+#ifndef GC_SERIAL
+	LeaveCriticalSection(&allocated_cs);
 #endif
         return false;
       }
 
       // mark & add to list
-#ifndef _SERIAL
+#ifndef GC_SERIAL
       EnterCriticalSection(&marked_cs);
 #endif
       mem[-1] = 1L;
       marked_memory.push_back(mem);
-#ifndef _SERIAL
+#ifndef GC_SERIAL
       LeaveCriticalSection(&marked_cs);      
       LeaveCriticalSection(&allocated_cs);
 #endif
       return true;
     } 
     else {
-#ifndef _SERIAL
+#ifndef GC_SERIAL
       LeaveCriticalSection(&allocated_cs);
 #endif
       return false;
@@ -141,11 +145,11 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
   wcout << L"adding PDA method: monitor=" << monitor << endl;
 #endif
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
   pda_roots.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
 }
@@ -156,11 +160,11 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
   wcout << L"removing PDA method: monitor=" << monitor << endl;
 #endif
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
   pda_roots.erase(monitor);
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
 }
@@ -182,11 +186,11 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
   mthd_info->cls_id = cls_id;
   mthd_info->mthd_id = mthd_id;
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&jit_cs);
 #endif
   jit_roots.insert(pair<long*, ClassMethodId*>(mem, mthd_info));
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&jit_cs);
 #endif
 }
@@ -194,7 +198,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 void MemoryManager::RemoveJitMethodRoot(long* mem)
 {
   ClassMethodId* id;
-#ifndef _GC_SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&jit_cs);
 #endif
   
@@ -211,7 +215,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
 #endif
   jit_roots.erase(found);
   
-#ifndef _GC_SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&jit_cs);
 #endif
   
@@ -231,21 +235,22 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
     long size = cls->GetInstanceMemorySize();
 
     // collect memory
-    if(allocation_size + size > mem_max_size) {
+    if(collect && allocation_size + size > mem_max_size) {
       CollectAllMemory(op_stack, stack_pos);
     }
     // allocate memory
-    mem = (long*)calloc(size * 2 + sizeof(long) * 2, sizeof(char));
-    mem[0] = (long)cls;
-    mem += 2;
+    mem = (long*)calloc(size * 2 + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
+    mem[0] = NIL_TYPE;
+    mem[1] = (long)cls;
+    mem += EXTRA_BUF_SIZE;
 
     // record
-#ifndef _SERIAL
+#ifndef GC_SERIAL
     EnterCriticalSection(&allocated_cs);
 #endif
     allocation_size += size;
-    allocated_memory.insert(pair<long*, long>(mem, -obj_id));
-#ifndef _SERIAL
+    allocated_memory.push_back(mem);
+#ifndef GC_SERIAL
     LeaveCriticalSection(&allocated_cs);
 #endif
 
@@ -286,22 +291,21 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
   }
   // collect memory
-  if(allocation_size + calc_size > mem_max_size) {
+  if(collect && allocation_size + calc_size > mem_max_size) {
     CollectAllMemory(op_stack, stack_pos);
   }
   // allocate memory
-  mem = (long*)calloc(calc_size + sizeof(long) * 2, sizeof(char));
-  mem += 2;
+  mem = (long*)calloc(calc_size + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
+  mem[0] = type;
+  mem[1] = calc_size;
+  mem += EXTRA_BUF_SIZE;
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&allocated_cs);
 #endif
   allocation_size += calc_size;
-  allocated_memory.insert(pair<long*, long>(mem, calc_size));
-  if(type == INT_TYPE) {
-    allocated_int_obj_array.insert(mem);
-  }
-#ifndef _SERIAL
+  allocated_memory.push_back(mem);
+#ifndef GC_SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
 
@@ -315,29 +319,16 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 
 long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
-#ifndef _SERIAL
-  EnterCriticalSection(&allocated_cs);
-#endif
-
-  long id;  
-  stx::btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-  if(result != allocated_memory.end()) {
-    id = -result->second;
-  } 
-  else {
-#ifndef _SERIAL
-    LeaveCriticalSection(&allocated_cs);
-#endif
+  // invalid array cast  
+  long id = GetObjectID(mem);
+  if(id < 0) {
     return NULL;
   }
-
+  
   // upcast
   int tmp_id = id;
   while(tmp_id != -1) {
     if(tmp_id == to_id) {
-#ifndef _SERIAL
-      LeaveCriticalSection(&allocated_cs);
-#endif
       return mem;
     }
     // update
@@ -352,25 +343,18 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
     tmp_id = interfaces[i];
     while(tmp_id > -1) {
       if(tmp_id == to_id) {
-#ifndef _GC_SERIAL
-        LeaveCriticalSection(&allocated_cs);
-#endif
-        return mem;
+	return mem;
       }
       tmp_id = interfaces[++i];
     }
   }
-
-#ifndef _SERIAL
-  LeaveCriticalSection(&allocated_cs);
-#endif
-
+  
   return NULL;
 }
 
 void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
 {
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   // only one thread at a time can invoke the gargabe collector
   if(!TryEnterCriticalSection(&marked_sweep_cs)) {
     return;
@@ -381,7 +365,7 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread_id) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
@@ -391,7 +375,7 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
   CollectMemory(info);
 #endif
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   if(WaitForSingleObject(collect_thread_id, INFINITE) != WAIT_OBJECT_0) {
     wcerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
@@ -405,6 +389,14 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&allocated_cs);
+#endif
+  std::sort(allocated_memory.begin(), allocated_memory.end());
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&allocated_cs);
+#endif
+
 #ifdef _DEBUG
   long start = allocation_size;
   wcout << dec << endl << L"=========================================" << endl;
@@ -413,7 +405,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   wcout << L"## Marking memory ##" << endl;
 #endif
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   const int num_threads = 4;
   HANDLE thread_ids[num_threads];
 
@@ -461,10 +453,9 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 #ifdef _DEBUG
   wcout << L"## Sweeping memory ##" << endl;
 #endif
-  vector<long*> erased_memory;
 
   // sort and search
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&allocated_cs);
   EnterCriticalSection(&marked_cs);
 #endif
@@ -475,24 +466,32 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   wcout << L"-----------------------------------------" << endl;
 #endif
   std::sort(marked_memory.begin(), marked_memory.end());
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   
 #endif
-  stx::btree_map<long*, long>::iterator iter;
-  for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
+  vector<long*> live_memory;
+  live_memory.reserve(allocated_memory.size());
+  for(size_t i = 0; i < allocated_memory.size(); ++i) {
+    long* mem = allocated_memory[i];
+
+    // check dynamic memory
     bool found = false;
-    if(std::binary_search(marked_memory.begin(), marked_memory.end(), iter->first)) {
-      long* tmp = iter->first;
-      tmp[-1] = 0L;
+    if(std::binary_search(marked_memory.begin(), marked_memory.end(), mem)) {
+      long* tmp = mem;
+      tmp[MARKED_FLAG] = 0L;
       found = true;
     }
 
-    // not found, will be collected
-    if(!found) {
+    // live
+    if(found) {
+      live_memory.push_back(mem);
+    }
+    // will be collected
+    else {
       // object or array	
       long mem_size;
-      if(iter->second < 0) {
-        StackClass* cls = prgm->GetClass(-iter->second);
+      if(mem[TYPE] == NIL_TYPE) {
+        StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
 #ifdef _DEBUG
         assert(cls);
 #endif
@@ -500,36 +499,34 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
           mem_size = cls->GetInstanceMemorySize();
         }
         else {
-          mem_size = iter->second;
+          mem_size = mem[SIZE_OR_CLS];
         }
       } 
       else {
-        mem_size = iter->second;
+        mem_size = mem[SIZE_OR_CLS];
       }
 
 #ifdef _DEBUG
-      wcout << L"# releasing memory: addr=" << iter->first << L"(" << (long)iter->first
+      wcout << L"# releasing memory: addr=" << mem << L"(" << (long)mem
         << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
 
       // account for deallocated memory
       allocation_size -= mem_size;
-      // erase memory
-      long* tmp = iter->first;
-      erased_memory.push_back(tmp);
 
-      tmp -= 2;
+      // erase memory
+      long* tmp = mem - EXTRA_BUF_SIZE;
       free(tmp);
       tmp = NULL;
     }
   }
   marked_memory.clear();
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&marked_cs);
 #endif  
 
   // did not collect memory; ajust constraints
-  if(erased_memory.empty()) {
+  if(live_memory.size() == allocated_memory.size()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     } else {
@@ -547,12 +544,9 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
     }
   }
 
-  // remove references from allocated pool
-  for(size_t i = 0; i < erased_memory.size(); ++i) {
-    allocated_memory.erase(erased_memory[i]);
-    allocated_int_obj_array.erase(erased_memory[i]);
-  }
-#ifndef _SERIAL
+  // copy live memory to allocated memory
+  allocated_memory = live_memory;
+#ifndef GC_SERIAL
   LeaveCriticalSection(&allocated_cs);
 #endif
 
@@ -600,7 +594,7 @@ uintptr_t WINAPI MemoryManager::CheckStack(void* arg)
 
 uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 {
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&jit_cs);
 #endif  
 
@@ -628,29 +622,12 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {
-#ifndef _SERIAL
-      EnterCriticalSection(&allocated_cs);
-#endif
-
-#ifdef _DEBUG
-      // get memory size
-      long array_size = 0;
-      stx::btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
-      if(result != allocated_memory.end()) {
-        array_size = result->second;
-      }
-#endif
-
-#ifndef _SERIAL
-      LeaveCriticalSection(&allocated_cs);
-#endif
-
       // update address based upon type
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) 
-          << L"," << *(mem + 1)<< endl;
+          << L"," << *(mem + 1) << endl;
 #endif
         // update
         mem += 2;
@@ -677,8 +654,10 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" 
+	      << (long*)(*mem) << L"(" << (long)(*mem) 
+	      << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+	      << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -688,8 +667,9 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
       case CHAR_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem) 
+	      << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+	      << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -700,7 +680,9 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case INT_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	      << L"(" << (long)(*mem) << L"), size=" 
+	      << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	      << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -711,7 +693,8 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" << array_size << endl;
+	      << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" 
+	      << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) << endl;
 #endif
         // mark data
         MarkMemory((long*)(*mem));
@@ -719,25 +702,33 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         mem++;
         break;
 
-      case OBJ_PARM:
+      case OBJ_PARM: {
 #ifdef _DEBUG
         wcout << L"\t" << j << L": OBJ_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), id=" << array_size << endl;
+	      << L"(" << (long)(*mem) << L"), id=";
+	if(*mem) {
+	  StackClass* tmp = (StackClass*)((long*)(*mem))[SIZE_OR_CLS];
+	  wcout << L"'" << tmp->GetName() << L"'" << endl;
+	}
+	else {
+	  wcout << L"Unknown" << endl;
+	}
 #endif
         // check object
         CheckObject((long*)(*mem), true, 1);
         // update
         mem++;
+      }
         break;
 
         // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\tOBJ_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem)
-          << L"), size=" << array_size << L" byte(s)" << endl;
+        wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
+        << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
         // mark data
-        if(MarkMemoryStatus((long*)(*mem))) {
+        if(MarkValidMemory((long*)(*mem))) {
           long* array = (long*)(*mem);
           const long size = array[0];
           const long dim = array[1];
@@ -762,7 +753,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
     }
   }
 
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&jit_cs);  
 #endif
 
@@ -771,7 +762,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
 uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 {
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   EnterCriticalSection(&pda_cs);
 #endif
 
@@ -818,7 +809,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
       CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
     }
   }
-#ifndef _SERIAL
+#ifndef GC_SERIAL
   LeaveCriticalSection(&pda_cs);
 #endif
 
@@ -829,23 +820,6 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 {
   // check method
   for(long i = 0; i < dcls_size; i++) {
-#ifndef _SERIAL
-    EnterCriticalSection(&allocated_cs);
-#endif
-
-#ifdef _DEBUG
-    // get memory size
-    long array_size = 0;
-    stx::btree_map<long*, long>::iterator result = allocated_memory.find((long*)(*mem));
-    if(result != allocated_memory.end()) {
-      array_size = result->second;
-    }
-#endif
-
-#ifndef _SERIAL
-    LeaveCriticalSection(&allocated_cs);
-#endif
-
 #ifdef _DEBUG
     for(int j = 0; j < depth; j++) {
       wcout << L"\t";
@@ -885,7 +859,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (long*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+	    << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -896,7 +871,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case CHAR_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	    << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -907,7 +883,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case INT_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (long*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	    << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -918,7 +895,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	    << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((long*)(*mem));
@@ -926,15 +904,23 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       mem++;
       break;
 
-    case OBJ_PARM:
+    case OBJ_PARM: {
 #ifdef _DEBUG
       wcout << L"\t" << i << L": OBJ_PARM: addr=" << (long*)(*mem) << L"("
-        << (long)(*mem) << L"), id=" << array_size << endl;
+	    << (long)(*mem) << L"), id=";
+      if(*mem) {
+	StackClass* tmp = (StackClass*)((long*)(*mem))[SIZE_OR_CLS];
+	wcout << L"'" << tmp->GetName() << L"'" << endl;
+      }
+      else {
+	wcout << L"Unknown" << endl;
+      }
 #endif
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
       // update
       mem++;
+    }
       break;
 
     case OBJ_ARY_PARM:
@@ -943,7 +929,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
         << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
 #endif
       // mark data
-      if(MarkMemoryStatus((long*)(*mem))) {
+      if(MarkValidMemory((long*)(*mem))) {
         long* array = (long*)(*mem);
         const long size = array[0];
         const long dim = array[1];
@@ -966,16 +952,12 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 {
   if(mem) {
     StackClass* cls;
-#ifdef _DEBUG
-    cls = GetClassMapping(mem);
-#else
     if(is_obj) {
       cls = GetClass(mem);
     }
     else {
       cls = GetClassMapping(mem);
     }
-#endif
 
     if(cls) {
 #ifdef _DEBUG
@@ -987,8 +969,9 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 #endif
 
       // mark data
-      MarkMemory(mem);
-      CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
+      if(MarkMemory(mem)) {
+	CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
+      }
     } 
     else {
       // NOTE: this happens when we are trying to mark unidentified memory
@@ -1004,10 +987,10 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       }
 #endif
       // primitive or object array
-      if(MarkMemoryStatus(mem)) {
+      if(MarkValidMemory(mem)) {
         // ensure we're only checking int and obj arrays
-        btree_set<long*>::iterator result = allocated_int_obj_array.find(mem);
-        if(result != allocated_int_obj_array.end()) {
+        if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+	   (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
           long* array = mem;
           const long size = array[0];
           const long dim = array[1];

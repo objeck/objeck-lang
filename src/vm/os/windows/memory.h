@@ -33,11 +33,6 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
-#include "../stx/btree_map.h"
-#include "../stx/btree_set.h"
-#include <process.h>
-
-using namespace stx;
 
 // basic vm tuning parameters
 // #define MEM_MAX 1024
@@ -45,6 +40,20 @@ using namespace stx;
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
 
+#define EXTRA_BUF_SIZE 3
+#define MARKED_FLAG -1
+#define SIZE_OR_CLS -2
+#define TYPE -3
+
+// used to monitor the state of
+// active stack frames
+struct StackFrameMonitor {
+  StackFrame** call_stack;
+  long* call_stack_pos;
+  StackFrame** cur_frame;
+};
+
+// holders
 struct CollectionInfo {
   long* op_stack;
   long stack_pos;
@@ -57,21 +66,13 @@ struct ClassMethodId {
   long mthd_id;
 };
 
-struct StackFrameMonitor {
-  StackFrame** call_stack;
-  long* call_stack_pos;
-  StackFrame** cur_frame;
-};
-
 class MemoryManager {
   static MemoryManager* instance;
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
-  static btree_map<long*, long> static_memory;
-  static btree_map<long*, long> allocated_memory;
-  static btree_set<long*> allocated_int_obj_array;
+  static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
   
   static CRITICAL_SECTION static_cs;
@@ -91,25 +92,24 @@ class MemoryManager {
   }
 
   // if return true, trace memory otherwise do not
-  static inline void MarkMemory(long* mem);
-  static inline bool MarkMemoryStatus(long* mem);
+  static inline bool MarkMemory(long* mem);
+  static inline bool MarkValidMemory(long* mem);
 
   static inline StackClass* GetClassMapping(long* mem) {
-    #ifndef _SERIAL
-    EnterCriticalSection(&allocated_cs);
+#ifndef _GC_SERIAL
+      EnterCriticalSection(&allocated_cs);
 #endif
-    if(mem) {
-      btree_map<long*, long>::iterator result = allocated_memory.find(mem);
-      if(result != allocated_memory.end()) {
-#ifndef _SERIAL
-	      LeaveCriticalSection(&allocated_cs);
+    if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+       mem[TYPE] == NIL_TYPE) {
+#ifndef _GC_SERIAL
+      LeaveCriticalSection(&allocated_cs);
 #endif
-        return prgm->GetClass(-result->second);
-      }
+      return (StackClass*)mem[SIZE_OR_CLS];
     }
-#ifndef _SERIAL
+#ifndef _GC_SERIAL
     LeaveCriticalSection(&allocated_cs);
 #endif
+    
     return NULL;
   }
 
@@ -137,11 +137,10 @@ public:
       tmp = NULL;
     }
 
-    btree_map<long*, long>::iterator iter;
-    for(iter = allocated_memory.begin(); iter != allocated_memory.end(); ++iter) {
-      long* temp = iter->first;
-
-      temp -= 2;
+    while(!allocated_memory.empty()) {
+      long* temp = allocated_memory.front();
+      allocated_memory.erase(allocated_memory.begin());      
+      temp -= 3;
       free(temp);
       temp = NULL;
     }
@@ -172,7 +171,7 @@ public:
   static long* AllocateObject(const wchar_t* obj_name, long* op_stack, long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
-      return AllocateObject(cls->GetId(), op_stack, stack_pos);
+      return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
     }
 
     return NULL;
@@ -187,9 +186,10 @@ public:
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(long* mem) {
-    if(mem) {
+    if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)*(mem - 2);
     }
+    
     return NULL;
   }
 

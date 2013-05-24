@@ -37,8 +37,8 @@
 // basic vm tuning parameters
 // #define MEM_MAX 1024
 #define MEM_MAX 1048576 * 2
-#define UNCOLLECTED_COUNT 3
-#define COLLECTED_COUNT 9
+#define UNCOLLECTED_COUNT 4
+#define COLLECTED_COUNT 8
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -201,9 +201,6 @@ public:
     }
     
     return -1;
-  }
-
-  ~MemoryManager() {
   }
 };
 
