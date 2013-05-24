@@ -32,13 +32,13 @@
 #include "memory.h"
 #include <iomanip>
 
-MemoryManager* MemoryManager::instance;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
 vector<long*> MemoryManager::allocated_memory;
 vector<long*> MemoryManager::marked_memory;
 
+bool MemoryManager::initialized;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
@@ -61,15 +61,8 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&allocated_cs);
   InitializeCriticalSection(&marked_cs);
   InitializeCriticalSection(&marked_sweep_cs);
-}
 
-MemoryManager* MemoryManager::Instance()
-{
-  if(!instance) {
-    instance = new MemoryManager;
-  }
-
-  return instance;
+  initialized = true;
 }
 
 // if return true, trace memory otherwise do not
@@ -153,6 +146,10 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 
 void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 {
+  if(!initialized) {
+    return;
+  }
+
 #ifdef _DEBUG
   wcout << L"removing PDA method: monitor=" << monitor << endl;
 #endif

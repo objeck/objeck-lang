@@ -29,7 +29,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-// #include "vld.h"
 #include "vm.h"
 
 #define SUCCESS 0
@@ -110,7 +109,7 @@ int Execute(const int argc, const char* argv[])
     delete stack_pos;
     stack_pos = NULL;
 
-    MemoryManager::Instance()->Clear();
+    MemoryManager::Clear();
 
 #ifdef _TIMING
     clock_t end = clock();
