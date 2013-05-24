@@ -941,8 +941,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	int32_t* mem = (int32_t*)MemoryManager::
-	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -966,8 +965,7 @@ namespace Runtime {
 	  indices[dim++] = value;
 	}
 	size *= 2;
-	int32_t* mem = (int32_t*)MemoryManager::
-	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl; 
@@ -991,7 +989,7 @@ namespace Runtime {
 
       case OBJ_TYPE_OF: {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
-	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+	long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
 								  program->GetHierarchy(),
 								  program->GetInterfaces());
 	if(result) {
@@ -1009,7 +1007,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
-	int32_t result = (int32_t)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
+	int32_t result = (int32_t)MemoryManager::ValidObjectCast((long*)mem, to_id, 
 									     program->GetHierarchy(), program->GetInterfaces());
 	if(!result && mem) {
 	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  

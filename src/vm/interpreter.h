@@ -332,7 +332,7 @@ namespace Runtime {
       // create character array
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
-      long* char_array = (long*)MemoryManager::Instance()->AllocateArray(char_array_size + 1 +
+      long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
 									 ((char_array_dim + 2) *
 									  sizeof(long)),
 									 CHAR_ARY_TYPE,
@@ -347,7 +347,7 @@ namespace Runtime {
       wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
       
       // create 'System.String' object instance
-      long* str_obj = MemoryManager::Instance()->AllocateObject(program->GetStringObjectId(),
+      long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
 								(long*)op_stack, *stack_pos,
 								false);
       str_obj[0] = (long)char_array;
@@ -408,7 +408,7 @@ namespace Runtime {
       monitor->call_stack = call_stack;
       monitor->call_stack_pos = call_stack_pos;
       monitor->cur_frame = frame;
-      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
+      MemoryManager::AddPdaMethodRoot(monitor);
     }
   
     StackInterpreter(StackProgram* p) {
@@ -424,7 +424,7 @@ namespace Runtime {
       monitor->call_stack = call_stack;
       monitor->call_stack_pos = call_stack_pos;
       monitor->cur_frame = frame;      
-      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
+      MemoryManager::AddPdaMethodRoot(monitor);
     }
   
 #ifdef _DEBUGGER
@@ -443,12 +443,12 @@ namespace Runtime {
       monitor->call_stack = call_stack;
       monitor->call_stack_pos = call_stack_pos;
       monitor->cur_frame = frame;
-      MemoryManager::Instance()->AddPdaMethodRoot(monitor);
+      MemoryManager::AddPdaMethodRoot(monitor);
     }
 #endif
     
     ~StackInterpreter() {
-      MemoryManager::Instance()->RemovePdaMethodRoot(monitor);
+      MemoryManager::RemovePdaMethodRoot(monitor);
       
       delete[] call_stack;
       call_stack = NULL;
