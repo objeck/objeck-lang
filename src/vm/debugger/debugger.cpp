@@ -418,7 +418,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case OBJ_ARY_PARM:
           if(reference->GetIndices()) {
-            StackClass* klass = MemoryManager::Instance()->GetClass((long*)reference->GetIntValue());
+            StackClass* klass = MemoryManager::GetClass((long*)reference->GetIntValue());
             if(klass) {	      
               long* instance = (long*)reference->GetIntValue();
               if(instance) {
@@ -1444,16 +1444,7 @@ void Runtime::Debugger::ClearProgram() {
     stack_pos = NULL;
   }
 
-  /* TODO: fix
-     while(cur_call_stack_pos) {
-     StackFrame* frame = cur_call_stack[--cur_call_stack_pos];
-     delete frame;
-     frame = NULL;
-     }
-     cur_call_stack = NULL;
-  */
-
-  MemoryManager::Instance()->Clear();
+  MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
   cur_line_num = -2;
