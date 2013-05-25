@@ -70,7 +70,8 @@ int Execute(const int argc, const char* argv[])
     }
 #endif
     
-    // wait for outstanding threads
+    // clean up resources before exiting, only done in debug mode to ensure we've
+    // accounted for everything
 #ifdef _DEBUG
 #ifdef _WIN32     
     list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
@@ -94,8 +95,17 @@ int Execute(const int argc, const char* argv[])
       }
     }
 #endif
+    
+    // clean up
+    delete[] op_stack;
+    op_stack = NULL;
+    
+    delete stack_pos;
+    stack_pos = NULL;
+    
+    MemoryManager::Clear();
 #endif
-
+    
 #ifdef _TIMING
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
@@ -103,18 +113,7 @@ int Execute(const int argc, const char* argv[])
 	wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
-#endif
-
-    // clean up
-    delete[] op_stack;
-    op_stack = NULL;
-
-    delete stack_pos;
-    stack_pos = NULL;
-
-    MemoryManager::Clear();
-
-#ifdef _TIMING
+    
     clock_t end = clock();
     wcout << L"---------------------------" << endl;
     wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
