@@ -1103,7 +1103,7 @@ namespace Runtime {
 	}
 	// NULL terminated string workaround
 	size++;
-	long* mem = (long*)MemoryManager::Instance()->AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
+	long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(long));
@@ -1153,8 +1153,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	long* mem = (long*)MemoryManager::
-	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1178,8 +1177,7 @@ namespace Runtime {
 	  indices[dim++] = value;
 	}
 	size *= 2;
-	long* mem = (long*)MemoryManager::
-	  Instance()->AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl; 
@@ -1195,7 +1193,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
-	long* mem = (long*)MemoryManager::Instance()->AllocateObject(instr->GetOperand(), 
+	long* mem = (long*)MemoryManager::AllocateObject(instr->GetOperand(), 
 								     (long*)op_stack, *stack_pos);
 	PushInt(op_stack, stack_pos, (long)mem);
       }
@@ -1203,7 +1201,7 @@ namespace Runtime {
 	
       case OBJ_TYPE_OF: {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
-	long* result = MemoryManager::Instance()->ValidObjectCast(mem, instr->GetOperand(),
+	long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
 								  program->GetHierarchy(),
 								  program->GetInterfaces());
 	if(result) {
@@ -1221,7 +1219,7 @@ namespace Runtime {
 #ifdef _DEBUG
 	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
-	long result = (long)MemoryManager::Instance()->ValidObjectCast((long*)mem, to_id, 
+	long result = (long)MemoryManager::ValidObjectCast((long*)mem, to_id, 
 								       program->GetHierarchy(),
 								       program->GetInterfaces());
 	if(!result && mem) {
