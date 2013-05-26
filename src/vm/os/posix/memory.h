@@ -173,8 +173,6 @@ public:
     initialized = false;
   }
 
-  static void AddStaticMemory(long* mem);
-  
   // add and remove jit roots
   static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);
   static void RemoveJitMethodRoot(long* mem);
