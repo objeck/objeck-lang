@@ -36,6 +36,9 @@ bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
+stack<char*> MemoryManager::cache_pool_16;
+stack<char*> MemoryManager::cache_pool_32;
+stack<char*> MemoryManager::cache_pool_64;
 vector<long*> MemoryManager::allocated_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
@@ -57,6 +60,18 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
   initialized = true;
+  
+  for(int i = 0; i < CACHE_SIZE; i++) {
+    cache_pool_16.push((char*)calloc(16, sizeof(char)));
+  }
+
+  for(int i = 0; i < CACHE_SIZE; i++) {
+    cache_pool_32.push((char*)calloc(32, sizeof(char)));
+  }
+  
+  for(int i = 0; i < CACHE_SIZE; i++) {
+    cache_pool_64.push((char*)calloc(64, sizeof(char)));
+  }
 }
 
 // if return true, trace memory otherwise do not
@@ -233,8 +248,24 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     if(collect && allocation_size + size > mem_max_size) {
       CollectMemory(op_stack, stack_pos);
     }
+    
     // allocate memory
-    mem = (long*)calloc(size * 2 + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
+    const long alloc_size = size * 2 + sizeof(long) * EXTRA_BUF_SIZE;
+    if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
+      mem = (long*)cache_pool_64.top();
+      cache_pool_64.pop();
+    }
+    else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
+      mem = (long*)cache_pool_32.top();
+      cache_pool_32.pop();
+    }
+    else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
+      mem = (long*)cache_pool_16.top();
+      cache_pool_16.pop();
+    } 
+    else {
+      mem = (long*)calloc(alloc_size, sizeof(char));
+    }
     mem[0] = NIL_TYPE;
     mem[1] = (long)cls;
     mem += EXTRA_BUF_SIZE;
@@ -290,7 +321,24 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
     CollectMemory(op_stack, stack_pos);
   }
   // allocate memory
-  mem = (long*)calloc(calc_size + sizeof(long) * EXTRA_BUF_SIZE, sizeof(char));
+
+  // allocate memory
+  const long alloc_size = calc_size + sizeof(long) * EXTRA_BUF_SIZE;
+  if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
+    mem = (long*)cache_pool_64.top();
+    cache_pool_64.pop();
+  }
+  else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
+    mem = (long*)cache_pool_32.top();
+    cache_pool_32.pop();
+  }
+  else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
+    mem = (long*)cache_pool_16.top();
+    cache_pool_16.pop();
+  } 
+  else {    
+    mem = (long*)calloc(alloc_size, sizeof(char));
+  }
   mem[0] = type;
   mem[1] = calc_size;
   mem += EXTRA_BUF_SIZE;
@@ -548,8 +596,23 @@ void* MemoryManager::CollectMemory(void* arg)
       
       // erase memory
       long* tmp = mem - EXTRA_BUF_SIZE;
-      free(tmp);
-      tmp = NULL;
+      const long alloc_size = mem_size;
+      if(cache_pool_64.size()  < CACHE_SIZE + 1 && alloc_size <= 64 && alloc_size > 32) {
+	memset(mem, 0, 64);
+	cache_pool_64.push((char*)mem);
+      }
+      else if(cache_pool_32.size() < CACHE_SIZE + 1 && alloc_size <= 32 && alloc_size > 16) {
+	memset(mem, 0, 32);
+	cache_pool_32.push((char*)mem);
+      }
+      else if(cache_pool_16.size() < CACHE_SIZE + 1 && alloc_size <= 16) {
+	memset(mem, 0, 16);
+	cache_pool_16.push((char*)mem);
+      } 
+      else {
+	free(tmp);
+	tmp = NULL;
+      }
     }
   }
   marked_memory.clear();
