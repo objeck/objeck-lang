@@ -64,6 +64,7 @@ namespace Runtime {
   class StackInterpreter {
     // program
     static StackProgram* program;
+    static stack<StackFrame*> cache_frames;
     // call stack and current frame pointer
     StackFrame** call_stack;
     long* call_stack_pos;

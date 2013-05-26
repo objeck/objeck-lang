@@ -43,6 +43,7 @@
 // when this limit is met the garbage collect threshold
 // is lowered
 #define COLLECTED_COUNT 8
+#define CACHE_SIZE 1024
 
 // memory meta data tags
 #define EXTRA_BUF_SIZE 3
@@ -79,6 +80,12 @@ class MemoryManager {
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
+  // memory caches
+  static stack<char*> cache_pool_16;
+  static stack<char*> cache_pool_32;
+  static stack<char*> cache_pool_64;
+  static stack<char*> cache_pool_256;
+  static stack<char*> cache_pool_512;
   
   static CRITICAL_SECTION jit_cs;
   static CRITICAL_SECTION pda_cs;
