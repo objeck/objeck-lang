@@ -35,16 +35,17 @@
 #include "../../common.h"
 
 // basic vm tuning parameters
-// #define MEM_MAX 1024
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 1024
+// #define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
-#define CACHE_SIZE 384
+#define POOL_SIZE 384
 
-#define EXTRA_BUF_SIZE 3
+#define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
+#define CACHE_SIZE -4
 
 // used to monitor the state of
 // active stack frames
@@ -114,7 +115,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
       pthread_mutex_lock(&allocated_mutex);
 #endif
-    if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+      if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
        mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
@@ -143,7 +144,7 @@ public:
     while(!allocated_memory.empty()) {
       long* temp = allocated_memory.front();
       allocated_memory.erase(allocated_memory.begin());      
-      temp -= 3;
+      temp -= EXTRA_BUF_SIZE;
       free(temp);
       temp = NULL;
     }
