@@ -10,7 +10,7 @@ bundle Default {
       type := "text/xml";
       client := HttpClient->New();
       # make POST request
-      lines := client->Post(url, port, type,
+      lines := client->Post(url, type,
         "<?xml version='1.0' encoding='UTF-8' standalone='no'?><SOAP-ENV:Envelope xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:wsdl='http://schemas.xmlsoap.org/wsdl/' xmlns:soap='http://schemas.xmlsoap.org/wsdl/soap/' xmlns:tns='urn:countries.webservice.mobilefish.com' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:SOAP-ENC='http://schemas.xmlsoap.org/soap/encoding/' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' ><SOAP-ENV:Body><mns:countryInfoByIana xmlns:mns='http://schemas.xmlsoap.org/soap/envelope/' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><ianacode xsi:type='xsd:string'>zw</ianacode></mns:countryInfoByIana></SOAP-ENV:Body></SOAP-ENV:Envelope>");
       # read response
       xml := "";  
