@@ -39,6 +39,8 @@ unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
+stack<char*> MemoryManager::cache_pool_256;
+stack<char*> MemoryManager::cache_pool_512;
 vector<long*> MemoryManager::allocated_memory;
 vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
@@ -71,6 +73,14 @@ void MemoryManager::Initialize(StackProgram* p)
   
   for(int i = 0; i < CACHE_SIZE; i++) {
     cache_pool_64.push((char*)calloc(64, sizeof(char)));
+  }
+
+  for(int i = 0; i < CACHE_SIZE; i++) {
+    cache_pool_256.push((char*)calloc(256, sizeof(char)));
+  }
+
+  for(int i = 0; i < CACHE_SIZE; i++) {
+    cache_pool_512.push((char*)calloc(512, sizeof(char)));
   }
 }
 
@@ -248,20 +258,48 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     if(collect && allocation_size + size > mem_max_size) {
       CollectMemory(op_stack, stack_pos);
     }
+
+#ifdef _DEBUG
+    bool is_cached = false;
+#endif
     
     // allocate memory
     const long alloc_size = size * 2 + sizeof(long) * EXTRA_BUF_SIZE;
-    if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
+
+    if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
+      mem = (long*)cache_pool_512.top();
+      cache_pool_512.pop();
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
+      mem = (long*)cache_pool_256.top();
+      cache_pool_256.pop();
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
       mem = (long*)cache_pool_64.top();
       cache_pool_64.pop();
+#ifdef _DEBUG
+      is_cached = true;
+#endif
     }
     else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
       mem = (long*)cache_pool_32.top();
       cache_pool_32.pop();
+#ifdef _DEBUG
+      is_cached = true;
+#endif
     }
     else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
       mem = (long*)cache_pool_16.top();
       cache_pool_16.pop();
+#ifdef _DEBUG
+      is_cached = true;
+#endif
     } 
     else {
       mem = (long*)calloc(alloc_size, sizeof(char));
@@ -281,8 +319,9 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     
 #ifdef _DEBUG
-    wcout << L"# allocating object: addr=" << mem << L"(" << (long)mem << L"), size="
-         << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+    wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
+	  << ", addr=" << mem << L"(" << (long)mem << L"), size="
+	  << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
   }
 
@@ -320,21 +359,47 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   if(collect && allocation_size + calc_size > mem_max_size) {
     CollectMemory(op_stack, stack_pos);
   }
-  // allocate memory
-
+  
+#ifdef _DEBUG
+  bool is_cached = false;
+#endif
+  
   // allocate memory
   const long alloc_size = calc_size + sizeof(long) * EXTRA_BUF_SIZE;
-  if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
+  if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
+    mem = (long*)cache_pool_512.top();
+    cache_pool_512.pop();
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
+    mem = (long*)cache_pool_256.top();
+    cache_pool_256.pop();
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else   if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
     mem = (long*)cache_pool_64.top();
     cache_pool_64.pop();
+#ifdef _DEBUG
+    is_cached = true;
+#endif
   }
   else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
     mem = (long*)cache_pool_32.top();
     cache_pool_32.pop();
+#ifdef _DEBUG
+    is_cached = true;
+#endif
   }
   else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
     mem = (long*)cache_pool_16.top();
     cache_pool_16.pop();
+#ifdef _DEBUG
+    is_cached = true;
+#endif
   } 
   else {    
     mem = (long*)calloc(alloc_size, sizeof(char));
@@ -353,8 +418,9 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   
 #ifdef _DEBUG
-  wcout << L"# allocating array: addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
-       << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+  wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") 
+	<< ", addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
+	<< L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
 
   return mem;
@@ -596,8 +662,16 @@ void* MemoryManager::CollectMemory(void* arg)
       
       // erase memory
       long* tmp = mem - EXTRA_BUF_SIZE;
-      const long alloc_size = mem_size;
-      if(cache_pool_64.size()  < CACHE_SIZE + 1 && alloc_size <= 64 && alloc_size > 32) {
+      const long alloc_size = mem_size;      
+      if(cache_pool_512.size()  < CACHE_SIZE + 1 && alloc_size <= 512 && alloc_size > 256) {
+	memset(mem, 0, 512);
+	cache_pool_512.push((char*)mem);
+      }
+      else if(cache_pool_256.size()  < CACHE_SIZE + 1 && alloc_size <= 256 && alloc_size > 64) {
+	memset(mem, 0, 256);
+	cache_pool_256.push((char*)mem);
+      }
+      else if(cache_pool_64.size()  < CACHE_SIZE + 1 && alloc_size <= 64 && alloc_size > 32) {
 	memset(mem, 0, 64);
 	cache_pool_64.push((char*)mem);
       }
@@ -837,8 +911,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
-	wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-	      << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
+	      << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	      << L" byte(s)" << endl;
 #endif
         // mark data
         if(MarkValidMemory((long*)(*mem))) {
@@ -1038,7 +1113,8 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-	    << (long)(*mem) << L"), size=" << array_size << L" byte(s)" << endl;
+	    << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+	    << L" byte(s)" << endl;
 #endif
       // mark data
       if(MarkValidMemory((long*)(*mem))) {
