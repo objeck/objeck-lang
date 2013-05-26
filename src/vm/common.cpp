@@ -1457,10 +1457,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 #endif
 
     if(array && offset > -1 && offset + num <= (size_t)array[2]) {
-      const unsigned char* buffer = (unsigned char*)(array + 3);
+      wchar_t* buffer = (wchar_t*)(array + 3);
+      wcout.write(buffer + offset, num);
+      /*
       for(size_t i = 0; i < num; i++) {
         wcout << (char)buffer[i + offset];
       }
+      */
       PushInt(1, op_stack, stack_pos);
     } 
     else {
