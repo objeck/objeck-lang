@@ -55,6 +55,7 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
+stack<StackFrame*> StackInterpreter::cache_frames;
 
 /********************************
  * VM initialization
@@ -62,6 +63,10 @@ StackProgram* StackInterpreter::program;
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
+
+  for(long i = 0; i < 1048576; i++) {
+    cache_frames.push(new StackFrame);
+  }
   
   const int line_max = 80;
   char buffer[line_max + 1];
@@ -118,7 +123,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
   // inital setup
   (*call_stack_pos) = 0;
 
-  (*frame) = new StackFrame(method, instance);
+  (*frame) = cache_frames.top();
+  cache_frames.pop();
+  (*frame)->Initialize(method, instance);
 #ifdef _DEBUG
   wcout << L"creating frame=" << (*frame) << endl;
 #endif
@@ -1394,8 +1401,11 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
   wcout << L"removing frame=" << (*frame) << endl;
 #endif
 
+  /*
   delete (*frame);
   (*frame) = NULL;
+  */
+  cache_frames.push(*frame);
 
   // restore previous frame
   if(!StackEmpty()) {
@@ -1730,7 +1740,9 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* i
   wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
        << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif
-  (*frame) = new StackFrame(called, instance);
+  (*frame) = cache_frames.top();
+  cache_frames.pop();
+  (*frame)->Initialize(called, instance);
   instrs = (*frame)->GetMethod()->GetInstructions();
   ip = 0;
 #ifdef _DEBUG
