@@ -1,0 +1,62 @@
+﻿use Collection;
+
+class Mode {
+	function : Main(args : String[]) ~ Nil {
+		in := Vector->New();
+		in->AddBack(IntHolder->New(1)); in->AddBack(IntHolder->New(3));
+		in->AddBack(IntHolder->New(6)); in->AddBack(IntHolder->New(6));
+		in->AddBack(IntHolder->New(6)); in->AddBack(IntHolder->New(6));
+		in->AddBack(IntHolder->New(7)); in->AddBack(IntHolder->New(7));
+		in->AddBack(IntHolder->New(12)); in->AddBack(IntHolder->New(12));
+		in->AddBack(IntHolder->New(17));
+		Print(Mode(in));
+
+		in := Vector->New();
+		in->AddBack(IntHolder->New(1)); in->AddBack(IntHolder->New(2));
+		in->AddBack(IntHolder->New(4)); in->AddBack(IntHolder->New(4));
+		in->AddBack(IntHolder->New(1));
+		Print(Mode(in));
+	}
+	
+	function : Mode(coll : Vector) ~ Vector {
+		seen := Map->New();
+		max := 0;
+		maxElems := Vector->New();
+		
+		each(i : coll) {
+			value := coll->Get(i)->As(Compare);
+
+			featched := seen->Find(value)->As(IntHolder);
+			if(featched <> Nil) {
+				seen->Remove(value);
+				seen->Insert(value, IntHolder->New(featched->Get() + 1));
+			}
+			else {
+				seen->Insert(value, IntHolder->New(1));
+			};
+
+			featched := seen->Find(value)->As(IntHolder);
+			if(featched->Get() > max) {
+				max := featched->Get();
+				maxElems->Empty();
+				maxElems->AddBack(value);
+			} 
+			else if(featched->Get() = max) {
+				maxElems->AddBack(value);
+			};
+		};
+
+		return maxElems;
+	}
+
+	function : Print(out : Vector) ~ Nil {
+		'['->Print();
+		each(i : out) {
+			out->Get(i)->As(IntHolder)->Get()->Print();
+			if(i + 1 < out->Size()) {
+				", "->Print();
+			};
+		};
+		']'->PrintLine();
+	}
+}
