@@ -43,13 +43,14 @@
 // when this limit is met the garbage collect threshold
 // is lowered
 #define COLLECTED_COUNT 8
-#define CACHE_SIZE 1024
+#define POOL_SIZE 1024
 
 // memory meta data tags
-#define EXTRA_BUF_SIZE 3
+#define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
+#define CACHE_SIZE -4
 
 // used to monitor the state of
 // active stack frames
