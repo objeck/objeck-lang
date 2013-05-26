@@ -1,0 +1,43 @@
+use FastCgi;
+use System.IO;
+
+class FindName implements FastCgi.Handler {
+	function : Forward(req : Request, res : Response) ~ Nil {}
+	
+	function : Request(req : Request, res : Response) ~ Nil {
+		res->AddBody("<html>");
+		
+		cookie := req->GetCookie("my-cookie");
+
+		
+		res->AddBody("<form action=\"fcgi\" method=\"get\">");
+		res->AddBody("Reset? <input type=\"checkbox\" name=\"reset\" value=\"true\"/><br/>");
+		res->AddBody("<input type=\"submit\" value=\"Submit\"/>");
+		res->AddBody("</form>");
+		
+
+		if(cookie <> Nil & cookie->Size() > 0) {
+			checked := req->GetQueryValue("reset");
+			if(checked <> Nil & checked->Equals("true")) {
+				res->AddCookie("my-cookie", "");
+				res->AddBody("cookie removed<");
+			}
+			else {
+				res->AddBody("cookie count=");
+				res->AddBody(cookie);
+				
+				value := cookie->ToInt();
+				value += 1;
+				res->AddCookie("my-cookie", value->ToString());
+			};
+		}
+		else {
+			res->AddBody("adding new cookie");
+			res->AddBody(cookie);	
+			res->AddCookie("my-cookie", "1");
+		};
+		res->AddBody("</html>");
+		
+		res->Submit();
+	}
+}

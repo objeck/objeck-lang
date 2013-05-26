@@ -1,0 +1,673 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+# parsing framework for Gtk2
+class GtkParser {
+	@tokens : Vector;
+	@token_@index : Int;
+	@input : String;
+	@index : Int;
+	@cur_char : Char;
+	@nxt_char : Char;
+	
+	New(file : String) {
+		@tokens := Scan(file);
+		@token_@index := 0;
+	}
+
+	method : GetTokenType(i : Int) ~ TokenType {
+		if(i < @tokens->Size()) {
+			token := @tokens->Get(i)->As(Token);
+			return token->GetType();
+		};
+
+		return TokenType->OTHER;
+	}
+
+	method : GetTokenValue(i : Int) ~ String {
+		if(i < @tokens->Size()) {
+			token := @tokens->Get(i)->As(Token);
+			return token->GetValue();
+		};
+
+		return "";
+	}
+
+	method : public : native : Parse() ~ Vector {
+		functions := Vector->New();
+		variadic_token := Token->New(TokenType->VARIADIC);
+		
+# @tokens->Size()->PrintLine();
+# return Nil;
+
+		each(i : @tokens) {
+			# find a valid return type
+			if(GetTokenType(i) = TokenType->VOID | GetTokenType(i) = TokenType->IDENT) {
+				return_token := @tokens->Get(i)->As(Token);
+				i += 1;
+				
+				# checker for pointer or pointer-pointer
+				if(GetTokenType(i) = TokenType->MUL) {
+					return_token->AddPointer();
+					i += 1;
+				};
+				if(GetTokenType(i) = TokenType->MUL) {
+					return_token->AddPointer();
+					i += 1;
+				};
+				
+				# function name
+				if(GetTokenType(i) = TokenType->IDENT) {
+					func_name := GetTokenValue(i);
+					i += 1;
+					# parameters
+					if(GetTokenType(i) = TokenType->OPREN) {
+						i += 1;
+
+						func : Function := Nil;
+						if((GetTokenType(i) = TokenType->CONST | GetTokenType(i) = TokenType->VOID | 
+								GetTokenType(i) = TokenType->IDENT | GetTokenType(i) = TokenType->DOT) &
+								(func_name->StartsWith("gtk_") | func_name->StartsWith("gdk_"))) {
+							func := Function->New(func_name, return_token);
+						};
+
+						j := 0;
+						while(i < @tokens->Size() & GetTokenType(i) <> TokenType->CPREN) {
+							# const keyword
+							is_const := false;
+							if(GetTokenType(i) = TokenType->CONST) {
+								is_const := true;
+								i += 1;
+							};
+							
+							select(GetTokenType(i)) {
+								# void type
+								label TokenType->VOID: {
+									if(func <> Nil) {
+# "\tparam {$j}: type=\"void\""->PrintLine();
+									};
+									i += 1;
+									# advance to semi-colon
+									while(i < @tokens->Size() & GetTokenType(i) <> TokenType->CPREN) {
+										i += 1;
+									};
+								}
+	
+								# general type
+								label TokenType->IDENT:
+								label TokenType->GBOOLEAN:
+								label TokenType->GCHAR:
+								label TokenType->GUCHAR:
+								label TokenType->GINT:
+								label TokenType->GUINT:
+								label TokenType->GSHORT:
+								label TokenType->GUSHORT:
+								label TokenType->GLONG:
+								label TokenType->GULONG:
+								label TokenType->GINT8:
+								label TokenType->GUINT8:
+								label TokenType->GINT16:
+								label TokenType->GUINT16:
+								label TokenType->GINT32:
+								label TokenType->GUINT32:
+								label TokenType->GFLOAT:
+								label TokenType->GDOUBLE:
+								label TokenType->GPOINTER:
+								label TokenType->GCONSTPOINTER:
+								label TokenType->GSIZE:
+								label TokenType->GSSIZE: {
+									param_type_token := @tokens->Get(i)->As(Token);
+									param_type_token->IsConst(is_const);
+									i += 1;
+									
+									# checker for pointer or pointer-pointer
+									if(GetTokenType(i) = TokenType->MUL) {
+										param_type_token->AddPointer();
+										i += 1;
+									};
+									if(GetTokenType(i) = TokenType->MUL) {
+										param_type_token->AddPointer();
+										i += 1;
+									};
+									# parameter name
+									if(GetTokenType(i) = TokenType->IDENT) {
+										param_name := GetTokenValue(i);
+										i += 1;
+										# TODO: add token
+										if(func <> Nil) {
+											func->AddParameter(param_type_token, param_name);
+										};
+
+										# comma
+										if(GetTokenType(i) = TokenType->COMMA) {
+											i += 1;
+										};
+									};							
+								}
+								
+								# variadic type
+								label TokenType->DOT: {
+									if(GetTokenType(i + 1) = TokenType->DOT & GetTokenType(i + 2) = TokenType->DOT) {
+# "\tparam {$j}: type=\"variadic\""->PrintLine();
+										if(func <> Nil) {
+											func->AddParameter(variadic_token, "#");
+										};
+										i += 3;
+									};
+								}
+
+								# bogus type
+								label TokenType->OBR: {
+									while(i < @tokens->Size() & GetTokenType(i) <> TokenType->CBR) {
+										i += 1;
+									};
+									i += 1;
+								}
+								
+								other: {
+									type_id := GetTokenType(i)->As(Int);									
+									"*** unknown type={$type_id} ***"->PrintLine();
+									return Nil;
+								}
+							};
+							# update
+							j += 1;
+						};
+						
+						# add function
+						if(func <> Nil) {
+							functions->AddBack(func);
+						};						
+					};
+				};
+			};
+		};
+
+		return functions;
+	}
+
+	method : NextChar() ~ Nil {
+		if(@index < @input->Size()) {
+			@cur_char := @input->Get(@index);
+			@nxt_char := '\0';
+			if(@index + 1 < @input->Size()) {
+				@nxt_char := @input->Get(@index + 1);
+			};
+			@index += 1;
+		}
+		else {
+			@cur_char := '\0';
+			@nxt_char := '\0';
+		};
+	}
+
+	method : Scan(file : String) ~ Vector {
+		tokens := Vector->New();
+		reserved := StringMap->New();
+		reserved->Insert("#include", IntHolder->New(TokenType->INCLUDE->As(Int)));
+		reserved->Insert("#if", IntHolder->New(TokenType->IF->As(Int)));
+		reserved->Insert("#ifndef", IntHolder->New(TokenType->IFNDEF->As(Int)));
+		reserved->Insert("#endif", IntHolder->New(TokenType->ENDIF->As(Int)));
+		reserved->Insert("#define", IntHolder->New(TokenType->DEFINE->As(Int)));
+		reserved->Insert("#error", IntHolder->New(TokenType->ERROR->As(Int)));
+		reserved->Insert("defined", IntHolder->New(TokenType->DEFINED->As(Int)));
+		reserved->Insert("const", IntHolder->New(TokenType->CONST->As(Int)));
+		reserved->Insert("typedef", IntHolder->New(TokenType->TYPEDEF->As(Int)));
+		reserved->Insert("void", IntHolder->New(TokenType->VOID->As(Int)));
+
+		# gtk specific tokens
+		reserved->Insert("gboolean", IntHolder->New(TokenType->GBOOLEAN->As(Int)));
+		reserved->Insert("gchar", IntHolder->New(TokenType->GCHAR->As(Int)));
+		reserved->Insert("guchar", IntHolder->New(TokenType->GUCHAR->As(Int)));
+		reserved->Insert("gint", IntHolder->New(TokenType->GINT->As(Int)));
+		reserved->Insert("guint", IntHolder->New(TokenType->GUINT->As(Int)));
+		reserved->Insert("gshort", IntHolder->New(TokenType->GSHORT->As(Int)));
+		reserved->Insert("gushort", IntHolder->New(TokenType->GUSHORT->As(Int)));
+		reserved->Insert("glong", IntHolder->New(TokenType->GLONG->As(Int)));
+		reserved->Insert("gulong", IntHolder->New(TokenType->GULONG->As(Int)));
+		reserved->Insert("gint8", IntHolder->New(TokenType->GINT8->As(Int)));
+		reserved->Insert("guint8", IntHolder->New(TokenType->GUINT8->As(Int)));
+		reserved->Insert("gint16", IntHolder->New(TokenType->GINT16->As(Int)));
+		reserved->Insert("guint16", IntHolder->New(TokenType->GUINT16->As(Int)));
+		reserved->Insert("gint32", IntHolder->New(TokenType->GINT32->As(Int)));
+		reserved->Insert("guint32", IntHolder->New(TokenType->GUINT32->As(Int)));
+		reserved->Insert("gfloat", IntHolder->New(TokenType->GFLOAT->As(Int)));
+		reserved->Insert("gdouble", IntHolder->New(TokenType->GDOUBLE->As(Int)));
+		reserved->Insert("gpointer", IntHolder->New(TokenType->GPOINTER->As(Int)));
+		reserved->Insert("gconstpointer", IntHolder->New(TokenType->GCONSTPOINTER->As(Int)));
+		reserved->Insert("gsize", IntHolder->New(TokenType->GSIZE->As(Int)));
+		reserved->Insert("gssize", IntHolder->New(TokenType->GSSIZE->As(Int)));
+		
+		@input := FileReader->ReadFile(file);
+		NextChar();
+		comment := false;		
+		while(@cur_char <> '\0') {
+			# skip whitespace
+			while(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n') {
+				NextChar();
+			};
+			
+			if(@cur_char->IsChar() | @cur_char = '_' | @cur_char = '#') {
+				# word
+				string := "";
+				if(@cur_char = '#') {
+					string->Append(@cur_char);
+					NextChar();
+				};
+	
+				while(@cur_char->IsChar() | @cur_char->IsDigit() | @cur_char = '_') {
+					string->Append(@cur_char);
+					NextChar();
+				};
+				
+				result := reserved->Find(string)->As(IntHolder);
+				if(result <> Nil) {
+					if(comment = false) {
+						tokens->AddBack(Token->New(result->Get()->As(TokenType)));
+					};
+				}
+				else {
+					if(comment = false) {
+						tokens->AddBack(Token->New(string));
+					};
+				};
+			}
+			# number
+			else if(@cur_char->IsDigit()) {
+				number := "";
+				is_dec := false;
+				while(@cur_char->IsDigit() = true | @cur_char = '.') {
+					if(@cur_char = '.') {
+						is_dec := true;
+					};
+					number->Append(@cur_char);
+					NextChar();
+				};
+
+				if(is_dec) {
+					if(comment = false) {
+						tokens->AddBack(Token->New(TokenType->FLOAT_LIT, number));
+					};
+				}
+				else {
+					if(comment = false) {
+						tokens->AddBack(Token->New(TokenType->INT_LIT, number));
+					};
+				};
+			}
+			# other
+			else {
+				select(@cur_char) {
+					label '(': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OPREN));
+						};
+					}
+
+					label ')': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->CPREN));
+						};
+					}
+
+					label '{': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OCPREN));
+						};  
+					}
+
+					label '}': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->CCPREN));
+						};
+					}
+
+					label ',': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->COMMA));
+						};
+					}
+
+					label ':': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->COLON));
+						};
+					}
+
+					label ';': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->SEMI_COLON));
+						};
+					}
+
+					label '!': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->BANG));
+						};
+					}
+
+					label '~': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->TILDE));
+						};
+					}
+
+					label '.': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->DOT));
+						};
+					}
+
+					label '=': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->EQUAL));
+						};
+					}
+  
+					label '\\': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->BACK_SLASH));
+						};
+					}
+
+					label '&': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->AND));
+						};
+					}
+
+					label '-': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->MINUS));
+						};
+					}
+
+					label '|': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OR));
+						};
+					}
+
+					label '<': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->LESS));
+						};
+					}
+
+					label '>': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->GREATER));
+						};
+					}
+
+					label '"': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->DBL_QUOTE));
+						};
+					}
+
+					label '\'': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->QUOTE));
+						};
+					}
+
+					label '%': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->PERCENT));
+						};
+					}
+  
+					label '/': {
+						if(@nxt_char = '*') {
+							comment := true;
+							NextChar();
+						}
+						else {
+							if(comment = false) {
+								tokens->AddBack(Token->New(TokenType->DIV));
+							};
+						};
+					}
+  
+					label '*': {
+						if(@nxt_char = '/') {
+							comment := false;
+							NextChar();
+						}
+						else {
+							if(comment = false) {
+								tokens->AddBack(Token->New(TokenType->MUL));
+							};
+						};
+					}
+
+					label '[': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->OBR));
+						};
+					}
+
+					label ']': {
+						if(comment = false) {
+							tokens->AddBack(Token->New(TokenType->CBR));
+						};
+					}
+						
+					other: {
+						if(comment = false & @cur_char <> '\0') {
+							Console->Print("char='")->Print(@cur_char)->PrintLine("'");
+						};
+					}
+				};
+				NextChar();
+			};			
+		};
+		
+		return tokens;
+	}
+}
+
+# function model class
+class Function {
+	@func_name : String;
+	@return_token : Token;
+	@parameters : Vector;
+	
+	New(func_name : String, return_token : Token) {
+		@func_name := func_name;
+		@return_token := return_token;
+		@parameters := Vector->New();
+	}
+
+	method : public : AddParameter(type : Token, name : String) ~ Nil {
+		@parameters->AddBack(FunctionParameter->New(type, name));
+	}
+
+	method : public : GetName() ~ String {
+		return @func_name;
+	}
+	
+	method : public : GetParameters() ~ Vector {
+		return @parameters;
+	}
+
+	method : public : GetReturn() ~ Token {
+		return @return_token;
+	}
+	
+	method : public : ToString() ~ String {
+		buffer := "";		
+		buffer->Append("function: name=\"{$@func_name}\", return=\"{$@return_token}\"\r\n");
+		each(i : @parameters) {
+			param := @parameters->Get(i)->As(FunctionParameter);
+			param_str := "\t({$i}) {$param}";
+			buffer->Append(param_str);
+		};
+		return buffer;
+	}
+}
+
+class FunctionParameter {
+	@type : Token;
+	@name : String;
+	
+	New(type : Token, name : String) {
+		@type := type;
+		@name := name;
+	}
+	
+	method : public : GetType() ~ Token {
+		return @type;
+	}
+
+	method : public : GetTokenType() ~ TokenType {
+		return @type->GetType();
+	}
+
+	method : public : GetValue() ~ String {
+		return @type->ToString();
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : ToString() ~ String {
+		if(@name <> Nil) {
+			return "param type=\"{$@type}\", name=\"{$@name}\"\r\n";
+		};
+		
+		return "param type=\"{$@type}\"";
+	}
+}
+
+# stream token class
+class Token {
+	@type : TokenType;
+	@value : String;
+	@ptr_num : Int;
+	@is_const : Bool;
+
+	New(type : TokenType, value : String) {
+		@type := type;
+		@value := value;
+	}
+
+	New(type : TokenType) {
+		@type := type;
+	}
+
+	New(value : String) {
+		@type := TokenType->IDENT;
+		@value := value;
+	}
+
+	method : public : GetType() ~ TokenType {
+		return @type;
+	}
+	
+	method  : public : GetValue() ~ String {
+		return @value;
+	}
+
+	method  : public : AddPointer() ~ Nil {
+		@ptr_num += 1;
+	}
+	
+	method  : public : GetPointerCount() ~ Int {
+		return @ptr_num;
+	}
+
+	method  : public : IsConst(is_const : Bool) ~ Nil {
+		@is_const := is_const;
+	}
+
+	method  : public : ToString() ~ String {
+		out := "";
+
+		if(@is_const) {
+			out->Append("const ");
+		};
+		
+		if(@type = TokenType->IDENT) {
+			out->Append(@value);
+		}
+		else if(@type = TokenType->VOID) {
+			out->Append("void");
+		};
+			
+		for(i := 0; i < @ptr_num; i += 1;) {
+			out->Append('*');
+		};
+		
+		return out;		
+	}
+}
+
+enum TokenType {
+	IF,			# 0
+	CONST,
+	DEFINE,
+	IFNDEF,
+	ENDIF,
+	ERROR,
+	INCLUDE,
+	TYPEDEF,
+	VOID,
+	OPREN,
+	CPREN,		# 10
+	OCPREN,
+	CCPREN,
+	OCPREN,
+	COMMA,
+	COLON,
+	SEMI_COLON,
+	BANG,
+	TILDE,
+	DOT, 
+	EQUAL,		# 20
+	BACK_SLASH,
+	AND,
+	MINUS,
+	OR,
+	LESS,
+	GREATER,
+	QUOTE,
+	DIV,
+	MUL, 
+	INT_LIT,	# 30
+	FLOAT_LIT,
+	IDENT,
+	PERCENT,
+	DBL_QUOTE,
+	DEFINED, 
+	VARIADIC,
+	OBR,
+	CBR,
+	OTHER,
+	# gtk2 basic types = 40
+	GBOOLEAN,
+	GCHAR,
+	GUCHAR,
+	GINT,
+	GUINT,
+	GSHORT,
+	GUSHORT,
+	GLONG,
+	GULONG,
+	GINT8,
+	GUINT8,
+	GINT16,
+	GUINT16,
+	GINT32,
+	GUINT32,
+	GFLOAT,
+	GDOUBLE,
+	GPOINTER,
+	GCONSTPOINTER,
+	GSIZE,
+	GSSIZE
+}
+
