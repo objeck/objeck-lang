@@ -1356,7 +1356,9 @@ class StackFrame {
   bool jit_called;
 
 public:
-  StackFrame(StackMethod* md, long* inst) {
+  StackFrame() {}
+
+  void Initialize(StackMethod* md, long* inst) {
     method = md;
     mem = md->NewMemory();
     mem[0] = (long)inst;
