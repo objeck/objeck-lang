@@ -39,6 +39,7 @@
 #define MEM_MAX 1048576 * 2
 #define UNCOLLECTED_COUNT 4
 #define COLLECTED_COUNT 8
+#define CACHE_SIZE 512
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -74,7 +75,11 @@ class MemoryManager {
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
-  
+  // TODO: monitor cache hits
+  static stack<char*> cache_pool_16;
+  static stack<char*> cache_pool_32;
+  static stack<char*> cache_pool_64;
+
 #ifndef _GC_SERIAL
   static pthread_mutex_t jit_mutex;
   static pthread_mutex_t pda_mutex;
@@ -142,6 +147,27 @@ public:
     }
     allocated_memory.clear();
 
+    while(!cache_pool_16.empty()) {
+      char* mem = cache_pool_16.top();
+      cache_pool_16.pop();
+      delete mem;
+      mem = NULL;
+    }
+
+    while(!cache_pool_32.empty()) {
+      char* mem = cache_pool_32.top();
+      cache_pool_32.pop();
+      delete mem;
+      mem = NULL;
+    }
+
+    while(!cache_pool_64.empty()) {
+      char* mem = cache_pool_64.top();
+      cache_pool_64.pop();
+      delete mem;
+      mem = NULL;
+    }
+    
     initialized = false;
   }
 
