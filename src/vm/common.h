@@ -1356,19 +1356,21 @@ class StackFrame {
   bool jit_called;
 
 public:
-  StackFrame() {}
+  StackFrame() { mem = (long*)calloc(512, 1); };
 
   void Initialize(StackMethod* md, long* inst) {
-    method = md;
-    mem = md->NewMemory();
+    memset(mem, 0, 512);
+    method = md;    
     mem[0] = (long)inst;
     ip = -1;
     jit_called = false;
   }
 
   ~StackFrame() {
+    /*
     delete[] mem;
     mem = NULL;
+    */
   }
 
   inline StackMethod* GetMethod() const {
