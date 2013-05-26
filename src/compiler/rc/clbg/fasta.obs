@@ -76,8 +76,7 @@ bundle Default {
 				a[i]->SetP(cp);
 			};
 		}
-
-            
+		            
 		# naive
 		function : native : SelectRandom(a : Frequency[]) ~ Char {
 			len := a->Size();
@@ -190,10 +189,10 @@ bundle Default {
 	}
 	
 	class Frequency {
-    @c : Char;
-    @p : Float;
+		@c : Char;
+		@p : Float;
 
-    New(c : Char, p : Float) {
+		New(c : Char, p : Float) {
 			@c := c;
 			@p := p;
 		}
@@ -213,5 +212,5 @@ bundle Default {
 		method : public : SetC(c : Char) ~ Nil {
 			@c := c;
 		}
-  }
+	}
 }
