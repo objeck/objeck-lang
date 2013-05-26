@@ -152,21 +152,35 @@ public:
     while(!cache_pool_16.empty()) {
       char* mem = cache_pool_16.top();
       cache_pool_16.pop();
-      delete mem;
+      free(mem);
       mem = NULL;
     }
 
     while(!cache_pool_32.empty()) {
       char* mem = cache_pool_32.top();
       cache_pool_32.pop();
-      delete mem;
+      free(mem);
       mem = NULL;
     }
 
     while(!cache_pool_64.empty()) {
       char* mem = cache_pool_64.top();
       cache_pool_64.pop();
-      delete mem;
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_256.empty()) {
+      char* mem = cache_pool_256.top();
+      cache_pool_256.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_512.empty()) {
+      char* mem = cache_pool_512.top();
+      cache_pool_512.pop();
+      free(mem);
       mem = NULL;
     }
     
