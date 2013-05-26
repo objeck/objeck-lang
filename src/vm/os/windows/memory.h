@@ -150,16 +150,6 @@ public:
     }
     allocated_memory.clear();
 
-    
-    while(!allocated_memory.empty()) {
-      long* temp = allocated_memory.front();
-      allocated_memory.erase(allocated_memory.begin());      
-      temp -= 3;
-      free(temp);
-      temp = NULL;
-    }
-    allocated_memory.clear();
-
     while(!cache_pool_16.empty()) {
       char* mem = cache_pool_16.top();
       cache_pool_16.pop();
