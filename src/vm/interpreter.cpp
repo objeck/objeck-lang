@@ -1405,6 +1405,8 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
   delete (*frame);
   (*frame) = NULL;
   */
+  // long* mem = (*frame)->GetMemory();
+  // delete mem;
   cache_frames.push(*frame);
 
   // restore previous frame
