@@ -617,9 +617,10 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       // account for deallocated memory
       allocation_size -= mem_size;
 
-      // erase memory
+      // cache or free memory
       long* tmp = mem - EXTRA_BUF_SIZE;
-      const long alloc_size = mem_size;      
+      const long alloc_size = mem_size + EXTRA_BUF_SIZE;
+      
       if(cache_pool_512.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 512) {
 	memset(tmp, 0, 512);
 	cache_pool_512.push((char*)mem);
