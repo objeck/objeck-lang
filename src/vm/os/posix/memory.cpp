@@ -269,7 +269,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
       mem = (long*)cache_pool_512.top();
       cache_pool_512.pop();
-      mem[0] = 512;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
 #ifdef _DEBUG
       is_cached = true;
 #endif
@@ -277,7 +277,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
       mem = (long*)cache_pool_256.top();
       cache_pool_256.pop();
-      mem[0] = 256;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
       is_cached = true;
 #endif
@@ -285,7 +285,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
       mem = (long*)cache_pool_64.top();
       cache_pool_64.pop();
-      mem[0] = 64;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
 #ifdef _DEBUG
       is_cached = true;
 #endif
@@ -293,7 +293,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
       mem = (long*)cache_pool_32.top();
       cache_pool_32.pop();
-      mem[0] = 32;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
 #ifdef _DEBUG
       is_cached = true;
 #endif
@@ -301,17 +301,17 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
       mem = (long*)cache_pool_16.top();
       cache_pool_16.pop();
-      mem[0] = 16;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
 #ifdef _DEBUG
       is_cached = true;
 #endif
     } 
     else {
       mem = (long*)calloc(alloc_size, sizeof(char));
-      mem[0] = -1;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     }
-    mem[1] = NIL_TYPE;
-    mem[2] = (long)cls;
+    mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (long)cls;
     mem += EXTRA_BUF_SIZE;
     
     // record
@@ -375,7 +375,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
     mem = (long*)cache_pool_512.top();
     cache_pool_512.pop();
-    mem[0] = 512;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
 #ifdef _DEBUG
     is_cached = true;
 #endif
@@ -383,7 +383,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
     mem = (long*)cache_pool_256.top();
     cache_pool_256.pop();
-    mem[0] = 256;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
     is_cached = true;
 #endif
@@ -391,7 +391,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   else   if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
     mem = (long*)cache_pool_64.top();
     cache_pool_64.pop();
-    mem[0] = 64;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
 #ifdef _DEBUG
     is_cached = true;
 #endif
@@ -399,7 +399,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
     mem = (long*)cache_pool_32.top();
     cache_pool_32.pop();
-    mem[0] = 32;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
 #ifdef _DEBUG
     is_cached = true;
 #endif
@@ -407,17 +407,17 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
     mem = (long*)cache_pool_16.top();
     cache_pool_16.pop();
-    mem[0] = 16;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
 #ifdef _DEBUG
     is_cached = true;
 #endif
   } 
   else {    
     mem = (long*)calloc(alloc_size, sizeof(char));
-    mem[0] = -1;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
   }
-  mem[1] = type;
-  mem[2] = calc_size;
+  mem[EXTRA_BUF_SIZE + TYPE] = type;
+  mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
   
 #ifndef _GC_SERIAL
