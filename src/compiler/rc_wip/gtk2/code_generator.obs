@@ -1,0 +1,408 @@
+use Collection;
+
+# parsing framework for Gtk2
+class GtkCodeFormatter {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			file := args[0];
+			klass_name := args[1];
+			
+			parser := GtkParser->New(file);
+			funcs := parser->Parse();
+			klasses := StringSet->New();
+			count := 0;
+			each(i : funcs) {
+				c_code := "";
+				objk_code := "";
+				func := funcs->Get(i)->As(Function);
+				if(FormatCode(func, klass_name, c_code, objk_code, klasses)) {
+					"------------- {$count} -------------"->PrintLine();
+					objk_code->PrintLine();
+					c_code->PrintLine();
+					count += 1;
+				};
+			};
+			"total functions: {$count}"->PrintLine();
+			"================="->PrintLine();
+			new_klasses := klasses->GetKeys();
+			each(i : new_klasses) {
+				if(new_klasses->Get(i)->As(String)->Equals(klass_name) <> true) {
+					new_klasses->Get(i)->As(String)->PrintLine();
+				};
+			};
+		};
+	}
+
+	function : native : ParseMethodName(func_name : String, klass_name : String) ~ String {
+		done := false;
+		offset := 0;
+		for(i := 0; done = false & i < func_name->Size(); i += 1;) {
+			if(func_name->Get(i) <> '_') {
+				done := func_name->Get(i)->ToUpper() <> func_name->Get(offset)->ToUpper();
+				offset += 1; 
+			};
+		};
+		
+		objk_name := String->New();
+		temp := func_name->SubString(offset, func_name->Size() - offset);
+		flag := false;
+		each(i : temp) {
+			if(i = 0) {
+				objk_name->Append(temp->Get(i)->ToUpper());
+			}
+			else if(temp->Get(i) = '_') {
+				flag := true;
+			}	
+			else if(flag) {
+				objk_name->Append(temp->Get(i)->ToUpper());
+				flag := false;
+			}
+			else {
+				objk_name->Append(temp->Get(i));
+				flag := false;
+			};
+		};
+		
+		return objk_name;
+	}
+
+	function : native : FormatCode(func : Function, klass_name : String, 
+			c_code : String, objk_code : String, klasses : StringSet) ~ Bool {
+		match := false;
+		params := func->GetParameters();
+		if(params->Size() > 0) {
+			j := 0;
+			param := params->Get(0)->As(FunctionParameter);
+			param_type := param->GetType();
+			if(param_type->GetType() = TokenType->IDENT) {				
+				match := klass_name->Equals(param_type->GetValue());
+			};
+		};
+		
+		# process params
+		if(match) {			
+			func_name := func->GetName();
+			c_code->Append("void og_{$func_name}(VMContext& context) {\n");
+			
+			objk_mthd_name := ParseMethodName(func_name, klass_name);
+			objk_code->Append("method : public : {$objk_mthd_name}(");
+
+			objk_params := "";
+			objk_params_end := "";
+			objk_stmts := "";
+			params_size := params->Size() + 1;
+			
+			objk_stmts->Append("\tlib_proxy := GetDllProxy();\n");
+		
+			param_index := 0;
+			return_token := func->GetReturn();
+			select(return_token->GetType()) {
+				other: {
+					return_token_name := return_token->GetValue();
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_stmts->Append("\tarray_args[{$param_index}] := {$return_token_name}->New();\n");
+					objk_params_end->Append(") ~ {$return_token_name} {\n");
+
+					if(klasses->Has(return_token_name) = false) {
+						klasses->Insert(return_token_name);
+					};
+					param_index += 1;
+				}
+				
+				label TokenType->VOID: {
+					params_size -= 1;
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_params_end->Append(") ~ Nil {\n");
+				}	
+
+				label TokenType->VARIADIC: {
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_stmts->Append("\t// TODO: create return vector\n");
+					param_index += 1;
+				}		
+
+				label TokenType->GBOOLEAN: {
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_stmts->Append("\tarray_args[{$param_index}] := IntHolder->New();\n");
+					objk_params_end->Append(") ~ Bool {\n");
+					param_index += 1;
+				}
+				
+				label TokenType->GCHAR:
+				label TokenType->GUCHAR: {
+					if(return_token->GetPointerCount() = 1) {
+						objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+						objk_stmts->Append("\t// TODO: create return string\n");
+						objk_params_end->Append(") ~ String {\n");
+					}
+					else {
+						objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+						objk_stmts->Append("\tarray_args[{$param_index}] := IntHolder->New();\n");
+						objk_params_end->Append(") ~ Char {\n");								
+					};
+					param_index += 1;
+				}
+
+				label TokenType->GINT:
+				label TokenType->GUINT:
+				label TokenType->GSHORT:
+				label TokenType->GUSHORT:
+				label TokenType->GULONG:
+				label TokenType->GLONG:
+				label TokenType->GINT8:
+				label TokenType->GUINT8:
+				label TokenType->GINT16:
+				label TokenType->GUINT16:
+				label TokenType->GINT32:
+				label TokenType->GUINT32:
+				label TokenType->GPOINTER:
+				label TokenType->GCONSTPOINTER:
+				label TokenType->GSIZE:
+				label TokenType->GSSIZE: {
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_stmts->Append("\tarray_args[{$param_index}] := IntHolder->New();\n");
+					objk_params_end->Append(") ~ Int {\n");			
+					param_index += 1;
+				}
+
+				label TokenType->GFLOAT:
+				label TokenType->GDOUBLE: {
+					objk_stmts->Append("\tarray_args := Base->New[{$params_size}];\n");
+					objk_stmts->Append("\tarray_args[{$param_index}] := FloatHolder->New();\n");
+					objk_params_end->Append(") ~ Float {\n");
+					param_index += 1;
+				}
+			};
+			
+			# process c params	
+			c_param_names := Vector->New();
+			each(i : params) {
+				param := params->Get(i)->As(FunctionParameter);			
+				param_name := "param_{$param_index}";
+				c_param_names->AddBack(param_name);
+				
+				select(param->GetTokenType()) {
+					other: {
+						param_type_name := param->GetValue();
+						c_code->Append("\t{$param_type_name} {$param_name} = ({$param_type_name})APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->VARIADIC: {
+						c_code->Append("\tlong* {$param_name} = APITools_GetObjectValue(context, {$param_index});\n");
+						c_code->Append("\t// TODO: process variadic\n");
+					}
+		
+					label TokenType->GBOOLEAN: {
+						c_code->Append("\tgboolean {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+			
+					label TokenType->GCHAR: {
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							c_code->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$param_index});\n");
+						}
+						else {
+							c_code->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+						};
+					}
+
+					label TokenType->GUCHAR: {
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							c_code->Append("\tgchar* {$param_name} = APITools_GetStringValue(context, {$param_index});\n");
+						}
+						else {
+							c_code->Append("\tgchar {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+						};
+					}
+
+					label TokenType->GINT: {
+						c_code->Append("\tgint {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+				
+					label TokenType->GUINT: {
+						c_code->Append("\tguint {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+				
+					label TokenType->GSHORT: {
+						c_code->Append("\tgshort {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GUSHORT: {
+						c_code->Append("\tgushort {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GULONG: {
+						c_code->Append("\tgulong {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GLONG: {
+						c_code->Append("\tglong {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+				
+					label TokenType->GINT8: {
+						c_code->Append("\tgint8 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GUINT8: {
+						c_code->Append("\tguint8 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+				
+					label TokenType->GINT16: {
+						c_code->Append("\tgint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GUINT16: {
+						c_code->Append("\tguint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GINT32: {
+						c_code->Append("\tgint16 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GUINT32: {
+						c_code->Append("\tguint32 {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GFLOAT: {
+						c_code->Append("\tgfloat {$param_name} APITools_GetFloatValue(context, {$param_index});\n");
+					}
+			
+					label TokenType->GDOUBLE: {
+						c_code->Append("\tgdouble {$param_name} APITools_GetFloatValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GPOINTER: {
+						c_code->Append("\tgpointer {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GCONSTPOINTER: {
+						c_code->Append("\tgconstpointer {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GSIZE: {
+						c_code->Append("\tgsize {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+
+					label TokenType->GSSIZE: {
+						c_code->Append("\tgssize {$param_name} = APITools_GetIntValue(context, {$param_index});\n");
+					}
+				};
+				
+				# update objk params
+				objk_stmts->Append("\tarray_args[{$param_index}] := ");				
+				if(i = 0) {
+					objk_stmts->Append("@self;\n");
+				};
+				
+				select(param->GetTokenType()) {
+					other: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : {$param_type_name}");
+							objk_stmts->Append("{$param_name};\n");
+						};
+					}	
+
+					label TokenType->VARIADIC: {
+						objk_params->Append("{$param_name} : Vector");
+						objk_stmts->Append("{$param_name};\n");
+					}				
+					
+					label TokenType->GCHAR:
+					label TokenType->GUCHAR: {
+						param_type := param->GetType();
+						if(param_type->GetPointerCount() = 1) {
+							if(i <> 0) {
+								param_type_name := param->GetType()->GetValue();
+								objk_params->Append("{$param_name} : String");
+								objk_stmts->Append("{$param_name};\n");
+							};
+						}
+						else {
+							if(i <> 0) {
+								param_type_name := param->GetType()->GetValue();
+								objk_params->Append("{$param_name} : Char");
+								objk_stmts->Append("IntHolder->New({$param_name});\n");
+							};
+						};
+					}
+
+					label TokenType->GBOOLEAN: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Bool");
+							objk_stmts->Append("IntHolder->New({$param_name} = false ? 0 : 1);\n");
+						};
+					}
+					
+					label TokenType->GINT:
+					label TokenType->GUINT:
+					label TokenType->GSHORT:
+					label TokenType->GUSHORT:
+					label TokenType->GULONG:
+					label TokenType->GLONG:
+					label TokenType->GINT8:
+					label TokenType->GUINT8:
+					label TokenType->GINT16:
+					label TokenType->GUINT16:
+					label TokenType->GINT32:
+					label TokenType->GUINT32:
+					label TokenType->GPOINTER:
+					label TokenType->GCONSTPOINTER:
+					label TokenType->GSIZE:
+					label TokenType->GSSIZE: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Int");
+							objk_stmts->Append("IntHolder->New({$param_name});\n");
+						};
+					}
+
+					label TokenType->GFLOAT:
+					label TokenType->GDOUBLE: {
+						if(i <> 0) {
+							param_type_name := param->GetType()->GetValue();
+							objk_params->Append("{$param_name} : Float");
+							objk_stmts->Append("FloatHolder->New({$param_name});\n");
+						};
+					}
+				};
+				# update		
+				if(i <> 0 & i + 1 < params->Size()) {
+					objk_params->Append(", ");
+				};
+				param_index += 1;
+			};
+			
+			# format c code
+			c_code->Append("\t{$func_name}(");
+			each(i : c_param_names) {
+				c_code->Append(c_param_names->Get(i)->As(String));
+				if(i + 1 < c_param_names->Size()) {
+					c_code->Append(", ");
+				};
+			};
+			c_code->Append(");\n");
+			
+			return_token := func->GetReturn();
+			if(return_token->GetType() <> TokenType->VOID) {
+				c_code->Append("\t// handle return type\n");
+			};
+			c_code->Append("}\n");
+
+			# format objeck code
+
+			objk_stmts->Append("\tlib_proxy->CallFunction(\"og_{$func_name}\", array_args);\n");
+
+			objk_code->Append(objk_params);
+			objk_code->Append(objk_params_end);
+			objk_code->Append(objk_stmts);
+			objk_code->Append("}\n");
+			
+			return true;
+		};
+		
+		return false;
+	}
+}

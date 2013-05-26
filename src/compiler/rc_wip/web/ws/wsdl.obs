@@ -1,0 +1,540 @@
+use System.IO;
+use System.IO.File;
+use HTTP;
+use XML;
+use Collection;
+
+bundle Default {
+	class Wsdl {
+		@binding_type : String;
+		@messages : CompareVector;
+		@elements : CompareVector;
+		@types : StringMap;
+		
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() > 0) {
+				wsdl := Wsdl->New(args[0]);
+				wsdl->Foo();
+				
+				"-----------------------------------------------\n"->PrintLine();
+				
+				keys := wsdl->GetKeys();
+				if(keys->Size() > 0) {
+					"Named type(s):"->PrintLine();
+					each(i : keys) {
+						key := keys->Get(i)->As(String);
+						"  type='{$key}'"->PrintLine();
+					};
+				};
+			};
+		}
+		
+		New(name : String) {
+			@messages := CompareVector->New();
+			@elements := CompareVector->New();
+			@types := StringMap->New();
+			
+			Parse(name);
+		}
+		
+		method : public : Foo() ~ Nil {
+		}
+		
+		method : public : GetKeys() ~ Vector {
+			return @types->GetKeys();
+		}
+		
+		function : GetName(name : String) ~ String {
+			offset := name->FindLast(':');
+			if(offset > 0) {
+				offset += 1;
+				name := name->SubString(offset, name->Size() - offset);
+			};
+			
+			return name;
+		}
+				
+		method : native : Parse(name : String) ~ Nil {
+			parser := XmlParser->New(FileReader->ReadFile(name));
+			if(parser->Parse()) {
+				definitions := parser->FindElements("/definitions/service/port");
+				if(definitions <> Nil & definitions->Size() > 0) {
+					definition := definitions->Get(0)->As(XmlElement);
+					binding := definition->GetAttribute("binding")->GetValue();
+					name := definition->GetAttribute("name")->GetValue();
+					"Service: binding={$binding}, name={$name}"->PrintLine();			
+				};
+				
+				# bindings
+				bindings := parser->FindElements("/definitions/binding/binding");
+				if(bindings <> Nil) {
+					found := false;
+					for(i := 0; found = false & i < bindings->Size(); i +=1;) {
+						binding := bindings->Get(i)->As(XmlElement);
+						binding_parent := binding->GetParent();
+						if(binding_parent <> Nil) {
+							@binding_type := GetName(binding_parent->GetAttribute("type")->GetValue());
+							"Bindings: type={$@binding_type}"->PrintLine();
+						};
+						operations := parser->FindElements("/definitions/binding/operation");
+						if(operations <> Nil) {						
+							each(j : operations) {
+								operation := operations->Get(j)->As(XmlElement);
+								if(binding_parent <> Nil & operation->GetParent() = binding_parent) {	
+									name := operation->GetAttribute("name")->GetValue();	
+									"\toperation: name={$name}"->PrintLine();
+								};
+							};							 	
+							found := true;
+						};													
+					};
+				};
+				
+				ports := parser->FindElements("/definitions/portType");
+				if(ports <> Nil) {
+					port := ports->Get(0)->As(XmlElement);
+					name := port->GetAttribute("name")->GetValue();
+					if(name <> Nil & name->Equals(@binding_type)) {
+						"Port: name={$name}"->PrintLine();
+						operations := port->GetChildren();
+						# TODO: check parent 'name'
+						each(i : operations) {
+							operation := operations->Get(i)->As(XmlElement);
+							name := operation->GetAttribute("name")->GetValue();
+							"\toperation: name={$name}"->PrintLine();
+							#input
+							inputs := operation->FindElements("/operation/input");
+							if(inputs <> Nil & inputs->Size() > 0) {
+								input := inputs->Get(0)->As(XmlElement);
+								message := input->GetAttribute("message")->GetValue();
+								@messages->AddBack(GetName(message));
+								"\t\tinput: message={$message}"->PrintLine();
+							};
+							# output
+							outputs := operation->FindElements("/operation/output");
+							if(outputs <> Nil & outputs->Size() > 0) {
+								output := outputs->Get(0)->As(XmlElement);
+								message := output->GetAttribute("message")->GetValue();
+								@messages->AddBack(GetName(message));
+								"\t\toutput: message={$message}"->PrintLine();
+							};
+						};
+					};
+				};
+				
+				# messages
+				messages := parser->FindElements("/definitions/message");
+				if(messages <> Nil) {
+					count := messages->Size();
+					"Messages: count={$count}"->PrintLine();
+					each(i : messages) {
+						message := messages->Get(i)->As(XmlElement);
+						name := message->GetAttribute("name")->GetValue();
+						if(@messages->Has(name)) {
+							"\tmessage: name={$name}"->PrintLine();
+							parts := message->GetChildren();
+							if(parts <> Nil & parts->Size() > 0) {
+								part := parts->Get(0)->As(XmlElement);
+								name := part->GetAttribute("name")->GetValue();							
+								element_node := part->GetAttribute("element");
+								if(element_node <> Nil) {
+									element := element_node->GetValue();
+									@elements->AddBack(GetName(element));
+									"\t\tpart: name={$name}, element={$element}"->PrintLine();
+								}
+								else {
+									type := part->GetAttribute("type")->GetValue();
+									@elements->AddBack(GetName(type));							
+									"\t\tpart: name={$name}, type={$type}"->PrintLine();
+								};
+							};
+						};
+					};
+				};
+				
+				# types
+				schemas := parser->FindElements("/definitions/types/schema");
+				if(schemas <> Nil & schemas->Size() > 0) {
+					schema := schemas->Get(0)->As(XmlElement);
+					namespace := schema->GetAttribute("targetNamespace")->GetValue();
+					"\n-----------------------------------------------\n"->PrintLine();
+					"Types: namespace='{$namespace}'"->PrintLine();					
+					children := schema->GetChildren();
+					if(children <> Nil) {
+						each(i : children) {
+							child := XsdFactory->Make(children->Get(i)->As(XmlElement), @types);
+							child->ToString(0)->PrintLine();
+						};
+					};				
+				};
+			};
+		}
+	}
+	
+	class Type {
+		@name : String;
+		@type : String;
+		@parameters : Vector;
+		
+		New(name : String, type : String) {
+			@name := name;
+			@type := type;
+			@parameters := Vector->New();
+		}
+		
+		method : public : AddParameter(param : Parameter) ~ Nil {
+			@parameters->AddBack(param);
+		}
+		
+		method : public : GetParameters() ~ Vector {
+			return @parameters;
+		}
+	}
+	
+	class Parameter {
+		@name : String;
+		@type : String;
+		
+		New(name : String, type : String) {
+			@name := name;
+			@type := type;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+	
+		method : public : GetType() ~ String {
+			return @type;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := String->New();
+			buffer->Append("name=");
+			buffer->Append(@name);
+			buffer->Append(", type=");
+			buffer->Append(@type);	
+			return buffer;
+		}
+	}
+	
+	class Port {
+		@name : String;
+		@operations : StringMap;
+		
+		New(name : String) {
+			@name := name;
+			@operations := StringMap->New();
+		}
+		
+		method : public : AddOperation(name: String, value: String) ~ Nil {
+			@operations->Insert(name, value);
+		}
+		
+		method : public : GetOperation(name: String) ~ String {
+			return @operations->Find(name)->As(String);
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetInputName() ~ String {
+			return @operations->Find("wsdl:input");
+		}
+	}
+	
+	class XsdFactory {
+		function : Make(element : XmlElement) ~ Xsd {
+			return Make(element, Nil);
+		}
+		
+		function : Make(element : XmlElement, types : StringMap) ~ Xsd {
+			name := element->GetName();
+			if(name->Equals("all")) {
+				return XsdAll->New(element);
+			}
+			else if(name->Equals("complexType")) {
+				complex_type := XsdComplexType->New(element);
+				name := complex_type->GetName();
+				if(types <> Nil & name <> Nil) {					
+					"--- Added '{$name}' ---"->PrintLine();
+					types->Insert(name, complex_type);
+				};				
+				return complex_type;
+			}
+			else if(name->Equals("element")) {
+				return XsdElement->New(element);
+			}
+			else if(name->Equals("sequence")) {
+				return XsdSequence->New(element);
+			};
+			
+"-- OTHER: {$name} --"->PrintLine();						
+			return Nil;
+		}
+	}
+		
+	class Xsd {
+		@id : String;
+		@children : Vector;
+		
+		New() {}
+		
+		New(element : XmlElement) {
+			@children := Vector->New();
+			
+			attrib := element->GetAttribute("id");
+			if(attrib <> Nil) {
+				@id := attrib->GetValue();
+			};
+			
+			ProcessChildren(element);
+		}
+		
+		method : public : GetId() ~ String {
+			return @id;
+		}
+		
+		method : virtual : public : GetXsdType() ~ XsdType;
+		
+		method : ProcessChildren(element : XmlElement) ~ Nil {
+			children := element->GetChildren();
+			if(children <> Nil) {
+				each(i : children) {
+					@children->AddBack(XsdFactory->Make(children->Get(i)->As(XmlElement)));
+				};
+			};
+		}
+		
+		method : virtual : public : ToString(offset : Int) ~ String;
+	}
+	
+	enum XsdType {
+		ALL,
+		COMPLEX_TYPE,
+		ELEMENT,
+		SEQUENCE
+	}
+	
+	class XsdSequence from Xsd {
+		@min_occurs : String;
+		@max_occurs : String;
+		
+		New(element : XmlElement) {
+			Parent(element);
+			
+			attrib := element->GetAttribute("maxOccurs");
+			if(attrib <> Nil) {
+				@max_occurs := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("minOccurs");
+			if(attrib <> Nil) {
+				@min_occurs := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->SEQUENCE;
+		}
+		
+		method : public : GetMinOccurs() ~ String {
+			return @min_occurs;
+		}
+		
+		method : public : GetMaxOccurs() ~ String {
+			return @max_occurs;
+		}
+		
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append("  ");
+			};
+			
+			buffer->Append("<sequence");			
+			if(@min_occurs <> Nil) {
+				buffer->Append(" minOccurs='");
+				buffer->Append(@min_occurs);
+				buffer->Append("'");
+			};
+			
+			if(@max_occurs <> Nil) {
+				buffer->Append(" maxOccurs='");
+				buffer->Append(@max_occurs);
+				buffer->Append("'");
+			};
+			buffer->Append("/>\n");
+			
+			if(@children->Size() > 0) {
+				each(i : @children) {
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
+				};				
+			};
+			
+			return buffer;
+		}
+	}
+	
+	class XsdAll from Xsd {
+		New(element : XmlElement) {
+			Parent(element);
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->ALL;
+		}
+		
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append("  ");
+			};
+			buffer->Append("<all/>\n");
+			
+			if(@children->Size() > 0) {
+				each(i : @children) {
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
+				};
+			};
+		
+			return buffer;
+		}
+	}
+	
+	# define a type that may be referenced
+	class XsdComplexType from Xsd {
+		@name : String;
+				
+		New(element : XmlElement) {
+			Parent(element);
+			
+			attrib := element->GetAttribute("name");
+			if(attrib <> Nil) {
+				@name := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->ELEMENT;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append("  ");
+			};		
+			buffer->Append("<complexType");
+			
+			if(@name <> Nil) {
+				buffer->Append(" name='");
+				buffer->Append(@name);
+				buffer->Append("'");
+			};
+			buffer->Append("/>\n");
+			
+			if(@children->Size() > 0) {
+				each(i : @children) {
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
+				};
+			};
+			
+			return buffer;
+		}
+	}
+	
+	# main link to and from elements
+	class XsdElement from Xsd {
+		@name : String;		
+		@type : String;
+		@ref : String;
+		
+		New(element : XmlElement) {
+			Parent(element);
+			
+			attrib := element->GetAttribute("name");
+			if(attrib <> Nil) {
+				@name := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("type");
+			if(attrib <> Nil) {
+				@type := attrib->GetValue();
+			};
+			
+			attrib := element->GetAttribute("ref");
+			if(attrib <> Nil) {
+				@ref := attrib->GetValue();
+			};
+		}
+		
+		method : public : GetXsdType() ~ XsdType {
+			return XsdType->COMPLEX_TYPE;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetType() ~ String {
+			return @type;
+		}
+		
+		method : public : GetRef() ~ String {
+			return @ref;
+		}
+		
+		method : public : ToString(offset : Int) ~ String {
+			buffer := "";
+			for(i := 0; i < offset; i += 1;) {
+				buffer->Append("  ");
+			};		
+			buffer->Append("<complexType");
+			
+			if(@ref <> Nil) {
+				buffer->Append(" ref='");
+				buffer->Append(@ref);
+				buffer->Append("'");
+			};
+			
+			if(@name <> Nil) {
+				buffer->Append(" name='");
+				buffer->Append(@name);
+				buffer->Append("'");
+			};
+			
+			if(@type <> Nil) {
+				type := Wsdl->GetName(@type);
+				buffer->Append(" type='");
+				buffer->Append(type);
+				buffer->Append("'");
+			};
+			buffer->Append("/>\n");
+			
+			if(@children->Size() > 0) {
+				each(i : @children) {
+					xsd := @children->Get(i)->As(Xsd);
+					if(xsd <> Nil) {
+						buffer->Append(xsd->ToString(offset + 1));
+					};
+				};
+			};
+			
+			return buffer;
+		}
+	}
+}
