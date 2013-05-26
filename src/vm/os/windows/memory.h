@@ -150,6 +150,51 @@ public:
     }
     allocated_memory.clear();
 
+    
+    while(!allocated_memory.empty()) {
+      long* temp = allocated_memory.front();
+      allocated_memory.erase(allocated_memory.begin());      
+      temp -= 3;
+      free(temp);
+      temp = NULL;
+    }
+    allocated_memory.clear();
+
+    while(!cache_pool_16.empty()) {
+      char* mem = cache_pool_16.top();
+      cache_pool_16.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_32.empty()) {
+      char* mem = cache_pool_32.top();
+      cache_pool_32.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_64.empty()) {
+      char* mem = cache_pool_64.top();
+      cache_pool_64.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_256.empty()) {
+      char* mem = cache_pool_256.top();
+      cache_pool_256.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_512.empty()) {
+      char* mem = cache_pool_512.top();
+      cache_pool_512.pop();
+      free(mem);
+      mem = NULL;
+    }
+    
     DeleteCriticalSection(&jit_cs);
     DeleteCriticalSection(&pda_cs);
     DeleteCriticalSection(&allocated_cs);

@@ -620,29 +620,29 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       // erase memory
       long* tmp = mem - EXTRA_BUF_SIZE;
       const long alloc_size = mem_size;      
-      if(cache_pool_512.size()  < CACHE_SIZE + 1 && alloc_size <= 512 && alloc_size > 256) {
-        memset(mem, 0, 512);
-        cache_pool_512.push((char*)mem);
+      if(cache_pool_512.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 512) {
+	memset(tmp, 0, 512);
+	cache_pool_512.push((char*)mem);
       }
-      else if(cache_pool_256.size()  < CACHE_SIZE + 1 && alloc_size <= 256 && alloc_size > 64) {
-        memset(mem, 0, 256);
-        cache_pool_256.push((char*)mem);
+      else if(cache_pool_256.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 256) {
+	memset(tmp, 0, 256);
+	cache_pool_256.push((char*)mem);
       }
-      else if(cache_pool_64.size()  < CACHE_SIZE + 1 && alloc_size <= 64 && alloc_size > 32) {
-        memset(mem, 0, 64);
-        cache_pool_64.push((char*)mem);
+      else if(cache_pool_64.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 64) {
+	memset(tmp, 0, 64);
+	cache_pool_64.push((char*)mem);
       }
-      else if(cache_pool_32.size() < CACHE_SIZE + 1 && alloc_size <= 32 && alloc_size > 16) {
-        memset(mem, 0, 32);
-        cache_pool_32.push((char*)mem);
+      else if(cache_pool_32.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 32) {
+	memset(tmp, 0, 32);
+	cache_pool_32.push((char*)mem);
       }
-      else if(cache_pool_16.size() < CACHE_SIZE + 1 && alloc_size <= 16) {
-        memset(mem, 0, 16);
-        cache_pool_16.push((char*)mem);
+      else if(cache_pool_16.size() < CACHE_SIZE + 1 && alloc_size + EXTRA_BUF_SIZE == 16) {
+	memset(tmp, 0, 16);
+	cache_pool_16.push((char*)mem);
       } 
       else {
-        free(tmp);
-        tmp = NULL;
+	free(tmp);
+	tmp = NULL;
       }
     }
   }
