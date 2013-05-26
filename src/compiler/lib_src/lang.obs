@@ -1945,11 +1945,11 @@ bundle System.IO {
 		}
 
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
-			STD_OUT_BYTE_ARY;	
+			STD_OUT_BYTE_ARY_LEN;	
 		}
 
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
-			STD_OUT_BYTE_ARY;
+			STD_OUT_CHAR_ARY_LEN;
 		}
 
 		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {

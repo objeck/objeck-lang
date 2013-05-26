@@ -1447,7 +1447,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   }
     break;
 
-  case STD_OUT_BYTE_ARY: {
+  case STD_OUT_BYTE_ARY_LEN: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const size_t num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
@@ -1457,13 +1457,31 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 #endif
 
     if(array && offset > -1 && offset + num <= (size_t)array[2]) {
-      wchar_t* buffer = (wchar_t*)(array + 3);
-      wcout.write(buffer + offset, num);
-      /*
+      const char* buffer = (char*)(array + 3);
       for(size_t i = 0; i < num; i++) {
         wcout << (char)buffer[i + offset];
       }
-      */
+      PushInt(1, op_stack, stack_pos);
+    } 
+    else {
+      wcout << L"Nil";
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+  case STD_OUT_CHAR_ARY_LEN: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const size_t num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+
+#ifdef _DEBUG
+    wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+#endif
+
+    if(array && offset > -1 && offset + num <= (size_t)array[2]) {
+      const wchar_t* buffer = (wchar_t*)(array + 3);
+      wcout.write(buffer + offset, num);
       PushInt(1, op_stack, stack_pos);
     } 
     else {
