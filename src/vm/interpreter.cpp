@@ -1572,7 +1572,10 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   }
   // execute interpreter
   else {
-    ProcessInterpretedMethodCall(called, instance, instrs, ip);
+    // ProcessInterpretedMethodCall(called, instance, instrs, ip);
+    (*frame) = new StackFrame(called, instance); 
+    instrs = (*frame)->GetMethod()->GetInstructions();
+    ip = 0;
   }
 #else
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
@@ -1637,7 +1640,10 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   }
   // execute interpreter
   else {
-    ProcessInterpretedMethodCall(called, instance, instrs, ip);
+    // ProcessInterpretedMethodCall(called, instance, instrs, ip);
+    (*frame) = new StackFrame(called, instance); 
+    instrs = (*frame)->GetMethod()->GetInstructions();
+    ip = 0;
   }
 #else
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
