@@ -1,9 +1,19 @@
 ﻿class Hello {
 	function : Main(args : String[]) ~ Nil {
-		while(true) {
-			"> "->Print();
-			in := IO.Console->ReadString();
-			in->PrintLine();
+		a := Loop(13, 99.9);
+		a->PrintLine();
+	}
+	
+	function : Hey(a : Float) ~ Nil {
+		a->PrintLine();
+	}
+	function : native : Loop(a : Int, b : Float) ~ Int {
+		for(i := 0; i < 10; i+=1;) {
+			a += b * i;
 		};
+		
+		Hey(b);
+	
+		return a;
 	}
 }
