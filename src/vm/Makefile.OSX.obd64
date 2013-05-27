@@ -1,0 +1,27 @@
+ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUGGER -D_NO_JIT -Wno-unused-function -Wno-deprecated-declarations
+# ARGS=-pthread -g -Wall -D_X64 -D_DEBUGGER
+# ARGS=-pthread -g -Wall -D_X64 -D_DEBUG -D_DEBUGGER
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+OBJ_LIBS=jit_amd_lp64.a memory.a
+MEM_PATH=os/posix
+JIT_PATH=jit/amd64
+LIB=debugger/compiler.a
+
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
+
+memory.a:
+	cd $(MEM_PATH); make	
+	
+jit_amd_lp64.a:
+	cd $(JIT_PATH); make	
+	
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean
+	cd $(JIT_PATH); make clean
+	rm -f $(LIB).exe $(LIB) *.exe *.o *~
