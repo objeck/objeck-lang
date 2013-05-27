@@ -333,11 +333,11 @@ namespace Runtime {
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
       long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-									 ((char_array_dim + 2) *
-									  sizeof(long)),
-									 CHAR_ARY_TYPE,
-									 op_stack, *stack_pos,
-									 false);
+							     ((char_array_dim + 2) *
+							      sizeof(long)),
+							     CHAR_ARY_TYPE,
+							     op_stack, *stack_pos,
+							     false);
       char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
@@ -348,8 +348,8 @@ namespace Runtime {
       
       // create 'System.String' object instance
       long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-								(long*)op_stack, *stack_pos,
-								false);
+						    (long*)op_stack, *stack_pos,
+						    false);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;
