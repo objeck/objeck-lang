@@ -61,7 +61,6 @@ void MemoryManager::Initialize(StackProgram* p)
   allocation_size = 0;
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
-  initialized = true;
   
   for(int i = 0; i < POOL_SIZE; i++) {
     cache_pool_16.push((char*)calloc(16, sizeof(char)));
@@ -82,6 +81,8 @@ void MemoryManager::Initialize(StackProgram* p)
   for(int i = 0; i < POOL_SIZE; i++) {
     cache_pool_512.push((char*)calloc(512, sizeof(char)));
   }
+
+  initialized = true;
 }
 
 // if return true, trace memory otherwise do not
