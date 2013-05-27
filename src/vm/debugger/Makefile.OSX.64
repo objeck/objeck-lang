@@ -6,7 +6,7 @@
 # ARGS=-pthread -mstackrealign -g -D_DEBUG -Wunused
 # ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
 # ARGS=-O3 -D_DEBUGGER -Wunused -pthread
-ARGS=-O3 -Wall -Wno-deprecated-declarations -pthread -D_X64 -D_OSX -D_DEBUGGER
+ARGS=-O3 -Wall -Wno-deprecated-declarations -Wno-unused-function -pthread -D_X64 -D_OSX -D_DEBUGGER
 
 ##############
 # For Linux
