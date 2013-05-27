@@ -63,6 +63,8 @@ cp obr ../objeck/deploy/bin
 # build debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.obd32 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	cp Makefile.OSX.obd64 Makefile	
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	cp Makefile.obd.MINGW Makefile
 else
@@ -73,7 +75,7 @@ cd debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.obd64 Makefile
+	cp Makefile.OSX.64 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	cp Makefile.MINGW Makefile
 else
