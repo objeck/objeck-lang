@@ -132,9 +132,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 
 #ifdef _DEBUG
   wcout << L"\n---------- Executing Interpretered Code: id=" 
-       << (((*frame)->GetMethod()->GetClass()) ? (*frame)->GetMethod()->GetClass()->GetId() : -1) << ","
-       << (*frame)->GetMethod()->GetId() << "; method_name='" << (*frame)->GetMethod()->GetName() 
-       << "' ---------\n" << endl;
+	<< (((*frame)->GetMethod()->GetClass()) ? (*frame)->GetMethod()->GetClass()->GetId() : -1) << ","
+	<< (*frame)->GetMethod()->GetId() << "; method_name='" << (*frame)->GetMethod()->GetName() 
+	<< "' ---------\n" << endl;
 #endif
 
   // execute
@@ -772,8 +772,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
     case OBJ_TYPE_OF: {
       long* mem = (long*)PopInt(op_stack, stack_pos);
       long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-								program->GetHierarchy(),
-								program->GetInterfaces());
+						    program->GetHierarchy(),
+						    program->GetInterfaces());
       if(result) {
         PushInt(1, op_stack, stack_pos);
       }
@@ -786,15 +786,15 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
     case OBJ_INST_CAST: {
       long* mem = (long*)PopInt(op_stack, stack_pos);
       long result = (long)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-								     program->GetHierarchy(),
-								     program->GetInterfaces());
+							 program->GetHierarchy(),
+							 program->GetInterfaces());
 #ifdef _DEBUG
       wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl; 
 #endif
       if(!result && mem) {
         StackClass* to_cls = MemoryManager::GetClass((long*)mem);
         wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-	     << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+	      << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
 
       }
@@ -849,8 +849,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #ifdef _DEBUG
       assert(called);
       wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-	   << called->GetId() << "; name='" << called->GetName() 
-	   << "'; param=" << param << " ===" << endl;
+	    << called->GetId() << "; name='" << called->GetName() 
+	    << "'; param=" << param << " ===" << endl;
 #endif
 
       // create and execute the new thread
@@ -1122,7 +1122,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, long* &op_stack, l
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = (*frame)->GetMemory();
@@ -1149,7 +1149,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
@@ -1179,7 +1179,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, long* &op_stack, 
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     long* mem = (*frame)->GetMemory();
@@ -1210,7 +1210,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1240,7 +1240,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
-       << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
@@ -1735,9 +1735,9 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* i
 {
 #ifdef _DEBUG
   wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-       << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
+	<< called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif
- (*frame) = new StackFrame(called, instance); 
+  (*frame) = new StackFrame(called, instance); 
   instrs = (*frame)->GetMethod()->GetInstructions();
   ip = 0;
 #ifdef _DEBUG
