@@ -397,6 +397,14 @@ namespace Runtime {
     static void* AsyncMethodCall(void* arg);
 #endif
 
+    StackInterpreter(StackFrame** c, long* cp) {
+      // setup frame
+      call_stack = c;
+      call_stack_pos = cp;
+      frame = new StackFrame*;
+      monitor = NULL;
+    }
+
     StackInterpreter() {
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
@@ -448,20 +456,22 @@ namespace Runtime {
 #endif
     
     ~StackInterpreter() {
-      MemoryManager::RemovePdaMethodRoot(monitor);
-      
-      delete[] call_stack;
-      call_stack = NULL;
+      if(monitor) {
+        MemoryManager::RemovePdaMethodRoot(monitor);
 
-      delete call_stack_pos;
-      call_stack_pos = NULL;
+        delete[] call_stack;
+        call_stack = NULL;
 
-      delete monitor;
-      monitor = NULL;
-      
-      if((*frame)) {
-	delete (*frame);
-	(*frame) = NULL;
+        delete call_stack_pos;
+        call_stack_pos = NULL;
+
+        delete monitor;
+        monitor = NULL;
+
+        if((*frame)) {
+          delete (*frame);
+          (*frame) = NULL;
+        }
       }
       delete frame;
       frame = NULL;

@@ -116,7 +116,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 #endif
 
   // inital setup
-  (*call_stack_pos) = 0;
+  if(monitor) {
+    (*call_stack_pos) = 0;
+  }
   (*frame) = new StackFrame(method, instance);
 
 #ifdef _DEBUG
@@ -1661,7 +1663,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
 #else
   if(called->GetNativeCode()) {
     JitExecutorIA32 jit_executor;
-    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
       case -1:
@@ -1700,7 +1702,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
     }
     // execute
     JitExecutorIA32 jit_executor;
-    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos);
+    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
       case -1:
