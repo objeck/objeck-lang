@@ -96,24 +96,24 @@ int Execute(const int argc, const char* argv[])
     }
 #endif
     
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
+
+    MemoryManager::Clear();
+
     // clean up
     delete[] op_stack;
     op_stack = NULL;
     
     delete stack_pos;
     stack_pos = NULL;
-    
-    MemoryManager::Clear();
 #endif
     
-#ifdef _TIMING
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
-    if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); i++) {
-	wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
-      } 
-    }
-    
+#ifdef _TIMING    
     clock_t end = clock();
     wcout << L"---------------------------" << endl;
     wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC

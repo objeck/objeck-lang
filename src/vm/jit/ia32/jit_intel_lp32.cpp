@@ -1537,6 +1537,8 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   ProcessReturn(params);
   // push values
   push_imm(instr_index - 1);
+  push_mem(CALL_STACK_POS, EBP);
+  push_mem(CALL_STACK, EBP);
   push_mem(STACK_POS, EBP);
   push_mem(OP_STACK, EBP);
   push_mem(INSTANCE_MEM, EBP);
@@ -1548,7 +1550,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((int32_t)JitCompilerIA32::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
-  add_imm_reg(32, ESP);
+  add_imm_reg(40, ESP);
   ReleaseRegister(call_holder);
 
   // restore register values
@@ -3766,14 +3768,14 @@ void JitExecutorIA32::Initialize(StackProgram* p) {
 }
 
 int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-					    unsigned char* code, const int32_t code_size, 
-					    int32_t* op_stack, int32_t *stack_pos) {
+					    unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+              StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   // execute
   int32_t rtrn_value = jit_fun(cls_id, mthd_id, 
 			       (int32_t*)method->GetClass()->GetClassMemory(), 
-			       inst, op_stack, stack_pos, rtrn_value);
+			       inst, op_stack, stack_pos, call_stack, call_stack_pos, rtrn_value);
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;
