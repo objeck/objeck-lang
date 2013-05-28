@@ -53,6 +53,7 @@ namespace Runtime {
 #endif
   
 #define CALL_STACK_SIZE 1024
+#define CALC_STACK_SIZE 1024
 	
   struct ThreadHolder {
     StackMethod* called;
