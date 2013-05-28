@@ -241,9 +241,8 @@ namespace Runtime {
   /********************************
    * prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, 
-			      long* cls_mem, long* inst, 
-			      long* op_stack, long *stack_pos);
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, long* cls_mem, long* inst, long* op_stack, 
+			      long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
   
   /********************************
    * JitCompilerIA64 class
@@ -930,7 +929,6 @@ namespace Runtime {
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
-    void move_imm_mem32(long imm, long offset, Register dest);
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
@@ -1839,9 +1837,8 @@ namespace Runtime {
     long code_index; 
     double* floats;
     
-    long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, 
-			    unsigned char* code, const long code_size, 
-			    long* op_stack, long *stack_pos);
+    long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, unsigned char* code, const long code_size, 
+			    long* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
     
   public:
     static void Initialize(StackProgram* p);
@@ -1853,7 +1850,8 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos) {
+    long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos, 
+		 StackFrame** call_stack, long* call_stack_pos) {
       method = cm;
       long cls_id = method->GetClass()->GetId();
       long mthd_id = method->GetId();
@@ -1878,7 +1876,7 @@ namespace Runtime {
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, (long*)inst, code, code_index, 
-				(long*)op_stack, (long*)stack_pos);
+				(long*)op_stack, (long*)stack_pos, call_stack, call_stack_pos);
     }
   };
 }
