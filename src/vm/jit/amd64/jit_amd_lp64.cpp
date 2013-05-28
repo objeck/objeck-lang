@@ -1057,11 +1057,11 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
       RegisterHolder* holder = GetRegister(false);
       move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
       ReleaseRegister(elem_holder);
-      move_imm_mem32(left->GetOperand(), 0, holder->GetRegister());
+      move_imm_mem(left->GetOperand(), 0, holder->GetRegister());
       ReleaseRegister(holder);
     }
     else {
-      move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
+      move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
       ReleaseRegister(elem_holder);
     }
     break;
@@ -2255,21 +2255,6 @@ void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
   AddMachineCode(imm);
 }
 
-void JitCompilerIA64::move_imm_mem32(long imm, long offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", " << offset 
-	<< L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xc7);    
-  unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
-  AddImm(imm);
-}
-
 void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", " << offset 
@@ -2277,7 +2262,7 @@ void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
 #endif
   // encode
   AddMachineCode(XB(dest));
-  AddMachineCode(0xc7);    
+  AddMachineCode(0xc7); 
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
@@ -3877,9 +3862,9 @@ void JitExecutorIA32::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst, 
-					 unsigned char* code, const long code_size, 
-					 long* op_stack, long *stack_pos) {
+long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst, unsigned char* code, 
+					 const long code_size, long* op_stack, long *stack_pos,
+					 StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   
@@ -3894,6 +3879,6 @@ long JitExecutorIA32::ExecuteMachineCode(long cls_id, long mthd_id, long* inst,
 #else
   // execute
   return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
-		 inst, op_stack, stack_pos);
+		 inst, op_stack, stack_pos, call_stack, call_stack_pos);
 #endif
 }
