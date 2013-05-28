@@ -56,7 +56,6 @@ namespace Runtime {
 #define STACK_POS 28
 #define CALL_STACK 32
 #define CALL_STACK_POS 36
-#define RTRN_VALUE 40
   // float temps
 #define TMP_XMM_0 -8
 #define TMP_XMM_1 -16
@@ -232,9 +231,9 @@ namespace Runtime {
   /********************************
   * prototype for jit function
   ********************************/
-  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, 
-    int32_t* cls_mem, int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
-    StackFrame** call_stack, long* call_stack_pos, int32_t &rtrn_value);
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
+				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
+				 StackFrame** call_stack, long* call_stack_pos);
 
   /********************************
   * JitCompilerIA32 class
@@ -1650,9 +1649,9 @@ namespace Runtime {
     int32_t code_index; 
     double* floats;
 
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-      unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
-      StackFrame** call_stack, long* call_stack_pos);
+    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, unsigned char* code, 
+			       const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+			       StackFrame** call_stack, long* call_stack_pos);
 
   public:
     static void Initialize(StackProgram* p);
@@ -1662,9 +1661,10 @@ namespace Runtime {
 
     ~JitExecutorIA32() {
     }    
-
+    
     // Executes machine code
-    inline long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos) {
+    inline long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos, 
+			StackFrame** call_stack, long* call_stack_pos) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();
       int32_t mthd_id = method->GetId();
@@ -1676,15 +1676,15 @@ namespace Runtime {
         << method->GetParamCount() << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
 #endif
-
+      
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
       floats = native_code->GetFloats();
-
+      
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, (int32_t*)inst, code, code_index, 
-        (int32_t*)op_stack, (int32_t*)stack_pos, call_stack, call_stack_pos);
+				(int32_t*)op_stack, (int32_t*)stack_pos, call_stack, call_stack_pos);
     }
   };
 }
