@@ -52,9 +52,8 @@ namespace Runtime {
   class Debugger;
 #endif
   
-#define CALC_STACK_SIZE 1048576 * 4
 #define CALL_STACK_SIZE 1024
-  
+	
   struct ThreadHolder {
     StackMethod* called;
     long* self;
