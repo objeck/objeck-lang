@@ -3773,9 +3773,8 @@ int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   // execute
-  int32_t rtrn_value = jit_fun(cls_id, mthd_id, 
-			       (int32_t*)method->GetClass()->GetClassMemory(), 
-			       inst, op_stack, stack_pos, call_stack, call_stack_pos, rtrn_value);
+  int32_t rtrn_value = jit_fun(cls_id, mthd_id, (int32_t*)method->GetClass()->GetClassMemory(), 
+			       inst, op_stack, stack_pos, call_stack, call_stack_pos);
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;
