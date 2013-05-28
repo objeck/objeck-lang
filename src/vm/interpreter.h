@@ -54,7 +54,6 @@ namespace Runtime {
   
 #define CALL_STACK_SIZE 1024
 #define CALC_STACK_SIZE 1024
-#define STACK_FRAME_SIZE 128
 	
   struct ThreadHolder {
     StackMethod* called;
@@ -63,74 +62,19 @@ namespace Runtime {
   };
   
   class StackInterpreter {
-    // static references
+    // program
     static StackProgram* program;
-		static stack<StackFrame*> cache_frames;
-		static pthread_mutex_t cache_frames_mutex;
-		
     // call stack and current frame pointer
     StackFrame** call_stack;
-    long* call_stack_pos;		
+    long* call_stack_pos;
     StackFrame** frame;
     StackFrameMonitor* monitor;
+    // halt
     bool halt;
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
-		
-		//
-		// gets a new stack frame
-		//
-		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
-			StackFrame* frame;
-			pthread_mutex_lock(&cache_frames_mutex);
-			
-			/* */
-			// grow stack if necessary
-			if(cache_frames.empty()) {
-				for(int i = 0; i < STACK_FRAME_SIZE; i++) {
-					StackFrame* frame = new StackFrame();
-					frame->mem = new long[STACK_FRAME_SIZE];
-					cache_frames.push(frame);
-				}
-			}
-		 
-			frame = cache_frames.top();
-			cache_frames.pop();				
-			/* */
-
-			// frame = new StackFrame();
-			pthread_mutex_unlock(&cache_frames_mutex);			
-			
-			frame->method = method;
-			frame->mem = new long[STACK_FRAME_SIZE];
-			memset(frame->mem, 0, sizeof(long) * STACK_FRAME_SIZE);
-			frame->mem[0] = (long)instance;
-			frame->ip = -1;
-			frame->jit_called = false;
-			
-#ifdef _DEBUG
-			wcout << L"fetching frame=" << frame << endl;
-#endif
-			
-			return frame;
-		}
-		
-		//
-		// release a stack frame
-		//
-		static inline void ReleaseStackFrame(StackFrame* frame) {
-			pthread_mutex_lock(&cache_frames_mutex);
-			cache_frames.push(frame);
-			// delete frame;
-			// frame = NULL;
-			pthread_mutex_unlock(&cache_frames_mutex);
-			
-#ifdef _DEBUG
-			wcout << L"releasing frame=" << frame << endl;
-#endif
-		}
-		
+  
     //
     // push call frame
     //
@@ -187,11 +131,11 @@ namespace Runtime {
 #else
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name=" 
-						<< (*frame)->method->GetName() << endl;
+						<< (*frame)->GetMethod()->GetName() << endl;
       if(pos != 0) {
 				while(--pos && pos > -1) {
 					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->method->GetName() << endl;
+								<< call_stack[pos]->GetMethod()->GetName() << endl;
 				}
       }
       wcerr << L"  ..." << endl;
@@ -209,7 +153,7 @@ namespace Runtime {
       while(--pos) {
 				if(pos > - 1) {
 					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->method->GetName() << endl;
+								<< call_stack[pos]->GetMethod()->GetName() << endl;
 				}
       }
       wcerr << L"  ..." << endl;
@@ -524,12 +468,10 @@ namespace Runtime {
         delete monitor;
         monitor = NULL;
 
-				/*
         if((*frame)) {
           delete (*frame);
           (*frame) = NULL;
         }
-				*/
       }
       delete frame;
       frame = NULL;
