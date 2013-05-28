@@ -1,7 +1,2 @@
-# inital threshold for GC
-heap-mem-max=3000
+fcgi-lib-path=/var/lib/apache2/fastcgi/fcgi
 
-# number of heap frames
-stack-max=8000
-
-# fcgi-lib-path=/var/lib/apache2/fastcgi/fcgi

@@ -1023,8 +1023,8 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     }
 
     for(size_t i = 0; i < frames.size(); ++i) {    
-      StackMethod* mthd = frames[i]->method;
-      long* mem = frames[i]->mem;
+      StackMethod* mthd = frames[i]->GetMethod();
+      long* mem = frames[i]->GetMemory();
 
 #ifdef _DEBUG
       wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="

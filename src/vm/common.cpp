@@ -826,7 +826,7 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
     curr_time = localtime(&raw_time);
   }
 
-  long* instance = (long*)frame->mem[0];
+  long* instance = (long*)frame->GetMemory()[0];
   if(instance) {
     instance[0] = curr_time->tm_mday;          // day
     instance[1] = curr_time->tm_mon + 1;       // month
@@ -1134,7 +1134,7 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
  ********************************/
 void TrapProcessor::SerializeObject(long* inst, StackFrame* frame, long* &op_stack, long* &stack_pos)
 {
-  long* obj = (long*)frame->mem[1];
+  long* obj = (long*)frame->GetMemory()[1];
   ObjectSerializer serializer(obj);
   vector<char> src_buffer = serializer.GetValues();
   const long src_buffer_size = src_buffer.size();
@@ -1217,7 +1217,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
 																									(long*)op_stack, *stack_pos, false);
     cls_obj[0] = (long)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
-    frame->mem[1] = (long)cls_obj;
+    frame->GetMemory()[1] = (long)cls_obj;
     CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
   }
     break;
@@ -1964,7 +1964,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 					wcout << L"# serializing char #" << endl;
 #endif
 					SerializeInt(CHAR_PARM, inst, op_stack, stack_pos);
-					SerializeChar((wchar_t)frame->mem[1], inst, op_stack, stack_pos);
+					SerializeChar((wchar_t)frame->GetMemory()[1], inst, op_stack, stack_pos);
 					break;
 	  
 				case SERL_INT:
@@ -1972,7 +1972,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 					wcout << L"# serializing int #" << endl;
 #endif
 					SerializeInt(INT_PARM, inst, op_stack, stack_pos);
-					SerializeInt(frame->mem[1], inst, op_stack, stack_pos);
+					SerializeInt(frame->GetMemory()[1], inst, op_stack, stack_pos);
 					break;
 	
 				case SERL_FLOAT: {
@@ -1981,7 +1981,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 #endif
 					SerializeInt(FLOAT_PARM, inst, op_stack, stack_pos);
 					FLOAT_VALUE value;
-					memcpy(&value, &(frame->mem[1]), sizeof(value));
+					memcpy(&value, &(frame->GetMemory()[1]), sizeof(value));
 					SerializeFloat(value, inst, op_stack, stack_pos);
 				}
 					break;
@@ -1992,22 +1992,22 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 
 				case SERL_BYTE_ARY:
 					SerializeInt(BYTE_ARY_PARM, inst, op_stack, stack_pos);
-					SerializeArray((long*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
+					SerializeArray((long*)frame->GetMemory()[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
 					break;
 
 				case SERL_CHAR_ARY:
 					SerializeInt(CHAR_ARY_PARM, inst, op_stack, stack_pos);
-					SerializeArray((long*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
+					SerializeArray((long*)frame->GetMemory()[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
 					break;
 	  
 				case SERL_INT_ARY:
 					SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
-					SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
+					SerializeArray((long*)frame->GetMemory()[1], INT_ARY_PARM, inst, op_stack, stack_pos);
 					break;
 
 				case SERL_FLOAT_ARY:
 					SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
-					SerializeArray((long*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
+					SerializeArray((long*)frame->GetMemory()[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
 					break;
 
 				case DESERL_CHAR:
@@ -2612,12 +2612,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 											curr_time = localtime(&raw_time);
 										}
 	  
-										frame->mem[3] = curr_time->tm_mday;          // day
-										frame->mem[4] = curr_time->tm_mon + 1;       // month
-										frame->mem[5] = curr_time->tm_year + 1900;   // year
-										frame->mem[6] = curr_time->tm_hour;          // hours
-										frame->mem[7] = curr_time->tm_min;           // mins
-										frame->mem[8] = curr_time->tm_sec;           // secs
+										frame->GetMemory()[3] = curr_time->tm_mday;          // day
+										frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+										frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+										frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+										frame->GetMemory()[7] = curr_time->tm_min;           // mins
+										frame->GetMemory()[8] = curr_time->tm_sec;           // secs
 									}
 									else {
 										PushInt(0, op_stack, stack_pos);
@@ -2646,12 +2646,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 											curr_time = localtime(&raw_time);
 										}
 	  
-										frame->mem[3] = curr_time->tm_mday;          // day
-										frame->mem[4] = curr_time->tm_mon + 1;       // month
-										frame->mem[5] = curr_time->tm_year + 1900;   // year
-										frame->mem[6] = curr_time->tm_hour;          // hours
-										frame->mem[7] = curr_time->tm_min;           // mins
-										frame->mem[8] = curr_time->tm_sec;           // secs
+										frame->GetMemory()[3] = curr_time->tm_mday;          // day
+										frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+										frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+										frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+										frame->GetMemory()[7] = curr_time->tm_min;           // mins
+										frame->GetMemory()[8] = curr_time->tm_sec;           // secs
 									}
 									else {
 										PushInt(0, op_stack, stack_pos);
@@ -2680,12 +2680,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 											curr_time = localtime(&raw_time);
 										}
 	  
-										frame->mem[3] = curr_time->tm_mday;          // day
-										frame->mem[4] = curr_time->tm_mon + 1;       // month
-										frame->mem[5] = curr_time->tm_year + 1900;   // year
-										frame->mem[6] = curr_time->tm_hour;          // hours
-										frame->mem[7] = curr_time->tm_min;           // mins
-										frame->mem[8] = curr_time->tm_sec;           // secs
+										frame->GetMemory()[3] = curr_time->tm_mday;          // day
+										frame->GetMemory()[4] = curr_time->tm_mon + 1;       // month
+										frame->GetMemory()[5] = curr_time->tm_year + 1900;   // year
+										frame->GetMemory()[6] = curr_time->tm_hour;          // hours
+										frame->GetMemory()[7] = curr_time->tm_min;           // mins
+										frame->GetMemory()[8] = curr_time->tm_sec;           // secs
 									}
 									else {
 										PushInt(0, op_stack, stack_pos);
