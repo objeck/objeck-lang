@@ -622,11 +622,9 @@ class StackMethod {
   inline long* NewMemory() {
     // +1 is for instance variable
     const long size = mem_size + 2;
-		long* mem = (long*)calloc(size, sizeof(long));
-		/*
     long* mem = new long[size];
     memset(mem, 0, size * sizeof(long));
-		*/
+
     return mem;
   }
 
@@ -1351,21 +1349,15 @@ class StackProgram {
 /********************************
  * StackFrame class
  ********************************/
-struct StackFrame {
-	StackMethod* method;
-  long* mem;
-  long ip;
-  bool jit_called;
-};
-
-/*
 class StackFrame {
   StackMethod* method;
   long* mem;
   long ip;
   bool jit_called;
-	
+
  public:
+  // StackFrame() { mem = (long*)calloc(512, 1); };
+
   StackFrame(StackMethod* md, long* inst) {
     mem = md->NewMemory(); 
     method = md;
@@ -1373,7 +1365,7 @@ class StackFrame {
     ip = -1;
     jit_called = false;
   }
-	
+
   ~StackFrame() {
     delete[] mem;
     mem = NULL;
@@ -1403,8 +1395,6 @@ class StackFrame {
     return jit_called;
   }
 };
-
-*/
 
 /********************************
  * ObjectSerializer class
