@@ -66,15 +66,15 @@ SelectNode* SelectArrayTree::divide(int start, int end)
   if(size < 4) {
     if(size == 2) {
       SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
-					new SelectNode(++emitter->conditional_label, values[start]),
-					new SelectNode(++emitter->conditional_label, values[start + 1]));
+																				new SelectNode(++emitter->conditional_label, values[start]),
+																				new SelectNode(++emitter->conditional_label, values[start + 1]));
       return node;	
     }
     else {
       SelectNode* node = new SelectNode(++emitter->conditional_label, 
-					values[start + 1], values[start + 2],
-					new SelectNode(++emitter->conditional_label, values[start]),
-					new SelectNode(++emitter->conditional_label, values[start + 2]));
+																				values[start + 1], values[start + 2],
+																				new SelectNode(++emitter->conditional_label, values[start]),
+																				new SelectNode(++emitter->conditional_label, values[start + 2]));
       return node;	
     }
   }
@@ -85,13 +85,13 @@ SelectNode* SelectArrayTree::divide(int start, int end)
       SelectNode* left = divide(start, middle - 1);
       SelectNode* right = divide(middle, end);
       node = new SelectNode(++emitter->conditional_label, 
-			    values[middle], left, right);
+														values[middle], left, right);
     }
     else {
       SelectNode* left = divide(start, middle - 1);
       SelectNode* right = divide(middle + 1, end);
       node = new SelectNode(++emitter->conditional_label, values[middle], 
-			    values[middle], left, right);
+														values[middle], left, right);
     }
 
     return node;
@@ -220,7 +220,7 @@ void IntermediateEmitter::Translate()
     for(size_t j = 0; j < interface_names.size(); ++j) {
       LibraryClass* inf_klass = parsed_program->GetLinker()->SearchClassLibraries(interface_names[j], parsed_program->GetUses());
       if(inf_klass) {
-	lib_class->AddInterfaceId(inf_klass->GetId());
+				lib_class->AddInterfaceId(inf_klass->GetId());
       }
     }
   }
@@ -303,47 +303,47 @@ void IntermediateEmitter::EmitStrings()
       // char wstring processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
-	// check for dups
-	bool found = false;
-	for(size_t j = 0; !found && j < lib_char_string_values.size(); j++) {
-	  if(char_str_insts[i]->value == lib_char_string_values[j]) {
-	    found = true;
-	  }
-	}
-	// add wstring
-	if(!found) {
-	  lib_char_string_values.push_back(char_str_insts[i]->value);
-	}
+				// check for dups
+				bool found = false;
+				for(size_t j = 0; !found && j < lib_char_string_values.size(); j++) {
+					if(char_str_insts[i]->value == lib_char_string_values[j]) {
+						found = true;
+					}
+				}
+				// add wstring
+				if(!found) {
+					lib_char_string_values.push_back(char_str_insts[i]->value);
+				}
       }      
       // int wstring processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
-	// check for dups
-	bool found = false;
-	for(size_t j = 0; !found && j < lib_int_string_values.size(); j++) {
-	  if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
-	    found = true;
-	  }
-	}
-	// add wstring
-	if(!found) {
-	  lib_int_string_values.push_back(int_str_insts[i]->value);
-	}
+				// check for dups
+				bool found = false;
+				for(size_t j = 0; !found && j < lib_int_string_values.size(); j++) {
+					if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
+						found = true;
+					}
+				}
+				// add wstring
+				if(!found) {
+					lib_int_string_values.push_back(int_str_insts[i]->value);
+				}
       }
       // float wstring processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
-	// check for dups
-	bool found = false;
-	for(size_t j = 0; !found && j < lib_float_string_values.size(); j++) {
-	  if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
-	    found = true;
-	  }
-	}
-	// add wstring
-	if(!found) {
-	  lib_float_string_values.push_back(float_str_insts[i]->value);
-	}
+				// check for dups
+				bool found = false;
+				for(size_t j = 0; !found && j < lib_float_string_values.size(); j++) {
+					if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
+						found = true;
+					}
+				}
+				// add wstring
+				if(!found) {
+					lib_float_string_values.push_back(float_str_insts[i]->value);
+				}
       }  
     }
 
@@ -352,39 +352,39 @@ void IntermediateEmitter::EmitStrings()
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < char_string_values.size(); j++) {
-	if(lib_char_string_values[i] == char_string_values[j]) {
-	  found = true;
-	}
+				if(lib_char_string_values[i] == char_string_values[j]) {
+					found = true;
+				}
       }
       // add wstring
       if(!found) {
-	char_string_values.push_back(lib_char_string_values[i]);
+				char_string_values.push_back(lib_char_string_values[i]);
       }
     }
     for(size_t i = 0; i < lib_int_string_values.size(); ++i) {
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < int_string_values.size(); j++) {
-	if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
-	  found = true;
-	}
+				if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
+					found = true;
+				}
       }
       // add wstring
       if(!found) {
-	int_string_values.push_back(lib_int_string_values[i]);
+				int_string_values.push_back(lib_int_string_values[i]);
       }
     }
     for(size_t i = 0; i < lib_float_string_values.size(); ++i) {
       // check for dups
       bool found = false;
       for(size_t j = 0; !found && j < float_string_values.size(); j++) {
-	if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
-	  found = true;
-	}
+				if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
+					found = true;
+				}
       }
       // add wstring
       if(!found) {
-	float_string_values.push_back(lib_float_string_values[i]);
+				float_string_values.push_back(lib_float_string_values[i]);
       }
     }
     
@@ -393,52 +393,52 @@ void IntermediateEmitter::EmitStrings()
       // char wstring processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
-	bool found = false;
-	for(size_t j = 0; !found && j < char_string_values.size(); j++) {
-	  if(char_str_insts[i]->value == char_string_values[j]) {
-	    vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
-	    for(size_t k = 0; k < instrs.size(); k++) {
-	      instrs[k]->SetOperand(j);
-	    }
-	    found = true;
-	  }
-	}
+				bool found = false;
+				for(size_t j = 0; !found && j < char_string_values.size(); j++) {
+					if(char_str_insts[i]->value == char_string_values[j]) {
+						vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
+						for(size_t k = 0; k < instrs.size(); k++) {
+							instrs[k]->SetOperand(j);
+						}
+						found = true;
+					}
+				}
 #ifdef _DEBUG
-	assert(found);
+				assert(found);
 #endif
       }
       // int wstring processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
-	bool found = false;
-	for(size_t j = 0; !found && j < int_string_values.size(); j++) {
-	  if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
-	    vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
-	    for(size_t k = 0; k < instrs.size(); k++) {
-	      instrs[k]->SetOperand(j);
-	    }
-	    found = true;
-	  }
-	}
+				bool found = false;
+				for(size_t j = 0; !found && j < int_string_values.size(); j++) {
+					if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
+						vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
+						for(size_t k = 0; k < instrs.size(); k++) {
+							instrs[k]->SetOperand(j);
+						}
+						found = true;
+					}
+				}
 #ifdef _DEBUG
-	assert(found);
+				assert(found);
 #endif
       }
       // float wstring processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
-	bool found = false;
-	for(size_t j = 0; !found && j < float_string_values.size(); j++) {
-	  if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
-	    vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
-	    for(size_t k = 0; k < instrs.size(); k++) {
-	      instrs[k]->SetOperand(j);
-	    }
-	    found = true;
-	  }
-	}
+				bool found = false;
+				for(size_t j = 0; !found && j < float_string_values.size(); j++) {
+					if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
+						vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
+						for(size_t k = 0; k < instrs.size(); k++) {
+							instrs[k]->SetOperand(j);
+						}
+						found = true;
+					}
+				}
 #ifdef _DEBUG
-	assert(found);
+				assert(found);
 #endif
       }
     }
@@ -566,9 +566,9 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
                                     pid, parent_name, interface_ids, current_class->GetInterfaceNames(),
-				    current_class->IsInterface(), current_class->IsVirtual(), 
-				    cls_space, inst_space, cls_entries, inst_entries, 
-				    short_file_name, is_debug);
+																		current_class->IsInterface(), current_class->IsVirtual(), 
+																		cls_space, inst_space, cls_entries, inst_entries, 
+																		short_file_name, is_debug);
   // block
   NewBlock();
   
@@ -643,17 +643,17 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
           if(entry->GetType()->GetDimension() > 0) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, entry->GetId(), LOCL));
           } 
-	  else {
+					else {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, entry->GetId(), LOCL));
           }
           break;
 	  
-	case frontend::FUNC_TYPE:
+				case frontend::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, entry->GetId(), LOCL));
           break;
 
-	default:
-	  break;
+				default:
+					break;
         }
       }
     }
@@ -779,24 +779,24 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
-										   method_call->GetMethod()->GetClass()->GetName(),
-										   method_call->GetMethod()->GetEncodedName()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
+																																									 method_call->GetMethod()->GetClass()->GetName(),
+																																									 method_call->GetMethod()->GetEncodedName()));
       }
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
       }
     }
     else {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
-										   method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
-										   method_call->GetLibraryMethod()->GetName()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
+																																									 method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
+																																									 method_call->GetLibraryMethod()->GetName()));
       }
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
       }
     }
   }
@@ -842,22 +842,22 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       if(!method_call->GetMethodCall()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
       }
       break;
 	
     case 1:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       if(!method_call->GetMethodCall()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
       }
       break;
 	
     case 2:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
       }
       break;
 	
@@ -875,56 +875,56 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
-	switch(OrphanReturn(method_call)) {
-	case 0:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  break;
+				switch(OrphanReturn(method_call)) {
+				case 0:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					break;
 
-	case 1:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
-	  break;
+				case 1:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+					break;
 
-	case 2:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  break;
-	}
+				case 2:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					break;
+				}
       }
       // next call
       if(method_call->GetMethod()) {
-	Method* method = method_call->GetMethod();
-	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				Method* method = method_call->GetMethod();
+				if(method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else if(method_call->GetLibraryMethod()) {
-	LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				LibraryMethod* lib_method = method_call->GetLibraryMethod();
+				if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else {
-	is_nested = false;
+				is_nested = false;
       }
       method_call = method_call->GetMethodCall();
     } 
@@ -951,61 +951,61 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
-	switch(OrphanReturn(method_call)) {
-	case 0:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  break;
+				switch(OrphanReturn(method_call)) {
+				case 0:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					break;
 
-	case 1:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
-	  break;
+				case 1:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
+					break;
 
-	case 2:
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	  break;
-	}
+				case 2:
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+					break;
+				}
       }
       // next call
       if(method_call->GetMethod()) {
-	Method* method = method_call->GetMethod();
-	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				Method* method = method_call->GetMethod();
+				if(method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       }
       else if(method_call->GetLibraryMethod()) {
-	LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				LibraryMethod* lib_method = method_call->GetLibraryMethod();
+				if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else {
-	is_nested = false;
+				is_nested = false;
       }
       
       // class cast
       if(!method_call->GetVariable()) {
-	EmitClassCast(method_call);
+				EmitClassCast(method_call);
       }
       
       // update
@@ -1327,7 +1327,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::STD_OUT_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT,
-									       (INT_VALUE)instructions::STD_OUT_FLOAT));
+																																							 (INT_VALUE)instructions::STD_OUT_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
     break;
 
@@ -1387,7 +1387,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   case instructions::STD_ERR_FLOAT:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT,
-									       (INT_VALUE)instructions::STD_ERR_FLOAT));
+																																							 (INT_VALUE)instructions::STD_ERR_FLOAT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
     break;
 
@@ -1432,7 +1432,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										 L"System.String", L"System.String:New:c*,"));
+																																								 L"System.String", L"System.String:New:c*,"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
@@ -2201,11 +2201,11 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
-	// need to swap values
-	if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
-	   method_call->GetCallingParameters()->GetExpressions().size() > 0) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
-	}
+				// need to swap values
+				if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
+					 method_call->GetCallingParameters()->GetExpressions().size() > 0) {
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SWAP_INT));
+				}
       }
       new_char_str_count = 0;
       
@@ -2213,39 +2213,39 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
-	EmitClassCast(method_call);
+				EmitClassCast(method_call);
       }
       
       // next call
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
         } 
-	else {
+				else {
           is_nested = false;
         }
       }
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
         } 
-	else {
+				else {
           is_nested = false;
         }
       } else {
@@ -2266,25 +2266,25 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
-										   method_call->GetMethod()->GetClass()->GetName(),
-										   method_call->GetMethod()->GetEncodedName()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
+																																									 method_call->GetMethod()->GetClass()->GetName(),
+																																									 method_call->GetMethod()->GetEncodedName()));
 										   
       }
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
       }
     }
     else {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
-										   method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
-										   method_call->GetLibraryMethod()->GetName()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
+																																									 method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
+																																									 method_call->GetLibraryMethod()->GetName()));
       }
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
       }
 
     }
@@ -2339,8 +2339,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     case 2:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
       }
       break;
 	
@@ -2356,44 +2356,44 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
-	EmitClassCast(method_call);
+				EmitClassCast(method_call);
       }
       
       // next call
       if(method_call->GetMethod()) {
-	Method* method = method_call->GetMethod();
-	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				Method* method = method_call->GetMethod();
+				if(method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else if(method_call->GetLibraryMethod()) {
-	LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = true;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				LibraryMethod* lib_method = method_call->GetLibraryMethod();
+				if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = true;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else {
-	is_nested = false;
+				is_nested = false;
       }
       method_call = method_call->GetMethodCall();
     } 
@@ -2403,14 +2403,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     if(!is_variable) {
       MethodCall* tail = method_call;
       while(tail->GetMethodCall()) {
-	tail = tail->GetMethodCall();
+				tail = tail->GetMethodCall();
       }
       
       // emit parameters for nested call
       MethodCall* temp = tail;
       while(temp) {
-	EmitMethodCallParameters(temp);
-	temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+				EmitMethodCallParameters(temp);
+				temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
       }
     }
     
@@ -2419,44 +2419,44 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       EmitMethodCall(method_call, is_nested);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
-	EmitClassCast(method_call);
+				EmitClassCast(method_call);
       }
       
       // next call
       if(method_call->GetMethod()) {
-	Method* method = method_call->GetMethod();
-	if(method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				Method* method = method_call->GetMethod();
+				if(method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else if(method_call->GetLibraryMethod()) {
-	LibraryMethod* lib_method = method_call->GetLibraryMethod();
-	if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-	  bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-	    SearchProgramEnums(lib_method->GetReturn()->GetClassName());
-	  if(!is_enum) {
-	    is_nested = true;
-	  }
-	  else {
-	    is_nested = false;
-	  }
-	} 
-	else {
-	  is_nested = false;
-	}
+				LibraryMethod* lib_method = method_call->GetLibraryMethod();
+				if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+					bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
+						SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+					if(!is_enum) {
+						is_nested = true;
+					}
+					else {
+						is_nested = false;
+					}
+				} 
+				else {
+					is_nested = false;
+				}
       } 
       else {
-	is_nested = false;
+				is_nested = false;
       }
       // process next method
       method_call = method_call->GetMethodCall();
@@ -2577,7 +2577,7 @@ void IntermediateEmitter::EmitCharacterString(CharacterString* char_str)
 
   if(segments.size() > 1) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-									       char_str->GetConcat()->GetId(), LOCL));
+																																							 char_str->GetConcat()->GetId(), LOCL));
   }
 }
 
@@ -2589,11 +2589,11 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
   if(segment->GetType() == STRING) {    
     EmitCharacterStringSegment(segment, NULL);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-									       concat_entry->GetId(), LOCL));    
+																																							 concat_entry->GetId(), LOCL));    
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										 L"System.String", 
-										 L"System.String:Append:o.System.String,"));
+																																								 L"System.String", 
+																																								 L"System.String:Append:o.System.String,"));
     }
     else {
       LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
@@ -2601,8 +2601,8 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       assert(string_append_method);
 #endif
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										 (INT_VALUE)string_cls->GetId(), 
-										 string_append_method->GetId(), 0L)); 
+																																								 (INT_VALUE)string_cls->GetId(), 
+																																								 string_append_method->GetId(), 0L)); 
     }
   }
   else {
@@ -2629,84 +2629,84 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
     switch(var_entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), mem_context));
+																																								 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 concat_entry->GetId(), LOCL));     
+																																								 concat_entry->GetId(), LOCL));     
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   L"System.String", L"System.String:Append:l,"));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																									 L"System.String", L"System.String:Append:l,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
+				LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
 #ifdef _DEBUG
-	assert(string_append_method);
+				assert(string_append_method);
 #endif
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										   (INT_VALUE)string_cls->GetId(), 
-										   string_append_method->GetId(), 0L));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																									 (INT_VALUE)string_cls->GetId(), 
+																																									 string_append_method->GetId(), 0L));
       }
       new_char_str_count = 0;
       break;
       
     case frontend::BYTE_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), mem_context));
+																																								 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 concat_entry->GetId(), LOCL));     
+																																								 concat_entry->GetId(), LOCL));     
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   L"System.String", L"System.String:Append:b,"));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																									 L"System.String", L"System.String:Append:b,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
+				LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
 #ifdef _DEBUG
-	assert(string_append_method);
+				assert(string_append_method);
 #endif
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										   (INT_VALUE)string_cls->GetId(), 
-										   string_append_method->GetId(), 0L));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																									 (INT_VALUE)string_cls->GetId(), 
+																																									 string_append_method->GetId(), 0L));
       }
       new_char_str_count = 0;
       break;
       
     case frontend::CHAR_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), mem_context));
+																																								 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 concat_entry->GetId(), LOCL));     
+																																								 concat_entry->GetId(), LOCL));     
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   L"System.String", L"System.String:Append:c,"));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																									 L"System.String", L"System.String:Append:c,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
+				LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
 #ifdef _DEBUG
-	assert(string_append_method);
+				assert(string_append_method);
 #endif
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										   (INT_VALUE)string_cls->GetId(), 
-										   string_append_method->GetId(), 0L));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																									 (INT_VALUE)string_cls->GetId(), 
+																																									 string_append_method->GetId(), 0L));
       }
       new_char_str_count = 0;
       break;
       
     case frontend::INT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 var_entry->GetId(), mem_context));
+																																								 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 concat_entry->GetId(), LOCL));     
+																																								 concat_entry->GetId(), LOCL));     
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   L"System.String", L"System.String:Append:i,"));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																									 L"System.String", L"System.String:Append:i,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
+				LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
-	assert(string_append_method);
+				assert(string_append_method);
 #endif
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										   (INT_VALUE)string_cls->GetId(), 
-										   string_append_method->GetId(), 0L)); 
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																									 (INT_VALUE)string_cls->GetId(), 
+																																									 string_append_method->GetId(), 0L)); 
       }
       new_char_str_count = 0;
       break;
@@ -2714,105 +2714,105 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
     case frontend::CLASS_TYPE:
       // process wstring instance
       if(var_entry->GetType()->GetClassName() == L"System.String" || var_entry->GetType()->GetClassName() == L"String") {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   var_entry->GetId(), mem_context));
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   concat_entry->GetId(), LOCL));     
-	if(is_lib) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										     L"System.String", 
-										     L"System.String:Append:o.System.String,"));
-	}
-	else {
-	  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+																																									 var_entry->GetId(), mem_context));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+																																									 concat_entry->GetId(), LOCL));     
+				if(is_lib) {
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																										 L"System.String", 
+																																										 L"System.String:Append:o.System.String,"));
+				}
+				else {
+					LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
-	  assert(string_append_method);
+					assert(string_append_method);
 #endif
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										     (INT_VALUE)string_cls->GetId(), 
-										     string_append_method->GetId(), 0L));
-	}
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																										 (INT_VALUE)string_cls->GetId(), 
+																																										 string_append_method->GetId(), 0L));
+				}
       }
       // process object instance
       else {
-	// call object's 'ToString' method
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   var_entry->GetId(), mem_context));	
-	Method* inst_mthd = segment->GetMethod();
-	LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
+				// call object's 'ToString' method
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+																																									 var_entry->GetId(), mem_context));	
+				Method* inst_mthd = segment->GetMethod();
+				LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
 	
 #ifdef _DEBUG
-	assert(inst_mthd || inst_lib_mthd);
+				assert(inst_mthd || inst_lib_mthd);
 #endif
-	// library output
-	if(is_lib) {
-	  // program class
-	  if(inst_mthd) {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										       inst_mthd->GetClass()->GetName(), 
-										       inst_mthd->GetEncodedName()));
-	  }
-	  // library class
-	  else {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										       inst_lib_mthd->GetLibraryClass()->GetName(), 
-										       inst_lib_mthd->GetName()));
-	  }
-	}
-	else {	  
-	  // program class
-	  if(inst_mthd) {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
-										       (INT_VALUE)inst_mthd->GetClass()->GetId(), 
-										       inst_mthd->GetId(), 0L));
+				// library output
+				if(is_lib) {
+					// program class
+					if(inst_mthd) {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																											 inst_mthd->GetClass()->GetName(), 
+																																											 inst_mthd->GetEncodedName()));
+					}
+					// library class
+					else {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																											 inst_lib_mthd->GetLibraryClass()->GetName(), 
+																																											 inst_lib_mthd->GetName()));
+					}
+				}
+				else {	  
+					// program class
+					if(inst_mthd) {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
+																																											 (INT_VALUE)inst_mthd->GetClass()->GetId(), 
+																																											 inst_mthd->GetId(), 0L));
 
-	  }
-	  // library class
-	  else {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
-										       (INT_VALUE)inst_lib_mthd->GetLibraryClass()->GetId(), 
-										       inst_lib_mthd->GetId(), 0L));
-	  }
-	}
+					}
+					// library class
+					else {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
+																																											 (INT_VALUE)inst_lib_mthd->GetLibraryClass()->GetId(), 
+																																											 inst_lib_mthd->GetId(), 0L));
+					}
+				}
 
-	// append wstring value
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										   concat_entry->GetId(), LOCL));     
-	if(is_lib) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										     L"System.String", 
-										     L"System.String:Append:o.System.String,"));
-	}
-	else {
-	  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+				// append wstring value
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
+																																									 concat_entry->GetId(), LOCL));     
+				if(is_lib) {
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																										 L"System.String", 
+																																										 L"System.String:Append:o.System.String,"));
+				}
+				else {
+					LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
-	  assert(string_append_method);
+					assert(string_append_method);
 #endif
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										     (INT_VALUE)string_cls->GetId(), 
-										     string_append_method->GetId(), 0L));
-	}
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																										 (INT_VALUE)string_cls->GetId(), 
+																																										 string_append_method->GetId(), 0L));
+				}
       }
       new_char_str_count = 0;
       break;
       
     case frontend::FLOAT_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 
-										 var_entry->GetId(), mem_context));
+																																								 var_entry->GetId(), mem_context));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-										 concat_entry->GetId(), LOCL));     
+																																								 concat_entry->GetId(), LOCL));     
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
-										   L"System.String", L"System.String:Append:f,"));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																									 L"System.String", L"System.String:Append:f,"));
       }
       else {
-	LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
+				LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
 #ifdef _DEBUG
-	assert(string_append_method);
+				assert(string_append_method);
 #endif
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-										   (INT_VALUE)string_cls->GetId(), 
-										   string_append_method->GetId(), 0L)); 
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+																																									 (INT_VALUE)string_cls->GetId(), 
+																																									 string_append_method->GetId(), 0L)); 
       }
       new_char_str_count = 0;
       break;
@@ -2853,7 +2853,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
-										 L"System.String", L"System.String:New:c*,"));
+																																								 L"System.String", L"System.String:New:c*,"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 2L, 0L)); 
@@ -2870,7 +2870,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     // note: method ID is position dependant
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
-										 L"System.String", L"System.String:New:"));
+																																								 L"System.String", L"System.String:New:"));
     }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls_id, 0L, 0L)); 
@@ -3150,7 +3150,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
       MethodCall* call = static_cast<MethodCall*>(expression);
       if(call->GetCallType() == ENUM_CALL) {
-	base_type = expression->GetEvalType();
+				base_type = expression->GetEvalType();
       }
       else if(call->GetMethod()) {
         base_type = call->GetMethod()->GetReturn();
@@ -3196,7 +3196,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     }
     else {
       int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), 
-								 parsed_program->GetUses())->GetId();
+																																 parsed_program->GetUses())->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
     }
   }
@@ -3373,40 +3373,40 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     case ADD_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
       }
       break;
       
     case SUB_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
       }
       break;
       
     case MUL_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
       }      
       break;
       
     case DIV_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
       }
       break;
 
@@ -3467,68 +3467,68 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     case ADD_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, ADD_INT));
       }
       // load instance or class memory
       if(mem_context == INST) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       } 
       else if(mem_context == CLS) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
       
     case SUB_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SUB_INT));
       }
       // load instance or class memory
       if(mem_context == INST) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       } 
       else if(mem_context == CLS) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
       
     case MUL_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MUL_INT));
       }      
       // load instance or class memory
       if(mem_context == INST) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       } 
       else if(mem_context == CLS) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
       
     case DIV_ASSIGN_STMT:
       EmitOperatorVariable(variable, mem_context);
       if(eval_type == frontend::FLOAT_TYPE) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_FLOAT));
       } 
       else {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DIV_INT));
       }
       // load instance or class memory
       if(mem_context == INST) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       } 
       else if(mem_context == CLS) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
       }
       break;
 
@@ -3601,11 +3601,11 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     else {
       // '@self' or '@parent' reference
       if(method_call->GetVariable()) {
-	EmitVariable(method_call->GetVariable());  
+				EmitVariable(method_call->GetVariable());  
       }
       else {
-	INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+				INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
+				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
       }
     }
     is_new_inst = false;
@@ -3647,7 +3647,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
-	new_char_str_count = 0;
+				new_char_str_count = 0;
       }
     }
     is_new_inst = false;
@@ -3742,19 +3742,19 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           if(mem_context == INST) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
           } 
-	  else if(mem_context == CLS) {
+					else if(mem_context == CLS) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
           }
 
           if(entry->GetType()->GetDimension() > 0) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
           } 
-	  else {
+					else {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, entry->GetId(), mem_context));
           }
           break;
 	  
-	case frontend::FUNC_TYPE:
+				case frontend::FUNC_TYPE:
           // load instance or class memory
           if(mem_context == INST) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -3764,8 +3764,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
           break;
 
-	default:
-	  break;
+				default:
+					break;
         }
       } else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -3776,9 +3776,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     if(method_call->GetMethod()) {
       Method* method = method_call->GetMethod();
       if(method_call->GetCallType() == PARENT_CALL ||
-	 (method->GetMethodType() != NEW_PUBLIC_METHOD &&
-	  method->GetMethodType() != NEW_PRIVATE_METHOD) ||
-	 current_method == method) {
+				 (method->GetMethodType() != NEW_PUBLIC_METHOD &&
+					method->GetMethodType() != NEW_PRIVATE_METHOD) ||
+				 current_method == method) {
         if(entry) {
           switch(entry->GetType()->GetType()) {
           case frontend::BOOLEAN_TYPE:
@@ -3786,25 +3786,25 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           case frontend::CHAR_TYPE:
           case frontend::INT_TYPE:
           case frontend::FLOAT_TYPE:
-	  case frontend::FUNC_TYPE:
+					case frontend::FUNC_TYPE:
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
 	    
-	  default:
-	    break;
+					default:
+						break;
           }
-	  // enum check
-	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
-	     SearchProgramEnums(entry->GetType()->GetClassName())) {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-	  }
+					// enum check
+					if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+						 SearchProgramEnums(entry->GetType()->GetClassName())) {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+					}
         }
         else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
-	else if(method_call->IsEnumCall()) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-	}
+				else if(method_call->IsEnumCall()) {
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				}
       } 
       else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -3814,7 +3814,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     else if(method_call->GetLibraryMethod()) {
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(lib_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-	 lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
+				 lib_method->GetMethodType() != NEW_PRIVATE_METHOD) {
         if(entry) {
           switch(entry->GetType()->GetType()) {
           case frontend::BOOLEAN_TYPE:
@@ -3822,25 +3822,25 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           case frontend::CHAR_TYPE:
           case frontend::INT_TYPE:
           case frontend::FLOAT_TYPE:
-	  case frontend::FUNC_TYPE:
+					case frontend::FUNC_TYPE:
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             break;
 
-	  default:
-	    break;
+					default:
+						break;
           }
-	  // enum check
-	  if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
-	     parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
-	    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-	  }
+					// enum check
+					if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+						 parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+						imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+					}
         }
         else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
-	else if(method_call->IsEnumCall()) {
-	  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-	}
+				else if(method_call->IsEnumCall()) {
+					imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+				}
       } 
       else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
@@ -3852,8 +3852,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       Method* method = method_call->GetMethod();
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, method->IsNative(),
-										   method->GetClass()->GetName(),
-										   method->GetEncodedName()));
+																																									 method->GetClass()->GetName(),
+																																									 method->GetEncodedName()));
       } else {
         int klass_id = method->GetClass()->GetId();
         int method_id = method->GetId();
@@ -3865,8 +3865,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, lib_method->IsNative(),
-										   lib_method->GetLibraryClass()->GetName(),
-										   lib_method->GetName()));
+																																									 lib_method->GetLibraryClass()->GetName(),
+																																									 lib_method->GetName()));
       } else {
         int klass_id = lib_method->GetLibraryClass()->GetId();
         int method_id = lib_method->GetId();
@@ -3895,8 +3895,8 @@ void IntermediateEmitter::EmitExpressions(ExpressionList* declarations)
  * needed for a method or class
  ****************************/
 int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
-					     IntermediateDeclarations* declarations,
-					     bool is_static)
+																						 IntermediateDeclarations* declarations,
+																						 bool is_static)
 {
   if(table) {
     int var_space = 0;
@@ -3909,15 +3909,15 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-		  << L", dim=" << entry->GetType()->GetDimension() << endl;
+									<< L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
-	  else {
+					else {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3928,13 +3928,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             wcout << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
-	  else {
+					else {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3944,15 +3944,15 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-		  << L", dim=" << entry->GetType()->GetDimension() << endl;
+									<< L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
-	  else {
+					else {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3963,13 +3963,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             wcout << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
           } 
-	  else {
+					else {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
           }
           entry->SetId(index++);
           var_space++;
@@ -3982,25 +3982,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
-	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+						else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
-	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+						else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
-	    else {
+						else {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
           }
           // object
@@ -4009,25 +4009,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
               wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
-	    else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+						else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
-	    else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+						else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
-	    else {
+						else {
 #ifdef _DEBUG
               wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
-	      declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+							declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
           }
           entry->SetId(index++);
@@ -4039,34 +4039,34 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #ifdef _DEBUG
             wcout << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
             entry->SetId(index++);
             var_space++;
           } 
-	  else {
+					else {
 #ifdef _DEBUG
             wcout << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
-	    declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
+						declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
             entry->SetId(index);
             index += 2;
             var_space += 2;
           }
           break;
 	  
-	case frontend::FUNC_TYPE:          
+				case frontend::FUNC_TYPE:          
 #ifdef _DEBUG
-	  wcout << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
+					wcout << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
 #endif
-	  declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
+					declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
-	  index += 2;
-	  var_space += 2;
-	  break;
+					index += 2;
+					var_space += 2;
+					break;
 
-	default:
-	  break;
-	}
+				default:
+					break;
+				}
       }
     }
     
@@ -4096,12 +4096,12 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
         SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
         size += CalculateEntrySpace(table, index, declarations, is_static);
         Class* tmp = SearchProgramClasses(parent->GetParentName());
-	if(tmp == parent) {
-	  parent = NULL;
-	}
-	else {
-	  parent = tmp;
-	}
+				if(tmp == parent) {
+					parent = NULL;
+				}
+				else {
+					parent = tmp;
+				}
       }
     } 
     else {
@@ -4111,10 +4111,10 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
         if(is_static) {
           size += lib_parent->GetClassSpace();
         } 
-	else {
+				else {
           size += lib_parent->GetInstanceSpace();
         }
-	index = size / sizeof(INT_VALUE);
+				index = size / sizeof(INT_VALUE);
       }
     }    
     // calculate current space
