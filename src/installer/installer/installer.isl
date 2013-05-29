@@ -342,18 +342,18 @@
 		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.rtf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{0B8CBC55-436C-44EF-AD83-0F4B58DE0EB8}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{0AC28A41-BB42-43F4-A8DD-A4D5D17C07AC}</td><td>CLBG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{CE38BA6E-A29C-4583-AAA7-1756450CDD71}</td><td>MISC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{C0EBD86E-A7F7-4D48-921E-41BD0E397B42}</td><td>CLBG1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{D989AB6E-7445-4FC0-A6FB-E90FB0F13489}</td><td>DATA</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{3111C488-51CC-4162-8385-ECAD10EF47C7}</td><td>JSON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{2B5A84E4-6A16-410A-B4F4-92BF65BDB6F5}</td><td>XML</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{CF5FCA12-7BBF-44CB-85F4-FC89CB70B73E}</td><td>ODBC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{22EC729E-FED4-41DD-BD74-D8C27AA062DA}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{46E7AC15-F86D-4A61-BCAC-30B6A25F1186}</td><td>CLBG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{E40C939A-FE3C-43E6-BAF3-89FC38A2185D}</td><td>MISC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{02568179-6292-4260-BB3B-8173EB161058}</td><td>CLBG1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{E5DFE682-3721-48B5-A50D-42C8AADB8F1F}</td><td>DATA</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{49F23040-13E7-4891-9888-E344B8C10199}</td><td>JSON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{7487892C-7ABF-4783-808E-6F8A4862F3F2}</td><td>XML</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{19388198-4989-46A8-AD12-996222E6990D}</td><td>ODBC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td>{9FDC6DF4-765D-4AEC-9E07-F3CAA0F5AC82}</td><td>ProgramFilesFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{1D8712CD-2B28-4E9C-897A-267FE31DD045}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT20</td><td>{902FA768-813E-4152-B8E4-DCA6B1C4A568}</td><td>XML1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT21</td><td>{AFB0FF2E-7908-413F-B23B-8D346779241A}</td><td>WSDL</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT20</td><td>{AEADE288-D529-4970-BB1B-408E36B55676}</td><td>XML1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT21</td><td>{9889529D-03A5-44C3-AC2C-34FF1C773099}</td><td>WSDL</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{9C285251-BF9C-4134-8B8C-517583CBE191}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{E20A0CB6-EE80-496A-87AA-6EEED9EABE32}</td><td>ODBC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
@@ -1967,6 +1967,7 @@
 		<row><td>binarytrees.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>BINARY~1.OBS|binarytrees.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\misc\clbg\binarytrees.obs</td><td>1</td><td/></row>
 		<row><td>bitwise.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>bitwise.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\bitwise.obs</td><td>1</td><td/></row>
 		<row><td>brackets.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>brackets.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\brackets.obs</td><td>1</td><td/></row>
+		<row><td>caesar.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>caesar.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\caesar.obs</td><td>1</td><td/></row>
 		<row><td>calculator.wsdl</td><td>ISX_DEFAULTCOMPONENT17</td><td>CALCUL~1.WSD|calculator.wsdl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\misc\xml\calculator.wsdl</td><td>1</td><td/></row>
 		<row><td>callback.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>callback.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\callback.obs</td><td>1</td><td/></row>
 		<row><td>cc_num.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>cc_num.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\cc_num.obs</td><td>1</td><td/></row>
@@ -2001,6 +2002,7 @@
 		<row><td>euler_method.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>EULER_~1.OBS|euler_method.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\euler_method.obs</td><td>1</td><td/></row>
 		<row><td>evol.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>evol.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\evol.obs</td><td>1</td><td/></row>
 		<row><td>fact.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>fact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\fact.obs</td><td>1</td><td/></row>
+		<row><td>factor_counting.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>FACTOR~1.OBS|factor_counting.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\factor_counting.obs</td><td>1</td><td/></row>
 		<row><td>factors.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>factors.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\factors.obs</td><td>1</td><td/></row>
 		<row><td>fannkuchredux.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
 		<row><td>fannkuchredux.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy Hollines\Desktop\objeck-lang\examples\misc\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
@@ -2405,18 +2407,18 @@
 		<row><td>ISX_DEFAULTCOMPONENT</td><td/><td/><td>_CB9E7C1B_EEDE_42D3_8844_4D48220A01E9_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td/><td/><td>_9C569BC4_0863_4A3D_8991_D3518474C1B2_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td/><td/><td>_19A04A31_6EFD_44AF_AED4_89C06A36188D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_037188B7_9705_4D5E_A7F2_3CD20F1A7A69_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_7CD092D8_EE44_46D6_92EC_A46A61871447_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_1F9392E2_D10B_4A6F_98D6_E6042728B768_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_4F3CEB85_2948_4B2E_BC58_CDE1E7D637C6_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_033F7FD6_DBE0_4D4F_8596_12A12D807F81_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_6C66AB5A_F831_4A47_B142_751B38567E27_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_CC917777_C514_4EE0_A479_CBEFEBE79104_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_33412775_64B4_4102_8983_ECAB7097F706_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_CD9CA193_A62C_437B_9364_58617526DA0E_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_C03CB654_F24B_4AA6_8548_0B4039B5E5A5_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_0DAC4A69_C6BE_4997_A567_10A27DF80AB1_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_E1A1F174_FF14_413A_944D_06468FD42A10_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_7C789DAA_55B6_4594_8B80_B1EA5ABA91CE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_D965FDEF_3D2F_4BCD_B7D0_9D0260E2D753_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_B6D1121E_2337_43FE_A9D4_7C35C4ABDFC6_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_C24584C8_7558_4010_8A0D_287FDF9A9BC7_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td/><td/><td>_008D9B4F_78FE_4CD6_996B_5D45EF445E22_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_6C12C78E_5792_479F_BB59_C67F6022F80A_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT20</td><td/><td/><td>_ED7F0861_B2C6_4BC0_AF17_A16B720BB005_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT21</td><td/><td/><td>_AED4F8B9_DDA8_4F71_A435_6365DE6DB7E0_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT20</td><td/><td/><td>_D9F61D7F_64CA_4AB9_8366_3A891EBA903C_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT21</td><td/><td/><td>_43E49938_3422_43B5_A52F_439BE3CBD8EA_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_36417666_A91B_4988_9D14_47E825778AA8_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td/><td/><td>_5B84DF58_7183_477E_9229_5B3AC1C3B591_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_FA8E796B_C705_42A1_A916_AB48B930DA96_FILTER</td><td/><td/><td/><td/></row>
@@ -4859,7 +4861,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.2.2.0</td><td/></row>
+		<row><td>ProductVersion</td><td>3.2.3.1</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
