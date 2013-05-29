@@ -64,6 +64,13 @@ namespace Runtime {
   class StackInterpreter {
     // program
     static StackProgram* program;
+		static stack<StackFrame*> cached_frames;
+#ifdef _WIN32
+		static CRITICAL_SECTION cached_frames_cs;
+#else
+		static pthread_mutex_t cached_frames_mutex;
+#endif
+
     // call stack and current frame pointer
     StackFrame** call_stack;
     long* call_stack_pos;
@@ -74,7 +81,49 @@ namespace Runtime {
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
-  
+		
+		//
+		// get stack frame
+		//
+		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
+#ifdef _WIN32
+			EnterCriticalSection(&cached_frames__cs);
+#else
+			pthread_mutex_lock(&cached_frames_mutex);
+#endif
+			StackFrame* frame = cached_frames.top();
+			cached_frames.pop();
+#ifdef _WIN32
+			LeaveCriticalSection(&cached_frames__cs);
+#else
+			pthread_mutex_unlock(&cached_frames_mutex);
+#endif
+			frame->method = method;
+			frame->mem[0] = (long)instance;
+			frame->ip = -1;
+			frame->jit_called = false;
+
+			return frame;
+		}
+		
+		//
+		// release stack frame
+		//
+		static inline void ReleaseStackFrame(StackFrame* frame) {
+			memset(frame->mem, 0, 128);
+#ifdef _WIN32
+			EnterCriticalSection(&cached_frames__cs);
+#else
+			pthread_mutex_lock(&cached_frames_mutex);
+#endif
+			cached_frames.push(frame);
+#ifdef _WIN32
+			LeaveCriticalSection(&cached_frames__cs);
+#else
+			pthread_mutex_unlock(&cached_frames_mutex);
+#endif
+		}
+		
     //
     // push call frame
     //
@@ -131,11 +180,11 @@ namespace Runtime {
 #else
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name=" 
-						<< (*frame)->GetMethod()->GetName() << endl;
+						<< (*frame)->method->GetName() << endl;
       if(pos != 0) {
 				while(--pos && pos > -1) {
 					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->GetMethod()->GetName() << endl;
+								<< call_stack[pos]->method->GetName() << endl;
 				}
       }
       wcerr << L"  ..." << endl;
@@ -153,7 +202,7 @@ namespace Runtime {
       while(--pos) {
 				if(pos > - 1) {
 					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->GetMethod()->GetName() << endl;
+								<< call_stack[pos]->method->GetName() << endl;
 				}
       }
       wcerr << L"  ..." << endl;
