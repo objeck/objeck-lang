@@ -103,6 +103,10 @@ namespace Runtime {
 			frame->ip = -1;
 			frame->jit_called = false;
 
+#ifdef _DEBUG
+			wcout << L"fetching frame=" << frame << endl;
+#endif
+
 			return frame;
 		}
 		
@@ -121,6 +125,10 @@ namespace Runtime {
 			LeaveCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_unlock(&cached_frames_mutex);
+#endif
+			
+#ifdef _DEBUG
+			wcout << L"releasing frame=" << frame << endl;
 #endif
 		}
 		

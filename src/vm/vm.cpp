@@ -103,7 +103,7 @@ int Execute(const int argc, const char* argv[])
       } 
     }
 
-    StackInterpreter::Clear();
+		Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();
 
     // clean up
