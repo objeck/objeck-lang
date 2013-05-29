@@ -56,7 +56,11 @@ using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
 stack<StackFrame*> StackInterpreter::cached_frames;
-pthread_mutex_t StackInterpreter::cached_frames_mutex = PTHREAD_MUTEX_INITIALIZER;
+#ifdef _WIN32
+	CRITICAL_SECTION StackInterpreter::cached_frames_cs;
+#else
+  pthread_mutex_t StackInterpreter::cached_frames_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /********************************
  * VM initialization
@@ -92,6 +96,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 	InitializeCriticalSection(&cached_frames_cs);
 #endif
 	
+  // allocate 256K for call stack
 	for(int i = 0; i < CALL_STACK_SIZE * 256; i++) {
 		StackFrame* frame = new StackFrame();
 		frame->mem = (long*)calloc(128, sizeof(long));
