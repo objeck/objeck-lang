@@ -1346,9 +1346,16 @@ class StackProgram {
 #endif
 };
 
+struct StackFrame {
+  StackMethod* method;
+  long* mem;
+  long ip;
+  bool jit_called;
+};
+
 /********************************
  * StackFrame class
- ********************************/
+ ******************************
 class StackFrame {
   StackMethod* method;
   long* mem;
@@ -1395,6 +1402,7 @@ class StackFrame {
     return jit_called;
   }
 };
+**/
 
 /********************************
  * ObjectSerializer class
