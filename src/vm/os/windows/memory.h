@@ -77,10 +77,12 @@ class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
   
+  // reference containers
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
+
   // memory caches
   static stack<char*> cache_pool_16;
   static stack<char*> cache_pool_32;
@@ -123,16 +125,10 @@ class MemoryManager {
   }
 
 public:
+  // initialize the runtime system
   static void Initialize(StackProgram* p);
 
-  // recover memory
-  static void CollectAllMemory(long* op_stack, long stack_pos);
-  static uintptr_t WINAPI CollectMemory(LPVOID arg);
-  static uintptr_t WINAPI CheckStatic(LPVOID arg);
-  static uintptr_t WINAPI CheckStack(LPVOID arg);
-  static uintptr_t WINAPI CheckJitRoots(LPVOID arg);
-  static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
-  
+  // free static resources
   static void Clear() {
     unordered_map<long*, ClassMethodId*>::iterator id_iter;
     for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); ++id_iter) {
@@ -195,6 +191,14 @@ public:
     initialized = false;
   }
 
+  // mark and sweep functions
+  static void CollectAllMemory(long* op_stack, long stack_pos);
+  static uintptr_t WINAPI CollectMemory(LPVOID arg);
+  static uintptr_t WINAPI CheckStatic(LPVOID arg);
+  static uintptr_t WINAPI CheckStack(LPVOID arg);
+  static uintptr_t WINAPI CheckJitRoots(LPVOID arg);
+  static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
+  
   // add and remove jit roots
   static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);
   static void RemoveJitMethodRoot(long* mem);
@@ -219,11 +223,15 @@ public:
     return NULL;
   }
   
+  //
   // object and array allocation
+  //
   static long* AllocateObject(const long obj_id, long* op_stack, long stack_pos, bool collect = true);
   static long* AllocateArray(const long size, const MemoryType type, long* op_stack, long stack_pos, bool collect = true);
 
+  //
   // object verification
+  //
   static long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   //

@@ -606,6 +606,14 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   wcout << L"Method variables (local): name=" << method->GetName() << endl;
 #endif
   int space = CalculateEntrySpace(entries, false);
+  if(space > LOCAL_SIZE) {
+    const wstring error_msg =  current_method->GetFileName() + L":" + 
+      ToString(current_method->GetLineNumber()) + L": Local space has been exceeded by " + 
+      ToString(space - LOCAL_SIZE) + L" bytes.";
+    wcerr << error_msg << endl;
+    exit(1);
+  }
+
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   int num_params = 0;
   for(size_t i = 0; i < declarations.size(); ++i) {
