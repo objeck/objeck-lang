@@ -96,8 +96,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 	InitializeCriticalSection(&cached_frames_cs);
 #endif
 	
-  // allocate 256K for call stack
-	for(int i = 0; i < CALL_STACK_SIZE * 256; i++) {
+  // allocate 256K frames
+	for(int i = 0; i < CALL_STACK_SIZE * 128; i++) {
 		StackFrame* frame = new StackFrame();
 		frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
 		cached_frames.push(frame);

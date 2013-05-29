@@ -94,8 +94,12 @@ namespace Runtime {
 			pthread_mutex_lock(&cached_frames_mutex);
 #endif
       if(cached_frames.empty()) {
-        wcerr << L">>> unable to allocate a stack frame! <<<" << endl;
-        exit(1);
+				// allocate 256K frames
+				for(int i = 0; i < CALL_STACK_SIZE; i++) {
+					StackFrame* frame = new StackFrame();
+					frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+					cached_frames.push(frame);
+				}
       }
 			StackFrame* frame = cached_frames.top();
 			cached_frames.pop();
@@ -120,22 +124,32 @@ namespace Runtime {
 		// release stack frame
 		//
 		static inline void ReleaseStackFrame(StackFrame* frame) {
-			memset(frame->mem, 0, LOCAL_SIZE);
-#ifdef _WIN32
-			EnterCriticalSection(&cached_frames_cs);
-#else
-			pthread_mutex_lock(&cached_frames_mutex);
-#endif
-			cached_frames.push(frame);
-#ifdef _WIN32
-			LeaveCriticalSection(&cached_frames_cs);
-#else
-			pthread_mutex_unlock(&cached_frames_mutex);
-#endif
-			
+			// cache up to 256k frames
+			if(cached_frames.size() > CALL_STACK_SIZE * 256) {
+				free(frame->mem);
+				delete frame;
 #ifdef _DEBUG
-			wcout << L"releasing frame=" << frame << endl;
+				wcout << L"releasing frame=" << frame << endl;
 #endif
+			}
+			else {
+				memset(frame->mem, 0, LOCAL_SIZE);
+#ifdef _WIN32
+				EnterCriticalSection(&cached_frames_cs);
+#else
+				pthread_mutex_lock(&cached_frames_mutex);
+#endif
+				cached_frames.push(frame);
+#ifdef _WIN32
+				LeaveCriticalSection(&cached_frames_cs);
+#else
+				pthread_mutex_unlock(&cached_frames_mutex);
+#endif
+				
+#ifdef _DEBUG
+				wcout << L"caching frame=" << frame << endl;
+#endif
+			}
 		}
 		
     //
