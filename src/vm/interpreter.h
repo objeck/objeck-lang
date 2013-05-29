@@ -55,6 +55,8 @@ namespace Runtime {
 #define CALL_STACK_SIZE 1024
 #define CALC_STACK_SIZE 512
 	
+  // holds the calling context for async
+  // method calls
   struct ThreadHolder {
     StackMethod* called;
     long* self;
@@ -91,6 +93,10 @@ namespace Runtime {
 #else
 			pthread_mutex_lock(&cached_frames_mutex);
 #endif
+      if(cached_frames.empty()) {
+        wcerr << L">>> unable to allocate a stack frame! <<<" << endl;
+        exit(1);
+      }
 			StackFrame* frame = cached_frames.top();
 			cached_frames.pop();
 #ifdef _WIN32
@@ -114,7 +120,7 @@ namespace Runtime {
 		// release stack frame
 		//
 		static inline void ReleaseStackFrame(StackFrame* frame) {
-			memset(frame->mem, 0, 128);
+			memset(frame->mem, 0, LOCAL_SIZE);
 #ifdef _WIN32
 			EnterCriticalSection(&cached_frames_cs);
 #else
@@ -163,23 +169,23 @@ namespace Runtime {
       long pos = (*call_stack_pos);
 #ifdef _DEBUGGER
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-      StackMethod* method =  (*frame)->GetMethod();
-      if((*frame)->GetIp() > 0 && pos > -1 && 
-				 method->GetInstruction((*frame)->GetIp())->GetLineNumber() > 0) {
+      StackMethod* method =  (*frame)->method;
+      if((*frame)->ip > 0 && pos > -1 && 
+				 method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
 				wcerr << L"  method: pos=" << pos << L", file="
-							<< (*frame)->GetMethod()->GetClass()->GetFileName() << L", name='" 
-							<< (*frame)->GetMethod()->GetName() << L"', line=" 
-							<< method->GetInstruction((*frame)->GetIp())->GetLineNumber() << endl;
+							<< (*frame)->method->GetClass()->GetFileName() << L", name='" 
+							<< (*frame)->method->GetName() << L"', line=" 
+							<< method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
       }
       if(pos != 0) {
 				while(--pos) {
-					StackMethod* method =  call_stack[pos]->GetMethod();
-					if(call_stack[pos]->GetIp() > 0 && pos > -1 && 
-						 method->GetInstruction(call_stack[pos]->GetIp())->GetLineNumber() > 0) {
+					StackMethod* method =  call_stack[pos]->method;
+					if(call_stack[pos]->ip > 0 && pos > -1 && 
+						 method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
 						wcerr << L"  method: pos=" << pos << L", file=" 
-									<< call_stack[pos]->GetMethod()->GetClass()->GetFileName() << L", name='"
-									<< call_stack[pos]->GetMethod()->GetName() << L"', line=" 
-									<< method->GetInstruction(call_stack[pos]->GetIp())->GetLineNumber() << endl;
+									<< call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
+									<< call_stack[pos]->method->GetName() << L"', line=" 
+									<< method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
 					}
 				}
 				pos = 0;
@@ -446,8 +452,10 @@ namespace Runtime {
     inline void ProcessDllCall(StackInstr* instr, long* &op_stack, long* &stack_pos);
     
   public:
+    // initialize the runtime system
     static void Initialize(StackProgram* p);
 
+    // free static resources
     static void Clear() {
       while(!cached_frames.empty()) {
         StackFrame* frame = cached_frames.top();

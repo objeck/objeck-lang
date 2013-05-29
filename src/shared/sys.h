@@ -38,6 +38,9 @@
 #include <string>
 #include <map>
 
+// memory size for local stack frames
+#define LOCAL_SIZE 256
+
 #ifdef _MINGW
 #define INT_VALUE int
 #define FLOAT_VALUE double

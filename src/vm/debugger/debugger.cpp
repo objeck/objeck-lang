@@ -40,9 +40,9 @@
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
                                            long call_stack_pos, StackFrame* frame)
 {
-  if(frame->GetMethod()->GetClass()) {
+  if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
-    const wstring &file_name = frame->GetMethod()->GetClass()->GetFileName();
+    const wstring &file_name = frame->method->GetClass()->GetFileName();
 
     /*
       #ifdef _DEBUG
@@ -56,7 +56,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         // step command
         (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
         // next line
-        (is_next_line && ((cur_frame && frame->GetMethod() == cur_frame->GetMethod()) ||
+        (is_next_line && ((cur_frame && frame->method == cur_frame->method) ||
 			  (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
@@ -67,7 +67,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       is_jmp_out = is_next_line = false;
 
       // prompt for input
-      const wstring &long_name = cur_frame->GetMethod()->GetName();
+      const wstring &long_name = cur_frame->method->GetName();
       int end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
@@ -762,7 +762,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
 }
 
 void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext context) {
-  StackMethod* method = cur_frame->GetMethod();
+  StackMethod* method = cur_frame->method;
   //
   // instance reference
   //
@@ -838,7 +838,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
   // method reference
   //
   else {
-    ref_mem = cur_frame->GetMemory();
+    ref_mem = cur_frame->mem;
     if(ref_mem) {
       StackDclr dclr_value;
 
@@ -1292,12 +1292,12 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     case STACK_COMMAND:
       if(interpreter) {
         wcout << L"stack:" << endl;
-        StackMethod* method = cur_frame->GetMethod();
+        StackMethod* method = cur_frame->method;
         wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
 	      << L", method=" << PrintMethod(method);
-        const long ip = cur_frame->GetIp();
+        const long ip = cur_frame->ip;
         if(ip > -1) {
-          StackInstr* instr = cur_frame->GetMethod()->GetInstruction(ip);
+          StackInstr* instr = cur_frame->method->GetInstruction(ip);
           wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
         }
         else {
@@ -1306,12 +1306,12 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
         long pos = cur_call_stack_pos - 1;
         do {
-          StackMethod* method = cur_call_stack[pos]->GetMethod();
+          StackMethod* method = cur_call_stack[pos]->method;
           wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
 		<< L", method=" << PrintMethod(method);
-          const long ip = cur_call_stack[pos]->GetIp();
+          const long ip = cur_call_stack[pos]->ip;
           if(ip > -1) {
-            StackInstr* instr = cur_call_stack[pos]->GetMethod()->GetInstruction(ip);
+            StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
             wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
           }
           else {
@@ -1399,7 +1399,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
       wcout << L"  program executable: file='" << program_file << L"'" << endl;
 
       // parse method and class names
-      const wstring &long_name = cur_frame->GetMethod()->GetName();
+      const wstring &long_name = cur_frame->method->GetName();
       int end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
