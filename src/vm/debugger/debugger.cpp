@@ -57,7 +57,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
         // next line
         (is_next_line && ((cur_frame && frame->method == cur_frame->method) ||
-			  (call_stack_pos < cur_call_stack_pos))))) {
+													(call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -82,20 +82,20 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       Command* command;
       wcout << L"> ";
       do {
-	wstring line;
-	getline(wcin, line);
-	if(line.size() > 0) {
-	  command = ProcessCommand(line);
-	  wcout << L"> ";
-	}
-	else {
-	  command = NULL;
-	}
+				wstring line;
+				getline(wcin, line);
+				if(line.size() > 0) {
+					command = ProcessCommand(line);
+					wcout << L"> ";
+				}
+				else {
+					command = NULL;
+				}
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND &&
-			 command->GetCommandType() != NEXT_COMMAND &&
-			 command->GetCommandType() != NEXT_LINE_COMMAND &&
-			 command->GetCommandType() != JUMP_OUT_COMMAND));
+												 command->GetCommandType() != NEXT_COMMAND &&
+												 command->GetCommandType() != NEXT_LINE_COMMAND &&
+												 command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
 }
@@ -210,7 +210,7 @@ void Runtime::Debugger::ProcessRun() {
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     wcout << L"---------------------------" << endl;
     wcout << L"Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
-	  << L" second(s)." << endl;
+					<< L" second(s)." << endl;
 #endif
 
 #ifdef _DEBUG
@@ -342,10 +342,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
-		  << L"(" << (void*)reference->GetIntValue() << L")";
+									<< L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-		    << reference->GetArraySize();
+										<< reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -357,10 +357,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Char[], value=" << reference->GetIntValue()
-		  << L"(" << (void*)reference->GetIntValue() << L")";
+									<< L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-		    << reference->GetArraySize();
+										<< reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -372,10 +372,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue()
-		  << L"(" << (void*)reference->GetIntValue() << L")";
+									<< L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-		    << reference->GetArraySize();
+										<< reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -387,10 +387,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Float[], value=" << reference->GetIntValue()
-		  << L"(" << (void*)reference->GetIntValue() << L")";
+									<< L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-		    << reference->GetArraySize();
+										<< reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -403,16 +403,16 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               long* string_instance = (long*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
               wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
-		    << char_string << L"\"" << endl;
+										<< char_string << L"\"" << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-		    << (void*)reference->GetIntValue() << endl;
+										<< (void*)reference->GetIntValue() << endl;
             }
           }
           else {
             wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-		  << (void*)reference->GetIntValue() << endl;
+									<< (void*)reference->GetIntValue() << endl;
           }
           break;
 
@@ -436,7 +436,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-		    << reference->GetArraySize();
+										<< reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -446,10 +446,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           StackClass* klass = cur_program->GetClass(reference->GetIntValue());
           if(klass) {
             wcout << L"print: type=Functon, class=" << klass->GetName() 
-		  << L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+									<< L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
           }
-	}
-	  break;
+				}
+					break;
         }
       }
       else {
@@ -796,8 +796,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           FLOAT_VALUE value;
           memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
           reference->SetFloatValue(value);
-	}
-	  break;
+				}
+					break;
 
         case OBJ_PARM:
           EvaluateInstanceReference(reference, dclr_value.id);
@@ -874,8 +874,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             FLOAT_VALUE value;
             memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
             reference->SetFloatValue(value);
-	  }
-	    break;
+					}
+						break;
 
           case OBJ_PARM:
             EvaluateInstanceReference(reference, dclr_value.id + 1);
@@ -1294,7 +1294,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         wcout << L"stack:" << endl;
         StackMethod* method = cur_frame->method;
         wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
-	      << L", method=" << PrintMethod(method);
+							<< L", method=" << PrintMethod(method);
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
@@ -1308,7 +1308,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         do {
           StackMethod* method = cur_call_stack[pos]->method;
           wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
-		<< L", method=" << PrintMethod(method);
+								<< L", method=" << PrintMethod(method);
           const long ip = cur_call_stack[pos]->ip;
           if(ip > -1) {
             StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
@@ -1360,11 +1360,11 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
           for(size_t i = 0; i < methods.size(); i++) {
             StackMethod* method = methods[i];
             wcout << L"  class: type=" << klass->GetName() << L", method="
-		  << PrintMethod(method) << endl;
-	    if(method->GetNumberDeclarations() > 0) {
-	      wcout << L"  parameters:" << endl;
-	      PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
-	    }
+									<< PrintMethod(method) << endl;
+						if(method->GetNumberDeclarations() > 0) {
+							wcout << L"  parameters:" << endl;
+							PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+						}
           }
         }
         else {
@@ -1384,9 +1384,9 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
         wcout << L"  class: type=" << klass->GetName() << endl;
         // print
         wcout << L"  parameters:" << endl;
-	if(klass->GetNumberInstanceDeclarations() > 0) {
-	  PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
-	}
+				if(klass->GetNumberInstanceDeclarations() > 0) {
+					PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+				}
       }
       else {
         wcout << L"unable to find class." << endl;
@@ -1409,7 +1409,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 
       // print
       wcout << L"  current file='" << cur_file_name << L":" << cur_line_num << L"', method='"
-	    << cls_name << L"->" << mthd_name << L"(..)'" << endl;
+						<< cls_name << L"->" << mthd_name << L"(..)'" << endl;
     }
   }
   else {
