@@ -6,7 +6,7 @@
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
+ * 
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
@@ -99,7 +99,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   // allocate 256K for call stack
 	for(int i = 0; i < CALL_STACK_SIZE * 256; i++) {
 		StackFrame* frame = new StackFrame();
-		frame->mem = (long*)calloc(128, sizeof(long));
+		frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
 		cached_frames.push(frame);
 	}
   
