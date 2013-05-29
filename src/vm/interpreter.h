@@ -53,7 +53,7 @@ namespace Runtime {
 #endif
   
 #define CALL_STACK_SIZE 1024
-#define CALC_STACK_SIZE 1024
+#define CALC_STACK_SIZE 512
 	
   struct ThreadHolder {
     StackMethod* called;
@@ -87,14 +87,14 @@ namespace Runtime {
 		//
 		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
 #ifdef _WIN32
-			EnterCriticalSection(&cached_frames__cs);
+			EnterCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_lock(&cached_frames_mutex);
 #endif
 			StackFrame* frame = cached_frames.top();
 			cached_frames.pop();
 #ifdef _WIN32
-			LeaveCriticalSection(&cached_frames__cs);
+			LeaveCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_unlock(&cached_frames_mutex);
 #endif
@@ -112,13 +112,13 @@ namespace Runtime {
 		static inline void ReleaseStackFrame(StackFrame* frame) {
 			memset(frame->mem, 0, 128);
 #ifdef _WIN32
-			EnterCriticalSection(&cached_frames__cs);
+			EnterCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_lock(&cached_frames_mutex);
 #endif
 			cached_frames.push(frame);
 #ifdef _WIN32
-			LeaveCriticalSection(&cached_frames__cs);
+			LeaveCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_unlock(&cached_frames_mutex);
 #endif
@@ -440,6 +440,15 @@ namespace Runtime {
   public:
     static void Initialize(StackProgram* p);
 
+    static void Clear() {
+      while(!cached_frames.empty()) {
+        StackFrame* frame = cached_frames.top();
+        cached_frames.pop();
+        free(frame->mem);
+        delete frame;
+      }
+    }
+
 #ifdef _WIN32
     static uintptr_t WINAPI AsyncMethodCall(LPVOID arg);
 #else
@@ -516,11 +525,6 @@ namespace Runtime {
 
         delete monitor;
         monitor = NULL;
-
-        if((*frame)) {
-          delete (*frame);
-          (*frame) = NULL;
-        }
       }
       delete frame;
       frame = NULL;
