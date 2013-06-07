@@ -461,9 +461,13 @@ bundle System {
 		}	
 
 		function : native : ToRadians(v : Float) ~ Float {
-			return v * Pi() / 180.0;
+			return v * 3.1415926536 / 180.0;
 		}
 		
+		function : native : ToDegrees(v : Float) ~ Float {
+			return v * 180.0 / 3.1415926536;
+		}
+
 		function : native : Min(l : Float, r : Float) ~ Float {
 			if(l < r) {
 				return l;
@@ -574,10 +578,20 @@ bundle System {
 				str->Append('-');
 				f *= -1.0;
 			};
-			
+		
+			zero := 0;
 			remainder := f - f->Floor();
+			while(remainder < 0.099) {
+				f *= 10.0;
+				remainder := f - f->Floor();
+				zero += 1;
+			};
+
 			Number->IntToString(f->Floor()->As(Int), str);
 			str->Append('.');
+			for(i := 0; i < zero; i+=1;) {
+				str->Append('0');
+			};
 			Number->IntToString((1001.0 * remainder)->As(Int), str);
 
 			return str;
