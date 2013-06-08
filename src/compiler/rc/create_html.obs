@@ -1,4 +1,4 @@
-﻿class Hello {
+﻿class CreateTable {
 	function : Main(args : String[]) ~ Nil {
 		s := String->New();
  		
