@@ -1,7 +1,11 @@
-5/27/13
-* pass call_stack and call_stack_pos to 64-bit JIT compiler
+6/29/13
+* Optimize conditonal braching of floating point expressions
+* Add 64-bit Windows support
 
 ========================
+
+5/27/13
+* pass call_stack and call_stack_pos to 64-bit JIT compiler
 
 3/25/13
 * compiler now detects invalid escaped strings
