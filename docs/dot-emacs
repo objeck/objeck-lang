@@ -1,3 +1,2 @@
-(setq-default tab-width 2) 
 (setq-default indent-tabs-mode nil)
-(setq cua-auto tabify-reqtangles nil)
+(setq-default tab-width 2) 
