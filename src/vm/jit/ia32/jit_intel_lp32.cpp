@@ -2306,12 +2306,11 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
     return false;
   }
-  
-  StackInstr* next_instr = method->GetInstruction(instr_index);
+
+	StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
-    // if(false) {
 #ifdef _DEBUG
-    wcout << L"JMP: id=" << next_instr->GetOperand() << L", regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+    std::wcout << L"JMP: id=" << next_instr->GetOperand() << L", regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
     AddMachineCode(0x0f);
 
@@ -2322,48 +2321,66 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
       switch(type) {
       case LES_INT:	
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jl]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
 #endif
         AddMachineCode(0x8c);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jg]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
 #endif
         AddMachineCode(0x8f);
         break;
 
       case EQL_INT:
+			case EQL_FLOAT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [je]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
         AddMachineCode(0x84);
         break;
 
       case NEQL_INT:
+			case NEQL_FLOAT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jne]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jne]" << std::endl;
 #endif
         AddMachineCode(0x85);
         break;
 
       case LES_EQL_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jle]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
 #endif
         AddMachineCode(0x8e);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jge]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
 #endif
         AddMachineCode(0x8d);
         break;
 
+			case LES_FLOAT:
+				AddMachineCode(0x87);
+				break;
+				
+			case GTR_FLOAT:
+				AddMachineCode(0x87);
+				break;
+
+			case LES_EQL_FLOAT:
+				AddMachineCode(0x83);
+				break;
+				
+			case GTR_EQL_FLOAT:
+				AddMachineCode(0x83);
+				break;
+				
       default:
-	break;
+				break;
       }  
     }
     //
@@ -2373,56 +2390,86 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
       switch(type) {
       case LES_INT:	
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jge]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
 #endif
         AddMachineCode(0x8d);
         break;
 
       case GTR_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jle]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
 #endif
         AddMachineCode(0x8e);
         break;
 
       case EQL_INT:
+			case EQL_FLOAT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jne]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jne]" << std::endl;
 #endif
         AddMachineCode(0x85);
         break;
 
       case NEQL_INT:
+			case NEQL_FLOAT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [je]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
         AddMachineCode(0x84);
         break;
 
       case LES_EQL_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jg]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
 #endif
         AddMachineCode(0x8f);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
-        wcout << L"  " << (++instr_count) << L": [jl]" << endl;
+        std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
 #endif
         AddMachineCode(0x8c);
         break;
 
+			case LES_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
+#endif
+				AddMachineCode(0x86);
+				break;
+				
+			case GTR_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
+#endif
+				AddMachineCode(0x86);
+				break;
+
+			case LES_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
+#endif
+				AddMachineCode(0x82);
+				break;
+				
+			case GTR_EQL_FLOAT:
+#ifdef _DEBUG
+        std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
+#endif
+				AddMachineCode(0x82);
+				break;
+				
       default:
-	break;
+				break;
       }  
     }    
     // store update index
-    jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
+		jump_table.insert(pair<int32_t, StackInstr*>(code_index, next_instr));
     // temp offset
     AddImm(0);
     skip_jump = true;
-    
+		
     return true;
   }
   
@@ -2654,9 +2701,12 @@ void JitCompilerIA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_imm_xreg(instr, reg);
+		cmp_imm_xreg(instr, reg);
+    if(!cond_jmp(type)) {
+      cmov_reg(reg, type);
+    }
     break;
-
+		
   default:
     break;
   }
@@ -2693,9 +2743,12 @@ void JitCompilerIA32::math_xreg_xreg(Register src, Register dest, InstructionTyp
   case EQL_FLOAT:
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
-    cmp_xreg_xreg(src, dest);
+		cmp_xreg_xreg(src, dest);
+		if(!cond_jmp(type)) {
+      cmov_reg(dest, type);
+    }
     break;
-
+		
   default:
     break;
   }
