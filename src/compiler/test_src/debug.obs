@@ -1,19 +1,13 @@
-﻿class Hello {
+﻿class ShortCircuit {
 	function : Main(args : String[]) ~ Nil {
-		a := Loop(13, 99.9);
-		a->PrintLine();
+		Run(3);	
 	}
-	
-	function : Hey(a : Float) ~ Nil {
-		a->PrintLine();
-	}
-	function : native : Loop(a : Int, b : Float) ~ Int {
-		for(i := 0; i < 10; i+=1;) {
-			a += b * i;
+
+	function : native : Run(a : Float) ~ Nil {
+		if(a + 2.2 < 6.6) {
+			"Less"->PrintLine();
+		} else {
+			"Greater"->PrintLine();
 		};
-		
-		Hey(b);
-	
-		return a;
 	}
 }
