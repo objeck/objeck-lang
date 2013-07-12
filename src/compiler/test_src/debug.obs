@@ -1,13 +1,12 @@
 ﻿class ShortCircuit {
 	function : Main(args : String[]) ~ Nil {
-		Run(3);	
-	}
-
-	function : native : Run(a : Float) ~ Nil {
-		if(a + 2.2 < 6.6) {
-			"Less"->PrintLine();
-		} else {
-			"Greater"->PrintLine();
+		a := false;
+		if(!a = true) {
+#		if(a) {
+			"true"->PrintLine();
+		}
+		else {
+			"false"->PrintLine();
 		};
 	}
 }
