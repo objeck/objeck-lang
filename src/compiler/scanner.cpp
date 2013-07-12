@@ -91,9 +91,9 @@ Scanner::~Scanner()
 void Scanner::LoadKeywords()
 {
   ident_map[L"and"] = TOKEN_AND_ID,
-  ident_map[L"or"] = TOKEN_OR_ID,
-  ident_map[L"xor"] = TOKEN_XOR_ID,
- ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
+    ident_map[L"or"] = TOKEN_OR_ID,
+    ident_map[L"xor"] = TOKEN_XOR_ID,
+    ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
   ident_map[L"if"] = TOKEN_IF_ID;
   ident_map[L"else"] = TOKEN_ELSE_ID;
   ident_map[L"do"] = TOKEN_DO_ID;
@@ -658,8 +658,8 @@ void Scanner::ParseToken(int index)
         NextChar();
         start_pos = buffer_pos - 1;
         while(iswdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') ||
-	      (cur_char >= L'A' && cur_char <= L'F')) {
-	  NextChar();
+              (cur_char >= L'A' && cur_char <= L'F')) {
+          NextChar();
         }
         end_pos = buffer_pos - 1;
         ParseUnicodeChar(index);
@@ -796,9 +796,9 @@ void Scanner::ParseToken(int index)
 #ifdef _SYSTEM
     while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@' || cur_char == L'$') && cur_char != EOB) {
 #else
-    while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
+      while((iswalpha(cur_char) || iswdigit(cur_char) || cur_char == L'_' || cur_char == L'@') && cur_char != EOB) {
 #endif
-	NextChar();
+        NextChar();
       }
       // mark
       end_pos = buffer_pos - 1;
@@ -815,79 +815,79 @@ void Scanner::ParseToken(int index)
 
       // test hex state
       if(cur_char == L'0' && nxt_char == L'x') {
-	hex_state = 1;
-	NextChar();
+        hex_state = 1;
+        NextChar();
       }
       while(iswdigit(cur_char) || cur_char == L'.' || 
-	    // hex format
-	    cur_char == L'x' || (cur_char >= L'a' && cur_char <= L'f') || 
-	    (cur_char >= L'A' && cur_char <= L'F') ||
-	    // scientific format
-	    cur_char == L'e' || cur_char == L'E' || 
-	    (double_state == 2 && (cur_char == L'+' || cur_char == L'-') && iswdigit(nxt_char)))  {
-	// decimal double
-	if(cur_char == L'.') {
-	  // error
-	  if(double_state || hex_state) {
-	    tokens[index]->SetType(TOKEN_UNKNOWN);
-	    tokens[index]->SetLineNbr(line_nbr);
-	    tokens[index]->SetFileName(filename);
-	    NextChar();
-	    break;
-	  }
-	  double_state = 1;
-	}
-	else if(cur_char == L'e' || cur_char == L'E') {
-	  // error
-	  if((double_state) != 1 || hex_state) {
-	    tokens[index]->SetType(TOKEN_UNKNOWN);
-	    tokens[index]->SetLineNbr(line_nbr);
-	    tokens[index]->SetFileName(filename);
-	    NextChar();
-	    break;
-	  }
-	  double_state = 2;
-	}
-	else if(double_state == 2 && (cur_char == L'+' || cur_char == L'-')) {
-	  double_state++;
-	}      
-	// hex integer
-	else if(cur_char == L'x') {
-	  // error
-	  if(double_state) {
-	    tokens[index]->SetType(TOKEN_UNKNOWN);
-	    tokens[index]->SetLineNbr(line_nbr);
-	    tokens[index]->SetFileName(filename);
-	    NextChar();
-	    break;
-	  }
+            // hex format
+            cur_char == L'x' || (cur_char >= L'a' && cur_char <= L'f') || 
+            (cur_char >= L'A' && cur_char <= L'F') ||
+            // scientific format
+            cur_char == L'e' || cur_char == L'E' || 
+            (double_state == 2 && (cur_char == L'+' || cur_char == L'-') && iswdigit(nxt_char)))  {
+        // decimal double
+        if(cur_char == L'.') {
+          // error
+          if(double_state || hex_state) {
+            tokens[index]->SetType(TOKEN_UNKNOWN);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+            break;
+          }
+          double_state = 1;
+        }
+        else if(cur_char == L'e' || cur_char == L'E') {
+          // error
+          if((double_state) != 1 || hex_state) {
+            tokens[index]->SetType(TOKEN_UNKNOWN);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+            break;
+          }
+          double_state = 2;
+        }
+        else if(double_state == 2 && (cur_char == L'+' || cur_char == L'-')) {
+          double_state++;
+        }      
+        // hex integer
+        else if(cur_char == L'x') {
+          // error
+          if(double_state) {
+            tokens[index]->SetType(TOKEN_UNKNOWN);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+            break;
+          }
 
-	  if(hex_state == 1) {
-	    hex_state = 2;
-	  }
-	  else {
-	    hex_state = 1;
-	  }
-	}
+          if(hex_state == 1) {
+            hex_state = 2;
+          }
+          else {
+            hex_state = 1;
+          }
+        }
 
-	// next character
-	NextChar();
+        // next character
+        NextChar();
       }
       // mark
       end_pos = buffer_pos - 1;
       if(double_state == 1 || double_state == 3) {
-	ParseDouble(index);
+        ParseDouble(index);
       } 
       else if(hex_state == 2) {
-	ParseInteger(index, 16);
+        ParseInteger(index, 16);
       }
       else if(hex_state || double_state) {
-	tokens[index]->SetType(TOKEN_UNKNOWN);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
+        tokens[index]->SetType(TOKEN_UNKNOWN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
       }
       else {
-	ParseInteger(index);
+        ParseInteger(index);
       }
       return;
     }
@@ -895,264 +895,271 @@ void Scanner::ParseToken(int index)
     else {
       switch(cur_char) {
       case L':':
-	if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_ASSIGN);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else {
-	  tokens[index]->SetType(TOKEN_COLON);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else {
+          tokens[index]->SetType(TOKEN_COLON);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
 
-	  NextChar();
-	}
-	break;
+          NextChar();
+        }
+        break;
 
       case L'-':
-	if(nxt_char == L'>') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_ASSESSOR);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_SUB_ASSIGN);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else {
-	  tokens[index]->SetType(TOKEN_SUB);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
+        if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ASSESSOR);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_SUB_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else {
+          tokens[index]->SetType(TOKEN_SUB);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
 
-	  NextChar();
-	}
-	break;
+          NextChar();
+        }
+        break;
 
+      case L'!':
+        tokens[index]->SetType(TOKEN_NOT);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+        
       case L'{':
-	tokens[index]->SetType(TOKEN_OPEN_BRACE);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_OPEN_BRACE);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'.':
-	tokens[index]->SetType(TOKEN_PERIOD);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_PERIOD);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'~':
-	tokens[index]->SetType(TOKEN_TILDE);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_TILDE);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'}':
-	tokens[index]->SetType(TOKEN_CLOSED_BRACE);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_CLOSED_BRACE);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'[':
-	tokens[index]->SetType(TOKEN_OPEN_BRACKET);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_OPEN_BRACKET);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L']':
-	tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'(':
-	tokens[index]->SetType(TOKEN_OPEN_PAREN);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_OPEN_PAREN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L')':
-	tokens[index]->SetType(TOKEN_CLOSED_PAREN);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_CLOSED_PAREN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L',':
-	tokens[index]->SetType(TOKEN_COMMA);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_COMMA);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L';':
-	tokens[index]->SetType(TOKEN_SEMI_COLON);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_SEMI_COLON);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'&':
-	tokens[index]->SetType(TOKEN_AND);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_AND);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'|':
-	tokens[index]->SetType(TOKEN_OR);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_OR);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'?':
-	tokens[index]->SetType(TOKEN_QUESTION);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_QUESTION);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'=':
-	tokens[index]->SetType(TOKEN_EQL);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_EQL);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case L'<':
-	if(nxt_char == L'>') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_NEQL);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_LEQL);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else if(nxt_char == L'<') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_SHL);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	} 
-	else {
-	  tokens[index]->SetType(TOKEN_LES);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	break;
+        if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_NEQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_LEQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else if(nxt_char == L'<') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_SHL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        } 
+        else {
+          tokens[index]->SetType(TOKEN_LES);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        break;
 
       case L'>':
-	if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_GEQL);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	else if(nxt_char == L'>') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_SHR);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_GTR);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	break;
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_GEQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_SHR);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_GTR);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        break;
 
       case L'+':
-	if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_ADD_ASSIGN);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_ADD);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	break;
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ADD_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_ADD);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        break;
 
       case L'*':
-	if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_MUL_ASSIGN);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_MUL);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	break;
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_MUL_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_MUL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        break;
 
       case L'/':
-	if(nxt_char == L'=') {
-	  NextChar();
-	  tokens[index]->SetType(TOKEN_DIV_ASSIGN);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_DIV);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
-	break;
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_DIV_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_DIV);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        break;
 
       case L'%':
-	tokens[index]->SetType(TOKEN_MOD);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        tokens[index]->SetType(TOKEN_MOD);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
       case EOB:
       case 0xfffd:
-	tokens[index]->SetType(TOKEN_END_OF_STREAM);
-	break;
+        tokens[index]->SetType(TOKEN_END_OF_STREAM);
+        break;
 
       default:
-	ProcessWarning();
-	tokens[index]->SetType(TOKEN_UNKNOWN);
-	tokens[index]->SetLineNbr(line_nbr);
-	tokens[index]->SetFileName(filename);
-	NextChar();
-	break;
+        ProcessWarning();
+        tokens[index]->SetType(TOKEN_UNKNOWN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
       }
       return;
     }

@@ -57,6 +57,7 @@ enum ScannerTokenType {
   TOKEN_NO_INPUT,
   TOKEN_UNKNOWN,
   // symbols
+  TOKEN_NOT,
   TOKEN_TILDE,
   TOKEN_PERIOD,
   TOKEN_COLON,
