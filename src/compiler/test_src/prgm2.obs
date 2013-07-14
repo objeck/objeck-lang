@@ -4,8 +4,8 @@ bundle Default {
 			Run();
 		}
 
-		function : Run() ~ Nil {
-#		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
 			a : Bool := true;
 	
 			a->PrintLine();
@@ -63,7 +63,173 @@ bundle Default {
 			13->Min(3)->PrintLine();
 			13->Max(3)->PrintLine();
 			-22->Abs()->PrintLine();
-			Float->Pi()->Floor()->PrintLine();
+			Float->Pi()->Floor()->PrintLine();     
+      
+      if(true & false) {
+				"true"->PrintLine();
+			};
+
+			if(false & true) {
+				"true"->PrintLine();
+			};
+
+			if(true & true) {
+				"true"->PrintLine();
+			};
+
+			if(false & false) {
+				"true"->PrintLine();
+			};
+
+			if(a & true) {
+				"true"->PrintLine();
+			};
+
+			if(true & a) {
+				"true"->PrintLine();
+			};
+
+			if(a & b) {
+				"true"->PrintLine();
+			};
+		
+			if(true | false) {
+				"true"->PrintLine();
+			};
+
+			if(false | true) {
+				"true"->PrintLine();
+			};
+
+			if(true | true) {
+				"true"->PrintLine();
+			};
+
+			if(false | false) {
+				"true"->PrintLine();
+			};
+
+			if(a | true) {
+				"true"->PrintLine();
+			};
+
+			if(true | a) {
+				"true"->PrintLine();
+			};
+
+			if(a | b) {
+				"true"->PrintLine();
+			};
+
+	
+			if(33.3 = 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(33.3 <> 33.3) {
+				"true"->PrintLine();
+			};
+
+			
+			if(16 = 16.0) {
+				"true"->PrintLine();
+			};
+
+			if(16.0 <> 16) {
+				"true"->PrintLine();
+			};
+
+			
+			if(16 = 0x10) {
+				"true"->PrintLine();
+			};
+
+			if(16 <> 16) {
+				"true"->PrintLine();
+			};
+
+		
+			if(16 < 16) {
+				"true"->PrintLine();
+			};
+
+			if(16 > 16) {
+				"true"->PrintLine();
+			};
+
+			if(13 <= 13) {
+				"true"->PrintLine();
+			};
+
+			if(13 >= 13) {
+				"true"->PrintLine();
+			};
+			
+
+			if(3 < 33) {
+				"true"->PrintLine();
+			};
+
+			if(3.3 > 33.3) {
+				"true"->PrintLine();
+			};
+
+
+			if(3.3 < 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(3.3 > 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(33.3 = 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(93.33 <= 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(93.33 >= 33.3) {
+				"true"->PrintLine();
+			};
+
+			if(33.33 >= 3.3) {
+				"true"->PrintLine();
+			};
+
+			if(33.33 <= 3.3) {
+				"true"->PrintLine();
+			};
+
+
+			x := 3.4 + 1.2;
+			y := 3.3 + 1.2;
+			if(x <= y) {
+				"true"->PrintLine();
+			};
+
+			if(x >= y) {
+				"true"->PrintLine();
+			};
+
+			if(x <> y) {
+				"true"->PrintLine();
+			};
+
+			if(x < y) {
+				"true"->PrintLine();
+			};
+
+			if(x > y) {
+				"true"->PrintLine();
+			};
+
+			if(x = y) {
+				"true"->PrintLine();
+			};
+
 		}
 	}
 }
