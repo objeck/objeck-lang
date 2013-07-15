@@ -1,12 +1,12 @@
-﻿class ShortCircuit {
+﻿class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := false;
-		if(!a = true) {
-#		if(a) {
-			"true"->PrintLine();
+		z := 3.3;
+		if(!a & z > 5) {
+			"True"->PrintLine();
 		}
 		else {
-			"false"->PrintLine();
+			"False"->PrintLine();
 		};
 	}
 }
