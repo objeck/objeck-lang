@@ -1,12 +1,7 @@
 ﻿class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := false;
-		z := 3.3;
-		if(!a & z > 5) {
-			"True"->PrintLine();
-		}
-		else {
-			"False"->PrintLine();
-		};
+		s := " iernva ";
+		cc := s->ToCharArray()->Sort();
+		cc->PrintLine();
 	}
 }
