@@ -162,6 +162,48 @@ bundle System {
 		function : ToUnicode(b : Byte[]) ~ Char[] {
 			BYTES_TO_UNICODE;
 		}
+		
+		function : native :  Sort(v : Byte[]) ~ Byte[] {
+			size := v->Size();
+			if(size <= 1) {
+				return v;
+			};			
+			array := Byte->New[size];
+			Runtime->Copy(array, 0, v, 0, size);
+			Sort(array, 0, size - 1);
+			
+			return array;
+		}
+		
+		function : native : Sort(array : Byte[], low : Int, high : Int) ~ Nil {
+			i := low; j := high;
+			pivot := array[low + (high-low)/2];
+
+			while(i <= j) {
+				while(array[i] < pivot) {
+					i+=1;
+				};
+	
+				while(array[j] > pivot) {
+					j-=1;
+				};
+
+				if (i <= j) {
+					temp := array[i];
+					array[i] := array[j];
+					array[j] := temp;
+					i+=1; j-=1;
+				};
+			};
+	
+			if(low < j) {
+				Sort(array, low, j);
+			};
+
+			if(i < high) {
+				Sort(array, i, high);
+			};
+		}
 
 		function : Size(b : Byte[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
@@ -275,6 +317,48 @@ bundle System {
 		function : PrintLine(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 			'\n'->Print();
+		}
+		
+		function : native :  Sort(c : Char[]) ~ Char[] {
+			size := c->Size();
+			if(size <= 1) {
+				return c;
+			};			
+			array := Char->New[size];
+			Runtime->Copy(array, 0, c, 0, size);
+			Sort(array, 0, size - 1);
+			
+			return array;
+		}
+		
+		function : native : Sort(array : Char[], low : Int, high : Int) ~ Nil {
+			i := low; j := high;
+			pivot := array[low + (high-low)/2];
+
+			while(i <= j) {
+				while(array[i] < pivot) {
+					i+=1;
+				};
+	
+				while(array[j] > pivot) {
+					j-=1;
+				};
+
+				if (i <= j) {
+					temp := array[i];
+					array[i] := array[j];
+					array[j] := temp;
+					i+=1; j-=1;
+				};
+			};
+	
+			if(low < j) {
+				Sort(array, low, j);
+			};
+
+			if(i < high) {
+				Sort(array, i, high);
+			};
 		}
 
 		function : native :  Print(c : Char[]) ~ Nil {
@@ -425,6 +509,48 @@ bundle System {
 			};
 			
 			return out;
+		}
+		
+		function : native :  Sort(v : Int[]) ~ Int[] {
+			size := v->Size();
+			if(size <= 1) {
+				return v;
+			};			
+			array := Int->New[size];
+			Runtime->Copy(array, 0, v, 0, size);
+			Sort(array, 0, size - 1);
+			
+			return array;
+		}
+		
+		function : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
+			i := low; j := high;
+			pivot := array[low + (high-low)/2];
+
+			while(i <= j) {
+				while(array[i] < pivot) {
+					i+=1;
+				};
+	
+				while(array[j] > pivot) {
+					j-=1;
+				};
+
+				if (i <= j) {
+					temp := array[i];
+					array[i] := array[j];
+					array[j] := temp;
+					i+=1; j-=1;
+				};
+			};
+	
+			if(low < j) {
+				Sort(array, low, j);
+			};
+
+			if(i < high) {
+				Sort(array, i, high);
+			};
 		}
 		
 		function : native : ToString(v : Int) ~ String {
@@ -607,6 +733,48 @@ bundle System {
 			};
 			out->Append(']');
 			return out;
+		}
+		
+		function : native :  Sort(v : Float[]) ~ Float[] {
+			size := v->Size();
+			if(size <= 1) {
+				return v;
+			};			
+			array := Float->New[size];
+			Runtime->Copy(array, 0, v, 0, size);
+			Sort(array, 0, size - 1);
+			
+			return array;
+		}
+		
+		function : native : Sort(array : Float[], low : Int, high : Int) ~ Nil {
+			i := low; j := high;
+			pivot := array[low + (high-low)/2];
+
+			while(i <= j) {
+				while(array[i] < pivot) {
+					i+=1;
+				};
+	
+				while(array[j] > pivot) {
+					j-=1;
+				};
+
+				if (i <= j) {
+					temp := array[i];
+					array[i] := array[j];
+					array[j] := temp;
+					i+=1; j-=1;
+				};
+			};
+	
+			if(low < j) {
+				Sort(array, low, j);
+			};
+
+			if(i < high) {
+				Sort(array, i, high);
+			};
 		}
 	}
 
