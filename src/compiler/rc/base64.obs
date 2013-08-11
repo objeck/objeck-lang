@@ -1,0 +1,48 @@
+﻿class Hello {
+	function : Main(args : String[]) ~ Nil {
+		Encode("Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.")->PrintLine();
+	}
+	
+	function : native : Encode(s : String) ~ String {
+		base64chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		
+		r := ""; p := "";
+		
+        c := s->Size() % 3;
+ 
+        # add a right zero pad to make this string a multiple of 3 characters
+        if (c > 0) {
+            for(c := c; c < 3; c+=1;) {
+                p->Append('=');
+                s->Append('\0');
+            };
+        };
+        
+        # increment over the length of the string, three characters at a time
+        for (c := 0; c < s->Size(); c += 3;) {
+ 
+            # we add newlines after every 76 output characters, according to
+            # the MIME specs
+            if (c > 0 & (c / 3 * 4) % 76 = 0) {
+                r->Append("\r\n");
+            };
+            
+        	# these three 8-bit (ASCII) characters become one 24-bit number
+            n := (s->Get(c) << 16) + (s->Get(c + 1) << 8) + (s->Get(c + 2));
+ 
+            # this 24-bit number gets separated into four 6-bit numbers
+            n1 := (n >> 18) and 63; n2 := (n >> 12) and 63; 
+            n3 := (n >> 6) and 63; n4 := n and 63;
+         
+         	# those four 6-bit numbers are used as indices into the base64
+            # character list
+            r->Append(base64chars->Get(n1)); r->Append(base64chars->Get(n2));
+            r->Append(base64chars->Get(n3)); r->Append(base64chars->Get(n4));
+        };
+           
+        r := r->SubString(0, r->Size() - p->Size());
+        r->Append(p);
+        
+        return r;
+	}
+}
