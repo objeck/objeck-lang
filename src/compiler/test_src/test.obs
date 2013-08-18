@@ -1,0 +1,23 @@
+use HTTP;
+use XML;
+use Collection;
+
+class HttpTest {
+	function : Main(args : String[]) ~ Nil {
+		xml := "";
+		lines := HttpClient->New()->Get("http://www.thomas-bayer.com/sqlrest/CUSTOMER/");
+		each(i : lines) {
+			xml->Append(lines->Get(i)->As(String));
+		};
+		
+		parser := XmlParser->New(xml);
+        if(parser->Parse()) {
+			results := parser->FindElements("/CUSTOMERList/CUSTOMER");
+			each(i : results) {
+				result := results->Get(i)->As(XmlElement);
+				result->GetContent()->PrintLine();
+			};
+		};
+	}
+}
+
