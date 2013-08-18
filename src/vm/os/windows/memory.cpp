@@ -982,7 +982,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 
 #ifdef _DEBUG
   wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
-        << L"; thread=" << pthread_self()<< L" -----" << endl;
+        << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
   
