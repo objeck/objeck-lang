@@ -1,29 +1,6 @@
-use System.IO;
-use System.IO.File;
-use XML;
-
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				parser := XmlParser->New(FileReader->ReadFile(args[0]));
-				if(parser->Parse()) {
-					results := parser->FindElements("/table/tr/td");
-					if(results <> Nil) {
-						results->Size()->PrintLine();
-						each(i : results) {					
-							element := results->Get(i)->As(XmlElement);
-							c:= element->GetContent();
-							ns := element->GetNamespace();
-							"content={$c}, namespace={$ns}"->PrintLine();
-						};
-					};
-				}
-				else {
-					parser->GetError()->PrintLine();
-				};
-			};
-		}
-	}
+﻿class Test2 {
+	function : A() ~ Int {
+		aa := [3, 6, 9];
+		return aa[0] * aa[2];
+	}	
 }
-

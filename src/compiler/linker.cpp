@@ -249,19 +249,19 @@ void Library::LoadFile(const wstring &file_name)
     exit(1);
   }
 
-  // read float wstrings
-  const int num_float_wstrings = ReadInt();
-  for(int i = 0; i < num_float_wstrings; i++) {
+  // read float strings
+  const int num_float_strings = ReadInt();
+  for(int i = 0; i < num_float_strings; i++) {
     frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
     holder->length = ReadInt();
     holder->value = new FLOAT_VALUE[holder->length];
     for(int j = 0; j < holder->length; j++) {
-      holder->value[i] = ReadDouble();
+      holder->value[j] = ReadDouble();
     }
 #ifdef _DEBUG
     wcout << L"float string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      wcout << holder->value[i] << L",";
+      wcout << holder->value[j] << L",";
     }
     wcout << endl;
 #endif
@@ -269,19 +269,19 @@ void Library::LoadFile(const wstring &file_name)
     str_instr->value = holder;
     float_strings.push_back(str_instr);
   }
-  // read int wstrings
-  const int num_int_wstrings = ReadInt();
-  for(int i = 0; i < num_int_wstrings; i++) {
+  // read int strings
+  const int num_int_strings = ReadInt();
+  for(int i = 0; i < num_int_strings; i++) {
     frontend::IntStringHolder* holder = new frontend::IntStringHolder;
     holder->length = ReadInt();
     holder->value = new INT_VALUE[holder->length];
     for(int j = 0; j < holder->length; j++) {
-      holder->value[i] = ReadInt();
+      holder->value[j] = ReadInt();
     }
 #ifdef _DEBUG
     wcout << L"int string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      wcout << holder->value[i] << L",";
+      wcout << holder->value[j] << L",";
     }
     wcout << endl;
 #endif
@@ -290,8 +290,8 @@ void Library::LoadFile(const wstring &file_name)
     int_strings.push_back(str_instr);
   }
   // read char wstrings
-  const int num_char_wstrings = ReadInt();
-  for(int i = 0; i < num_char_wstrings; i++) {
+  const int num_char_strings = ReadInt();
+  for(int i = 0; i < num_char_strings; i++) {
     const wstring &char_str_value = ReadString();
 #ifdef _DEBUG
     wcout << L"char string: id=" << i << L"; value='" << char_str_value << L"'" << endl;

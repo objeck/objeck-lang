@@ -2,10 +2,9 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		# in := "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.";
-		in := "Man is distinguished";
+		in := "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.";
 		enc := Encrypt->Base64(in);
 		enc->PrintLine();
 		Decrypt->Base64(enc)->PrintLine();
-	}
+        }
 }
