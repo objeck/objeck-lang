@@ -73,7 +73,10 @@ class MemoryManager {
   static StackProgram* prgm;
   
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
+  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
+
+  static set<StackFrame**> pda_frames;
+
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
   // TODO: monitor cache hits
@@ -85,7 +88,8 @@ class MemoryManager {
   
 #ifndef _GC_SERIAL
   static pthread_mutex_t jit_mutex;
-  static pthread_mutex_t pda_mutex;
+  static pthread_mutex_t pda_monitor_mutex;
+  static pthread_mutex_t pda_frame_mutex;
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
@@ -113,9 +117,9 @@ class MemoryManager {
 
   static inline StackClass* GetClassMapping(long* mem) {
 #ifndef _GC_SERIAL
-      pthread_mutex_lock(&allocated_mutex);
+    pthread_mutex_lock(&allocated_mutex);
 #endif
-      if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
+    if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
        mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&allocated_mutex);
@@ -129,7 +133,7 @@ class MemoryManager {
     return NULL;
   }
 
-public:
+ public:
   static void Initialize(StackProgram* p);
 
   static void Clear() {
@@ -193,14 +197,19 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  static void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
+  
+
+  static void AddPdaMethodRoot(StackFrame** frame);
+  static void RemovePdaMethodRoot(StackFrame** frame);
+  
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
   
   static long* AllocateObject(const wchar_t* obj_name, long* op_stack, 
-			      long stack_pos, bool collect = true) {
+                              long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
@@ -210,9 +219,9 @@ public:
   }
   
   static long* AllocateObject(const long obj_id, long* op_stack, 
-			      long stack_pos, bool collect = true);
+                              long stack_pos, bool collect = true);
   static long* AllocateArray(const long size, const MemoryType type, 
-			     long* op_stack, long stack_pos, bool collect = true);
+                             long* op_stack, long stack_pos, bool collect = true);
   
   // object verification
   static long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
