@@ -96,6 +96,7 @@ namespace frontend {
     RETURN_STMT,
     CRITICAL_STMT,
     SYSTEM_STMT,
+    EMPTY_STMT
   } StatementType;
 
   /****************************
@@ -1593,6 +1594,24 @@ namespace frontend {
   };
 
   /****************************
+   * EmptyStatement class
+   ****************************/
+  class EmptyStatement : public Statement {
+    friend class TreeFactory;
+
+  public:
+    EmptyStatement(const std::wstring &f, const int l) : Statement(f, l) {
+    }
+    
+    ~EmptyStatement() {
+    }
+      
+    const StatementType GetStatementType() {
+      return EMPTY_STMT;
+    }
+  };
+
+  /****************************
   * Assignment class
   ****************************/
   class Assignment : public Statement {
@@ -2638,6 +2657,12 @@ namespace frontend {
       return tmp;
     }
 
+    EmptyStatement* MakeEmptyStatement(const std::wstring &file_name, const int line_num) {
+      EmptyStatement*  tmp = new EmptyStatement(file_name, line_num);
+      statements.push_back(tmp);
+      return tmp;
+    }
+    
     Variable* MakeVariable(const std::wstring &file_name, int line_num, const std::wstring &name) {
       Variable* tmp = new Variable(file_name, line_num, name);
       expressions.push_back(tmp);
