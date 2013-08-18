@@ -1,26 +1,14 @@
+#~~
+# Objeck encryption routines 
+# Copyright (c) 2013 Randy Hollines
+# 
+# credits/contributor:
+# Greg Canty - Base64 support (http://www.the9375.com/cc/base64/base64.cpp.html)
+# Copyright (c) 2012 Greg Canty  
+~~#	
+
 use Collection;
 use System.API;
-
-#~  Base64 Encrypt and Decrypt
-	Author    : Greg Canty 
-	Created   : October 1, 2012 
-	Version   : 0.3 
-	Copyright : © 2012, Greg Canty 
-	URL       : http://www.the9375.com/cc/base64/base64.cpp.html
-	License   : Free for any use under the following conditions.  (1) This code 
-	            has ABSOLUTELY NO WARRANTY.  (2) Please keep my name at the top 
-	            of this source file and list me as a contributor to your  
-	            project, but do NOT state or imply that I endorse your project 
-	            without first asking permission.  If you just ask me first, 
-	            I will most likely say yes and endorse your project.  (3) If 
-	            you use this code, please contact me and let me know about your 
-	            project.  If your project is confidential you don't have to  
-	            describe the project, just let me know that you're using my  
-	            code.  It doesn't matter if you're a beginner just starting  
-	            out or a large company/organization, just comment or email me.   
-	            My only reason for this condition is that I enjoy knowing that 
-	            people are using my code.
-~#
 
 bundle Encryption {
 	class Proxy {
@@ -177,8 +165,7 @@ bundle Encryption {
 			return Nil;
 		}
 
-#		function : native : Base64(in : String) ~ String {
-		function : Base64(in : String) ~ String {
+		function : native : Base64(in : String) ~ String {
 			lut := [ 
 			   0,    0,    0,    0,    0,    0,    0,    0, 
 			   0,    0,    0,    0,    0,    0,    0,    0, 
