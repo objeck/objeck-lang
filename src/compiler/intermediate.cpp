@@ -770,8 +770,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     EmitSystemDirective(static_cast<SystemStatement*>(statement));
     break;
 
+  case EMPTY_STMT:
+    break;
+    
   default:
-    cerr << L"internal error" << endl;
+    wcerr << L"internal error" << endl;
     exit(1);
     break;
   }
