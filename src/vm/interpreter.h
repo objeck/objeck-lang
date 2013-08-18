@@ -491,6 +491,8 @@ namespace Runtime {
       call_stack_pos = cp;
       frame = new StackFrame*;
       monitor = NULL;
+      
+      MemoryManager::AddPdaMethodRoot(frame);
     }
 
     StackInterpreter() {
@@ -555,6 +557,9 @@ namespace Runtime {
 
         delete monitor;
         monitor = NULL;
+      }
+      else {
+        MemoryManager::RemovePdaMethodRoot(frame);
       }
       delete frame;
       frame = NULL;
