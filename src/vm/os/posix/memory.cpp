@@ -36,9 +36,7 @@ bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
-
 set<StackFrame**> MemoryManager::pda_frames;
-
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;

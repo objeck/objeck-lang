@@ -34,7 +34,8 @@
 
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
-unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_roots;
+set<StackFrame**> MemoryManager::pda_frames;
+unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
@@ -49,7 +50,8 @@ long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 CRITICAL_SECTION MemoryManager::jit_cs;
-CRITICAL_SECTION MemoryManager::pda_cs;
+CRITICAL_SECTION MemoryManager::pda_frame_cs;
+CRITICAL_SECTION MemoryManager::pda_monitor_cs;
 CRITICAL_SECTION MemoryManager::allocated_cs;
 CRITICAL_SECTION MemoryManager::marked_cs;
 CRITICAL_SECTION MemoryManager::marked_sweep_cs;
@@ -62,7 +64,8 @@ void MemoryManager::Initialize(StackProgram* p)
   uncollected_count = 0;
 
   InitializeCriticalSection(&jit_cs);
-  InitializeCriticalSection(&pda_cs);
+  InitializeCriticalSection(&pda_frame_cs);
+  InitializeCriticalSection(&pda_monitor_cs);
   InitializeCriticalSection(&allocated_cs);
   InitializeCriticalSection(&marked_cs);
   InitializeCriticalSection(&marked_sweep_cs);
@@ -154,6 +157,40 @@ inline bool MemoryManager::MarkValidMemory(long* mem)
   return false;
 }
 
+void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
+{
+  if(!initialized) {
+    return;
+  }
+
+#ifdef _DEBUG
+  wcout << L"adding PDA frame: addr=" << frame << endl;
+#endif
+
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&pda_frame_cs);
+#endif
+  pda_frames.insert(frame);
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&pda_frame_cs);
+#endif
+}
+
+void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
+{
+#ifdef _DEBUG
+  wcout << L"removing PDA frame: addr=" << frame << endl;
+#endif
+  
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&pda_frame_cs);
+#endif
+  pda_frames.erase(frame);
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&pda_frame_cs);
+#endif
+}
+
 void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
@@ -161,11 +198,11 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&pda_cs);
+  EnterCriticalSection(&pda_monitor_cs);
 #endif
-  pda_roots.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
+  pda_monitors.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_cs);
+  LeaveCriticalSection(&pda_monitor_cs);
 #endif
 }
 
@@ -180,11 +217,11 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&pda_cs);
+  EnterCriticalSection(&pda_monitor_cs);
 #endif
-  pda_roots.erase(monitor);
+  pda_monitors.erase(monitor);
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_cs);
+  LeaveCriticalSection(&pda_monitor_cs);
 #endif
 }
 
@@ -939,18 +976,56 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
 uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 {
-#ifndef GC_SERIAL
-  EnterCriticalSection(&pda_cs);
+#ifndef _GC_SERIAL
+  EnterCriticalSection(&pda_frame_cs);
 #endif
 
 #ifdef _DEBUG
-  wcout << L"----- PDA method root(s): num=" << pda_roots.size() 
+  wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
+        << L"; thread=" << pthread_self()<< L" -----" << endl;
+  wcout << L"memory types:" <<  endl;
+#endif
+  
+  set<StackFrame**, StackFrame**>::iterator iter;
+  for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
+    StackFrame** frame = *iter;
+    StackMethod* mthd = (*frame)->method;
+    long* mem = (*frame)->mem;
+    
+#ifdef _DEBUG
+    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+          << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+#endif
+    
+    // mark self
+    CheckObject((long*)(*mem), true, 1);
+    
+    if(mthd->HasAndOr()) {
+      mem += 2;
+    } 
+    else {
+      mem++;
+    }
+    
+    // mark rest of memory
+    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+  }
+#ifndef _GC_SERIAL
+  LeaveCriticalSection(&pda_frame_cs);
+#endif 
+  
+#ifndef GC_SERIAL
+  EnterCriticalSection(&pda_monitor_cs);
+#endif
+
+#ifdef _DEBUG
+  wcout << L"----- PDA method root(s): num=" << pda_monitors.size() 
     << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
   unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
-  for(pda_iter = pda_roots.begin(); pda_iter != pda_roots.end(); ++pda_iter) {
+  for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     // gather stack frames
     StackFrameMonitor* monitor = pda_iter->first;
     StackFrame** call_stack = monitor->call_stack;
@@ -987,7 +1062,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
     }
   }
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_cs);
+  LeaveCriticalSection(&pda_monitor_cs);
 #endif
 
   return 0;
