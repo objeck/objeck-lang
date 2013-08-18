@@ -71,12 +71,9 @@ struct ClassMethodId {
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
-  
   static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
-
   static set<StackFrame**> pda_frames;
-
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
   // TODO: monitor cache hits
@@ -197,13 +194,10 @@ class MemoryManager {
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
-  static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
-  static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
-  
-
   static void AddPdaMethodRoot(StackFrame** frame);
   static void RemovePdaMethodRoot(StackFrame** frame);
-  
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
+  static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
   static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(long* mem, bool is_obj, const long depth);
