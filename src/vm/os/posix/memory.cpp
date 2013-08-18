@@ -1032,6 +1032,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&pda_frame_mutex);
+#endif
   
 #ifdef _DEBUG
   wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
@@ -1063,8 +1066,10 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     // mark rest of memory
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&pda_frame_mutex);
+#endif  
   
-
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_monitor_mutex);
 #endif
