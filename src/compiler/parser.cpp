@@ -896,7 +896,11 @@ Statement* Parser::ParseStatement(int depth)
   }
   // other
   else {
-    switch(GetToken()) {   
+    switch(GetToken()) { 
+    case TOKEN_SEMI_COLON:
+      statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num);
+      break;
+      
     case TOKEN_PARENT_ID:
       statement = ParseMethodCall(depth + 1);
       break;
@@ -937,7 +941,7 @@ Statement* Parser::ParseStatement(int depth)
     case TOKEN_CRITICAL_ID:
       statement = ParseCritical(depth + 1);
       break;
-
+      
 #ifdef _SYSTEM
     case ASYNC_MTHD_CALL:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
@@ -1805,7 +1809,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
           NextToken();
         }
           break;
-
+          
         case TOKEN_BAD_CHAR_STRING_LIT:
           ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
           NextToken();
