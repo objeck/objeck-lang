@@ -837,9 +837,9 @@ void Scanner::ParseToken(int index)
           }
           double_state = 1;
         }
-        else if(cur_char == L'e' || cur_char == L'E') {
+        else if(!hex_state && (cur_char == L'e' || cur_char == L'E')) {
           // error
-          if((double_state) != 1 || hex_state) {
+          if(double_state != 1) {
             tokens[index]->SetType(TOKEN_UNKNOWN);
             tokens[index]->SetLineNbr(line_nbr);
             tokens[index]->SetFileName(filename);
