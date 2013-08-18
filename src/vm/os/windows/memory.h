@@ -79,7 +79,8 @@ class MemoryManager {
   
   // reference containers
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_roots; // deleted elsewhere
+  static set<StackFrame**> pda_frames;
+  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static vector<long*> allocated_memory;
   static vector<long*> marked_memory;
 
@@ -91,7 +92,8 @@ class MemoryManager {
   static stack<char*> cache_pool_512;
   
   static CRITICAL_SECTION jit_cs;
-  static CRITICAL_SECTION pda_cs;
+  static CRITICAL_SECTION pda_frame_cs;
+  static CRITICAL_SECTION pda_monitor_cs;
   static CRITICAL_SECTION allocated_cs;
   static CRITICAL_SECTION marked_cs;
   static CRITICAL_SECTION marked_sweep_cs;
@@ -183,7 +185,7 @@ public:
     }
     
     DeleteCriticalSection(&jit_cs);
-    DeleteCriticalSection(&pda_cs);
+    DeleteCriticalSection(&pda_monitor_cs);
     DeleteCriticalSection(&allocated_cs);
     DeleteCriticalSection(&marked_cs);
     DeleteCriticalSection(&marked_sweep_cs);
@@ -204,6 +206,8 @@ public:
   static void RemoveJitMethodRoot(long* mem);
 
   // add and remove pda roots
+  static void AddPdaMethodRoot(StackFrame** frame);
+  static void RemovePdaMethodRoot(StackFrame** frame);
   static void AddPdaMethodRoot(StackFrameMonitor* monitor);
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
