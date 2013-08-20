@@ -1,6 +1,33 @@
-﻿class Test2 {
-	function : A() ~ Int {
-		aa := [3, 6, 9];
-		return aa[0] * aa[2];
-	}	
+﻿use HTTP;
+use XML;
+use Collection;
+
+# memory leak?
+class HttpTest {
+	function : Main(args : String[]) ~ Nil {
+		parser := XmlParser->New(FetchData("http://www.thomas-bayer.com/sqlrest/CUSTOMER/"));
+        if(parser->Parse()) {
+			results := parser->FindElements("/CUSTOMERList/CUSTOMER");
+			each(i : results) {
+				result := results->Get(i)->As(XmlElement);
+				id := result->GetContent();
+				attrib := result->GetAttribute("href");
+				if(id <> Nil & attrib <> Nil) {
+					href := attrib->GetValue();
+					FetchData(href)->PrintLine();
+					"------------------"->PrintLine();
+				};
+			};
+		};
+	}
+	
+	function : FetchData(url : String) ~ String {
+		xml := "";
+		lines := HttpClient->New()->Get(url);
+		each(i : lines) {
+			xml->Append(lines->Get(i)->As(String));
+		};
+		
+		return xml;
+	}
 }
