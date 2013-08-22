@@ -5,17 +5,40 @@ use Collection;
 # memory leak?
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
-		parser := XmlParser->New(FetchData("http://www.thomas-bayer.com/sqlrest/CUSTOMER/"));
-        if(parser->Parse()) {
-			results := parser->FindElements("/CUSTOMERList/CUSTOMER");
+		customer_list := XmlParser->New(FetchData("http://www.thomas-bayer.com/sqlrest/CUSTOMER/"));
+        if(customer_list->Parse()) {
+			results := customer_list->FindElements("/CUSTOMERList/CUSTOMER");
 			each(i : results) {
 				result := results->Get(i)->As(XmlElement);
-				id := result->GetContent();
 				attrib := result->GetAttribute("href");
-				if(id <> Nil & attrib <> Nil) {
-					href := attrib->GetValue();
-					FetchData(href)->PrintLine();
-					"------------------"->PrintLine();
+				if(attrib <> Nil) {
+					xml := FetchData(attrib->GetValue());
+					customer := XmlParser->New(xml);
+xml->PrintLine();					
+					if(customer->Parse()) {
+						fn : String;
+						firsts := customer->FindElements("/CUSTOMER/FIRSTNAME");
+						if(firsts <> Nil & firsts->Size() = 1) {
+							first := firsts->Get(0)->As(XmlElement);
+							if(first <> Nil) {
+								fn := first->GetContent();
+							};
+						};
+						
+						ln : String;
+						lasts := customer->FindElements("/CUSTOMER/LASTNAME");
+						if(lasts <> Nil & lasts->Size() = 1) {
+							last := lasts->Get(0)->As(XmlElement);
+							if(last <> Nil) {
+								ln := last->GetContent();
+							};
+						};
+						
+						if(fn <> Nil & ln <> Nil) {
+							"{$fn}, {$ln}"->PrintLine();
+							"------------------"->PrintLine();
+						};
+					};
 				};
 			};
 		};
