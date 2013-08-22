@@ -14,7 +14,6 @@ class HttpTest {
 				if(attrib <> Nil) {
 					xml := FetchData(attrib->GetValue());
 					customer := XmlParser->New(xml);
-xml->PrintLine();					
 					if(customer->Parse()) {
 						fn : String;
 						firsts := customer->FindElements("/CUSTOMER/FIRSTNAME");

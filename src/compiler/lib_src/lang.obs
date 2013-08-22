@@ -1007,7 +1007,9 @@ bundle System {
 			@string := Char->New[@max];
 			@pos := 0;
 			
-			Append(string->ToCharArray());
+			if(string <> Nil) {
+				Append(string->ToCharArray());
+			};
 		}
 					
 		New(array : Char[]) {
