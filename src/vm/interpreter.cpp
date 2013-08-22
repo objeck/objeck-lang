@@ -92,6 +92,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   }
   config.close();
   
+#ifndef _SANITIZE
 #ifdef _WIN32
 	InitializeCriticalSection(&cached_frames_cs);
 #endif
@@ -102,6 +103,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 		frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
 		cached_frames.push(frame);
 	}
+#endif
   
 #ifdef _WIN32
   StackMethod::InitVirtualEntry();
