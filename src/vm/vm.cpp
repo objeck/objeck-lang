@@ -72,7 +72,7 @@ int Execute(const int argc, const char* argv[])
     
     // clean up resources before exiting, only done in debug mode to ensure we've
     // accounted for everything
-#ifdef  _SANITIZE
+#ifdef _SANITIZE
 #ifdef _WIN32     
     list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
     for(list<HANDLE>::iterator iter = thread_ids.begin();

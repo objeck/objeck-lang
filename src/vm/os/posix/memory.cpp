@@ -158,7 +158,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
   }
 
 #ifdef _DEBUG
-  wcout << L"adding PDA frame: addr=" << frame << endl;
+//  wcout << L"adding PDA frame: addr=" << frame << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -173,7 +173,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
 {
 #ifdef _DEBUG
-  wcout << L"removing PDA frame: addr=" << frame << endl;
+//  wcout << L"removing PDA frame: addr=" << frame << endl;
 #endif
   
 #ifndef _GC_SERIAL
@@ -192,7 +192,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
   }
 
 #ifdef _DEBUG
-  wcout << L"adding PDA monitor: addr=" << monitor << endl;
+//  wcout << L"adding PDA monitor: addr=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -207,7 +207,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-  wcout << L"removing PDA monitor: addr=" << monitor << endl;
+//  wcout << L"removing PDA monitor: addr=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -222,8 +222,10 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,long* self, long* mem, long offset)
 {
 #ifdef _DEBUG
+/*
   wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
         << L"(" << (long)self << L"), mem=" << mem << L", offset=" << offset << endl;
+*/
 #endif
 
   // zero out memory
@@ -259,8 +261,10 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   id = found->second;
   
 #ifdef _DEBUG  
+/*
   wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
         << id->self << L"(" << (long)id->self << L")" << endl;
+*/
 #endif
   jit_roots.erase(found);
   
@@ -359,12 +363,14 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&allocated_mutex);
 #endif
-    
+   
+/* 
 #ifdef _DEBUG
     wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
           << ", addr=" << mem << L"(" << (long)mem << L"), size="
           << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
+*/
   }
 
   return mem;
@@ -464,12 +470,14 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&allocated_mutex);
 #endif
-  
+ 
+/* 
 #ifdef _DEBUG
   wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") 
         << ", addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
         << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
+*/
 
   return mem;
 }
