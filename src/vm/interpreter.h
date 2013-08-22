@@ -88,6 +88,7 @@ namespace Runtime {
 		// get stack frame
 		//
 		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
+#ifndef _SANITIZE
 #ifdef _WIN32
 			EnterCriticalSection(&cached_frames_cs);
 #else
@@ -118,12 +119,24 @@ namespace Runtime {
 #endif
 
 			return frame;
+
+#else      
+      StackFrame* frame = new StackFrame;
+			frame->method = method;
+      frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+			frame->mem[0] = (long)instance;
+			frame->ip = -1;
+			frame->jit_called = false;
+#endif
+ 
+      return frame;
 		}
 		
 		//
 		// release stack frame
 		//
 		static inline void ReleaseStackFrame(StackFrame* frame) {
+#ifndef _SANITIZE
 			// cache up to 256k frames
 			if(cached_frames.size() > CALL_STACK_SIZE * 256) {
 				free(frame->mem);
@@ -150,6 +163,10 @@ namespace Runtime {
 				wcout << L"caching frame=" << frame << endl;
 #endif
 			}
+#else      
+      free(frame->mem);
+      delete frame;
+#endif
 		}
 		
     //

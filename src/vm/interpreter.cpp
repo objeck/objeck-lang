@@ -91,13 +91,13 @@ void StackInterpreter::Initialize(StackProgram* p)
     }
   }
   config.close();
-
+  
 #ifdef _WIN32
 	InitializeCriticalSection(&cached_frames_cs);
 #endif
 	
   // allocate 256K frames
-	for(int i = 0; i < CALL_STACK_SIZE * 128; i++) {
+	for(int i = 0; i < CALL_STACK_SIZE * 16; i++) {
 		StackFrame* frame = new StackFrame();
 		frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
 		cached_frames.push(frame);
@@ -826,6 +826,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       // return directly back to JIT code
       if((*frame) && (*frame)->jit_called) {
         (*frame)->jit_called = false;
+        ReleaseStackFrame(*frame);
         return;
       }
       break;
@@ -835,6 +836,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       // return directly back to JIT code
       if((*frame)->jit_called) {
         (*frame)->jit_called = false;
+        ReleaseStackFrame(*frame);
         return;
       }
       break;
@@ -844,6 +846,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       // return directly back to JIT code
       if((*frame)->jit_called) {
         (*frame)->jit_called = false;
+        ReleaseStackFrame(*frame);
         return;
       }
       break;
@@ -1125,6 +1128,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
     }
   }
   while(!halt);
+
+  ReleaseStackFrame(*frame);
 
 #ifdef _TIMING
   clock_t end = clock();
