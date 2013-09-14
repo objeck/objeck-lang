@@ -2109,7 +2109,7 @@ Expression* Parser::ParseExpression(int depth)
     NextToken();
     Expression* if_expression = ParseLogic(depth + 1);
     if(!Match(TOKEN_COLON)) {
-      ProcessError(L"Expected ';'", TOKEN_COLON);
+      ProcessError(L"Expected ':'", TOKEN_COLON);
     }
     NextToken();
     return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
@@ -3139,7 +3139,7 @@ For* Parser::ParseEach(int depth)
                                                                  entry, count_assign);
 
   if(!Match(TOKEN_COLON)) {
-    ProcessError(L"Expected ';'", TOKEN_COLON);
+    ProcessError(L"Expected ':'", TOKEN_COLON);
   }
   NextToken();
 
