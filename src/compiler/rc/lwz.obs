@@ -1,21 +1,21 @@
 use Collection;
 
 class LZW {
-	function : Main(args : String[]) ~ Nil {
-		compressed := Compress("TOBEORNOTTOBEORTOBEORNOT");
-		Show(compressed);
-		decompressed := Decompress(compressed);
+  function : Main(args : String[]) ~ Nil {
+    compressed := Compress("TOBEORNOTTOBEORTOBEORNOT");
+    Show(compressed);
+    decompressed := Decompress(compressed);
     decompressed->PrintLine();
 	}
 
 	function : native : Compress(uncompressed : String) ~ IntVector {
 		# Build the dictionary.
-        dictSize := 256;
-        dictionary := StringMap->New();
-        for (i := 0; i < 256; i+=1;) {
-			key := "";
-			key->Append(i->As(Char));
-            dictionary->Insert(key, IntHolder->New(i));
+    dictSize := 256;
+      dictionary := StringMap->New();
+      for (i := 0; i < 256; i+=1;) {
+        key := "";
+        key->Append(i->As(Char));
+        dictionary->Insert(key, IntHolder->New(i));
 		};
 		
     w := "";
