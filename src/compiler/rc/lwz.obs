@@ -5,7 +5,7 @@ class LZW {
 		compressed := Compress("TOBEORNOTTOBEORTOBEORNOT");
 		Show(compressed);
 		decompressed := Decompress(compressed);
-        decompressed->PrintLine();
+    decompressed->PrintLine();
 	}
 
 	function : native : Compress(uncompressed : String) ~ IntVector {
@@ -18,77 +18,77 @@ class LZW {
             dictionary->Insert(key, IntHolder->New(i));
 		};
 		
-        w := "";
-        result := IntVector->New();
+    w := "";
+    result := IntVector->New();
 						
-        each (i : uncompressed) {
-			c := uncompressed->Get(i);
-            wc := String->New(w);
+    each (i : uncompressed) {
+      c := uncompressed->Get(i);
+      wc := String->New(w);
 			wc->Append(c);
-            if (dictionary->Has(wc)) {
-                w := wc;
-			}
-            else {
-				value := dictionary->Find(w)->As(IntHolder);
-                result->AddBack(value->Get());
-                # Add wc to the dictionary.				
-                dictionary->Insert(wc, IntHolder->New(dictSize));
-				dictSize+=1;
-				w := "";
-				w->Append(c);
-            };
+        if (dictionary->Has(wc)) {
+          w := wc;
+        }
+        else {
+          value := dictionary->Find(w)->As(IntHolder);
+          result->AddBack(value->Get());
+          # Add wc to the dictionary.				
+          dictionary->Insert(wc, IntHolder->New(dictSize));
+          dictSize+=1;
+          w := "";
+          w->Append(c);
         };
+      };
 		
-       # Output the code for w.
-        if (w->Size() > 0) {
-			value := dictionary->Find(w)->As(IntHolder);
-            result->AddBack(value->Get());
-		};
+      # Output the code for w.
+      if (w->Size() > 0) {
+        value := dictionary->Find(w)->As(IntHolder);
+        result->AddBack(value->Get());
+      };
 		
-        return result;		
+      return result;		
 	}
 	
 	function : Decompress(compressed : IntVector) ~ String {
 		# Build the dictionary.
 		dictSize := 256;
-		dictionary := IntMap->New();
-        for (i := 0; i < 256; i+=1;) {
-			value := "";
-			value->Append(i->As(Char));
-			dictionary->Insert(i, value);
-		};
+    dictionary := IntMap->New();
+    for (i := 0; i < 256; i+=1;) {
+      value := "";
+      value->Append(i->As(Char));
+      dictionary->Insert(i, value);
+    };
 		
 		w := "";
 		found := compressed->Remove(0);
 		w->Append(found->As(Char));
 		
 		result := String->New(w);		
-        each (i : compressed) {
-			k := compressed->Get(i);
+    each (i : compressed) {
+      k := compressed->Get(i);
 
-            entry : String;
-            if (dictionary->Has(k)) {			
-                entry := dictionary->Find(k);
-			}
-            else if (k = dictSize) {
-                entry := String->New(w);
-				entry->Append(w->Get(0));
-			}
-            else {
-                return "";
+      entry : String;
+      if (dictionary->Has(k)) {			
+        entry := dictionary->Find(k);
+      }
+      else if (k = dictSize) {
+        entry := String->New(w);
+        entry->Append(w->Get(0));
+      }
+      else {
+        return "";
 			};		
-            result->Append(entry);
+      result->Append(entry);
 
-            # Add w+entry[0] to the dictionary.
-			value := String->New(w);
-			value->Append(entry->Get(0));
-			dictionary->Insert(dictSize, value);
-			dictSize+=1;
+      # Add w+entry[0] to the dictionary.
+      value := String->New(w);
+      value->Append(entry->Get(0));
+      dictionary->Insert(dictSize, value);
+      dictSize+=1;
  
-            w := entry;			
-        };
+      w := entry;			
+    };
 		
-        return result;
+    return result;
 	}
 	
 	function : Show(results : IntVector) ~ Nil {
