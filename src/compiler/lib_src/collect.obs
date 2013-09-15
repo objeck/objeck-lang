@@ -74,7 +74,7 @@ bundle Collection {
 			if(i > -1 & i < @size) {
 				temp := Int->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				value := @values[i];
 				@values := temp;
 				@size -= 1;
@@ -345,7 +345,7 @@ bundle Collection {
 			if(i > -1 & i < @size) {
 				temp := Float->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				value := @values[i];
 				@values := temp;
 				@size -= 1;
@@ -610,7 +610,7 @@ bundle Collection {
 			if(i > -1 & i < @size) {
 				temp := Compare->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				value := @values[i];
 				@values := temp;
 				@size -= 1;
@@ -817,7 +817,7 @@ bundle Collection {
 			if(i > -1 & i < @size) {
 				temp := Base->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				value := @values[i];
 				@values := temp;
 				@size -= 1;
