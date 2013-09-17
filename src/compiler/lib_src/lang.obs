@@ -707,10 +707,12 @@ bundle System {
 		
 			zero := 0;
 			remainder := f - f->Floor();
-			while(remainder < 0.099) {
-				f *= 10.0;
-				remainder := f - f->Floor();
-				zero += 1;
+			if(remainder <> 0.0) {
+				while(remainder < 0.099) {
+					f *= 10.0;
+					remainder := f - f->Floor();
+					zero += 1;
+				};
 			};
 
 			Number->IntToString(f->Floor()->As(Int), str);
