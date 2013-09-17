@@ -1130,9 +1130,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
     }
   }
   while(!halt);
-
-  ReleaseStackFrame(*frame);
-
+  
 #ifdef _TIMING
   clock_t end = clock();
   wcout << L"---------------------------" << endl;
@@ -1548,7 +1546,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 #ifdef _DEBUG
   wcout << L"# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
 #endif
-
+  
   // clean up
   delete[] thread_op_stack;
   thread_op_stack = NULL;

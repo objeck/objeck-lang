@@ -104,11 +104,7 @@ namespace Runtime {
       }
 			StackFrame* frame = cached_frames.top();
 			cached_frames.pop();
-#ifdef _WIN32
-			LeaveCriticalSection(&cached_frames_cs);
-#else
-			pthread_mutex_unlock(&cached_frames_mutex);
-#endif
+      
 			frame->method = method;
 			frame->mem[0] = (long)instance;
 			frame->ip = -1;
@@ -117,9 +113,7 @@ namespace Runtime {
 #ifdef _DEBUG
 			wcout << L"fetching frame=" << frame << endl;
 #endif
-
-			return frame;
-
+      
 #else      
       StackFrame* frame = new StackFrame;
 			frame->method = method;
@@ -129,6 +123,11 @@ namespace Runtime {
 			frame->jit_called = false;
 #endif
  
+#ifdef _WIN32
+			LeaveCriticalSection(&cached_frames_cs);
+#else
+			pthread_mutex_unlock(&cached_frames_mutex);
+#endif
       return frame;
 		}
 		
@@ -136,36 +135,38 @@ namespace Runtime {
 		// release stack frame
 		//
 		static inline void ReleaseStackFrame(StackFrame* frame) {
+#ifdef _WIN32
+      EnterCriticalSection(&cached_frames_cs);
+#else
+      pthread_mutex_lock(&cached_frames_mutex);
+#endif
+      
 #ifndef _SANITIZE
-			// cache up to 256k frames
-			if(cached_frames.size() > CALL_STACK_SIZE * 256) {
-				free(frame->mem);
-				delete frame;
+       // cache up to 256k frames
+       if(cached_frames.size() > CALL_STACK_SIZE * 256) {
+         free(frame->mem);
+         delete frame;
 #ifdef _DEBUG
-				wcout << L"releasing frame=" << frame << endl;
+         wcout << L"releasing frame=" << frame << endl;
 #endif
-			}
-			else {
-				memset(frame->mem, 0, LOCAL_SIZE);
-#ifdef _WIN32
-				EnterCriticalSection(&cached_frames_cs);
-#else
-				pthread_mutex_lock(&cached_frames_mutex);
-#endif
-				cached_frames.push(frame);
-#ifdef _WIN32
-				LeaveCriticalSection(&cached_frames_cs);
-#else
-				pthread_mutex_unlock(&cached_frames_mutex);
-#endif
-				
+       }
+       else {
+         memset(frame->mem, 0, LOCAL_SIZE);
+         cached_frames.push(frame);
+
 #ifdef _DEBUG
-				wcout << L"caching frame=" << frame << endl;
+         wcout << L"caching frame=" << frame << endl;
 #endif
-			}
-#else      
-      free(frame->mem);
-      delete frame;
+       }
+#else 
+       free(frame->mem);
+       delete frame;
+#endif
+      
+#ifdef _WIN32
+      LeaveCriticalSection(&cached_frames_cs);
+#else
+      pthread_mutex_unlock(&cached_frames_mutex);
 #endif
 		}
 		
