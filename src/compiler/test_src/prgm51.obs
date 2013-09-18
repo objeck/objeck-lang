@@ -56,8 +56,6 @@ bundle Default {
 			t2 := MyThread->New("t2");	
 				
 			for(i := 0; i < 10; i += 1;) {
-				
-	
 				t0->Execute(s->As(Base));
 				t1->Execute(s->As(Base));
 				t2->Execute(s->As(Base));
