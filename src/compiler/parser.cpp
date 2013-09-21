@@ -418,6 +418,38 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     parent_cls_name = ParseBundleName();
   }
 
+  // look for generic types
+  vector<wstring> generic_names;
+  if(Match(TOKEN_LES)) {
+    NextToken();
+    bool found_error = false;
+    while(!Match(TOKEN_GTR) && !found_error && !Match(TOKEN_END_OF_STREAM)) {
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(L"Expected identifier", TOKEN_OPEN_BRACE);
+        found_error = true;
+      }
+      else {
+        generic_names.push_back(scanner->GetToken()->GetIdentifier());
+        NextToken();
+        
+        if(Match(TOKEN_COMMA)) {
+          NextToken();
+        }
+        else if(!Match(TOKEN_GTR)) {
+          ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);
+          found_error = true;
+        }
+      }
+    }
+
+    if(Match(TOKEN_GTR)) {
+      NextToken();
+    }
+    else {
+      ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);      
+    }
+  }
+
   // implements ids
   vector<wstring> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {
@@ -458,7 +490,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
-                                                    interface_names, false);
+                                                    interface_names, generic_names, false);
   current_class = klass;
 
   // add '@self' entry
@@ -553,9 +585,10 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  vector<wstring> interface_strings;
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", 
-                                                    interface_strings, true);
+  vector<wstring> interface_names;
+  vector<wstring> generic_names;
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"",
+                                                    interface_names, generic_names, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -2867,9 +2900,10 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
   
+  vector<wstring> generic_names;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
                                                     method_call->GetVariableName(),
-                                                    interface_names, true);
+                                                    interface_names, generic_names, true);
   
   Class* prev_class = current_class;
   prev_method = current_method;
