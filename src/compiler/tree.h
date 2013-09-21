@@ -2001,16 +2001,17 @@ namespace frontend {
     MethodCall* anonymous_call;
     vector<std::wstring> interface_names;
     vector<std::wstring> generic_names;
-
+    
     Class(const std::wstring &f, const int l, const std::wstring &n, 
-      const std::wstring &p, vector<std::wstring> e, vector<std::wstring> g, bool i) : ParseNode(f, l) {
+          const std::wstring &p, vector<std::wstring> e, 
+          vector<std::wstring> g, bool i) : ParseNode(f, l) {
         name = n;
-        parent_name = p;
+        parent_name = p;       
+        interface_names = e;
+        generic_names = g;
         is_interface = i;
         id = -1;
         parent = NULL;
-        interface_names = e;
-        generic_names = g;
         lib_parent = NULL;
         is_virtual = false;
         was_called = false;
@@ -2045,6 +2046,12 @@ namespace frontend {
       return generic_names;
     }
 
+    bool IsGeneric() {
+      return !generic_names.empty();
+    }
+
+    Class* GenericToSpecific(vector<std::wstring> &specific_names);
+    
     const std::wstring& GetName() const {
       return name;
     }
