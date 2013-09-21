@@ -1,4 +1,10 @@
-﻿class Foo<V> {
+﻿class Bar {
+	function : Main(args : String[]) ~ Nil {
+		f := Foo<String>->New();
+	}
+}
+
+class Foo<V> {
 	@v : V;
 	
 	New() {
