@@ -2045,7 +2045,7 @@ namespace frontend {
     vector<std::wstring> GetGenericNames() {
       return generic_names;
     }
-
+    
     bool IsGeneric() {
       return !generic_names.empty();
     }
