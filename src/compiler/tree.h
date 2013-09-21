@@ -2050,6 +2050,11 @@ namespace frontend {
       return !generic_names.empty();
     }
 
+    bool HasGeneric(const wstring &name) {
+      std::vector<wstring>::iterator found = find(generic_names.begin(), generic_names.end(), name);
+      return found != generic_names.end();
+    }
+    
     Class* GenericToSpecific(vector<std::wstring> &specific_names);
     
     const std::wstring& GetName() const {

@@ -1,6 +1,5 @@
 ﻿class Bar {
 	function : Main(args : String[]) ~ Nil {
-		f := Foo<String>->New();
 	}
 }
 
@@ -12,6 +11,7 @@ class Foo<V> {
 	
 	method : Set(v : V) ~ Nil {
 		@v := v;
+		v->Size()->PrintLine();
 	}
 	
 	method : Get() ~ V {
