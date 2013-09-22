@@ -11,7 +11,7 @@ class Foo<V> {
 	
 	method : Set(v : V) ~ Nil {
 		@v := v;
-		v->Size()->PrintLine();
+#		v->Size()->PrintLine();
 	}
 	
 	method : Get() ~ V {
