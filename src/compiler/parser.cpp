@@ -2726,6 +2726,11 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
     // new call
     else if(Match(TOKEN_NEW_ID)) {
       NextToken();
+
+      // generic ids
+      vector<wstring> generic_names;
+      ParseGenerics(generic_names, depth + 1);
+
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET,
