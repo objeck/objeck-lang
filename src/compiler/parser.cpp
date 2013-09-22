@@ -407,6 +407,10 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   Show(L"[Class: name='" + cls_name + L"']", depth);
 #endif
 
+  // generic ids
+  vector<wstring> generic_names;
+  ParseGenerics(generic_names, depth + 1);
+
   // from id
   wstring parent_cls_name;
   if(Match(TOKEN_FROM_ID)) {
@@ -553,9 +557,9 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  vector<wstring> interface_strings;
+  vector<wstring> interface_names;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", 
-                                                    interface_strings, true);
+                                                    interface_names, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1861,6 +1865,49 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 }
 
 /****************************
+ * Parses generic names
+ ****************************/
+void Parser::ParseGenerics(vector<wstring> &generic_names, int depth) {
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+  
+  if(Match(TOKEN_LES)) {
+#ifdef _DEBUG
+  Show(L"Generics", depth);
+#endif
+
+    NextToken();
+
+    bool found_error = false;
+    while(!Match(TOKEN_GTR) && !found_error && !Match(TOKEN_END_OF_STREAM)) {
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(L"Expected identifier", TOKEN_OPEN_BRACE);
+        found_error = true;
+      }
+      else {
+        generic_names.push_back(scanner->GetToken()->GetIdentifier());
+        NextToken();
+        
+        if(Match(TOKEN_COMMA)) {
+          NextToken();
+        }
+        else if(!Match(TOKEN_GTR)) {
+          ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);
+          found_error = true;
+        }
+      }
+    }
+
+    if(Match(TOKEN_GTR)) {
+      NextToken();
+    }
+    else {
+      ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);      
+    }
+  }
+}
+
+/****************************
  * Parses a declaration.
  ****************************/
 Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
@@ -1878,6 +1925,8 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
   NextToken();
 
   Declaration* declaration;
+
+  // function parameter
   if(Match(TOKEN_OPEN_PAREN)) {
     Type* type = ParseType(depth + 1);
 
@@ -1906,6 +1955,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
     }
   }
+  // basic parameter
   else {    
     // static
     bool is_static = false;
@@ -1921,6 +1971,10 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
 
     // type
     Type* type = ParseType(depth + 1);
+
+    // generic ids
+    vector<wstring> generic_names;
+    ParseGenerics(generic_names, depth + 1);
 
     // add entry
     wstring scope_name = GetScopeName(ident);
