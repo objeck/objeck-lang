@@ -371,8 +371,8 @@ class ContextAnalyzer {
     if(eval_type) {
       // integer types
       if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE || 
-         eval_type->GetType() == BYTE_TYPE) {
-        return true;
+	 eval_type->GetType() == BYTE_TYPE) {
+	return true;
       }
       // enum types
       if(eval_type->GetType() == CLASS_TYPE) {
@@ -415,15 +415,15 @@ class ContextAnalyzer {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
       if(entry && (entry->IsLocal()  || entry->IsStatic())) {
-        return false;
+	return false;
       }
 
       Variable* variable = method_call->GetVariable();
       if(variable) {
-        entry = variable->GetEntry();
-        if(entry && (entry->IsLocal()  || entry->IsStatic())) {
-          return false;
-        }
+	entry = variable->GetEntry();
+	if(entry && (entry->IsLocal()  || entry->IsStatic())) {
+	  return false;
+	}
       }
 
       return true;
@@ -442,15 +442,15 @@ class ContextAnalyzer {
 
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
       if(entry && (entry->IsLocal() || entry->IsStatic())) {
-        return false;
+	return false;
       }
 
       Variable* variable = method_call->GetVariable();
       if(variable) {
-        entry = variable->GetEntry();
-        if(entry && (entry->IsLocal() || entry->IsStatic())) {
-          return false;
-        }
+	entry = variable->GetEntry();
+	if(entry && (entry->IsLocal() || entry->IsStatic())) {
+	  return false;
+	}
       }
 
       return true;
@@ -785,69 +785,64 @@ class ContextAnalyzer {
           }
         }
       }
-        break;
+	break;
 
       case FUNC_TYPE: {
         if(type->GetClassName().size() == 0) {
           type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), 
-                                                type->GetFunctionReturn()));
+						type->GetFunctionReturn()));
         }
         encoded_name += type->GetClassName();
       }
-        break;
+	break;
       }
     }
 
     return encoded_name;
   }
-  
+
   inline bool ResolveClassEnumType(Type* type) {
-    // check generics
-    if(current_class->IsGeneric() && current_class->HasGeneric(type->GetClassName())) {
-      return true;
-    }
-    
-    // look up source and library classes
+    bool found = false;
     Class* klass = SearchProgramClasses(type->GetClassName());
     if(klass) {
       klass->SetCalled(true);
       type->SetClassName(klass->GetName());
-      return true;
+      found = true;
     }
 
     LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
     if(lib_klass) {
       lib_klass->SetCalled(true);
       type->SetClassName(lib_klass->GetName());
-      return true;
+      found = true;
     }
 
     Enum* eenum = SearchProgramEnums(type->GetClassName());
     if(eenum) {
       type->SetClassName(eenum->GetName());
-      return true;
+      found = true;
     }
 
     LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
     if(lib_eenum) {
       type->SetClassName(lib_eenum->GetName());
-      return true;
+      found = true;
     }
-    
-    return false;
+
+    return found;
   }
 
   bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
     const wstring &from_klass_name = calling_type->GetClassName();
     Class* from_klass = SearchProgramClasses(from_klass_name);
     LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
-                                                                program->GetUses());
+								program->GetUses());
     // resolve to_klass name
     wstring to_klass_name;
     Class* to_klass = SearchProgramClasses(method_type->GetClassName());
     if(!to_klass) {
       LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(),
-                                                                program->GetUses());
+								program->GetUses());
       if(to_lib_klass) {
         to_klass_name = to_lib_klass->GetName();
       }
@@ -865,7 +860,7 @@ class ContextAnalyzer {
       Enum* to_enum = SearchProgramEnums(method_type->GetClassName());
       if(!to_enum) {
         LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(),
-                                                               program->GetUses());
+							       program->GetUses());
         if(to_lib_enum) {
           to_enum_name = to_lib_enum->GetName();
         }
@@ -907,33 +902,33 @@ class ContextAnalyzer {
       ProcessError(char_str, L"Invalid function variable type");
     }
     else if(entry->GetType()->GetType() == CLASS_TYPE && 
-            entry->GetType()->GetClassName() != L"System.String" && 
-            entry->GetType()->GetClassName() != L"String") {
+	    entry->GetType()->GetClassName() != L"System.String" && 
+	    entry->GetType()->GetClassName() != L"String") {
       const wstring cls_name = entry->GetType()->GetClassName();
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
-        Method* method = klass->GetMethod(cls_name + L":ToString:");
-        if(method && method->GetMethodType() != PRIVATE_METHOD) {
-          char_str->AddSegment(entry, method);
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-        }
+	Method* method = klass->GetMethod(cls_name + L":ToString:");
+	if(method && method->GetMethodType() != PRIVATE_METHOD) {
+	  char_str->AddSegment(entry, method);
+	}
+	else {
+	  ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
+	}
       }
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
-        if(lib_klass) {
-          LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-          if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-            char_str->AddSegment(entry, lib_method);
-          }
-          else {
-            ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-          }
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
-        }
+	LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
+	if(lib_klass) {
+	  LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
+	  if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
+	    char_str->AddSegment(entry, lib_method);
+	  }
+	  else {
+	    ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
+	  }
+	}
+	else {
+	  ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
+	}
       }
     }
     else if(entry->GetType()->GetType() == FUNC_TYPE) {
@@ -949,16 +944,16 @@ class ContextAnalyzer {
        to_type->GetClassName() != L"System.Base" &&  to_type->GetClassName() != L"Base") {
       Class* to_class = SearchProgramClasses(to_type->GetClassName());
       if(to_class) {
-        expression->SetToClass(to_class);
+	expression->SetToClass(to_class);
       }
       else {
-        LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
-        if(to_lib_class) {
-          expression->SetToLibraryClass(to_lib_class);
-        }
-        else {
-          ProcessError(expression, L"Undefined class: '" + to_type->GetClassName() + L"'");
-        }
+	LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
+	if(to_lib_class) {
+	  expression->SetToLibraryClass(to_lib_class);
+	}
+	else {
+	  ProcessError(expression, L"Undefined class: '" + to_type->GetClassName() + L"'");
+	}
       }
     }
   }
@@ -978,8 +973,8 @@ class ContextAnalyzer {
     if(start != wstring::npos) {
       const wstring &param_name = entry_name.substr(start + 1);
       Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(), 
-                                                                 static_cast<Expression*>(method_call)->GetLineNumber(),
-                                                                 param_name);
+								 static_cast<Expression*>(method_call)->GetLineNumber(),
+								 param_name);
       method_call->SetVariable(variable);
       AnalyzeVariable(variable, entry, depth + 1);
     }
@@ -999,9 +994,9 @@ class ContextAnalyzer {
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, const int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, const int depth);
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
-                            bool impl_is_static, bool impl_is_virtual, Method* virtual_method);
+			    bool impl_is_static, bool impl_is_virtual, Method* virtual_method);
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
-                            bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method);
+			    bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method);
   void AnalyzeInterfaces(Class* klass, const int depth);
   void AnalyzeMethod(Method* method, int id, const int depth);
   void AnalyzeStatements(StatementList* statements, const int depth);
@@ -1033,34 +1028,34 @@ class ContextAnalyzer {
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass);
+				   Class* &klass, LibraryClass* &lib_klass);
   bool AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
+				   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   bool AnalyzeExpressionMethodCall(Type* type, const int dimension, wstring &encoding,
-                                   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
+				   Class* &klass, LibraryClass* &lib_klass, bool &is_enum_call);
   void AnalyzeMethodCall(MethodCall* method_call, const int depth);
   void AnalyzeNewArrayCall(MethodCall* method_call, const int depth);
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-                         bool is_expr, wstring &encoding, const int depth);
+			 bool is_expr, wstring &encoding, const int depth);
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-                         bool is_expr, wstring &encoding, bool is_parent, const int depth);
+			 bool is_expr, wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-                         bool is_virtual, bool is_expr, const int depth);
+			 bool is_virtual, bool is_expr, const int depth);
   wstring EncodeMethodCall(ExpressionList* calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
-                            Class* klass, LibraryClass* lib_klass, const int depth);
+			    Class* klass, LibraryClass* lib_klass, const int depth);
   wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   wstring EncodeFunctionReference(ExpressionList* calling_params, const int depth);
   void AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-                                wstring &encoding, const int depth);
+				wstring &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-                                wstring &encoding, const int depth);
+				wstring &encoding, const int depth);
 
  public:
   ContextAnalyzer(ParsedProgram* p, wstring lib_path, bool l, bool w) {
