@@ -1,7 +1,7 @@
 ﻿class Bar {
 	function : Main(args : String[]) ~ Nil {
 		f : Foo<Integer>;
-#		f := Foo<Integer>->New();
+		f := Foo->New<Integer,String>();
 	}
 }
 
