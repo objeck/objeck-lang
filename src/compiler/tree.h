@@ -1999,20 +1999,20 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-    vector<std::wstring> interface_strings;
+    vector<std::wstring> interface_names;
 
-    Class(const std::wstring &f, const int l, const std::wstring &n, 
-      const std::wstring &p, vector<std::wstring> e, bool i) : ParseNode(f, l) {
-        name = n;
-        parent_name = p;
-        is_interface = i;
-        id = -1;
-        parent = NULL;
-        interface_strings = e;
-        lib_parent = NULL;
-        is_virtual = false;
-        was_called = false;
-	anonymous_call = NULL;
+    Class(const std::wstring &f, const int l, const std::wstring &n, const std::wstring &p, 
+        vector<std::wstring> e, bool i) : ParseNode(f, l) {
+      name = n;
+      parent_name = p;            
+      interface_names = e;
+      is_interface = i;
+      id = -1;
+      parent = NULL;
+      lib_parent = NULL;
+      is_virtual = false;
+      was_called = false;
+      anonymous_call = NULL;
     }
 
     ~Class() {
@@ -2036,7 +2036,7 @@ namespace frontend {
     }
 
     vector<std::wstring> GetInterfaceNames() {
-      return interface_strings;
+      return interface_names;
     }
 
     const std::wstring& GetName() const {
