@@ -1999,23 +1999,20 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-    vector<std::wstring> interface_names;
-    vector<std::wstring> generic_names;
-    
+    vector<std::wstring> interface_strings;
+
     Class(const std::wstring &f, const int l, const std::wstring &n, 
-          const std::wstring &p, vector<std::wstring> e, 
-          vector<std::wstring> g, bool i) : ParseNode(f, l) {
+      const std::wstring &p, vector<std::wstring> e, bool i) : ParseNode(f, l) {
         name = n;
-        parent_name = p;       
-        interface_names = e;
-        generic_names = g;
+        parent_name = p;
         is_interface = i;
         id = -1;
         parent = NULL;
+        interface_strings = e;
         lib_parent = NULL;
         is_virtual = false;
         was_called = false;
-	      anonymous_call = NULL;
+	anonymous_call = NULL;
     }
 
     ~Class() {
@@ -2039,24 +2036,9 @@ namespace frontend {
     }
 
     vector<std::wstring> GetInterfaceNames() {
-      return interface_names;
+      return interface_strings;
     }
 
-    vector<std::wstring> GetGenericNames() {
-      return generic_names;
-    }
-    
-    bool IsGeneric() {
-      return !generic_names.empty();
-    }
-
-    bool HasGeneric(const wstring &name) {
-      std::vector<wstring>::iterator found = find(generic_names.begin(), generic_names.end(), name);
-      return found != generic_names.end();
-    }
-    
-    Class* GenericToSpecific(vector<std::wstring> &specific_names);
-    
     const std::wstring& GetName() const {
       return name;
     }
@@ -2626,9 +2608,9 @@ namespace frontend {
     }
 
     Class* MakeClass(const std::wstring &file_name, const int line_num, const std::wstring &name, 
-      const std::wstring &parent_name, vector<std::wstring> interfaces, vector<std::wstring> generics, 
+      const std::wstring &parent_name, vector<std::wstring> enforces, 
       bool is_interface) {
-        Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
+        Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
         nodes.push_back(tmp);
         return tmp;
     }

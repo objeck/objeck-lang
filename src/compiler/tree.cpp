@@ -253,13 +253,3 @@ Variable* Variable::Copy() {
 Declaration* Declaration::Copy() {
   return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy());
 }
-
-/****************************
- * Creates a specific class from
- * a generic
- ****************************/
-Class* Class::GenericToSpecific(vector<std::wstring> &specific_names) {
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, name, parent_name,
-                                                    interface_names, generic_names, is_interface);
-  return klass;
-}
