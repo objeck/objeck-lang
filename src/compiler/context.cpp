@@ -3792,7 +3792,15 @@ bool ContextAnalyzer::Analyze()
     if(!right) {
       right = expression->GetEvalType();
     }
-
+    
+    //
+    // generic cast
+    //
+    if(left && right && current_class->IsGeneric() && current_class->HasGeneric(left->GetClassName()) &&
+       current_class->HasGeneric(right->GetClassName()) && left->GetClassName() == right->GetClassName()) {
+      return;
+    }
+    
     //
     // program enum
     //
