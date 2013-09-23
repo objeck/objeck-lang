@@ -1935,7 +1935,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
                                                                   scope_name, type, false,
-                                                                  current_method != NULL, false);
+                                                                  current_method != NULL);
 
 #ifdef _DEBUG
     Show(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -1973,16 +1973,12 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
     // type
     Type* type = ParseType(depth + 1);
 
-    // check for generic type
-    const bool is_generic_type = type && type->GetType() == CLASS_TYPE && 
-        current_class->ContainsGeneric(type->GetClassName());
-
     // generic ids
     vector<wstring> generic_names;
     ParseGenerics(generic_names, depth + 1);
 
     // ensure we don't have a nested generic
-    if(is_generic_type && !generic_names.empty()) {
+    if(type->IsGeneric() && !generic_names.empty()) {
       ProcessError(L"Generic instance cannot contain generic parameters");
     }
 
@@ -1991,7 +1987,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
                                                                   scope_name, type, is_static,
-                                                                  current_method != NULL, is_generic_type);
+                                                                  current_method != NULL);
 
 #ifdef _DEBUG
     Show(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -3192,7 +3188,7 @@ For* Parser::ParseEach(int depth)
   const wstring count_scope_name = GetScopeName(count_ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
                                                                 count_scope_name, type, false,
-                                                                current_method != NULL, false);
+                                                                current_method != NULL);
 
 #ifdef _DEBUG
   Show(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
@@ -3468,6 +3464,9 @@ Type* Parser::ParseType(int depth)
   case TOKEN_IDENT: {
     const wstring ident = ParseBundleName();
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
+    if(current_class->ContainsGeneric(ident)) {
+      type->SetGeneric(true);
+    }
   }
     break;
 

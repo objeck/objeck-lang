@@ -1155,7 +1155,7 @@ bool ContextAnalyzer::Analyze()
       if(!entry) {
         entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
                                                          char_str->GetLineNumber(),
-                                                         scope_name, type, false, true, false);
+                                                         scope_name, type, false, true);
         current_table->AddEntry(entry, true);
       }
       char_str->SetConcat(entry);
@@ -1312,13 +1312,12 @@ bool ContextAnalyzer::Analyze()
     }
     // dynamic defined variable
     else if(current_method) {
-      // TODO: might be a generic
       const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
       SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(),
                                                                     variable->GetLineNumber(),
                                                                     scope_name,
                                                                     TypeFactory::Instance()->MakeType(VAR_TYPE),
-                                                                    false, true, false);
+                                                                    false, true);
       current_table->AddEntry(entry, true);
 
       // link entry and variable
@@ -3793,7 +3792,14 @@ bool ContextAnalyzer::Analyze()
     if(!right) {
       right = expression->GetEvalType();
     }
-    
+
+    //
+    // check generic
+    //
+    if(left && right && left->IsGeneric() && right->IsGeneric() && left->GetClassName() == right->GetClassName()) {
+      return;
+    }
+
     //
     // program enum
     //
