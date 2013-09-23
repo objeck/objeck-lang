@@ -462,7 +462,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
-                                                    interface_names, false);
+                                                    generic_names, interface_names, false);
   current_class = klass;
 
   // add '@self' entry
@@ -558,8 +558,9 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   }
 
   vector<wstring> interface_names;
+  vector<wstring> generic_names;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", 
-                                                    interface_names, true);
+                                                    generic_names, interface_names, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -2926,9 +2927,10 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
   
+  vector<wstring> generic_names;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
                                                     method_call->GetVariableName(),
-                                                    interface_names, true);
+                                                    generic_names, interface_names, true);
   
   Class* prev_class = current_class;
   prev_method = current_method;
