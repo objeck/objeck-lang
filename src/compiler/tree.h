@@ -110,15 +110,17 @@ namespace frontend {
     Type* type;
     bool is_static;
     bool is_local;
+    bool is_generic;
     bool is_self;
 
-    SymbolEntry(const std::wstring &f, int l, const std::wstring &n, Type* t, bool s, bool c, bool e = false) :
+    SymbolEntry(const std::wstring &f, int l, const std::wstring &n, Type* t, bool s, bool c, bool g, bool e = false) :
       ParseNode(f, l) {
         name = n;
         id = -1;
         type = t;
         is_static = s;
         is_local = c;
+        is_generic = g;
         is_self = e;
     }
 
@@ -2843,8 +2845,8 @@ namespace frontend {
     }
 
     SymbolEntry* MakeSymbolEntry(const std::wstring &f, int l, const std::wstring &n,
-      Type* t, bool s, bool c, bool e = false) {
-        SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
+      Type* t, bool s, bool c, bool g, bool e = false) {
+        SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, g, e);
         entries.push_back(tmp);
         return tmp;
     }
