@@ -1973,10 +1973,20 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
     // type
     Type* type = ParseType(depth + 1);
 
+    // check for generic type
+    const bool is_generic_type = type && type->GetType() == CLASS_TYPE && 
+        current_class->ContainsGeneric(type->GetClassName());
+
     // generic ids
     vector<wstring> generic_names;
     ParseGenerics(generic_names, depth + 1);
 
+    // ensure we don't have a nested generic
+    if(is_generic_type && !generic_names.empty()) {
+      ProcessError(L"Generic instance cannot contain generic parameters");
+    }
+
+    // TODO: set generic flag
     // add entry
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,

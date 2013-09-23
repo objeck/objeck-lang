@@ -802,6 +802,8 @@ class ContextAnalyzer {
   }
 
   inline bool ResolveClassEnumType(Type* type) {
+
+
     Class* klass = SearchProgramClasses(type->GetClassName());
     if(klass) {
       klass->SetCalled(true);
