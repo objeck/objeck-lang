@@ -2041,7 +2041,7 @@ namespace frontend {
       return !generic_names.empty();
     }
 
-    bool ContainsGeneric(std::wstring &name) {
+    bool ContainsGeneric(std::wstring name) {
       std::vector<std::wstring>::iterator found = find(generic_names.begin(), generic_names.end(), name);
       return found != generic_names.end();
     }
