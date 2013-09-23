@@ -120,16 +120,18 @@ namespace frontend {
     std::wstring class_name;
     vector<Type*> func_params;
     Type* func_rtrn;
+    bool is_generic;
     int func_param_count;
     
     Type(Type* t) {
       if(t) {
-	type = t->type;
-	dimension = t->dimension;
-	class_name = t->class_name;
-	func_rtrn = t->func_rtrn;
-	func_params = t->func_params;
-	func_param_count = -1;
+        type = t->type;
+        dimension = t->dimension;
+        class_name = t->class_name;
+        func_rtrn = t->func_rtrn;
+        func_params = t->func_params;
+        is_generic = t->is_generic;;
+        func_param_count = -1;
       }
     }
     
@@ -137,6 +139,7 @@ namespace frontend {
       type = t;
       dimension = 0;
       func_rtrn = NULL;
+      is_generic = false;
       func_param_count = -1;
     }
 
@@ -145,6 +148,7 @@ namespace frontend {
       class_name = n;
       dimension = 0;
       func_rtrn = NULL;
+      is_generic = false;
       func_param_count = -1;
     }
     
@@ -153,6 +157,7 @@ namespace frontend {
       dimension = 0;
       func_params = p;
       func_rtrn = r;
+      is_generic = false;
       func_param_count = -1;
     }
     
@@ -180,7 +185,7 @@ namespace frontend {
 
     int GetFunctionParameterCount() {
       if(func_param_count < 0) {
-	return func_params.size();
+        return func_params.size();
       }
 
       return func_param_count;
@@ -208,6 +213,14 @@ namespace frontend {
 
     const std::wstring GetClassName() {
       return class_name;
+    }
+
+    void SetGeneric(bool g) {
+      is_generic = g;
+    }
+
+    const bool IsGeneric() {
+      return is_generic;
     }
   };
 
