@@ -802,34 +802,33 @@ class ContextAnalyzer {
   }
 
   inline bool ResolveClassEnumType(Type* type) {
-    bool found = false;
     Class* klass = SearchProgramClasses(type->GetClassName());
     if(klass) {
       klass->SetCalled(true);
       type->SetClassName(klass->GetName());
-      found = true;
+      return true;
     }
 
     LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
     if(lib_klass) {
       lib_klass->SetCalled(true);
       type->SetClassName(lib_klass->GetName());
-      found = true;
+      return true;
     }
 
     Enum* eenum = SearchProgramEnums(type->GetClassName());
     if(eenum) {
       type->SetClassName(eenum->GetName());
-      found = true;
+      return true;
     }
 
     LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
     if(lib_eenum) {
       type->SetClassName(lib_eenum->GetName());
-      found = true;
+      return true;
     }
 
-    return found;
+    return false;
   }
 
   bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {

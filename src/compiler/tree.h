@@ -1999,12 +1999,14 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
+    vector<std::wstring> generic_names;
     vector<std::wstring> interface_names;
 
     Class(const std::wstring &f, const int l, const std::wstring &n, const std::wstring &p, 
-        vector<std::wstring> e, bool i) : ParseNode(f, l) {
+        vector<std::wstring> g, vector<std::wstring> e, bool i) : ParseNode(f, l) {
       name = n;
-      parent_name = p;            
+      parent_name = p;    
+      generic_names = g;
       interface_names = e;
       is_interface = i;
       id = -1;
@@ -2033,6 +2035,15 @@ namespace frontend {
 
     bool GetCalled() {
       return was_called;
+    }
+
+    bool IsGeneric() {
+      return !generic_names.empty();
+    }
+
+    bool ContainsGeneric(std::wstring &name) {
+      std::vector<std::wstring>::iterator found = find(generic_names.begin(), generic_names.end(), name);
+      return found != generic_names.end();
     }
 
     vector<std::wstring> GetInterfaceNames() {
@@ -2608,9 +2619,9 @@ namespace frontend {
     }
 
     Class* MakeClass(const std::wstring &file_name, const int line_num, const std::wstring &name, 
-      const std::wstring &parent_name, vector<std::wstring> enforces, 
+      const std::wstring &parent_name, vector<std::wstring> generics, vector<std::wstring> interfaces, 
       bool is_interface) {
-        Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
+        Class* tmp = new Class(file_name, line_num, name, parent_name, generics, interfaces, is_interface);
         nodes.push_back(tmp);
         return tmp;
     }
