@@ -468,7 +468,7 @@ void Scanner::CheckIdentifier(int index)
     tokens[index]->SetFileName(filename);
 
   }
-  catch(const std::out_of_range& e) {
+  catch(const out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
