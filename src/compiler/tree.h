@@ -106,13 +106,13 @@ namespace frontend {
     friend class TreeFactory;
     vector<Variable*> variables;
     int id;
-    std::wstring name;
+    wstring name;
     Type* type;
     bool is_static;
     bool is_local;
     bool is_self;
 
-    SymbolEntry(const std::wstring &f, int l, const std::wstring &n, Type* t, bool s, bool c, bool e = false) :
+    SymbolEntry(const wstring &f, int l, const wstring &n, Type* t, bool s, bool c, bool e = false) :
       ParseNode(f, l) {
         name = n;
         id = -1;
@@ -143,7 +143,7 @@ namespace frontend {
       return is_local;
     }
 
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
@@ -167,7 +167,7 @@ namespace frontend {
   * ScopeTable class
   ****************************/
   class ScopeTable {
-    map<const std::wstring, SymbolEntry*> entries;
+    map<const wstring, SymbolEntry*> entries;
     ScopeTable* parent;
     vector<ScopeTable*> children;
     int child_pos;
@@ -191,7 +191,7 @@ namespace frontend {
 
     vector<SymbolEntry*> GetEntries() {
       vector<SymbolEntry*> entries_list;
-      map<const std::wstring, SymbolEntry*>::iterator iter;
+      map<const wstring, SymbolEntry*>::iterator iter;
       for(iter = entries.begin(); iter != entries.end(); ++iter) {
         SymbolEntry* entry = iter->second;
         entries_list.push_back(entry);
@@ -200,8 +200,8 @@ namespace frontend {
       return entries_list;
     }
 
-    SymbolEntry* GetEntry(const std::wstring &name) {
-      map<const std::wstring, SymbolEntry*>::iterator result = entries.find(name);
+    SymbolEntry* GetEntry(const wstring &name) {
+      map<const wstring, SymbolEntry*>::iterator result = entries.find(name);
       if(result != entries.end()) {
         return result->second;
       }
@@ -214,7 +214,7 @@ namespace frontend {
         return false;
       }
       // add
-      entries.insert(pair<std::wstring, SymbolEntry*>(e->GetName(), e));
+      entries.insert(pair<wstring, SymbolEntry*>(e->GetName(), e));
       return true;
     }
 
@@ -256,7 +256,7 @@ namespace frontend {
       return entries;
     }
 
-    SymbolEntry* GetEntry(const std::wstring &name) {
+    SymbolEntry* GetEntry(const wstring &name) {
       ScopeTable* tmp = iter_ptr;
       while(tmp) {
         SymbolEntry* entry = tmp->GetEntry(name);
@@ -328,7 +328,7 @@ namespace frontend {
   ****************************/
   class SymbolTableManager {
     stack<SymbolTable*> scope;
-    map<const std::wstring, SymbolTable*> tables;
+    map<const wstring, SymbolTable*> tables;
 
   public:
     SymbolTableManager() {
@@ -336,7 +336,7 @@ namespace frontend {
 
     ~SymbolTableManager() {
       // clean up
-      map<const std::wstring, SymbolTable*>::iterator iter;
+      map<const wstring, SymbolTable*>::iterator iter;
       for(iter = tables.begin(); iter != tables.end(); ++iter) {
         SymbolTable* tmp = iter->second;
         delete tmp;
@@ -349,12 +349,12 @@ namespace frontend {
       scope.push(new SymbolTable);
     }
 
-    void PreviousParseScope(const std::wstring &namescope) {
+    void PreviousParseScope(const wstring &namescope) {
       if(GetSymbolTable(namescope)) {
         return;
       }
 
-      tables.insert(pair<std::wstring, SymbolTable*>(namescope, scope.top()));
+      tables.insert(pair<wstring, SymbolTable*>(namescope, scope.top()));
       scope.pop();
     }
 
@@ -362,9 +362,9 @@ namespace frontend {
       return scope.top();
     }
 
-    vector<SymbolEntry*> GetEntries(const std::wstring &namescope) {
+    vector<SymbolEntry*> GetEntries(const wstring &namescope) {
       vector<SymbolEntry*> entries;
-      map<const std::wstring, SymbolTable*>::iterator result = tables.find(namescope);
+      map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
         entries = result->second->GetEntries();
       }
@@ -372,8 +372,8 @@ namespace frontend {
       return entries;
     }
 
-    SymbolTable* GetSymbolTable(const std::wstring &namescope) {
-      map<const std::wstring, SymbolTable*>::iterator result = tables.find(namescope);
+    SymbolTable* GetSymbolTable(const wstring &namescope) {
+      map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
         return result->second;
       }
@@ -387,7 +387,7 @@ namespace frontend {
   ****************************/
   class Statement : public ParseNode {
   public:
-    Statement(const std::wstring &f, const int l) : ParseNode(f, l) {
+    Statement(const wstring &f, const int l) : ParseNode(f, l) {
     }
 
     virtual ~Statement() {
@@ -469,7 +469,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-    Expression(const std::wstring &f, const int l) : ParseNode(f, l) {
+    Expression(const wstring &f, const int l) : ParseNode(f, l) {
       base_type = eval_type = cast_type = type_of = NULL;
       method_call = NULL;
       prev_expr = NULL;
@@ -477,7 +477,7 @@ namespace frontend {
       to_lib_class = NULL;
     }
 
-    Expression(const std::wstring &f, const int l, Type* t) : ParseNode(f, l) {
+    Expression(const wstring &f, const int l, Type* t) : ParseNode(f, l) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = NULL;
       method_call = NULL;
@@ -635,7 +635,7 @@ namespace frontend {
     }
 
   public:
-    StaticArray(const std::wstring &f, int l, ExpressionList* e) : Expression(f, l) {
+    StaticArray(const wstring &f, int l, ExpressionList* e) : Expression(f, l) {
       elements = e;
       all_elements = NULL;
       matching_types = matching_lengths = true;
@@ -717,13 +717,13 @@ namespace frontend {
   class CharacterStringSegment {
     CharacterStringSegmentType type;
     int id;
-    std::wstring str;
+    wstring str;
     SymbolEntry* entry;
     Method* method;
     LibraryMethod* lib_method;
 
   public:
-    CharacterStringSegment(const std::wstring &s) {
+    CharacterStringSegment(const wstring &s) {
       type = STRING;
       str = s;
       entry = NULL;
@@ -763,7 +763,7 @@ namespace frontend {
     ~CharacterStringSegment() {
     }
 
-    const std::wstring GetString() {
+    const wstring GetString() {
       return str;
     }
 
@@ -791,11 +791,11 @@ namespace frontend {
   class CharacterString : public Expression {
     friend class TreeFactory;
     bool is_processed;
-    std::wstring char_string;
+    wstring char_string;
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-    CharacterString(const std::wstring &f, int l, const std::wstring &c) :
+    CharacterString(const wstring &f, int l, const wstring &c) :
       Expression(f, l, Type::CharStringType()) {
         char_string = c;
         is_processed = false;
@@ -829,13 +829,13 @@ namespace frontend {
       return concat;
     }
 
-    const std::wstring& GetString() const {
+    const wstring& GetString() const {
       return char_string;
     }
 
-    void AddSegment(const std::wstring &orig) {
+    void AddSegment(const wstring &orig) {
       if(!is_processed) {
-        std::wstring escaped_str;	
+        wstring escaped_str;	
         int skip = 2;
         for(size_t i = 0; i < orig.size(); ++i) {
           wchar_t c = orig[i];
@@ -939,7 +939,7 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-    CalculatedExpression(const std::wstring &f, int l, ExpressionType t) :
+    CalculatedExpression(const wstring &f, int l, ExpressionType t) :
       Expression(f, l) {
         left = right = NULL;
         type = t;
@@ -976,11 +976,11 @@ namespace frontend {
   class Variable : public Expression {
     friend class TreeFactory;
     int id;
-    std::wstring name;
+    wstring name;
     ExpressionList* indices;
     SymbolEntry* entry;
 
-    Variable(const std::wstring &f, int l, const std::wstring &n) : Expression(f, l) {
+    Variable(const wstring &f, int l, const wstring &n) : Expression(f, l) {
       name = n;
       indices = NULL;
       entry = NULL;
@@ -991,7 +991,7 @@ namespace frontend {
     }
 
   public:
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
@@ -1033,7 +1033,7 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-    BooleanLiteral(const std::wstring &f, const int l, bool v) :
+    BooleanLiteral(const wstring &f, const int l, bool v) :
       Expression(f, l, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
         value = v;
     }
@@ -1057,7 +1057,7 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const std::wstring &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+    NilLiteral(const wstring &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
     }
 
     ~NilLiteral() {
@@ -1076,7 +1076,7 @@ namespace frontend {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const std::wstring &f, const int l, wchar_t v) :
+    CharacterLiteral(const wstring &f, const int l, wchar_t v) :
       Expression(f, l, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
         value = v;
     }
@@ -1101,7 +1101,7 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-    IntegerLiteral(const std::wstring &f, const int l, INT_VALUE v) :
+    IntegerLiteral(const wstring &f, const int l, INT_VALUE v) :
       Expression(f, l, TypeFactory::Instance()->MakeType(INT_TYPE)) {
         value = v;
     }
@@ -1126,7 +1126,7 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-    FloatLiteral(const std::wstring &f, const int l, FLOAT_VALUE v) :
+    FloatLiteral(const wstring &f, const int l, FLOAT_VALUE v) :
       Expression(f, l, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
         value = v;
     }
@@ -1154,7 +1154,7 @@ namespace frontend {
     Expression* else_expression;
     Cond* next;
 
-    Cond(const std::wstring &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
+    Cond(const wstring &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1192,7 +1192,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    Return(const std::wstring &f, const int l, Expression* e) : Statement(f, l) {
+    Return(const wstring &f, const int l, Expression* e) : Statement(f, l) {
       expression = e;
     }
 
@@ -1215,7 +1215,7 @@ namespace frontend {
   class Break : public Statement {
     friend class TreeFactory;
 
-    Break(const std::wstring &f, const int l) : Statement(f, l) {
+    Break(const wstring &f, const int l) : Statement(f, l) {
     }
 
     ~Break() {
@@ -1237,7 +1237,7 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const std::wstring &f, const int l, Expression* e, StatementList* s, If* n = NULL) :
+    If(const wstring &f, const int l, Expression* e, StatementList* s, If* n = NULL) :
       Statement(f, l) {
         expression = e;
         if_statements = s;
@@ -1279,11 +1279,11 @@ namespace frontend {
   ****************************/
   class EnumItem : public ParseNode {
     friend class TreeFactory;
-    std::wstring name;
+    wstring name;
     int id;
     Enum* eenum;
 
-    EnumItem(const std::wstring &f, const int l, const std::wstring &n, Enum* e) :
+    EnumItem(const wstring &f, const int l, const wstring &n, Enum* e) :
       ParseNode(f, l) {
         name = n;
         id = -1;
@@ -1294,7 +1294,7 @@ namespace frontend {
     }
 
   public:
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
@@ -1316,12 +1316,12 @@ namespace frontend {
   ****************************/
   class Enum : public ParseNode {
     friend class TreeFactory;
-    std::wstring name;
+    wstring name;
     int offset;
     int index;
-    map<const std::wstring, EnumItem*> items;
+    map<const wstring, EnumItem*> items;
 
-    Enum(const std::wstring &f, const int l, std::wstring &n, int o) :
+    Enum(const wstring &f, const int l, wstring &n, int o) :
       ParseNode(f, l) {
         name = n;
         index = offset = o;
@@ -1333,11 +1333,11 @@ namespace frontend {
   public:
     void AddItem(EnumItem* e) {
       e->SetId(index++);
-      items.insert(pair<const std::wstring, EnumItem*>(e->GetName(), e));
+      items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
     }
 
-    EnumItem* GetItem(const std::wstring &i) {
-      map<const std::wstring, EnumItem*>::iterator result = items.find(i);
+    EnumItem* GetItem(const wstring &i) {
+      map<const wstring, EnumItem*>::iterator result = items.find(i);
       if(result != items.end()) {
         return result->second;
       }
@@ -1345,7 +1345,7 @@ namespace frontend {
       return NULL;
     }
 
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
@@ -1353,7 +1353,7 @@ namespace frontend {
       return offset;
     }
 
-    map<const std::wstring, EnumItem*> GetItems() {
+    map<const wstring, EnumItem*> GetItems() {
       return items;
     }
   };
@@ -1369,7 +1369,7 @@ namespace frontend {
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-    Select(const std::wstring &f, const int l, Expression* e, 
+    Select(const wstring &f, const int l, Expression* e, 
       map<ExpressionList*, StatementList*> s, 
       vector<StatementList*> sl, StatementList* o) :
     Statement(f, l) {
@@ -1420,7 +1420,7 @@ namespace frontend {
     StatementList* statements;
 
   public:
-    CriticalSection(const std::wstring &f, const int l, Variable* v, StatementList* s) : Statement(f, l) {
+    CriticalSection(const wstring &f, const int l, Variable* v, StatementList* s) : Statement(f, l) {
       variable = v;
       statements = s;
     }
@@ -1451,7 +1451,7 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-    For(const std::wstring &f, const int l, Statement* pre, Expression* cond,
+    For(const wstring &f, const int l, Statement* pre, Expression* cond,
       Statement* update, StatementList* stmts) : Statement(f, l) {
         pre_stmt = pre;
         cond_expr = cond;
@@ -1492,7 +1492,7 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    DoWhile(const std::wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
+    DoWhile(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
       expression = e;
       statements = s;
     }
@@ -1522,7 +1522,7 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    While(const std::wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
+    While(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
       expression = e;
       statements = s;
     }
@@ -1551,7 +1551,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const std::wstring &f, const int l, int i) : Statement(f, l) {
+    SystemStatement(const wstring &f, const int l, int i) : Statement(f, l) {
       id = i;
     }
 
@@ -1575,7 +1575,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const std::wstring &f, const int l, Expression* e) :
+    SimpleStatement(const wstring &f, const int l, Expression* e) :
       Statement(f, l) {
         expression = e;
     }
@@ -1600,7 +1600,7 @@ namespace frontend {
     friend class TreeFactory;
 
   public:
-    EmptyStatement(const std::wstring &f, const int l) : Statement(f, l) {
+    EmptyStatement(const wstring &f, const int l) : Statement(f, l) {
     }
     
     ~EmptyStatement() {
@@ -1620,7 +1620,7 @@ namespace frontend {
     Variable* variable;
     Expression* expression;
 
-    Assignment(const std::wstring &f, const int l, Variable* v, Expression* e) :
+    Assignment(const wstring &f, const int l, Variable* v, Expression* e) :
       Statement(f, l) {
         variable = v;
         expression = e;
@@ -1650,7 +1650,7 @@ namespace frontend {
     friend class TreeFactory;
     StatementType stmt_type;
 
-    OperationAssignment(const std::wstring &f, const int l, Variable* v, 
+    OperationAssignment(const wstring &f, const int l, Variable* v, 
       Expression* e, StatementType t) : 
     Assignment(f, l, v, e) {
       stmt_type = t;
@@ -1673,13 +1673,13 @@ namespace frontend {
     SymbolEntry* entry;
     Assignment* assignment;
 
-    Declaration(const std::wstring &f, const int l, SymbolEntry* e, Assignment* a) :
+    Declaration(const wstring &f, const int l, SymbolEntry* e, Assignment* a) :
       Statement(f, l) {
         entry = e;
         assignment = a;
     }
 
-    Declaration(const std::wstring &f, const int l, SymbolEntry* e) :
+    Declaration(const wstring &f, const int l, SymbolEntry* e) :
       Statement(f, l) {
         entry = e;
         assignment = NULL;
@@ -1734,12 +1734,12 @@ namespace frontend {
   class Method : public ParseNode {
     friend class TreeFactory;
     int id;
-    std::wstring name;
-    std::wstring parsed_name;
-    std::wstring encoded_name;
+    wstring name;
+    wstring parsed_name;
+    wstring encoded_name;
 
-    std::wstring encoded_return;
-    std::wstring parsed_return;
+    wstring encoded_return;
+    wstring parsed_return;
 
     StatementList* statements;
     DeclarationList* declarations;
@@ -1751,7 +1751,7 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 
-    Method(const std::wstring &f, const int l, const std::wstring &n, MethodType m, bool s, bool c) :
+    Method(const wstring &f, const int l, const wstring &n, MethodType m, bool s, bool c) :
       ParseNode(f, l) {
         name = n;
         method_type = m;
@@ -1767,14 +1767,14 @@ namespace frontend {
     ~Method() {
     }
 
-    std::wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
+    wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
 
     /****************************
     * Encodes a function type
     ****************************/
-    std::wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
+    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
       ParsedProgram* program, Linker* linker) {  
-        std::wstring encoded_name = L"(";
+        wstring encoded_name = L"(";
         for(size_t i = 0; i < func_params.size(); ++i) {
           // encode params
           encoded_name += EncodeType(func_params[i], program, linker);
@@ -1793,8 +1793,8 @@ namespace frontend {
         return encoded_name;
     }
 
-    std::wstring EncodeType(Type* type) {
-      std::wstring name;
+    wstring EncodeType(Type* type) {
+      wstring name;
       if(type) {
         // type
         switch(type->GetType()) {
@@ -1928,11 +1928,11 @@ namespace frontend {
       return symbol_table;
     }
 
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
-    const std::wstring& GetParsedName() {
+    const wstring& GetParsedName() {
       if(parsed_name.size() == 0) {
         EncodeSignature();
       }
@@ -1940,15 +1940,15 @@ namespace frontend {
       return parsed_name;
     }
 
-    const std::wstring& GetEncodedName() const {
+    const wstring& GetEncodedName() const {
       return encoded_name;
     }
 
-    const std::wstring& GetParsedReturn() const {
+    const wstring& GetParsedReturn() const {
       return parsed_return;
     }
 
-    const std::wstring& GetEncodedReturn() {
+    const wstring& GetEncodedReturn() {
       if(encoded_return.size() == 0) {
         EncodeSignature();
       }
@@ -1983,10 +1983,10 @@ namespace frontend {
   class Class : public ParseNode {
     friend class TreeFactory;
     int id;
-    std::wstring name;
-    std::wstring parent_name;
-    multimap<const std::wstring, Method*> unqualified_methods;
-    map<const std::wstring, Method*> methods;
+    wstring name;
+    wstring parent_name;
+    multimap<const wstring, Method*> unqualified_methods;
+    map<const wstring, Method*> methods;
     vector<Method*> method_list;
     vector<Statement*> statements;
     SymbolTable* symbol_table;
@@ -1999,22 +1999,20 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-    vector<std::wstring> generic_names;
-    vector<std::wstring> interface_names;
+    vector<wstring> interface_strings;
 
-    Class(const std::wstring &f, const int l, const std::wstring &n, const std::wstring &p, 
-        vector<std::wstring> g, vector<std::wstring> e, bool i) : ParseNode(f, l) {
-      name = n;
-      parent_name = p;    
-      generic_names = g;
-      interface_names = e;
-      is_interface = i;
-      id = -1;
-      parent = NULL;
-      lib_parent = NULL;
-      is_virtual = false;
-      was_called = false;
-      anonymous_call = NULL;
+    Class(const wstring &f, const int l, const wstring &n, 
+      const wstring &p, vector<wstring> e, bool i) : ParseNode(f, l) {
+        name = n;
+        parent_name = p;
+        is_interface = i;
+        id = -1;
+        parent = NULL;
+        interface_strings = e;
+        lib_parent = NULL;
+        is_virtual = false;
+        was_called = false;
+	anonymous_call = NULL;
     }
 
     ~Class() {
@@ -2037,28 +2035,19 @@ namespace frontend {
       return was_called;
     }
 
-    bool IsGeneric() {
-      return !generic_names.empty();
+    vector<wstring> GetInterfaceNames() {
+      return interface_strings;
     }
 
-    bool ContainsGeneric(std::wstring name) {
-      std::vector<std::wstring>::iterator found = find(generic_names.begin(), generic_names.end(), name);
-      return found != generic_names.end();
-    }
-
-    vector<std::wstring> GetInterfaceNames() {
-      return interface_names;
-    }
-
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
-    const std::wstring& GetParentName() const {
+    const wstring& GetParentName() const {
       return parent_name;
     }
 
-    void SetParentName(std::wstring n) {
+    void SetParentName(wstring n) {
       parent_name = n;
     }
 
@@ -2079,7 +2068,7 @@ namespace frontend {
     }
     
     bool AddMethod(Method* m) {
-      const std::wstring &parsed_name = m->GetParsedName();
+      const wstring &parsed_name = m->GetParsedName();
       for(size_t i = 0; i < method_list.size(); ++i) {
         if(method_list[i]->GetParsedName() == parsed_name) {
           return false;
@@ -2111,8 +2100,8 @@ namespace frontend {
       return statements;
     }
 
-    Method* GetMethod(const std::wstring &n) {
-      map<const std::wstring, Method*>::iterator result = methods.find(n);
+    Method* GetMethod(const wstring &n) {
+      map<const wstring, Method*>::iterator result = methods.find(n);
       if(result != methods.end()) {
         return result->second;
       }
@@ -2120,12 +2109,12 @@ namespace frontend {
       return NULL;
     }
 
-    vector<Method*> GetUnqualifiedMethods(const std::wstring &n) {
+    vector<Method*> GetUnqualifiedMethods(const wstring &n) {
       vector<Method*> results;
-      pair<multimap<const std::wstring, Method*>::iterator, 
-        multimap<const std::wstring, Method*>::iterator> result;
+      pair<multimap<const wstring, Method*>::iterator, 
+        multimap<const wstring, Method*>::iterator> result;
       result = unqualified_methods.equal_range(n);
-      multimap<const std::wstring, Method*>::iterator iter = result.first;
+      multimap<const wstring, Method*>::iterator iter = result.first;
       for(iter = result.first; iter != result.second; ++iter) {
         results.push_back(iter->second);
       }
@@ -2133,7 +2122,7 @@ namespace frontend {
       return results;
     }
 
-    vector<Method*> GetAllUnqualifiedMethods(const std::wstring &n) {
+    vector<Method*> GetAllUnqualifiedMethods(const wstring &n) {
       if(n == L"New") {
         return GetUnqualifiedMethods(n);
       }
@@ -2197,16 +2186,16 @@ namespace frontend {
     void AssociateMethods() {
       for(size_t i = 0; i < method_list.size(); ++i) {
         Method* method = method_list[i];
-        methods.insert(pair<std::wstring, Method*>(method->GetEncodedName(), method));
+        methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
 
         // add to unqualified names to list
-        const std::wstring &encoded_name = method->GetEncodedName();
+        const wstring &encoded_name = method->GetEncodedName();
         const int start = encoded_name.find(':');
         if(start > -1) {
           const int end = encoded_name.find(':', start + 1);
           if(end > -1) {
-            const std::wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-            unqualified_methods.insert(pair<std::wstring, Method*>(unqualified_name, method));
+            const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+            unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
           }
         }
       }
@@ -2225,8 +2214,8 @@ namespace frontend {
     LibraryClass* original_lib_klass;
     LibraryMethod* lib_method;
     LibraryEnumItem* lib_enum_item;
-    std::wstring variable_name;
-    std::wstring method_name;
+    wstring variable_name;
+    wstring method_name;
     ExpressionList* expressions;
     SymbolEntry* entry;
     MethodCallType call_type;
@@ -2238,8 +2227,8 @@ namespace frontend {
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
 
-    MethodCall(const std::wstring &f, const int l, MethodCallType t,
-      const std::wstring &v, ExpressionList* e) :
+    MethodCall(const wstring &f, const int l, MethodCallType t,
+      const wstring &v, ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = t;
@@ -2287,8 +2276,8 @@ namespace frontend {
       SetEvalType(array_type, false);
     }
 
-    MethodCall(const std::wstring &f, const int l,
-      const std::wstring &v, const std::wstring &m,
+    MethodCall(const wstring &f, const int l,
+      const wstring &v, const wstring &m,
       ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
@@ -2310,8 +2299,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-    MethodCall(const std::wstring &f, const int l,
-      const std::wstring &v, const std::wstring &m) :
+    MethodCall(const wstring &f, const int l,
+      const wstring &v, const wstring &m) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = ENUM_CALL;
@@ -2332,8 +2321,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-    MethodCall(const std::wstring &f, const int l,
-      Variable* v, const std::wstring &m,
+    MethodCall(const wstring &f, const int l,
+      Variable* v, const wstring &m,
       ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable = v;
@@ -2400,11 +2389,11 @@ namespace frontend {
       return array_type;
     }
 
-    const std::wstring& GetVariableName() const {
+    const wstring& GetVariableName() const {
       return variable_name;
     }
 
-    void SetVariableName(const std::wstring v) {
+    void SetVariableName(const wstring v) {
       variable_name = v;
     }
 
@@ -2424,7 +2413,7 @@ namespace frontend {
       return entry;
     }
 
-    const std::wstring& GetMethodName() const {
+    const wstring& GetMethodName() const {
       return method_name;
     }
 
@@ -2440,7 +2429,7 @@ namespace frontend {
       return expressions;
     }
 
-    void SetEnumItem(EnumItem* i, const std::wstring &enum_name) {
+    void SetEnumItem(EnumItem* i, const wstring &enum_name) {
       enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2455,7 +2444,7 @@ namespace frontend {
       }
     }
 
-    void SetLibraryEnumItem(LibraryEnumItem* i, const std::wstring &enum_name) {
+    void SetLibraryEnumItem(LibraryEnumItem* i, const wstring &enum_name) {
       lib_enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2606,27 +2595,27 @@ namespace frontend {
       instance = NULL;
     }
 
-    Enum* MakeEnum(const std::wstring &file_name, const int line_num, std::wstring &name, int offset) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    EnumItem* MakeEnumItem(const std::wstring &file_name, const int line_num, const std::wstring &name, Enum* e) {
+    EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const wstring &name, Enum* e) {
       EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const std::wstring &file_name, const int line_num, const std::wstring &name, 
-      const std::wstring &parent_name, vector<std::wstring> generics, vector<std::wstring> interfaces, 
+    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
+      const wstring &parent_name, vector<wstring> enforces, 
       bool is_interface) {
-        Class* tmp = new Class(file_name, line_num, name, parent_name, generics, interfaces, is_interface);
+        Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
         nodes.push_back(tmp);
         return tmp;
     }
 
-    Method* MakeMethod(const std::wstring &file_name, const int line_num, const std::wstring &name, MethodType type, bool is_function, bool is_native) {
+    Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
@@ -2650,168 +2639,168 @@ namespace frontend {
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const std::wstring &file_name, const int line_num, instructions::InstructionType instr) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::InstructionType instr) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const std::wstring &file_name, const int line_num, instructions::Traps trap) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::Traps trap) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SimpleStatement* MakeSimpleStatement(const std::wstring &file_name, const int line_num, Expression* expression) {
+    SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, Expression* expression) {
       SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    EmptyStatement* MakeEmptyStatement(const std::wstring &file_name, const int line_num) {
+    EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num) {
       EmptyStatement*  tmp = new EmptyStatement(file_name, line_num);
       statements.push_back(tmp);
       return tmp;
     }
     
-    Variable* MakeVariable(const std::wstring &file_name, int line_num, const std::wstring &name) {
+    Variable* MakeVariable(const wstring &file_name, int line_num, const wstring &name) {
       Variable* tmp = new Variable(file_name, line_num, name);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Cond* MakeCond(const std::wstring &f, const int l, Expression* c, Expression* s, Expression* e) {
+    Cond* MakeCond(const wstring &f, const int l, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(f, l, c, s, e);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    StaticArray* MakeStaticArray(const std::wstring &file_name, int line_num, ExpressionList* exprs) {
+    StaticArray* MakeStaticArray(const wstring &file_name, int line_num, ExpressionList* exprs) {
       StaticArray* tmp = new StaticArray(file_name, line_num, exprs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const std::wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const std::wstring &file_name, const int line_num, SymbolEntry* entry) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry) {
       Declaration* tmp = new Declaration(file_name, line_num, entry);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const std::wstring &file_name, int line_num, ExpressionType type) {
+    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, ExpressionType type) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const std::wstring &file_name, const int line_num, INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, INT_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(const std::wstring &file_name, const int line_num, FLOAT_VALUE value) {
+    FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, FLOAT_VALUE value) {
       FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterLiteral* MakeCharacterLiteral(const std::wstring &file_name, const int line_num, wchar_t value) {
+    CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, wchar_t value) {
       CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const std::wstring &file_name, const int line_num, const std::wstring &char_string) {
+    CharacterString* MakeCharacterString(const wstring &file_name, const int line_num, const wstring &char_string) {
       CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    NilLiteral* MakeNilLiteral(const std::wstring &file_name, const int line_num) {
+    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num) {
       NilLiteral* tmp = new NilLiteral(file_name, line_num);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    BooleanLiteral* MakeBooleanLiteral(const std::wstring &file_name, const int line_num, bool boolean) {
+    BooleanLiteral* MakeBooleanLiteral(const wstring &file_name, const int line_num, bool boolean) {
       BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const std::wstring &file_name, const int line_num, MethodCallType type,
-      const std::wstring &value, ExpressionList* exprs) {
+    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, MethodCallType type,
+      const wstring &value, ExpressionList* exprs) {
         MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
         calls.push_back(tmp);
         return tmp;
     }
 
-    MethodCall* MakeMethodCall(const std::wstring &f, const int l, const std::wstring &v, const std::wstring &m, ExpressionList* e) {
+    MethodCall* MakeMethodCall(const wstring &f, const int l, const wstring &v, const wstring &m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(f, l, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const std::wstring &f, const int l, const std::wstring &v, const std::wstring &m) {
+    MethodCall* MakeMethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) {
       MethodCall* tmp = new MethodCall(f, l, v, m);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const std::wstring &f, const int l, Variable* v, const std::wstring &m, ExpressionList* e) {
+    MethodCall* MakeMethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(f, l, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    If* MakeIf(const std::wstring &file_name, const int line_num, Expression* expression,
+    If* MakeIf(const wstring &file_name, const int line_num, Expression* expression,
       StatementList* if_statements, If* next = NULL) {
         If* tmp = new If(file_name, line_num, expression, if_statements, next);
         statements.push_back(tmp);
         return tmp;
     }
 
-    Break* MakeBreak(const std::wstring &file_name, const int line_num) {
+    Break* MakeBreak(const wstring &file_name, const int line_num) {
       Break* tmp = new Break(file_name, line_num);
       statements.push_back(tmp);
       return tmp;
     }
 
-    DoWhile* MakeDoWhile(const std::wstring &file_name, const int line_num,
+    DoWhile* MakeDoWhile(const wstring &file_name, const int line_num,
       Expression* expression, StatementList* stmts) {
         DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
         statements.push_back(tmp);
         return tmp;
     }
 
-    While* MakeWhile(const std::wstring &file_name, const int line_num,
+    While* MakeWhile(const wstring &file_name, const int line_num,
       Expression* expression, StatementList* stmts) {
         While* tmp = new While(file_name, line_num, expression, stmts);
         statements.push_back(tmp);
         return tmp;
     }
 
-    For* MakeFor(const std::wstring &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const wstring &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
       Statement* update_stmt, StatementList* stmts) {
         For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
         statements.push_back(tmp);
         return tmp;
     }
 
-    CriticalSection* MakeCriticalSection(const std::wstring &file_name, const int line_num, Variable* var, StatementList* stmts) {
+    CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Select* MakeSelect(const std::wstring &file_name, const int line_num, Expression* eval_expression,
+    Select* MakeSelect(const wstring &file_name, const int line_num, Expression* eval_expression,
       map<ExpressionList*, StatementList*> statement_map, 
       vector<StatementList*> statement_lists, StatementList* other) {
         Select* tmp = new Select(file_name, line_num, eval_expression, 
@@ -2820,20 +2809,20 @@ namespace frontend {
         return tmp;
     }
 
-    Return* MakeReturn(const std::wstring &file_name, const int line_num, Expression* expression) {
+    Return* MakeReturn(const wstring &file_name, const int line_num, Expression* expression) {
       Return* tmp = new Return(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Assignment* MakeAssignment(const std::wstring &file_name, const int line_num,
+    Assignment* MakeAssignment(const wstring &file_name, const int line_num,
       Variable* variable, Expression* expression) {
         Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
         statements.push_back(tmp);
         return tmp;
     }
 
-    OperationAssignment* MakeOperationAssignment(const std::wstring &file_name, const int line_num,
+    OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num,
       Variable* variable, Expression* expression, 
       StatementType stmt_type) {
         OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
@@ -2842,7 +2831,7 @@ namespace frontend {
         return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const std::wstring &f, int l, const std::wstring &n,
+    SymbolEntry* MakeSymbolEntry(const wstring &f, int l, const wstring &n,
       Type* t, bool s, bool c, bool e = false) {
         SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
         entries.push_back(tmp);
@@ -2854,15 +2843,15 @@ namespace frontend {
   * ParsedBundle class
   ****************************/
   class ParsedBundle {
-    std::wstring name;
+    wstring name;
     SymbolTableManager* symbol_table;
-    map<const std::wstring, Enum*> enums;
+    map<const wstring, Enum*> enums;
     vector<Enum*> enum_list;
-    map<const std::wstring, Class*> classes;
+    map<const wstring, Class*> classes;
     vector<Class*> class_list;
 
   public:
-    ParsedBundle(std::wstring &n, SymbolTableManager *t) {
+    ParsedBundle(wstring &n, SymbolTableManager *t) {
       name = n;
       symbol_table = t;
     }
@@ -2872,17 +2861,17 @@ namespace frontend {
       symbol_table = NULL;
     }
 
-    const std::wstring& GetName() const {
+    const wstring& GetName() const {
       return name;
     }
 
     void AddEnum(Enum* e) {
-      enums.insert(pair<std::wstring, Enum*>(e->GetName(), e));
+      enums.insert(pair<wstring, Enum*>(e->GetName(), e));
       enum_list.push_back(e);
     }
 
-    Enum* GetEnum(const std::wstring &e) {
-      map<const std::wstring, Enum*>::iterator result = enums.find(e);
+    Enum* GetEnum(const wstring &e) {
+      map<const wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
         return result->second;
       }
@@ -2891,12 +2880,12 @@ namespace frontend {
     }
 
     void AddClass(Class* cls) {
-      classes.insert(pair<std::wstring, Class*>(cls->GetName(), cls));
+      classes.insert(pair<wstring, Class*>(cls->GetName(), cls));
       class_list.push_back(cls);
     }
 
-    Class* GetClass(const std::wstring &n) {
-      map<const std::wstring, Class*>::iterator result = classes.find(n);
+    Class* GetClass(const wstring &n) {
+      map<const wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
         return result->second;
       }
@@ -2959,12 +2948,12 @@ namespace frontend {
     map<FloatStringHolder*, int, float_string_comp> float_string_ids;
     vector<FloatStringHolder*> float_strings;
 
-    map<std::wstring, int> char_string_ids;
-    vector<std::wstring> char_strings;
+    map<wstring, int> char_string_ids;
+    vector<wstring> char_strings;
 
-    vector<std::wstring> uses;
+    vector<wstring> uses;
     vector<ParsedBundle*> bundles;
-    vector<std::wstring> bundle_names;
+    vector<wstring> bundle_names;
     Class* start_class;
     Method* start_method;
     Linker* linker; // deleted elsewhere
@@ -3014,21 +3003,21 @@ namespace frontend {
       TypeFactory::Instance()->Clear();
     }
 
-    void AddUses(vector<std::wstring> u) {
+    void AddUses(vector<wstring> u) {
       for(size_t i = 0; i < u.size(); ++i) {
-        vector<std::wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
+        vector<wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
         if(found == uses.end()) {
           uses.push_back(u[i]);
         }
       }
     }
 
-    bool HasBundleName(const std::wstring& name) {
-      vector<std::wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
+    bool HasBundleName(const wstring& name) {
+      vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
       return found != bundle_names.end();
     }
 
-    const vector<std::wstring> GetUses() {
+    const vector<wstring> GetUses() {
       return uses;
     }
 
@@ -3134,13 +3123,13 @@ namespace frontend {
       return float_strings;
     }
 
-    void AddCharString(const std::wstring &s, int id) {
-      char_string_ids.insert(pair<std::wstring, int>(s, id));
+    void AddCharString(const wstring &s, int id) {
+      char_string_ids.insert(pair<wstring, int>(s, id));
       char_strings.push_back(s);
     }
 
-    int GetCharStringId(const std::wstring &s) {
-      map<std::wstring, int>::iterator result = char_string_ids.find(s);
+    int GetCharStringId(const wstring &s) {
+      map<wstring, int>::iterator result = char_string_ids.find(s);
       if(result != char_string_ids.end()) {
         return result->second;
       }
@@ -3148,11 +3137,11 @@ namespace frontend {
       return -1;
     }
 
-    vector<std::wstring> GetCharStrings() {
+    vector<wstring> GetCharStrings() {
       return char_strings;
     }
 
-    Class* GetClass(const std::wstring &n) {
+    Class* GetClass(const wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Class* klass = bundles[i]->GetClass(n);
         if(klass) {
@@ -3163,7 +3152,7 @@ namespace frontend {
       return NULL;
     }
 
-    Enum* GetEnum(const std::wstring &n) {
+    Enum* GetEnum(const wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Enum* e = bundles[i]->GetEnum(n);
         if(e) {

@@ -3794,13 +3794,6 @@ bool ContextAnalyzer::Analyze()
     }
 
     //
-    // check generic
-    //
-    if(left && right && left->IsGeneric() && right->IsGeneric() && left->GetClassName() == right->GetClassName()) {
-      return;
-    }
-
-    //
     // program enum
     //
     if(left && right && SearchProgramEnums(left->GetClassName())) {

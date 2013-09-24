@@ -368,9 +368,9 @@ void Library::LoadClasses()
       interface_names.push_back(ReadString());
     }
 
-    bool is_interface = (bool)ReadInt();
-    bool is_virtual = (bool)ReadInt();
-    bool is_debug = (bool)ReadInt();
+    bool is_interface = ReadInt() != 0;
+    bool is_virtual = ReadInt() != 0;
+    bool is_debug = ReadInt() != 0;
     wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -412,10 +412,10 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
   for(int i = 0; i < number; i++) {
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
-    bool is_virtual = (bool)ReadInt();
-    bool has_and_or = (bool)ReadInt();
-    bool is_native = (bool)ReadInt();
-    bool is_static = (bool)ReadInt();
+    bool is_virtual = ReadInt() != 0;
+    bool has_and_or = ReadInt() != 0;
+    bool is_native = ReadInt() != 0;
+    bool is_static = ReadInt() != 0;
     const wstring &name = ReadString();
     const wstring &rtrn_name = ReadString();
     int params = ReadInt();

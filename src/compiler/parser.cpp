@@ -407,10 +407,6 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   Show(L"[Class: name='" + cls_name + L"']", depth);
 #endif
 
-  // generic ids
-  vector<wstring> generic_names;
-  ParseGenerics(generic_names, depth + 1);
-
   // from id
   wstring parent_cls_name;
   if(Match(TOKEN_FROM_ID)) {
@@ -462,7 +458,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
-                                                    generic_names, interface_names, false);
+                                                    interface_names, false);
   current_class = klass;
 
   // add '@self' entry
@@ -557,10 +553,9 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  vector<wstring> interface_names;
-  vector<wstring> generic_names;
+  vector<wstring> interface_strings;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", 
-                                                    generic_names, interface_names, true);
+                                                    interface_strings, true);
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
@@ -1866,49 +1861,6 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 }
 
 /****************************
- * Parses generic names
- ****************************/
-void Parser::ParseGenerics(vector<wstring> &generic_names, int depth) {
-  const int line_num = GetLineNumber();
-  const wstring &file_name = GetFileName();
-  
-  if(Match(TOKEN_LES)) {
-#ifdef _DEBUG
-  Show(L"Generics", depth);
-#endif
-
-    NextToken();
-
-    bool found_error = false;
-    while(!Match(TOKEN_GTR) && !found_error && !Match(TOKEN_END_OF_STREAM)) {
-      if(!Match(TOKEN_IDENT)) {
-        ProcessError(L"Expected identifier", TOKEN_OPEN_BRACE);
-        found_error = true;
-      }
-      else {
-        generic_names.push_back(scanner->GetToken()->GetIdentifier());
-        NextToken();
-        
-        if(Match(TOKEN_COMMA)) {
-          NextToken();
-        }
-        else if(!Match(TOKEN_GTR)) {
-          ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);
-          found_error = true;
-        }
-      }
-    }
-
-    if(Match(TOKEN_GTR)) {
-      NextToken();
-    }
-    else {
-      ProcessError(L"Expected '>'", TOKEN_OPEN_BRACE);      
-    }
-  }
-}
-
-/****************************
  * Parses a declaration.
  ****************************/
 Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
@@ -1926,8 +1878,6 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
   NextToken();
 
   Declaration* declaration;
-
-  // function parameter
   if(Match(TOKEN_OPEN_PAREN)) {
     Type* type = ParseType(depth + 1);
 
@@ -1956,7 +1906,6 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
     }
   }
-  // basic parameter
   else {    
     // static
     bool is_static = false;
@@ -1973,16 +1922,6 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
     // type
     Type* type = ParseType(depth + 1);
 
-    // generic ids
-    vector<wstring> generic_names;
-    ParseGenerics(generic_names, depth + 1);
-
-    // ensure we don't have a nested generic
-    if(type->IsGeneric() && !generic_names.empty()) {
-      ProcessError(L"Generic instance cannot contain generic parameters");
-    }
-
-    // TODO: set generic flag
     // add entry
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
@@ -2733,11 +2672,6 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
     // new call
     else if(Match(TOKEN_NEW_ID)) {
       NextToken();
-
-      // generic ids
-      vector<wstring> generic_names;
-      ParseGenerics(generic_names, depth + 1);
-
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET,
@@ -2933,10 +2867,9 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
   
-  vector<wstring> generic_names;
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, 
                                                     method_call->GetVariableName(),
-                                                    generic_names, interface_names, true);
+                                                    interface_names, true);
   
   Class* prev_class = current_class;
   prev_method = current_method;
@@ -2950,12 +2883,6 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
                                                                 false, false, true);
 
   symbol_table->CurrentParseScope()->AddEntry(entry);
-
-  // add '@parent' entry
-  entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(PARENT_ID),
-                                                   TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name), 
-                                                   false, false, true);
-
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     // parse 'method | function | declaration'
@@ -3464,9 +3391,6 @@ Type* Parser::ParseType(int depth)
   case TOKEN_IDENT: {
     const wstring ident = ParseBundleName();
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
-    if(current_class->ContainsGeneric(ident)) {
-      type->SetGeneric(true);
-    }
   }
     break;
 
