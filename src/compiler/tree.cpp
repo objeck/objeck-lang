@@ -84,9 +84,9 @@ void SymbolEntry::SetId(int i)
 /****************************
  * Encodes a method parameter
  ****************************/
-std::wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
+wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 {
-  std::wstring name;
+  wstring name;
   if(type) {
     // type
     switch(type->GetType()) {
@@ -122,10 +122,10 @@ std::wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* link
       name = L"o.";
 
       // search program
-      std::wstring klass_name = type->GetClassName();
+      wstring klass_name = type->GetClassName();
       Class* klass = program->GetClass(klass_name);
       if(!klass) {
-        vector<std::wstring> uses = program->GetUses();
+        vector<wstring> uses = program->GetUses();
         for(size_t i = 0; !klass && i < uses.size(); ++i) {
           klass = program->GetClass(uses[i] + L"." + klass_name);
         }

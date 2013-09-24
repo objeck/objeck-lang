@@ -802,10 +802,6 @@ class ContextAnalyzer {
   }
 
   inline bool ResolveClassEnumType(Type* type) {
-    if(type->IsGeneric()) {
-      return true;
-    }
-
     Class* klass = SearchProgramClasses(type->GetClassName());
     if(klass) {
       klass->SetCalled(true);

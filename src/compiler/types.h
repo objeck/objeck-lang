@@ -54,11 +54,11 @@ namespace frontend {
    ****************************/
   class ParseNode {
   protected:
-    std::wstring file_name;
+    wstring file_name;
     int line_num;
 
   public:
-    ParseNode(const std::wstring &f, const int l) {
+    ParseNode(const wstring &f, const int l) {
       file_name = f;
       line_num = l;
     }
@@ -66,7 +66,7 @@ namespace frontend {
     virtual ~ParseNode() {
     }
     
-    const std::wstring GetFileName() {
+    const wstring GetFileName() {
       return file_name;
     }
 
@@ -117,21 +117,19 @@ namespace frontend {
     friend class TypeFactory;
     EntryType type;
     int dimension;
-    std::wstring class_name;
+    wstring class_name;
     vector<Type*> func_params;
     Type* func_rtrn;
-    bool is_generic;
     int func_param_count;
     
     Type(Type* t) {
       if(t) {
-        type = t->type;
-        dimension = t->dimension;
-        class_name = t->class_name;
-        func_rtrn = t->func_rtrn;
-        func_params = t->func_params;
-        is_generic = t->is_generic;;
-        func_param_count = -1;
+	type = t->type;
+	dimension = t->dimension;
+	class_name = t->class_name;
+	func_rtrn = t->func_rtrn;
+	func_params = t->func_params;
+	func_param_count = -1;
       }
     }
     
@@ -139,16 +137,14 @@ namespace frontend {
       type = t;
       dimension = 0;
       func_rtrn = NULL;
-      is_generic = false;
       func_param_count = -1;
     }
 
-    Type(EntryType t, const std::wstring &n) {
+    Type(EntryType t, const wstring &n) {
       type = t;
       class_name = n;
       dimension = 0;
       func_rtrn = NULL;
-      is_generic = false;
       func_param_count = -1;
     }
     
@@ -157,7 +153,6 @@ namespace frontend {
       dimension = 0;
       func_params = p;
       func_rtrn = r;
-      is_generic = false;
       func_param_count = -1;
     }
     
@@ -185,7 +180,7 @@ namespace frontend {
 
     int GetFunctionParameterCount() {
       if(func_param_count < 0) {
-        return func_params.size();
+	return func_params.size();
       }
 
       return func_param_count;
@@ -207,20 +202,12 @@ namespace frontend {
       return dimension;
     }
 
-    void SetClassName(const std::wstring &n) {
+    void SetClassName(const wstring &n) {
       class_name = n;
     }
 
-    const std::wstring GetClassName() {
+    const wstring GetClassName() {
       return class_name;
-    }
-
-    void SetGeneric(bool g) {
-      is_generic = g;
-    }
-
-    const bool IsGeneric() {
-      return is_generic;
     }
   };
 
@@ -259,7 +246,7 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const std::wstring &name) {
+    Type* MakeType(EntryType type, const wstring &name) {
       Type* tmp = new Type(type, name);
       types.push_back(tmp);
       return tmp;
@@ -297,10 +284,10 @@ namespace backend {
    ****************************/
   class IntermediateDeclaration {
     instructions::ParamType type;
-    std::wstring name;
+    wstring name;
 
   public:
-    IntermediateDeclaration(const std::wstring &n, instructions::ParamType t) {
+    IntermediateDeclaration(const wstring &n, instructions::ParamType t) {
       type = t;
       name = n;
     }
@@ -309,7 +296,7 @@ namespace backend {
       return type;
     }
 
-    const std::wstring GetName() {
+    const wstring GetName() {
       return name;
     }
   };
@@ -325,7 +312,7 @@ namespace backend {
       file_out->write((char*)&value, sizeof(value));
     }
 
-    void WriteString(const std::wstring &in, ofstream* file_out) {
+    void WriteString(const wstring &in, ofstream* file_out) {
       string out;
       if(!UnicodeToBytes(in, out)) {
         wcerr << L">>> Unable to write unicode string <<<" << endl;
