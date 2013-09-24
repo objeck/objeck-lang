@@ -258,8 +258,8 @@ void Loader::LoadClasses()
     // is interface (covered by is virtual)
     ReadInt();
 
-    const bool is_virtual = (bool)ReadInt();
-    const bool is_debug = (bool)ReadInt();
+    const bool is_virtual = ReadInt() != 0;
+    const bool is_debug = ReadInt() != 0;
     wstring file_name;
     if(is_debug) {
       file_name = ReadString();
@@ -341,9 +341,9 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // method type
     ReadInt();
     // virtual
-    const bool is_virtual = (bool)ReadInt();
+    const bool is_virtual = ReadInt() != 0;
     // has and/or
-    const bool has_and_or = (bool)ReadInt();
+    const bool has_and_or = ReadInt() != 0;
     // is native
     ReadInt();
     // is static

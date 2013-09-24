@@ -49,6 +49,8 @@
 #define FLOAT_VALUE double
 #endif
 
+using namespace std;
+
 namespace instructions {
   // vm types
   typedef enum _MemoryType {
@@ -77,8 +79,8 @@ namespace instructions {
   ParamType;
 }
 
-static std::map<const std::wstring, std::wstring> ParseCommnadLine(const std::wstring &path_string) {    
-  std::map<const std::wstring, std::wstring> arguments;
+static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) {    
+  map<const wstring, wstring> arguments;
 
   size_t pos = 0;
   size_t end = path_string.size();  
@@ -93,7 +95,7 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(const std::ws
       while( pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
         pos++;
       }
-      std::wstring key = path_string.substr(start, pos - start);
+      wstring key = path_string.substr(start, pos - start);
       // parse value
       while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
         pos++;
@@ -119,13 +121,13 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(const std::ws
           pos++;
         }
       }
-      std::wstring value = path_string.substr(start, pos - start);
+      wstring value = path_string.substr(start, pos - start);
       
       // close string and add
       if(path_string[pos] == L'\'') {
         pos++;
       }
-      arguments.insert(std::pair<std::wstring, std::wstring>(key, value));
+      arguments.insert(pair<wstring, wstring>(key, value));
     }
     else {
       pos++;
@@ -139,7 +141,7 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(const std::ws
  * Converts a UTF-8 bytes to
  * native a unicode string
  ****************************/
-static bool BytesToUnicode(const std::string &in, std::wstring &out) {    
+static bool BytesToUnicode(const string &in, wstring &out) {    
 #ifdef _WIN32
   // allocate space
   int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
@@ -190,8 +192,8 @@ static bool BytesToUnicode(const std::string &in, std::wstring &out) {
   return true;
 }
 
-static std::wstring BytesToUnicode(const std::string &in) {
-  std::wstring out;
+static wstring BytesToUnicode(const string &in) {
+  wstring out;
   if(BytesToUnicode(in, out)) {
     return out;
   }
@@ -203,8 +205,8 @@ static std::wstring BytesToUnicode(const std::string &in) {
  * Converts UTF-8 bytes to
  * native a unicode character
  ****************************/
-static bool BytesToCharacter(const std::string &in, wchar_t &out) {
-  std::wstring buffer;
+static bool BytesToCharacter(const string &in, wchar_t &out) {
+  wstring buffer;
   if(!BytesToUnicode(in, buffer)) {
     return false;
   }
@@ -221,7 +223,7 @@ static bool BytesToCharacter(const std::string &in, wchar_t &out) {
  * Converts a native string
  * to UTF-8 bytes
  ****************************/
-static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
+static bool UnicodeToBytes(const wstring &in, string &out) {
 #ifdef _WIN32
   // allocate space
   int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, NULL, 0, NULL, NULL);
@@ -230,7 +232,7 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   }
   char* buffer = new char[size];
   
-  // convert std::string
+  // convert string
   int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, NULL, NULL);
   if(!check) {
     delete[] buffer;
@@ -245,7 +247,7 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   delete[] buffer;
   buffer = NULL;
 #else
-  // convert std::string
+  // convert string
   size_t size = wcstombs(NULL, in.c_str(), in.size());
   if(size == (size_t)-1) {
     return false;
@@ -260,7 +262,7 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   }
   buffer[size] = '\0';
   
-  // create std::string      
+  // create string      
   out.append(buffer, size);
 
   // clean up
@@ -271,8 +273,8 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   return true;
 }
 
-static std::string UnicodeToBytes(const std::wstring &in) {
-  std::string out;
+static string UnicodeToBytes(const wstring &in) {
+  string out;
   if(UnicodeToBytes(in, out)) {
     return out;
   }
@@ -284,7 +286,7 @@ static std::string UnicodeToBytes(const std::wstring &in) {
  * Converts a native character
  * to UTF-8 bytes
  ****************************/
-static bool CharacterToBytes(wchar_t in, std::string &out) {
+static bool CharacterToBytes(wchar_t in, string &out) {
   if(in == L'\0') {
     return true;
   }
