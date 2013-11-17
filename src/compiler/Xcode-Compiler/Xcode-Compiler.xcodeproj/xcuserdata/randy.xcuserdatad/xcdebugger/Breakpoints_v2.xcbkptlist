@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "401499597.133223"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "3963"
+            endingLineNumber = "3963"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "5">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401500155.846915"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "3963"
+                  endingLineNumber = "3963"
+                  offsetFromSymbolStart = "27553">
+               </Location>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401500155.847219"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "3963"
+                  endingLineNumber = "3963"
+                  offsetFromSymbolStart = "27680">
+               </Location>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401500155.847504"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "3963"
+                  endingLineNumber = "3963"
+                  offsetFromSymbolStart = "27775">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "401499588.411141"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "3800"
+            endingLineNumber = "3800"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "5">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "401500239.865387"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "387"
+            endingLineNumber = "387"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "5">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeClass(frontend::Class*, int, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.414649"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "387"
+                  endingLineNumber = "387"
+                  offsetFromSymbolStart = "408">
+               </Location>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeClass(frontend::Class*, int, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.415021"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "387"
+                  endingLineNumber = "387"
+                  offsetFromSymbolStart = "765">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "401500247.71766"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1461"
+            endingLineNumber = "1461"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "5">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeMethodCall(frontend::MethodCall*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.415349"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1461"
+                  endingLineNumber = "1461"
+                  offsetFromSymbolStart = "6058">
+               </Location>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeMethodCall(frontend::MethodCall*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.415653"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1461"
+                  endingLineNumber = "1461"
+                  offsetFromSymbolStart = "6402">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "401500251.247077"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1466"
+            endingLineNumber = "1466"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "5">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeMethodCall(frontend::MethodCall*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.416307"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1466"
+                  endingLineNumber = "1466"
+                  offsetFromSymbolStart = "6607">
+               </Location>
+               <Location
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "ContextAnalyzer::AnalyzeMethodCall(frontend::MethodCall*, int)"
+                  moduleName = "Xcode-Compiler"
+                  urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
+                  timestampString = "401603232.41673"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "1466"
+                  endingLineNumber = "1466"
+                  offsetFromSymbolStart = "6951">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../parser.cpp"
+            timestampString = "401603194.046404"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1981"
+            endingLineNumber = "1981"
+            landmarkName = "Parser::ParseDeclaration(const wstring &amp;ident, int depth)"
+            landmarkType = "5">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
