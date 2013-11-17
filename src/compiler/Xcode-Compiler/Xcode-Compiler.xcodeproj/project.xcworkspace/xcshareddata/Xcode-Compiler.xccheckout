@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>5C86FEAE-6B9E-4476-9F27-B411897B65DD</string>
+	<key>IDESourceControlProjectName</key>
+	<string>Xcode-Compiler</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
+		<string>https://svn.code.sf.net/p/objeck-lang/code/main</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>src/compiler/Xcode-Compiler/Xcode-Compiler.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
+		<string>../../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectRepositoryRootDictionary</key>
+	<dict>
+		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
+		<string>https://svn.code.sf.net/p/objeck-lang/code</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://svn.code.sf.net/p/objeck-lang/code/main/src/compiler/Xcode-Compiler/Xcode-Compiler.xcodeproj</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.subversion</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</string>
+			<key>IDESourceControlWCCName</key>
+			<string>main</string>
+		</dict>
+	</array>
+</dict>
+</plist>
