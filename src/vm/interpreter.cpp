@@ -92,11 +92,12 @@ void StackInterpreter::Initialize(StackProgram* p)
   }
   config.close();
   
-#ifndef _SANITIZE
+
 #ifdef _WIN32
 	InitializeCriticalSection(&cached_frames_cs);
 #endif
-	
+
+#ifndef _SANITIZE
   // allocate 256K frames
 	for(int i = 0; i < CALL_STACK_SIZE * 16; i++) {
 		StackFrame* frame = new StackFrame();
