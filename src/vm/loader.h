@@ -39,7 +39,6 @@ using namespace std;
 
 class Loader {
   static StackProgram* program;
-  int arg_count;
   vector<wstring> arguments;
   int num_float_strings;
   int num_int_strings;

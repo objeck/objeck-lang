@@ -2,7 +2,7 @@
 # ARGS=-g -Wall -Wno-unused-function -Wno-deprecated-declarations -D_X64 -D_DEBUG -D_GC_SERIAL
 ARGS=-O3 -Wall -Wno-unused-function -Wno-deprecated-declarations -D_X64 
 
-CC=g++
+CC=clang++
 AR=ar
 SRC= memory.o
 LIB= ../../memory.a
