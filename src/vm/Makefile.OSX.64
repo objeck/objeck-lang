@@ -2,7 +2,7 @@
 # ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING -Wno-unused-function -Wno-deprecated-declarations
 ARGS=-O3 -Wall -pthread -D_X64 -Wno-unused-function -Wno-deprecated-declarations
 
-CC=g++
+CC=clang++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS= jit_amd_lp64.a memory.a
 MEM_PATH= os/posix
@@ -10,7 +10,7 @@ JIT_PATH= jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl
 
 memory.a:
 	cd $(MEM_PATH); make	
