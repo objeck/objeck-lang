@@ -1152,7 +1152,6 @@ namespace frontend {
     Expression* expression;
     Expression* if_expression;
     Expression* else_expression;
-    Cond* next;
 
     Cond(const wstring &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
       expression = c;
