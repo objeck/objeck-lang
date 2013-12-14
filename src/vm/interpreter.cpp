@@ -2017,9 +2017,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #endif
   }
 
-#ifdef _MINGW
-  dll_string += ".so";
-#elif _WIN32
+#ifdef _WIN32
   dll_string += ".dll";  
 #elif _OSX
   dll_string += ".dylib";
