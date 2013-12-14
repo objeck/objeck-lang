@@ -55,19 +55,25 @@
 #include <openssl/ssl.h>
 #endif
 
-#if defined(_WIN32) && !defined(_MINGW)
+#ifdef _WIN32
 #include <windows.h>
 #include <process.h>
 #include <unordered_map>
 using namespace stdext;
-#else
+#elif defined _OSX
 #include <unordered_map>
 #include <pthread.h>
 #include <stdint.h>
-#ifndef _MINGW
+#else
+#include <tr1/unordered_map>
+#include <pthread.h>
+#include <stdint.h>
+namespace std {
+  using namespace tr1;
+}
 #include <dlfcn.h>
 #endif
-#endif
+
 
 #define SMALL_BUFFER_MAX 255
 
