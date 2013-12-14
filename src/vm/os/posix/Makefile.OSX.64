@@ -1,6 +1,6 @@
 # ARGS=-g -Wall -Wno-unused-function -Wno-deprecated-declarations -D_X64 -D_DEBUG
 # ARGS=-g -Wall -Wno-unused-function -Wno-deprecated-declarations -D_X64 -D_DEBUG -D_GC_SERIAL
-ARGS=-O3 -Wall -Wno-unused-function -Wno-deprecated-declarations -D_X64 
+ARGS=-O3 -Wall -Wno-unused-function -Wno-deprecated-declarations -D_OSX -D_X64 
 
 CC=clang++
 AR=ar
