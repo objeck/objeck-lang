@@ -1,4 +1,4 @@
-set LATEX_BIN="C:\Program Files\MiKTeX 2.9\miktex\bin\x64"
+set LATEX_BIN="D:\Program Files (x86)\MiKTeX 2.9\miktex\bin"
 
 rmdir /s /q deploy
 mkdir deploy
