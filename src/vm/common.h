@@ -60,10 +60,11 @@
 #include <process.h>
 #include <unordered_map>
 using namespace stdext;
-#elif defined _OSX
+#elif _OSX
 #include <unordered_map>
 #include <pthread.h>
 #include <stdint.h>
+#include <dlfcn.h>
 #else
 #include <tr1/unordered_map>
 #include <pthread.h>
