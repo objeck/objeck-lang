@@ -469,7 +469,7 @@ class Scanner {
     size_t check = mbstowcs(wbuffer, buffer, buffer_size);
     if(check == (size_t)-1) {
       delete buffer;
-      delete wbuffer;
+      delete[] wbuffer;
       wcerr << L"Unable to open source file: " << filename << endl;
       exit(1);
     }
