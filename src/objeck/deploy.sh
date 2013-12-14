@@ -18,6 +18,8 @@ if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	cp Makefile.MINGW Makefile
+elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	cp Makefile.OSX.64 Makefile
 else
 	cp Makefile.64 Makefile
 fi
@@ -32,6 +34,8 @@ if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	cp Makefile.MINGW Makefile
+elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	cp Makefile.OSX.64 Makefile
 else
 	cp Makefile.64 Makefile
 fi
@@ -47,7 +51,7 @@ if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	cp Makefile.OSX.64 Makefile
 	cp os/posix/Makefile.OSX.64 os/posix/Makefile
-	cp jit/amd64/Makefile.64 jit/amd64/Makefile
+	cp jit/amd64/Makefile.OSX.64 jit/amd64/Makefile
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	cp Makefile.MINGW Makefile
 	cp os/windows/Makefile.MINGW os/posix/Makefile
