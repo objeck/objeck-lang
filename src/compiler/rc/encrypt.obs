@@ -2,7 +2,7 @@
 	function : Main(args : String[]) ~ Nil {
 		in := "Nas is like..."->ToByteArray();
 		hash := Encryption.Hash->SHA256(in);
-		System.IO.Console->WriteBuffer(0, hash->Size(), hash); "\r\n"->Print();
+#		System.IO.Console->WriteBuffer(0, hash->Size(), hash); "\r\n"->Print();
 		
 		in := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
 		hash := Encryption.Hash->MD5(in);
@@ -16,7 +16,7 @@
 		in := "I switched my motto / Instead of saying f*ck tomorrow, that buck that bought a bottle could've struck the lotto."->ToByteArray();
 		encrypted := Encryption.Encrypt->AES256(key, in);
 		if(encrypted <> Nil) {
-			System.IO.Console->WriteBuffer(0, encrypted->Size(), encrypted); "\r\n"->PrintLine();
+#			System.IO.Console->WriteBuffer(0, encrypted->Size(), encrypted); "\r\n"->PrintLine();
 			decprypted := Encryption.Decrypt->AES256(key, encrypted);
 			if(decprypted <> Nil) {
 				String->New(decprypted)->PrintLine();
