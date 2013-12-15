@@ -1428,6 +1428,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
     ip = (*frame)->ip;
   } 
   else {
+    (*frame) = NULL;
     halt = true;
   }
 }
