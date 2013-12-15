@@ -158,8 +158,13 @@ namespace Runtime {
          wcout << L"caching frame=" << frame << endl;
 #endif
        }
+       
+#else 
+       free(frame->mem);
+       delete frame;
+
 #endif
-      
+       
 #ifdef _WIN32
       LeaveCriticalSection(&cached_frames_cs);
 #else
