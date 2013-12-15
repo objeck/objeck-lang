@@ -40,7 +40,6 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <strsafe.h>
-#include <versionhelpers.h>
 
 #ifndef _MINGW
 #pragma comment(lib, "Ws2_32.lib")
