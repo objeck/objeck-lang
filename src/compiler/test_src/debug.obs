@@ -1,5 +1,12 @@
-﻿class Hello {
+﻿class Foo {
+	New() {
+	}
+}
+	
+class Hello {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->GetPlatform()->PrintLine();
+		values := Collection.List->New();
+		values->AddBack(Foo->New()->As(Compare));
+		values->Find(Foo->New()->As(Compare));
 	}
 }

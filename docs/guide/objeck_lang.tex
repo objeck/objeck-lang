@@ -2085,26 +2085,26 @@ Basic implementation of \texttt{Compare} methods.
   \end{itemize}
 \end{itemize}
 
-\subsubsection{Queue/QueueInt/QueueFloat}
+\subsubsection{Queue/IntQueue/FloatQueue}
 The Queue class support the concept of a growing queue and based upon
 a FIFO priority.  There are two specialized version of this class:
 \texttt{IntQueue} and \texttt{FloatQueue}.  The \texttt{IntQueue} and
 \texttt{FloatQueue} classes use \texttt{Int} and \texttt{Float} types
-respectively instead of \texttt{Compare} type.  The general class
+respectively instead of \texttt{Base} type.  The general class
 supports the following operations:
 \begin{itemize}
 \item \texttt{New}
 \item \texttt{Add} - adds a new value to the back of the list
   \begin{itemize}
-  \item method : public Add(value : Compare) \textasciitilde Nil
+  \item method : public Add(value : Base) \textasciitilde Nil
   \end{itemize}
 \item \texttt{Remove} - removes the first element in the list
   \begin{itemize}
-  \item method : public : Remove() \textasciitilde Compare
+  \item method : public : Remove() \textasciitilde Base
   \end{itemize}
 \item \texttt{Head} - returns the first element in the list
   \begin{itemize}
-  \item method : public : Head() \textasciitilde Compare
+  \item method : public : Head() \textasciitilde Base
   \end{itemize}
 \item \texttt{Empty} - clears the list
   \begin{itemize}
