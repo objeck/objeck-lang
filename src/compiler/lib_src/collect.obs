@@ -1538,11 +1538,11 @@ bundle Collection {
 			@queue := List->New();
 		}
 		
-		method : public: native : Add(value : Base) ~ Nil {
-			@queue->AddBack(value->As(Compare));
+		method : public: native : Add(value : Compare) ~ Nil {
+			@queue->AddBack(value);
 		}
 		
-		method : public : native : Remove() ~ Base {
+		method : public : native : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
 				value := @queue->Front();
 				@queue->RemoveFront();
@@ -1552,7 +1552,7 @@ bundle Collection {
 			return Nil;
 		}
 		
-		method : public: native : Head() ~ Base {
+		method : public: native : Head() ~ Compare {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
 			};
