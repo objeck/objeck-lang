@@ -818,7 +818,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
 							<< "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
-
+#ifdef _DEBUGGER
+				return;
+#else
+				exit(1);
+#endif
       }
       PushInt(result, op_stack, stack_pos);
     }
