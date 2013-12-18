@@ -1192,9 +1192,14 @@ namespace backend {
     void Debug() {
       wcout << L"=========================================================" << endl;
       wcout << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
-        << L"'; pid=" << pid << L";\n interface=" << is_interface << L"; virtual=" << is_virtual 
-        << L"; num_methods=" << methods.size() << L"; class_mem_size=" << cls_space 
-        << L";\n instance_mem_size=" << inst_space << L"; is_debug=" << is_debug << endl;
+            << L"'; pid=" << pid << L";\n interface=" << (is_interface ? L"true" : L"false") 
+            << L"; virtual=" << is_virtual << L"; num_methods=" << methods.size() 
+            << L"; class_mem_size=" << cls_space << L";\n instance_mem_size=" 
+            << inst_space << L"; is_debug=" << (is_debug  ? L"true" : L"false") << endl;      
+      wcout << endl << "Interfaces:" << endl;
+      for(size_t i = 0; i < interface_names.size(); ++i) {
+        wcout << L"\t" << interface_names[i] << endl;
+      }      
       wcout << L"=========================================================" << endl;
       cls_entries->Debug();
       wcout << L"---------------------------------------------------------" << endl;
