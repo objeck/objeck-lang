@@ -73,12 +73,13 @@ class Test {
 	}
 }
 	
-class Node {
+class Node from BasicCompare {
 	@left : Node;
 	@right : Node;
 	@data : Int;
 
 	New(data : Int) {
+		Parent();
 		@data := data;
 	}	
 
@@ -100,6 +101,18 @@ class Node {
 
 	method : public : GetRight() ~ Node {
 		return @right;
+	}
+
+	method : public : Compare(rhs : Compare) ~ Int {
+		right : Node := rhs->As(Node);
+		if(@data = right->GetData()) {
+			return 0;
+		}
+		else if(@data < right->GetData()) {
+			return -1;
+		};
+			
+		return 1;
 	}
 }
 
