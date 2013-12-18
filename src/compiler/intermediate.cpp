@@ -2212,6 +2212,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
+        EmitClassCast(expressions[i]);
 				// need to swap values
 				if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() && 
 					 method_call->GetCallingParameters()->GetExpressions().size() > 0) {
@@ -3600,6 +3601,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
+      EmitClassCast(expressions[i]);
     }
     is_new_inst = false;
   }
@@ -3627,6 +3629,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
+      EmitClassCast(expressions[i]);
       new_char_str_count = 0;
     }
 
@@ -3658,6 +3661,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
+        EmitClassCast(expressions[i]);
 				new_char_str_count = 0;
       }
     }

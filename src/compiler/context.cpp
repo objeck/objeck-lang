@@ -2407,10 +2407,13 @@ bool ContextAnalyzer::Analyze()
          cast_type->GetDimension() != root_type->GetDimension()) {
         ProcessError(expression, L"Dimension size mismatch");
       }
-
-      // casts for variables are handled elsewhere
+      
+      // check method call and variable cast
       if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
         AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      }
+      else if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices()) {
+        AnalyzeClassCast(cast_type, expression, depth + 1);
       }
     }
     // typeof check
@@ -3832,6 +3835,9 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
           left_class->SetCalled(true);
           right_class->SetCalled(true);
+          if(left_class->IsInterface()) {
+            expression->SetToClass(left_class);
+          }
           return;
         }
         // upcast
@@ -3854,6 +3860,9 @@ bool ContextAnalyzer::Analyze()
         LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses());
         // downcast
         if(ValidDownCast(left_class->GetName(), NULL, right_lib_class)) {
+          if(left_class->IsInterface()) {
+            expression->SetToClass(left_class);
+          }
           return;
         }
         // upcast
@@ -3910,6 +3919,9 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
           left_lib_class->SetCalled(true);
           right_class->SetCalled(true);
+          if(left_lib_class->IsInterface()) {
+            expression->SetToLibraryClass(left_lib_class);
+          }
           return;
         }
         // upcast
@@ -3932,6 +3944,9 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
           left_lib_class->SetCalled(true);
           right_lib_class->SetCalled(true);
+          if(left_lib_class->IsInterface()) {
+            expression->SetToLibraryClass(left_lib_class);
+          }
           return;
         }
         // upcast

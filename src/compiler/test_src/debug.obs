@@ -6,7 +6,9 @@
 class Hello {
 	function : Main(args : String[]) ~ Nil {
 		values := Collection.List->New();
-		values->AddBack(Foo->New()->As(Compare));
-		values->Find(Foo->New()->As(Compare));
+#		f := Foo->New();
+		f := String->New();
+#		f : Compare := Foo->New()->As(Compare);
+		values->AddBack(f->As(Compare));
 	}
 }
