@@ -491,32 +491,31 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
   }
   
   // upcast
-  int tmp_id = id;
-  while(tmp_id != -1) {
-    if(tmp_id == to_id) {
+  int cls_id = id;
+  while(cls_id != -1) {
+    if(cls_id == to_id) {
       return mem;
     }
     // update
-    tmp_id = cls_hierarchy[tmp_id];
+    cls_id = cls_hierarchy[cls_id];
   }
   
   // check interfaces
-  tmp_id = id;
-  while(tmp_id != -1) {
-    int tmp_tmp_id = tmp_id;
-    int* interfaces = cls_interfaces[tmp_tmp_id];
+  cls_id = id;
+  while(cls_id != -1) {
+    int* interfaces = cls_interfaces[cls_id];
     if(interfaces) {
       int i = 0;
-      tmp_tmp_id = interfaces[i];
-      while(tmp_tmp_id > -1) {
-        if(tmp_tmp_id == to_id) {
+      int inf_id = interfaces[i];
+      while(inf_id > -1) {
+        if(inf_id == to_id) {
           return mem;
         }
-        tmp_tmp_id = interfaces[++i];
+        inf_id = interfaces[++i];
       }
     }
     // update
-    tmp_id = cls_hierarchy[tmp_id];
+    cls_id = cls_hierarchy[cls_id];
   }
   
   return NULL;
