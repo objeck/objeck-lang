@@ -2412,7 +2412,8 @@ bool ContextAnalyzer::Analyze()
       if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
         AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
       }
-      else if(expression->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(expression)->GetIndices()) {
+      else if(cast_type->GetType() == CLASS_TYPE && expression->GetExpressionType() == VAR_EXPR && 
+              !static_cast<Variable*>(expression)->GetIndices()) {
         AnalyzeClassCast(cast_type, expression, depth + 1);
       }
     }
