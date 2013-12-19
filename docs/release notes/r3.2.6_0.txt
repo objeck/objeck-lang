@@ -1,0 +1,13 @@
+Objeck v3.1.8_0
+
+--------------
+Release Notes
+--------------
+Minor bug fixes and enhancements.
+
+Highlights of this release include the following:
+* Added the ability to reference variables from within a string literal (new)
+* Added MD5 and RIPEMD-160 hash support (new)
+* Minor bug fixes to the language compiler, debugger and JIT compiler (minor)
+* Additional code examples
+
