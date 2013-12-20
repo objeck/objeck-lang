@@ -187,6 +187,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 				wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 				StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -224,6 +225,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 				wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 				StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -291,6 +293,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 				wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
 				StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -553,6 +556,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 				wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -576,6 +580,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -611,6 +616,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -646,6 +652,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -680,6 +687,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -819,6 +827,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
 							<< "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -867,6 +876,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Invalid instance reference! ref=" << instance << " << " << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -962,6 +972,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!TrapProcessor::ProcessTrap(program, (long*)(*frame)->mem[0], op_stack, stack_pos, (*frame))) {
 				StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -995,6 +1006,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -1048,7 +1060,12 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-
+#ifdef _DEBUGGER
+        halt = true;
+				return;
+#else
+				exit(1);
+#endif
       }
 #ifdef _WIN32
       InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -1067,6 +1084,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
+        halt = true;
 				return;
 #else
 				exit(1);
@@ -1088,7 +1106,12 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
       if(!instance) {
         wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
         StackErrorUnwind();
-
+#ifdef _DEBUGGER
+        halt = true;
+				return;
+#else
+				exit(1);
+#endif
       }
 #ifdef _WIN32
       LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -1163,7 +1186,12 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, long* &op_stack, l
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
-
+#ifdef _DEBUGGER
+      halt = true;
+      return;
+#else
+      exit(1);
+#endif
     }
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
@@ -1190,6 +1218,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1221,6 +1250,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, long* &op_stack, 
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1251,6 +1281,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1281,6 +1312,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1630,9 +1662,14 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     if(!impl_class) {
       wcerr << L">>> Invalid instance reference! ref=" << instance << " << " << endl;
       StackErrorUnwind();
-      exit(-1);
+#ifdef _DEBUGGER
+      halt = true;
+      return;
+#else
+      exit(1);
+#endif
     }
-
+    
 #ifdef _DEBUG
     wcout << L"=== Binding virtual method call: from: '" << called->GetName();
 #endif
@@ -1700,6 +1737,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
       }
       StackErrorUnwind(called);
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1740,6 +1778,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
       }
       StackErrorUnwind(called);
 #ifdef _DEBUGGER
+      halt = true;
       return;
 #else
       exit(1);
@@ -1785,6 +1824,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, long* &op_s
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1811,6 +1851,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1837,6 +1878,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, long* &op_
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1863,6 +1905,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, long* &op_
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1889,6 +1932,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, long* &op
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1915,6 +1959,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, long* &op
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1941,6 +1986,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, long* &op
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
@@ -1968,6 +2014,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, long* &o
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
+    halt = true;
     exit(1);
 #else
     return;
