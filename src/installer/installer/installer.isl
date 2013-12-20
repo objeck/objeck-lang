@@ -2139,6 +2139,7 @@
 		<row><td>thread.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>thread.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\thread.obs</td><td>1</td><td/></row>
 		<row><td>top_tail.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>top_tail.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\top_tail.obs</td><td>1</td><td/></row>
 		<row><td>transpose.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>TRANSP~1.OBS|transpose.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\transpose.obs</td><td>1</td><td/></row>
+		<row><td>traversal.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>TRAVER~1.OBS|traversal.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\traversal.obs</td><td>1</td><td/></row>
 		<row><td>unicode_vars.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>UNICOD~1.OBS|unicode_vars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\unicode_vars.obs</td><td>1</td><td/></row>
 		<row><td>update.obs</td><td>ISX_DEFAULTCOMPONENT18</td><td>update.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\update.obs</td><td>1</td><td/></row>
 		<row><td>url_encode_decode.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>URL_EN~1.OBS|url_encode_decode.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\url_encode_decode.obs</td><td>1</td><td/></row>
