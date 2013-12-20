@@ -1,13 +1,12 @@
-Objeck v3.1.8_0
+Objeck v3.2.6_0
 
 --------------
 Release Notes
 --------------
-Minor bug fixes and enhancements.
+Bug fixes and minor enhancements.
 
 Highlights of this release include the following:
-* Added the ability to reference variables from within a string literal (new)
-* Added MD5 and RIPEMD-160 hash support (new)
-* Minor bug fixes to the language compiler, debugger and JIT compiler (minor)
-* Additional code examples
-
+• Fixed a bug that wasn’t properly recognizing casts to interfaces implemented by parent classes (bug: high)
+• Added new code examples (new)
+• Windows build moved to Visual Studio 2013
+• OS X build moved from GCC to Clang
