@@ -1,14 +1,6 @@
-﻿class Foo {
-	New() {
-	}
-}
-	
-class Hello {
+﻿class Hello {
 	function : Main(args : String[]) ~ Nil {
-		values := Collection.List->New();
-#		f := Foo->New();
-		f := String->New();
-#		f : Compare := Foo->New()->As(Compare);
-		values->AddBack(f->As(Compare));
+		s : String;
+		s->Size();
 	}
 }

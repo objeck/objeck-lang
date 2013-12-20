@@ -11,27 +11,22 @@ class Test {
 		seven := Node->New(7);
 		eight := Node->New(8);
 		nine := Node->New(9);
-		one->SetLeft(two);
-		one->SetRight(three);
-		two->SetLeft(four);
-		two->SetRight(five);
-		three->SetLeft(six);
-		four->SetLeft(seven);
-		six->SetLeft(eight);
-		six->SetRight(nine);
+
+		one->SetLeft(two); one->SetRight(three);
+		two->SetLeft(four); two->SetRight(five);
+		three->SetLeft(six); four->SetLeft(seven);
+		six->SetLeft(eight); six->SetRight(nine);
 		
-		Preorder(one);
-		"---"->PrintLine();
-		Inorder(one);
-  		"---"->PrintLine();
-		Postorder(one);
-		"---"->PrintLine();
-		Levelorder(one);
+		"Preorder: "->Print(); Preorder(one); 
+		"\nInorder: "->Print(); Inorder(one);
+		"\nPostorder: "->Print(); Postorder(one);
+		"\nLevelorder: "->Print(); Levelorder(one);
+		"\n"->Print();
 	}
 
 	function : Preorder(node : Node) ~ Nil {
 		if(node <> Nil) {
-			node->GetData()->PrintLine();
+			System.IO.Console->Print(node->GetData())->Print(", ");
 			Preorder(node->GetLeft());		
 			Preorder(node->GetRight());		
 		};
@@ -40,7 +35,7 @@ class Test {
 	function : Inorder(node : Node) ~ Nil {
 		if(node <> Nil) {
 			Inorder(node->GetLeft());	
-			node->GetData()->PrintLine();
+			System.IO.Console->Print(node->GetData())->Print(", ");
 			Inorder(node->GetRight());		
 		};
 	}
@@ -49,7 +44,7 @@ class Test {
 		if(node <> Nil) {
 			Postorder(node->GetLeft());		
 			Postorder(node->GetRight());
-			node->GetData()->PrintLine();
+			System.IO.Console->Print(node->GetData())->Print(", ");
 		};
 	}
 	
@@ -61,7 +56,7 @@ class Test {
 		
 		while(nodequeue->IsEmpty() = false) {
 			next := nodequeue->Remove()->As(Node);
-			next->GetData()->PrintLine();
+			System.IO.Console->Print(next->GetData())->Print(", ");
 			if(next->GetLeft() <> Nil) {
 				nodequeue->Add(next->GetLeft());
 			};
