@@ -211,32 +211,47 @@ bundle JSON {
 							index += 1;
 						};
 					}
+					# token
 					else {
 						# parse string
-						if(index < input->Size() & (input[index] = '"')) {
-							index += 1;
-							offset := index;
-							end := false;
-							escape := false;
-							while(index < input->Size() & end = false) {
-								if(input[index] = '"' & escape = false) {
-									# done
-									end := true;
-								}
-								else if(input[index] = '\\') {
-									escape := true;
-									# update
-									index += 1;
-								}
-								else {
-									escape := false;
+						if(index < input->Size() & (input[index] = '"' | input[index]->IsChar())) {
+							len : Int; offset : Int;
+							if(input[index] = '"') {
+								index += 1;
+								offset := index;
+								end := false;
+								escape := false;
+								while(index < input->Size() & end = false) {
+									if(input[index] = '"' & escape = false) {
+										# done
+										end := true;
+									}
+									else if(input[index] = '\\') {
+										escape := true;
+										# update
+										index += 1;
+									}
+									else {
+										escape := false;
+										# update
+										index += 1;
+									};
+								};
+								len := index - offset;
+								# update
+								index += 1;
+							}
+							else {				
+								offset := index;
+								while(index < input->Size() & (input[index]->IsChar() | input[index] = '_')) {
 									# update
 									index += 1;
 								};
+								len := index - offset;
 							};
-							len := index - offset;
+							
 							if(len > 0) {
-								string := @input->SubString(offset, len);
+								string := @input->SubString(offset, len);								
 								if(string->Equals("true")) {
 									tokens->AddBack(Token->New(TokenType->TRUE));
 								}
@@ -252,36 +267,6 @@ bundle JSON {
 							}
 							else {
 								tokens->AddBack(Token->New(TokenType->IDENT, ""));
-							};
-							# update
-							index += 1;
-						}
-						# true or false
-						else if(index < input->Size() & (input[index] = 't' | input[index] = 'f' | input[index] = 'n')) {
-							offset := index;
-							while(index < input->Size() & input[index]->IsChar()) {
-								# update
-								index += 1;
-							};
-							len := index - offset;
-						
-							if(len > 0) {
-								string := @input->SubString(offset, len);
-								if(string->Equals("true")) {
-									tokens->AddBack(Token->New(TokenType->TRUE));
-								}
-								else if(string->Equals("false")) {
-									tokens->AddBack(Token->New(TokenType->FALSE));
-								}
-								else if(string->Equals("null")) {
-									tokens->AddBack(Token->New(TokenType->NULL));
-								}
-								else {
-									tokens->AddBack(Token->New(TokenType->BAD_NUM, string));
-								};
-							}
-							else {
-								tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
 							};
 						}
 						# parse number
@@ -320,7 +305,7 @@ bundle JSON {
 								tokens->AddBack(Token->New(TokenType->BAD_NUM, ""));
 							};
 						}
-						# parse characters
+						# parse character
 						else if(index < input->Size()) {
 							select(input[index]) {
 								label '[': {

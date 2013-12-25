@@ -1,13 +1,14 @@
 {
+	// comment 1
     "id": 12345, 
     "jsonrpc": "2.0", 
-    "result": {
+    "result": { // comment 2
         "affectsVersions": [], 
         "assignee": "mike@atlassian.com", 
-        "attachmentNames": [], 
+        "attachmentNames": [],  // comment 3
         "components": [
             {
-                "id": "10121", 
+                "id": "10121",     
                 "name": "Backend / Domain Model"
             }
         ], 
