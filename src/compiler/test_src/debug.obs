@@ -1,6 +1,16 @@
-﻿class Hello {
-	function : Main(args : String[]) ~ Nil {
-		s : String;
-		s->Size();
+﻿use RegEx;
+
+bundle Default {
+	class RegExTest {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 2) {
+				regex := RegEx->New(args[0]);
+				if(regex->MatchExact(args[1])) {
+					"-- match --"->PrintLine();
+				} else {
+					"-- no match --"->PrintLine();
+				};
+			};
+		}
 	}
 }

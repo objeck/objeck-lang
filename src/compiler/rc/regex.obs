@@ -23,6 +23,13 @@ bundle Default {
 			if(match <> Nil) {
 				match->PrintLine();
 			};
+
+			regex := RegEx->New("([a-z]|[0-9]|-)+");
+			match := regex->Match("my_title_here");
+			if(match <> Nil) {
+				match->PrintLine();
+			};
+
 #~
 			if(regex->MatchExact("13")) {
 				"-- match --"->PrintLine();

@@ -43,7 +43,7 @@
 #include <wx/sizer.h>
 
 #ifndef wxHAS_IMAGES_IN_RESOURCES
-#include "../sample.xpm"
+#include "/Users/randy/Downloads/wxWidgets-3.0.0/samples/sample.xpm"
 #endif
 
 // ----------------------------------------------------------------------------

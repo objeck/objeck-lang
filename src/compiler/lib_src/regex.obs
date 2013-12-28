@@ -1,7 +1,7 @@
 #~~
 # Regular expression engine
 #
-# Copyright (c) 2012 Randy Hollines
+# Copyright (c) 2014 Randy Hollines
 ~~#
 
 use Collection;
