@@ -38,15 +38,9 @@
 #include "wx/splitter.h"
 #include "wx/dcmirror.h"
 
-#include "wx/richtext/richtextctrl.h"
-#include "wx/richtext/richtextstyles.h"
-#include "wx/richtext/richtextxml.h"
-#include "wx/richtext/richtexthtml.h"
-#include "wx/richtext/richtextformatdlg.h"
-#include "wx/richtext/richtextsymboldlg.h"
-#include "wx/richtext/richtextstyledlg.h"
-#include "wx/richtext/richtextprint.h"
-#include "wx/richtext/richtextimagedlg.h"
+#include <wx/wx.h>
+#include <wx/stc/stc.h>
+#include <wx/sizer.h>
 
 #ifndef wxHAS_IMAGES_IN_RESOURCES
 #include "../sample.xpm"
@@ -71,6 +65,12 @@ enum
   SPLIT_SETGRAVITY,
   SPLIT_REPLACE,
   SPLIT_INVISIBLE
+};
+
+enum
+{
+  MARGIN_LINE_NUMBERS,
+  MARGIN_FOLD
 };
 
 // ----------------------------------------------------------------------------
@@ -289,7 +289,90 @@ wxDEFAULT_FRAME_STYLE | wxNO_FULL_REPAINT_ON_RESIZE)
   m_splitter->SetSashGravity(1.0);
 
 #if 1
-  m_left = new wxRichTextCtrl(m_splitter, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxRE_MULTILINE, wxDefaultValidator, wxTextCtrlNameStr);
+  wxStyledTextCtrl* text = new wxStyledTextCtrl(m_splitter, wxID_ANY);
+  
+  text->SetMarginWidth(MARGIN_LINE_NUMBERS, 50);
+  text->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
+  text->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
+  text->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
+
+
+  // ---- Enable code folding
+  text->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+  text->SetMarginWidth(MARGIN_FOLD, 15);
+  text->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+  text->StyleSetBackground(MARGIN_FOLD, wxColor(200, 200, 200));
+  text->SetMarginSensitive(MARGIN_FOLD, true);
+
+  // Properties found from http://www.scintilla.org/SciTEDoc.html
+  text->SetProperty(wxT("fold"), wxT("1"));
+  text->SetProperty(wxT("fold.comment"), wxT("1"));
+  text->SetProperty(wxT("fold.compact"), wxT("1"));
+
+  wxColor grey(100, 100, 100);
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, grey);
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, grey);
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, grey);
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, grey);
+
+  text->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
+  text->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, grey);
+  text->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, grey);
+  // ---- End of code folding part
+
+  text->SetWrapMode(wxSTC_WRAP_WORD); // other choice is wxSCI_WRAP_NONE
+
+  // text->SetText(source);
+
+  text->StyleClearAll();
+  text->SetLexer(wxSTC_LEX_CPP);
+  text->StyleSetForeground(wxSTC_C_STRING, wxColour(150, 0, 0));
+  text->StyleSetForeground(wxSTC_C_PREPROCESSOR, wxColour(165, 105, 0));
+  text->StyleSetForeground(wxSTC_C_IDENTIFIER, wxColour(40, 0, 60));
+  text->StyleSetForeground(wxSTC_C_NUMBER, wxColour(0, 150, 0));
+  text->StyleSetForeground(wxSTC_C_CHARACTER, wxColour(150, 0, 0));
+  text->StyleSetForeground(wxSTC_C_WORD, wxColour(0, 0, 150));
+  text->StyleSetForeground(wxSTC_C_WORD2, wxColour(0, 150, 0));
+  text->StyleSetForeground(wxSTC_C_COMMENT, wxColour(150, 150, 150));
+  text->StyleSetForeground(wxSTC_C_COMMENTLINE, wxColour(150, 150, 150));
+  text->StyleSetForeground(wxSTC_C_COMMENTDOC, wxColour(150, 150, 150));
+  text->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORD, wxColour(0, 0, 200));
+  text->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORDERROR, wxColour(0, 0, 200));
+  text->StyleSetBold(wxSTC_C_WORD, true);
+  text->StyleSetBold(wxSTC_C_WORD2, true);
+  text->StyleSetBold(wxSTC_C_COMMENTDOCKEYWORD, true);
+
+  // a sample list of keywords, I haven't included them all to keep it short...
+  text->SetKeyWords(0, wxT("return for while break continue"));
+  text->SetKeyWords(1, wxT("const int float void char double"));
+
+  /*
+  wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+  sizer->Add(text, 1, wxEXPAND);
+  SetSizer(sizer);
+  */
+
+  m_left = text;
+  // m_left = new wxRichTextCtrl(m_splitter, -1, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxRE_MULTILINE, wxDefaultValidator, wxTextCtrlNameStr);
 
   /*
   m_left = new MyCanvas(m_splitter, true);
