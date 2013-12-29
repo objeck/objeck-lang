@@ -47,6 +47,7 @@
 #include <wx/textdlg.h>
 #include <wx/splitter.h>
 #include <wx/treectrl.h>
+#include <wx/aui/framemanager.h>
 #endif
 
 #ifndef wxHAS_IMAGES_IN_RESOURCES
@@ -77,9 +78,10 @@ enum {
 
 class MyFrame : public wxFrame
 {
-  wxWindow* left;
-  wxWindow* right;
+  wxWindow* top;
+  wxWindow* bottom;
   wxSplitterWindow *main_splitter;
+  wxAuiManager* aui_manager;
 
 public:
   MyFrame();
