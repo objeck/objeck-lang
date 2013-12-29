@@ -45,8 +45,12 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
   menu_bar->Append(split_menu, wxT("&Splitter"));
   SetMenuBar(menu_bar);
 
-  center = new wxTextCtrl(this, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
-  bottom = new wxTextCtrl(this, wxID_ANY, wxT("Output"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  wxNotebook *notebook = new wxNotebook(this, wxID_ANY);
+  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello.obs"));
+  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello_again.obs"));
+  center = notebook;
+
+  bottom = new wxTextCtrl(this, wxID_ANY, wxT("Output"), wxDefaultPosition, wxDefaultSize);
   right = new wxTreeCtrl(this, wxID_ANY);
   
   aui_manager->AddPane(center, wxCENTER);
