@@ -48,6 +48,7 @@
 #include <wx/splitter.h>
 #include <wx/treectrl.h>
 #include <wx/aui/framemanager.h>
+#include <wx/notebook.h>
 #endif
 
 #ifndef wxHAS_IMAGES_IN_RESOURCES
