@@ -72,15 +72,20 @@ public:
 //
 enum {
   SPLIT_QUIT = 1,
-  SPLIT_VERTICAL,
-  SPLIT_BORDER
+  TOGGLE_LEFT,
+  TOGGLE_BOTTOM
 };
 
 class MyFrame : public wxFrame
 {
-  wxWindow* top;
+  wxWindow* center;
+  
+  wxWindow* right;
+  wxMenuItem* toggle_right;
+
   wxWindow* bottom;
-  wxSplitterWindow *main_splitter;
+  wxMenuItem* toggle_bottom;
+
   wxAuiManager* aui_manager;
 
 public:
@@ -88,38 +93,19 @@ public:
   virtual ~MyFrame();
 
   void OnQuit(wxCommandEvent& WXUNUSED(event));
-  void OnSplitVertical(wxCommandEvent& WXUNUSED(event));
-
+  void OnToggleLeft(wxCommandEvent& WXUNUSED(event));
+  void OnToggleBottom(wxCommandEvent& WXUNUSED(event));
+  void OnPaneClose(wxAuiManagerEvent& event);
+  
   DECLARE_EVENT_TABLE()
   wxDECLARE_NO_COPY_CLASS(MyFrame);
 };
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
-  EVT_MENU(SPLIT_VERTICAL, MyFrame::OnSplitVertical)
   EVT_MENU(SPLIT_QUIT, MyFrame::OnQuit)
-END_EVENT_TABLE()
-
-//
-// main spilitter
-//
-class MySplitterWindow : public wxSplitterWindow
-{
-  wxFrame* parent;
-
-public:
-  MySplitterWindow(wxFrame* parent);
-
-  // event handlers
-  void OnDClick(wxSplitterEvent& event);
-  void OnUnsplitEvent(wxSplitterEvent& event);
-
-  DECLARE_EVENT_TABLE()
-  wxDECLARE_NO_COPY_CLASS(MySplitterWindow);
-};
-
-BEGIN_EVENT_TABLE(MySplitterWindow, wxSplitterWindow)
-  EVT_SPLITTER_DCLICK(wxID_ANY, MySplitterWindow::OnDClick)
-  EVT_SPLITTER_UNSPLIT(wxID_ANY, MySplitterWindow::OnUnsplitEvent)
+  EVT_MENU(TOGGLE_LEFT, MyFrame::OnToggleLeft)
+  EVT_MENU(TOGGLE_BOTTOM, MyFrame::OnToggleBottom)
+  EVT_AUI_PANE_CLOSE(MyFrame::OnPaneClose)
 END_EVENT_TABLE()
 
 #endif

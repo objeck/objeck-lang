@@ -32,7 +32,12 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
 
   // create menu
   wxMenu* split_menu = new wxMenu;
-  split_menu->Append(SPLIT_VERTICAL, wxT("Split &Vertically\tCtrl-V"), wxT("Split vertically"));
+  toggle_right = split_menu->AppendCheckItem(TOGGLE_LEFT, wxT("Show &right\tCtrl-L"), wxT("Show right"));
+  toggle_right->Toggle();
+
+  toggle_bottom = split_menu->AppendCheckItem(TOGGLE_BOTTOM, wxT("Show &bottom\tCtrl-B"), wxT("Show bottom"));
+  toggle_bottom->Toggle();
+
   split_menu->Append(SPLIT_QUIT, wxT("E&xit\tAlt-X"), wxT("Exit"));
 
   // set menu bar
@@ -40,18 +45,12 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
   menu_bar->Append(split_menu, wxT("&Splitter"));
   SetMenuBar(menu_bar);
 
-  // set main_splitter
-  main_splitter = new MySplitterWindow(this);
-  main_splitter->SetSize(GetClientSize());
-  main_splitter->SetSashGravity(1.0);
-
-  top = new wxTextCtrl(main_splitter, wxID_ANY, wxT("Multi line without vertical scrollbar."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
-  bottom = new wxTextCtrl(main_splitter, wxID_ANY, wxT("Multi line without vertical scrollbar."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
-  main_splitter->SplitHorizontally(top, bottom, 350);
-
-  aui_manager->AddPane(main_splitter, wxCENTER);
+  center = new wxTextCtrl(this, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  bottom = new wxTextCtrl(this, wxID_ANY, wxT("Output"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  right = new wxTreeCtrl(this, wxID_ANY);
   
-  wxTreeCtrl* right = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNO_BORDER);
+  aui_manager->AddPane(center, wxCENTER);
+  aui_manager->AddPane(bottom, wxBOTTOM);
   aui_manager->AddPane(right, wxRIGHT);
   aui_manager->Update();
     
@@ -65,49 +64,42 @@ MyFrame::~MyFrame()
   aui_manager->UnInit();
 }
 
-void MyFrame::OnSplitVertical(wxCommandEvent& WXUNUSED(event))
-{
-  if(main_splitter->IsSplit()) {
-    main_splitter->Unsplit();
-  }
-
-  top->Show(true);
-  bottom->Show(true);
-  main_splitter->SplitHorizontally(top, bottom, 350);
-
-#if wxUSE_STATUSBAR
-  SetStatusText(wxT("Splitter split vertically"), 1);
-#endif // wxUSE_STATUSBAR
-}
-
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 {
   Close(true);
 }
 
-//
-// main_splitter
-//
-MySplitterWindow::MySplitterWindow(wxFrame* parent) : wxSplitterWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, 
-                                                                       wxSP_3D | wxSP_LIVE_UPDATE | wxCLIP_CHILDREN /* | wxSP_NO_XP_THEME */)
+void MyFrame::OnToggleLeft(wxCommandEvent& WXUNUSED(event))
 {
-  this->parent = parent;
+  wxAuiPaneInfo& right_panel_info = aui_manager->GetPane(right);
+  if(right_panel_info.IsShown()) {
+    right_panel_info.Hide();
+  }
+  else {
+    right_panel_info.Show();
+  }
+  aui_manager->Update();
 }
 
-void MySplitterWindow::OnDClick(wxSplitterEvent& event)
+void MyFrame::OnToggleBottom(wxCommandEvent& WXUNUSED(event))
 {
-#if wxUSE_STATUSBAR
-  parent->SetStatusText(wxT("Splitter double clicked"), 1);
-#endif // wxUSE_STATUSBAR
-
-  event.Skip();
+  wxAuiPaneInfo& bottom_panel_info = aui_manager->GetPane(bottom);
+  if(bottom_panel_info.IsShown()) {
+    bottom_panel_info.Hide();
+  }
+  else {
+    bottom_panel_info.Show();
+  }
+  aui_manager->Update();
 }
 
-void MySplitterWindow::OnUnsplitEvent(wxSplitterEvent& event)
+void MyFrame::OnPaneClose(wxAuiManagerEvent& event)
 {
-#if wxUSE_STATUSBAR
-  parent->SetStatusText(wxT("Splitter unsplit"), 1);
-#endif // wxUSE_STATUSBAR
-
-  event.Skip();
+  const wxWindow* panel = event.pane->window;
+  if(panel == right) {
+    toggle_right->Toggle();
+  }
+  else if(panel == bottom) {
+    toggle_bottom->Toggle();
+  }
 }
