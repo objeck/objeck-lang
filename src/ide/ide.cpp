@@ -23,6 +23,7 @@ bool MyApp::OnInit()
 MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxDefaultPosition, 
                              wxSize(800, 600), wxDEFAULT_FRAME_STYLE | wxNO_FULL_REPAINT_ON_RESIZE)
 {
+  aui_manager = new wxAuiManager(this);
   SetIcon(wxICON(sample));
 
 #if wxUSE_STATUSBAR
@@ -44,12 +45,16 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
   main_splitter->SetSize(GetClientSize());
   main_splitter->SetSashGravity(1.0);
 
-  right = new wxTreeCtrl(main_splitter);
-  left = new wxTextCtrl(main_splitter, wxID_ANY, wxT("Multi line without vertical scrollbar."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  top = new wxTextCtrl(main_splitter, wxID_ANY, wxT("Multi line without vertical scrollbar."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  bottom = new wxTextCtrl(main_splitter, wxID_ANY, wxT("Multi line without vertical scrollbar."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+  main_splitter->SplitHorizontally(top, bottom, 350);
+
+  aui_manager->AddPane(main_splitter, wxCENTER);
   
-  // you can also try -100
-  main_splitter->SplitVertically(left, right, 600);
-  
+  wxTreeCtrl* right = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNO_BORDER);
+  aui_manager->AddPane(right, wxRIGHT);
+  aui_manager->Update();
+    
 #if wxUSE_STATUSBAR
   SetStatusText(wxT("Min pane size = 0"), 1);
 #endif // wxUSE_STATUSBAR
@@ -57,7 +62,7 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
 
 MyFrame::~MyFrame() 
 {
-  
+  aui_manager->UnInit();
 }
 
 void MyFrame::OnSplitVertical(wxCommandEvent& WXUNUSED(event))
@@ -66,9 +71,9 @@ void MyFrame::OnSplitVertical(wxCommandEvent& WXUNUSED(event))
     main_splitter->Unsplit();
   }
 
-  left->Show(true);
-  right->Show(true);
-  main_splitter->SplitVertically(left, right, 600);
+  top->Show(true);
+  bottom->Show(true);
+  main_splitter->SplitHorizontally(top, bottom, 350);
 
 #if wxUSE_STATUSBAR
   SetStatusText(wxT("Splitter split vertically"), 1);
