@@ -116,6 +116,7 @@ public:
   void OnSetGravity(wxCommandEvent& event);
   void OnReplace(wxCommandEvent &event);
   void OnToggleInvisible(wxCommandEvent &event);
+  void OnMarginClick(wxStyledTextEvent &event);
 
   void OnQuit(wxCommandEvent& event);
 
@@ -126,8 +127,9 @@ public:
   void OnUpdateUIInvisible(wxUpdateUIEvent& event);
 
 private:
-  wxWindow *m_left, *m_right;
-
+  wxStyledTextCtrl *m_left;
+  wxWindow *m_right;
+	
   wxSplitterWindow* m_splitter;
   wxWindow *m_replacewindow;
 
@@ -364,6 +366,7 @@ wxDEFAULT_FRAME_STYLE | wxNO_FULL_REPAINT_ON_RESIZE)
   // a sample list of keywords, I haven't included them all to keep it short...
   text->SetKeyWords(0, wxT("return for while break continue"));
   text->SetKeyWords(1, wxT("const int float void char double"));
+  text->Connect(wxEVT_STC_MARGINCLICK, wxStyledTextEventHandler(MyFrame::OnMarginClick), NULL, m_splitter);
 
   /*
   wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
@@ -573,6 +576,22 @@ void MyFrame::OnUpdateUIInvisible(wxUpdateUIEvent& event)
   event.Check(m_splitter->IsSashInvisible());
 }
 
+void MyFrame::OnMarginClick(wxStyledTextEvent &event)
+{
+	if (event.GetMargin() == MARGIN_FOLD)
+	{
+		int lineClick = m_left->LineFromPosition(event.GetPosition());
+/*		
+		int levelClick = text->GetFoldLevel(lineClick);
+
+		if ((levelClick & wxSTC_FOLDLEVELHEADERFLAG) > 0)
+		{
+			text->ToggleFold(lineClick);
+		}
+*/	
+	}		
+}
+
 // ----------------------------------------------------------------------------
 // MySplitterWindow
 // ----------------------------------------------------------------------------
@@ -628,6 +647,8 @@ void MySplitterWindow::OnUnsplitEvent(wxSplitterEvent& event)
 
   event.Skip();
 }
+
+
 
 // ----------------------------------------------------------------------------
 // MyCanvas
