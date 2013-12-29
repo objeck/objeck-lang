@@ -255,7 +255,7 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="minimal.cpp" />
+    <ClCompile Include="ide.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="D:\wxWidgets-3.0.0\include\wx\msw\wx.rc">
@@ -264,6 +264,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="sample.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ide.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
