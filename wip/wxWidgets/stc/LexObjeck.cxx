@@ -3,6 +3,7 @@
 ** Lexer for Objeck.
 ** Based heavily on LexCPP.cxx
 **/
+// Copyright 2014 - by Randy Hollines objeck@gmail.com
 // Copyright 2001- by Vamsi Potluru <vamsi@who.net> & Praveen Ambekar <ambekarpraveen@yahoo.com>
 // The License.txt file describes the conditions under which this software may be distributed.
 
@@ -146,10 +147,10 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
 
     case SCE_OBJK_COMMENTDOC:
       if(cur_char == '~' && next_char == '#') {
-        styler.ColourTo(i, SCE_OBJK_COMMENTDOC);
+        styler.ColourTo(i + 1, SCE_OBJK_COMMENTDOC);
         // reset
         state = SCE_OBJK_DEFAULT;
-        // styler.ColourTo(i, SCE_OBJK_DEFAULT);
+        styler.ColourTo(i + 2, SCE_OBJK_DEFAULT);
       }
       break;
 
@@ -158,7 +159,7 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
         styler.ColourTo(i - 1, SCE_OBJK_COMMENTLINE);
         // reset
         state = SCE_OBJK_DEFAULT;
-        // styler.ColourTo(i, SCE_OBJK_DEFAULT);
+        styler.ColourTo(i, SCE_OBJK_DEFAULT);
       }
       break;
 
@@ -206,8 +207,7 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
   styler.ColourTo(end - 1, state);
 }
 
-static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, WordList *[],
-  Accessor &styler) {
+static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, WordList *[], Accessor &styler) {
   bool foldComment = styler.GetPropertyInt("fold.comment") != 0;
   bool foldCompact = styler.GetPropertyInt("fold.compact", 1) != 0;
   unsigned int endPos = startPos + length;
@@ -218,15 +218,17 @@ static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, Word
   char next_char = styler[startPos];
   int styleNext = styler.StyleAt(startPos);
   int style = initStyle;
+
   for(unsigned int i = startPos; i < endPos; i++) {
     char ch = next_char;
     next_char = styler.SafeGetCharAt(i + 1);
     int stylePrev = style;
     style = styleNext;
     styleNext = styler.StyleAt(i + 1);
+
     bool atEOL = (ch == '\r' && next_char != '\n') || (ch == '\n');
-    if(foldComment && (style == SCE_BAAN_COMMENT || style == SCE_BAAN_COMMENTDOC)) {
-/*
+
+    if(foldComment && (style == SCE_OBJK_COMMENTDOC)) {
       if(style != stylePrev) {
         levelCurrent++;
       }
@@ -234,9 +236,8 @@ static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, Word
         // Comments don't end at end of line and the next character may be unstyled.
         levelCurrent--;
       }
-*/
     }
-
+    
     if(style != SCE_OBJK_COMMENTLINE && style != SCE_OBJK_COMMENTDOC) {
       if(ch == '{') {
         levelCurrent++;
