@@ -36,13 +36,13 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
   styler.StartAt(startPos);
 
   WordList &keywords = *keywordlists[0];
-  // WordList &keywords2 = *keywordlists[1];
+  WordList &keywords2 = *keywordlists[1];
   
   int state = initStyle;
   char next_char = styler.SafeGetCharAt(startPos);
   styler.StartSegment(startPos);
   const int end = startPos + length;
-	
+  
   const int buffer_max = 80;
   char buffer[buffer_max + 1];
   int buffer_pos = 0;
@@ -75,7 +75,38 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
           }
           break;
 
+        case '%':
+        case '=':
+        case '&':
+        case '|':
+        case '?':
+        case '!':
+          styler.ColourTo(i, SCE_OBJK_OPERATOR);
+          break;
+
         case '<':
+          if(next_char == '=' || next_char == '>' || next_char == '<') {
+            styler.ColourTo(i + 1, SCE_OBJK_OPERATOR);
+            continue;
+          }
+          else {
+            styler.ColourTo(i, SCE_OBJK_OPERATOR);
+          }
+          break;
+
+        case '>':
+          if(next_char == '=' || next_char == '>') {
+            styler.ColourTo(i + 1, SCE_OBJK_OPERATOR);
+            continue;
+          }
+          else {
+            styler.ColourTo(i, SCE_OBJK_OPERATOR);
+          }
+          break;
+
+        case '+':
+        case '*':
+        case '/':
           if(next_char == '=') {
             styler.ColourTo(i + 1, SCE_OBJK_OPERATOR);
             continue;
@@ -86,12 +117,21 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
           break;
 
         case '-':
-          if(next_char == '>') {
+          if(next_char == '>' || next_char == '=') {
             styler.ColourTo(i + 1, SCE_OBJK_OPERATOR);
             continue;
           }
           else {
             styler.ColourTo(i, SCE_OBJK_OPERATOR);
+          }
+          break;
+
+        case '#':
+          if(next_char == '~') {
+            state = SCE_OBJK_COMMENTDOC;
+          }
+          else {
+            state = SCE_OBJK_COMMENTLINE;
           }
           break;
 
@@ -101,6 +141,24 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
           styler.ColourTo(i, SCE_OBJK_DEFAULT);
           break;
         }
+      }
+      break;
+
+    case SCE_OBJK_COMMENTDOC:
+      if(cur_char == '~' && next_char == '#') {
+        styler.ColourTo(i, SCE_OBJK_COMMENTDOC);
+        // reset
+        state = SCE_OBJK_DEFAULT;
+        // styler.ColourTo(i, SCE_OBJK_DEFAULT);
+      }
+      break;
+
+    case SCE_OBJK_COMMENTLINE:
+      if(cur_char == '\r' || cur_char == '\n') {
+        styler.ColourTo(i - 1, SCE_OBJK_COMMENTLINE);
+        // reset
+        state = SCE_OBJK_DEFAULT;
+        // styler.ColourTo(i, SCE_OBJK_DEFAULT);
       }
       break;
 
@@ -114,6 +172,9 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
         if(keywords.InList(buffer)) {
           styler.ColourTo(i - 1, SCE_OBJK_IDENTIFIER);
         }
+        else if(keywords2.InList(buffer)) {
+          styler.ColourTo(i - 1, SCE_OBJK_WORD2);
+        }
         // reset
         state = SCE_OBJK_DEFAULT;
         styler.ColourTo(i, SCE_OBJK_DEFAULT);
@@ -124,7 +185,7 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
       if(buffer_pos < buffer_max && (isdigit(cur_char) || cur_char == '.')) {
         buffer[buffer_pos++] = cur_char;
       }
-      // check for word in wordlist
+      // look for word in wordlist
       else {
         buffer[buffer_pos] = '\0';
         styler.ColourTo(i - 1, SCE_OBJK_NUMBER);
@@ -164,8 +225,8 @@ static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, Word
     style = styleNext;
     styleNext = styler.StyleAt(i + 1);
     bool atEOL = (ch == '\r' && next_char != '\n') || (ch == '\n');
-    if(foldComment &&
-      (style == SCE_BAAN_COMMENT || style == SCE_BAAN_COMMENTDOC)) {
+    if(foldComment && (style == SCE_BAAN_COMMENT || style == SCE_BAAN_COMMENTDOC)) {
+/*
       if(style != stylePrev) {
         levelCurrent++;
       }
@@ -173,15 +234,18 @@ static void FoldObjeckDoc(unsigned int startPos, int length, int initStyle, Word
         // Comments don't end at end of line and the next character may be unstyled.
         levelCurrent--;
       }
+*/
     }
-    if(style == SCE_BAAN_OPERATOR) {
+
+    if(style != SCE_OBJK_COMMENTLINE && style != SCE_OBJK_COMMENTDOC) {
       if(ch == '{') {
         levelCurrent++;
       }
-      else if(ch == '}' && next_char == ';') {
+      else if(ch == '}') {
         levelCurrent--;
       }
     }
+
     if(atEOL) {
       int lev = levelPrev;
       if(visibleChars == 0 && foldCompact)
