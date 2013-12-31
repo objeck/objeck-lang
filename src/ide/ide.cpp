@@ -46,8 +46,8 @@ MyFrame::MyFrame() : wxFrame(NULL, wxID_ANY, wxT("wxSplitterWindow sample"), wxD
   SetMenuBar(menu_bar);
 
   wxNotebook *notebook = new wxNotebook(this, wxID_ANY);
-  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello.obs"));
-  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("Some code"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello_again.obs"));
+  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("a"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello.obs"));
+  notebook->AddPage(new wxTextCtrl(notebook, wxID_ANY, wxT("b"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("hello_again.obs"));
   center = notebook;
 
   bottom = new wxTextCtrl(this, wxID_ANY, wxT("Output"), wxDefaultPosition, wxDefaultSize);

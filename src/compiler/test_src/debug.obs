@@ -1,4 +1,4 @@
-﻿use RegEx;
+use RegEx;
 
 bundle Default {
 	class RegExTest {
