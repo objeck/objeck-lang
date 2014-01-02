@@ -93,7 +93,7 @@ const char* ObjeckWordlist1 =
   "use virtual while xor";
 
 const char* ObjeckWordlist2 =
-  "Bool Byte Char Float Int Nil "
+  "Bool Byte Char Float Int Nil String "
   "true false ";
 
 // Python
