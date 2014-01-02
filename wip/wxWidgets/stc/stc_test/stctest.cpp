@@ -299,7 +299,8 @@ AppFrame::AppFrame (const wxString &title)
     m_edit = new Edit (this, wxID_ANY);
     m_edit->SetFocus();
 
-    FileOpen (wxT("C:\\Users\\Randy\\Documents\\Code\\objeck\\main\\src\\compiler\\test_src\\debug.obs"));
+//    FileOpen (wxT("C:\\Users\\Randy\\Documents\\Code\\objeck\\main\\src\\compiler\\test_src\\debug.obs"));
+    FileOpen (wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/base64.obs"));
 }
 
 AppFrame::~AppFrame () {
