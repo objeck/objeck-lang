@@ -3,7 +3,7 @@
 ** Lexer for Objeck.
 ** Based heavily on LexCPP.cxx
 **/
-// Copyright 2014 - by Randy Hollines objeck@gmail.com
+// Copyright 2014- by Randy Hollines <objeck@gmail.com>
 // Copyright 2001- by Vamsi Potluru <vamsi@who.net> & Praveen Ambekar <ambekarpraveen@yahoo.com>
 // The License.txt file describes the conditions under which this software may be distributed.
 
@@ -75,6 +75,14 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
             continue;
           }
           break;
+		
+		case '\'':
+			state = SCE_OBJK_CHARACTER;
+			break;
+			
+		case '"':
+			state = SCE_OBJK_STRING;
+			break;
 
         case '%':
         case '=':
@@ -145,6 +153,26 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
       }
       break;
 
+	case SCE_OBJK_CHARACTER:
+		if(cur_char == '\'' && (styler.SafeGetCharAt(i - 1) != '\\' ||
+		   (styler.SafeGetCharAt(i - 1) == '\\'  && styler.SafeGetCharAt(i - 2) == '\\'))) {
+			styler.ColourTo(i, SCE_OBJK_CHARACTER);
+			// reset
+			state = SCE_OBJK_DEFAULT;
+			styler.ColourTo(i + 1, SCE_OBJK_DEFAULT);
+		}
+		break;
+		
+	case SCE_OBJK_STRING:
+		if(cur_char == '"' && (styler.SafeGetCharAt(i - 1) != '\\' ||
+		   (styler.SafeGetCharAt(i - 1) == '\\'  && styler.SafeGetCharAt(i - 2) == '\\'))) {
+			styler.ColourTo(i, SCE_OBJK_STRING);
+			// reset
+			state = SCE_OBJK_DEFAULT;
+			styler.ColourTo(i + 1, SCE_OBJK_DEFAULT);
+		}
+		break;
+
     case SCE_OBJK_COMMENTDOC:
       if(cur_char == '~' && next_char == '#') {
         styler.ColourTo(i + 1, SCE_OBJK_COMMENTDOC);
@@ -183,7 +211,8 @@ static void ColouriseObjeckDoc(unsigned int startPos, int length, int initStyle,
       break;
 
     case SCE_OBJK_NUMBER:
-      if(buffer_pos < buffer_max && (isdigit(cur_char) || cur_char == '.')) {
+      if(buffer_pos < buffer_max && (isdigit(cur_char) || cur_char == '.' || cur_char == 'x' ||
+         ((cur_char >= 'a' && cur_char <= 'f') || (cur_char >= 'A' && cur_char <= 'F')))) {
         buffer[buffer_pos++] = cur_char;
       }
       // look for word in wordlist
