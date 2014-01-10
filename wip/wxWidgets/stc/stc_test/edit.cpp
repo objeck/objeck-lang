@@ -183,7 +183,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
     m_FoldingMargin = 16;
     CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
-    SetLayoutCache (wxSTC_CACHE_PAGE);
+    SetLayoutCache(wxSTC_CACHE_PAGE);
 }
 
 Edit::~Edit () {}
@@ -509,7 +509,9 @@ bool Edit::InitializePrefs (const wxString &name) {
     SetMarginType (m_LineNrID, wxSTC_MARGIN_NUMBER);
     StyleSetForeground (wxSTC_STYLE_LINENUMBER, wxColour (wxT("DARK GREY")));
     StyleSetBackground (wxSTC_STYLE_LINENUMBER, *wxWHITE);
-    SetMarginWidth (m_LineNrID, 0); // start out not visible
+
+    SetMarginWidth(m_LineNrID, m_LineNrMargin);
+    // SetMarginWidth (m_LineNrID, 0); // start out not visible
 
     // annotations style
     StyleSetBackground(ANNOTATION_STYLE, wxColour(244, 220, 220));
