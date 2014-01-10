@@ -509,7 +509,8 @@ void AppFrame::CreateMenu ()
     menuView->AppendSeparator();
     menuView->AppendCheckItem (myID_DISPLAYEOL, _("Show line &endings"));
     menuView->AppendCheckItem (myID_INDENTGUIDE, _("Show &indent guides"));
-    menuView->AppendCheckItem (myID_LINENUMBER, _("Show line &numbers"));
+    wxMenuItem* showLines = menuView->AppendCheckItem(myID_LINENUMBER, _("Show line &numbers"));
+    showLines->Toggle();
     menuView->AppendCheckItem (myID_LONGLINEON, _("Show &long line marker"));
     menuView->AppendCheckItem (myID_WHITESPACE, _("Show white&space"));
     menuView->AppendSeparator();
