@@ -32,6 +32,9 @@
 #include "wx/settings.h" // system settings
 #include "wx/string.h"   // strings support
 #include "wx/image.h"    // images support
+#include <wx/splitter.h>
+#include <wx/textctrl.h>
+#include <wx/sizer.h>
 
 //! application headers
 #include "defsext.h"     // Additional definitions
@@ -296,8 +299,13 @@ AppFrame::AppFrame (const wxString &title)
     CreateMenu ();
 
     // open first page
-    m_edit = new Edit (this, wxID_ANY);
+    wxSplitterWindow *spiltter = new wxSplitterWindow(this);
+    spiltter->SetSashGravity(1.0);
+    
+    m_edit = new Edit (spiltter, 0);
     m_edit->SetFocus();
+    
+    spiltter->SplitHorizontally(m_edit, new wxTextCtrl(spiltter, 1));
 
 //    FileOpen (wxT("C:\\Users\\Randy\\Documents\\Code\\objeck\\main\\src\\compiler\\test_src\\debug.obs"));
     FileOpen (wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/base64.obs"));
