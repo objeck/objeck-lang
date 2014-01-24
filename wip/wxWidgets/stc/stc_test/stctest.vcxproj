@@ -255,12 +255,14 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dialogs.cpp" />
     <ClCompile Include="edit.cpp" />
     <ClCompile Include="prefs.cpp" />
     <ClCompile Include="stctest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defsext.h" />
+    <ClInclude Include="dialogs.h" />
     <ClInclude Include="edit.h" />
     <ClInclude Include="prefs.h" />
   </ItemGroup>
