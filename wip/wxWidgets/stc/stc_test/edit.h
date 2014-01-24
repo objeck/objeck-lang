@@ -23,18 +23,11 @@
 
 //! wxWidgets/contrib headers
 #include "wx/stc/stc.h"  // styled text control
+#include <wx/fdrepdlg.h>
 
 //! application headers
 #include "prefs.h"       // preferences
-
-
-//============================================================================
-// declarations
-//============================================================================
-
-class EditPrint;
-class EditProperties;
-
+// #include "dialogs.h"       // preferences
 
 //----------------------------------------------------------------------------
 //! Edit
@@ -72,6 +65,8 @@ public:
     void OnFindNext (wxCommandEvent &event);
     void OnReplace (wxCommandEvent &event);
     void OnReplaceNext (wxCommandEvent &event);
+    void OnFindDialog(wxFindDialogEvent& event);
+
     void OnBraceMatch (wxCommandEvent &event);
     void OnGoto (wxCommandEvent &event);
     void OnEditIndentInc (wxCommandEvent &event);
@@ -127,50 +122,10 @@ private:
     int m_FoldingMargin;
     int m_DividerID;
 
+    wxFindReplaceData m_findData;
+    wxFindReplaceDialog *m_dlgFind, *m_dlgReplace;
+
     DECLARE_EVENT_TABLE()
 };
-
-//----------------------------------------------------------------------------
-//! EditProperties
-class EditProperties: public wxDialog {
-
-public:
-
-    //! constructor
-    EditProperties (Edit *edit, long style = 0);
-
-private:
-
-};
-
-#if wxUSE_PRINTING_ARCHITECTURE
-
-//----------------------------------------------------------------------------
-//! EditPrint
-class EditPrint: public wxPrintout {
-
-public:
-
-    //! constructor
-    EditPrint (Edit *edit, const wxChar *title = wxT(""));
-
-    //! event handlers
-    bool OnPrintPage (int page);
-    bool OnBeginDocument (int startPage, int endPage);
-
-    //! print functions
-    bool HasPage (int page);
-    void GetPageInfo (int *minPage, int *maxPage, int *selPageFrom, int *selPageTo);
-
-private:
-    Edit *m_edit;
-    int m_printed;
-    wxRect m_pageRect;
-    wxRect m_printRect;
-
-    bool PrintScaling (wxDC *dc);
-};
-
-#endif // wxUSE_PRINTING_ARCHITECTURE
 
 #endif // _EDIT_H_
