@@ -39,6 +39,7 @@
 //! application headers
 #include "defsext.h"     // Additional definitions
 #include "edit.h"        // Edit module
+#include "dialogs.h"        // Edit module
 #include "prefs.h"       // Prefs
 
 //----------------------------------------------------------------------------
@@ -147,6 +148,7 @@ public:
     void OnPrint (wxCommandEvent &event);
     //! edit events
     void OnEdit (wxCommandEvent &event);
+    void OnFindReplace(wxFindDialogEvent& event);
 
 private:
     // edit object
@@ -276,6 +278,13 @@ BEGIN_EVENT_TABLE (AppFrame, wxFrame)
                                      AppFrame::OnEdit)
     // help
     EVT_MENU (wxID_ABOUT,            AppFrame::OnAbout)
+
+    // find dialog
+    EVT_FIND(wxID_ANY, AppFrame::OnFindReplace)
+    EVT_FIND_NEXT(wxID_ANY, AppFrame::OnFindReplace)
+    EVT_FIND_REPLACE(wxID_ANY, AppFrame::OnFindReplace)
+    EVT_FIND_REPLACE_ALL(wxID_ANY, AppFrame::OnFindReplace)
+    EVT_FIND_CLOSE(wxID_ANY, AppFrame::OnFindReplace)
 END_EVENT_TABLE ()
 
 AppFrame::AppFrame (const wxString &title)
@@ -444,6 +453,11 @@ void AppFrame::OnEdit (wxCommandEvent &event) {
     if (m_edit) m_edit->GetEventHandler()->ProcessEvent (event);
 }
 
+// edit events
+void AppFrame::OnFindReplace(wxFindDialogEvent& event) {
+  if(m_edit) m_edit->GetEventHandler()->ProcessEvent(event);
+}
+
 // private functions
 void AppFrame::CreateMenu ()
 {
@@ -473,11 +487,11 @@ void AppFrame::CreateMenu ()
     menuEdit->Append (wxID_CLEAR, _("&Delete\tDel"));
     menuEdit->AppendSeparator();
     menuEdit->Append (wxID_FIND, _("&Find\tCtrl+F"));
-    menuEdit->Enable (wxID_FIND, false);
+    // menuEdit->Enable (wxID_FIND, false);
     menuEdit->Append (myID_FINDNEXT, _("Find &next\tF3"));
     menuEdit->Enable (myID_FINDNEXT, false);
     menuEdit->Append (myID_REPLACE, _("&Replace\tCtrl+H"));
-    menuEdit->Enable (myID_REPLACE, false);
+    // menuEdit->Enable (myID_REPLACE, false);
     menuEdit->Append (myID_REPLACENEXT, _("Replace &again\tShift+F4"));
     menuEdit->Enable (myID_REPLACENEXT, false);
     menuEdit->AppendSeparator();
@@ -579,7 +593,6 @@ wxRect AppFrame::DeterminePrintSize () {
 
     return rect;
 }
-
 
 //----------------------------------------------------------------------------
 // AppAbout
