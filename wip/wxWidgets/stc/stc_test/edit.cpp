@@ -271,37 +271,65 @@ void Edit::OnReplace (wxCommandEvent &WXUNUSED(event)) {
 void Edit::OnReplaceNext (wxCommandEvent &WXUNUSED(event)) {
 }
 
+
+// TOOD: map flags; detect wrap around
 void Edit::OnFindDialog(wxFindDialogEvent& event)
 {
-
   wxEventType type = event.GetEventType();
-  
+
   if(type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
   {
-    const wxString text = event.GetFindString();
+    const wxString find = event.GetFindString();
     const long minPos = GetCurrentPos();
     const long maxPos = GetLastPosition();
-    if(minPos > -1 && maxPos > -1) {
-      int pos = FindText(minPos, maxPos, text);
-      if(pos > -1) {
-        GotoPos(pos);
-        SetSelectionStart(pos);
-        SetSelectionEnd(pos + text.size());
-      }
+    int curPos = FindText(minPos, maxPos, find);
+    if(curPos > -1) {
+      GotoPos(curPos);
+      SetSelectionStart(curPos);
+      SetSelectionEnd(curPos + find.size());
+    }
+    else {
+      wxLogMessage(wxT("Unable to find \"%s\""), find);
     }
   }
-  else if(type == wxEVT_FIND_REPLACE ||
-    type == wxEVT_FIND_REPLACE_ALL)
+  else if(type == wxEVT_FIND_REPLACE)
   {
+    const wxString find = event.GetFindString();
+    const long minPos = GetCurrentPos();
+    const long maxPos = GetLastPosition();
+
+    int curPos = FindText(minPos, maxPos, find);
+    if(curPos > -1) {
+      SetSelectionStart(curPos);
+      SetSelectionEnd(curPos + find.size());
+      ReplaceSelection(event.GetReplaceString());
+    }
+    else {
+      wxLogMessage(wxT("Unable to find \"%s\""), find);
+    }
+  }
+  else if(type == wxEVT_FIND_REPLACE_ALL) 
+  {
+    const wxString find = event.GetFindString();
+    const wxString replace = event.GetReplaceString();
+
+    const long minPos = GetCurrentPos();
+    const long maxPos = GetLastPosition();
     
+    int count = 0;
+    int curPos = FindText(minPos, maxPos, find);
+    while(curPos > minPos) {
+      ++count;
+      SetSelectionStart(curPos);
+      SetSelectionEnd(curPos + find.size());
+      ReplaceSelection(replace);
+      curPos = FindText(curPos + replace.size(), maxPos, find);
+    }
+    wxLogMessage(wxT("Replaced %d instance(s) of \"%s\" with \"%s\""), count, find, replace);
   }
   else if(type == wxEVT_FIND_CLOSE)
   {
     event.GetDialog()->Destroy();
-  }
-  else
-  {
-    wxLogError(wxT("Unknown find dialog event!"));
   }
 }
 
