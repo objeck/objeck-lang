@@ -345,6 +345,7 @@ void Edit::OnBraceMatch (wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnGoto (wxCommandEvent &WXUNUSED(event)) {
+  int lastLine = LineFromPosition(GetLastPosition());
 }
 
 void Edit::OnEditIndentInc (wxCommandEvent &WXUNUSED(event)) {

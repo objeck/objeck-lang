@@ -497,7 +497,7 @@ void AppFrame::CreateMenu ()
     menuEdit->AppendSeparator();
     menuEdit->Append (myID_BRACEMATCH, _("&Match brace\tCtrl+M"));
     menuEdit->Append (myID_GOTO, _("&Goto\tCtrl+G"));
-    menuEdit->Enable (myID_GOTO, false);
+    // menuEdit->Enable (myID_GOTO, false);
     menuEdit->AppendSeparator();
     menuEdit->Append (myID_INDENTINC, _("&Indent increase\tTab"));
     menuEdit->Append (myID_INDENTRED, _("I&ndent reduce\tShift+Tab"));
