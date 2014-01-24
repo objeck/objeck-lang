@@ -34,6 +34,12 @@
 #include "wx/file.h"     // raw file io support
 #include "wx/filename.h" // filename support
 
+#include "wx/choicdlg.h"
+#include "wx/aboutdlg.h"
+#include "wx/filedlg.h"
+#include "wx/fdrepdlg.h"
+#include "wx/infobar.h"
+
 //! application headers
 #include "defsext.h"     // additional definitions
 
@@ -71,6 +77,7 @@ BEGIN_EVENT_TABLE (Edit, wxStyledTextCtrl)
     EVT_MENU (myID_SELECTLINE,         Edit::OnEditSelectLine)
     EVT_MENU (wxID_REDO,               Edit::OnEditRedo)
     EVT_MENU (wxID_UNDO,               Edit::OnEditUndo)
+    
     // find
     EVT_MENU (wxID_FIND,               Edit::OnFind)
     EVT_MENU (myID_FINDNEXT,           Edit::OnFindNext)
@@ -78,9 +85,14 @@ BEGIN_EVENT_TABLE (Edit, wxStyledTextCtrl)
     EVT_MENU (myID_REPLACENEXT,        Edit::OnReplaceNext)
     EVT_MENU (myID_BRACEMATCH,         Edit::OnBraceMatch)
     EVT_MENU (myID_GOTO,               Edit::OnGoto)
+    EVT_FIND(wxID_ANY,                 Edit::OnFindDialog)
+    EVT_FIND_NEXT(wxID_ANY,            Edit::OnFindDialog)
+    EVT_FIND_REPLACE(wxID_ANY,         Edit::OnFindDialog)
+    EVT_FIND_REPLACE_ALL(wxID_ANY,     Edit::OnFindDialog)
+    EVT_FIND_CLOSE(wxID_ANY,           Edit::OnFindDialog)
+
     // view
-    EVT_MENU_RANGE (myID_HILIGHTFIRST, myID_HILIGHTLAST,
-                                       Edit::OnHilightLang)
+    EVT_MENU_RANGE (myID_HILIGHTFIRST, myID_HILIGHTLAST, Edit::OnHilightLang)
     EVT_MENU (myID_DISPLAYEOL,         Edit::OnDisplayEOL)
     EVT_MENU (myID_INDENTGUIDE,        Edit::OnIndentGuide)
     EVT_MENU (myID_LINENUMBER,         Edit::OnLineNumber)
@@ -263,64 +275,34 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
 {
 
   wxEventType type = event.GetEventType();
-
-  /*
+  
   if(type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
   {
-    wxLogMessage(wxT("Find %s'%s' (flags: %s)"),
-      type == wxEVT_FIND_NEXT ? wxT("next ") : wxT(""),
-      event.GetFindString().c_str(),
-      DecodeFindDialogEventFlags(event.GetFlags()).c_str());
+    const wxString text = event.GetFindString();
+    const long minPos = GetCurrentPos();
+    const long maxPos = GetLastPosition();
+    if(minPos > -1 && maxPos > -1) {
+      int pos = FindText(minPos, maxPos, text);
+      if(pos > -1) {
+        GotoPos(pos);
+        SetSelectionStart(pos);
+        SetSelectionEnd(pos + text.size());
+      }
+    }
   }
   else if(type == wxEVT_FIND_REPLACE ||
     type == wxEVT_FIND_REPLACE_ALL)
   {
-    wxLogMessage(wxT("Replace %s'%s' with '%s' (flags: %s)"),
-      type == wxEVT_FIND_REPLACE_ALL ? wxT("all ") : wxT(""),
-      event.GetFindString().c_str(),
-      event.GetReplaceString().c_str(),
-      DecodeFindDialogEventFlags(event.GetFlags()).c_str());
+    
   }
   else if(type == wxEVT_FIND_CLOSE)
   {
-    wxFindReplaceDialog *dlg = event.GetDialog();
-
-    int idMenu;
-    const wxChar *txt;
-    if(dlg == m_dlgFind)
-    {
-      txt = wxT("Find");
-      idMenu = wxID_FIND;
-      m_dlgFind = NULL;
-    }
-    else if(dlg == m_dlgReplace)
-    {
-      txt = wxT("Replace");
-      idMenu = wxID_REPLACE;
-      m_dlgReplace = NULL;
-    }
-    else
-    {
-      txt = wxT("Unknown");
-      idMenu = wxID_ANY;
-
-      wxFAIL_MSG(wxT("unexpected event"));
-    }
-
-    wxLogMessage(wxT("%s dialog is being closed."), txt);
-
-    if(idMenu != wxID_ANY)
-    {
-      GetMenuBar()->Check(idMenu, false);
-    }
-
-    dlg->Destroy();
+    event.GetDialog()->Destroy();
   }
   else
   {
     wxLogError(wxT("Unknown find dialog event!"));
   }
-  */
 }
 
 void Edit::OnBraceMatch (wxCommandEvent &WXUNUSED(event)) {
