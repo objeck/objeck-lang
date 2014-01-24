@@ -325,7 +325,7 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
       ReplaceSelection(replace);
       curPos = FindText(curPos + replace.size(), maxPos, find);
     }
-    wxLogMessage(wxT("Replaced %d instance(s) of \"%s\" with \"%s\""), count, find, replace);
+    wxLogMessage(wxT("Replaced %d instance(s) of \"%s\" were replaced with \"%s\""), count, find, replace);
   }
   else if(type == wxEVT_FIND_CLOSE)
   {
