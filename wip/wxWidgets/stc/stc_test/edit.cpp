@@ -49,9 +49,6 @@
 // declarations
 //============================================================================
 
-// The (uniform) style used for the annotations.
-const int ANNOTATION_STYLE = wxSTC_STYLE_LASTPREDEFINED + 1;
-
 //============================================================================
 // implementation
 //============================================================================
@@ -95,13 +92,6 @@ BEGIN_EVENT_TABLE (Edit, wxStyledTextCtrl)
     EVT_MENU (myID_WRAPMODEON,         Edit::OnWrapmodeOn)
     EVT_MENU (myID_CHARSETANSI,        Edit::OnUseCharset)
     EVT_MENU (myID_CHARSETMAC,         Edit::OnUseCharset)
-    // annotations
-    EVT_MENU (myID_ANNOTATION_ADD,     Edit::OnAnnotationAdd)
-    EVT_MENU (myID_ANNOTATION_REMOVE,  Edit::OnAnnotationRemove)
-    EVT_MENU (myID_ANNOTATION_CLEAR,   Edit::OnAnnotationClear)
-    EVT_MENU (myID_ANNOTATION_STYLE_HIDDEN,   Edit::OnAnnotationStyle)
-    EVT_MENU (myID_ANNOTATION_STYLE_STANDARD, Edit::OnAnnotationStyle)
-    EVT_MENU (myID_ANNOTATION_STYLE_BOXED,    Edit::OnAnnotationStyle)
     // extra
     EVT_MENU (myID_CHANGELOWER,        Edit::OnChangeCase)
     EVT_MENU (myID_CHANGEUPPER,        Edit::OnChangeCase)
@@ -158,26 +148,13 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetYCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
 
     // markers
-	/*
-    MarkerDefine (wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_DOTDOTDOT, wxT("BLACK"), wxT("BLACK"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_ARROWDOWN, wxT("BLACK"), wxT("BLACK"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_DOTDOTDOT, wxT("BLACK"), wxT("WHITE"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN, wxT("BLACK"), wxT("WHITE"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
-    MarkerDefine (wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
-	*/
-	
-	MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("LIGHT GREY"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("LIGHT GREY"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("LIGHT BLUE"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("LIGHT GREY"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("LIGHT GREY"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("LIGHT BLUE"));
-  MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("LIGHT BLUE"));
-
-    // annotations
-    AnnotationSetVisible(wxSTC_ANNOTATION_BOXED);
+	  MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("LIGHT GREY"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("LIGHT GREY"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("LIGHT BLUE"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("LIGHT GREY"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("LIGHT GREY"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("LIGHT BLUE"));
+    MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("LIGHT BLUE"));
 
     // miscellaneous
     m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
@@ -291,8 +268,7 @@ void Edit::OnIndentGuide (wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnLineNumber (wxCommandEvent &WXUNUSED(event)) {
-    SetMarginWidth (m_LineNrID,
-                    GetMarginWidth (m_LineNrID) == 0? m_LineNrMargin: 0);
+    SetMarginWidth (m_LineNrID, GetMarginWidth (m_LineNrID) == 0? m_LineNrMargin: 0);
 }
 
 void Edit::OnLongLineOn (wxCommandEvent &WXUNUSED(event)) {
@@ -331,79 +307,6 @@ void Edit::OnUseCharset (wxCommandEvent &event) {
         StyleSetCharacterSet (Nr, charset);
     }
     SetCodePage (charset);
-}
-
-void Edit::OnAnnotationAdd(wxCommandEvent& WXUNUSED(event))
-{
-    const int line = GetCurrentLine();
-
-    wxString ann = AnnotationGetText(line);
-    ann = wxGetTextFromUser
-          (
-            wxString::Format("Enter annotation for the line %d", line),
-            "Edit annotation",
-            ann,
-            this
-          );
-    if ( ann.empty() )
-        return;
-
-    AnnotationSetText(line, ann);
-    AnnotationSetStyle(line, ANNOTATION_STYLE);
-
-    // Scintilla doesn't update the scroll width for annotations, even with
-    // scroll width tracking on, so do it manually.
-    const int width = GetScrollWidth();
-
-    // NB: The following adjustments are only needed when using
-    //     wxSTC_ANNOTATION_BOXED annotations style, but we apply them always
-    //     in order to make things simpler and not have to redo the width
-    //     calculations when the annotations visibility changes. In a real
-    //     program you'd either just stick to a fixed annotations visibility or
-    //     update the width when it changes.
-
-    // Take into account the fact that the annotation is shown indented, with
-    // the same indent as the line it's attached to.
-    int indent = GetLineIndentation(line);
-
-    // This is just a hack to account for the width of the box, there doesn't
-    // seem to be any way to get it directly from Scintilla.
-    indent += 3;
-
-    const int widthAnn = TextWidth(ANNOTATION_STYLE, ann + wxString(indent, ' '));
-
-    if (widthAnn > width)
-        SetScrollWidth(widthAnn);
-}
-
-void Edit::OnAnnotationRemove(wxCommandEvent& WXUNUSED(event))
-{
-    AnnotationSetText(GetCurrentLine(), wxString());
-}
-
-void Edit::OnAnnotationClear(wxCommandEvent& WXUNUSED(event))
-{
-    AnnotationClearAll();
-}
-
-void Edit::OnAnnotationStyle(wxCommandEvent& event)
-{
-    int style = 0;
-    switch (event.GetId()) {
-        case myID_ANNOTATION_STYLE_HIDDEN:
-            style = wxSTC_ANNOTATION_HIDDEN;
-            break;
-
-        case myID_ANNOTATION_STYLE_STANDARD:
-            style = wxSTC_ANNOTATION_STANDARD;
-            break;
-
-        case myID_ANNOTATION_STYLE_BOXED:
-            style = wxSTC_ANNOTATION_BOXED;
-            break;
-    }
-
-    AnnotationSetVisible(style);
 }
 
 void Edit::OnChangeCase (wxCommandEvent &event) {
@@ -511,14 +414,7 @@ bool Edit::InitializePrefs (const wxString &name) {
     StyleSetBackground (wxSTC_STYLE_LINENUMBER, *wxWHITE);
 
     SetMarginWidth(m_LineNrID, m_LineNrMargin);
-    // SetMarginWidth (m_LineNrID, 0); // start out not visible
-
-    // annotations style
-    StyleSetBackground(ANNOTATION_STYLE, wxColour(244, 220, 220));
-    StyleSetForeground(ANNOTATION_STYLE, *wxBLACK);
-    StyleSetSizeFractional(ANNOTATION_STYLE,
-            (StyleGetSizeFractional(wxSTC_STYLE_DEFAULT)*4)/5);
-
+    
     // default fonts for all styles!
     int Nr;
     for (Nr = 0; Nr < wxSTC_STYLE_LASTPREDEFINED; Nr++) {
