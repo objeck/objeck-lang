@@ -23,7 +23,7 @@
 // declarations
 //============================================================================
 
-#define DEFAULT_LANGUAGE "<default>"
+#define DEFAULT_LANGUAGE "<none>"
 
 #define PAGE_COMMON _("Common")
 #define PAGE_LANGUAGES _("Languages")
@@ -57,12 +57,6 @@ enum {
     myID_OVERTYPE,
     myID_READONLY,
     myID_WRAPMODEON,
-    myID_ANNOTATION_ADD,
-    myID_ANNOTATION_REMOVE,
-    myID_ANNOTATION_CLEAR,
-    myID_ANNOTATION_STYLE_HIDDEN,
-    myID_ANNOTATION_STYLE_STANDARD,
-    myID_ANNOTATION_STYLE_BOXED,
     myID_CHANGECASE,
     myID_CHANGELOWER,
     myID_CHANGEUPPER,
@@ -80,7 +74,6 @@ enum {
     myID_PAGENEXT,
     myID_SELECTLINE,
     myID_EDIT_LAST = myID_SELECTLINE,
-    myID_WINDOW_MINIMAL,
 
     // other IDs
     myID_STATUSBAR,
