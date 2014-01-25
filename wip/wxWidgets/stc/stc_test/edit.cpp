@@ -39,6 +39,7 @@
 #include "wx/filedlg.h"
 #include "wx/fdrepdlg.h"
 #include "wx/infobar.h"
+#include "wx/numdlg.h"
 
 //! application headers
 #include "defsext.h"     // additional definitions
@@ -237,9 +238,7 @@ void Edit::OnFind (wxCommandEvent &WXUNUSED(event)) {
       (
       this,
       &m_findData,
-      wxT("Find dialog"),
-      // just for testing
-      wxFR_NOWHOLEWORD
+      wxT("Search...")
       );
 
     m_dlgFind->Show(true);
@@ -282,7 +281,18 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     const wxString find = event.GetFindString();
     const long minPos = GetCurrentPos();
     const long maxPos = GetLastPosition();
-    int curPos = FindText(minPos, maxPos, find);
+
+    const int flags = event.GetFlags();
+    bool down = flags & wxFR_DOWN;
+
+    int curPos;
+    if(down) {
+      curPos = FindText(minPos, maxPos, find, flags);
+    }
+    else {
+      curPos = FindText(minPos - find.size(), 0, find, flags);
+    }
+
     if(curPos > -1) {
       GotoPos(curPos);
       SetSelectionStart(curPos);
@@ -327,9 +337,10 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     }
     wxLogMessage(wxT("Replaced %d instance(s) of \"%s\" were replaced with \"%s\""), count, find, replace);
   }
+  // FIX ME...
   else if(type == wxEVT_FIND_CLOSE)
   {
-    event.GetDialog()->Destroy();
+    // event.GetDialog()->Destroy();
   }
 }
 
@@ -345,7 +356,11 @@ void Edit::OnBraceMatch (wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnGoto (wxCommandEvent &WXUNUSED(event)) {
-  int lastLine = LineFromPosition(GetLastPosition());
+  const int lastLine = LineFromPosition(GetLastPosition());
+  long line = wxGetNumberFromUser(wxT(""), wxT("Goto line:"), wxT("Goto Line"), 1, 1, 1000000, this);
+  if(line <= lastLine) {
+    GotoLine(line);
+  }
 }
 
 void Edit::OnEditIndentInc (wxCommandEvent &WXUNUSED(event)) {
