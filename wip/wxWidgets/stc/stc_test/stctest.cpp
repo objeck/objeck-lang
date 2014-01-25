@@ -32,7 +32,7 @@
 #include "wx/settings.h" // system settings
 #include "wx/string.h"   // strings support
 #include "wx/image.h"    // images support
-#include <wx/splitter.h>
+#include <wx/notebook.h>
 #include <wx/textctrl.h>
 #include <wx/sizer.h>
 
@@ -304,14 +304,12 @@ AppFrame::AppFrame (const wxString &title)
     m_menuBar = new wxMenuBar;
     CreateMenu ();
 
-    // open first page
-    wxSplitterWindow *spiltter = new wxSplitterWindow(this);
-    spiltter->SetSashGravity(1.0);
-    
-    m_edit = new Edit (spiltter, 0);
+    wxNotebook* notebook = new wxNotebook(this, 1);
+
+    m_edit = new Edit(notebook, 0);
     m_edit->SetFocus();
-    
-    spiltter->SplitHorizontally(m_edit, new wxTextCtrl(spiltter, 1));
+
+    notebook->InsertPage(0, m_edit, wxT("base64.obs"));
 
 //    FileOpen (wxT("C:\\Users\\Randy\\Documents\\Code\\objeck\\main\\src\\compiler\\test_src\\debug.obs"));
     FileOpen (wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/base64.obs"));
