@@ -124,7 +124,21 @@ private:
 
     wxFindReplaceData m_findData;
     wxFindReplaceDialog *m_dlgFind, *m_dlgReplace;
-
+    
+    int FindLine(wxFindDialogEvent& event) {
+    	const wxString find = event.GetFindString();
+    	
+		const long minPos = GetCurrentPos();
+		const long maxPos = GetLastPosition();
+		const int flags = event.GetFlags();
+		
+		if(flags & wxFR_DOWN) {
+		  return FindText(minPos, maxPos, find, flags);
+		}
+		
+		return FindText(minPos - find.size(), 0, find, flags);
+	}
+	
     DECLARE_EVENT_TABLE()
 };
 

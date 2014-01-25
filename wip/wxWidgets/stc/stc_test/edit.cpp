@@ -164,7 +164,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetYCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
 
     // markers
-	  MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("LIGHT GREY"));
+	MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("LIGHT GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("LIGHT GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("LIGHT BLUE"));
     MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("LIGHT GREY"));
@@ -230,7 +230,8 @@ void Edit::OnEditPaste (wxCommandEvent &WXUNUSED(event)) {
 void Edit::OnFind (wxCommandEvent &WXUNUSED(event)) {
   if(m_dlgFind)
   {
-    wxDELETE(m_dlgFind);
+    // wxDELETE(m_dlgFind);
+    m_dlgFind->Show(true);
   }
   else
   {
@@ -251,7 +252,8 @@ void Edit::OnFindNext (wxCommandEvent &WXUNUSED(event)) {
 void Edit::OnReplace (wxCommandEvent &WXUNUSED(event)) {
   if(m_dlgReplace)
   {
-    wxDELETE(m_dlgReplace);
+    // wxDELETE(m_dlgReplace);
+    m_dlgReplace->Show(true);
   }
   else
   {
@@ -270,7 +272,6 @@ void Edit::OnReplace (wxCommandEvent &WXUNUSED(event)) {
 void Edit::OnReplaceNext (wxCommandEvent &WXUNUSED(event)) {
 }
 
-
 // TOOD: map flags; detect wrap around
 void Edit::OnFindDialog(wxFindDialogEvent& event)
 {
@@ -278,21 +279,8 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
 
   if(type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
   {
-    const wxString find = event.GetFindString();
-    const long minPos = GetCurrentPos();
-    const long maxPos = GetLastPosition();
-
-    const int flags = event.GetFlags();
-    bool down = flags & wxFR_DOWN;
-
-    int curPos;
-    if(down) {
-      curPos = FindText(minPos, maxPos, find, flags);
-    }
-    else {
-      curPos = FindText(minPos - find.size(), 0, find, flags);
-    }
-
+  	const wxString find = event.GetFindString();
+    const int curPos = FindLine(event);
     if(curPos > -1) {
       GotoPos(curPos);
       SetSelectionStart(curPos);
@@ -305,10 +293,7 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
   else if(type == wxEVT_FIND_REPLACE)
   {
     const wxString find = event.GetFindString();
-    const long minPos = GetCurrentPos();
-    const long maxPos = GetLastPosition();
-
-    int curPos = FindText(minPos, maxPos, find);
+    const int curPos = FindLine(event);
     if(curPos > -1) {
       SetSelectionStart(curPos);
       SetSelectionEnd(curPos + find.size());
@@ -340,7 +325,16 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
   // FIX ME...
   else if(type == wxEVT_FIND_CLOSE)
   {
-    // event.GetDialog()->Destroy();
+/*  
+  	if(event.GetDialog() == m_dlgFind) {
+  		wxDELETE(m_dlgFind);
+  		m_dlgFind = NULL;
+  	}
+  	else if(event.GetDialog() == m_dlgReplace) {
+  		wxDELETE(m_dlgReplace);
+  		m_dlgReplace = NULL;
+  	}
+*/
   }
 }
 
@@ -359,7 +353,7 @@ void Edit::OnGoto (wxCommandEvent &WXUNUSED(event)) {
   const int lastLine = LineFromPosition(GetLastPosition());
   long line = wxGetNumberFromUser(wxT(""), wxT("Goto line:"), wxT("Goto Line"), 1, 1, 1000000, this);
   if(line <= lastLine) {
-    GotoLine(line);
+    GotoLine(line - 1);
   }
 }
 
