@@ -228,45 +228,24 @@ void Edit::OnEditPaste (wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnFind (wxCommandEvent &WXUNUSED(event)) {
-  if(m_dlgFind)
-  {
-    // wxDELETE(m_dlgFind);
-    m_dlgFind->Show(true);
+  if(m_dlgFind) {
+    wxDELETE(m_dlgFind);
   }
-  else
-  {
-    m_dlgFind = new wxFindReplaceDialog
-      (
-      this,
-      &m_findData,
-      wxT("Search...")
-      );
-
-    m_dlgFind->Show(true);
-  }
+  
+  m_dlgFind = new wxFindReplaceDialog(this, &m_findData, wxT("Search..."));
+  m_dlgFind->Show(true);
 }
-
+   
 void Edit::OnFindNext (wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnReplace (wxCommandEvent &WXUNUSED(event)) {
-  if(m_dlgReplace)
-  {
-    // wxDELETE(m_dlgReplace);
-    m_dlgReplace->Show(true);
+  if(m_dlgReplace) {
+    wxDELETE(m_dlgReplace);
   }
-  else
-  {
-    m_dlgReplace = new wxFindReplaceDialog
-      (
-      this,
-      &m_findData,
-      wxT("Find and replace dialog"),
-      wxFR_REPLACEDIALOG
-      );
 
-    m_dlgReplace->Show(true);
-  }
+  m_dlgReplace = new wxFindReplaceDialog(this, &m_findData, wxT("Find and replace dialog"), wxFR_REPLACEDIALOG);
+  m_dlgReplace->Show(true);
 }
 
 void Edit::OnReplaceNext (wxCommandEvent &WXUNUSED(event)) {
