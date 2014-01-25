@@ -32,7 +32,7 @@
 #include "wx/settings.h" // system settings
 #include "wx/string.h"   // strings support
 #include "wx/image.h"    // images support
-#include <wx/notebook.h>
+#include <wx/aui/auibook.h>
 #include <wx/textctrl.h>
 #include <wx/sizer.h>
 
@@ -155,7 +155,7 @@ public:
 private:
     // edit object
     Edit *m_edit;
-    wxNotebook* m_notebook;
+    wxAuiNotebook* m_notebook;
     void FileOpen (wxString fname, Edit* edit);
 
     //! creates the application menu bar
@@ -310,7 +310,7 @@ AppFrame::AppFrame (const wxString &title)
     m_menuBar = new wxMenuBar;
     CreateMenu ();
 
-    m_notebook = new wxNotebook(this, 1);
+    m_notebook = new wxAuiNotebook(this, 1);
 
     m_edit = new Edit(m_notebook, 0);
     m_edit->SetFocus();
