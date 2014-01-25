@@ -150,10 +150,13 @@ public:
     void OnEdit (wxCommandEvent &event);
     void OnFindReplace(wxFindDialogEvent& event);
 
+    void OnNotebook(wxNotebookEvent& event);
+
 private:
     // edit object
     Edit *m_edit;
-    void FileOpen (wxString fname);
+    wxNotebook* m_notebook;
+    void FileOpen (wxString fname, Edit* edit);
 
     //! creates the application menu bar
     wxMenuBar *m_menuBar;
@@ -285,6 +288,9 @@ BEGIN_EVENT_TABLE (AppFrame, wxFrame)
     EVT_FIND_REPLACE(wxID_ANY, AppFrame::OnFindReplace)
     EVT_FIND_REPLACE_ALL(wxID_ANY, AppFrame::OnFindReplace)
     EVT_FIND_CLOSE(wxID_ANY, AppFrame::OnFindReplace)
+
+    EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, AppFrame::OnNotebook)
+    EVT_NOTEBOOK_PAGE_CHANGING(wxID_ANY, AppFrame::OnNotebook)
 END_EVENT_TABLE ()
 
 AppFrame::AppFrame (const wxString &title)
@@ -304,21 +310,36 @@ AppFrame::AppFrame (const wxString &title)
     m_menuBar = new wxMenuBar;
     CreateMenu ();
 
-    wxNotebook* notebook = new wxNotebook(this, 1);
+    m_notebook = new wxNotebook(this, 1);
 
-    m_edit = new Edit(notebook, 0);
+    m_edit = new Edit(m_notebook, 0);
     m_edit->SetFocus();
 
-    notebook->InsertPage(0, m_edit, wxT("base64.obs"));
+    m_notebook->InsertPage(0, m_edit, wxT("base64.obs"));
+
+
+
+    Edit* foo = new Edit(m_notebook, 3);
+    foo->SetFocus();
+    m_notebook->InsertPage(1, foo, wxT("foo.obs"));
 
 //    FileOpen (wxT("C:\\Users\\Randy\\Documents\\Code\\objeck\\main\\src\\compiler\\test_src\\debug.obs"));
-    FileOpen (wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/base64.obs"));
+    FileOpen (wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/base64.obs"), m_edit);
+    FileOpen(wxT("/Users/randy/Documents/Code/objeck/main/src/compiler/rc/hello.obs"), foo);
 }
 
 AppFrame::~AppFrame () {
 }
 
 // common event handlers
+void AppFrame::OnNotebook(wxNotebookEvent& event) {
+  const wxEventType eventType = event.GetEventType();
+
+  if(eventType == wxEVT_NOTEBOOK_PAGE_CHANGED) {
+    m_edit = (Edit*)m_notebook->GetCurrentPage();
+  }
+}
+
 void AppFrame::OnClose (wxCloseEvent &event) {
     wxCommandEvent evt;
     OnFileClose (evt);
@@ -346,7 +367,7 @@ void AppFrame::OnFileOpen (wxCommandEvent &WXUNUSED(event)) {
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR);
     if (dlg.ShowModal() != wxID_OK) return;
     fname = dlg.GetPath ();
-    FileOpen (fname);
+    FileOpen (fname, m_edit);
 #endif // wxUSE_FILEDLG
 }
 
@@ -571,11 +592,11 @@ void AppFrame::CreateMenu ()
     SetMenuBar (m_menuBar);
 }
 
-void AppFrame::FileOpen (wxString fname)
+void AppFrame::FileOpen (wxString fname, Edit* edit)
 {
     wxFileName w(fname); w.Normalize(); fname = w.GetFullPath();
-    m_edit->LoadFile (fname);
-    m_edit->SelectNone();
+    edit->LoadFile(fname);
+    edit->SelectNone();
 }
 
 wxRect AppFrame::DeterminePrintSize () {
