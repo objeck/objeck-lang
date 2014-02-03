@@ -156,7 +156,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     StyleSetForeground (wxSTC_STYLE_LINENUMBER, wxColour (wxT("DARK GREY")));
     StyleSetBackground (wxSTC_STYLE_LINENUMBER, *wxWHITE);
     StyleSetForeground(wxSTC_STYLE_INDENTGUIDE, wxColour (wxT("DARK GREY")));
-    InitializePrefs (DEFAULT_LANGUAGE);
+    InitializePrefs (_("Objeck"));
 
     // set visibility
     SetVisiblePolicy (wxSTC_VISIBLE_STRICT|wxSTC_VISIBLE_SLOP, 1);
