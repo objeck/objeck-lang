@@ -150,12 +150,13 @@ public:
     void OnEdit (wxCommandEvent &event);
     void OnFindReplace(wxFindDialogEvent& event);
 
-    void OnNotebook(wxNotebookEvent& event);
+    void OnNotebook(wxAuiNotebookEvent& event);
 
 private:
     // edit object
     Edit *m_edit;
     wxAuiNotebook* m_notebook;
+    void FileNew(Edit* edit);
     void FileOpen (wxString fname, Edit* edit);
 
     //! creates the application menu bar
@@ -256,6 +257,7 @@ BEGIN_EVENT_TABLE (AppFrame, wxFrame)
     // common
     EVT_CLOSE (                      AppFrame::OnClose)
     // file
+    EVT_MENU (wxID_NEW,             AppFrame::OnFileNew)
     EVT_MENU (wxID_OPEN,             AppFrame::OnFileOpen)
     EVT_MENU (wxID_SAVE,             AppFrame::OnFileSave)
     EVT_MENU (wxID_SAVEAS,           AppFrame::OnFileSaveAs)
@@ -289,8 +291,8 @@ BEGIN_EVENT_TABLE (AppFrame, wxFrame)
     EVT_FIND_REPLACE_ALL(wxID_ANY, AppFrame::OnFindReplace)
     EVT_FIND_CLOSE(wxID_ANY, AppFrame::OnFindReplace)
 
-    EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, AppFrame::OnNotebook)
-    EVT_NOTEBOOK_PAGE_CHANGING(wxID_ANY, AppFrame::OnNotebook)
+    EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, AppFrame::OnNotebook)
+    EVT_AUINOTEBOOK_PAGE_CHANGING(wxID_ANY, AppFrame::OnNotebook)
 END_EVENT_TABLE ()
 
 AppFrame::AppFrame (const wxString &title)
@@ -332,10 +334,9 @@ AppFrame::~AppFrame () {
 }
 
 // common event handlers
-void AppFrame::OnNotebook(wxNotebookEvent& event) {
+void AppFrame::OnNotebook(wxAuiNotebookEvent& event) {
   const wxEventType eventType = event.GetEventType();
-
-  if(eventType == wxEVT_NOTEBOOK_PAGE_CHANGED) {
+  if(eventType == wxEVT_AUINOTEBOOK_PAGE_CHANGED) {
     m_edit = (Edit*)m_notebook->GetCurrentPage();
   }
 }
@@ -482,6 +483,7 @@ void AppFrame::CreateMenu ()
 {
     // File menu
     wxMenu *menuFile = new wxMenu;
+    menuFile->Append(wxID_NEW, _("&New ..\tCtrl+N"));
     menuFile->Append (wxID_OPEN, _("&Open ..\tCtrl+O"));
     menuFile->Append (wxID_SAVE, _("&Save\tCtrl+S"));
     menuFile->Append (wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
@@ -590,6 +592,15 @@ void AppFrame::CreateMenu ()
     m_menuBar->Append (menuWindow, _("&Window"));
     m_menuBar->Append (menuHelp, _("&Help"));
     SetMenuBar (m_menuBar);
+}
+
+void AppFrame::OnFileNew(wxCommandEvent &WXUNUSED(event))
+{
+  Edit* foo = new Edit(m_notebook, 4);
+  foo->SetFocus();
+  foo->InitializePrefs("Objeck");
+  m_notebook->InsertPage(3, foo, wxT("Untitled*"));
+  m_edit = foo;
 }
 
 void AppFrame::FileOpen (wxString fname, Edit* edit)
