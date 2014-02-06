@@ -1,16 +1,16 @@
-use RegEx;
-
-bundle Default {
-	class RegExTest {
-		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				regex := RegEx->New(args[0]);
-				if(regex->MatchExact(args[1])) {
-					"-- match --"->PrintLine();
-				} else {
-					"-- no match --"->PrintLine();
-				};
+class Ackermann {
+	function : Main(args : String[]) ~ Nil {
+		for (m := 0; m <= 4; m+=1;) {
+			for (n := 0; n < 6 - m; n+=1;) {
+				a := Ackermann(m, n);
+				"A({$m}, {$n}) = {$a}"->PrintLine();
 			};
-		}
+		};
+	}
+	
+	function : Ackermann(m : Int, n : Int) ~ Int {
+		if (m = 0) { return n + 1; };
+        if (n = 0) { return Ackermann(m - 1, 1); };
+        return Ackermann(m - 1, Ackermann(m, n - 1));
 	}
 }
