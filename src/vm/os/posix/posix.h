@@ -99,12 +99,7 @@ class File {
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
-    FILE* file = fopen(name, mode);
-    if(file < 0) {
-      return NULL;
-    }
-    
-    return file;
+    return fopen(name, mode);
   }
 
   static bool MakeDir(const char* name) {
@@ -151,7 +146,7 @@ class IPSocket {
  public:
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(socket < 0) {
+    if(sock < 0) {
       return -1;
     }
 
@@ -167,6 +162,7 @@ class IPSocket {
     struct sockaddr_in ip_addr;
     ip_addr.sin_addr.s_addr = host_addr;;
     ip_addr.sin_port=htons(port);
+    memset(&ip_addr.sin_zero, 0, sizeof(ip_addr.sin_zero));
     ip_addr.sin_family = AF_INET;
     
     if(!connect(sock, (struct sockaddr*)&ip_addr,sizeof(ip_addr))) {
