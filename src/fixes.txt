@@ -1,8 +1,12 @@
+5/12/14
+* fixed a bug to 'Float->Power'
+* fixed a major bug with casting primitive classes and then making method calls
+ 
+========================
+
 6/29/13
 * Optimize conditonal braching of floating point expressions
 * Add 64-bit Windows support
-
-========================
 
 5/27/13
 * pass call_stack and call_stack_pos to 64-bit JIT compiler
