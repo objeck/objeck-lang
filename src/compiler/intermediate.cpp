@@ -2165,7 +2165,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
   case VAR_EXPR:
     EmitVariable(static_cast<Variable*>(expression));
-    EmitCast(expression);
+    //  EmitCast(expression);
     break;
 
   case AND_EXPR:
@@ -3333,11 +3333,26 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       break;
     }
   }
+
+  EmitCast(variable);
   
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
-    // class cast
-    EmitClassCast(variable);
+    switch(variable->GetBaseType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::CLASS_TYPE:
+    case frontend::FLOAT_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      break;
+
+    default:
+      EmitClassCast(variable);
+      break;
+    }
+    
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
   }
 }
