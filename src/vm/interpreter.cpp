@@ -744,14 +744,14 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMet
     case LOG_FLOAT:
       PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
-
+      
     case POW_FLOAT: {
       FLOAT_VALUE left = PopFloat(op_stack, stack_pos);
       FLOAT_VALUE right = PopFloat(op_stack, stack_pos);
-      PushFloat(pow(right, left), op_stack, stack_pos);
+      PushFloat(pow(left, right), op_stack, stack_pos);
     }
       break;
-
+      
     case SQRT_FLOAT:
       PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
