@@ -3351,10 +3351,15 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     default:
       EmitClassCast(variable);
       break;
-    }
-    
+    }    
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
-    variable->SetEvalType(variable->GetMethodCall()->GetEvalType(), false);
+
+    // set cast type
+    MethodCall* tail = static_cast<MethodCall*>(variable->GetMethodCall());
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+    variable->SetEvalType(tail->GetCastType() ? tail->GetCastType() : tail->GetEvalType(), false);
   }
 }
 
