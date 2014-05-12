@@ -3354,6 +3354,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     }
     
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
+    variable->SetEvalType(variable->GetMethodCall()->GetEvalType(), false);
   }
 }
 
