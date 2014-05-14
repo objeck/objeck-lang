@@ -2413,8 +2413,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 		  const wstring in(BytesToUnicode(byte_buffer));
 
 		  // clean up
-		  delete[] byte_buffer;
-		  byte_buffer = NULL;
+//		  delete[] byte_buffer;
+//		  byte_buffer = NULL;
 	
 		  // copy
 		  wcsncpy(out, in.c_str(), array[2]);	
