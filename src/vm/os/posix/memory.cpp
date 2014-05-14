@@ -909,10 +909,11 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // update
         mem += 2;
         break;
-	
+        
+      case CHAR_PARM:
       case INT_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": INT_PARM: value=" << (*mem) << endl;
+        wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
 #endif
         // update
         mem++;
@@ -1157,10 +1158,11 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       // update
       mem += 2;
       break;
-
+      
+    case CHAR_PARM:
     case INT_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": INT_PARM: value=" << (*mem) << endl;
+      wcout << L"\t" << i << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
 #endif
       // update
       mem++;

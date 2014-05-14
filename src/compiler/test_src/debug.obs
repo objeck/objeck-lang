@@ -1,16 +1,15 @@
-class Ackermann {
+use RegEx;
+use System.IO.File;
+
+class RegExTest {
 	function : Main(args : String[]) ~ Nil {
-		for (m := 0; m <= 4; m+=1;) {
-			for (n := 0; n < 6 - m; n+=1;) {
-				a := Ackermann(m, n);
-				"A({$m}, {$n}) = {$a}"->PrintLine();
-			};
+		input := FileReader->ReadFile(args[0]);
+		input->PrintLine();
+
+		expr := "<(a|A)\\s(href|HREF)=\"?http://(\\w*\\.\\w*\\.\\w*|\\w*\\.\\w*|\\w*)(/\\w*)?\"";
+		found := RegEx->New(expr)->Find(input);
+		each(i : found) {
+			found->Get(i)->As(String)->PrintLine();
 		};
-	}
-	
-	function : Ackermann(m : Int, n : Int) ~ Int {
-		if (m = 0) { return n + 1; };
-        if (n = 0) { return Ackermann(m - 1, 1); };
-        return Ackermann(m - 1, Ackermann(m, n - 1));
 	}
 }
