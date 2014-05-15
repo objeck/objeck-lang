@@ -1254,13 +1254,48 @@ bundle System {
 		}
 
 		method : public : Find(find : String) ~ Int {
-			return Find(find, 0);
+			return Find(0, find);
 		}
 
-		method : public : native : Find(find : String, offset : Int) ~ Int {
+		method : public : FindAll(find : String) ~ Int[] {
+			buffer_max := 8;
+			buffer := Int->New[buffer_max];
+			
+			count := 0;
+			offset := 0;
+			do {
+				# check
+				offset := Find(offset, find);
+				# found
+				if(offset > -1) {
+					count += 1;
+					if(count < buffer_max) {
+						buffer[count - 1] := offset;
+					}
+					# copy elements
+					else {
+						temp := Int->New[buffer_max * 2];
+						Runtime->Copy(temp, 0, buffer, 0, buffer_max);
+						buffer_max *= 2;
+						buffer := temp;
+					};
+					offset += find->Size();
+				};
+			}
+			while(offset > -1);
+			
+			results := Int->New[count];
+			each(i : results) {
+				results[i] := buffer[i];
+			};
+
+			return results;
+		}
+
+		method : public : native : Find(offset : Int, find : String) ~ Int {
 			size := find->Size();
-			if(size > 0 & offset < size) {
-				found_index := Find(find->Get(offset));
+			if(size > 0 & offset < @pos) {
+				found_index := Find(offset, find->Get(0));
 				while(found_index > -1) {
 					j := found_index;
 					match := true;

@@ -1138,10 +1138,13 @@ Base class for all objects.
 \item \texttt{Find} - returns the index of the first occurrence of a
   given String; -1 if not found
   \begin{itemize}
-  \item method : public : native : Find(s : String) \textasciitilde
-    Int
-  \item method : public : native : Find(s : String, offfset : Int)
-    \textasciitilde Int
+  \item method : public : native : Find(s : String) \textasciitilde Int
+  \item method : public : native : Find(offfset : Int, s : String) \textasciitilde Int
+  \end{itemize}
+\item \texttt{FindAll} - returns an array of found indices of the
+  given String
+  \begin{itemize}
+  \item method : public : native : FindAll(s : String) \textasciitilde Int[]
   \end{itemize}
 \item \texttt{Replace} - find and replace a single string instance.
   \begin{itemize}
