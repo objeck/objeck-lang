@@ -11,7 +11,7 @@ bundle Default {
 loc->PrintLine();
 			loc := "abab"->Find("ab"); # returns 0
 loc->PrintLine();
-			loc := "abab"->Find("ab", loc + 1); # returns 2
+			loc := "abab"->Find(loc + 1, "ab"); # returns 2
 loc->PrintLine();
 		}
 	}
