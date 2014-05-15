@@ -1,4 +1,4 @@
-set LATEX_BIN="D:\Program Files\MiKTeX 2.9\miktex\bin"
+set LATEX_BIN="D:\Program Files\MiKTeX 2.9\miktex\bin\x64"
 
 rmdir /s /q deploy
 mkdir deploy
@@ -28,7 +28,8 @@ xcopy /e ..\compiler\rc\* deploy\examples\
 REM build and update docs
 mkdir deploy\doc
 %LATEX_BIN%\pdflatex ..\..\docs\guide\objeck_lang.tex
-copy ..\..\docs\guide\objeck_lang.pdf deploy\doc
+REM copy ..\..\docs\guide\objeck_lang.pdf deploy\doc
+copy objeck_lang.pdf deploy\doc
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.rtf deploy

@@ -3189,13 +3189,18 @@ Demonstrates HTTP access.
 use Collection;
 
 class HttpTest {
-  function : Main(args : String[]) ~ Nil {
-    if(args->Size() = 1) {
-      client := Net.HttpClient->New();
-      lines := client->Get(args[0], 80);
-      each(i : lines) {
-        lines->Get(i)->As(String)->PrintLine();
-      };
+  client := HttpClient->New();
+    # enable cookies
+    client->CookiesEnabled(true);
+    # request creates a cookie
+    lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create");
+    each(i : lines) {
+      line := lines->Get(i)->As(String)->PrintLine();
+    };
+    # request sends back cookie
+    lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi");
+    each(i : lines) {
+      line := lines->Get(i)->As(String)->PrintLine();
     };
   }
 }
