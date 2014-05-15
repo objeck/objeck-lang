@@ -28,8 +28,8 @@ xcopy /e ..\compiler\rc\* deploy\examples\
 REM build and update docs
 mkdir deploy\doc
 %LATEX_BIN%\pdflatex ..\..\docs\guide\objeck_lang.tex
-REM copy ..\..\docs\guide\objeck_lang.pdf deploy\doc
-copy objeck_lang.pdf deploy\doc
+copy objeck_lang.pdf deploy\doc 
+copy objeck_lang.pdf ..\..\docs\guide\
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.rtf deploy
