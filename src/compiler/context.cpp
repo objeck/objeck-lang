@@ -1508,7 +1508,7 @@ bool ContextAnalyzer::Analyze()
     }
 
     if(type) {
-      const int dimension = IsScalar(expression) ? 0 : type->GetDimension();
+      const int dimension = IsScalar(expression, false) ? 0 : type->GetDimension();
       return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
     }
 
