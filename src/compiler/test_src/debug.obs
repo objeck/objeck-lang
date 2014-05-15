@@ -1,13 +1,10 @@
 class Debug {
-	function : Main(args : String[]) ~ Nil {
-		in := "aa bb aa cc aa  dkad ak aa aaaa dk aa dfkad  adfaaa aak   dk idfadsf i aaa i id i aaaaa i akdf kad bb aa i bbaa aaa";
-		aa := in->FindAll("aa");
-		aa->Size()->PrintLine();
+	function : Foo() ~ Int[] {
+		return Nil;
+	}
 
-		each(i : aa) {
-			"---"->PrintLine();
-			aa[i]->PrintLine();
-			in->SubString(aa[i], "aa"->Size())->PrintLine();
-		};
+	function : Main(args : String[]) ~ Nil {
+#		Foo()->Size()->PrintLine();
+		Int->New[3]->Size()->PrintLine();
 	}
 }

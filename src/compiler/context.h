@@ -289,10 +289,10 @@ class ContextAnalyzer {
     str << v;
     return str.str();
   }
-
+  
   // returns true if expression is not an array
-  inline bool IsScalar(Expression* expression) {
-    while(expression->GetMethodCall()) {
+  inline bool IsScalar(Expression* expression, bool check_last = true) {
+    while(check_last && expression->GetMethodCall()) {
       expression = expression->GetMethodCall();
     }
 
