@@ -55,15 +55,16 @@ int main(int argc, char* argv[])
   usage += L"FOR MORE INFORMATION.\n\n";
   usage += VERSION_STRING;
   usage += L"\n\n";
-  usage += L"usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|web|lib)] -dest <output>\n";
+  usage += L"usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|web|lib)] [-alt] [-debug] -dest <output>\n";
   usage += L"example: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\n";
-  usage += L"options:\n";
-  usage += L"  -src: input source files (separated by ',')\n";
-  usage += L"  -opt: source optimizations (s0-s3 being the most aggressive) default is s0\n";
-  usage += L"  -lib: input linked libraries (separated by ',')\n";
-  usage += L"  -tar: output target ('lib' for linked library or 'exe' for executable) default is 'exe'\n";
-  usage += L"  -dest: output file name\n";
-  usage += L"  -debug: compile with debug symbols (must be last argument)";
+  usage += L"parameters:\n";
+  usage += L"  -src:   [input]  source files (separated by ',')\n";
+  usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
+  usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for executable default is 'exe'\n";
+  usage += L"  -dest:  [output] file name\n";
+  usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive) default is s0\n";
+  usage += L"  -alt:   [option] allows use of C++ like syntax verses the UML like default\n";
+  usage += L"  -debug: [option] compile with debug symbols";
 
   int status;
   if(argc >= 3) {

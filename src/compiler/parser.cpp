@@ -176,7 +176,7 @@ bool Parser::Parse()
  ****************************/
 void Parser::ParseFile(const wstring &file_name)
 {
-  scanner = new Scanner(file_name, java_syntax);
+  scanner = new Scanner(file_name, alt_syntax);
   NextToken();
   ParseBundle(0);
   // clean up
@@ -1728,7 +1728,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     }
   }
   
-  if(java_syntax) {
+  if(alt_syntax) {
     switch(statement->GetStatementType()) {
     case IF_STMT:
     case WHILE_STMT:

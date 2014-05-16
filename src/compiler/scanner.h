@@ -394,7 +394,7 @@ class Token {
 class Scanner {
  private:
   // syntax
-  bool java_syntax;
+  bool alt_syntax;
   // input file name
   wstring filename;
   // input buffer
