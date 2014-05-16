@@ -44,7 +44,7 @@ using namespace frontend;
  * Parsers source files.
  ****************************/
 class Parser {
-  bool java_syntax;
+  bool alt_syntax;
   ParsedProgram* program;
   ParsedBundle* current_bundle;
   Class* current_class;
@@ -192,9 +192,9 @@ class Parser {
   Expression* ParseSimpleExpression(int depth);
   
  public:
-  Parser(const wstring &p, bool is_java, const wstring &r) {
+  Parser(const wstring &p, bool a, const wstring &r) {
     src_path = p;
-    java_syntax = is_java;
+    alt_syntax = a;
     run_prgm = wstring(r.begin(), r.end());
     program = new ParsedProgram;
     LoadErrorCodes();
