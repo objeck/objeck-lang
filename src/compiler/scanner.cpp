@@ -41,7 +41,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
 {
   // copy file name
   filename = f;
-  java_syntax = j;
+  alt_syntax = j;
   cur_char = L'\0';
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; i++) {
@@ -935,7 +935,7 @@ void Scanner::ParseToken(int index)
         break;
 
       case L'!':
-        if(java_syntax && nxt_char == L'=') {
+        if(alt_syntax && nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_NEQL);
           tokens[index]->SetLineNbr(line_nbr);
@@ -1042,7 +1042,7 @@ void Scanner::ParseToken(int index)
         break;
 
       case L'=':
-        if(java_syntax) {
+        if(alt_syntax) {
           if(nxt_char == L'=') {
             NextChar();
             tokens[index]->SetType(TOKEN_EQL);
@@ -1068,7 +1068,7 @@ void Scanner::ParseToken(int index)
       case L'<':
         if(nxt_char == L'>') {
           NextChar();
-          if(java_syntax) {
+          if(alt_syntax) {
              tokens[index]->SetType(TOKEN_UNKNOWN);
              tokens[index]->SetLineNbr(line_nbr);
              tokens[index]->SetFileName(filename);
