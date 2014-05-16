@@ -1,10 +1,8 @@
 class Debug {
-	function : Foo() ~ Int[] {
-		return Nil;
-	}
-
 	function : Main(args : String[]) ~ Nil {
-#		Foo()->Size()->PrintLine();
-		Int->New[3]->Size()->PrintLine();
+		a = 10;
+		if( 10 == a) {
+			"good"->PrintLine();
+		};	
 	}
 }
