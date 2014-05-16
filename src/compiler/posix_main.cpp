@@ -60,9 +60,11 @@ int main(int argc, char* argv[])
   usage += L"parameters:\n";
   usage += L"  -src:   [input]  source files (separated by ',')\n";
   usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
-  usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for executable default is 'exe'\n";
+  usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for\n";
+  usage += L"          executable default is 'exe'\n";
   usage += L"  -dest:  [output] file name\n";
-  usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive) default is s0\n";
+  usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive)\n";
+  usage += L"          default is s0\n";
   usage += L"  -alt:   [option] allows use of C++ like syntax verses the UML like default\n";
   usage += L"  -debug: [option] compile with debug symbols";
 
