@@ -176,7 +176,7 @@ bool Parser::Parse()
  ****************************/
 void Parser::ParseFile(const wstring &file_name)
 {
-  scanner = new Scanner(file_name);
+  scanner = new Scanner(file_name, java_syntax);
   NextToken();
   ParseBundle(0);
   // clean up

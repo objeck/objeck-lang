@@ -393,6 +393,8 @@ class Token {
  **********************************/
 class Scanner {
  private:
+  // syntax
+  bool java_syntax;
   // input file name
   wstring filename;
   // input buffer
@@ -557,7 +559,7 @@ class Scanner {
 
  public:
   // default constructor
-  Scanner(wstring f, bool p = false);
+  Scanner(wstring f, bool j, bool p = false);
   // default destructor
   ~Scanner();
 

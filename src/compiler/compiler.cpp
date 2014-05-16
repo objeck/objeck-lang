@@ -123,6 +123,18 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
     }
     argument_options.remove(L"tar");
   }
+
+  // check program syntax option
+  wstring syntax;
+  result = arguments.find(L"synx");
+  if(result != arguments.end()) {
+    syntax = result->second;
+    if(syntax != L"pascal" && syntax != L"java") {
+      wcerr << usage << endl << endl;
+      return COMMAND_ERROR;
+    }
+    argument_options.remove(L"synx");
+  }
   
   // check for debug flag
   bool is_debug = false;
@@ -138,7 +150,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   }
   
   // parse source code  
-  Parser parser(arguments[L"src"], run_string);
+  Parser parser(arguments[L"src"], arguments[L"synx"] == L"java", run_string);
   if(parser.Parse()) {
     bool is_lib = false;
     bool is_web = false;

@@ -37,10 +37,11 @@
 /****************************
  * Scanner constructor
  ****************************/
-Scanner::Scanner(wstring f, bool p)
+Scanner::Scanner(wstring f, bool j, bool p)
 {
   // copy file name
   filename = f;
+  java_syntax = j;
   cur_char = L'\0';
   // create tokens
   for(int i = 0; i < LOOK_AHEAD; i++) {
@@ -906,7 +907,6 @@ void Scanner::ParseToken(int index)
           tokens[index]->SetType(TOKEN_COLON);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
-
           NextChar();
         }
         break;
@@ -930,16 +930,24 @@ void Scanner::ParseToken(int index)
           tokens[index]->SetType(TOKEN_SUB);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
-
           NextChar();
         }
         break;
 
       case L'!':
-        tokens[index]->SetType(TOKEN_NOT);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
-        NextChar();
+        if(java_syntax && nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_NEQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         break;
         
       case L'{':
@@ -1034,19 +1042,44 @@ void Scanner::ParseToken(int index)
         break;
 
       case L'=':
-        tokens[index]->SetType(TOKEN_EQL);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
-        NextChar();
+        if(java_syntax) {
+          if(nxt_char == L'=') {
+            NextChar();
+            tokens[index]->SetType(TOKEN_EQL);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+          }
+          else {
+            tokens[index]->SetType(TOKEN_ASSIGN);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+          }
+        }
+        else {
+          tokens[index]->SetType(TOKEN_EQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         break;
 
       case L'<':
         if(nxt_char == L'>') {
           NextChar();
-          tokens[index]->SetType(TOKEN_NEQL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
-          NextChar();
+          if(java_syntax) {
+             tokens[index]->SetType(TOKEN_UNKNOWN);
+             tokens[index]->SetLineNbr(line_nbr);
+             tokens[index]->SetFileName(filename);
+             NextChar();
+          }
+          else {
+            tokens[index]->SetType(TOKEN_NEQL);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
+          }
         } 
         else if(nxt_char == L'=') {
           NextChar();
@@ -1056,12 +1089,12 @@ void Scanner::ParseToken(int index)
           NextChar();
         } 
         else if(nxt_char == L'<') {
-          NextChar();
+          NextChar();          
           tokens[index]->SetType(TOKEN_SHL);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();
-        } 
+        }
         else {
           tokens[index]->SetType(TOKEN_LES);
           tokens[index]->SetLineNbr(line_nbr);
