@@ -1,4 +1,5 @@
 class Debug {
+#	function Int Main(String[] args) {
 	function : Main(args : String[]) ~ Nil {
 		a = 10;
 		if( 10 == a) {
