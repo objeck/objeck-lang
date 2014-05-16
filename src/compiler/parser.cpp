@@ -772,7 +772,7 @@ StatementList* Parser::ParseStatementList(int depth)
 /****************************
  * Parses a statement.
  ****************************/
-Statement* Parser::ParseStatement(int depth)
+Statement* Parser::ParseStatement(int depth, bool semi_colon)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
@@ -891,15 +891,18 @@ Statement* Parser::ParseStatement(int depth)
 
     default:
       ProcessError(L"Expected statement", TOKEN_SEMI_COLON);
+      NextToken();
       break;
     }
   }
   // other
   else {
     switch(GetToken()) { 
+      /*
     case TOKEN_SEMI_COLON:
       statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num);
       break;
+      */
       
     case TOKEN_PARENT_ID:
       statement = ParseMethodCall(depth + 1);
@@ -1724,12 +1727,33 @@ Statement* Parser::ParseStatement(int depth)
       break;
     }
   }
-
-  if(!Match(TOKEN_SEMI_COLON)) {
-    ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+  
+  if(java_syntax) {
+    switch(statement->GetStatementType()) {
+    case IF_STMT:
+    case WHILE_STMT:
+    case DO_WHILE_STMT:
+    case FOR_STMT:
+    case SELECT_STMT:
+      break;
+      
+    default:
+      if(semi_colon) {
+        if(!Match(TOKEN_SEMI_COLON)) {
+          ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+        }
+        NextToken();
+      }
+      break;
+    }
   }
-  NextToken();
-
+  else {
+    if(!Match(TOKEN_SEMI_COLON)) {
+      ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+    }
+    NextToken();
+  }
+  
   return statement;
 }
 
@@ -3203,7 +3227,7 @@ For* Parser::ParseFor(int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   // update statement
-  Statement* update_stmt = ParseStatement(depth + 1);
+  Statement* update_stmt = ParseStatement(depth + 1, false);
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }

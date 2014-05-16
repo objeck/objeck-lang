@@ -165,7 +165,7 @@ class Parser {
   MethodCall* ParseMethodCall(Variable* variable, int depth);
   void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
-  Statement* ParseStatement(int depth);
+  Statement* ParseStatement(int depth, bool semi_colon = true);
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);

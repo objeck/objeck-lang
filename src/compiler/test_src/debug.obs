@@ -1,9 +1,13 @@
 class Debug {
-#	function Int Main(String[] args) {
+#	function : Nil Main(String[] args) {
 	function : Main(args : String[]) ~ Nil {
 		a = 10;
-		if( 10 == a) {
+		if(13 != a) {
 			"good"->PrintLine();
-		};	
+		}	
+	
+		for(i = 0; i < 10; i+=1) {
+			i->PrintLine();
+		}
 	}
 }
