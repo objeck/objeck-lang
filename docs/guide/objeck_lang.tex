@@ -103,6 +103,7 @@ Additional compiler options are:
     \texttt{-tar} & target output \texttt{exe} for executable and \texttt{lib} for library; default is  \texttt{exe} \\ \hline
     \texttt{-opt} & optimization level \texttt{s0}--\texttt{s3} with \texttt{s3} being the most aggressive; default is \texttt{s0} \\ \hline
     \texttt{-dest} & output file name \\ \hline
+    \texttt{-alt} & compile code that is written using a C-like syntax \\ \hline
     \texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
   \end{tabular}
 \end{center}
@@ -174,6 +175,25 @@ methods for each basic class type.  For example:
 3.89->Sin()->PrintLine();
 -22->Abs()->PrintLine();
 Float->Pi()->PrintLine();
+\end{verbatim}
+
+\subsection{Alternative Syntax}
+The syntax of the language is based on UML which has ties with Pascal.  Given 
+the popularity of the C-style languages Objeck supports an alternative C-like 
+syntax.  In this mode, operators can be defined using a C-style syntax and 
+statements such as \texttt{if}, \texttt{while}, etc., do not have to end with 
+a semicolon.
+
+In order to use this feature code must be compiled using the \texttt{-alt} 
+compiler option.
+
+\begin{verbatim}
+a = 13;
+if(13 != a) {
+  for(i = 0; i < a; i+=1) {
+    i->PrintLine();
+  }
+}
 \end{verbatim}
 
 \subsection{Variable Declarations}

@@ -1,0 +1,13 @@
+Objeck v3.3.0_0
+
+--------------
+Release Notes
+--------------
+Major bug fixes and new features added including support for an alternative C-like syntax.
+
+Highlights of this release include the following:
+• Initial syntax support for C-like operators and statements (new)
+• Addressed to compiler limitation that did not support nested method calls that included arrays for example 'Int->New[size]->Size()->PrintLine()' (enhanced)
+• Fixed a crash causing bug in the memory manager (major)
+• Resolved an issue with the 'String->Find(offset, pattern)' API (major)
+• Refresh documentation and added new code examples
