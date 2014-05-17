@@ -1493,7 +1493,7 @@ void Runtime::Debugger::Debug() {
 int main(int argc, char** argv)
 {
   wstring usage;
-  usage += L"Copyright (c) 2010-2013, Randy Hollines. All rights reserved.\n";
+  usage += L"Copyright (c) 2010-2014, Randy Hollines. All rights reserved.\n";
   usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
   usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   usage += L"FOR MORE INFORMATION.\n\n";
@@ -1501,7 +1501,7 @@ int main(int argc, char** argv)
   usage += L"\n\n";
   usage += L"usage: obd -exe <executable> [-src <source directory>]\n";
   usage += L"example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\n";
-  usage += L"options:\n";
+  usage += L"parameters:\n";
   usage += L"  -exe: executable file\n";
   usage += L"  -src: source directory path";
 
