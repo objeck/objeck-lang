@@ -1,5 +1,4 @@
 class Debug {
-#	function : Nil Main(String[] args) {
 	function : Main(args : String[]) ~ Nil {
 		a = 10;
 		if(13 != a) {
@@ -9,5 +8,7 @@ class Debug {
 		for(i = 0; i < 10; i+=1) {
 			i->PrintLine();
 		}
+
+		(false || a != 10)->PrintLine();
 	}
 }
