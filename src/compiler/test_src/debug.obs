@@ -1,14 +1,30 @@
-class Debug {
-	function : Main(args : String[]) ~ Nil {
-		a = 10;
-		if(13 != a) {
-			"good"->PrintLine();
-		}	
-	
-		for(i = 0; i < 10; i+=1) {
-			i->PrintLine();
+use ODBC;
+
+bundle Default {
+	class SqlTest {
+		function : Main(args : String[]) ~ Nil {
+			Run();
 		}
 
-		(false || a != 10)->PrintLine();
+		function : native : Run() ~ Nil {
+			conn := Connection->New("test", "root", "helloworld");
+			if(conn->IsOpen()) {
+				ps := conn->CreateParameterStatement("SELECT * FROM test.users2 WHERE username = ?");
+				ps->SetVarchar(1, "randy");
+				result := ps->Select();
+				if(result <> Nil) {
+					i := 0;	
+					while(result->Next()) {
+						result->GetInt(1)->PrintLine();
+						result->GetVarchar(2)->PrintLine();
+						i += 1;
+					};
+					IO.Console->Print(i)->PrintLine(" row(s) selected");
+					result->Close();
+				};
+				ps->Close();
+				conn->Close();
+			};
+		}
 	}
 }
