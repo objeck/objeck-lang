@@ -1,0 +1,4 @@
+
+1) Download MySQL binaries (mysql-connector-odbc-5.3.2-win32.msi, mysql-installer-community-5.6.17.0.msi)
+2) Setup 32-bit ODBC datasource (http://support.microsoft.com/kb/942976)
+3) 
