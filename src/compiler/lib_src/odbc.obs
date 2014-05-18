@@ -95,7 +95,8 @@ bundle ODBC {
 				
 				native_stmt := array_args[0]->As(IntHolder);
 				native_names := array_args[1]->As(IntHolder);
-				return ParameterStatement->New(native_stmt->Get(), native_names->Get());
+				params := array_args[2]->As(IntHolder);
+				return ParameterStatement->New(native_stmt->Get(), native_names->Get(), params->Get());
 			};
 			
 			return Nil;
@@ -108,14 +109,16 @@ bundle ODBC {
 	class ParameterStatement {
 		@native_stmt : Int;
 		@native_names : Int;
-				
-		New(native_stmt : Int, native_names : Int) {
+		@params : Int;
+		
+		New(native_stmt : Int, native_names : Int, params : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
+			@params := params;
 		}
 		
 		method : public : SetBit(pos : Int, value : Bool) ~ Bool {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(value ? 1 : 0);
@@ -132,7 +135,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetSmallInt(pos : Int, value : Int) ~ Bool {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(value);
@@ -149,7 +152,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(value);
@@ -166,7 +169,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetDouble(pos : Int, value : Float) ~ Bool {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := FloatHolder->New(value);
@@ -183,7 +186,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetReal(pos : Int, value : Float) ~ Bool {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := FloatHolder->New(value);
@@ -200,12 +203,13 @@ bundle ODBC {
 		}
 
 		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
-			if(@native_stmt <> 0 & @native_names <> 0) {
-				array_args := Base->New[4];
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
+				array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
 				array_args[1] := value;
 				array_args[2] := IntHolder->New(pos);
 				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@params);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_varchar", array_args);
 				
@@ -217,7 +221,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetDate(pos : Int, value : Date) ~ Bool {		
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := value;
@@ -234,7 +238,7 @@ bundle ODBC {
 		}
 		
 		method : public : SetTimestamp(pos : Int, value : Timestamp) ~ Bool {		
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := value;
@@ -251,7 +255,7 @@ bundle ODBC {
 		}
 		
 		method : public : Update() ~ Int {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
       			array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@native_stmt);
@@ -266,7 +270,7 @@ bundle ODBC {
 		}
 		
 		method : public : Select() ~ ResultSet {
-			if(@native_stmt <> 0 & @native_names <> 0) {
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
@@ -279,12 +283,13 @@ bundle ODBC {
 		}
 		
 		method : public : Close() ~ Nil {
-			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[2];
+			if(@native_stmt <> 0 & @native_names <> 0 & @params <> 0) {
+      			array_args := Base->New[3];
 				array_args[0] := IntHolder->New(@native_stmt);
 				array_args[1] := IntHolder->New(@native_names);
+				array_args[2] := IntHolder->New(@params);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_close", array_args);
+				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
       		};
       	}
 	}
