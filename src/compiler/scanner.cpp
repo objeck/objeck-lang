@@ -1021,17 +1021,35 @@ void Scanner::ParseToken(int index)
         break;
 
       case L'&':
-        tokens[index]->SetType(TOKEN_AND);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
-        NextChar();
+	if(alt_syntax && nxt_char == L'&') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_AND);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+	}
+	else {
+	  tokens[index]->SetType(TOKEN_AND);
+	  tokens[index]->SetLineNbr(line_nbr);
+	  tokens[index]->SetFileName(filename);
+	  NextChar();
+	}
         break;
-
+	
       case L'|':
-        tokens[index]->SetType(TOKEN_OR);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
-        NextChar();
+	if(alt_syntax && nxt_char == L'|') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_OR);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+	}
+	else {
+	  tokens[index]->SetType(TOKEN_OR);
+	  tokens[index]->SetLineNbr(line_nbr);
+	  tokens[index]->SetFileName(filename);
+	  NextChar();
+	}
         break;
 
       case L'?':
