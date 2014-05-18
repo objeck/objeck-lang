@@ -1,7 +1,7 @@
 #ifndef __ODBC_H__
 #define __ODBC_H__
 
-// #include <windows.h>
+#include <windows.h>
 #include <iostream>
 #include <string>
 #include <vector>
