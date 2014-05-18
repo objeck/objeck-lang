@@ -992,8 +992,15 @@ extern "C" {
 #endif
 	void odbc_result_close(VMContext& context) {
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
+		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 1);
+		
 		if(stmt) {
 			SQLFreeStmt(stmt, SQL_CLOSE);
+		}
+		
+		if(names) {
+			delete names;
+			names = NULL;
 		}
 		
 #ifdef _DEBUG
@@ -1008,17 +1015,11 @@ extern "C" {
   __declspec(dllexport) 
 #endif
 	void odbc_stmt_close(VMContext& context) {
-		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
-		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 1);
-		vector<void*>* params = (vector<void*>*)APITools_GetIntValue(context, 2);
+		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);		
+		vector<void*>* params = (vector<void*>*)APITools_GetIntValue(context, 1);
 		
 		if(stmt) {
 			SQLFreeStmt(stmt, SQL_CLOSE);
-		}
-		
-		if(names) {
-			delete names;
-			names = NULL;
 		}
 
 		if(params) {
