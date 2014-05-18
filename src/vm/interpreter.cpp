@@ -2035,7 +2035,7 @@ typedef void (*ext_load_def)();
 void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 {
 #ifdef _DEBUG
-  wcout << L"stack oper: shared library_LOAD; call_pos=" << (*call_stack_pos) << endl;
+  wcout << L"stack oper: shared LIBRARY_LOAD; call_pos=" << (*call_stack_pos) << endl;
 #endif
   long* instance = (long*)(*frame)->mem[0];
   if(!instance) {
@@ -2183,7 +2183,7 @@ typedef void (*lib_func_def) (VMContext& callbacks);
 void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
-  wcout << L"stack oper: shared library_FUNC_CALL; call_pos=" << (*call_stack_pos) << endl;
+  wcout << L"stack oper: shared LIBRARY_FUNC_CALL; call_pos=" << (*call_stack_pos) << endl;
 #endif 
   long* instance = (long*)(*frame)->mem[0];
   long* str_obj = (long*)(*frame)->mem[1];
