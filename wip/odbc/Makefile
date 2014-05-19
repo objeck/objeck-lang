@@ -5,10 +5,10 @@ SRC=odbc.o
 EXE=odbc
 
 $(EXE): $(SRC)
-	$(CC) -m32 -o $(EXE) $(SRC)
+	$(CC) -o $(EXE) $(SRC) -lodbc
 
 %.o: %.cpp
-	$(CC) -m32 $(ARGS) -c $< 
+	$(CC) $(ARGS) -c $< 
 
 clean:
 	rm -f $(EXE) *.o *~

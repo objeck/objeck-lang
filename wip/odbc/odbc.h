@@ -1,9 +1,11 @@
 #ifndef __ODBC_H__
 #define __ODBC_H__
 
-#include <windows.h>
+// #include <windows.h>
+#include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <string.h>
 #include <vector>
 #include <map>
 #include <stdio.h>
