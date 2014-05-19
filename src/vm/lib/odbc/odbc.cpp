@@ -8,7 +8,7 @@
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright 
- * notice, this list of conditions and the following disclaimer.
+* notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
@@ -274,7 +274,6 @@ extern "C" {
 				if(SQL_OK) {
 					// get column information
 					map<const wstring, int>* column_names = new map<const wstring, int>;
-					vector<void*>* params = new vector<void*>;
 					if(columns > 0) {
 						for(SQLSMALLINT i = 1; i <= columns; i++) {
 							ColumnDescription description;
@@ -300,7 +299,6 @@ extern "C" {
 					// return statement
 					APITools_SetIntValue(context, 0, (long)stmt);
 					APITools_SetIntValue(context, 1, (long)column_names);
-					APITools_SetIntValue(context, 2, (long)params);
 					return;
 				} 
 			}
@@ -688,25 +686,19 @@ extern "C" {
   __declspec(dllexport) 
 #endif
 	void odbc_stmt_set_varchar(VMContext& context) {
-		const wstring wvalue(APITools_GetStringValue(context, 1));
+		long* byte_array = (long*)APITools_GetIntValue(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-		vector<void*>* params = (vector<void*>*)APITools_GetIntValue(context, 4);
-
+		
+		char* value = (char*)APITools_GetByteArray(byte_array);
+		
 #ifdef _DEBUG
-		wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i << L", value=" << wvalue << L" ###" << endl;
+		wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
+					<< L", value=" << value << L" ###" << endl;
 #endif  
-
-		const string value = UnicodeToBytes(wvalue);
-		const size_t value_size = value.size();
-		char* buffer = (char*)calloc(value_size + 1, sizeof(char));
-		strncpy(buffer, value.c_str(), value_size);
-		buffer[value_size] = '\0';
 		
-		SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, 0, 0, 
-																				(SQLPOINTER)buffer, value_size, NULL);
-		params->push_back(buffer);
-		
+		SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
+																				SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
 			return;
@@ -992,52 +984,31 @@ extern "C" {
   __declspec(dllexport) 
 #endif
 	void odbc_result_close(VMContext& context) {
-		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
-		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 1);
-		
-		if(stmt) {
-			SQLFreeStmt(stmt, SQL_CLOSE);
-		}
-		
+		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 0);
 		if(names) {
 			delete names;
 			names = NULL;
 		}
 		
 #ifdef _DEBUG
-		wcout << L"### closed statement ###" << endl;
+		wcout << L"### closed result set ###" << endl;
 #endif
   }
-
+	
 	//
-  // closes a result set
+  // closes prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
 	void odbc_stmt_close(VMContext& context) {
-		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);		
-		vector<void*>* params = (vector<void*>*)APITools_GetIntValue(context, 1);
-		
+		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 		if(stmt) {
 			SQLFreeStmt(stmt, SQL_CLOSE);
 		}
-
-		if(params) {
-			while(!params->empty()) {
-        void* tmp = params->front();
-        params->erase(params->begin());
-        // delete
-        free(tmp);
-        tmp = NULL;
-      }
-
-			delete params;
-			params = NULL;
-		}
-
+		
 #ifdef _DEBUG
-		wcout << L"### closed statement ###" << endl;
+		wcout << L"### closed prepared statement ###" << endl;
 #endif
   }
 }
