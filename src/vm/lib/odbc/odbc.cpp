@@ -134,9 +134,9 @@ extern "C" {
 			APITools_SetIntValue(context, 0, -1);
 			return;
 		}
-
+		
 		SQLHSTMT stmt = NULL;
-		SQLRETURN status = SQLAllocStmt(conn, &stmt);
+		SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
 		if(SQL_OK) {
 			const string sql(wsql.begin(), wsql.end());
 			status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
