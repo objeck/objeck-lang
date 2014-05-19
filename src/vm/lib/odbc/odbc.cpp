@@ -76,28 +76,31 @@ extern "C" {
 		wcout << L"### connect: " << L"ds=" << wds << L", username=" 
 					<< wusername << L", password=" << wpassword << L" ###" << endl;
 #endif
-
+		
 		const string ds(wds.begin(), wds.end());
 		const string username(wusername.begin(), wusername.end());
 		const string password(wpassword.begin(), wpassword.end());
-
+		
 		SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
-		if(SQL_OK) {
-			status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, 
-													(SQLCHAR*)username.c_str(), SQL_NTS, 
-													(SQLCHAR*)password.c_str(), SQL_NTS);      
-			if(SQL_FAIL) {
-				ShowError(SQL_HANDLE_DBC, conn);
-				conn = NULL;
-			}
-		}
-		else {
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_DBC, conn);
 			conn = NULL;
+			APITools_SetIntValue(context, 0, 0);
+			return;
 		}
-
+		
+		status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(), 
+												SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);     
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_DBC, conn);
+			conn = NULL;
+			APITools_SetIntValue(context, 0, (long)conn);
+			return;
+		}
+		
 		APITools_SetIntValue(context, 0, (long)conn);
   }
-
+	
   //
   // disconnects from an ODBC data source
   //
@@ -130,33 +133,42 @@ extern "C" {
 		wcout << L"### update: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
 #endif    
 
-		if(!conn) {
+		if(!conn || wsql.size() < 1) {
 			APITools_SetIntValue(context, 0, -1);
 			return;
 		}
 		
 		SQLHSTMT stmt = NULL;
 		SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
-		if(SQL_OK) {
-			const string sql(wsql.begin(), wsql.end());
-			status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
-			if(SQL_OK) {
-				SQLLEN count;
-				status = SQLRowCount(stmt, &count);
-				if(SQL_OK) {
-					SQLFreeStmt(stmt, SQL_CLOSE);
-					APITools_SetIntValue(context, 0, count);
-					return;
-				}
-			}
-		}
-
-		if(stmt) {
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
 			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, -1);
+			return;
 		}
-		APITools_SetIntValue(context, 0, -1);
+		
+		const string sql(wsql.begin(), wsql.end());
+		status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, -1);
+			return;
+		}
+		
+		SQLLEN count;
+		status = SQLRowCount(stmt, &count);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, -1);
+			return;
+		}
+		
+		SQLFreeStmt(stmt, SQL_CLOSE);
+		APITools_SetIntValue(context, 0, count);
   }
-
+	
   //
   // executes a prepared select statement
   //
@@ -169,10 +181,11 @@ extern "C" {
 #ifdef _DEBUG
 		wcout << L"### stmt_select_update: stmt=" << stmt << L" ###" << endl;
 #endif
-
-		SQLExecute(stmt);
+		if(stmt) {
+			SQLExecute(stmt);
+		}
   }
-
+	
   //
   // executes a select statement
   //
@@ -187,63 +200,81 @@ extern "C" {
 		wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
 #endif    
 
-		if(!conn) {
+		if(!conn || wsql.size() < 1) {
 			APITools_SetIntValue(context, 0, 0);
 			return;
 		}
 		
 		SQLHSTMT stmt = NULL;
 		SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
-		if(SQL_OK) {
-			const string sql(wsql.begin(), wsql.end());
-			status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
-			if(SQL_OK) {
-				SQLSMALLINT columns;
-				status = SQLNumResultCols(stmt, &columns);
-				if(SQL_OK) {
-					// get column information
-					map<const wstring, int>* column_names = new map<const wstring, int>;
-					if(columns > 0) {
-						for(SQLSMALLINT i = 1; i <= columns; i++) {
-							ColumnDescription description;
-							status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-																			&description.column_name_size, &description.type, 
-																			&description.column_size, &description.decimal_length, 
-																			&description.nullable);
-							if(SQL_FAIL) {
-								ShowError(SQL_HANDLE_STMT, stmt);
-								SQLFreeStmt(stmt, SQL_CLOSE);
-								APITools_SetIntValue(context, 0, 0);
-								return;
-							}
-							const string column_name((const char*)description.column_name);
-							const wstring wcolumn_name(column_name.begin(), column_name.end());
-							column_names->insert(pair<wstring, int>(wcolumn_name, i));
-#ifdef _DEBUG
-							wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
-#endif
-						}
-					}
-					// execute query
-					status = SQLExecute(stmt); 
-					if(SQL_OK) {
-						APITools_SetIntValue(context, 0, (long)stmt);
-						APITools_SetIntValue(context, 1, (long)column_names);
-#ifdef _DEBUG
-						wcout << L"### select OK: stmt=" << stmt << L" ###" << endl;
-#endif  
-						return;
-					}
-				} 
-			}
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
+		}
+		
+		const string sql(wsql.begin(), wsql.end());
+		status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
+		}
+		
+		SQLSMALLINT columns;
+		status = SQLNumResultCols(stmt, &columns);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
 		}
 
-		if(stmt) {
+		map<const wstring, int>* column_names = new map<const wstring, int>;
+		for(SQLSMALLINT i = 1; i <= columns; i++) {
+			ColumnDescription description;
+			status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
+															&description.column_name_size, &description.type, 
+															&description.column_size, &description.decimal_length, 
+															&description.nullable);
+			if(SQL_FAIL) {
+				ShowError(SQL_HANDLE_STMT, stmt);
+				SQLFreeStmt(stmt, SQL_CLOSE);
+				APITools_SetIntValue(context, 0, 0);
+				APITools_SetIntValue(context, 1, 0);
+				return;
+			}
+			
+			const string column_name((const char*)description.column_name);
+			const wstring wcolumn_name(column_name.begin(), column_name.end());
+			column_names->insert(pair<wstring, int>(wcolumn_name, i));
+#ifdef _DEBUG
+			wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
+#endif
+		}
+		
+		// execute query
+		status = SQLExecute(stmt); 
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
 			SQLFreeStmt(stmt, SQL_CLOSE);
-		}      
-		APITools_SetIntValue(context, 0, 0);
-  }
-
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
+		}
+	
+		APITools_SetIntValue(context, 0, (long)stmt);
+		APITools_SetIntValue(context, 1, (long)column_names);
+#ifdef _DEBUG
+		wcout << L"### select OK: stmt=" << stmt << L" ###" << endl;
+#endif  
+	}		
+	
   //
   // executes a select statement
   //

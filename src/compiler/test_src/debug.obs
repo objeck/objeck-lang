@@ -9,13 +9,9 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "helloworld");
 			if(conn->IsOpen()) {
-				ps := conn->CreateParameterStatement("insert into test.users2 values (?,?,?,?)");
-				ps->SetInt(1, 7);
-				ps->SetVarchar(2, "zpa");
-				ps->SetVarchar(3, "bar");
-				ps->SetVarchar(4, "foo+bar");
-				ps->Update()->PrintLine();
-#~
+				ps := conn->CreateParameterStatement("select * from test.users2 where username = ?");
+				ps->SetVarchar(1, "randy");
+				
 				result := ps->Select();
 				if(result <> Nil) {
 					i := 0;	
@@ -27,7 +23,6 @@ bundle Default {
 					IO.Console->Print(i)->PrintLine(" row(s) selected");
 					result->Close();
 				};
-~#
 				ps->Close();
 				conn->Close();
 			};
