@@ -368,7 +368,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_next(VMContext& context) {
+	void odbc_result_next(VMContext& context) 
+	{
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
 		if(!stmt) {
 			APITools_SetIntValue(context, 0, 0);
