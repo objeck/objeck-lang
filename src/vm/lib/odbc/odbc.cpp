@@ -40,7 +40,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void load_lib() {
+	void load_lib() 
+	{
 		if(!env) {
 			SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
 			SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
@@ -53,7 +54,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void unload_lib() {
+	void unload_lib() 
+	{
 		if(env) {
 			SQLFreeHandle(SQL_HANDLE_ENV, env);
 		}
@@ -65,7 +67,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_connect(VMContext& context) {
+	void odbc_connect(VMContext& context) 
+	{
 		SQLHDBC conn;
 
 		const wstring wds(APITools_GetStringValue(context, 1));
@@ -107,7 +110,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_disconnect(VMContext& context) {
+	void odbc_disconnect(VMContext& context) 
+	{
 		SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);    
 		if(conn) {
 			SQLDisconnect(conn);
@@ -125,7 +129,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_update_statement(VMContext& context) {
+	void odbc_update_statement(VMContext& context) 
+	{
 		SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
 		const wstring wsql(APITools_GetStringValue(context, 2));
 
@@ -175,7 +180,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_select_statement(VMContext& context) {
+	void odbc_stmt_select_statement(VMContext& context) 
+	{
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 
 #ifdef _DEBUG
@@ -192,7 +198,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_select_statement(VMContext& context) {
+	void odbc_select_statement(VMContext& context) 
+	{
 		SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 2);
 		const wstring wsql(APITools_GetStringValue(context, 3));
 
@@ -281,64 +288,78 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_pepare_statement(VMContext& context) {
+	void odbc_pepare_statement(VMContext& context) 
+	{
 		SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 2);
 		const wstring wsql(APITools_GetStringValue(context, 3));
-
+		
 #ifdef _DEBUG
 		wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
 #endif    
-
-		if(!conn) {
+		
+		if(!conn || wsql.size() < 1) {
 			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
 			return;
 		}
 		
 		SQLHSTMT stmt = NULL;
 		SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
-		if(SQL_OK) {
-			const string sql(wsql.begin(), wsql.end());
-			status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
-			if(SQL_OK) {
-				SQLSMALLINT columns;
-				status = SQLNumResultCols(stmt, &columns);
-				if(SQL_OK) {
-					// get column information
-					map<const wstring, int>* column_names = new map<const wstring, int>;
-					if(columns > 0) {
-						for(SQLSMALLINT i = 1; i <= columns; i++) {
-							ColumnDescription description;
-							status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-																			&description.column_name_size, &description.type, 
-																			&description.column_size, &description.decimal_length, 
-																			&description.nullable);
-							if(SQL_FAIL) {
-								ShowError(SQL_HANDLE_STMT, stmt);
-								SQLFreeStmt(stmt, SQL_CLOSE);
-								APITools_SetIntValue(context, 0, 0);
-								return;
-							}
-
-							const string column_name((const char*)description.column_name);
-							const wstring wcolumn_name(column_name.begin(), column_name.end());
-							column_names->insert(pair<wstring, int>(wcolumn_name, i));
-#ifdef _DEBUG
-							wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
-#endif
-						}
-					}
-					// return statement
-					APITools_SetIntValue(context, 0, (long)stmt);
-					APITools_SetIntValue(context, 1, (long)column_names);
-					return;
-				} 
-			}
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
+		}
+		
+		const string sql(wsql.begin(), wsql.end());
+		status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
 		}
 
-		if(stmt) {
+		SQLSMALLINT columns;
+		status = SQLNumResultCols(stmt, &columns);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
 			SQLFreeStmt(stmt, SQL_CLOSE);
-		}      
-		APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+			return;
+		}
+
+		// get column information
+		map<const wstring, int>* column_names = new map<const wstring, int>;
+		for(SQLSMALLINT i = 1; i <= columns; i++) {
+			ColumnDescription description;
+			status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
+															&description.column_name_size, &description.type, 
+															&description.column_size, &description.decimal_length, 
+															&description.nullable);
+			if(SQL_FAIL) {
+				ShowError(SQL_HANDLE_STMT, stmt);
+				SQLFreeStmt(stmt, SQL_CLOSE);
+				APITools_SetIntValue(context, 0, 0);
+				APITools_SetIntValue(context, 1, 0);
+				return;
+			}
+			
+			const string column_name((const char*)description.column_name);
+			const wstring wcolumn_name(column_name.begin(), column_name.end());
+			column_names->insert(pair<wstring, int>(wcolumn_name, i));
+#ifdef _DEBUG
+			wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
+#endif
+		}
+		
+		// return statement
+		APITools_SetIntValue(context, 0, (long)stmt);
+		APITools_SetIntValue(context, 1, (long)column_names);
   }
 
   //
@@ -353,14 +374,14 @@ extern "C" {
 			APITools_SetIntValue(context, 0, 0);
 			return;
 		}
-
+		
 		SQLRETURN status = SQLFetch(stmt);
 		if(SQL_OK) {
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -369,7 +390,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_update(VMContext& context) {
+	void odbc_stmt_update(VMContext& context) 
+	{
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
 
 #ifdef _DEBUG
@@ -377,16 +399,23 @@ extern "C" {
 #endif
 
 		SQLRETURN status = SQLExecute(stmt);
-		if(SQL_OK) {
-			SQLLEN count;
-			status = SQLRowCount(stmt, &count);
-			if(SQL_OK) {
-				APITools_SetIntValue(context, 0, count);
-				return;
-			}
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, -1);
+			return;
 		}
-
-		APITools_SetIntValue(context, 0, -1);
+		
+		SQLLEN count;
+		status = SQLRowCount(stmt, &count);
+		if(SQL_FAIL) {
+			ShowError(SQL_HANDLE_STMT, stmt);
+			SQLFreeStmt(stmt, SQL_CLOSE);
+			APITools_SetIntValue(context, 0, -1);
+			return;
+		}
+		
+		APITools_SetIntValue(context, 0, count);
   }
 
   //
@@ -395,7 +424,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_smallint(VMContext& context) {
+	void odbc_stmt_set_smallint(VMContext& context) 
+	{
 		long* value = APITools_GetIntAddress(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -409,19 +439,20 @@ extern "C" {
 																				SQL_SMALLINT, 0, 0, value, 0, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
-
+	
   //
   // set an int from a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_bit(VMContext& context) {
+	void odbc_stmt_set_bit(VMContext& context) 
+	{
 		long* value = APITools_GetIntAddress(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -435,10 +466,10 @@ extern "C" {
 																				SQL_BIT, 0, 0, value, 0, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -447,7 +478,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_int(VMContext& context) {
+	void odbc_stmt_set_int(VMContext& context) 
+	{
 		long* value = APITools_GetIntAddress(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -461,10 +493,10 @@ extern "C" {
 																				SQL_INTEGER, 0, 0, value, 0, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -473,7 +505,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_double(VMContext& context) {
+	void odbc_stmt_set_double(VMContext& context) 
+	{
 		long* value = APITools_GetFloatAddress(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -487,10 +520,10 @@ extern "C" {
 																				SQL_DOUBLE, 0, 0, value, 0, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -499,7 +532,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_real(VMContext& context) {
+	void odbc_stmt_set_real(VMContext& context) 
+	{
 		long* value = APITools_GetFloatAddress(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -513,10 +547,10 @@ extern "C" {
 																				SQL_REAL, 0, 0, value, 0, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -525,7 +559,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_int_by_id(VMContext& context) {
+	void odbc_result_get_int_by_id(VMContext& context) 
+	{
 		SQLUSMALLINT i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -550,22 +585,21 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetIntValue(context, 1, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+		}
   }
-
-
-
+	
   //
   // gets an int from a result set
   //
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_smallint_by_id(VMContext& context) {
+	void odbc_result_get_smallint_by_id(VMContext& context) 
+	{
 		SQLUSMALLINT i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -589,11 +623,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetIntValue(context, 1, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+		}
   }
 
   //
@@ -602,7 +636,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_bit_by_id(VMContext& context) {
+	void odbc_result_get_bit_by_id(VMContext& context) 
+	{
 		SQLUSMALLINT i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -627,11 +662,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetIntValue(context, 1, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetIntValue(context, 1, 0);
+		}
   }
 
   //
@@ -640,7 +675,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)  
 #endif
-	void odbc_result_get_double_by_id(VMContext& context) {
+	void odbc_result_get_double_by_id(VMContext& context) 
+	{
 		SQLUSMALLINT i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -665,11 +701,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetFloatValue(context, 1, 0.0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetFloatValue(context, 1, 0.0);
+		}
   }
 
   //
@@ -678,7 +714,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)  
 #endif
-	void odbc_result_get_real_by_id(VMContext& context) {
+	void odbc_result_get_real_by_id(VMContext& context) 
+	{
 		SQLUSMALLINT i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -703,11 +740,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetFloatValue(context, 1, 0.0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetFloatValue(context, 1, 0.0);
+		}
   }
 
   //
@@ -716,7 +753,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_varchar(VMContext& context) {
+	void odbc_stmt_set_varchar(VMContext& context) 
+	{
 		long* byte_array = (long*)APITools_GetIntValue(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -732,10 +770,10 @@ extern "C" {
 																				SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -744,7 +782,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_timestamp(VMContext& context) {
+	void odbc_stmt_set_timestamp(VMContext& context) 
+	{
 		long* value = APITools_GetObjectValue(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -773,10 +812,10 @@ extern "C" {
 																				SQL_TYPE_TIMESTAMP, 0, 0, data, sizeof(time_stamp), NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -785,7 +824,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_set_date(VMContext& context) {
+	void odbc_stmt_set_date(VMContext& context) 
+	{
 		long* value = APITools_GetObjectValue(context, 1);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -808,10 +848,10 @@ extern "C" {
 																				SQL_TYPE_DATE, 0, 0, data, sizeof(time_stamp), NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
   }
 
   //
@@ -820,7 +860,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_varchar_by_id(VMContext& context) {
+	void odbc_result_get_varchar_by_id(VMContext& context) 
+	{
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -832,7 +873,7 @@ extern "C" {
 
 		if(!stmt || !names || i < 1 || i > (long)names->size()) {
 			APITools_SetIntValue(context, 0, 0);
-			APITools_SetObjectValue(context, 1, NULL);
+			APITools_SetObjectValue(context, 1, 0);
 			return;
 		}
 
@@ -847,11 +888,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetObjectValue(context, 1, NULL);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetObjectValue(context, 1, 0);
+		}
   }
 
   //
@@ -860,7 +901,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_varchar_by_name(VMContext& context) {
+	void odbc_result_get_varchar_by_name(VMContext& context) 
+	{
 		const wchar_t* name = APITools_GetStringValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -868,7 +910,7 @@ extern "C" {
 		map<const wstring, int>::iterator result = names->find(name);
 		if(result == names->end()) {
 			APITools_SetIntValue(context, 0, 0);
-			APITools_SetObjectValue(context, 1, NULL);
+			APITools_SetObjectValue(context, 1, 0);
 			return;
 		}
 		long i = result->second;
@@ -880,7 +922,7 @@ extern "C" {
 
 		if(!stmt || !names || i < 1 || i > (long)names->size()) {
 			APITools_SetIntValue(context, 0, 0);
-			APITools_SetObjectValue(context, 1, NULL);
+			APITools_SetObjectValue(context, 1, 0);
 			return;
 		}
 
@@ -895,11 +937,11 @@ extern "C" {
 #ifdef _DEBUG
 			wcout << L"  " << value << endl;
 #endif
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetObjectValue(context, 1, NULL);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetObjectValue(context, 1, 0);
+		}
   }
 
   //
@@ -908,7 +950,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_timestamp_by_id(VMContext& context) {
+	void odbc_result_get_timestamp_by_id(VMContext& context) 
+	{
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -920,7 +963,7 @@ extern "C" {
 
 		if(!stmt || !names || i < 1 || i > (long)names->size()) {
 			APITools_SetIntValue(context, 0, 0);
-			APITools_SetObjectValue(context, 1, NULL);
+			APITools_SetObjectValue(context, 1, 0);
 			return;
 		}
 
@@ -952,11 +995,11 @@ extern "C" {
 			// set values
 			APITools_SetIntValue(context, 0, 0);
 			APITools_SetObjectValue(context, 1, ts_obj);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetObjectValue(context, 1, NULL);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetObjectValue(context, 1, 0);
+		}
   }
 
   //
@@ -965,7 +1008,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_get_date_by_id(VMContext& context) {
+	void odbc_result_get_date_by_id(VMContext& context) 
+	{
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
@@ -977,7 +1021,7 @@ extern "C" {
 
 		if(!stmt || !names || i < 1 || i > (long)names->size()) {
 			APITools_SetIntValue(context, 0, 0);
-			APITools_SetObjectValue(context, 1, NULL);
+			APITools_SetObjectValue(context, 1, 0);
 			return;
 		}
 
@@ -1001,11 +1045,11 @@ extern "C" {
 			// set values
 			APITools_SetIntValue(context, 0, 0);
 			APITools_SetObjectValue(context, 1, ts_obj);
-			return;
 		}
-
-		APITools_SetIntValue(context, 0, 0);
-		APITools_SetObjectValue(context, 1, NULL);
+		else {
+			APITools_SetIntValue(context, 0, 0);
+			APITools_SetObjectValue(context, 1, 0);
+		}
   }
 
   //
@@ -1014,7 +1058,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_result_close(VMContext& context) {
+	void odbc_result_close(VMContext& context) 
+	{
 		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 0);
 		if(names) {
 			delete names;
@@ -1032,7 +1077,8 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-	void odbc_stmt_close(VMContext& context) {
+	void odbc_stmt_close(VMContext& context) 
+	{
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 		if(stmt) {
 			SQLFreeStmt(stmt, SQL_CLOSE);
