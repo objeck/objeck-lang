@@ -9,8 +9,8 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "helloworld");
 			if(conn->IsOpen()) {
-				ps := conn->CreateParameterStatement("select * from test.users2 where username = ?");
-				ps->SetVarchar(1, "randy");
+				ps := conn->CreateParameterStatement("select * from test.users where userid = ?");
+				ps->SetInt(1, 7);
 				
 				result := ps->Select();
 				if(result <> Nil) {
