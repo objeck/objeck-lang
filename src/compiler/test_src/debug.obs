@@ -9,6 +9,9 @@ bundle Default {
 		function : native : Run() ~ Nil {
 			conn := Connection->New("test", "root", "helloworld");
 			if(conn->IsOpen()) {
+				conn->Update("CREATE TABLE t.users13 (userid INT PRIMARY KEY AUTO_INCREMENT)")->PrintLine();
+
+#~
 				ps := conn->CreateParameterStatement("select * from test.users where userid = ?");
 				ps->SetInt(1, 7);
 				
@@ -24,6 +27,7 @@ bundle Default {
 					result->Close();
 				};
 				ps->Close();
+~#
 				conn->Close();
 			};
 		}
