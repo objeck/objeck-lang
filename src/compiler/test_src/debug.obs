@@ -1,35 +1,64 @@
 use ODBC;
+use Encryption;
 
-bundle Default {
-	class SqlTest {
-		function : Main(args : String[]) ~ Nil {
-			Run();
-		}
+class SqlTest {
+	@conn : Connection;
+	
+	function : Main(args : String[]) ~ Nil {
+		SqlTest->New()->Run();
+	}
 
-		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "helloworld");
-			if(conn->IsOpen()) {
-				conn->Update("CREATE TABLE t.users13 (userid INT PRIMARY KEY AUTO_INCREMENT)")->PrintLine();
+	New() {	
+		@conn := Connection->New("test", "root", "helloworld");
+	}
+	
+	method : Run() ~ Nil {
+		CreateUser("objeck", "beer");
+		AuthenticateUser("objeck", "beer")->PrintLine();
+		@conn->Close();
+	}
 
-#~
-				ps := conn->CreateParameterStatement("select * from test.users where userid = ?");
-				ps->SetInt(1, 7);
+	method : AuthenticateUser(username : String, password : String) ~ Bool {
+		status := false;
+		if(@conn->IsOpen()) {
+			sql := "SELECT pass_salt, pass_md5 FROM test.users2 WHERE username = ?";
+			ps := @conn->CreateParameterStatement(sql);
+			ps->SetVarchar(1, username);
+			
+			result := ps->Select();
+			if(result <> Nil & result->Next()) {
+				salt := result->GetVarchar(1);
+				md5_db_password := result->GetVarchar(2);
 				
-				result := ps->Select();
-				if(result <> Nil) {
-					i := 0;	
-					while(result->Next()) {
-						result->GetInt(1)->PrintLine();
-						result->GetVarchar(2)->PrintLine();
-						i += 1;
-					};
-					IO.Console->Print(i)->PrintLine(" row(s) selected");
-					result->Close();
-				};
-				ps->Close();
-~#
-				conn->Close();
+				password->Append(salt);
+				md5_user_password := Hash->MD5(password->ToByteArray())->ToHexString();
+IO.Console->Print("salt: ")->PrintLine(salt);
+IO.Console->Print("user_pass: ")->PrintLine(md5_user_password);
+IO.Console->Print("db_pass: ")->PrintLine(md5_db_password);
+				status := md5_user_password->Equals(md5_db_password);
 			};
-		}
+			ps->Close();
+		};
+		
+		return status;
+	}
+	
+	method : CreateUser(username : String, password : String) ~ Nil {
+		salt := (Float->Random() * 1000)->ToString();
+		password->Append(salt);
+		md5_password := Hash->MD5(password->ToByteArray());
+
+		if(@conn->IsOpen()) {
+			sql := "INSERT INTO test.users2(username, pass_salt, pass_md5) VALUES (?, ?, ?)";			
+			ps := @conn->CreateParameterStatement(sql);
+			ps->SetVarchar(1, username);
+			ps->SetVarchar(2, salt);
+			ps->SetVarchar(3, md5_password->ToHexString());
+			
+			IO.Console->Print("adding user: username=")->Print(username)
+				->Print(", salt=")->Print(salt)
+				->Print(", status=")->PrintLine(ps->Update());
+			ps->Close();
+		};
 	}
 }
