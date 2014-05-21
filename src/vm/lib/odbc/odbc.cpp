@@ -757,10 +757,9 @@ extern "C" {
 	void odbc_stmt_set_varchar(VMContext& context) 
 	{
 		long* byte_array = (long*)APITools_GetIntValue(context, 1);
+		char* value = (char*)APITools_GetByteArray(byte_array);
 		long i = APITools_GetIntValue(context, 2);
 		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-		
-		char* value = (char*)APITools_GetByteArray(byte_array);
 		
 #ifdef _DEBUG
 		wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
@@ -769,6 +768,35 @@ extern "C" {
 		
 		SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
 																				SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
+		if(SQL_OK) { 
+			APITools_SetIntValue(context, 0, 1);
+		}
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
+  }
+
+	//
+  // set a string for a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+	void odbc_stmt_set_blob(VMContext& context) 
+	{
+		long* byte_array = (long*)APITools_GetIntValue(context, 1);
+		char* value = (char*)APITools_GetByteArray(byte_array);
+		int value_size = APITools_GetArraySize(byte_array);
+		long i = APITools_GetIntValue(context, 2);
+		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+		
+#ifdef _DEBUG
+		wcout << L"### set_blob: stmt=" << stmt << L", column=" << i 
+					<< L", value=" << value << L" ###" << endl;
+#endif  
+		
+		SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
+																				value_size, 0, (SQLPOINTER)value, value_size, NULL);
 		if(SQL_OK) { 
 			APITools_SetIntValue(context, 0, 1);
 		}
@@ -895,7 +923,46 @@ extern "C" {
 			APITools_SetObjectValue(context, 1, 0);
 		}
   }
+	
+	//
+  // gets a blob from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+	void odbc_result_get_blob_by_id(VMContext& context) 
+	{
+		long* byte_array = (long*)APITools_GetIntValue(context, 1);
+		char* buffer = (char*)APITools_GetByteArray(byte_array);
+		int buffer_size = APITools_GetArraySize(byte_array);
+		
+		long i = APITools_GetIntValue(context, 2);
+		SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+		map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
+#ifdef _DEBUG
+		wcout << L"### get_blob_by_id: stmt=" << stmt << L", column=" << i 
+					<< L", max=" << buffer_max << L" ###" << endl;
+#endif  
+
+		if(!stmt || !names || i < 1 || i > (long)names->size()) {
+			APITools_SetIntValue(context, 0, 0);
+			return;
+		}
+
+		SQLLEN is_null;
+		SQLRETURN status = SQLGetData(stmt, i, SQL_C_BINARY, buffer, buffer_size, &is_null);
+		if(SQL_OK) {
+			APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+#ifdef _DEBUG
+			wcout << L"  " << value << endl;
+#endif
+		}
+		else {
+			APITools_SetIntValue(context, 0, 0);
+		}
+  }
+	
   //
   // gets a string from a result set
   //
