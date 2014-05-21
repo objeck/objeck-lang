@@ -21,21 +21,32 @@ class SqlTest {
 	method : AuthenticateUser(username : String, password : String) ~ Bool {
 		status := false;
 		if(@conn->IsOpen()) {
-			sql := "SELECT pass_salt, pass_md5 FROM test.users2 WHERE username = ?";
+			sql := "SELECT pass_salt, pass_md5 FROM test.users WHERE username = ?";
 			ps := @conn->CreateParameterStatement(sql);
 			ps->SetVarchar(1, username);
 			
 			result := ps->Select();
 			if(result <> Nil & result->Next()) {
-				salt := result->GetVarchar(1);
-				md5_db_password := result->GetVarchar(2);
-				
+				salt_buffer := Byte->New[16];
+				result->GetBlob(1, salt_buffer);
+				salt := "";
+				for(i := 0; i < 16; i+=1;) {
+					salt->Append(salt_buffer[i]);
+				};
+
+				password_buffer := Byte->New[16];
+				result->GetBlob(2, password_buffer);
+
 				password->Append(salt);
-				md5_user_password := Hash->MD5(password->ToByteArray())->ToHexString();
-IO.Console->Print("salt: ")->PrintLine(salt);
-IO.Console->Print("user_pass: ")->PrintLine(md5_user_password);
-IO.Console->Print("db_pass: ")->PrintLine(md5_db_password);
-				status := md5_user_password->Equals(md5_db_password);
+				md5_user_password := Hash->MD5(password->ToByteArray());
+		
+for(i := 0; i < 16; i+=1;) {
+	x := md5_user_password[i];
+	x->As(Int)->PrintLine();
+	y := password_buffer[i];
+	y->As(Int)->PrintLine();
+	"---"->PrintLine();
+};
 			};
 			ps->Close();
 		};
@@ -52,11 +63,24 @@ IO.Console->Print("db_pass: ")->PrintLine(md5_db_password);
 		md5_password := Hash->MD5(password->ToByteArray());
 
 		if(@conn->IsOpen()) {
-			sql := "INSERT INTO test.users2(username, pass_salt, pass_md5) VALUES (?, ?, ?)";			
+			sql := "INSERT INTO test.users(username, pass_salt, pass_md5) VALUES (?, ?, ?)";			
 			ps := @conn->CreateParameterStatement(sql);
 			ps->SetVarchar(1, username);
-			ps->SetVarchar(2, salt);
-			ps->SetVarchar(3, md5_password->ToHexString());
+			ps->SetBlob(2, salt->ToByteArray());
+
+#~
+in := md5_password;
+out := Byte->New[16];
+for(i := 0; i < 16; i+=1;) {
+	if(i < in->Size()) {
+		out[i] := in[i];
+	}
+	else {
+		out[i] := 0;
+	};
+};
+~#
+			ps->SetBlob(3, md5_password);
 			
 			IO.Console->Print("adding user: username=")->Print(username)
 				->Print(", salt=")->Print(salt)
