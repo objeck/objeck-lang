@@ -2912,6 +2912,7 @@ queries.
   \item method : public : SetDouble(pos : Int, value : Float) \textasciitilde Bool
   \item method : public : SetReal(pos : Int, value : Float) \textasciitilde Bool
   \item method : public : SetVarchar(pos : Int, value : String) \textasciitilde Bool
+  \item method : public : SetBlob(pos : Int, value : Char[]) \textasciitilde Bool
   \item method : public : SetDate(pos : Int, value : Date) \textasciitilde Bool
   \item method : public : SetTimestamp(pos : Int, value : Timestamp) \textasciitilde
   \end{itemize}
@@ -2954,7 +2955,7 @@ accessed via index or by name.  Column values may be `null'.
   \item method : public : GetDouble(column : Int) \textasciitilde Float
   \item method : public : GetReal(column : Int) \textasciitilde Float
   \item method : public : GetVarchar(column : Int) \textasciitilde String
-  \item method : public : GetVarchar(name : String) \textasciitilde String
+  \item method : public : GetBlob(column : Int, buffer : Byte[]) \textasciitilde Nil
   \item method : public : GetDate(column : Int) \textasciitilde ODBC.Date
   \item method : public : GetTimestamp(column : Int) \textasciitilde Timestamp 
   \end{itemize}
