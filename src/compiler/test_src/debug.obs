@@ -3,7 +3,6 @@ use ODBC;
 class SqlTest {
 	function : Main(args : String[]) ~ Nil {
 		conn := Connection->New("test", "root", "helloworld");
-#~
 		if(conn->IsOpen()) {
 "-0-"->PrintLine();
 			data := Byte->New[16];
@@ -12,13 +11,13 @@ class SqlTest {
 			};
 
 			sql := "INSERT INTO test.foo(n,v) VALUES (?, ?)";
-      ps := conn->CreateParameterStatement(sql);
-      ps->SetVarchar(1, "hello");
-      ps->SetBlob(2, data);
+			ps := conn->CreateParameterStatement(sql);
+			ps->SetVarchar(1, "hello");
+			ps->SetBlob(2, data);
 			ps->Update()->PrintLine();
 			ps->Close();
 			#------------------
-~#
+#~
 
 			result := conn->Select("SELECT * FROM test.foo");
 			if(result <> Nil & result->Next()) {
@@ -29,6 +28,7 @@ class SqlTest {
 				each(i : out) {	
 					out[i]->PrintLine();
 				};
+~#
 			};	
 			conn->Close();
 		}
