@@ -12,7 +12,7 @@ bundle Default {
 		
 		function : native : DoStuff() ~ Nil {
 			for(i := 0; i < 1024; i+=1;) {
-				bb := Byte->New[1024];
+				bb := Byte->New[4096];
 				each(j : bb) {
 					bb[j] := j + i;
 				};		
