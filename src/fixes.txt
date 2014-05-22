@@ -1,3 +1,7 @@
+5/21/14
+* TODO: multi threads creating garbage (clean of instances on local stacks)
+* TODO: odbc support for NULLs and SetBlob w/ NULL byte
+
 5/12/14
 * fixed a bug to 'Float->Power'
 * fixed a major bug with casting primitive classes and then making method calls
