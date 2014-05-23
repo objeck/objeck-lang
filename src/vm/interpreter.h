@@ -518,6 +518,7 @@ namespace Runtime {
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
+      *call_stack_pos = -1;
       frame = new StackFrame*;
 
       // register monitor
@@ -534,6 +535,7 @@ namespace Runtime {
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
+      *call_stack_pos = -1;
       frame = new StackFrame*;
 
       // register monitor
@@ -553,6 +555,7 @@ namespace Runtime {
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
+      *call_stack_pos = -1;
       frame = new StackFrame*;
 
       // register monitor
