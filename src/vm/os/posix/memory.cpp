@@ -1107,11 +1107,13 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     
     // copy frames locally
     vector<StackFrame*> frames;
-    frames.push_back(cur_frame);
-    while(--call_stack_pos > -1) {
-      frames.push_back(call_stack[call_stack_pos]);
+    if(call_stack_pos > -1) {
+      frames.push_back(cur_frame);
+      while(--call_stack_pos > -1) {
+	frames.push_back(call_stack[call_stack_pos]);
+      }
     }
-
+    
     for(size_t i = 0; i < frames.size(); ++i) {    
       StackMethod* mthd = frames[i]->method;
       long* mem = frames[i]->mem;
