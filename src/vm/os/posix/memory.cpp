@@ -37,6 +37,7 @@ StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 set<StackFrame**> MemoryManager::pda_frames;
+set<StackOperMemory*> MemoryManager::stack_oper_memory;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
@@ -55,6 +56,8 @@ pthread_mutex_t MemoryManager::pda_frame_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::stack_oper_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #endif
 
 void MemoryManager::Initialize(StackProgram* p)
