@@ -65,7 +65,7 @@ int Execute(const int argc, const char* argv[])
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); i++) {
-	wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
+        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
 #endif
@@ -76,7 +76,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _WIN32     
     list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
     for(list<HANDLE>::iterator iter = thread_ids.begin();
-      iter != thread_ids.end(); iter++) {
+        iter != thread_ids.end(); iter++) {
       HANDLE id = (*iter);
       if(WaitForSingleObject(id, INFINITE) != WAIT_OBJECT_0) {
         cerr << L"Unable to join garbage collection threads!" << endl;
@@ -88,10 +88,10 @@ int Execute(const int argc, const char* argv[])
     void* status;
     list<pthread_t> thread_ids = loader.GetProgram()->GetThreads();
     for(list<pthread_t>::iterator iter = thread_ids.begin();
-	iter != thread_ids.end(); iter++) {
+        iter != thread_ids.end(); iter++) {
       if(pthread_join((*iter), &status)) {
-	cerr << L"Unable to join program thread!" << endl;
-	exit(-1);
+        cerr << L"Unable to join program thread!" << endl;
+        exit(-1);
       }
     }
 #endif
@@ -118,7 +118,7 @@ int Execute(const int argc, const char* argv[])
     clock_t end = clock();
     wcout << L"---------------------------" << endl;
     wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
-         << L" second(s)." << endl;
+          << L" second(s)." << endl;
 #endif
 
     CleanUpCommandLine(argc, commands);
