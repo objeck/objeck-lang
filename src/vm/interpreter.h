@@ -53,7 +53,6 @@ namespace Runtime {
 #endif
   
 #define CALL_STACK_SIZE 1024
-#define CALC_STACK_SIZE 512
 	
   // holds the calling context for async
   // method calls

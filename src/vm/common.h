@@ -77,6 +77,7 @@ namespace std {
 
 
 #define SMALL_BUFFER_MAX 255
+#define CALC_STACK_SIZE 512
 
 using namespace std;
 using namespace instructions;
