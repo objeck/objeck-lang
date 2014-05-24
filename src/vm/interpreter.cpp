@@ -125,8 +125,8 @@ void StackInterpreter::Initialize(StackProgram* p)
  * funciton is used by callbacks 
  * from native code for the C API
  ********************************/
-void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, StackMethod* method,
-			       long* instance, bool jit_called)
+void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, 
+                               StackMethod* method, long* instance, bool jit_called)
 {
   long right, left;
   double right_double, left_double;
