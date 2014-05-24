@@ -1101,40 +1101,41 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     // gather stack frames
     StackFrameMonitor* monitor = pda_iter->first;
-    StackFrame** call_stack = monitor->call_stack;
     long call_stack_pos = *(monitor->call_stack_pos);
-    StackFrame* cur_frame = *(monitor->cur_frame);
     
-    // copy frames locally
-    vector<StackFrame*> frames;
-    if(call_stack_pos > -1) {
+    if(call_stack_pos > 0) {
+      StackFrame** call_stack = monitor->call_stack;
+      StackFrame* cur_frame = *(monitor->cur_frame);
+
+      // copy frames locally
+      vector<StackFrame*> frames;
       frames.push_back(cur_frame);
       while(--call_stack_pos > -1) {
-	frames.push_back(call_stack[call_stack_pos]);
+        frames.push_back(call_stack[call_stack_pos]);
       }
-    }
     
-    for(size_t i = 0; i < frames.size(); ++i) {    
-      StackMethod* mthd = frames[i]->method;
-      long* mem = frames[i]->mem;
+      for(size_t i = 0; i < frames.size(); ++i) {    
+        StackMethod* mthd = frames[i]->method;
+        long* mem = frames[i]->mem;
 
 #ifdef _DEBUG
-      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-            << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+        wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+              << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
-      // mark self
-      CheckObject((long*)(*mem), true, 1);
+        // mark self
+        CheckObject((long*)(*mem), true, 1);
 
-      if(mthd->HasAndOr()) {
-        mem += 2;
-      } 
-      else {
-        mem++;
-      }
+        if(mthd->HasAndOr()) {
+          mem += 2;
+        } 
+        else {
+          mem++;
+        }
     
-      // mark rest of memory
-      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+        // mark rest of memory
+        CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+      }
     }
   }
 #ifndef _GC_SERIAL
