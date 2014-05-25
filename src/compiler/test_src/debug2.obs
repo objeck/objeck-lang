@@ -7,11 +7,11 @@ bundle Default {
 		}
 
 		method : public : Run(param : Base) ~ Nil {
-			DoStuff();
+			DoStuff2(DoStuff());
 		}
 		
-		function : native : DoStuff() ~ Nil {
-#		function : DoStuff() ~ Nil {
+		function : native : DoStuff() ~ Byte[] {
+			bb : Byte[];
 			for(i := 0; i < 1024; i+=1;) {
 				bb := Byte->New[2048];
 				each(j : bb) {
@@ -19,7 +19,16 @@ bundle Default {
 					bb[j] := bb[j] * i;
 				};		
 			};
-			"Done"->PrintLine();
+			"Done "->PrintLine();
+
+			return bb;
+		}
+
+		function : DoStuff2(bb : Byte[]) ~ Nil {
+			each(j : bb) {
+				bb[j] := bb[j] / 2;
+			};		
+			"Done 2"->PrintLine();
 		}
 	}
 
