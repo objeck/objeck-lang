@@ -1532,6 +1532,14 @@ namespace Runtime {
     inline bool Compile(StackMethod* cm) {
       compile_success = true;
 
+      /*
+#ifdef _WIN32
+      EnterCriticalSection(&cm->jit_cs);
+#else
+      pthread_mutex_lock(&cm->jit_mutex);
+#endif
+      */
+
       if(!cm->GetNativeCode()) {
         skip_jump = false;
         method = cm;
@@ -1628,12 +1636,15 @@ namespace Runtime {
         compile_success = true;
 
         // release our lock, native code has been compiled and set
-#ifdef _WIN32
-        LeaveCriticalSection(&cm->jit_cs);
-#else
-        pthread_mutex_unlock(&cm->jit_mutex);
-#endif
       }
+
+      /*
+#ifdef _WIN32
+      LeaveCriticalSection(&cm->jit_cs);
+#else
+      pthread_mutex_unlock(&cm->jit_mutex);
+#endif
+      */
 
       return compile_success;
     }
