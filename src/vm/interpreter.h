@@ -65,11 +65,14 @@ namespace Runtime {
   class StackInterpreter {
     // program
     static StackProgram* program;
+    static set<StackInterpreter*> intpr_threads;
 		static stack<StackFrame*> cached_frames;
 #ifdef _WIN32
 		static CRITICAL_SECTION cached_frames_cs;
+    static CRITICAL_SECTION intpr_threads_cs;
 #else
 		static pthread_mutex_t cached_frames_mutex;
+    static pthread_mutex_t intpr_threads_mutex;
 #endif
 
     // call stack and current frame pointer
@@ -82,7 +85,7 @@ namespace Runtime {
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
-		
+    
 		//
 		// get stack frame
 		//
@@ -141,26 +144,26 @@ namespace Runtime {
 #endif
       
 #ifndef _SANITIZE
-       // cache up to 256k frames
-       if(cached_frames.size() > CALL_STACK_SIZE * 256) {
-         free(frame->mem);
-         delete frame;
+      // cache up to 256k frames
+      if(cached_frames.size() > CALL_STACK_SIZE * 256) {
+        free(frame->mem);
+        delete frame;
 #ifdef _DEBUG
-         wcout << L"releasing frame=" << frame << endl;
+        wcout << L"releasing frame=" << frame << endl;
 #endif
-       }
-       else {
-         memset(frame->mem, 0, LOCAL_SIZE);
-         cached_frames.push(frame);
+      }
+      else {
+        memset(frame->mem, 0, LOCAL_SIZE);
+        cached_frames.push(frame);
 
 #ifdef _DEBUG
-         wcout << L"caching frame=" << frame << endl;
+        wcout << L"caching frame=" << frame << endl;
 #endif
-       }
+      }
        
 #else 
-       free(frame->mem);
-       delete frame;
+      free(frame->mem);
+      delete frame;
 
 #endif
        
@@ -488,6 +491,62 @@ namespace Runtime {
     // initialize the runtime system
     static void Initialize(StackProgram* p);
 
+    static void AddThread(StackInterpreter* i) {
+#ifdef _WIN32
+			EnterCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_lock(&intpr_threads_mutex);
+#endif
+      
+      intpr_threads.insert(i);
+      
+#ifdef _WIN32
+			LeaveCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_unlock(&intpr_threads_mutex);
+#endif
+    }
+
+    static void RemoveThread(StackInterpreter* i) {
+#ifdef _WIN32
+			EnterCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_lock(&intpr_threads_mutex);
+#endif
+      
+      intpr_threads.erase(i);
+      
+#ifdef _WIN32
+			LeaveCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_unlock(&intpr_threads_mutex);
+#endif
+    }
+		
+    static void HaltAll() {
+#ifdef _WIN32
+			EnterCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_lock(&intpr_threads_mutex);
+#endif
+      
+      set<StackInterpreter*>::iterator iter;
+      for(iter = intpr_threads.begin(); iter != intpr_threads.end(); ++iter) {
+        (*iter)->Halt();
+      }
+
+#ifdef _WIN32
+			LeaveCriticalSection(&intpr_threads_cs);
+#else
+			pthread_mutex_unlock(&intpr_threads_mutex);
+#endif
+    }
+
+    //
+    void Halt() {
+      halt = true;
+    }
+    
     // free static resources
     static void Clear() {
       while(!cached_frames.empty()) {

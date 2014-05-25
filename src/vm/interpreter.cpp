@@ -56,10 +56,13 @@ using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
 stack<StackFrame*> StackInterpreter::cached_frames;
+set<StackInterpreter*> StackInterpreter::intpr_threads;
 #ifdef _WIN32
 CRITICAL_SECTION StackInterpreter::cached_frames_cs;
+CRITICAL_SECTION StackInterpreter::intpr_threads_cs;
 #else
 pthread_mutex_t StackInterpreter::cached_frames_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t StackInterpreter::intpr_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /********************************
@@ -95,6 +98,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 
 #ifdef _WIN32
   InitializeCriticalSection(&cached_frames_cs);
+  InitializeCriticalSection(&intpr_threads_cs);
 #endif
 
 #ifndef _SANITIZE
@@ -1510,7 +1514,6 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
 #ifdef _DEBUG
   wcout << L"*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
 #endif
-  program->AddThread(vm_thread);
 }
 
 #ifdef _WIN32
@@ -1537,9 +1540,10 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   wcout << L"# Starting thread=" << vm_thread << " #" << endl;
 #endif  
 
-  Runtime::StackInterpreter intpr;
-  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
-
+  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+  AddThread(intpr);
+  intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  
 #ifdef _DEBUG
   wcout << L"# final stack: pos=" << (*thread_stack_pos) << ", thread=" << vm_thread << " #" << endl;
 #endif
@@ -1550,12 +1554,14 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   delete thread_stack_pos;
   thread_stack_pos = NULL;
+  
+  RemoveThread(intpr);
+  delete intpr;
+  intpr = NULL;
 
   delete holder;
   holder = NULL;
-
-  program->RemoveThread(vm_thread);
-
+  
   return 0;
 }
 #else
@@ -1578,8 +1584,9 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   wcout << L"# Starting thread=" << pthread_self() << " #" << endl;
 #endif  
 
-  Runtime::StackInterpreter intpr;
-  intpr.Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+  AddThread(intpr);
+  intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
 
 #ifdef _DEBUG
   wcout << L"# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
@@ -1592,11 +1599,13 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   delete thread_stack_pos;
   thread_stack_pos = NULL;
 
+  RemoveThread(intpr);
+  delete intpr;
+  intpr = NULL;
+  
   delete holder;
   holder = NULL;
-
-  program->RemoveThread(pthread_self());
-
+  
   return NULL;
 }
 #endif

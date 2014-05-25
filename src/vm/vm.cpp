@@ -58,9 +58,10 @@ int Execute(const int argc, const char* argv[])
     clock_t start = clock();
 #endif
     // start the interpreter...
-    Runtime::StackInterpreter intpr(Loader::GetProgram());
-    intpr.Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
-
+    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
+    Runtime::StackInterpreter::AddThread(intpr);
+    intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+    
 #ifdef _DEBUG
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
@@ -70,48 +71,29 @@ int Execute(const int argc, const char* argv[])
     }
 #endif
     
-    // clean up resources before exiting, only done in debug mode to ensure we've
-    // accounted for everything
-#ifdef _SANITIZE
-#ifdef _WIN32     
-    list<HANDLE> thread_ids = loader.GetProgram()->GetThreads();
-    for(list<HANDLE>::iterator iter = thread_ids.begin();
-        iter != thread_ids.end(); iter++) {
-      HANDLE id = (*iter);
-      if(WaitForSingleObject(id, INFINITE) != WAIT_OBJECT_0) {
-        cerr << L"Unable to join garbage collection threads!" << endl;
-        exit(-1);
-      }
-      CloseHandle(id);
-    }
-#else
-    void* status;
-    list<pthread_t> thread_ids = loader.GetProgram()->GetThreads();
-    for(list<pthread_t>::iterator iter = thread_ids.begin();
-        iter != thread_ids.end(); iter++) {
-      if(pthread_join((*iter), &status)) {
-        cerr << L"Unable to join program thread!" << endl;
-        exit(-1);
-      }
-    }
-#endif
-    
-    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
-    if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); i++) {
-        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
-      } 
-    }
-
-		Runtime::StackInterpreter::Clear();
-    MemoryManager::Clear();
-
     // clean up
     delete[] op_stack;
     op_stack = NULL;
     
     delete stack_pos;
     stack_pos = NULL;
+    
+    Runtime::StackInterpreter::RemoveThread(intpr);
+    delete intpr;
+    intpr = NULL;
+    
+    Runtime::StackInterpreter::HaltAll();
+
+#ifdef _SANITIZE
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
+    if((*stack_pos) > 0) {
+      for(int i = 0; i < (*stack_pos); i++) {
+        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
+      } 
+    }
+    
+		Runtime::StackInterpreter::Clear();
+    MemoryManager::Clear();    
 #endif
     
 #ifdef _TIMING    

@@ -1002,11 +1002,9 @@ class StackProgram {
   int num_char_strings;
 
 #ifdef _WIN32
-  static list<HANDLE> thread_ids;
   static CRITICAL_SECTION program_cs;
   static CRITICAL_SECTION prop_cs;
 #else
-  static list<pthread_t> thread_ids;
   static pthread_mutex_t program_mutex;
   static pthread_mutex_t prop_mutex;
 #endif
@@ -1091,27 +1089,6 @@ class StackProgram {
   }
 
 #ifdef _WIN32
-  static void AddThread(HANDLE h) {
-    EnterCriticalSection(&program_cs);
-    thread_ids.push_back(h);
-    LeaveCriticalSection(&program_cs);
-  }
-
-  static void RemoveThread(HANDLE h) {
-    EnterCriticalSection(&program_cs);
-    thread_ids.remove(h);
-    LeaveCriticalSection(&program_cs);
-  }
-
-  static list<HANDLE> GetThreads() {
-    list<HANDLE> temp;
-    EnterCriticalSection(&program_cs);
-    temp = thread_ids;
-    LeaveCriticalSection(&program_cs);
-
-    return temp;
-  }
-
   static wstring GetProperty(wstring key) {
     wstring value;
 
@@ -1130,33 +1107,10 @@ class StackProgram {
     properties_map.insert(pair<wstring, wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
-
 #else
-  static void AddThread(pthread_t t) {
-    pthread_mutex_lock(&program_mutex);
-    thread_ids.push_back(t);
-    pthread_mutex_unlock(&program_mutex);
-  }
-
-  static void RemoveThread(pthread_t t) {
-    pthread_mutex_lock(&program_mutex);
-    thread_ids.remove(t);
-    pthread_mutex_unlock(&program_mutex);
-  }
-
-  static list<pthread_t> GetThreads() {
-    list<pthread_t> temp;
-    pthread_mutex_lock(&program_mutex);
-    temp = thread_ids;
-    pthread_mutex_unlock(&program_mutex);
-
-    return temp;
-  }
-
-
   static wstring GetProperty(wstring key) {
     wstring value;
-
+    
     pthread_mutex_lock(&prop_mutex);
     map<wstring, wstring>::iterator find = properties_map.find(key);
     if(find != properties_map.end()) {
@@ -1172,7 +1126,6 @@ class StackProgram {
     properties_map.insert(pair<wstring, wstring>(key, value));
     pthread_mutex_unlock(&prop_mutex);
   }
-
 #endif
 
   void SetInitializationMethod(StackMethod* i) {
