@@ -1,50 +1,6 @@
-static set<StackMemory*> stack_memory;
-static pthread_mutex_t stack_mutex;
-
-struct StackMemory {
-	long* op_stack;
-	long* stack_pos;
-};
-
-static inline StackMemory* GetStackMemory() {
-#ifndef _GC_SERIAL
-    pthread_mutex_lock(&stack_mutex);
-#endif
-		StackMemory* stack = new StackMemory;
-		stack->op_stack = new long[CALC_STACK_SIZE];
-		stack->stack_pos = new long;
-		stack_memory.insert(stack);
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&stack_mutex);
-#endif
-		
-		return stack;
-	}
-
-	static void ReleaseStackMemory(StackMemory* stack) {
-#ifndef _GC_SERIAL
-    pthread_mutex_lock(&stack_mutex);
-#endif
-		stack_memory.erase(stack);
-		
-		delete[] stack->op_stack;
-		stack->op_stack = NULL;
-
-		delete stack->stack_pos;
-		stack->stack_pos = NULL;
-
-		delete stack;
-		stack = NULL;
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&stack_mutex);
-#endif
-	}
-
-
-
 5/21/14
-* TODO: multi threads creating garbage (clean of instances on local stacks)
-* TODO: odbc support for NULLs and SetBlob w/ NULL byte
+* TODO: odbc support for NULLs
+* TODO: odbc SetBlob w/ NULL bytes
 
 5/12/14
 * fixed a bug to 'Float->Power'

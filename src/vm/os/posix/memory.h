@@ -95,8 +95,6 @@ class MemoryManager {
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
-  static set<StackOperMemory*> stack_oper_memory;
-  static pthread_mutex_t stack_oper_mutex;
 #endif
     
   // note: protected by 'allocated_mutex'
@@ -194,40 +192,6 @@ class MemoryManager {
     }
     
     initialized = false;
-  }
-
-  static inline StackOperMemory* GetStackOperMemory() {
-#ifndef _GC_SERIAL
-    pthread_mutex_lock(&stack_oper_mutex);
-#endif
-    StackOperMemory* oper_stack = new StackOperMemory;
-    oper_stack->op_stack = new long[CALC_STACK_SIZE];
-    oper_stack->stack_pos = new long;
-    stack_oper_memory.insert(oper_stack);
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&stack_oper_mutex);
-#endif
-	
-    return oper_stack;
-  }
-  
-  static void ReleaseStackOperMemory(StackOperMemory* oper_stack) {
-#ifndef _GC_SERIAL
-    pthread_mutex_lock(&stack_oper_mutex);
-#endif
-    stack_oper_memory.erase(oper_stack);
-
-    delete[] oper_stack->op_stack;
-    oper_stack->op_stack = NULL;
-
-    delete oper_stack->stack_pos;
-    oper_stack->stack_pos = NULL;
-
-    delete oper_stack;
-    oper_stack = NULL;
-#ifndef _GC_SERIAL
-    pthread_mutex_unlock(&stack_oper_mutex);
-#endif
   }
   
   // add and remove jit roots
