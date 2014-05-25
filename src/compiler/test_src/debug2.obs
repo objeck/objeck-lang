@@ -11,8 +11,9 @@ bundle Default {
 		}
 		
 		function : native : DoStuff() ~ Nil {
-			for(i := 0; i < 3072; i+=1;) {
-				bb := Byte->New[1024];
+#		function : DoStuff() ~ Nil {
+			for(i := 0; i < 1024; i+=1;) {
+				bb := Byte->New[2048];
 				each(j : bb) {
 					bb[j] := j + i;
 					bb[j] := bb[j] * i;
@@ -30,7 +31,7 @@ bundle Default {
 		}
 		
 		function : Run() ~ Nil {
-      threads := Thread->New[13];
+      threads := Thread->New[10];
 			each( i : threads) {
 				threads[i] := MyThread->New(i->ToString());
 			};	
@@ -39,7 +40,8 @@ bundle Default {
 				threads[i]->Execute(Nil);
 			};
 			
-			each( i : threads) {
+#			each( i : threads) {
+			for(i := 0; i < threads->Size() / 3; i+=1;) {
 				threads[i]->Join();
 			};
 			
