@@ -19,6 +19,7 @@ bundle Default {
 					bb[j] := bb[j] * i;
 				};		
 			};
+			"Done"->PrintLine();
 		}
 	}
 
@@ -31,7 +32,7 @@ bundle Default {
 		}
 		
 		function : Run() ~ Nil {
-      threads := Thread->New[10];
+			threads := Thread->New[7];
 			each( i : threads) {
 				threads[i] := MyThread->New(i->ToString());
 			};	
@@ -40,8 +41,8 @@ bundle Default {
 				threads[i]->Execute(Nil);
 			};
 			
-#			each( i : threads) {
-			for(i := 0; i < threads->Size() / 3; i+=1;) {
+			each( i : threads) {
+#			for(i := 0; i < threads->Size() / 3; i+=1;) {
 				threads[i]->Join();
 			};
 			

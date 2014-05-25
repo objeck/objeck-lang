@@ -90,14 +90,13 @@ namespace Runtime {
 		// get stack frame
 		//
 		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
-#ifndef _SANITIZE
 #ifdef _WIN32
 			EnterCriticalSection(&cached_frames_cs);
 #else
 			pthread_mutex_lock(&cached_frames_mutex);
 #endif
       if(cached_frames.empty()) {
-				// allocate 256K frames
+				// load cache
 				for(int i = 0; i < CALL_STACK_SIZE; i++) {
 					StackFrame* frame = new StackFrame();
 					frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
@@ -111,20 +110,10 @@ namespace Runtime {
 			frame->mem[0] = (long)instance;
 			frame->ip = -1;
 			frame->jit_called = false;
-
 #ifdef _DEBUG
 			wcout << L"fetching frame=" << frame << endl;
 #endif
-      
-#else      
-      StackFrame* frame = new StackFrame;
-			frame->method = method;
-      frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
-			frame->mem[0] = (long)instance;
-			frame->ip = -1;
-			frame->jit_called = false;
-#endif
- 
+
 #ifdef _WIN32
 			LeaveCriticalSection(&cached_frames_cs);
 #else
@@ -141,32 +130,15 @@ namespace Runtime {
       EnterCriticalSection(&cached_frames_cs);
 #else
       pthread_mutex_lock(&cached_frames_mutex);
-#endif
+#endif      
       
-#ifndef _SANITIZE
-      // cache up to 256k frames
-      if(cached_frames.size() > CALL_STACK_SIZE * 256) {
-        free(frame->mem);
-        delete frame;
+      // load cache
+      memset(frame->mem, 0, LOCAL_SIZE);
+      cached_frames.push(frame);
 #ifdef _DEBUG
-        wcout << L"releasing frame=" << frame << endl;
-#endif
-      }
-      else {
-        memset(frame->mem, 0, LOCAL_SIZE);
-        cached_frames.push(frame);
+      wcout << L"caching frame=" << frame << endl;
+#endif    
 
-#ifdef _DEBUG
-        wcout << L"caching frame=" << frame << endl;
-#endif
-      }
-       
-#else 
-      free(frame->mem);
-      delete frame;
-
-#endif
-       
 #ifdef _WIN32
       LeaveCriticalSection(&cached_frames_cs);
 #else

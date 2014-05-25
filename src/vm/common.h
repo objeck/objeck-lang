@@ -32,6 +32,8 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+// #undef _DEBUG
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
