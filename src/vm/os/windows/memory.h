@@ -52,6 +52,11 @@
 #define TYPE -3
 #define CACHE_SIZE -4
 
+struct StackOperMemory {
+  long* op_stack;
+  long* stack_pos;
+};
+
 // used to monitor the state of
 // active stack frames
 struct StackFrameMonitor {
@@ -97,7 +102,7 @@ class MemoryManager {
   static CRITICAL_SECTION allocated_cs;
   static CRITICAL_SECTION marked_cs;
   static CRITICAL_SECTION marked_sweep_cs;
-    
+  
   // note: protected by 'allocated_cs'
   static long allocation_size;
   static long mem_max_size;
