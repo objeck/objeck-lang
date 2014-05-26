@@ -224,7 +224,33 @@ bundle ODBC {
 				array_args[2] := IntHolder->New(pos);
 				array_args[3] := IntHolder->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_varchar", array_args);
+				@lib_proxy->CallFunction("odbc_stmt_set_blob", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
+		method : public : SetBytes(pos : Int, buffer : Byte[]) ~ Bool {			
+			return SetBytes(pos, buffer, buffer->Size());
+		}
+		
+		method : public : SetBytes(pos : Int, buffer : Byte[], length : Int) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				if(length > buffer->Size()) {
+					length := buffer->Size();
+				};
+				
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := ByteArrayHolder->New(buffer);
+				array_args[2] := IntHolder->New(length);
+				array_args[3] := IntHolder->New(pos);
+				array_args[4] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_bytes", array_args);
 				
 				status := array_args[0]->As(IntHolder);
 				return status->Get() = 1;
