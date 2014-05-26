@@ -6,15 +6,15 @@ class SqlTest {
 		if(conn->IsOpen()) {
 			data := Byte->New[16];
 			each(i : data) {
-				data[i] := i + 3;
-#~
+#				data[i] := i + 3;
+#~ ~#
 				if(i % 2 = 0) {
 					data[i] := 0;
 				} 
 				else {
 					data[i] := i + 3;
 				};
-~#
+#~ ~#
 			};
 
 			sql := "INSERT INTO test.foo(n,v) VALUES (?, ?)";
