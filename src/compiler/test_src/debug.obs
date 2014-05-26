@@ -4,16 +4,23 @@ class SqlTest {
 	function : Main(args : String[]) ~ Nil {
 		conn := Connection->New("test", "root", "helloworld");
 		if(conn->IsOpen()) {
-"-0-"->PrintLine();
 			data := Byte->New[16];
 			each(i : data) {
 				data[i] := i + 3;
+#~
+				if(i % 2 = 0) {
+					data[i] := 0;
+				} 
+				else {
+					data[i] := i + 3;
+				};
+~#
 			};
 
 			sql := "INSERT INTO test.foo(n,v) VALUES (?, ?)";
 			ps := conn->CreateParameterStatement(sql);
 			ps->SetVarchar(1, "hello");
-			ps->SetBlob(2, data);
+			ps->SetBytes(2, data);
 			ps->Update()->PrintLine();
 			ps->Close();
 			#------------------
