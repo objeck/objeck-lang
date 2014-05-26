@@ -77,7 +77,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### connect: " << L"ds=" << wds << L", username=" 
-	  << wusername << L", password=" << wpassword << L" ###" << endl;
+          << wusername << L", password=" << wpassword << L" ###" << endl;
 #endif
 		
     const string ds(wds.begin(), wds.end());
@@ -93,7 +93,7 @@ extern "C" {
     }
 		
     status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(), 
-			SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);     
+                        SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);     
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_DBC, conn);
       conn = NULL;
@@ -246,15 +246,15 @@ extern "C" {
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-			      &description.column_name_size, &description.type, 
-			      &description.column_size, &description.decimal_length, 
-			      &description.nullable);
+                              &description.column_name_size, &description.type, 
+                              &description.column_size, &description.decimal_length, 
+                              &description.nullable);
       if(SQL_FAIL) {
-	// ShowError(SQL_HANDLE_STMT, stmt);
-	SQLFreeStmt(stmt, SQL_CLOSE);
-	APITools_SetIntValue(context, 0, 0);
-	APITools_SetIntValue(context, 1, 0);
-	return;
+        // ShowError(SQL_HANDLE_STMT, stmt);
+        SQLFreeStmt(stmt, SQL_CLOSE);
+        APITools_SetIntValue(context, 0, 0);
+        APITools_SetIntValue(context, 1, 0);
+        return;
       }
 			
       const string column_name((const char*)description.column_name);
@@ -338,15 +338,15 @@ extern "C" {
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
-			      &description.column_name_size, &description.type, 
-			      &description.column_size, &description.decimal_length, 
-			      &description.nullable);
+                              &description.column_name_size, &description.type, 
+                              &description.column_size, &description.decimal_length, 
+                              &description.nullable);
       if(SQL_FAIL) {
-	// ShowError(SQL_HANDLE_STMT, stmt);
-	SQLFreeStmt(stmt, SQL_CLOSE);
-	APITools_SetIntValue(context, 0, 0);
-	APITools_SetIntValue(context, 1, 0);
-	return;
+        // ShowError(SQL_HANDLE_STMT, stmt);
+        SQLFreeStmt(stmt, SQL_CLOSE);
+        APITools_SetIntValue(context, 0, 0);
+        APITools_SetIntValue(context, 1, 0);
+        return;
       }
 			
       const string column_name((const char*)description.column_name);
@@ -400,6 +400,11 @@ extern "C" {
 #endif
 
     SQLRETURN status = SQLExecute(stmt);
+
+    if(status == SQL_NEED_DATA) {
+      wcout << L"-- OK --" << endl;
+    }
+    
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_CLOSE);
@@ -433,11 +438,11 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
-					SQL_SMALLINT, 0, 0, value, 0, NULL);
+                                        SQL_SMALLINT, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -460,11 +465,11 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_bit: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
-					SQL_BIT, 0, 0, value, 0, NULL);
+                                        SQL_BIT, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -487,11 +492,11 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_int: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
-					SQL_INTEGER, 0, 0, value, 0, NULL);
+                                        SQL_INTEGER, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -514,11 +519,11 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_double: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_DOUBLE, 
-					SQL_DOUBLE, 0, 0, value, 0, NULL);
+                                        SQL_DOUBLE, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -541,11 +546,11 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_real: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << *value << L" ###" << endl;
+          << L", value=" << *value << L" ###" << endl;
 #endif  
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_FLOAT,
-					SQL_REAL, 0, 0, value, 0, NULL);
+                                        SQL_REAL, 0, 0, value, 0, NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -568,7 +573,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_int_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -645,7 +650,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_bit_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -684,7 +689,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_double_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-	  << (long)names->size() << L" ###" << endl;
+          << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -723,7 +728,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_real_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-	  << (long)names->size() << L" ###" << endl;
+          << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -763,11 +768,11 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << endl;
 #endif  
 		
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
-					SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
+                                        SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -777,7 +782,7 @@ extern "C" {
   }
 
   //
-  // set a string for a prepared statement
+  // set a binary string for a prepared statement
   //
 #ifdef _WIN32
   __declspec(dllexport) 
@@ -792,11 +797,41 @@ extern "C" {
 		
 #ifdef _DEBUG
     wcout << L"### set_blob: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << endl;
 #endif  
     
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
-					value_size, 0, (SQLPOINTER)value, value_size, 0);
+                                        value_size, 0, (SQLPOINTER)value, value_size, 0);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // set a binary string for a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_bytes(VMContext& context) 
+  {
+    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    char* value = (char*)APITools_GetByteArray(byte_array);
+    long* value_size = APITools_GetIntAddress(context, 2);
+    long i = APITools_GetIntValue(context, 3);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
+		
+#ifdef _DEBUG
+    wcout << L"### set_bytes: stmt=" << stmt << L", column=" << i 
+          << L", value=" << value << L" ###" << endl;
+#endif  
+    
+    *value_size = SQL_LEN_DATA_AT_EXEC(*value_size);
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
+                                        *value_size, 0, (SQLPOINTER)i, 0, value_size);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -819,9 +854,9 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_timestamp: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << value[1] << L"-" << value[2] << L"-" << value[2] << L" " 
-	  << value[4] << L":" <<  value[5] << L":" <<  value[5] << value[6] << L"." 
-	  << value[7] << L" ###" << endl;
+          << L", value=" << value[1] << L"-" << value[2] << L"-" << value[2] << L" " 
+          << value[4] << L":" <<  value[5] << L":" <<  value[5] << value[6] << L"." 
+          << value[7] << L" ###" << endl;
 #endif
 
     SQL_TIMESTAMP_STRUCT time_stamp;    
@@ -838,7 +873,7 @@ extern "C" {
     memcpy(data, &time_stamp, sizeof(time_stamp));
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, 
-					SQL_TYPE_TIMESTAMP, 0, 0, data, sizeof(time_stamp), NULL);
+                                        SQL_TYPE_TIMESTAMP, 0, 0, data, sizeof(time_stamp), NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -861,7 +896,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### set_date: stmt=" << stmt << L", column=" << i 
-	  << L", value=" << value << L" ###" << endl;
+          << L", value=" << value << L" ###" << endl;
 #endif
 
     SQL_DATE_STRUCT time_stamp;    
@@ -874,7 +909,7 @@ extern "C" {
     memcpy(data, &time_stamp, sizeof(time_stamp));
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_DATE, 
-					SQL_TYPE_DATE, 0, 0, data, sizeof(time_stamp), NULL);
+                                        SQL_TYPE_DATE, 0, 0, data, sizeof(time_stamp), NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -897,7 +932,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -909,7 +944,7 @@ extern "C" {
     SQLLEN is_null;
     char value[VARCHAR_MAX];
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
-				  VARCHAR_MAX, &is_null);
+                                  VARCHAR_MAX, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       const wstring out = BytesToUnicode(value);
@@ -942,7 +977,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_blob_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << buffer_size << L" ###" << endl;
+          << L", max=" << buffer_size << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -985,7 +1020,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -997,7 +1032,7 @@ extern "C" {
     SQLLEN is_null;
     char value[VARCHAR_MAX];
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
-				  VARCHAR_MAX, &is_null);
+                                  VARCHAR_MAX, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       const wstring out = BytesToUnicode(value);
@@ -1026,7 +1061,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_timestamp_by_id: stmt=" << stmt << L", column=" 
-	  << i << L", max=" << (long)names->size() << L" ###" << endl;
+          << i << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -1038,7 +1073,7 @@ extern "C" {
     SQLLEN is_null;
     TIMESTAMP_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
-				  sizeof(TIMESTAMP_STRUCT), &is_null);
+                                  sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
@@ -1084,7 +1119,7 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_date_by_id: stmt=" << stmt << L", column=" << i 
-	  << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
     if(!stmt || !names || i < 1 || i > (long)names->size()) {
@@ -1096,7 +1131,7 @@ extern "C" {
     SQLLEN is_null;
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, 
-				  sizeof(DATE_STRUCT), &is_null);
+                                  sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);

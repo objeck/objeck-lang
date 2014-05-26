@@ -58,7 +58,6 @@ extern "C" {
 
   void ShowError(SQLSMALLINT type, SQLHSTMT hstmt) {
     SQLCHAR SqlState[6];
-    SQLCHAR SQLStmt[100];
     SQLCHAR Msg[SQL_MAX_MESSAGE_LENGTH];
     SQLINTEGER NativeError;
     SQLSMALLINT MsgLen;
