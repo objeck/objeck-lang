@@ -246,7 +246,7 @@ extern "C" {
     }
 
     map<const wstring, int>* column_names = new map<const wstring, int>;
-    map<int, void*>* exec_data = new map<int, void*>;
+    map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
@@ -345,7 +345,7 @@ extern "C" {
     }
 
     // map execution data and get column information
-    map<int, void*>* exec_data = new map<int, void*>;
+    map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
     map<const wstring, int>* column_names = new map<const wstring, int>;
     for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
@@ -408,7 +408,7 @@ extern "C" {
   void odbc_stmt_update(VMContext& context) 
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);    
-    map<int, void*>* exec_data = (map<int, void*>*)APITools_GetIntValue(context, 2);
+    map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 2);
 		
 #ifdef _DEBUG
     wcout << L"### stmt_update: stmt=" << stmt << L" ###" << endl;
@@ -416,21 +416,28 @@ extern "C" {
 
     SQLRETURN status = SQLExecute(stmt);
     PTR param_id;
-    if(status == SQL_NEED_DATA) {
+    while(status == SQL_NEED_DATA) {
       status = SQLParamData(stmt, &param_id);
-      if(SQL_OK) {
-        map<int, void*>::iterator found = exec_data->find((long)param_id);
-        if(found != exec_data->end()) {          
-          wcout << L"-- OK 1 --" << endl;
+      if(status == SQL_NEED_DATA) {
+        map<int, pair<void*, int> >::iterator found = exec_data->find((long)param_id);
+        if(found != exec_data->end()) {
+          status = SQLPutData(stmt, found->second.first, found->second.second);
         }
         else {
-          // fail
+          // ShowError(SQL_HANDLE_STMT, stmt);
+          SQLFreeStmt(stmt, SQL_CLOSE);
+          APITools_SetIntValue(context, 0, -1);
+          return;
         }
       }
       else {
-        // fail
+        // ShowError(SQL_HANDLE_STMT, stmt);
+        SQLFreeStmt(stmt, SQL_CLOSE);
+        APITools_SetIntValue(context, 0, -1);
+        return;
       }
     }
+    status = SQLParamData(stmt, &param_id);
     
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -850,15 +857,18 @@ extern "C" {
     long* value_size = APITools_GetIntAddress(context, 2);
     long i = APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
-		
+    map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 5);		
+    
 #ifdef _DEBUG
     wcout << L"### set_bytes: stmt=" << stmt << L", column=" << i 
           << L", value=" << value << L" ###" << endl;
 #endif  
-    
+
+    pair<void*, int> data(value, *value_size);    
     *value_size = SQL_LEN_DATA_AT_EXEC(*value_size);
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
                                         *value_size, 0, (SQLPOINTER)i, 0, value_size);
+    exec_data->insert(pair<int, pair<void*, int> >(i, data));
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
@@ -1196,7 +1206,7 @@ extern "C" {
       column_names = NULL;
     }
     
-    map<int, void*>* exec_data = (map<int, void*>*)APITools_GetIntValue(context, 1);
+    map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 1);
     if(exec_data) {
       delete exec_data;
       exec_data = NULL;
