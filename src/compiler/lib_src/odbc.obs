@@ -110,6 +110,7 @@ bundle ODBC {
 	# ODBC Prepared Statement
 	~#
 	class ParameterStatement {
+		# TODO: store params members so that they're GC'd
 		@native_stmt : Int;
 		@native_names : Int;
 		@exec_data : Int;
@@ -224,11 +225,12 @@ bundle ODBC {
 		
 		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				array_args := Base->New[4];
+				array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
 				array_args[1] := ByteArrayHolder->New(buffer);
 				array_args[2] := IntHolder->New(pos);
 				array_args[3] := IntHolder->New(@native_stmt);
+				array_args[4] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_blob", array_args);
 				
@@ -249,12 +251,13 @@ bundle ODBC {
 					length := buffer->Size();
 				};
 				
-				array_args := Base->New[5];
+				array_args := Base->New[6];
 				array_args[0] := IntHolder->New();
 				array_args[1] := ByteArrayHolder->New(buffer);
 				array_args[2] := IntHolder->New(length);
 				array_args[3] := IntHolder->New(pos);
 				array_args[4] := IntHolder->New(@native_stmt);
+				array_args[5] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_bytes", array_args);
 				
@@ -301,9 +304,10 @@ bundle ODBC {
 		
 		method : public : Update() ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[2];
+      			array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@native_stmt);
+				array_args[2] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_update", array_args);
 				
