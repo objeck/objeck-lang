@@ -189,6 +189,7 @@ class IntermediateEmitter {
   void EmitStatement(Statement* statement);
   void EmitIf(If* if_stmt);
   void EmitIf(If* if_stmt, int next_label, int end_label);
+  void EmitLeaving(Leaving* leaving_stmt);
   void EmitDoWhile(DoWhile* do_while_stmt);
   void EmitWhile(While* while_stmt);
   void EmitSelect(Select* select_stmt);
