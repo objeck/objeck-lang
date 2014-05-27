@@ -94,6 +94,7 @@ namespace frontend {
     SELECT_STMT,
     ENUM_STMT,
     RETURN_STMT,
+    LEAVING_STMT,
     CRITICAL_STMT,
     SYSTEM_STMT,
     EMPTY_STMT
@@ -1205,6 +1206,30 @@ namespace frontend {
 
     Expression* GetExpression() {
       return expression;
+    }
+  };
+
+  /****************************
+  * Leaving class
+  ****************************/
+  class Leaving : public Statement {
+    friend class TreeFactory;
+    StatementList* statements;
+    
+    Leaving(const wstring &f, const int l, StatementList* s) : Statement(f, l) {
+      statements = s;
+    }
+
+    ~Leaving() {
+    }
+
+  public:
+    const StatementType GetStatementType() {
+      return LEAVING_STMT;
+    }
+
+    StatementList* GetStatements() {
+      return statements;
     }
   };
 
@@ -2813,7 +2838,13 @@ namespace frontend {
       statements.push_back(tmp);
       return tmp;
     }
-
+    
+    Leaving* MakeLeaving(const wstring &file_name, const int line_num, StatementList* stmts) {
+      Leaving* tmp = new Leaving(file_name, line_num, stmts);
+      statements.push_back(tmp);
+      return tmp;
+    }
+    
     Assignment* MakeAssignment(const wstring &file_name, const int line_num,
       Variable* variable, Expression* expression) {
         Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
