@@ -416,12 +416,19 @@ extern "C" {
 
     SQLRETURN status = SQLExecute(stmt);
     PTR param_id;
-    while(status == SQL_NEED_DATA) {
+    
+    if(status == SQL_NEED_DATA) {
       status = SQLParamData(stmt, &param_id);
-      if(status == SQL_NEED_DATA) {
+      do {
         map<int, pair<void*, int> >::iterator found = exec_data->find((long)param_id);
         if(found != exec_data->end()) {
           status = SQLPutData(stmt, found->second.first, found->second.second);
+          if(SQL_FAIL) {
+            // ShowError(SQL_HANDLE_STMT, stmt);
+            SQLFreeStmt(stmt, SQL_CLOSE);
+            APITools_SetIntValue(context, 0, -1);
+            return;
+          }
         }
         else {
           // ShowError(SQL_HANDLE_STMT, stmt);
@@ -429,15 +436,10 @@ extern "C" {
           APITools_SetIntValue(context, 0, -1);
           return;
         }
-      }
-      else {
-        // ShowError(SQL_HANDLE_STMT, stmt);
-        SQLFreeStmt(stmt, SQL_CLOSE);
-        APITools_SetIntValue(context, 0, -1);
-        return;
-      }
+        status = SQLParamData(stmt, &param_id);
+      } 
+      while(status == SQL_NEED_DATA);
     }
-    status = SQLParamData(stmt, &param_id);
     
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);

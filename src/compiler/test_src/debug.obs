@@ -19,7 +19,7 @@ class SqlTest {
 
 			sql := "INSERT INTO test.foo(n,v) VALUES (?, ?)";
 			ps := conn->CreateParameterStatement(sql);
-			ps->SetVarchar(1, "hello");
+			ps->SetBytes(1, "hello"->ToByteArray(), 3);
 			ps->SetBytes(2, data);
 			ps->Update()->PrintLine();
 			ps->Close();
