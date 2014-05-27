@@ -323,13 +323,13 @@ namespace frontend {
       }
     }
 
-    int GetLevel() {
+    int GetDepth() {
       int count = 0;
       
       ScopeTable* tmp = iter_ptr;
       while(tmp) {
         count++;
-        tmp = iter_ptr;
+        tmp = tmp->GetParent();
       }
       
       return count;
@@ -1773,13 +1773,12 @@ namespace frontend {
     wstring name;
     wstring parsed_name;
     wstring encoded_name;
-
     wstring encoded_return;
     wstring parsed_return;
-
     StatementList* statements;
     DeclarationList* declarations;
     Type* return_type;
+    Leaving* leaving;
     MethodType method_type;
     bool is_static;
     bool is_native;
@@ -1795,6 +1794,7 @@ namespace frontend {
         is_native = c;
         statements = NULL;
         return_type = NULL;
+        leaving = NULL;
         declarations = NULL;
         id = -1;
         has_and_or = false;
@@ -2004,6 +2004,14 @@ namespace frontend {
       return return_type;
     }
 
+    Leaving* GetLeaving() {
+      return leaving;
+    }
+    
+    void SetLeaving(Leaving* l) {
+      leaving = l;
+    }
+    
     void SetClass(Class* k) {
       klass = k;
     }
