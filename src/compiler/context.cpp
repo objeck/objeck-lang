@@ -892,7 +892,11 @@ bool ContextAnalyzer::Analyze()
     case RETURN_STMT:
       AnalyzeReturn(static_cast<Return*>(statement), depth);
       break;
-
+      
+    case LEAVING_STMT:
+      AnalyzeLeaving(static_cast<Leaving*>(statement), depth);
+      break;
+      
     case IF_STMT:
       AnalyzeIf(static_cast<If*>(statement), depth);
       break;
@@ -2724,7 +2728,31 @@ bool ContextAnalyzer::Analyze()
       ProcessError(rtrn, L"Cannot return vaule from constructor");
     }
   }
-
+  
+  /****************************
+   * Analyzes a return statement
+   ****************************/
+  void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
+  {
+#ifdef _DEBUG
+    Show(L"leaving", leaving_stmt->GetLineNumber(), depth);
+#endif
+    
+    const int level = current_table->GetDepth();
+    if(level == 1) {
+      AnalyzeStatements(leaving_stmt->GetStatements(), depth + 1);
+      if(current_method->GetLeaving()) {
+        ProcessError(leaving_stmt, L"Method/function may have only 1 'leaving' block defined");
+      }
+      else {
+        current_method->SetLeaving(leaving_stmt);
+      }
+    }
+    else {
+      ProcessError(leaving_stmt, L"Method/function 'leaving' block must be a top level statement");
+    }
+  }
+  
   /****************************
    * Analyzes an assignment statement
    ****************************/
