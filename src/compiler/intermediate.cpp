@@ -507,7 +507,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 {
   cur_line_num = klass->GetLineNumber();
   imm_klass = NULL;
-
+  
   current_class = klass;
   current_table = current_class->GetSymbolTable();
   current_method = NULL;
@@ -734,6 +734,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     new_char_str_count = 0;
   }
+    break;
+    
+  case LEAVING_STMT:
+    EmitLeaving(static_cast<Leaving*>(statement));
     break;
     
   case IF_STMT:
@@ -2057,6 +2061,18 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   break_label = break_labels.top();
   break_labels.pop();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
+}
+
+/****************************
+ * Translates a 'leaving' statement
+ ****************************/
+void IntermediateEmitter::EmitLeaving(Leaving* leaving_stmt)
+{
+  cur_line_num = static_cast<Statement*>(leaving_stmt)->GetLineNumber();
+
+  if(current_table) {
+    const int level = current_table->GetLevel();
+  }
 }
 
 /****************************
