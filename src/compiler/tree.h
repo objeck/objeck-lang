@@ -322,6 +322,18 @@ namespace frontend {
         iter_ptr = iter_ptr->GetParent();
       }
     }
+
+    int GetLevel() {
+      int count = 0;
+      
+      ScopeTable* tmp = iter_ptr;
+      while(tmp) {
+        count++;
+        tmp = iter_ptr;
+      }
+      
+      return count;
+    }
   };
 
   /****************************
