@@ -911,7 +911,11 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case TOKEN_RETURN_ID:
       statement = ParseReturn(depth + 1);
       break;
-
+      
+    case TOKEN_LEAVING_ID:
+      statement = ParseLeaving(depth + 1);
+      break;
+      
     case TOKEN_IF_ID:
       statement = ParseIf(depth + 1);
       break;
@@ -3340,16 +3344,38 @@ Return* Parser::ParseReturn(int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
+  
 #ifdef _DEBUG
   Show(L"Return", depth);
 #endif
+  
   NextToken();
-
   Expression* expression = NULL;
   if(!Match(TOKEN_SEMI_COLON)) {
     expression = ParseExpression(depth + 1);
   }
+  
   return TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
+}
+
+/****************************
+ * Parses a leaving block
+ ****************************/
+Leaving* Parser::ParseLeaving(int depth)
+{
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+  
+#ifdef _DEBUG
+  Show(L"Leaving", depth);
+#endif
+  
+  NextToken();
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* statements =  ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  
+  return TreeFactory::Instance()->MakeLeaving(file_name, line_num, statements);
 }
 
 /****************************

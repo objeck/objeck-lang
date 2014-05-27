@@ -91,10 +91,10 @@ Scanner::~Scanner()
  ****************************/
 void Scanner::LoadKeywords()
 {
-  ident_map[L"and"] = TOKEN_AND_ID,
-    ident_map[L"or"] = TOKEN_OR_ID,
-    ident_map[L"xor"] = TOKEN_XOR_ID,
-    ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
+  ident_map[L"and"] = TOKEN_AND_ID;
+  ident_map[L"or"] = TOKEN_OR_ID;
+  ident_map[L"xor"] = TOKEN_XOR_ID;
+  ident_map[L"virtual"] = TOKEN_VIRTUAL_ID;
   ident_map[L"if"] = TOKEN_IF_ID;
   ident_map[L"else"] = TOKEN_ELSE_ID;
   ident_map[L"do"] = TOKEN_DO_ID;
@@ -118,6 +118,7 @@ void Scanner::LoadKeywords()
   ident_map[L"each"] = TOKEN_EACH_ID;
   ident_map[L"label"] = TOKEN_LABEL_ID;
   ident_map[L"return"] = TOKEN_RETURN_ID;
+  ident_map[L"leaving"] = TOKEN_LEAVING_ID;
   ident_map[L"Byte"] = TOKEN_BYTE_ID;
   ident_map[L"Int"] = TOKEN_INT_ID;
   ident_map[L"Parent"] = TOKEN_PARENT_ID;
@@ -174,7 +175,6 @@ void Scanner::LoadKeywords()
   ident_map[L"STD_ERR_FLOAT"] = STD_ERR_FLOAT;
   ident_map[L"STD_ERR_CHAR_ARY"] = STD_ERR_CHAR_ARY;
   ident_map[L"STD_ERR_BYTE_ARY"] = STD_ERR_BYTE_ARY;
-
   // file i/o
   ident_map[L"FILE_OPEN_READ"] = FILE_OPEN_READ;
   ident_map[L"FILE_CLOSE"] = FILE_CLOSE;
@@ -322,6 +322,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_BYTE_ID:
     case TOKEN_INT_ID:
     case TOKEN_RETURN_ID:
+    case TOKEN_LEAVING_ID:
     case TOKEN_FLOAT_ID:
     case TOKEN_CHAR_ID:
     case TOKEN_NEW_ID:
