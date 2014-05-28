@@ -41,7 +41,9 @@ using namespace std;
 
 // comment
 #define COMMENT L'#'
+#define ALT_COMMENT L'/'
 #define EXTENDED_COMMENT L'~'
+#define ALT_EXTENDED_COMMENT L'*'
 
 // look ahead value
 #define LOOK_AHEAD 3
@@ -57,7 +59,6 @@ enum ScannerTokenType {
   TOKEN_NO_INPUT,
   TOKEN_UNKNOWN,
   // symbols
-  TOKEN_NOT,
   TOKEN_TILDE,
   TOKEN_PERIOD,
   TOKEN_COLON,
@@ -84,6 +85,7 @@ enum ScannerTokenType {
   TOKEN_GTR,
   TOKEN_GEQL,
   TOKEN_LEQL,
+  TOKEN_NOT,
   TOKEN_ADD,
   TOKEN_SUB,
   TOKEN_MUL,

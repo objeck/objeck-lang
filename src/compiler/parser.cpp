@@ -1737,6 +1737,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case DO_WHILE_STMT:
     case FOR_STMT:
     case SELECT_STMT:
+    case LEAVING_STMT:
       break;
       
     default:
@@ -2125,7 +2126,7 @@ Expression* Parser::ParseExpression(int depth)
 #endif
 
   Expression* expression = NULL;
-  if(Match(TOKEN_NEQL)) {
+  if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     //
     // parses a unary 'not' conditional
     //
