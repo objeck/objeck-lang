@@ -6,7 +6,7 @@ Release Notes
 New features added including 'leaving' support and support alternative C-like syntax.
 
 Highlights of this release include the following:
-• Added the 'leaving' keyword that allows a block of code to always be executed exiting a function or method (new)
+•	Keyword 'leaving' added that allows a block of code to always be executed upon exiting a function or method (new)
 • Enhanced C-like syntax support (new)
 • Added ODBC 'PreparedStatement' support Blobs and binary streams (new)
 • Support for unary 'not' expressions added (new)
