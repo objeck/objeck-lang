@@ -1,0 +1,17 @@
+Objeck v3.3.1_0
+
+--------------
+Release Notes
+--------------
+New features added including 'leaving' support and support alternative C-like syntax.
+
+Highlights of this release include the following:
+• Added the 'leaving' keyword that allows a block of code to always be executed exiting a function or method (new)
+• Enhanced C-like syntax support (new)
+• Added ODBC 'PreparedStatement' support Blobs and binary streams (new)
+• Support for unary 'not' expressions added (new)
+• Addressed a compiler limitation that did not support nested method calls that included arrays for example 'Int->New[size]->Size()->PrintLine()' (enhanced)
+• Fixed a crash causing bug in the memory manager (major)
+• Resolved a bug that caused some highly multi-threaded programs that allocated chucks of memory concurrently to crash during garbage collection (medium)
+• Resolved an issue with the 'String->Find(offset, pattern)' API (major)
+• Refresh documentation and added new code examples
