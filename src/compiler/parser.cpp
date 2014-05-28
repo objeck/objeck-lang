@@ -898,11 +898,9 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   // other
   else {
     switch(GetToken()) { 
-      /*
     case TOKEN_SEMI_COLON:
       statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num);
       break;
-      */
       
     case TOKEN_PARENT_ID:
       statement = ParseMethodCall(depth + 1);
@@ -2126,22 +2124,37 @@ Expression* Parser::ParseExpression(int depth)
   Show(L"Expression", depth);
 #endif
 
-  Expression* expression = ParseLogic(depth + 1);
-  //
-  // parses a ternary conditional
-  //
-  if(Match(TOKEN_QUESTION)) {
-#ifdef _DEBUG
-    Show(L"Ternary conditional", depth);
-#endif   
-    NextToken();
-    Expression* if_expression = ParseLogic(depth + 1);
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(L"Expected ':'", TOKEN_COLON);
+  Expression* expression = NULL;
+  if(Match(TOKEN_NEQL)) {
+    //
+    // parses a unary 'not' conditional
+    //
+    NextToken();        
+    Expression* right = ParseLogic(depth + 1);    
+    if(right) {
+      expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, EQL_EXPR);
+      static_cast<CalculatedExpression*>(expression)->SetLeft(TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, false));
+      static_cast<CalculatedExpression*>(expression)->SetRight(right);
     }
-    NextToken();
-    return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
-                                             if_expression, ParseLogic(depth + 1));    
+  }
+  else {
+    expression = ParseLogic(depth + 1);
+    //
+    // parses a ternary conditional
+    //
+    if(Match(TOKEN_QUESTION)) {
+#ifdef _DEBUG
+      Show(L"Ternary conditional", depth);
+#endif   
+      NextToken();
+      Expression* if_expression = ParseLogic(depth + 1);
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':'", TOKEN_COLON);
+      }
+      NextToken();
+      return TreeFactory::Instance()->MakeCond(file_name, line_num, expression, 
+                                               if_expression, ParseLogic(depth + 1));    
+    }
   }
 
   return expression;
