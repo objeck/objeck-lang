@@ -585,12 +585,16 @@ void Scanner::ParseToken(int index)
   // ignore white space
   Whitespace();
   // ignore comments
-  while(cur_char == COMMENT && cur_char != EOB) {
+  while((cur_char == COMMENT || (alt_syntax && cur_char == ALT_COMMENT)) && 
+        cur_char != EOB) {
     NextChar();
+    
     // extended comment
-    if(cur_char == EXTENDED_COMMENT) {
+    if(cur_char == EXTENDED_COMMENT || (alt_syntax && cur_char == ALT_EXTENDED_COMMENT)) {
       NextChar();
-      while(!(cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) && cur_char != EOB) {
+      while(!((cur_char == EXTENDED_COMMENT && nxt_char == COMMENT) || 
+              (alt_syntax && cur_char == ALT_EXTENDED_COMMENT && nxt_char == ALT_COMMENT)) && 
+            cur_char != EOB) {
         NextChar();
       }
       NextChar();
@@ -934,11 +938,17 @@ void Scanner::ParseToken(int index)
           NextChar();
         }
         break;
-
+        
       case L'!':
         if(alt_syntax && nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_NEQL);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else if(alt_syntax) {
+          tokens[index]->SetType(TOKEN_NOT);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();
