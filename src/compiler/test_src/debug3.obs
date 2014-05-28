@@ -2,6 +2,13 @@ use System.IO.File;
 
 class FooBar {
 	function : Main(args : String[]) ~ Nil {
+		a := false;
+		b := 0;
+#		if(false = a + b) {
+		if(<>b) {
+			"false"->PrintLine();
+		};
+	
 		f : FileReader;
 
 		if(args->Size() = 1) {
@@ -10,6 +17,7 @@ class FooBar {
 			while(f->IsEOF() = false) {
 				l->PrintLine();
 				l := f->ReadString();
+				return;
 			};
 		};
 
