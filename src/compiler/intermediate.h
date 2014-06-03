@@ -207,6 +207,7 @@ class IntermediateEmitter {
   void EmitCast(Expression* expression);
   void EmitVariable(Variable* variable);
   void EmitAssignment(Assignment* assignment);
+  void EmitStringConcat(OperationAssignment* assignment);
   void EmitDeclaration(Declaration* declaration);
   void EmitMethodCallParameters(MethodCall* method_call);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false);
