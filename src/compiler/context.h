@@ -1010,7 +1010,7 @@ class ContextAnalyzer {
   void AnalyzeStaticArray(StaticArray* array, const int depth);
   void AnalyzeCast(Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
-  void AnalyzeAssignment(Assignment* assignment, const int depth);
+  void AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
   void AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth);
