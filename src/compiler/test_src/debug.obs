@@ -1,27 +1,15 @@
 class Test {
-	@a : String;
-	@b : String;
-
-	New() {
-		@a := "a b c";
-		@b := "c d e";
-	}
-	
 	function : Main(args : String[]) ~ Nil {
-		Test->New()->Run();
-	}
+		in := "";
+		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
+		in += "<section name=\"health\">";
+		in += "<item upc=\"123456789\" stock=\"12\">";
 
-	method : Run() ~ Nil {
-		a := "1 2 3";
-		a += "4 5 6";
-		a += @b;
-		@b += a;
-		@b += @a;
-
-		a->PrintLine();
-		@b->PrintLine();
-		a := "1 2 3";
-		a += "4 5 6";
-		a->PrintLine();
+#~
+		in->Append("<inventory title=\"OmniCorp Store #45x10^3\">");
+		in->Append("<section name=\"health\">");
+		in->Append("<item upc=\"123456789\" stock=\"12\">");
+~#
+		in->PrintLine();
 	}
 }
