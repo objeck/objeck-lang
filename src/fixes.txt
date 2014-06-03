@@ -3,6 +3,7 @@
 * TODO: odbc SetBlob w/ NULL bytes
 
 5/12/14
+* scan stack memory for threads op_stack, stack_pos; frames are okay
 * fixed a bug to 'Float->Power'
 * fixed a major bug with casting primitive classes and then making method calls
  

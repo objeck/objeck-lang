@@ -15,6 +15,7 @@ class RosettaCount {
 					task_url->Append("&action=raw");
 					
 					count := HttpGet(task_url)->FindAll("=={{header|")->Size();
+					
 					if(count > 0) {
 						IO.Console->Print(UrlUtility->Decode(task_name))->Print(": ")->PrintLine(count);
 					};
