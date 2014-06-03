@@ -101,6 +101,7 @@ namespace Runtime {
 					StackFrame* frame = new StackFrame();
 					frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
 					cached_frames.push(frame);
+          wcout << "--- 999 ---" << endl;
 				}
       }
 			StackFrame* frame = cached_frames.top();

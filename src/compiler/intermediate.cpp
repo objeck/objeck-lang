@@ -719,9 +719,17 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   case METHOD_CALL_STMT:
     EmitMethodCallStatement(static_cast<MethodCall*>(statement));
     break;
+
+  case ADD_ASSIGN_STMT:
+    if(static_cast<OperationAssignment*>(statement)->IsStringConcat()) {
+      // emit String->Append(..)
+    }
+    else {
+      EmitAssignment(static_cast<Assignment*>(statement));
+    }
+    break;
     
   case ASSIGN_STMT:
-  case ADD_ASSIGN_STMT:
   case SUB_ASSIGN_STMT:
   case MUL_ASSIGN_STMT:
   case DIV_ASSIGN_STMT:

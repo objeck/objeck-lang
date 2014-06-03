@@ -12,7 +12,7 @@ class RegExUrls {
 		};
 		
 		input->PrintLine();
-		expr := "(href|HREF)=\"(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?\"";
+		expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
 		
 		found := RegEx->New(expr)->Find(input);
 		"---"->PrintLine();
