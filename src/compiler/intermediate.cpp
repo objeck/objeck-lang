@@ -3626,6 +3626,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
  ****************************/
 void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 {
+  is_str_array = true;
   // expression
   EmitExpression(assignment->GetExpression());
   EmitVariable(assignment->GetVariable());
@@ -3637,6 +3638,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
                                                                              (INT_VALUE)string_cls->GetId(), 
                                                                              string_append_method->GetId(), 0L));
+  is_str_array = false;
 }
 
 /****************************
