@@ -9,7 +9,7 @@
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
+ * notice, this list of conditions and the follow2ing disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/cor other materials provided with the distribution.
@@ -721,8 +721,8 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   case ADD_ASSIGN_STMT:
-    if(static_cast<OperationAssignment*>(statement)->IsStringConcat()) {
-      // emit String->Append(..)
+    if(static_cast<OperationAssignment*>(statement)->IsStringConcat()) {  
+      EmitStringConcat(static_cast<OperationAssignment*>(statement));
     }
     else {
       EmitAssignment(static_cast<Assignment*>(statement));
@@ -3618,6 +3618,25 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     }
   }
   new_char_str_count = 0;
+}
+
+/****************************
+ * Translates string concatenation
+ * statement
+ ****************************/
+void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
+{
+  // expression
+  EmitExpression(assignment->GetExpression());
+  EmitVariable(assignment->GetVariable());
+  
+  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+#ifdef _DEBUG
+  assert(string_append_method);
+#endif
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                             (INT_VALUE)string_cls->GetId(), 
+                                                                             string_append_method->GetId(), 0L));
 }
 
 /****************************
