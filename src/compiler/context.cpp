@@ -53,7 +53,7 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
  ****************************/
 void ContextAnalyzer::ProcessError(const wstring &msg)
 {
-#ifdef _DEBUG
+#ifdef _EBUG
   wcout << L"\tError: " << msg << endl;
 #endif
 
@@ -875,14 +875,17 @@ bool ContextAnalyzer::Analyze()
 
 
     case ADD_ASSIGN_STMT:
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);      
+      break;
+
     case SUB_ASSIGN_STMT:
     case MUL_ASSIGN_STMT:
     case DIV_ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), depth);      
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);      
       break;
 
     case ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), depth);
+      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
       break;
 
     case SIMPLE_STMT:
@@ -2756,7 +2759,7 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes an assignment statement
    ****************************/
-  void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, const int depth)
+  void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
   {
 #ifdef _DEBUG
     Show(L"assignment", assignment->GetLineNumber(), depth);
@@ -2808,6 +2811,34 @@ bool ContextAnalyzer::Analyze()
     Type* eval_type = variable->GetEvalType();
     AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
 
+    if(eval_type->GetType() == CLASS_TYPE) {
+      Type* expr_type = GetExpressionType(expression, depth + 1);
+      if(expr_type->GetType() == CLASS_TYPE) {
+        const wstring left = eval_type->GetClassName();
+        const wstring right = expr_type->GetClassName();
+        if(left == right && left == L"System.String" && right == L"System.String") {
+          switch(type) {
+          case ADD_ASSIGN_STMT:
+            static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+            break;
+
+          case SUB_ASSIGN_STMT:
+          case MUL_ASSIGN_STMT:
+          case DIV_ASSIGN_STMT:
+            ProcessError(assignment, L"Invalid operation using classes: String and String");
+            break;
+            
+          case ASSIGN_STMT:
+            break;
+
+          default:
+            ProcessError(assignment, L"Internal compiler error.");
+            break;
+          }
+        }
+      }
+    }
+    
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
       MethodCall* method_call = static_cast<MethodCall*>(expression);
       // 'Nil' return check

@@ -84,6 +84,7 @@ namespace frontend {
     SUB_ASSIGN_STMT,
     MUL_ASSIGN_STMT,
     DIV_ASSIGN_STMT,
+    STRING_CONCAT_STMT,
     METHOD_CALL_STMT,
     SIMPLE_STMT,
     IF_STMT,
@@ -1685,11 +1686,12 @@ namespace frontend {
   class OperationAssignment : public Assignment {
     friend class TreeFactory;
     StatementType stmt_type;
+    bool is_string_concat;
 
-    OperationAssignment(const wstring &f, const int l, Variable* v, 
-      Expression* e, StatementType t) : 
+    OperationAssignment(const wstring &f, const int l, Variable* v, Expression* e, StatementType t) : 
     Assignment(f, l, v, e) {
       stmt_type = t;
+      is_string_concat = false;
     }
 
     ~OperationAssignment() {
@@ -1698,6 +1700,14 @@ namespace frontend {
   public:
     const StatementType GetStatementType() {
       return stmt_type;
+    }
+
+    bool IsStringConcat() {
+      return is_string_concat;
+    }
+
+    void SetStringConcat(bool c) {
+      is_string_concat = c;
     }
   };
 

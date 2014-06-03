@@ -1,42 +1,7 @@
-use ODBC;
-
-class SqlTest {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		conn := Connection->New("test", "root", "helloworld");
-		if(conn->IsOpen()) {
-			data := Byte->New[16];
-			each(i : data) {
-#				data[i] := i + 3;
-#~ ~#
-				if(i % 2 = 0) {
-					data[i] := 0;
-				} 
-				else {
-					data[i] := i + 3;
-				};
-#~ ~#
-			};
-
-			sql := "INSERT INTO test.foo(n,v) VALUES (?, ?)";
-			ps := conn->CreateParameterStatement(sql);
-			ps->SetBytes(1, "hello"->ToByteArray(), 3);
-			ps->SetBytes(2, data);
-			ps->Update()->PrintLine();
-			ps->Close();
-			#------------------
-#~
-
-			result := conn->Select("SELECT * FROM test.foo");
-			if(result <> Nil & result->Next()) {
-				result->GetVarchar(2)->PrintLine();
-
-				out := Byte->New[16];
-				result->GetBlob(3,out);
-				each(i : out) {	
-					out[i]->PrintLine();
-				};
-~#
-			};	
-			conn->Close();
-		}
+		a := "1 2 3";
+		a += "4 5 6";
+		a->PrintLine();
+	}
 }
