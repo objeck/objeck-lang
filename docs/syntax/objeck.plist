@@ -10,6 +10,7 @@
 	<true/>
 	<key>BBLMKeywordList</key>
 	<array>
+	    <string>leaving</string>
 		<string>and</string>
 		<string>or</string>
 		<string>xor</string>
