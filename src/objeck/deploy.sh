@@ -117,11 +117,11 @@ fi
 # copy guide
 cd ../../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
-svn export docs/syntax src/objeck/deploy/doc/syntax
+cp -R docs/syntax src/objeck/deploy/doc/syntax
 
 cp docs/readme.rtf src/objeck/deploy
 # copy examples
-svn export src/compiler/rc src/objeck/deploy/examples
+cp -R src/compiler/rc src/objeck/deploy/examples
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
