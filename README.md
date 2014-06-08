@@ -12,7 +12,24 @@ OS X (Mavericks) | [3.1.2](http://sourceforge.net/projects/objeck-lang/files/bin
 Linux (64-bit) | [3.1.2](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.2_0_linux64.tgz/download) | AMD64
 Linux (32-bit) | [3.1.2](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.2_0_linux32.tgz/download) | x86
 
-### Basic usage
+### Short example
+```objeck
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World"->PrintLine();
+    "Καλημέρα κόσμε"->PrintLine();
+    "こんにちは 世界"->PrintLine();
+  }
+}
+```
+
+```
+obc -src hello.obs -dest hello.obe
+```
+
+```
+obr hello.obe
+```
 
 ### Documentation
 
