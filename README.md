@@ -23,14 +23,15 @@ class Hello {
 }
 ```
 
-compiling: ```obc -src hello.obs -dest hello.obe```
-running: ```obr hello.obe```
+Compiling: ```obc -src hello.obs -dest hello.obe```
+
+Running: ```obr hello.obe```
 
 ### Documentation
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorials](http://www.objeck.org/tutorial/).
 
 ### Pulling the code
-git clone https://github.com/objeck/objeck-lang.git objeck-lang
+~~~git clone https://github.com/objeck/objeck-lang.git objeck-lang~~~
 
 ### Building
-[Build instructions](http://www.objeck.org/developers/) for Widnwos, Linux and OS X. 
+[Build instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
