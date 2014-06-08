@@ -31,7 +31,7 @@ Running: ```obr hello.obe```
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorials](http://www.objeck.org/tutorial/).
 
 ### Pulling the code
-~~~git clone https://github.com/objeck/objeck-lang.git objeck-lang~~~
+```git clone https://github.com/objeck/objeck-lang.git objeck-lang```
 
 ### Building
 [Build instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
