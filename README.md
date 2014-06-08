@@ -33,4 +33,4 @@ Please refer to the project website for [documentation](http://www.objeck.org/do
 git clone https://github.com/objeck/objeck-lang.git objeck-lang
 
 ### Building
-[Instructions](http://www.objeck.org/developers/) for Widnwos, Linux and OS X. 
+[Build instructions](http://www.objeck.org/developers/) for Widnwos, Linux and OS X. 
