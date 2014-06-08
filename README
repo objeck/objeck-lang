@@ -1,5 +1,12 @@
+Objeck is an object-oriented computer language with functional features. The language has ties with Java, Scheme and UML. In this language all data types, except for higher-order functions, are treated as objects.
 
-_To pull code:_
+The language contains all of the features of a general-purpose computing language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
+
+To pull code:
 git clone https://github.com/objeck/objeck-lang.git objeck-lang
 
+To build:
+http://www.objeck.org/developers/
 
+Documentation:
+http://www.objeck.org/documentation/
