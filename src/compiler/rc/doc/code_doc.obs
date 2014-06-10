@@ -1,0 +1,111 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+bundle Default {	
+	class Parser {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				Parse(args[0]);
+			};
+		}
+		
+		function : native : Parse(file : String) ~ Nil {
+			reserved := StringMap->New();
+			reserved->Insert("bundle", "keyword: bundle");
+			reserved->Insert("class", "keyword: class");
+			reserved->Insert("method", "keyword: method");
+			reserved->Insert("function", "keyword: function");
+			reserved->Insert("native", "keyword: native");
+			reserved->Insert("public", "keyword: public");
+			reserved->Insert("private", "keyword: private");
+			reserved->Insert("Int", "keyword: Int");
+			reserved->Insert("Float", "keyword: Float");
+			reserved->Insert("Char", "keyword: Char");
+			reserved->Insert("Byte", "keyword: Byte");
+			
+			line_num := 0;
+			comment_state := 0;							
+			reader := FileReader->New(file);
+			while(reader->IsEOF() <> true) {
+				line := reader->ReadString();
+				line_num := line_num + 1;
+									
+				i := 0;	
+				while(i < line->Size()) {		
+					# skip whitespace
+					while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+						i += 1;
+					};
+					
+					# parse the line
+					if(i < line->Size()) {
+						# word
+						if(line->Get(i)->IsChar() = true) {
+							string := "";
+							while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+								string->Append(line->Get(i));
+								i += 1;
+							};
+						
+							result := reserved->Find(string)->As(String);
+							if(result <> Nil) {
+								Console->PrintLine(result);
+							};
+						}
+						# other
+						else {
+							select(line->Get(i)) {
+								label '(': {
+									"opren"->PrintLine();
+									comment_state := 0;
+								}
+								
+								label ')': {
+									"cpren"->PrintLine();
+									comment_state := 0;
+								}
+	
+								label '{': {
+									"ocbrace"->PrintLine();
+									comment_state := 0;
+								}
+				
+								label '}': {
+									"ccbrace"->PrintLine();
+									comment_state := 0;
+								}
+	
+								label '#': {
+									if(comment_state = 2) {
+										"close_comment"->PrintLine();
+										comment_state := 0;
+									}
+									else if(comment_state = 0) {
+										comment_state := 1;
+									};
+								}
+
+								label '~': {
+ 									if(comment_state = 1) {
+										"open_comment"->PrintLine();
+										comment_state := 0;
+									}
+									else if(comment_state = 0) {
+										comment_state := 2;
+									};
+								}
+						
+								other: {
+									comment_state := 0;
+								}
+							};
+							i += 1;
+						};	
+					};
+				};
+			};
+			reader->Close();
+		}
+	}
+}
