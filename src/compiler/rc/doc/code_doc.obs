@@ -52,8 +52,13 @@ bundle Default {
 						
 							result := reserved->Find(string)->As(String);
 							if(result <> Nil) {
-								if(string->Equals("function")| string->Equals("method")) {
-#								Console->PrintLine(result);
+								if(capture = 2 & (string->Equals("function") | 
+									string->Equals("method")| string->Equals("class"))) {
+"-2-"->PrintLine();
+									capture := 3;
+								}
+								else {
+									capture := 0;
 								};
 							};
 						}
@@ -72,7 +77,14 @@ bundle Default {
 								}
 	
 								label '{': {
+									if(capture = 3) {
+"-3-"->PrintLine();
+										block->Append(line);
+										block->PrintLine();
+										block := "";
+									};
 									"ocbrace"->PrintLine();
+									capture := 0;
 									comment_state := 0;
 								}
 				
@@ -84,10 +96,9 @@ bundle Default {
 								label '#': {
 									if(comment_state = 2) {
 										"close_comment"->PrintLine();
-										capture := 0;
-block->PrintLine();
-										block := "";
+										capture := 2;
 										comment_state := 0;
+"-1-"->PrintLine();
 									}
 									else if(comment_state = 0) {
 										comment_state := 1;
@@ -97,6 +108,7 @@ block->PrintLine();
 								label '~': {
  									if(comment_state = 1) {
 										"open_comment"->PrintLine();
+"-0-"->PrintLine();
 										capture := 1;
 										comment_state := 0;
 									}

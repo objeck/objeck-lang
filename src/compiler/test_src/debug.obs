@@ -7,7 +7,7 @@ class Test {
 	hello 3
 	hello 4
 	~#
-	function : Main(args : String[]) ~ Nil {
+	method : Main(args : String[]) ~ Nil {
 		in := "";
 		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
 		in += "<section name=\"health\">";
@@ -19,5 +19,14 @@ class Test {
 		in += "<item upc=\"123456789\" stock=\"12\">";
 ~#
 		in->PrintLine();
+	}
+
+	#~
+	This is a hit!
+	hello 5
+	hello 6
+	~#
+	method : Run() ~ Int {
+		return 13;
 	}
 }
