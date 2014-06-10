@@ -105,6 +105,20 @@ namespace Runtime {
         end = window * 2;
       }
 
+      // find leading whitespace
+      int leading = 160;
+      for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
+        wstring line = lines[i];
+        int j = 0;
+        while(j < line.size() && (line[j] == L' ' || line[j] == L'\t')) {
+          j++;
+        }
+        if(j < leading) {
+          leading = j;
+        }
+      }
+      wcout << L"LEADING: " << leading << endl;
+
       for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
         if(i + 1 == cur_line_num) {
           wcout << right << L"=>" << setw(window) << (i + 1) << L": " << lines[i] << endl;
