@@ -1,4 +1,12 @@
+#~
+hello 1
+hello 2
+~#
 class Test {
+	#~
+	hello 3
+	hello 4
+	~#
 	function : Main(args : String[]) ~ Nil {
 		in := "";
 		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
@@ -6,9 +14,9 @@ class Test {
 		in += "<item upc=\"123456789\" stock=\"12\">";
 
 #~
-		in->Append("<inventory title=\"OmniCorp Store #45x10^3\">");
-		in->Append("<section name=\"health\">");
-		in->Append("<item upc=\"123456789\" stock=\"12\">");
+		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
+		in += "<section name=\"health\">";
+		in += "<item upc=\"123456789\" stock=\"12\">";
 ~#
 		in->PrintLine();
 	}
