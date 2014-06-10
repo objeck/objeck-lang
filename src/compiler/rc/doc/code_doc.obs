@@ -84,7 +84,7 @@ bundle Default {
 								label '#': {
 									if(comment_state = 2) {
 										"close_comment"->PrintLine();
-										capture := 2;
+										capture := 0;
 block->PrintLine();
 										block := "";
 										comment_state := 0;
@@ -116,7 +116,7 @@ block->PrintLine();
 
 				};				
 				
-				if(capture = 2) {
+				if(capture > 0) {
 					block->Append(line);
 				};
 			};
