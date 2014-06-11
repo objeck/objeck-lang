@@ -108,23 +108,30 @@ namespace Runtime {
       // find leading whitespace
       int leading = 160;
       for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
-        wstring line = lines[i];
+        const wstring line = lines[i];
         int j = 0;
-        while(j < line.size() && (line[j] == L' ' || line[j] == L'\t')) {
+        while(j < (int)line.size() && (line[j] == L' ' || line[j] == L'\t')) {
           j++;
         }
-        if(j < leading) {
+        
+        if(j != 0 && leading > j) {
           leading = j;
         }
       }
-      wcout << L"LEADING: " << leading << endl;
-
+      
       for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
+        // trim leading whitespace
+        wstring line = lines[i];
+        const int line_size = (int)line.size();
+        if(line_size > 0 && (line[0] == L' ' || line[0] == L'\t') && line_size > leading) {
+          line = line.substr(leading);
+        }
+        
         if(i + 1 == cur_line_num) {
-          wcout << right << L"=>" << setw(window) << (i + 1) << L": " << lines[i] << endl;
+          wcout << right << L"=>" << setw(window) << (i + 1) << L": " << line << endl;
         }
         else {
-          wcout << right << setw(window + 2) << (i + 1) << L": " << lines[i] << endl;
+          wcout << right << setw(window + 2) << (i + 1) << L": " << line << endl;
         }
       }
 
