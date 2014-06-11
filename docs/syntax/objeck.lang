@@ -63,7 +63,7 @@
 
                 <!-- Comments -->
                 <context id="comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
-                 <start># </start>
+                 <start>#</start>
                     <include>
                       <context ref="def:in-line-comment"/>
                     </include>
