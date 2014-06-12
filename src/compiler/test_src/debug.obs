@@ -13,11 +13,10 @@ class Test {
 		in += "<section name=\"health\">";
 		in += "<item upc=\"123456789\" stock=\"12\">";
 
-#~
 		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
 		in += "<section name=\"health\">";
 		in += "<item upc=\"123456789\" stock=\"12\">";
-~#
+
 		in->PrintLine();
 	}
 
