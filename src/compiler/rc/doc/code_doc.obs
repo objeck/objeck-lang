@@ -2,137 +2,165 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
-bundle Default {	
-	class Parser {
-		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				Parse(args[0]);
-			};
-		}
-		
-		function : native : Parse(file : String) ~ Nil {
-			reserved := StringMap->New();
-			reserved->Insert("bundle", "keyword: bundle");
-			reserved->Insert("class", "keyword: class");
-			reserved->Insert("method", "keyword: method");
-			reserved->Insert("function", "keyword: function");
-			reserved->Insert("native", "keyword: native");
-			reserved->Insert("public", "keyword: public");
-			reserved->Insert("private", "keyword: private");
-			reserved->Insert("Int", "keyword: Int");
-			reserved->Insert("Float", "keyword: Float");
-			reserved->Insert("Char", "keyword: Char");
-			reserved->Insert("Byte", "keyword: Byte");
-			
-			capture := 0;
-			block := "";
-			line_num := 0;
-			comment_state := 0;							
-			reader := FileReader->New(file);
-			while(reader->IsEOF() <> true) {
-				line := reader->ReadString();
-				line_num += 1;
-					
-				i := 0;	
-				while(i < line->Size()) {		
-					# skip whitespace
-					while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
-						i += 1;
-					};
-					
-					# parse the line
-					if(i < line->Size()) {
-						# word
-						if(line->Get(i)->IsChar() = true) {
-							string := "";
-							while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
-								string->Append(line->Get(i));
-								i += 1;
-							};
-						
-							result := reserved->Find(string)->As(String);
-							if(result <> Nil) {
-								if(capture = 2 & (string->Equals("function") | 
-									string->Equals("method")| string->Equals("class"))) {
-"-2-"->PrintLine();
-									capture := 3;
-								}
-								else {
-									capture := 0;
-								};
-							};
-						}
-						# other
 
-						else {
-							select(line->Get(i)) {
-								label '(': {
-									"opren"->PrintLine();
-									comment_state := 0;
-								}
-								
-								label ')': {
-									"cpren"->PrintLine();
-									comment_state := 0;
-								}
+class Parser {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			Parse(args[0]);
+		};
+	}
 	
-								label '{': {
-									if(capture = 3) {
-"-3-"->PrintLine();
-										block->Append(line);
-										block->PrintLine();
+	function : native : Parse(file : String) ~ Nil {
+		reserved := StringMap->New();
+		reserved->Insert("bundle", "keyword: bundle");
+		reserved->Insert("class", "keyword: class");
+		reserved->Insert("method", "keyword: method");
+		reserved->Insert("function", "keyword: function");
+		reserved->Insert("native", "keyword: native");
+		reserved->Insert("public", "keyword: public");
+		reserved->Insert("private", "keyword: private");
+		reserved->Insert("Int", "keyword: Int");
+		reserved->Insert("Float", "keyword: Float");
+		reserved->Insert("Char", "keyword: Char");
+		reserved->Insert("Byte", "keyword: Byte");
+		
+		capture := 0;
+		block := "";
+		line_num := 0;
+		comment_state := 0;							
+		reader := FileReader->New(file);
+		class_doc : ClassDoc;
+		while(reader->IsEOF() <> true) {
+			line := reader->ReadString();
+			line_num += 1;
+				
+			i := 0;	
+			while(i < line->Size()) {		
+				# skip whitespace
+				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+					i += 1;
+				};
+				
+				# parse the line
+				if(i < line->Size()) {
+					# word
+					if(line->Get(i)->IsChar() = true) {
+						string := "";
+						while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+							string->Append(line->Get(i));
+							i += 1;
+						};
+					
+						result := reserved->Find(string)->As(String);
+						if(result <> Nil) {
+							if(capture = 2 & string->Equals("class")) {
+								capture := 3;
+							}
+							else if(capture = 2 & (string->Equals("function") | string->Equals("method"))) {
+								capture := 4;
+							};
+						};
+					}
+					# other
+					else {
+						select(line->Get(i)) {
+							label '(': {
+								"opren"->PrintLine();
+								comment_state := 0;
+							}
+							
+							label ')': {
+								"cpren"->PrintLine();
+								comment_state := 0;
+							}
+
+							label '{': {
+								if(capture = 3) {
+"class tag"->PrintLine();
+									block->Append(line);
+									class_doc := ClassDoc->New(block);
+									block := "";
+								}
+								else if(capture = 4) {
+"function/method tag"->PrintLine();									
+									block->Append(line);
+									if(class_doc <> Nil) {
+										class_doc->AddFunctionMethod(block);
 										block := "";
 									};
-									"ocbrace"->PrintLine();
-									capture := 0;
-									comment_state := 0;
-								}
-				
-								label '}': {
-									"ccbrace"->PrintLine();
-									comment_state := 0;
-								}
-	
-								label '#': {
-									if(comment_state = 2) {
-										"close_comment"->PrintLine();
-										capture := 2;
-										comment_state := 0;
-"-1-"->PrintLine();
-									}
-									else if(comment_state = 0) {
-										comment_state := 1;
-									};
-								}
+								};
+								"ocbrace"->PrintLine();
+								capture := 0;
+								comment_state := 0;
+							}
+			
+							label '}': {
+								"ccbrace"->PrintLine();
+								comment_state := 0;
+							}
 
-								label '~': {
- 									if(comment_state = 1) {
-										"open_comment"->PrintLine();
-"-0-"->PrintLine();
-										capture := 1;
-										comment_state := 0;
-									}
-									else if(comment_state = 0) {
-										comment_state := 2;
-									};
-								}
-						
-								other: {
+							label '#': {
+								if(comment_state = 2) {
+									"close_comment"->PrintLine();
+									capture := 2;
 									comment_state := 0;
 								}
-							};
-							
-						};	
-					};
-					i += 1;
+								else if(comment_state = 0) {
+									comment_state := 1;
+								};
+							}
 
-				};				
-				
-				if(capture > 0) {
-					block->Append(line);
+							label '~': {
+								if(comment_state = 1) {
+									"open_comment"->PrintLine();
+									capture := 1;
+									comment_state := 0;
+								}
+								else if(comment_state = 0) {
+									comment_state := 2;
+								};
+							}
+					
+							other: {
+								comment_state := 0;
+							}
+						};						
+					};	
 				};
+				i += 1;
+			};				
+			
+			if(capture > 0) {
+				block->Append(line);
 			};
-			reader->Close();
-		}
+		};
+		reader->Close();
+	}
+}
+
+class ClassDoc {
+	@functions : StringMap;
+	
+	New(buffer : String) {
+	}
+
+	method : public : GetName() ~ String {
+		return "";
+	}
+
+	method : public : AddFunctionMethod(buffer : String) ~ Nil {
+		func_method := ClassFunctionMethod->New(buffer);
+#		@functions->Insert(func_method->GetName(), func_method);
+	}
+}
+
+class ClassFunctionMethod {
+	@name : String;
+
+	New(buffer : String) {
+	}
+	
+	method : public : GetName() ~ String {
+		return "";
 	}
 }
