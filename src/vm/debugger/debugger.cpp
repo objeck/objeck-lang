@@ -44,12 +44,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     const int line_num = instr->GetLineNumber();
     const wstring &file_name = frame->method->GetClass()->GetFileName();
 
-    /*
-      #ifdef _DEBUG
-      wcout << L"### file=" << file_name << L", line=" << line_num << L" ###" << endl;
-      #endif
-    */
-
+    // wcout << L"### file=" << file_name << L", line=" << line_num << L" ###" << endl;
+    
     if((line_num > -1 && (cur_line_num != line_num || cur_file_name != file_name)) &&
        // break point
        (FindBreak(line_num, file_name) ||
@@ -133,7 +129,7 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
   arguments.push_back(program_file);
   // parse arguments
   const wstring temp = load->GetFileName();
-  wchar_t* buffer = (wchar_t*)calloc(sizeof(wchar_t), temp.size() + 1); // new wchar_t[temp.size() + 1];
+  wchar_t* buffer = (wchar_t*)calloc(sizeof(wchar_t), temp.size() + 1);
   wcsncpy(buffer, temp.c_str(), temp.size());
 #ifdef WIN32
   wchar_t* token = wcstok(buffer, L" ");
@@ -152,7 +148,7 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
   wcout << L"program arguments sets." << endl;
 
   // clean up
-  delete[] buffer;
+  free(buffer);
   buffer = NULL;
 }
 
@@ -1284,6 +1280,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(!interpreter) {
         wcout << L"program is not running." << endl;
       }
+      cur_line_num = -2;
       break;
 
     case INFO_COMMAND:
