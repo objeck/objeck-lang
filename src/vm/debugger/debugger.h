@@ -254,7 +254,7 @@ namespace Runtime {
     UserBreak* FindBreak(int line_num, const wstring &file_name) {
       for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
         UserBreak* user_break = (*iter);
-        if(user_break->line_num == line_num /*&& user_break->file_name == file_name*/) {
+        if(user_break->line_num == line_num && user_break->file_name == file_name) {
           return *iter;
         }
       }
