@@ -177,18 +177,46 @@ class ClassFunctionMethod {
 		done := false;
 		do {
 			line := ParseLine();
-			if(line->StartsWith("@param")) {
+			if(line = Nil) {
+				return false;
+			};
+			
+
+			# TODO: multiline desc
+			if(state = 1) {
+				if(line->StartsWith("@param")) {
+					index := "@param"->Size() + 1;
+					start := index;
+					while(index < line->Size() & line->Get(index) <> ' ' & line->Get(index) <> '\t') {
+						index += 1;
+					};
+					name := line->SubString(start, index - start);
+					desc := line->SubString(index + 1, line->Size() - index - 1);
+IO.Console->Print("\tparam: name='")->Print(name)->Print("', desc='")->Print(desc)->PrintLine("'");
+				}
+				else if(line->StartsWith("@return")) {
+					index := "@return"->Size() + 1;
+					desc := line->SubString(index, line->Size() - index);
+IO.Console->Print("\treturn: desc='")->Print(desc)->PrintLine("'");
+				}
+				else if(line->StartsWith("function")) {
+"--function--"->PrintLine();
+				}
+				else if(line->StartsWith("method")) {
+"--method--"->PrintLine();
+				}
+				else if(line->EndsWith("~#")) {
+					state := 2;
+				}
+				else {
+"--description--"->PrintLine();
+				};
 			}
-			else if(line->StartsWith("@return")) {
-			}
-			else if(line->StartsWith("function")) {
-			}
-			else if(line->StartsWith("method")) {
-			}
-			else {
+			else if(line->StartsWith("#~")) {
+				state := 1;
 			};
 		}
-		while(@buffer_index < @buffer->Size() & <>done);
+		while(state < 2);
 		
 		return true;
 	}	
