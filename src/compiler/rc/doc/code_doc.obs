@@ -174,54 +174,82 @@ class ClassFunctionMethod {
 
 	method : native : Parse() ~ Bool {
 		state := 0;
-		done := false;
+		line : String;
 		do {
-			line := ParseLine();
-			if(line = Nil) {
+			line_frag := ParseFrag();
+			if(line_frag = Nil) {
 				return false;
 			};
 			
+IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
 
-			# TODO: multiline desc
-			if(state = 1) {
-				if(line->StartsWith("@param")) {
-					index := "@param"->Size() + 1;
-					start := index;
-					while(index < line->Size() & line->Get(index) <> ' ' & line->Get(index) <> '\t') {
-						index += 1;
-					};
-					name := line->SubString(start, index - start);
-					desc := line->SubString(index + 1, line->Size() - index - 1);
-IO.Console->Print("\tparam: name='")->Print(name)->Print("', desc='")->Print(desc)->PrintLine("'");
-				}
-				else if(line->StartsWith("@return")) {
-					index := "@return"->Size() + 1;
-					desc := line->SubString(index, line->Size() - index);
-IO.Console->Print("\treturn: desc='")->Print(desc)->PrintLine("'");
-				}
-				else if(line->StartsWith("function")) {
+			if(line_frag->StartsWith("@param")) {
+"-0-"->PrintLine();
+				ParseLine(line, state);
+				state := 2;
+				line := String->New(line_frag);
+			}
+			else if(line_frag->StartsWith("@return")) {
+				ParseLine(line, state);
+				state := 3;
+				line := String->New(line_frag);
+			}
+			else if(line_frag->StartsWith("function")) {
+				ParseLine(line, state);
+				state := 4;
+				line := String->New(line_frag);
 "--function--"->PrintLine();
-				}
-				else if(line->StartsWith("method")) {
+			}
+			else if(line_frag->StartsWith("method")) {
+				ParseLine(line, state);
+				state := 5;
+				line := String->New(line_frag);
 "--method--"->PrintLine();
-				}
-				else if(line->EndsWith("~#")) {
-					state := 2;
+			}
+			else if(line_frag->StartsWith("#~")) {
+
+				state := 1;
+			}
+			else if(line_frag->EndsWith("~#")) {
+				state := 7;
+			}
+			else {				
+				if(state = 1) {
+					line := String->New(line_frag);
+					state := 6;
 				}
 				else {
-"--description--"->PrintLine();
+					line += line_frag);
 				};
-			}
-			else if(line->StartsWith("#~")) {
-				state := 1;
 			};
 		}
-		while(state < 2);
+		while(state <> 7);
 		
 		return true;
 	}	
 
-	method : native : ParseLine() ~ String {
+	method : native : ParseLine(line : String, state : Int) ~ Nil {
+		line->PrintLine();
+	}	
+
+	method : native : ParseParam(line : String) ~ Nil {
+		index := "@param"->Size() + 1;
+		start := index;
+		while(index < line->Size() & line->Get(index) <> ' ' & line->Get(index) <> '\t') {
+			index += 1;
+		};
+		name := line->SubString(start, index - start);
+		desc := line->SubString(index + 1, line->Size() - index - 1);
+IO.Console->Print("\tparam: name='")->Print(name)->Print("', desc='")->Print(desc)->PrintLine("'");
+	}
+
+	method : native : ParseReturn(line : String) ~ Nil {
+		index := "@return"->Size() + 1;
+		desc := line->SubString(index, line->Size() - index);
+IO.Console->Print("\treturn: desc='")->Print(desc)->PrintLine("'");
+	}
+
+	method : native : ParseFrag() ~ String {
 		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\n')) {
 			NextChar();
 		};

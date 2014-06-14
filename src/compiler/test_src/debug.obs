@@ -3,7 +3,9 @@ This is a test class
 ~#
 class Test {
 	#~
-	Main method
+	Main method 
+		for the program
+		blah blah blah...
 	@param args command line arguments
 	~#
 	method : Main(args : String[]) ~ Nil {
