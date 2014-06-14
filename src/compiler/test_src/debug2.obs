@@ -1,10 +1,10 @@
-class Hello {
+class Test {
 	function : Main(args : String[]) ~ Nil {
 		f := Foo();
 		b := Bar();
 		f += b;	
 #		f->Append(b);
-		f += ';';
+		f += b->Get(1);
 		f->PrintLine();
 	}
 
