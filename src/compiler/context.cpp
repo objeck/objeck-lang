@@ -2810,52 +2810,53 @@ bool ContextAnalyzer::Analyze()
 
     Type* eval_type = variable->GetEvalType();
     
+    // check for 'System.String' append operations
     bool check_right_cast = true;
-    if(eval_type->GetType() == CLASS_TYPE) {
-      Type* expr_type = GetExpressionType(expression, depth + 1);
-      if(expr_type->GetType() == CLASS_TYPE) { 
+    if(eval_type->GetType() == CLASS_TYPE) {    
 #ifndef _SYSTEM
-        LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
-        LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses());
+      LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
 #else
-        Class* left_class = SearchProgramClasses(eval_type->GetClassName());
-        Class* right_class = SearchProgramClasses(expr_type->GetClassName());
+      Class* left_class = SearchProgramClasses(eval_type->GetClassName());
 #endif
-        if(left_class && right_class) {
-          const wstring left = left_class->GetName();
-          const wstring right = right_class->GetName();
-          if(left == right && left == L"System.String" && right == L"System.String") {
-            switch(type) {
-            case ADD_ASSIGN_STMT:
-              static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-              check_right_cast = false;
-              break;
+      if(left_class) {
+        const wstring left = left_class->GetName();       
+        if(left == L"System.String") {
+          // check rhs type
+          Type* expr_type = GetExpressionType(expression, depth + 1);
+          if(expr_type->GetType() == CLASS_TYPE) {
+#ifndef _SYSTEM
+            LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses());
+#else
+            Class* right_class = SearchProgramClasses(expr_type->GetClassName());
+#endif
+            const wstring right = right_class->GetName();
+            // rhs string append
+            if(right == L"System.String") {
+              switch(type) {
+              case ADD_ASSIGN_STMT:
+                static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                check_right_cast = false;
+                break;
 
-            case SUB_ASSIGN_STMT:
-            case MUL_ASSIGN_STMT:
-            case DIV_ASSIGN_STMT:
-              ProcessError(assignment, L"Invalid operation using classes: String and String");
-              break;
+              case SUB_ASSIGN_STMT:
+              case MUL_ASSIGN_STMT:
+              case DIV_ASSIGN_STMT:
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
+                break;
             
-            case ASSIGN_STMT:
-              break;
+              case ASSIGN_STMT:
+                break;
 
-            default:
-              ProcessError(assignment, L"Internal compiler error.");
-              break;
+              default:
+                ProcessError(assignment, L"Internal compiler error.");
+                break;
+              }
             }
           }
-        }
-      }
-      else if(expr_type->GetType() == CHAR_TYPE) { 
-#ifndef _SYSTEM
-        LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
-#else
-        Class* left_class = SearchProgramClasses(eval_type->GetClassName());
-#endif
-        if(left_class) {
-          const wstring left = left_class->GetName();
-          if(left == L"System.String") {
+          // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
+          else if(expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE || 
+                  expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE || 
+                  expr_type->GetType() == BOOLEAN_TYPE) {
             switch(type) {
             case ADD_ASSIGN_STMT:
               static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
@@ -2865,12 +2866,26 @@ bool ContextAnalyzer::Analyze()
             case SUB_ASSIGN_STMT:
             case MUL_ASSIGN_STMT:
             case DIV_ASSIGN_STMT:
-              ProcessError(assignment, L"Invalid operation using classes: String and Char");
+              if(expr_type->GetType() == CHAR_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Char");
+              }
+              else if(expr_type->GetType() == BYTE_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Byte");
+              }
+              else if(expr_type->GetType() == INT_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and Int");
+              }
+              else if(expr_type->GetType() == FLOAT_TYPE) {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Float");
+              }
+              else {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Bool");
+              }
               break;
               
             case ASSIGN_STMT:
               break;
-
+              
             default:
               ProcessError(assignment, L"Internal compiler error.");
               break;
@@ -3088,11 +3103,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Byte");
+          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Char");
+          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Char");
           break;
 
         case INT_TYPE:
@@ -3100,7 +3115,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Float");
+          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3111,7 +3126,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Bool");
           break;
         }
         break;
@@ -3132,11 +3147,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Byte");
+          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Char");
+          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Char");
           break;
 
         case INT_TYPE:
@@ -3144,14 +3159,14 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Float");
+          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Float");
           break;
 
         case CLASS_TYPE:
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Bool");
           break;
         }
         break;
@@ -3160,15 +3175,15 @@ bool ContextAnalyzer::Analyze()
         // BYTE
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Byte and function reference");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Byte and Var");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Var");
           break;
 
         case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Byte and Nil");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Nil");
           break;
 
         case CHAR_TYPE:
@@ -3183,12 +3198,12 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Byte and " +
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
                        right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Byte and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and System.Bool");
           break;
         }
         break;
@@ -3197,15 +3212,15 @@ bool ContextAnalyzer::Analyze()
         // CHAR
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Char and function reference");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Char and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Char and Var");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Char and Var");
           break;
 
         case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Char and Nil");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Char and Nil");
           break;
 
         case INT_TYPE:
@@ -3220,12 +3235,12 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Char and " +
+          ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
                        right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes:  Char and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes:  Char and System.Bool");
           break;
         }
         break;
@@ -3234,15 +3249,15 @@ bool ContextAnalyzer::Analyze()
         // INT
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Int and function reference");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Int and Var");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and Var");
           break;
 
         case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Int and Nil");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and Nil");
           break;
 
         case BYTE_TYPE:
@@ -3257,11 +3272,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Int and " + right->GetClassName());
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " + right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Int and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and System.Bool");
           break;
         }
         break;
@@ -3270,15 +3285,15 @@ bool ContextAnalyzer::Analyze()
         // FLOAT
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Float and function reference");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Float and Var");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and Var");
           break;
 
         case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Float and Nil");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and Nil");
           break;
 
         case FLOAT_TYPE:
@@ -3293,12 +3308,12 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Float and " +
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
                        right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Float and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and System.Bool");
           break;
         }
         break;
@@ -3321,12 +3336,12 @@ bool ContextAnalyzer::Analyze()
 
         case BYTE_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       left->GetClassName() + L" and Byte");
+                       left->GetClassName() + L" and System.Byte");
           break;
 
         case CHAR_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       left->GetClassName() + L" and Char");
+                       left->GetClassName() + L" and System.Char");
           break;
 
         case INT_TYPE:
@@ -3336,7 +3351,7 @@ bool ContextAnalyzer::Analyze()
 
         case FLOAT_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       left->GetClassName() + L" and Float");
+                       left->GetClassName() + L" and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3357,7 +3372,7 @@ bool ContextAnalyzer::Analyze()
 
         case BOOLEAN_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       left->GetClassName() + L" and Bool");
+                       left->GetClassName() + L" and System.Bool");
           break;
         }
         break;
@@ -3366,35 +3381,35 @@ bool ContextAnalyzer::Analyze()
         // BOOLEAN
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and function reference");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Var");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Var");
           break;
 
         case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Nil");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Nil");
           break;
 
         case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Byte");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Char");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Char");
           break;
 
         case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Int");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Int");
           break;
 
         case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and Float");
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Float");
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Bool and " +
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
                        right->GetClassName());
           break;
 
@@ -3435,11 +3450,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Byte");
+          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Char");
+          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Char");
           break;
 
         case INT_TYPE:
@@ -3447,7 +3462,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Float");
+          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3456,7 +3471,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Bool");
+          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Bool");
           break;
         }
         break;
@@ -3520,11 +3535,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and Byte");
+          ProcessError(expression, L"Invalid cast with classes: Nil and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and Char");
+          ProcessError(expression, L"Invalid cast with classes: Nil and System.Char");
           break;
 
         case INT_TYPE:
@@ -3532,7 +3547,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and Float");
+          ProcessError(expression, L"Invalid cast with classes: Nil and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3540,7 +3555,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and Bool");
+          ProcessError(expression, L"Invalid cast with classes: Nil and System.Bool");
           break;
         }
         break;
@@ -3549,16 +3564,16 @@ bool ContextAnalyzer::Analyze()
         // BYTE
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Byte and function reference");
+          ProcessError(expression, L"Invalid operation using classes: System.Byte and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Byte and Var");
+          ProcessError(expression, L"Invalid operation using classes: System.Byte and Var");
           break;
 
         case NIL_TYPE:
           if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: Byte and Nil");
+            ProcessError(expression, L"Invalid cast with classes: System.Byte and Nil");
           }
           break;
 
@@ -3578,12 +3593,12 @@ bool ContextAnalyzer::Analyze()
         case CLASS_TYPE:
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
-            ProcessError(expression, L"Invalid cast with classes: Byte and " + right->GetClassName());
+            ProcessError(expression, L"Invalid cast with classes: System.Byte and " + right->GetClassName());
           }
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Byte and Bool");
+          ProcessError(expression, L"Invalid cast with classes: System.Byte and System.Bool");
           break;
         }
         break;
@@ -3592,16 +3607,16 @@ bool ContextAnalyzer::Analyze()
         // CHAR
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Char and function reference");
+          ProcessError(expression, L"Invalid operation using classes: System.Char and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Char and Var");
+          ProcessError(expression, L"Invalid operation using classes: System.Char and Var");
           break;
 
         case NIL_TYPE:
           if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: Char and Nil");
+            ProcessError(expression, L"Invalid cast with classes: System.Char and Nil");
           }
           break;
 
@@ -3621,12 +3636,12 @@ bool ContextAnalyzer::Analyze()
         case CLASS_TYPE:
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
-            ProcessError(expression, L"Invalid cast with classes: Char and " + right->GetClassName());
+            ProcessError(expression, L"Invalid cast with classes: System.Char and " + right->GetClassName());
           }
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Char and Bool");
+          ProcessError(expression, L"Invalid cast with classes: System.Char and System.Bool");
           break;
         }
         break;
@@ -3635,7 +3650,7 @@ bool ContextAnalyzer::Analyze()
         // INT
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Int and function reference");
+          ProcessError(expression, L"Invalid operation using classes: System.Int and function reference");
           break;
 
         case VAR_TYPE:
@@ -3644,7 +3659,7 @@ bool ContextAnalyzer::Analyze()
 
         case NIL_TYPE:
           if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: Int and Nil");
+            ProcessError(expression, L"Invalid cast with classes: System.Int and Nil");
           }
           break;
 
@@ -3664,13 +3679,13 @@ bool ContextAnalyzer::Analyze()
         case CLASS_TYPE:
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
-            ProcessError(expression, L"Invalid cast with classes: Int and " +
+            ProcessError(expression, L"Invalid cast with classes: System.Int and " +
                          right->GetClassName());
           }
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Int and Bool");
+          ProcessError(expression, L"Invalid cast with classes: System.Int and System.Bool");
           break;
         }
         break;
@@ -3679,7 +3694,7 @@ bool ContextAnalyzer::Analyze()
         // FLOAT
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Float and function reference");
+          ProcessError(expression, L"Invalid operation using classes: System.Float and function reference");
           break;
 
         case VAR_TYPE:
@@ -3688,7 +3703,7 @@ bool ContextAnalyzer::Analyze()
 
         case NIL_TYPE:
           if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: Float and Nil");
+            ProcessError(expression, L"Invalid cast with classes: System.Float and Nil");
           }
           break;
 
@@ -3706,11 +3721,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Float and " + right->GetClassName());
+          ProcessError(expression, L"Invalid cast with classes: System.Float and " + right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Float and Bool");
+          ProcessError(expression, L"Invalid cast with classes: System.Float and System.Bool");
           break;
         }
         break;
@@ -3735,14 +3750,14 @@ bool ContextAnalyzer::Analyze()
         case BYTE_TYPE:
           if(!SearchProgramEnums(left->GetClassName()) &&
              !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
-            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and Byte");
+            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Byte");
           }
           break;
 
         case CHAR_TYPE:
           if(!SearchProgramEnums(left->GetClassName()) &&
              !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
-            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and Char");
+            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Char");
           }
           break;
 
@@ -3754,7 +3769,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and Float");
+          ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3763,7 +3778,7 @@ bool ContextAnalyzer::Analyze()
 
         case BOOLEAN_TYPE:
           ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() +
-                       L" and Bool");
+                       L" and System.Bool");
           break;
         }
         break;
@@ -3772,37 +3787,37 @@ bool ContextAnalyzer::Analyze()
         // BOOLEAN
         switch(right->GetType()) {
         case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Bool and function reference");
+          ProcessError(expression, L"Invalid operation using classes: System.Bool and function reference");
           break;
 
         case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Bool and Var");
+          ProcessError(expression, L"Invalid operation using classes: System.Bool and Var");
           break;
 
         case NIL_TYPE:
           if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: Bool and Nil");
+            ProcessError(expression, L"Invalid cast with classes: System.Bool and Nil");
           }
           break;
 
         case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Bool and Byte");
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Bool and Char");
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Char");
           break;
 
         case INT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Bool and Int");
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and Int");
           break;
 
         case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Bool and Float");
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Float");
           break;
 
         case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Bool and " + right->GetClassName());
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and " + right->GetClassName());
           break;
 
         case BOOLEAN_TYPE:
@@ -3841,11 +3856,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Byte");
+          ProcessError(expression, L"Invalid cast with classes: function reference and System.Byte");
           break;
 
         case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Char");
+          ProcessError(expression, L"Invalid cast with classes: function reference and System.Char");
           break;
 
         case INT_TYPE:
@@ -3853,7 +3868,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Float");
+          ProcessError(expression, L"Invalid cast with classes: function reference and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3861,7 +3876,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Bool");
+          ProcessError(expression, L"Invalid cast with classes: function reference and System.Bool");
           break;
         }
         break;

@@ -3626,12 +3626,64 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
  ****************************/
 void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 {
-  // append character  
+  // append 'Char'  
   if(assignment->GetExpression()->GetEvalType()->GetType() == CHAR_TYPE) {
     EmitExpression(assignment->GetExpression());
     EmitVariable(assignment->GetVariable());
     
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+  }
+  // append 'Byte'  
+  else if(assignment->GetExpression()->GetEvalType()->GetType() == BYTE_TYPE) {
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+  }
+  // append 'Int'  
+  else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::INT_TYPE) {
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+  }
+  // append 'Float'  
+  else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+  }
+  // append 'Bool'  
+  else if(assignment->GetExpression()->GetEvalType()->GetType() == BOOLEAN_TYPE) {
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
