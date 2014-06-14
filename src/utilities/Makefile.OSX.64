@@ -1,0 +1,30 @@
+##############
+# For OSX only
+##############
+# ARGS=-g -mstackrealign -Wunused -D_DEBUG -pthread -D_DEBUGGER
+# ARGS=-O3 -D_DEBUGGER -Wunused -pthread
+# ARGS=-g -Wunused -pthread -D_DEBUG -D_UTILS
+ARGS=-O3 -Wall -pthread -D_OSX -D_X64 -D_UTILS
+
+##############
+# For Linux
+##############
+# ARGS=-g -Wunused -pthread
+# ARGS=-g -D_DEBUG -D_DEBUGGER -Wunused -pthread
+# ARGS=-g -D_DEBUG -Wunused -pthread
+# ARGS=-g -Wunused -D_JIT_SERIAL -pthread
+# ARGS=-O3 -pthread
+
+CC=g++
+SRC=../compiler/types.o ../compiler/linker.o ../vm/loader.o symbols.o
+COMPILER_PATH=..
+EXE=obu
+
+$(EXE): $(SRC) 
+	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS)
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
