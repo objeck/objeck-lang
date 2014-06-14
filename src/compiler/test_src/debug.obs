@@ -1,11 +1,10 @@
-#~~
-hello 1
-hello 2
-~~#
+#~
+This is a test class
+~#
 class Test {
 	#~
-	hello 3
-	hello 4
+	Main method
+	@param args command line arguments
 	~#
 	method : Main(args : String[]) ~ Nil {
 		in := "";
@@ -21,11 +20,12 @@ class Test {
 	}
 
 	#~
-	This is a hit!
-	hello 5
-	hello 6
+	Adds two values
+	@param a lhs value
+	@param b rhs value
+	@return sum of two values
 	~#
-	method : Run() ~ Int {
+	method : Add(a : Int, b : Int) ~ Int {
 		return 13;
 	}
 }
