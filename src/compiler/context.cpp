@@ -2813,27 +2813,36 @@ bool ContextAnalyzer::Analyze()
 
     if(eval_type->GetType() == CLASS_TYPE) {
       Type* expr_type = GetExpressionType(expression, depth + 1);
-      if(expr_type->GetType() == CLASS_TYPE) {
-        const wstring left = eval_type->GetClassName();
-        const wstring right = expr_type->GetClassName();
-        if(left == right && left == L"System.String" && right == L"System.String") {
-          switch(type) {
-          case ADD_ASSIGN_STMT:
-            static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-            break;
+      if(expr_type->GetType() == CLASS_TYPE) { 
+#ifndef _SYSTEM
+        LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
+        LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses());
+#else
+        Class* left_class = SearchProgramClasses(eval_type->GetClassName());
+        Class* right_class = SearchProgramClasses(expr_type->GetClassName());
+#endif
+        if(left_class && right_class) {
+          const wstring left = left_class->GetName();
+          const wstring right = right_class->GetName();
+          if(left == right && left == L"System.String" && right == L"System.String") {
+            switch(type) {
+            case ADD_ASSIGN_STMT:
+              static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+              break;
 
-          case SUB_ASSIGN_STMT:
-          case MUL_ASSIGN_STMT:
-          case DIV_ASSIGN_STMT:
-            ProcessError(assignment, L"Invalid operation using classes: String and String");
-            break;
+            case SUB_ASSIGN_STMT:
+            case MUL_ASSIGN_STMT:
+            case DIV_ASSIGN_STMT:
+              ProcessError(assignment, L"Invalid operation using classes: String and String");
+              break;
             
-          case ASSIGN_STMT:
-            break;
+            case ASSIGN_STMT:
+              break;
 
-          default:
-            ProcessError(assignment, L"Internal compiler error.");
-            break;
+            default:
+              ProcessError(assignment, L"Internal compiler error.");
+              break;
+            }
           }
         }
       }

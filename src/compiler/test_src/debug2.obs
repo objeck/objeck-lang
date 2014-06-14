@@ -1,12 +1,17 @@
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		a := 10;
-		b := false;
-		if(<>(a < 13 & b)) {
-			"--true--"->PrintLine();
-		}
-		else {
-			"--false--"->PrintLine();
-		};
+		f := Foo();
+		b := Bar();
+		f += b;	
+#		f->Append(b);
+		f->PrintLine();
+	}
+
+	function : Foo() ~ String {
+		return "foo";
+	}
+
+	function : Bar() ~ String {
+		return "+bar";
 	}
 }
