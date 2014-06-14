@@ -1,4 +1,6 @@
 6/14/14
+* fixed issue with debugger 'continue'
+* fixed bug with '+=' string concat
 * fixed logic in parsing unary 'not'
 
 5/21/14
