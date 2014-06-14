@@ -2133,8 +2133,8 @@ Expression* Parser::ParseExpression(int depth)
     NextToken();        
     Expression* right = ParseLogic(depth + 1);    
     if(right) {
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, EQL_EXPR);
-      static_cast<CalculatedExpression*>(expression)->SetLeft(TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, false));
+      expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, NEQL_EXPR);
+      static_cast<CalculatedExpression*>(expression)->SetLeft(TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, true));
       static_cast<CalculatedExpression*>(expression)->SetRight(right);
     }
   }
@@ -2176,7 +2176,7 @@ Expression* Parser::ParseLogic(int depth)
 #endif
   
   Expression* left;
-  if(Match(TOKEN_NOT)) {
+  if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     NextToken();
     CalculatedExpression* not_expr = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, NEQL_EXPR));
     not_expr->SetLeft(ParseMathLogic(depth + 1));

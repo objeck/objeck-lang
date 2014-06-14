@@ -64,16 +64,6 @@ class Parser {
 					# other
 					else {
 						select(line->Get(i)) {
-							label '(': {
-								"opren"->PrintLine();
-								comment_state := 0;
-							}
-							
-							label ')': {
-								"cpren"->PrintLine();
-								comment_state := 0;
-							}
-
 							label '{': {
 								if(capture = 3) {
 "class tag"->PrintLine();
@@ -91,19 +81,12 @@ class Parser {
 										block := "";
 									};
 								};
-								"ocbrace"->PrintLine();
 								capture := 0;
 								comment_state := 0;
 							}
 			
-							label '}': {
-								"ccbrace"->PrintLine();
-								comment_state := 0;
-							}
-
 							label '#': {
 								if(comment_state = 2) {
-									"close_comment"->PrintLine();
 									capture := 2;
 									comment_state := 0;
 								}
@@ -114,7 +97,6 @@ class Parser {
 
 							label '~': {
 								if(comment_state = 1) {
-									"open_comment"->PrintLine();
 									capture := 1;
 									comment_state := 0;
 								}
@@ -166,10 +148,9 @@ class ClassFunctionMethod {
 	@name : String;
 
 	New(buffer : String) {
-buffer->PrintLine();	
+# buffer->PrintLine();	
 		@buffer := buffer;
 		@buffer_index := 0;
-		@comment := "";
 		NextChar();
 		Parse()->PrintLine();
 	}
@@ -192,40 +173,42 @@ buffer->PrintLine();
 	}
 
 	method : native : Parse() ~ Bool {
-		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t')) {
-			NextChar();
-		};
-		
-		if(@cur_char <> '#' & @nxt_char <>'~') {
-			return false;
-		};
-		NextChar();
-		NextChar();
-		
-		# pull comment
+		state := 0;
 		done := false;
 		do {
-			# read line
-			start := @buffer_index;
-			while(@buffer_index < @buffer->Size() & @cur_char <> '\n') {
-				NextChar();
-			};	
-			
-			comment_segment := @buffer->SubString(start, @buffer_index - start - 1);
-			done := comment_segment->Equals("~#");
-			if(comment_segment <> Nil & done = false) {
-				@comment->Append(comment_segment->Trim());
-				@comment->Append(' ');
+			line := ParseLine();
+			if(line->StartsWith("@param")) {
+			}
+			else if(line->StartsWith("@return")) {
+			}
+			else if(line->StartsWith("function")) {
+			}
+			else if(line->StartsWith("method")) {
+			}
+			else {
 			};
-			NextChar();
 		}
-		while(@buffer_index < @buffer->Size() & done = false);
-
-IO.Console->Print("'")->Print(@comment->Trim())->PrintLine("'");
-@buffer->Size()->PrintLine();
-
+		while(@buffer_index < @buffer->Size() & <>done);
+		
 		return true;
 	}	
+
+	method : native : ParseLine() ~ String {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\n')) {
+			NextChar();
+		};
+
+		start := @buffer_index - 1;
+		while(@buffer_index < @buffer->Size() & @cur_char <> '\n') {
+			NextChar();
+		};
+		
+		if(@buffer_index < @buffer->Size()) {
+			return @buffer->SubString(start, @buffer_index - start - 1);
+		};
+		
+		return Nil;
+	}
 	
 	method : public : GetName() ~ String {
 		return "";
