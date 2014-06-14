@@ -1,3 +1,6 @@
+6/14/14
+* fixed logic in parsing unary 'not'
+
 5/21/14
 * TODO: odbc support for NULLs
 * TODO: odbc SetBlob w/ NULL bytes
