@@ -2809,8 +2809,8 @@ bool ContextAnalyzer::Analyze()
     }
 
     Type* eval_type = variable->GetEvalType();
-    AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
-
+    
+    bool check_right_cast = true;
     if(eval_type->GetType() == CLASS_TYPE) {
       Type* expr_type = GetExpressionType(expression, depth + 1);
       if(expr_type->GetType() == CLASS_TYPE) { 
@@ -2828,6 +2828,7 @@ bool ContextAnalyzer::Analyze()
             switch(type) {
             case ADD_ASSIGN_STMT:
               static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+              check_right_cast = false;
               break;
 
             case SUB_ASSIGN_STMT:
@@ -2846,6 +2847,41 @@ bool ContextAnalyzer::Analyze()
           }
         }
       }
+      else if(expr_type->GetType() == CHAR_TYPE) { 
+#ifndef _SYSTEM
+        LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
+#else
+        Class* left_class = SearchProgramClasses(eval_type->GetClassName());
+#endif
+        if(left_class) {
+          const wstring left = left_class->GetName();
+          if(left == L"System.String") {
+            switch(type) {
+            case ADD_ASSIGN_STMT:
+              static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+              check_right_cast = false;
+              break;
+
+            case SUB_ASSIGN_STMT:
+            case MUL_ASSIGN_STMT:
+            case DIV_ASSIGN_STMT:
+              ProcessError(assignment, L"Invalid operation using classes: String and Char");
+              break;
+              
+            case ASSIGN_STMT:
+              break;
+
+            default:
+              ProcessError(assignment, L"Internal compiler error.");
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    if(check_right_cast) {
+      AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
     }
     
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {

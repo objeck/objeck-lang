@@ -4,6 +4,7 @@ class Hello {
 		b := Bar();
 		f += b;	
 #		f->Append(b);
+		f += ';';
 		f->PrintLine();
 	}
 

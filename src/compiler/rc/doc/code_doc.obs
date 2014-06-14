@@ -139,6 +139,17 @@ class ClassDoc {
 	}
 }
 
+enum ClassFunctionMethodType {
+	NONE,
+	START,
+	END,
+	PARAM,
+	RETURN,
+	FUNC,
+	METHOD,
+	DESC
+}
+
 class ClassFunctionMethod {
 	@buffer : String;
 	@buffer_index : Int;
@@ -173,63 +184,83 @@ class ClassFunctionMethod {
 	}
 
 	method : native : Parse() ~ Bool {
-		state := 0;
+		state := ClassFunctionMethodType->NONE;
 		line : String;
 		do {
 			line_frag := ParseFrag();
 			if(line_frag = Nil) {
 				return false;
 			};
+			line_frag := line_frag->Trim();
 			
-IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
+# IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
 
 			if(line_frag->StartsWith("@param")) {
-"-0-"->PrintLine();
 				ParseLine(line, state);
-				state := 2;
+				state := ClassFunctionMethodType->PARAM;
 				line := String->New(line_frag);
 			}
 			else if(line_frag->StartsWith("@return")) {
 				ParseLine(line, state);
-				state := 3;
+				state := ClassFunctionMethodType->RETURN;
 				line := String->New(line_frag);
 			}
 			else if(line_frag->StartsWith("function")) {
 				ParseLine(line, state);
-				state := 4;
+				state := ClassFunctionMethodType->FUNC;
 				line := String->New(line_frag);
 "--function--"->PrintLine();
 			}
 			else if(line_frag->StartsWith("method")) {
 				ParseLine(line, state);
-				state := 5;
+				state := ClassFunctionMethodType->METHOD;
 				line := String->New(line_frag);
 "--method--"->PrintLine();
 			}
 			else if(line_frag->StartsWith("#~")) {
-
-				state := 1;
+				state := ClassFunctionMethodType->START;
 			}
 			else if(line_frag->EndsWith("~#")) {
-				state := 7;
+				ParseLine(line, state);
+				state := ClassFunctionMethodType->END;
 			}
 			else {				
-				if(state = 1) {
+				if(state = ClassFunctionMethodType->START) {
 					line := String->New(line_frag);
-					state := 6;
+					state := ClassFunctionMethodType->DESC;
 				}
 				else {
-					line += line_frag);
+					line += ' ';
+					line += line_frag;
 				};
 			};
 		}
-		while(state <> 7);
+		while(state <> ClassFunctionMethodType->END);
 		
 		return true;
 	}	
 
-	method : native : ParseLine(line : String, state : Int) ~ Nil {
-		line->PrintLine();
+	method : native : ParseLine(line : String, state : ClassFunctionMethodType) ~ Nil {
+# line->PrintLine();	
+		select(state) {
+			label ClassFunctionMethodType->PARAM: {
+				ParseParam(line);
+			}
+			
+			label ClassFunctionMethodType->RETURN: {
+				ParseReturn(line);
+			}
+			
+			label ClassFunctionMethodType->FUNC: {
+			}
+			
+			label ClassFunctionMethodType->METHOD: {
+			}
+			
+			label ClassFunctionMethodType->DESC: {
+				IO.Console->Print("\tdesc='")->Print(line)->PrintLine("'");
+			}
+		};
 	}	
 
 	method : native : ParseParam(line : String) ~ Nil {

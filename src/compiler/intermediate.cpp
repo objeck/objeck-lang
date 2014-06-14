@@ -3626,19 +3626,34 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
  ****************************/
 void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 {
-  is_str_array = true;
-  // expression
-  EmitExpression(assignment->GetExpression());
-  EmitVariable(assignment->GetVariable());
-  
-  LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+  // append character  
+  if(assignment->GetExpression()->GetEvalType()->GetType() == CHAR_TYPE) {
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
 #ifdef _DEBUG
-  assert(string_append_method);
+    assert(string_append_method);
 #endif
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                             (INT_VALUE)string_cls->GetId(), 
-                                                                             string_append_method->GetId(), 1L));
-  is_str_array = false;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+  }
+  // append string
+  else {
+    is_str_array = true;
+    EmitExpression(assignment->GetExpression());
+    EmitVariable(assignment->GetVariable());
+    
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                               (INT_VALUE)string_cls->GetId(), 
+                                                                               string_append_method->GetId(), 1L));
+    is_str_array = false;
+  }
 }
 
 /****************************
