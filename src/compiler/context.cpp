@@ -2829,27 +2829,29 @@ bool ContextAnalyzer::Analyze()
 #else
             Class* right_class = SearchProgramClasses(expr_type->GetClassName());
 #endif
-            const wstring right = right_class->GetName();
-            // rhs string append
-            if(right == L"System.String") {
-              switch(type) {
-              case ADD_ASSIGN_STMT:
-                static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-                check_right_cast = false;
-                break;
+            if(right_class) {
+              const wstring right = right_class->GetName();
+              // rhs string append
+              if(right == L"System.String") {
+                switch(type) {
+                case ADD_ASSIGN_STMT:
+                  static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                  check_right_cast = false;
+                  break;
 
-              case SUB_ASSIGN_STMT:
-              case MUL_ASSIGN_STMT:
-              case DIV_ASSIGN_STMT:
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
-                break;
+                case SUB_ASSIGN_STMT:
+                case MUL_ASSIGN_STMT:
+                case DIV_ASSIGN_STMT:
+                  ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
+                  break;
             
-              case ASSIGN_STMT:
-                break;
+                case ASSIGN_STMT:
+                  break;
 
-              default:
-                ProcessError(assignment, L"Internal compiler error.");
-                break;
+                default:
+                  ProcessError(assignment, L"Internal compiler error.");
+                  break;
+                }
               }
             }
           }
