@@ -3637,7 +3637,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #endif
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
                                                                              (INT_VALUE)string_cls->GetId(), 
-                                                                             string_append_method->GetId(), 0L));
+                                                                             string_append_method->GetId(), 1L));
   is_str_array = false;
 }
 
