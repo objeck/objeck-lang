@@ -4063,7 +4063,7 @@
 		<row><td>ID_STRING17</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1839077072</td></row>
 		<row><td>ID_STRING18</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1713297580</td></row>
 		<row><td>ID_STRING19</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-979463538</td></row>
-		<row><td>ID_STRING2</td><td>1033</td><td>http://sourceforge.net/projects/objeck-lang</td><td>0</td><td/><td>2116130507</td></row>
+		<row><td>ID_STRING2</td><td>1033</td><td>http://www.objeck.org</td><td>0</td><td/><td>1931665907</td></row>
 		<row><td>ID_STRING20</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-434204406</td></row>
 		<row><td>ID_STRING21</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-257996585</td></row>
 		<row><td>ID_STRING22</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-216017209</td></row>
