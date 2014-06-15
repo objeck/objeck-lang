@@ -1,0 +1,12 @@
+Objeck v3.3.2_1
+
+--------------
+Release Notes
+--------------
+Bug fixes and minor feature updates.
+
+Highlights of this release include the following:
+• The "+=" String append operator now supports the following types: String, Byte, Char, Int, Float and Bool (enhancement)
+• Fixed an issue with the debugger that caused the "continue" command to skip some breaks in loops (bug: medium)
+• Corrected a parsing bug with the new unary "<>" or "!" operator (bug: medium)
+• Launched the new project website http://www.objeck.org
