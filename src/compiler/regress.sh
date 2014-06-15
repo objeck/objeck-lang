@@ -1,6 +1,6 @@
 #!/bin/bash 
 ./update_libs
-i=96
+i=86
 until [  $i -lt 1 ]; do
 	echo -------- prgm$i -----------
 

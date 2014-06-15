@@ -2812,7 +2812,7 @@ bool ContextAnalyzer::Analyze()
     
     // check for 'System.String' append operations
     bool check_right_cast = true;
-    if(eval_type->GetType() == CLASS_TYPE) {    
+    if(eval_type && eval_type->GetType() == CLASS_TYPE) {    
 #ifndef _SYSTEM
       LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses());
 #else
@@ -2823,7 +2823,7 @@ bool ContextAnalyzer::Analyze()
         if(left == L"System.String") {
           // check rhs type
           Type* expr_type = GetExpressionType(expression, depth + 1);
-          if(expr_type->GetType() == CLASS_TYPE) {
+          if(expr_type && expr_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
             LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses());
 #else
