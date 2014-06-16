@@ -14,15 +14,22 @@
 #include "wx/artprov.h"
 
 class MyApp : public wxApp {
+
 public:
   bool OnInit();
 };
 
 class MyFrame : public wxFrame {
+  enum {
+    ID_SampleItem
+  };
+
   wxAuiManager aui_manager;
 
   void DoUpdate();
   
+  wxMenuBar* CreateMenu();
+  wxAuiToolBar* CreateToolbar();
   wxTreeCtrl* CreateTreeCtrl();
   wxTextCtrl* CreateTextCtrl(const wxString& ctrl_text);
   
