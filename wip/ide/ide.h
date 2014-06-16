@@ -9,11 +9,28 @@
 #endif
 
 #include "wx/app.h"
+#include "wx/aui/aui.h"
+#include "wx/treectrl.h"
+#include "wx/artprov.h"
 
-class MyApp : public wxApp
-{
+class MyApp : public wxApp {
 public:
   bool OnInit();
+};
+
+class MyFrame : public wxFrame {
+  wxAuiManager aui_manager;
+
+  void DoUpdate();
+  
+  wxTreeCtrl* CreateTreeCtrl();
+  wxTextCtrl* CreateTextCtrl(const wxString& ctrl_text);
+  
+public:
+  MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
+    const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
+
+  ~MyFrame();
 };
 
 #endif
