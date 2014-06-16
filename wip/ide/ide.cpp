@@ -14,13 +14,52 @@ bool MyApp::OnInit() {
 DECLARE_APP(MyApp)
 IMPLEMENT_APP(MyApp)
 
-MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
-wxFrame(parent, id, title, pos, size, style) {
+MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : wxFrame(parent, id, title, pos, size, style) {
+  // TODO: ulgy put into init method calls
   aui_manager.SetManagedWindow(this);
 
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left());
   aui_manager.AddPane(CreateTextCtrl(wxT("This pane will prompt the user before hiding.")), wxAuiPaneInfo().Centre());
   aui_manager.AddPane(CreateTextCtrl(wxT("blah")), wxAuiPaneInfo().Bottom());
+
+  wxMenuBar* menu_bar = new wxMenuBar;
+  menu_bar->Append(new wxMenu, wxT("&File"));
+  menu_bar->Append(new wxMenu, wxT("&View"));
+  menu_bar->Append(new wxMenu, wxT("&Perspectives"));
+  menu_bar->Append(new wxMenu, wxT("&Options"));
+  menu_bar->Append(new wxMenu, wxT("&Notebook"));
+  menu_bar->Append(new wxMenu, wxT("&Help"));
+
+  SetMenuBar(menu_bar);
+  CreateStatusBar();
+  GetStatusBar()->SetStatusText(_("Ready"));
+
+  SetMinSize(wxSize(400, 300));
+  
+  wxAuiToolBarItemArray prepend_items;
+  wxAuiToolBarItemArray append_items;
+  wxAuiToolBar* tb3 = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+    wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_OVERFLOW);
+  tb3->SetToolBitmapSize(wxSize(16, 16));
+  wxBitmap tb3_bmp1 = wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16));
+  tb3->AddTool(ID_SampleItem + 16, wxT("Check 1"), tb3_bmp1, wxT("Check 1"), wxITEM_CHECK);
+  tb3->AddTool(ID_SampleItem + 17, wxT("Check 2"), tb3_bmp1, wxT("Check 2"), wxITEM_CHECK);
+  tb3->AddTool(ID_SampleItem + 18, wxT("Check 3"), tb3_bmp1, wxT("Check 3"), wxITEM_CHECK);
+  tb3->AddTool(ID_SampleItem + 19, wxT("Check 4"), tb3_bmp1, wxT("Check 4"), wxITEM_CHECK);
+  tb3->AddSeparator();
+  tb3->AddTool(ID_SampleItem + 20, wxT("Radio 1"), tb3_bmp1, wxT("Radio 1"), wxITEM_RADIO);
+  tb3->AddTool(ID_SampleItem + 21, wxT("Radio 2"), tb3_bmp1, wxT("Radio 2"), wxITEM_RADIO);
+  tb3->AddTool(ID_SampleItem + 22, wxT("Radio 3"), tb3_bmp1, wxT("Radio 3"), wxITEM_RADIO);
+  tb3->AddSeparator();
+  tb3->AddTool(ID_SampleItem + 23, wxT("Radio 1 (Group 2)"), tb3_bmp1, wxT("Radio 1 (Group 2)"), wxITEM_RADIO);
+  tb3->AddTool(ID_SampleItem + 24, wxT("Radio 2 (Group 2)"), tb3_bmp1, wxT("Radio 2 (Group 2)"), wxITEM_RADIO);
+  tb3->AddTool(ID_SampleItem + 25, wxT("Radio 3 (Group 2)"), tb3_bmp1, wxT("Radio 3 (Group 2)"), wxITEM_RADIO);
+  tb3->SetCustomOverflowItems(prepend_items, append_items);
+  tb3->Realize();
+
+  aui_manager.AddPane(tb3, wxAuiPaneInfo().
+  Name(wxT("tb3")).Caption(wxT("Toolbar 3")).
+  ToolbarPane().Top().Row(1).Position(1));
 
   aui_manager.Update();
 }
