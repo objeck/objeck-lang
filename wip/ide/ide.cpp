@@ -27,7 +27,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
   CreateStatusBar();
-  GetStatusBar()->SetStatusText(_("Ready"));
+  GetStatusBar()->SetStatusText(wxT("Ready"));
 
   // set windows sizes
   SetMinSize(wxSize(400, 300));
