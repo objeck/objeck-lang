@@ -1,6 +1,7 @@
 #include "ide.h"
 
-bool MyApp::OnInit() {
+bool MyApp::OnInit() 
+{
   if (!wxApp::OnInit()) {
     return false;
   }
@@ -14,14 +15,44 @@ bool MyApp::OnInit() {
 DECLARE_APP(MyApp)
 IMPLEMENT_APP(MyApp)
 
-MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : wxFrame(parent, id, title, pos, size, style) {
-  // TODO: ulgy put into init method calls
+MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
+    wxFrame(parent, id, title, pos, size, style) 
+{
+  // setup window manager
   aui_manager.SetManagedWindow(this);
-
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left());
   aui_manager.AddPane(CreateTextCtrl(wxT("This pane will prompt the user before hiding.")), wxAuiPaneInfo().Centre());
   aui_manager.AddPane(CreateTextCtrl(wxT("blah")), wxAuiPaneInfo().Bottom());
+  
+  // set menu and status bars
+  SetMenuBar(CreateMenuBar());
+  CreateStatusBar();
+  GetStatusBar()->SetStatusText(_("Ready"));
 
+  // set windows sizes
+  SetMinSize(wxSize(400, 300));
+  
+  // set tool bar
+  aui_manager.AddPane(CreateToolBar(), wxAuiPaneInfo().
+    Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
+    ToolbarPane().Top().Row(1).Position(1));
+
+  // update
+  aui_manager.Update();
+}
+
+MyFrame::~MyFrame() 
+{
+  aui_manager.UnInit();
+}
+
+void MyFrame::DoUpdate() 
+{
+  aui_manager.Update();
+}
+
+wxMenuBar* MyFrame::CreateMenuBar()
+{
   wxMenuBar* menu_bar = new wxMenuBar;
   menu_bar->Append(new wxMenu, wxT("&File"));
   menu_bar->Append(new wxMenu, wxT("&View"));
@@ -30,50 +61,38 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   menu_bar->Append(new wxMenu, wxT("&Notebook"));
   menu_bar->Append(new wxMenu, wxT("&Help"));
 
-  SetMenuBar(menu_bar);
-  CreateStatusBar();
-  GetStatusBar()->SetStatusText(_("Ready"));
+  return menu_bar;
+}
 
-  SetMinSize(wxSize(400, 300));
-  
+wxAuiToolBar* MyFrame::CreateToolBar()
+{
   wxAuiToolBarItemArray prepend_items;
   wxAuiToolBarItemArray append_items;
-  wxAuiToolBar* tb3 = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+  wxAuiToolBar* toolbar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
     wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_OVERFLOW);
-  tb3->SetToolBitmapSize(wxSize(16, 16));
+  toolbar->SetToolBitmapSize(wxSize(16, 16));
   wxBitmap tb3_bmp1 = wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16));
-  tb3->AddTool(ID_SampleItem + 16, wxT("Check 1"), tb3_bmp1, wxT("Check 1"), wxITEM_CHECK);
-  tb3->AddTool(ID_SampleItem + 17, wxT("Check 2"), tb3_bmp1, wxT("Check 2"), wxITEM_CHECK);
-  tb3->AddTool(ID_SampleItem + 18, wxT("Check 3"), tb3_bmp1, wxT("Check 3"), wxITEM_CHECK);
-  tb3->AddTool(ID_SampleItem + 19, wxT("Check 4"), tb3_bmp1, wxT("Check 4"), wxITEM_CHECK);
-  tb3->AddSeparator();
-  tb3->AddTool(ID_SampleItem + 20, wxT("Radio 1"), tb3_bmp1, wxT("Radio 1"), wxITEM_RADIO);
-  tb3->AddTool(ID_SampleItem + 21, wxT("Radio 2"), tb3_bmp1, wxT("Radio 2"), wxITEM_RADIO);
-  tb3->AddTool(ID_SampleItem + 22, wxT("Radio 3"), tb3_bmp1, wxT("Radio 3"), wxITEM_RADIO);
-  tb3->AddSeparator();
-  tb3->AddTool(ID_SampleItem + 23, wxT("Radio 1 (Group 2)"), tb3_bmp1, wxT("Radio 1 (Group 2)"), wxITEM_RADIO);
-  tb3->AddTool(ID_SampleItem + 24, wxT("Radio 2 (Group 2)"), tb3_bmp1, wxT("Radio 2 (Group 2)"), wxITEM_RADIO);
-  tb3->AddTool(ID_SampleItem + 25, wxT("Radio 3 (Group 2)"), tb3_bmp1, wxT("Radio 3 (Group 2)"), wxITEM_RADIO);
-  tb3->SetCustomOverflowItems(prepend_items, append_items);
-  tb3->Realize();
+  toolbar->AddTool(ID_SampleItem + 16, wxT("Check 1"), tb3_bmp1, wxT("Check 1"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 17, wxT("Check 2"), tb3_bmp1, wxT("Check 2"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 18, wxT("Check 3"), tb3_bmp1, wxT("Check 3"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 19, wxT("Check 4"), tb3_bmp1, wxT("Check 4"), wxITEM_CHECK);
+  toolbar->AddSeparator();
+  toolbar->AddTool(ID_SampleItem + 20, wxT("Radio 1"), tb3_bmp1, wxT("Radio 1"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 21, wxT("Radio 2"), tb3_bmp1, wxT("Radio 2"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 22, wxT("Radio 3"), tb3_bmp1, wxT("Radio 3"), wxITEM_RADIO);
+  toolbar->AddSeparator();
+  toolbar->AddTool(ID_SampleItem + 23, wxT("Radio 1 (Group 2)"), tb3_bmp1, wxT("Radio 1 (Group 2)"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 24, wxT("Radio 2 (Group 2)"), tb3_bmp1, wxT("Radio 2 (Group 2)"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 25, wxT("Radio 3 (Group 2)"), tb3_bmp1, wxT("Radio 3 (Group 2)"), wxITEM_RADIO);
+  toolbar->SetCustomOverflowItems(prepend_items, append_items);
+  toolbar->Realize();
 
-  aui_manager.AddPane(tb3, wxAuiPaneInfo().
-  Name(wxT("tb3")).Caption(wxT("Toolbar 3")).
-  ToolbarPane().Top().Row(1).Position(1));
-
-  aui_manager.Update();
-}
-
-MyFrame::~MyFrame() {
-  aui_manager.UnInit();
-}
-
-void MyFrame::DoUpdate() {
-  aui_manager.Update();
+  return toolbar;
 }
 
 // Demo tree
-wxTreeCtrl* MyFrame::CreateTreeCtrl() {
+wxTreeCtrl* MyFrame::CreateTreeCtrl() 
+{
   wxTreeCtrl* tree = new wxTreeCtrl(this, wxID_ANY,
     wxPoint(0, 0), wxSize(160, 250),
     wxTR_DEFAULT_STYLE | wxNO_BORDER);

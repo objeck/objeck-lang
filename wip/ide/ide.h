@@ -28,8 +28,8 @@ class MyFrame : public wxFrame {
 
   void DoUpdate();
   
-  wxMenuBar* CreateMenu();
-  wxAuiToolBar* CreateToolbar();
+  wxMenuBar* CreateMenuBar();
+  wxAuiToolBar* CreateToolBar();
   wxTreeCtrl* CreateTreeCtrl();
   wxTextCtrl* CreateTextCtrl(const wxString& ctrl_text);
   
