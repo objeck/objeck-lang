@@ -21,7 +21,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   // setup window manager
   aui_manager.SetManagedWindow(this);
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left());
-  aui_manager.AddPane(CreateTextCtrl(wxT("This pane will prompt the user before hiding.")), wxAuiPaneInfo().Centre());
+  aui_manager.AddPane(CreateNotebook(), wxAuiPaneInfo().Centre());
   aui_manager.AddPane(CreateTextCtrl(wxT("blah")), wxAuiPaneInfo().Bottom());
   
   // set menu and status bars
@@ -129,6 +129,81 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
   tree->Expand(root);
 
   return tree;
+}
+
+wxAuiNotebook* MyFrame::CreateNotebook()
+{
+  // create the notebook off-window to avoid flicker
+  wxSize client_size = GetClientSize();
+
+  wxAuiNotebook* ctrl = new wxAuiNotebook(this, wxID_ANY,
+    wxPoint(client_size.x, client_size.y),
+    wxSize(430, 200),
+    wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER);
+  ctrl->Freeze();
+
+  wxBitmap page_bmp = wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16));
+
+  ctrl->AddPage(CreateHTMLCtrl(ctrl), wxT("Welcome to wxAUI"), false, page_bmp);
+  ctrl->SetPageToolTip(0, "Welcome to wxAUI (this is a page tooltip)");
+
+  wxPanel *panel = new wxPanel(ctrl, wxID_ANY);
+  wxFlexGridSizer *flex = new wxFlexGridSizer(4, 2, 0, 0);
+  flex->AddGrowableRow(0);
+  flex->AddGrowableRow(3);
+  flex->AddGrowableCol(1);
+  flex->Add(5, 5);   flex->Add(5, 5);
+  flex->Add(new wxStaticText(panel, -1, wxT("wxTextCtrl:")), 0, wxALL | wxALIGN_CENTRE, 5);
+  flex->Add(new wxTextCtrl(panel, -1, wxT(""), wxDefaultPosition, wxSize(100, -1)),
+    1, wxALL | wxALIGN_CENTRE, 5);
+  flex->Add(new wxStaticText(panel, -1, wxT("wxSpinCtrl:")), 0, wxALL | wxALIGN_CENTRE, 5);
+  flex->Add(new wxSpinCtrl(panel, -1, wxT("5"), wxDefaultPosition, wxSize(100, -1),
+    wxSP_ARROW_KEYS, 5, 50, 5), 0, wxALL | wxALIGN_CENTRE, 5);
+  flex->Add(5, 5);   flex->Add(5, 5);
+  panel->SetSizer(flex);
+  ctrl->AddPage(panel, wxT("wxPanel"), false, page_bmp);
+
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 1"), false, page_bmp);
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 2"));
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 3"));
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 4"));
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 5"));
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 6"));
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 7 (longer title)"));
+  ctrl->SetPageToolTip(ctrl->GetPageCount() - 1,
+    "wxTextCtrl 7: and the tooltip message can be even longer!");
+
+  ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
+    wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 8"));
+
+  ctrl->Thaw();
+  return ctrl;
+}
+
+wxHtmlWindow* MyFrame::CreateHTMLCtrl(wxWindow* parent)
+{
+  if (!parent)
+    parent = this;
+
+  wxHtmlWindow* ctrl = new wxHtmlWindow(parent, wxID_ANY,
+    wxDefaultPosition,
+    wxSize(400, 300));
+  ctrl->SetPage(GetIntroText());
+  return ctrl;
 }
 
 // Demo text
