@@ -1,8 +1,8 @@
-DEPS=/Users/randy/Documents/Code/wxWidgets-3.0.0/bk-deps g++ -mmacosx-version-min=10.5 
-CC=g++ -mmacosx-version-min=10.5 
+CC=g++ -mmacosx-version-min=10.5
+WX_ROOT=../../../wxWidgets-3.0.0
 ARGS=-D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -O2 -fno-strict-aliasing -fno-common
-INCS=-I. -DWXUSINGDLL -I../../../wxWidgets-3.0.0/samples -I../../../wxWidgets-3.0.0/lib/wx/include/osx_cocoa-unicode-3.0 -I../../../wxWidgets-3.0.0/include -DWX_PRECOMP
-LIBS=-L../../../wxWidgets-3.0.0/lib   -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL   -lwx_osx_cocoau_aui-3.0  -lwx_osx_cocoau_html-3.0  -lwx_osx_cocoau_adv-3.0  -lwx_osx_cocoau_core-3.0  -lwx_baseu_xml-3.0 -lexpat -lwx_baseu-3.0    -lwxtiff-3.0 -lwxjpeg-3.0 -lwxpng-3.0  -framework WebKit  -lwxregexu-3.0  -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL  -lz -lpthread -liconv -llzma  -lz -lpthread -liconv -llzma
+INCS=-I. -DWXUSINGDLL -I$(WX_ROOT)/samples -I$(WX_ROOT)/lib/wx/include/osx_cocoa-unicode-3.0 -I$(WX_ROOT)/include -DWX_PRECOMP
+LIBS=-L$(WX_ROOT)/lib   -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL   -lwx_osx_cocoau_aui-3.0  -lwx_osx_cocoau_html-3.0  -lwx_osx_cocoau_adv-3.0  -lwx_osx_cocoau_core-3.0  -lwx_baseu_xml-3.0 -lexpat -lwx_baseu-3.0    -lwxtiff-3.0 -lwxjpeg-3.0 -lwxpng-3.0  -framework WebKit  -lwxregexu-3.0  -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL  -lz -lpthread -liconv -llzma  -lz -lpthread -liconv -llzma
 SRC=ide.o
 EXE=ide_demo
 
@@ -15,10 +15,10 @@ $(EXE): $(SRC)
 	sed -e "s/IDENTIFIER/`echo . | sed -e 's,\.\./,,g' | sed -e 's,/,.,g'`/" \
 		-e "s/EXECUTABLE/$(EXE)/" \
 		-e "s/VERSION/3.0.0/" \
-		../../../wxWidgets-3.0.0/src/osx/carbon/Info.plist.in >$(EXE).app/Contents/Info.plist
+		$(WX_ROOT)/src/osx/carbon/Info.plist.in >$(EXE).app/Contents/Info.plist
 	/bin/echo "APPL????" >$(EXE).app/Contents/PkgInfo
 	ln -f $(EXE) $(EXE).app/Contents/MacOS/$(EXE)
-	cp -f ../../../wxWidgets-3.0.0/src/osx/carbon/wxmac.icns $(EXE).app/Contents/Resources/wxmac.icns
+	cp -f $(WX_ROOT)/src/osx/carbon/wxmac.icns $(EXE).app/Contents/Resources/wxmac.icns
 
 %.o: %.cpp
 	$(CC) -c $< $(INCS) $(ARGS)
