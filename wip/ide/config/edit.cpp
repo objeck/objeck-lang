@@ -158,6 +158,48 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetYCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
 
     // markers
+    // ---- Enable code folding
+    SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+    SetMarginWidth(MARGIN_FOLD, 15);
+    SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+    StyleSetBackground(MARGIN_FOLD, wxColor(200, 200, 200));
+    SetMarginSensitive(MARGIN_FOLD, true);
+
+    // Properties found from http://www.scintilla.org/SciTEDoc.html
+    SetProperty(wxT("fold"), wxT("1"));
+    SetProperty(wxT("fold.comment"), wxT("1"));
+    SetProperty(wxT("fold.compact"), wxT("1"));
+
+    
+     SetProperty(wxT("fold"), wxT("1"));
+        SetProperty(wxT("fold.comment"), wxT("1"));
+        SetProperty(wxT("fold.compact"), wxT("1"));
+        SetProperty(wxT("fold.preprocessor"), wxT("1"));
+        SetProperty(wxT("fold.html"), wxT("1"));
+        SetProperty(wxT("fold.html.preprocessor"), wxT("1"));
+
+        SetMarginType(margin_id_lineno, wxSTC_MARGIN_NUMBER);
+        SetMarginWidth(margin_id_lineno, 32);
+
+        MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("GREY"));
+        MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("GREY"));
+
+        SetMarginMask(margin_id_fold, wxSTC_MASK_FOLDERS);
+        SetMarginWidth(margin_id_fold, 32);
+        SetMarginSensitive(margin_id_fold, true);
+
+        SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED | wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
+
+        SetTabWidth(4);
+        SetUseTabs(false);
+        SetWrapMode(wxSTC_WRAP_WORD);
+        SetWrapVisualFlags(wxSTC_WRAPVISUALFLAG_END);
+ /*
     MarkerDefine (wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_DOTDOTDOT, wxT("BLACK"), wxT("BLACK"));
     MarkerDefine (wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_ARROWDOWN, wxT("BLACK"), wxT("BLACK"));
     MarkerDefine (wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
@@ -165,7 +207,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     MarkerDefine (wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN, wxT("BLACK"), wxT("WHITE"));
     MarkerDefine (wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
     MarkerDefine (wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_EMPTY,     wxT("BLACK"), wxT("BLACK"));
-
+*/
     // annotations
     AnnotationSetVisible(wxSTC_ANNOTATION_BOXED);
 
