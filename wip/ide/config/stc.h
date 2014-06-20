@@ -2182,16 +2182,17 @@ class WXDLLIMPEXP_FWD_CORE wxScrollBar;
 #define wxSTC_VISUALPROLOG_STRING_VERBATIM_EOL 22
 
 /// Lexical states for SCLEX_OBJECK
-#define wxSTC_OBJECK_DEFAULT = 0
-#define wxSTC_OBJECK_WORD0 = 1
-#define wxSTC_OBJECK_WORD1 = 2
-#define wxSTC_OBJECK_COMMENT_BLOCK = 3
-#define wxSTC_OBJECK_COMMENT_LINE = 4
-#define wxSTC_OBJECK_IDENTIFIER = 5
-#define wxSTC_OBJECK_NUMBER = 6
-#define wxSTC_OBJECK_OPERATOR = 7
-#define wxSTC_OBJECK_CHARACTER = 8
-#define wxSTC_OBJECK_STRING = 9
+#define wxSTC_OBJECK_DEFAULT 0
+#define wxSTC_OBJECK_WORD0 1
+#define wxSTC_OBJECK_WORD1 2
+#define wxSTC_OBJECK_COMMENT_BLOCK 3
+#define wxSTC_OBJECK_COMMENT_LINE 4
+#define wxSTC_OBJECK_IDENTIFIER 5
+#define wxSTC_OBJECK_NUMBER 6
+#define wxSTC_OBJECK_OPERATOR 7
+#define wxSTC_OBJECK_CHARACTER 8
+#define wxSTC_OBJECK_STRING 9
+#define wxSTC_OBJECK_STRINGEOL 10
 
 //}}}
 //----------------------------------------------------------------------
