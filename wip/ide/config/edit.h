@@ -42,6 +42,13 @@ class Edit: public wxStyledTextCtrl {
     friend class EditProperties;
     friend class EditPrint;
 
+    enum
+    {
+      margin_id_lineno,
+      margin_id_fold,
+      MARGIN_FOLD
+    };
+
 public:
     //! constructor
     Edit (wxWindow *parent, wxWindowID id = wxID_ANY,
