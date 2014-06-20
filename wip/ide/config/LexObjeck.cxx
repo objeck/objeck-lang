@@ -45,7 +45,7 @@ struct OptionsObjeck {
     }
 };
 
-static const char *const visualPrologWordLists[] = {
+static const char *const objeckWordLists[] = {
     "Major keywords (class, predicates, ...)",
     "Minor keywords (if, then, try, ...)",
     "Directive keywords without the '#' (include, requires, ...)",
@@ -55,7 +55,7 @@ static const char *const visualPrologWordLists[] = {
 
 struct OptionSetObjeck : public OptionSet<OptionsObjeck> {
     OptionSetObjeck() {
-        DefineWordListSets(visualPrologWordLists);
+        DefineWordListSets(objeckWordLists);
     }
 };
 
@@ -66,30 +66,39 @@ class LexerObjeck : public ILexer {
     WordList docKeywords;
     OptionsObjeck options;
     OptionSetObjeck osObjeck;
+
 public:
     LexerObjeck() {
     }
+
     virtual ~LexerObjeck() {
     }
+
     void SCI_METHOD Release() {
         delete this;
     }
+
     int SCI_METHOD Version() const {
         return lvOriginal;
     }
+
     const char * SCI_METHOD PropertyNames() {
         return osObjeck.PropertyNames();
     }
+
     int SCI_METHOD PropertyType(const char *name) {
         return osObjeck.PropertyType(name);
     }
+
     const char * SCI_METHOD DescribeProperty(const char *name) {
         return osObjeck.DescribeProperty(name);
     }
+
     int SCI_METHOD PropertySet(const char *key, const char *val);
     const char * SCI_METHOD DescribeWordListSets() {
         return osObjeck.DescribeWordListSets();
     }
+
     int SCI_METHOD WordListSet(int n, const char *wl);
     void SCI_METHOD Lex(unsigned int startPos, int length, int initStyle, IDocument *pAccess);
     void SCI_METHOD Fold(unsigned int startPos, int length, int initStyle, IDocument *pAccess);
@@ -202,6 +211,7 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
 
     StyleContext sc(startPos, length, initStyle, styler, 0x7f);
 
+/*
     // Truncate ppDefineHistory before current line
 
     for (; sc.More(); sc.Forward()) {
@@ -404,6 +414,8 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
         }
 
     }
+*/
+
     sc.Complete();
     styler.Flush();
 }
@@ -467,4 +479,4 @@ void SCI_METHOD LexerObjeck::Fold(unsigned int startPos, int length, int initSty
     }
 }
 
-LexerModule lmObjeck(SCLEX_OBJECK, LexerObjeck::LexerFactoryObjeck, "objeck", visualPrologWordLists);
+LexerModule lmObjeck(SCLEX_OBJECK, LexerObjeck::LexerFactoryObjeck, "objeck", objeckWordLists);
