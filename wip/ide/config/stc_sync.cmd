@@ -9,6 +9,11 @@ IF %1 NEQ goto COMMIT
 	copy stc.h %WXWIDGETS_ROOT%\include\wx\stc\
 	copy Catalogue.cxx SciLexer.h %WXWIDGETS_ROOT%\src\stc\scintilla\src\
 	copy LexObjeck.cxx %WXWIDGETS_ROOT%\src\stc\scintilla\lexers
+	copy edit.h %WXWIDGETS_ROOT%\samples\stc\
+	copy edit.cpp %WXWIDGETS_ROOT%\samples\stc\
+	copy prefs.h %WXWIDGETS_ROOT%\samples\stc\
+	copy prefs.cpp %WXWIDGETS_ROOT\samples\stc\
+	
 	goto END
 	
 :COMMIT	
@@ -17,6 +22,11 @@ IF %1 NEQ goto COMMIT
 	copy %WXWIDGETS_ROOT%\src\stc\scintilla\include\SciLexer.h %CONFIG_DIR%
 	copy %WXWIDGETS_ROOT%\include\wx\stc\stc.h %CONFIG_DIR%
 	copy %WXWIDGETS_ROOT%\src\stc\scintilla\src\Catalogue.cxx %CONFIG_DIR%
-	copy %WXWIDGETS_ROOT%\src\stc\scintilla\lexers\LexObjeck.cxx %CONFIG_DIR%
+	copy %WXWIDGETS_ROOT%\src\stc\scintilla\lexers\LexObjeck.cxx %CONFIG_DIR%	
+	copy %WXWIDGETS_ROOT%\samples\stc\edit.h %CONFIG_DIR%
+	copy %WXWIDGETS_ROOT%\samples\stc\edit.cpp %CONFIG_DIR%
+	copy %WXWIDGETS_ROOT%\samples\stc\prefs.h %CONFIG_DIR%
+	copy %WXWIDGETS_ROOT%\samples\stc\prefs.cpp %CONFIG_DIR%
+	
 
 :END

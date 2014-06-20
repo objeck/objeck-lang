@@ -1,9 +1,9 @@
 // Scintilla source code edit control
 /** @file LexObjeck.cxx
-** Lexer for Visual Prolog.
+** Lexer for Objeck.
 **/
-// Author Thomas Linder Puls, Prolog Development Denter A/S, http://www.visual-prolog.com
-// Based on Lexer for C++, C, Java, and JavaScript.
+// Author Randy Hollines, Objeck Programming Langauge, http://www.objeck.org
+// Based on Lexer for C++, C, Java, Prolog, ASM, and JavaScript.
 // Copyright 1998-2005 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
@@ -39,17 +39,47 @@
 using namespace Scintilla;
 #endif
 
+static inline bool IsAWordChar(const int ch) {
+  return (ch < 0x80) && (isalnum(ch) || ch == '_');
+}
+
+static inline bool IsAWordStart(const int ch) {
+  return (ch < 0x80) && (isalnum(ch) || ch == '_' || ch == '@');
+}
+
+static inline bool IsObjeckOperator(const int ch) {
+  if ((ch < 0x80) && (isalnum(ch)))
+    return false;
+  // '.' left out as it is used to make up numbers
+  if (ch == '*' || ch == '/' || ch == '-' || ch == '+' ||
+    ch == '(' || ch == ')' || ch == '{' || ch == '}' || 
+    ch == '=' || ch == '[' || ch == ']' || ch == '<' || 
+    ch == '&' || ch == '>' || ch == ',' || ch == '|' || 
+    ch == '%' || ch == ':')
+    return true;
+  return false;
+}
+
+static inline int LowerCase(int c) {
+  if (c >= 'A' && c <= 'Z') {
+    return 'a' + c - 'A';
+  }
+
+  return c;
+}
+
 // Options used for LexerObjeck
 struct OptionsObjeck {
     OptionsObjeck() {
     }
 };
 
+// TODO: fix up
 static const char *const objeckWordLists[] = {
-    "Major keywords (class, predicates, ...)",
-    "Minor keywords (if, then, try, ...)",
-    "Directive keywords without the '#' (include, requires, ...)",
-    "Documentation keywords without the '@' (short, detail, ...)",
+    "aaa",
+    "bbb",
+    "ccc",
+    "ddd",
     0,
 };
 
@@ -60,10 +90,8 @@ struct OptionSetObjeck : public OptionSet<OptionsObjeck> {
 };
 
 class LexerObjeck : public ILexer {
-    WordList majorKeywords;
-    WordList minorKeywords;
-    WordList directiveKeywords;
-    WordList docKeywords;
+    WordList words0;
+    WordList words1;
     OptionsObjeck options;
     OptionSetObjeck osObjeck;
 
@@ -123,17 +151,11 @@ int SCI_METHOD LexerObjeck::WordListSet(int n, const char *wl) {
     WordList *wordListN = 0;
     switch (n) {
     case 0:
-        wordListN = &majorKeywords;
+        wordListN = &words0;
         break;
     case 1:
-        wordListN = &minorKeywords;
-        break;
-    case 2:
-        wordListN = &directiveKeywords;
-        break;
-    case 3:
-        wordListN = &docKeywords;
-        break;
+        wordListN = &words1;
+        break;    
     }
     int firstModification = -1;
     if (wordListN) {
@@ -147,277 +169,148 @@ int SCI_METHOD LexerObjeck::WordListSet(int n, const char *wl) {
     return firstModification;
 }
 
-// Functor used to truncate history
-struct After {
-    int line;
-    After(int line_) : line(line_) {}
-};
-
-// Look ahead to see which colour "end" should have (takes colour after the following keyword)
-static void endLookAhead(char s[], LexAccessor &styler, int start, CharacterSet &setIdentifier) {
-    char ch = styler.SafeGetCharAt(start, '\n');
-    while (' ' == ch) {
-        start++;
-        ch = styler.SafeGetCharAt(start, '\n');
-    }
-    int i = 0;
-    while (i < 100 && setIdentifier.Contains(ch)){
-        s[i] = ch;
-        i++;
-        ch = styler.SafeGetCharAt(start + i, '\n');
-    }
-    s[i] = '\0';
-}
-
-static void forwardEscapeLiteral(StyleContext &sc, int OwnChar, int EscapeState) {
-    sc.Forward();
-    if (sc.ch == OwnChar || sc.ch == '\\' || sc.ch == 'n' || sc.ch == 'l' || sc.ch == 'r' || sc.ch == 't') {
-        sc.ChangeState(EscapeState);
-    } else if (sc.ch == 'u') {
-        if (IsADigit(sc.chNext, 16)) {
-            sc.Forward();
-            if (IsADigit(sc.chNext, 16)) {
-                sc.Forward();
-                if (IsADigit(sc.chNext, 16)) {
-                    sc.Forward();
-                    if (IsADigit(sc.chNext, 16)) {
-                        sc.Forward();
-                        sc.ChangeState(EscapeState);
-                    }
-                }
-            }
-        }
-    }
-}
-
 void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyle, IDocument *pAccess) {
-    LexAccessor styler(pAccess);
+  LexAccessor styler(pAccess);
 
-    CharacterSet setDoxygen(CharacterSet::setAlpha, "$@\\&<>#{}[]");
+  // Do not leak onto next line
+  if (initStyle == SCE_OBJECK_STRINGEOL) {
+    initStyle = SCE_OBJECK_DEFAULT;
+  }
 
-    CharacterSet setLowerStart(CharacterSet::setLower);
-    CharacterSet setVariableStart(CharacterSet::setUpper);
-    CharacterSet setIdentifier(CharacterSet::setAlphaNum, "_", 0x80, true);
+  int nestLevel = 0;
+  int currentLine = styler.GetLine(startPos);
+  if (currentLine >= 1) {
+    nestLevel = styler.GetLineState(currentLine - 1);
+  }
 
-    int styleBeforeDocKeyword = SCE_OBJECK_DEFAULT;
+  StyleContext sc(startPos, length, initStyle, styler);
 
-    int currentLine = styler.GetLine(startPos);
+  for (; sc.More(); sc.Forward())
+  {
 
-    int nestLevel = 0;
-    if (currentLine >= 1)
-    {
-        nestLevel = styler.GetLineState(currentLine - 1);
+    // Prevent SCE_OBJECK_STRINGEOL from leaking back to previous line
+    if (sc.atLineStart && (sc.state == SCE_OBJECK_STRING)) {
+      sc.SetState(SCE_OBJECK_STRING);
+    }
+    else if (sc.atLineStart && (sc.state == SCE_OBJECK_CHARACTER)) {
+      sc.SetState(SCE_OBJECK_CHARACTER);
     }
 
-    StyleContext sc(startPos, length, initStyle, styler, 0x7f);
-
-/*
-    // Truncate ppDefineHistory before current line
-
-    for (; sc.More(); sc.Forward()) {
-
-        if (sc.atLineEnd) {
-            // Update the line state, so it can be seen by next line
-            styler.SetLineState(currentLine, nestLevel);
-            currentLine++;
+    // Handle line continuation generically.
+    if (sc.ch == '\\') {
+      if (sc.chNext == '\n' || sc.chNext == '\r') {
+        sc.Forward();
+        if (sc.ch == '\r' && sc.chNext == '\n') {
+          sc.Forward();
         }
-
-        if (sc.atLineStart) {
-            if ((sc.state == SCE_OBJECK_STRING) || (sc.state == SCE_OBJECK_CHARACTER)) {
-                // Prevent SCE_OBJECK_STRING_EOL from leaking back to previous line which
-                // ends with a line continuation by locking in the state upto this position.
-                sc.SetState(sc.state);
-            }
-        }
-
-        const bool atLineEndBeforeSwitch = sc.atLineEnd;
-
-        // Determine if the current state should terminate.
-        switch (sc.state) {
-        case SCE_OBJECK_OPERATOR:
-            sc.SetState(SCE_OBJECK_DEFAULT);
-            break;
-        case SCE_OBJECK_NUMBER:
-            // We accept almost anything because of hex. and number suffixes
-            if (!(setIdentifier.Contains(sc.ch) || (sc.ch == '.') || ((sc.ch == '+' || sc.ch == '-') && (sc.chPrev == 'e' || sc.chPrev == 'E')))) {
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_IDENTIFIER:
-            if (!setIdentifier.Contains(sc.ch)) {
-                char s[1000];
-                sc.GetCurrent(s, sizeof(s));
-                if (0 == strcmp(s, "end")) {
-                    endLookAhead(s, styler, sc.currentPos, setIdentifier);
-                }
-                if (majorKeywords.InList(s)) {
-                    sc.ChangeState(SCE_OBJECK_KEY_MAJOR);
-                } else if (minorKeywords.InList(s)) {
-                    sc.ChangeState(SCE_OBJECK_KEY_MINOR);
-                }
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_VARIABLE:
-        case SCE_OBJECK_ANONYMOUS:
-            if (!setIdentifier.Contains(sc.ch)) {
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_KEY_DIRECTIVE:
-            if (!setLowerStart.Contains(sc.ch)) {
-                char s[1000];
-                sc.GetCurrent(s, sizeof(s));
-                if (!directiveKeywords.InList(s+1)) {
-                    sc.ChangeState(SCE_OBJECK_IDENTIFIER);
-                }
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_COMMENT_BLOCK:
-            if (sc.Match('*', '/')) {
-                sc.Forward();
-                nestLevel--;
-                int nextState = (nestLevel == 0) ? SCE_OBJECK_DEFAULT : SCE_OBJECK_COMMENT_BLOCK;
-                sc.ForwardSetState(nextState);
-            } else if (sc.Match('/', '*')) {
-                sc.Forward();
-                nestLevel++;
-            } else if (sc.ch == '%') {
-                sc.SetState(SCE_OBJECK_COMMENT_LINE);
-            } else if (sc.ch == '@') {
-                styleBeforeDocKeyword = sc.state;
-                sc.SetState(SCE_OBJECK_COMMENT_KEY_ERROR);
-            }
-            break;
-        case SCE_OBJECK_COMMENT_LINE:
-            if (sc.atLineEnd) {
-                int nextState = (nestLevel == 0) ? SCE_OBJECK_DEFAULT : SCE_OBJECK_COMMENT_BLOCK;
-                sc.SetState(nextState);
-            } else if (sc.ch == '@') {
-                styleBeforeDocKeyword = sc.state;
-                sc.SetState(SCE_OBJECK_COMMENT_KEY_ERROR);
-            }
-            break;
-        case SCE_OBJECK_COMMENT_KEY_ERROR:
-            if (!setDoxygen.Contains(sc.ch)) {
-                char s[1000];
-                sc.GetCurrent(s, sizeof(s));
-                if (docKeywords.InList(s+1)) {
-                    sc.ChangeState(SCE_OBJECK_COMMENT_KEY);
-                }
-                sc.SetState(styleBeforeDocKeyword);
-            }
-            if (SCE_OBJECK_COMMENT_LINE == styleBeforeDocKeyword && sc.atLineStart) {
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            } else if (SCE_OBJECK_COMMENT_BLOCK == styleBeforeDocKeyword && sc.atLineStart) {
-                sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
-            }
-            break;
-        case SCE_OBJECK_STRING_ESCAPE:
-        case SCE_OBJECK_STRING_ESCAPE_ERROR:
-            // return to SCE_OBJECK_STRING and treat as such (fall-through)
-            sc.SetState(SCE_OBJECK_STRING);
-        case SCE_OBJECK_STRING:
-            if (sc.atLineEnd) {
-                sc.SetState(SCE_OBJECK_STRING_EOL_OPEN);
-            } else if (sc.ch == '"') {
-                sc.ForwardSetState(SCE_OBJECK_DEFAULT);
-            } else if (sc.ch == '\\') {
-                sc.SetState(SCE_OBJECK_STRING_ESCAPE_ERROR);
-                forwardEscapeLiteral(sc, '"', SCE_OBJECK_STRING_ESCAPE);
-            }
-            break;
-        case SCE_OBJECK_CHARACTER_TOO_MANY:
-            if (sc.atLineStart) {
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            } else if (sc.ch == '\'') {
-                sc.SetState(SCE_OBJECK_CHARACTER);
-                sc.ForwardSetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_CHARACTER:
-            if (sc.atLineEnd) {
-                sc.SetState(SCE_OBJECK_STRING_EOL_OPEN);  // reuse STRING_EOL_OPEN for this
-            } else if (sc.ch == '\'') {
-                sc.SetState(SCE_OBJECK_CHARACTER_ESCAPE_ERROR);
-                sc.ForwardSetState(SCE_OBJECK_DEFAULT);
-            } else {
-                if (sc.ch == '\\') {
-                    sc.SetState(SCE_OBJECK_CHARACTER_ESCAPE_ERROR);
-                    forwardEscapeLiteral(sc, '\'', SCE_OBJECK_CHARACTER);
-                } 
-                sc.ForwardSetState(SCE_OBJECK_CHARACTER);
-                if (sc.ch == '\'') {
-                    sc.ForwardSetState(SCE_OBJECK_DEFAULT);
-                } else {
-                    sc.SetState(SCE_OBJECK_CHARACTER_TOO_MANY);
-                }
-            }
-            break;
-        case SCE_OBJECK_STRING_EOL_OPEN:
-            if (sc.atLineStart) {
-                sc.SetState(SCE_OBJECK_DEFAULT);
-            }
-            break;
-        case SCE_OBJECK_STRING_VERBATIM_SPECIAL:
-        case SCE_OBJECK_STRING_VERBATIM_EOL:
-            // return to SCE_OBJECK_STRING_VERBATIM and treat as such (fall-through)
-            sc.SetState(SCE_OBJECK_STRING_VERBATIM);
-        case SCE_OBJECK_STRING_VERBATIM:
-            if (sc.atLineEnd) {
-                sc.SetState(SCE_OBJECK_STRING_VERBATIM_EOL);
-            } else if (sc.ch == '\"') {
-                if (sc.chNext == '\"') {
-                    sc.SetState(SCE_OBJECK_STRING_VERBATIM_SPECIAL);
-                    sc.Forward();
-                } else {
-                    sc.ForwardSetState(SCE_OBJECK_DEFAULT);
-                }
-            }
-            break;
-        }
-
-        if (sc.atLineEnd && !atLineEndBeforeSwitch) {
-            // State exit processing consumed characters up to end of line.
-            currentLine++;
-        }
-
-        // Determine if a new state should be entered.
-        if (sc.state == SCE_OBJECK_DEFAULT) {
-            if (sc.Match('@', '\"')) {
-                sc.SetState(SCE_OBJECK_STRING_VERBATIM);
-                sc.Forward();
-            } else if (IsADigit(sc.ch) || (sc.ch == '.' && IsADigit(sc.chNext))) {
-                sc.SetState(SCE_OBJECK_NUMBER);
-            } else if (setLowerStart.Contains(sc.ch)) {
-                sc.SetState(SCE_OBJECK_IDENTIFIER);
-            } else if (setVariableStart.Contains(sc.ch)) {
-                sc.SetState(SCE_OBJECK_VARIABLE);
-            } else if (sc.ch == '_') {
-                sc.SetState(SCE_OBJECK_ANONYMOUS);
-            } else if (sc.Match('/', '*')) {
-                sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
-                nestLevel = 1;
-                sc.Forward();	// Eat the * so it isn't used for the end of the comment
-            } else if (sc.ch == '%') {
-                sc.SetState(SCE_OBJECK_COMMENT_LINE);
-            } else if (sc.ch == '\"') {
-                sc.SetState(SCE_OBJECK_STRING);
-            } else if (sc.ch == '\'') {
-                sc.SetState(SCE_OBJECK_CHARACTER);
-            } else if (sc.ch == '#') {
-                sc.SetState(SCE_OBJECK_KEY_DIRECTIVE);
-            } else if (isoperator(static_cast<char>(sc.ch)) || sc.ch == '\\') {
-                sc.SetState(SCE_OBJECK_OPERATOR);
-            }
-        }
-
+        continue;
+      }
     }
-*/
 
-    sc.Complete();
-    styler.Flush();
+    // Determine if the current state should terminate.
+    if (sc.state == SCE_OBJECK_OPERATOR) {
+      if (!IsObjeckOperator(sc.ch)) {
+        sc.SetState(SCE_OBJECK_DEFAULT);
+      }
+    }
+    else if (sc.state == SCE_OBJECK_NUMBER) {
+      if (!IsAWordChar(sc.ch)) {
+        sc.SetState(SCE_OBJECK_DEFAULT);
+      }
+    }
+    else if (sc.state == SCE_OBJECK_IDENTIFIER) {
+      if (!IsAWordChar(sc.ch)) {
+        char s[100];
+        sc.GetCurrent(s, sizeof(s));
+        bool IsDirective = false;
+
+        if (words0.InList(s)) {
+          sc.ChangeState(SCE_OBJECK_WORD0);
+        }
+        else if (words1.InList(s)) {
+          sc.ChangeState(SCE_OBJECK_WORD1);
+        }
+        sc.SetState(SCE_OBJECK_DEFAULT);        
+      }
+    }
+    else if (sc.state == SCE_OBJECK_COMMENT_LINE) {
+      if (sc.atLineEnd) {
+        sc.SetState(SCE_OBJECK_DEFAULT);
+      }
+    }
+    else if (sc.state == SCE_OBJECK_STRING) {
+      if (sc.ch == '\\') {
+        if (sc.chNext == '\"' || sc.chNext == '\'' || sc.chNext == '\\') {
+          sc.Forward();
+        }
+      }
+      else if (sc.ch == '\"') {
+        sc.ForwardSetState(SCE_OBJECK_DEFAULT);
+      }
+      else if (sc.atLineEnd) {
+        sc.ChangeState(SCE_OBJECK_STRINGEOL);
+        sc.ForwardSetState(SCE_OBJECK_DEFAULT);
+      }
+    }
+    else if (sc.state == SCE_OBJECK_CHARACTER) {
+      if (sc.ch == '\\') {
+        if (sc.chNext == '\"' || sc.chNext == '\'' || sc.chNext == '\\') {
+          sc.Forward();
+        }
+      }
+      else if (sc.ch == '\'') {
+        sc.ForwardSetState(SCE_OBJECK_DEFAULT);
+      }
+      else if (sc.atLineEnd) {
+        sc.ChangeState(SCE_OBJECK_STRINGEOL);
+        sc.ForwardSetState(SCE_OBJECK_DEFAULT);
+      }
+    }
+    else if (sc.state == SCE_OBJECK_COMMENT_BLOCK) {
+      if (sc.Match('*', '/')) {
+        sc.Forward();
+        nestLevel--;
+        int nextState = (nestLevel == 0) ? SCE_OBJECK_DEFAULT : SCE_OBJECK_COMMENT_BLOCK;
+        sc.ForwardSetState(nextState);
+      }
+      else if (sc.Match('/', '*')) {
+        sc.Forward();
+        nestLevel++;
+      }
+      else if (sc.ch == '%') {
+        sc.SetState(SCE_OBJECK_COMMENT_LINE);
+      }
+    }
+
+    // Determine if a new state should be entered.
+    if (sc.state == SCE_OBJECK_DEFAULT) {
+      if (sc.ch == '#'){
+        sc.SetState(SCE_OBJECK_COMMENT_LINE);
+      }
+      else if (sc.Match('#', '~')) {
+        sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
+        nestLevel = 1;
+        sc.Forward();	// Eat the * so it isn't used for the end of the comment
+      }
+      else if (isascii(sc.ch) && (isdigit(sc.ch) || (sc.ch == '.' && isascii(sc.chNext) && isdigit(sc.chNext)))) {
+        sc.SetState(SCE_OBJECK_NUMBER);
+      }
+      else if (IsAWordStart(sc.ch)) {
+        sc.SetState(SCE_OBJECK_IDENTIFIER);
+      }
+      else if (sc.ch == '\"') {
+        sc.SetState(SCE_OBJECK_STRING);
+      }
+      else if (sc.ch == '\'') {
+        sc.SetState(SCE_OBJECK_CHARACTER);
+      }
+      else if (IsObjeckOperator(sc.ch)) {
+        sc.SetState(SCE_OBJECK_OPERATOR);
+      }
+    }
+
+  }
+  sc.Complete();
 }
 
 // Store both the current line's fold level and the next lines in the
