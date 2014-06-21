@@ -1,4 +1,18 @@
+//////////////////////////////////////////////////////////////////////////////
+// Purpose:     Objeck IDE Demo
+// Maintainer:  Modified by Randy Hollines
+// Maintainer:  Otto Wyss
+// Created:     2003-09-01
+// Modified By: Randy Hollines (c) 2014
+// Copyright:   (c) wxGuide
+// Licence:     wxWindows licence
+//////////////////////////////////////////////////////////////////////////////
+
 #include "ide.h"
+
+/////////////////////////
+// MyApp
+/////////////////////////
 
 bool MyApp::OnInit() 
 {
@@ -14,6 +28,20 @@ bool MyApp::OnInit()
 
 DECLARE_APP(MyApp)
 IMPLEMENT_APP(MyApp)
+
+/////////////////////////
+// MyFrame
+/////////////////////////
+
+BEGIN_EVENT_TABLE(MyFrame, wxFrame)
+  // common
+  EVT_CLOSE(MyFrame::OnClose)
+  // file
+  EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
+  EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
+  EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
+  EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
+END_EVENT_TABLE()
 
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
     wxFrame(parent, id, title, pos, size, style) 
@@ -51,10 +79,96 @@ void MyFrame::DoUpdate()
   aui_manager.Update();
 }
 
+// common event handlers
+void MyFrame::OnClose(wxCloseEvent &event) 
+{
+  /*
+  wxCommandEvent evt;
+  OnFileClose(evt);
+  if (m_edit && m_edit->Modified()) {
+    if (event.CanVeto()) event.Veto(true);
+    return;
+  }
+  Destroy();
+  */
+}
+
+// file event handlers
+void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event)) 
+{
+  /*
+  if (!m_edit) return;
+#if wxUSE_FILEDLG
+  wxString fname;
+  wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"),
+    wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR);
+  if (dlg.ShowModal() != wxID_OK) return;
+  fname = dlg.GetPath();
+  FileOpen(fname);
+#endif // wxUSE_FILEDLG
+  */
+}
+
+void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
+{
+  /*
+  if (!m_edit) return;
+  if (!m_edit->Modified()) {
+    wxMessageBox(_("There is nothing to save!"), _("Save file"),
+      wxOK | wxICON_EXCLAMATION);
+    return;
+  }
+  m_edit->SaveFile();
+  */
+}
+
+void MyFrame::OnFileSaveAs(wxCommandEvent &WXUNUSED(event)) 
+{
+  /*
+  if (!m_edit) return;
+#if wxUSE_FILEDLG
+  wxString filename = wxEmptyString;
+  wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+  if (dlg.ShowModal() != wxID_OK) return;
+  filename = dlg.GetPath();
+  m_edit->SaveFile(filename);
+#endif // wxUSE_FILEDLG
+  */
+}
+
+void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event)) 
+{
+  /*
+  if (!m_edit) return;
+  if (m_edit->Modified()) {
+    if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
+      wxYES_NO | wxICON_QUESTION) == wxYES) {
+      m_edit->SaveFile();
+      if (m_edit->Modified()) {
+        wxMessageBox(_("Text could not be saved!"), _("Close abort"),
+          wxOK | wxICON_EXCLAMATION);
+        return;
+      }
+    }
+  }
+  m_edit->SetFilename(wxEmptyString);
+  m_edit->ClearAll();
+  m_edit->SetSavePoint();
+  */
+}
+
 wxMenuBar* MyFrame::CreateMenuBar()
 {
+  // File menu
+  wxMenu *menuFile = new wxMenu;
+  menuFile->Append(wxID_OPEN, _("&Open ..\tCtrl+O"));
+  menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
+  menuFile->Append(wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
+  menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
+  menuFile->AppendSeparator();
+
   wxMenuBar* menu_bar = new wxMenuBar;
-  menu_bar->Append(new wxMenu, wxT("&File"));
+  menu_bar->Append(menuFile, wxT("&File"));
   menu_bar->Append(new wxMenu, wxT("&View"));
   menu_bar->Append(new wxMenu, wxT("&Perspectives"));
   menu_bar->Append(new wxMenu, wxT("&Options"));
@@ -163,7 +277,12 @@ wxAuiNotebook* MyFrame::CreateNotebook()
   panel->SetSizer(flex);
   ctrl->AddPage(panel, wxT("wxPanel"), false, page_bmp);
 
-
+  
+  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
+  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
+  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
+  
+  /*
   ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some text"),
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 1"), false, page_bmp);
 
@@ -189,6 +308,7 @@ wxAuiNotebook* MyFrame::CreateNotebook()
 
   ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 8"));
+  */
 
   ctrl->Thaw();
   return ctrl;
