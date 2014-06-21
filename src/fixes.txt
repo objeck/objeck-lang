@@ -1,3 +1,5 @@
+for ide check out: http://wxcode.sourceforge.net/showcomp.php?name=wxStEdit
+
 6/14/14
 * added append char support
 * fixed issue with debugger 'continue'
