@@ -1,3 +1,13 @@
+//////////////////////////////////////////////////////////////////////////////
+// Purpose:     Objeck IDE Demo
+// Maintainer:  Modified by Randy Hollines
+// Maintainer:  Otto Wyss
+// Created:     2003-09-01
+// Modified By: Randy Hollines (c) 2014
+// Copyright:   (c) wxGuide
+// Licence:     wxWindows licence
+//////////////////////////////////////////////////////////////////////////////
+
 #ifndef __IDE_H__
 #define __IDE_H__
 
@@ -14,6 +24,22 @@
 #include "wx/artprov.h"
 #include "wx/wxhtml.h"
 #include "wx/spinctrl.h"
+#include "defsext.h"     // Additional definitions
+//! wxWidgets headers
+#include "wx/config.h"   // configuration support
+#include "wx/filedlg.h"  // file dialog support
+#include "wx/filename.h" // filename support
+#include "wx/notebook.h" // notebook support
+#include "wx/settings.h" // system settings
+#include "wx/string.h"   // strings support
+#include "wx/image.h"    // images support
+
+//! application headers
+#include "defsext.h"     // Additional definitions
+#include "edit.h"        // Edit module
+#include "prefs.h"       // Prefs
+
+#include "edit.h"
 
 class MyApp : public wxApp {
 
@@ -106,8 +132,20 @@ class MyFrame : public wxFrame {
 public:
   MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
     const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
-
   ~MyFrame();
+
+  // common
+  void OnClose(wxCloseEvent &event);
+  // file
+  void OnFileNew(wxCommandEvent &event);
+  void OnFileNewFrame(wxCommandEvent &event);
+  void OnFileOpen(wxCommandEvent &event);
+  void OnFileOpenFrame(wxCommandEvent &event);
+  void OnFileSave(wxCommandEvent &event);
+  void OnFileSaveAs(wxCommandEvent &event);
+  void OnFileClose(wxCommandEvent &event);
+
+  DECLARE_EVENT_TABLE()
 };
 
 #endif
