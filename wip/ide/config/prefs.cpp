@@ -275,7 +275,7 @@ const StyleInfo g_StylePrefs [] = {
 
     // mySTC_TYPE_WORD2
     {wxT("Keyword2"),
-     wxT("MIDNIGHT BLUE"), wxT("WHITE"),
+     wxT("FOREST GREEN"), wxT("WHITE"),
      wxT(""), 10, 0, 0},
 
     // mySTC_TYPE_WORD3
@@ -300,18 +300,18 @@ const StyleInfo g_StylePrefs [] = {
 
     // mySTC_TYPE_COMMENT
     {wxT("Comment"),
-     wxT("FOREST GREEN"), wxT("WHITE"),
-     wxT(""), 10, 0, 0},
+     wxT("DIM GREY"), wxT("WHITE"),
+     wxT(""), 10, mySTC_STYLE_ITALIC, 0 },
 
     // mySTC_TYPE_COMMENT_DOC
     {wxT("Comment (Doc)"),
-     wxT("FOREST GREEN"), wxT("WHITE"),
-     wxT(""), 10, 0, 0},
+     wxT("DIM GREY"), wxT("WHITE"),
+     wxT(""), 10, mySTC_STYLE_ITALIC, 0 },
 
     // mySTC_TYPE_COMMENT_LINE
     {wxT("Comment line"),
-     wxT("FOREST GREEN"), wxT("WHITE"),
-     wxT(""), 10, 0, 0},
+     wxT("DIM GREY"), wxT("WHITE"),
+     wxT(""), 10, mySTC_STYLE_ITALIC, 0 },
 
     // mySTC_TYPE_COMMENT_SPECIAL
     {wxT("Special comment"),
@@ -320,23 +320,23 @@ const StyleInfo g_StylePrefs [] = {
 
     // mySTC_TYPE_CHARACTER
     {wxT("Character"),
-     wxT("KHAKI"), wxT("WHITE"),
+     wxT("TAN"), wxT("WHITE"),
      wxT(""), 10, 0, 0},
 
     // mySTC_TYPE_CHARACTER_EOL
     {wxT("Character (EOL)"),
-     wxT("KHAKI"), wxT("WHITE"),
+     wxT("TAN"), wxT("WHITE"),
      wxT(""), 10, 0, 0},
 
     // mySTC_TYPE_STRING
     {wxT("String"),
-     wxT("BROWN"), wxT("WHITE"),
-     wxT(""), 10, 0, 0},
+     wxT("TAN"), wxT("WHITE"),
+     wxT(""), 10, mySTC_STYLE_ITALIC, 0 },
 
     // mySTC_TYPE_STRING_EOL
     {wxT("String (EOL)"),
-     wxT("BROWN"), wxT("WHITE"),
-     wxT(""), 10, 0, 0},
+     wxT("TAN"), wxT("WHITE"),
+     wxT(""), 10, mySTC_STYLE_ITALIC, 0 },
 
     // mySTC_TYPE_DELIMITER
     {wxT("Delimiter"),
@@ -350,7 +350,7 @@ const StyleInfo g_StylePrefs [] = {
 
     // mySTC_TYPE_OPERATOR
     {wxT("Operator"),
-     wxT("BLACK"), wxT("WHITE"),
+     wxT("BLUE"), wxT("WHITE"),
      wxT(""), 10, mySTC_STYLE_BOLD, 0},
 
     // mySTC_TYPE_BRACE
@@ -375,7 +375,7 @@ const StyleInfo g_StylePrefs [] = {
 
     // mySTC_TYPE_NUMBER
     {wxT("Number"),
-     wxT("SIENNA"), wxT("WHITE"),
+     wxT("ORANGE"), wxT("WHITE"),
      wxT(""), 10, 0, 0},
 
     // mySTC_TYPE_PARAMETER

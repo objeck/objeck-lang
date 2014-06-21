@@ -208,17 +208,18 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
     }
 
     // Determine if the current state should terminate.
-    if (sc.state == SCE_OBJECK_OPERATOR) {
+    switch (sc.state) {
+    case SCE_OBJECK_OPERATOR:
       if (!IsObjeckOperator(sc.ch)) {
         sc.SetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_NUMBER) {
+      break;
+    case SCE_OBJECK_NUMBER:
       if (!IsAWordChar(sc.ch)) {
         sc.SetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_IDENTIFIER) {
+      break;
+    case SCE_OBJECK_IDENTIFIER:
       if (!IsAWordChar(sc.ch)) {
         char s[100];
         sc.GetCurrent(s, sizeof(s));
@@ -230,15 +231,15 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
         else if (words1.InList(s)) {
           sc.ChangeState(SCE_OBJECK_WORD1);
         }
-        sc.SetState(SCE_OBJECK_DEFAULT);        
+        sc.SetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_COMMENT_LINE) {
+      break;
+    case SCE_OBJECK_COMMENT_LINE:
       if (sc.atLineEnd) {
         sc.SetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_STRING) {
+      break;
+    case SCE_OBJECK_STRING:
       if (sc.ch == '\\') {
         if (sc.chNext == '\"' || sc.chNext == '\'' || sc.chNext == '\\') {
           sc.Forward();
@@ -251,8 +252,8 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
         sc.ChangeState(SCE_OBJECK_STRINGEOL);
         sc.ForwardSetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_CHARACTER) {
+      break;
+    case SCE_OBJECK_CHARACTER:
       if (sc.ch == '\\') {
         if (sc.chNext == '\"' || sc.chNext == '\'' || sc.chNext == '\\') {
           sc.Forward();
@@ -265,8 +266,8 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
         sc.ChangeState(SCE_OBJECK_STRINGEOL);
         sc.ForwardSetState(SCE_OBJECK_DEFAULT);
       }
-    }
-    else if (sc.state == SCE_OBJECK_COMMENT_BLOCK) {
+      break;
+    case SCE_OBJECK_COMMENT_BLOCK:
       if (sc.Match('*', '/')) {
         sc.Forward();
         nestLevel--;
@@ -280,6 +281,7 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
       else if (sc.ch == '%') {
         sc.SetState(SCE_OBJECK_COMMENT_LINE);
       }
+      break;
     }
 
     // Determine if a new state should be entered.
@@ -308,8 +310,8 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
         sc.SetState(SCE_OBJECK_OPERATOR);
       }
     }
-
   }
+
   sc.Complete();
 }
 
