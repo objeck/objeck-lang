@@ -1,0 +1,10 @@
+editor
+---
+split editor support
+search/replace
+file tabs
+status bar line/column display
+
+debugger
+---
+inital features of command line
