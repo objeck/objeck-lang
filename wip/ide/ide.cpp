@@ -275,14 +275,9 @@ wxAuiNotebook* MyFrame::CreateNotebook()
     wxSP_ARROW_KEYS, 5, 50, 5), 0, wxALL | wxALIGN_CENTRE, 5);
   flex->Add(5, 5);   flex->Add(5, 5);
   panel->SetSizer(flex);
-  ctrl->AddPage(panel, wxT("wxPanel"), false, page_bmp);
-
+  ctrl->AddPage(panel, wxT("wxPanel"), false, page_bmp);  
   
-  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
-  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
-  ctrl->AddPage(new Edit(ctrl), wxT("wxTextCtrl 1"), false, page_bmp);
   
-  /*
   ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some text"),
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 1"), false, page_bmp);
 
@@ -308,8 +303,7 @@ wxAuiNotebook* MyFrame::CreateNotebook()
 
   ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 8"));
-  */
-
+  
   ctrl->Thaw();
   return ctrl;
 }
