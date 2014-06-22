@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stemenum.h"
-#include "stedit.h"
+#include "wx/stedit/stemenum.h"
+#include "wx/stedit/stedit.h"
 
 #include "wx/artprov.h"   // wxArtProvider
 
@@ -1071,7 +1071,7 @@ bool wxSTEditorMenuManager::DoSetTextItem(wxMenu *menu, wxMenuBar *menuBar,
         wxMenuItem *menuItem = menu->FindItem(menu_id);
         if (menuItem)
         {
-            menuItem->SetText(val);
+            menuItem->SetItemLabel(val);
             ret = true;
         }
     }
@@ -1080,7 +1080,7 @@ bool wxSTEditorMenuManager::DoSetTextItem(wxMenu *menu, wxMenuBar *menuBar,
         wxMenuItem *menuItem = menuBar->FindItem(menu_id);
         if (menuItem)
         {
-            menuItem->SetText(val);
+            menuItem->SetItemLabel(val);
             ret = true;
         }
     }

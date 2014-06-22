@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"
-#include "steframe.h"
+#include "wx/stedit/stedit.h"
+#include "wx/stedit/steframe.h"
 
 #include "wx/file.h"
 #include "wx/filename.h"  // wxFileName

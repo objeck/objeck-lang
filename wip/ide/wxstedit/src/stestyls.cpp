@@ -48,8 +48,8 @@ OR PERFORMANCE OF THIS SOFTWARE.
     #include "wx/wx.h"
 #endif
 
-#include "stestyls.h"
-#include "stedit.h"
+#include "wx/stedit/stestyls.h"
+#include "wx/stedit/stedit.h"
 
 #include "wx/tokenzr.h"
 #include "wx/config.h"
