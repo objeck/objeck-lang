@@ -19,8 +19,8 @@
     #include "wx/wx.h"
 #endif
 
-#include "stedlgs.h"
-#include "steexprt.h"
+#include "wx/stedit/stedlgs.h"
+#include "wx/stedit/steexprt.h"
 #include "stedlgs_wdr.h"
 
 #include "wx/fontenum.h"   // font support
@@ -1471,8 +1471,10 @@ void wxSTEditorPrefDialog::OnApply(wxCommandEvent &event)
     if (guard.IsInside()) return;
 
     size_t n, count = m_noteBook->GetPageCount();
+/*
     for (n = 0; n < count; n++)
         m_noteBook->GetPage(n)->ProcessEvent(event);
+*/
 
     // set the language without update since will do it later
     if (GetEditorPrefData().GetEditor())
@@ -1509,7 +1511,7 @@ void wxSTEditorPrefDialog::OnReset(wxCommandEvent &event)
     }
 
     int n = m_noteBook->GetSelection();
-    m_noteBook->GetPage(n)->ProcessEvent(event);
+//    m_noteBook->GetPage(n)->ProcessEvent(event);
 }
 
 void wxSTEditorPrefDialog::OnNotebookPageChanged(wxNotebookEvent &)
