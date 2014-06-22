@@ -11,15 +11,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\defsext.h" />
-    <ClInclude Include="..\edit.h" />
     <ClInclude Include="..\ide.h" />
-    <ClInclude Include="..\prefs.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\edit.cpp" />
     <ClCompile Include="..\ide.cpp" />
-    <ClCompile Include="..\prefs.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AE77FB9C-93DB-4F94-BA31-A57CA2277969}</ProjectGuid>
