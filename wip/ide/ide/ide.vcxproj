@@ -12,42 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ide.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\pairarr.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\setup.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stedefs.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stedit.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stedlgs.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steexprt.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stefindr.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steframe.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stelangs.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stemenum.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stenoteb.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steopts.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steprefs.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steprint.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\steshell.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stesplit.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\stestyls.h" />
-    <ClInclude Include="..\wxstedit\include\wx\stedit\wx24defs.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ide.cpp" />
-    <ClCompile Include="..\wxstedit\src\stedit.cpp" />
-    <ClCompile Include="..\wxstedit\src\stedlgs.cpp" />
-    <ClCompile Include="..\wxstedit\src\stedlgs_wdr.cpp" />
-    <ClCompile Include="..\wxstedit\src\steexprt.cpp" />
-    <ClCompile Include="..\wxstedit\src\stefindr.cpp" />
-    <ClCompile Include="..\wxstedit\src\steframe.cpp" />
-    <ClCompile Include="..\wxstedit\src\stelangs.cpp" />
-    <ClCompile Include="..\wxstedit\src\stemenum.cpp" />
-    <ClCompile Include="..\wxstedit\src\stenoteb.cpp" />
-    <ClCompile Include="..\wxstedit\src\steopts.cpp" />
-    <ClCompile Include="..\wxstedit\src\steprefs.cpp" />
-    <ClCompile Include="..\wxstedit\src\steprint.cpp" />
-    <ClCompile Include="..\wxstedit\src\steshell.cpp" />
-    <ClCompile Include="..\wxstedit\src\stesplit.cpp" />
-    <ClCompile Include="..\wxstedit\src\stestyls.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AE77FB9C-93DB-4F94-BA31-A57CA2277969}</ProjectGuid>
