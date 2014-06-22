@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif
 
-#include "steprefs.h"
-#include "stedit.h"
+#include "wx/stedit/steprefs.h"
+#include "wx/stedit/stedit.h"
 
 #include "wx/config.h"
 
@@ -651,7 +651,7 @@ void wxSTEditorPrefs::LoadConfig( wxConfigBase &config,
             if (config.Read(key + name, &val))
                 SetPrefInt(pref_n, val, false);
         }
-        else if (config.Read(key + name, strVal))
+        else if (!config.Read(key + name, strVal).IsEmpty())
             SetPref(pref_n, strVal, false);
     }
 

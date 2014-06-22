@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"
-#include "steshell.h"
+#include "wx/stedit/stedit.h"
+#include "wx/stedit/steshell.h"
 
 //-----------------------------------------------------------------------------
 // wxSTEditorShell

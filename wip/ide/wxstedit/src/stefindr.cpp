@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stefindr.h"
-#include "stedit.h"
+#include "wx/stedit/stefindr.h"
+#include "wx/stedit/stedit.h"
 #include "stedlgs_wdr.h"
 
 #include "wx/config.h"    // wxConfigBase

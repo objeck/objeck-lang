@@ -20,10 +20,10 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"
-#include "stesplit.h"
-#include "steprefs.h"
-#include "stedlgs.h"
+#include "wx/stedit/stedit.h"
+#include "wx/stedit/stesplit.h"
+#include "wx/stedit/steprefs.h"
+#include "wx/stedit/stedlgs.h"
 
 //-----------------------------------------------------------------------------
 // wxSTEditorScrollBar

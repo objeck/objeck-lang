@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "steopts.h"
-#include "stedit.h"
+#include "wx/stedit/steopts.h"
+#include "wx/stedit/stedit.h"
 
 #include "wx/config.h"    // wxConfigBase
 #include "wx/docview.h"   // wxFileHistory

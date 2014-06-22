@@ -20,8 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "steprint.h"
-#include "stedit.h"
+#include "wx/stedit/steprint.h"
+#include "wx/stedit/stedit.h"
 #include "stedlgs_wdr.h"
 
 #include "wx/printdlg.h"  // wxPageSetupDialog
@@ -33,7 +33,7 @@
 //-----------------------------------------------------------------------------
 // wxSTEditorModule - setup anything after init and delete before closing
 //-----------------------------------------------------------------------------
-#include "stemenum.h"
+#include "wx/stedit/stemenum.h"
 
 class wxSTEditorModule : public wxModule
 {

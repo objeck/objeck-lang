@@ -48,8 +48,8 @@ OR PERFORMANCE OF THIS SOFTWARE.
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"    // for wxSTEEditorPrefs/Styles/Langs
-#include "steexprt.h"
+#include "wx/stedit/stedit.h"    // for wxSTEEditorPrefs/Styles/Langs
+#include "wx/stedit/steexprt.h"
 #include "stedlgs_wdr.h"
 
 #include "wx/filesys.h"
@@ -270,10 +270,10 @@ public:
 void StyleDefinition::Create(const wxSTEditorStyles& styles, int ste_style)
 {
     wxCHECK_RET(styles.Ok(), wxT("Invalid styles"));
-    font       = wx2stc(styles.GetFaceName(ste_style));
+    font       = styles.GetFaceName(ste_style);
     size       = styles.GetSize(ste_style);
-    fore       = wx2stc(wxString::Format(wxT("#%06X"), styles.GetForegroundColourInt(ste_style)));
-    back       = wx2stc(wxString::Format(wxT("#%06X"), styles.GetBackgroundColourInt(ste_style)));
+    fore       = wxString::Format(wxT("#%06X"), styles.GetForegroundColourInt(ste_style));
+    back       = wxString::Format(wxT("#%06X"), styles.GetBackgroundColourInt(ste_style));
     bold       = styles.GetBold(ste_style);
     italics    = styles.GetItalic(ste_style);
     eolfilled  = styles.GetEOLFilled(ste_style);
@@ -419,7 +419,7 @@ bool wxSTEditorExporter::SaveToRTF(const wxString& saveName, int start, int end)
     if (tabSize == 0)
         tabSize = 4;
 
-    FILE *fp = fopen(wx2stc(saveName), "wt");
+    FILE *fp = fopen(saveName, "wt");
     if (fp) {
         char styles[STYLE_DEFAULT + 1][MAX_STYLEDEF];
         char fonts[STYLE_DEFAULT + 1][MAX_FONTDEF];
@@ -607,17 +607,17 @@ bool wxSTEditorExporter::SaveToHTMLCSS(const wxString& saveName) {
     }
     styleIsUsed[STYLE_DEFAULT] = true;
 
-    FILE *fp = fopen(wx2stc(saveName), "wt");
+    FILE *fp = fopen(saveName, "wt");
     if (fp) {
         fputs("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n", fp);
         fputs("<html xmlns=\"http://www.w3.org/1999/xhtml\">\n", fp);
         fputs("<head>\n", fp);
         if (titleFullPath)
             fprintf(fp, "<title>%s</title>\n",
-                static_cast<const char *>(wx2stc(wxFileSystem::FileNameToURL(saveName)))); //FIXME filePath.AsFileSystem()));
+                static_cast<const char *>(wxFileSystem::FileNameToURL(saveName))); //FIXME filePath.AsFileSystem()));
         else
             fprintf(fp, "<title>%s</title>\n",
-                static_cast<const char *>(wx2stc(wxFileSystem::FileNameToURL(wxFileName(saveName).GetFullName())))); //FIXME filePath.Name().AsFileSystem()));
+                static_cast<const char *>(wxFileSystem::FileNameToURL(wxFileName(saveName).GetFullName()))); //FIXME filePath.Name().AsFileSystem()));
         // Probably not used by robots, but making a little advertisement for those looking
         // at the source code doesn't hurt...
 		fputs("<meta name=\"Generator\" content=\"SciTE - www.Scintilla.org\" />\n", fp);
@@ -1381,7 +1381,7 @@ bool wxSTEditorExporter::SaveToPDF(const wxString& saveName) {
     }
     delete []buffer;
 
-    FILE *fp = fopen(wx2stc(saveName), "wb");
+    FILE *fp = fopen(saveName, "wb");
     if (!fp) {
         // couldn't open the file for saving, issue an error message
         //FIXME SString msg = LocaliseMessage("Could not save file '^0'.", filePath.AsFileSystem());
@@ -1513,7 +1513,7 @@ bool wxSTEditorExporter::SaveToTEX(const wxString& saveName) {
     }
     styleIsUsed[STYLE_DEFAULT] = true;
 
-    FILE *fp = fopen(wx2stc(saveName), "wt");
+    FILE *fp = fopen(saveName, "wt");
     if (fp) {
         fputs("\\documentclass[a4paper]{article}\n"
               "\\usepackage[a4paper,margin=2cm]{geometry}\n"
@@ -1544,7 +1544,7 @@ bool wxSTEditorExporter::SaveToTEX(const wxString& saveName) {
 
         fputs("\\begin{document}\n\n", fp);
         fprintf(fp, "Source File: %s\n\n\\noindent\n\\tiny{\n",
-            static_cast<const char *>(wx2stc(saveName))); //FIXME titleFullPath ? filePath.AsFileSystem() : filePath.Name().AsFileSystem()));
+            static_cast<const char *>(saveName)); //FIXME titleFullPath ? filePath.AsFileSystem() : filePath.Name().AsFileSystem()));
 
         int styleCurrent = m_editor->GetStyleAt(0);
 
@@ -1665,7 +1665,7 @@ bool wxSTEditorExporter::SaveToXML(const wxString& saveName) {
 
     //WindowAccessor acc(wEditor.GetID(), props) ;
 
-    FILE *fp = fopen(wx2stc(saveName), "wt");
+    FILE *fp = fopen(saveName, "wt");
 
     if (fp) {
 
@@ -1676,7 +1676,7 @@ bool wxSTEditorExporter::SaveToXML(const wxString& saveName) {
 
         fputs("<document xmlns='http://www.scintila.org/scite.rng'", fp) ;
         fprintf(fp, " filename='%s'",
-            static_cast<const char *>(wx2stc(saveName))); //FIXME filePath.Name().AsFileSystem())) ;
+            static_cast<const char *>(saveName)); //FIXME filePath.Name().AsFileSystem())) ;
         fprintf(fp, " type='%s'", "unknown") ;
         fprintf(fp, " version='%s'", "1.0") ;
         fputs(">\n", fp) ;
@@ -1804,9 +1804,9 @@ bool wxSTEditorExporter::SaveToXML(const wxString& saveName) {
 bool wxSTEditorExporter::SaveToHTML(const wxString& saveName) {
     wxCHECK_MSG(m_editor, false, wxT("Invalid editor"));
 
-    FILE *fp = fopen(wx2stc(saveName), "wt");
+    FILE *fp = fopen(saveName, "wt");
     if (fp) {
-        fputs(wx2stc(RenderAsHTML()), fp);
+        fputs(RenderAsHTML(), fp);
         fclose(fp);
     } else {
         return false;
@@ -1838,7 +1838,7 @@ void STEExporterHTML_Font(int style_n, int old_style_n,
     {
         // always set new colour
         if ((old_style_n < 0) || (sd[old_style_n].fore != sd[style_n].fore))
-            htmlString += wxString::Format(wxT("<FONT COLOR = \"%s\">"), stc2wx(sd[style_n].fore.c_str()).c_str());
+            htmlString += wxString::Format(wxT("<FONT COLOR = \"%s\">"), sd[style_n].fore.c_str()).c_str();
 
         if (sd[style_n].bold       && ((old_style_n < 0) || !sd[old_style_n].bold))
             htmlString << wxT("<B>");

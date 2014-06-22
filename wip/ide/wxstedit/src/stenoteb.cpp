@@ -20,9 +20,9 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"
-#include "stenoteb.h"
-#include "stedlgs.h"
+#include "wx/stedit/stedit.h"
+#include "wx/stedit/stenoteb.h"
+#include "wx/stedit/stedlgs.h"
 
 #include "wx/config.h"    // wxConfigBase
 #include "wx/filename.h"  // wxFileName
@@ -136,7 +136,7 @@ void wxSTEditorNotebook::OnPageChanged(wxNotebookEvent &event)
 
 #ifdef __WXMSW__
     // let the msw notebook really change the page first
-    wxNotebook::OnSelChange(event);
+// wxNotebook::GetSelection(event);
     event.Skip(false);
 #else
     event.Skip();

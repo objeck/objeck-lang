@@ -9,6 +9,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "ide.h"
+#include "wx/stedit/stedit.h"
 
 /////////////////////////
 // MyApp
@@ -257,7 +258,10 @@ wxAuiNotebook* MyFrame::CreateNotebook()
   ctrl->Freeze();
 
   wxBitmap page_bmp = wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16));
+  ctrl->AddPage(new wxSTEditor(ctrl, 0), wxT("wxTextCtrl 1"), false, page_bmp);
+  ctrl->AddPage(new wxSTEditor(ctrl, 1), wxT("wxTextCtrl 2"), false, page_bmp);
 
+/*
   ctrl->AddPage(CreateHTMLCtrl(ctrl), wxT("Welcome to wxAUI"), false, page_bmp);
   ctrl->SetPageToolTip(0, "Welcome to wxAUI (this is a page tooltip)");
 
@@ -303,7 +307,8 @@ wxAuiNotebook* MyFrame::CreateNotebook()
 
   ctrl->AddPage(new wxTextCtrl(ctrl, wxID_ANY, wxT("Some more text"),
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxNO_BORDER), wxT("wxTextCtrl 8"));
-  
+*/
+
   ctrl->Thaw();
   return ctrl;
 }

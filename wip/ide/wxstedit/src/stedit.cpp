@@ -49,8 +49,8 @@ OR PERFORMANCE OF THIS SOFTWARE.
     #include "wx/spinctrl.h"
 #endif // WX_PRECOMP
 
-#include "stedit.h"
-#include "steexprt.h"
+#include "wx/stedit/stedit.h"
+#include "wx/stedit/steexprt.h"
 
 #include "wx/file.h"
 #include "wx/filename.h"
@@ -210,7 +210,7 @@ bool wxSTEditor::Create( wxWindow *WXUNUSED(parent), wxWindowID WXUNUSED(id),
 #endif // wxCHECK_VERSION(2,5,0)
 
     if ((size.x > 0) && (size.y > 0))
-        SetBestSize(size);
+        SetInitialSize(size);
 
     if (CanPaste())
         m_state |= STE_CANPASTE;
@@ -1681,7 +1681,7 @@ int wxSTEditor::IsLinePreprocessorCondition(const wxString &line)
     while (wxIsspace(*currChar) && *currChar)
         currChar++;
 
-    if (preprocessorSymbol && (*currChar == preprocessorSymbol))
+    if (!preprocessorSymbol.IsEmpty() && (*currChar == preprocessorSymbol))
     {
         currChar++;
         while (wxIsspace(*currChar) && *currChar)
