@@ -1,6 +1,6 @@
 editor
 ---
-split editor support
+split editor support (http://www.yellowbrain.com/stc/mult_views.html)
 search/replace
 file tabs
 status bar line/column display
