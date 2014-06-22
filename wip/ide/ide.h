@@ -24,22 +24,6 @@
 #include "wx/artprov.h"
 #include "wx/wxhtml.h"
 #include "wx/spinctrl.h"
-#include "defsext.h"     // Additional definitions
-//! wxWidgets headers
-#include "wx/config.h"   // configuration support
-#include "wx/filedlg.h"  // file dialog support
-#include "wx/filename.h" // filename support
-#include "wx/notebook.h" // notebook support
-#include "wx/settings.h" // system settings
-#include "wx/string.h"   // strings support
-#include "wx/image.h"    // images support
-
-//! application headers
-#include "defsext.h"     // Additional definitions
-#include "edit.h"        // Edit module
-#include "prefs.h"       // Prefs
-
-#include "edit.h"
 
 class MyApp : public wxApp {
 

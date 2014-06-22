@@ -1,0 +1,98 @@
+<?xml version="1.0" ?>
+
+<!-- Created by: Francesco Montorsi <frm@users.sourceforge.net>       -->
+<!-- Creation date: 9/10/2004                                         -->
+<!-- RCS-ID: $Id: wxstedit.bkl,v 1.7 2007/05/12 19:43:01 jrl1 Exp $        -->
+
+<makefile>
+
+    <set var="WX_VERSION_DEFAULT">28</set>
+
+    <include file="presets/wxcode.bkl"/>
+
+    <!-- Settings for this component -->
+    <!-- =========================== -->
+
+    <set-comp-name>stedit</set-comp-name>
+
+    <!-- COMP_SRC lists the component's sources with path relative to ../src -->
+    <set var="COMP_SRC">
+        src/stedit.cpp
+        src/stedlgs.cpp
+        src/stedlgs_wdr.cpp
+        src/steexprt.cpp
+        src/stefindr.cpp
+        src/steframe.cpp
+        src/stelangs.cpp
+        src/stemenum.cpp
+        src/stenoteb.cpp
+        src/steopts.cpp
+        src/steprefs.cpp
+        src/steprint.cpp
+        src/steshell.cpp
+        src/stesplit.cpp
+        src/stestyls.cpp
+    </set>
+    <!-- COMP_HDR lists the component's headers with path relative to ../include -->
+    <set var="COMP_HDR">
+        include/wx/stedit/pairarr.h
+        include/wx/stedit/setup0.h
+        include/wx/stedit/stedefs.h
+        include/wx/stedit/stedit.h
+        include/wx/stedit/stedlgs.h
+        include/wx/stedit/steexprt.h
+        include/wx/stedit/stefindr.h
+        include/wx/stedit/steframe.h
+        include/wx/stedit/stelangs.h
+        include/wx/stedit/stemenum.h
+        include/wx/stedit/stenoteb.h
+        include/wx/stedit/steopts.h
+        include/wx/stedit/steprefs.h
+        include/wx/stedit/steprint.h
+        include/wx/stedit/steshell.h
+        include/wx/stedit/stesplit.h
+        include/wx/stedit/stestyls.h
+        include/wx/stedit/wx24defs.h
+    </set>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <!-- Library settings                                                  -->
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+    <lib id="stedit_lib" template="wxcode-lib" cond="WX_SHARED=='0'">
+        <include>$(DOLLAR)(WXWIN)/contrib/include</include>
+    </lib>
+    <dll id="stedit_dll" template="wxcode-dll" cond="WX_SHARED=='1'">
+        <include>$(DOLLAR)(WXWIN)/contrib/include</include>
+
+        <wx-lib>stc</wx-lib>
+        <wx-lib>html</wx-lib>
+        <wx-lib>adv</wx-lib>
+        <wx-lib>core</wx-lib>
+        <wx-lib>base</wx-lib>
+    </dll>
+
+    <set var="MSVC6PRJ_MERGED_TARGETS">
+        stedit=stedit_lib+stedit_dll
+    </set>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <!-- Sample(s) settings                                                -->
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+    <wxcode-sample id="wxstedit">
+        <dir>samples/stedit</dir>
+        <!-- <has-win32-res/> -->
+        <win32-res>samples/stedit/wxstedit.rc</win32-res>
+
+        <include>$(DOLLAR)(WXWIN)/contrib/include</include>
+
+        <library>stedit_lib</library>
+        <wx-lib>stc</wx-lib>
+        <wx-lib>html</wx-lib>
+        <wx-lib>adv</wx-lib>
+        <wx-lib>core</wx-lib>
+        <wx-lib>base</wx-lib>
+    </wxcode-sample>
+
+</makefile>
