@@ -15,6 +15,7 @@
 #include "wx/datetime.h"
 #include "wx/fdrepdlg.h"
 #include "wx/treectrl.h"
+#include "wx/colourdata.h"
 
 class WXDLLEXPORT wxMenu;
 class WXDLLEXPORT wxKeyEvent;
