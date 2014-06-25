@@ -37,6 +37,8 @@ class MyFrame : public wxFrame {
   };
 
   wxAuiManager aui_manager;
+  wxAuiNotebook* m_notebook;
+  // WX_DECLARE_STRING_HASH_MAP(Edit*, MyHash5);
 
   void DoUpdate();
   
