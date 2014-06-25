@@ -23,7 +23,8 @@
 #include "wx/treectrl.h"
 #include "wx/artprov.h"
 #include "wx/wxhtml.h"
-#include "wx/spinctrl.h"
+
+#include "edit.h"
 
 class MyApp : public wxApp {
 
