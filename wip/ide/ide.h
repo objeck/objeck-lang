@@ -38,7 +38,7 @@ class MyFrame : public wxFrame {
   };
 
   wxAuiManager aui_manager;
-  wxAuiNotebook* m_notebook;
+  Notebook* m_notebook;
   // WX_DECLARE_STRING_HASH_MAP(Edit*, MyHash5);
 
   void DoUpdate();
@@ -46,7 +46,7 @@ class MyFrame : public wxFrame {
   wxMenuBar* CreateMenuBar();
   wxAuiToolBar* CreateToolBar();
   wxTreeCtrl* CreateTreeCtrl();
-  wxAuiNotebook* CreateNotebook();
+  Notebook* CreateNotebook();
   wxHtmlWindow* CreateHTMLCtrl(wxWindow* parent);
   wxTextCtrl* CreateTextCtrl(const wxString& ctrl_text);
 
