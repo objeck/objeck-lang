@@ -61,10 +61,56 @@ const int ANNOTATION_STYLE = wxSTC_STYLE_LASTPREDEFINED + 1;
 //----------------------------------------------------------------------------
 
 BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
+    // pages
     EVT_AUINOTEBOOK_PAGE_CLOSE(wxID_ANY, OnPageClose)
     EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, OnPageChanged)
+    // edit
+    EVT_MENU(wxID_CLEAR, Notebook::OnEditClear)
+    EVT_MENU(wxID_CUT, Notebook::OnEditCut)
+    EVT_MENU(wxID_COPY, Notebook::OnEditCopy)
+    EVT_MENU(wxID_PASTE, Notebook::OnEditPaste)
+    EVT_MENU(myID_INDENTINC, Notebook::OnEditIndentInc)
+    EVT_MENU(myID_INDENTRED, Notebook::OnEditIndentRed)
+    EVT_MENU(wxID_SELECTALL, Notebook::OnEditSelectAll)
+    
+    EVT_MENU(wxID_REDO, Notebook::OnEditRedo)
+    EVT_MENU(wxID_UNDO, Notebook::OnEditUndo)
+    // find
+    EVT_MENU(wxID_FIND, Notebook::OnFind)
+    EVT_MENU(myID_FINDNEXT, Notebook::OnFindNext)
+    EVT_MENU(myID_REPLACE, Notebook::OnReplace)
+    EVT_MENU(myID_REPLACENEXT, Notebook::OnReplaceNext)
+    EVT_MENU(myID_GOTO, Notebook::OnGoto)
+    // view
+    EVT_MENU_RANGE(myID_HILIGHTFIRST, myID_HILIGHTLAST, Notebook::OnHilightLang)
+    EVT_MENU(myID_DISPLAYEOL, Notebook::OnDisplayEOL)
+    EVT_MENU(myID_INDENTGUIDE, Notebook::OnIndentGuide)
+    EVT_MENU(myID_LONGLINEON, Notebook::OnLongLineOn)
+    EVT_MENU(myID_WHITESPACE, Notebook::OnWhiteSpace)
+    EVT_MENU(myID_FOLDTOGGLE, Notebook::OnFoldToggle)
+    EVT_MENU(myID_OVERTYPE, Notebook::OnSetOverType)
+    EVT_MENU(myID_READONLY, Notebook::OnSetReadOnly)
+    EVT_MENU(myID_WRAPMODEON, Notebook::OnWrapmodeOn)
+    EVT_MENU(myID_CHARSETANSI, Notebook::OnUseCharset)
+    EVT_MENU(myID_CHARSETMAC, Notebook::OnUseCharset)
+    // annotations
+    EVT_MENU(myID_ANNOTATION_ADD, Notebook::OnAnnotationAdd)
+    EVT_MENU(myID_ANNOTATION_REMOVE, Notebook::OnAnnotationRemove)
+    EVT_MENU(myID_ANNOTATION_CLEAR, Notebook::OnAnnotationClear)
+    EVT_MENU(myID_ANNOTATION_STYLE_HIDDEN, Notebook::OnAnnotationStyle)
+    EVT_MENU(myID_ANNOTATION_STYLE_STANDARD, Notebook::OnAnnotationStyle)
+    EVT_MENU(myID_ANNOTATION_STYLE_BOXED, Notebook::OnAnnotationStyle)
+    // stc
+    EVT_STC_MARGINCLICK(wxID_ANY, Notebook::OnMarginClick)
+    EVT_STC_CHARADDED(wxID_ANY, Notebook::OnCharAdded)
+    EVT_STC_KEY(wxID_ANY, Notebook::OnKey)
+    // extra
+    EVT_MENU(myID_CHANGELOWER, Notebook::OnChangeCase)
+    EVT_MENU(myID_CHANGEUPPER, Notebook::OnChangeCase)
+    EVT_MENU(myID_CONVERTCR, Notebook::OnConvertEOL)
+    EVT_MENU(myID_CONVERTCRLF, Notebook::OnConvertEOL)
+    EVT_MENU(myID_CONVERTLF, Notebook::OnConvertEOL)
 END_EVENT_TABLE()
-
 
 Notebook::Notebook(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style) : 
   wxAuiNotebook(parent, id, pos, size, style)
@@ -119,8 +165,8 @@ void Notebook::OpenFile(wxString& fn)
     }
   }
   // add new page and set focus
-  else {    
-    Edit* edit = new Edit(this);
+  else {
+    Edit* edit = new Edit(this);    
     edit->LoadFile(filename);
     edit->SelectNone();
     const wxString page_name = w.GetName() + wxT('.') + w.GetExt();
@@ -135,61 +181,422 @@ void Notebook::OpenFile(wxString& fn)
 }
 
 //----------------------------------------------------------------------------
+// common event handlers
+void Notebook::OnConvertEOL(wxCommandEvent &event) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  int eolMode = edit->GetEOLMode();
+    switch (event.GetId()) {
+        case myID_CONVERTCR: { eolMode = wxSTC_EOL_CR; break;}
+        case myID_CONVERTCRLF: { eolMode = wxSTC_EOL_CRLF; break;}
+        case myID_CONVERTLF: { eolMode = wxSTC_EOL_LF; break;}
+    }
+    edit->ConvertEOLs(eolMode);
+    edit->SetEOLMode(eolMode);
+}
+
+
+
+// edit event handlers
+void Notebook::OnEditRedo(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (!edit->CanRedo()) return;
+  edit->Redo();
+}
+
+void Notebook::OnEditUndo(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (!edit->CanUndo()) return;
+  edit->Undo();
+}
+
+void Notebook::OnEditClear(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (edit->GetReadOnly()) return;
+  edit->Clear();
+}
+
+void Notebook::OnKey(wxStyledTextEvent &WXUNUSED(event))
+{
+  wxMessageBox("OnKey");
+}
+
+void Notebook::OnEditCut(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (edit->GetReadOnly() || (edit->GetSelectionEnd() - edit->GetSelectionStart() <= 0)) return;
+  edit->Cut();
+}
+
+void Notebook::OnEditCopy(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (edit->GetSelectionEnd() - edit->GetSelectionStart() <= 0) return;
+  edit->Copy();
+}
+
+void Notebook::OnEditPaste(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  if (!edit->CanPaste()) return;
+  edit->Paste();
+}
+
+void Notebook::OnFind(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+}
+
+void Notebook::OnFindNext(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+}
+
+void Notebook::OnReplace(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+}
+
+void Notebook::OnReplaceNext(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+}
+
+void Notebook::OnGoto(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+}
+
+void Notebook::OnEditIndentInc(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->CmdKeyExecute(wxSTC_CMD_TAB);
+}
+
+void Notebook::OnEditIndentRed(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->CmdKeyExecute(wxSTC_CMD_DELETEBACK);
+}
+
+void Notebook::OnEditSelectAll(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetSelection(0, edit->GetTextLength());
+}
+
+void Notebook::OnHilightLang(wxCommandEvent &event) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->InitializePrefs(g_LanguagePrefs[event.GetId() - myID_HILIGHTFIRST].name);
+}
+
+void Notebook::OnDisplayEOL(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetViewEOL(!edit->GetViewEOL());
+}
+
+void Notebook::OnIndentGuide(wxCommandEvent &WXUNUSED(event)) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetIndentationGuides(!edit->GetIndentationGuides());
+}
+
+void Notebook::OnLongLineOn(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetEdgeMode(edit->GetEdgeMode() == 0 ? wxSTC_EDGE_LINE : wxSTC_EDGE_NONE);
+}
+
+void Notebook::OnWhiteSpace(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetViewWhiteSpace(edit->GetViewWhiteSpace() == 0 ?
+  wxSTC_WS_VISIBLEALWAYS : wxSTC_WS_INVISIBLE);
+}
+
+void Notebook::OnFoldToggle(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->ToggleFold(edit->GetFoldParent(edit->GetCurrentLine()));
+}
+
+void Notebook::OnSetOverType(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetOvertype(!edit->GetOvertype());
+}
+
+void Notebook::OnSetReadOnly(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetReadOnly(!edit->GetReadOnly());
+}
+
+void Notebook::OnWrapmodeOn(wxCommandEvent &WXUNUSED(event)) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->SetWrapMode(edit->GetWrapMode() == 0 ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
+}
+
+void Notebook::OnUseCharset(wxCommandEvent &event) 
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  int Nr;
+  int charset = edit->GetCodePage();
+  switch (event.GetId()) {
+  case myID_CHARSETANSI: {charset = wxSTC_CHARSET_ANSI; break; }
+  case myID_CHARSETMAC: {charset = wxSTC_CHARSET_ANSI; break; }
+  }
+  for (Nr = 0; Nr < wxSTC_STYLE_LASTPREDEFINED; Nr++) {
+    edit->StyleSetCharacterSet(Nr, charset);
+  }
+  edit->SetCodePage(charset);
+}
+
+void Notebook::OnAnnotationAdd(wxCommandEvent& WXUNUSED(event))
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  const int line = edit->GetCurrentLine();
+
+  wxString ann = edit->AnnotationGetText(line);
+  ann = wxGetTextFromUser
+    (
+    wxString::Format("Enter annotation for the line %d", line),
+    "Edit annotation",
+    ann,
+    this
+    );
+  if (ann.empty())
+    return;
+
+  edit->AnnotationSetText(line, ann);
+  edit->AnnotationSetStyle(line, ANNOTATION_STYLE);
+
+  // Scintilla doesn't update the scroll width for annotations, even with
+  // scroll width tracking on, so do it manually.
+  const int width = edit->GetScrollWidth();
+
+  // NB: The following adjustments are only needed when using
+  //     wxSTC_ANNOTATION_BOXED annotations style, but we apply them always
+  //     in order to make things simpler and not have to redo the width
+  //     calculations when the annotations visibility changes. In a real
+  //     program you'd either just stick to a fixed annotations visibility or
+  //     update the width when it changes.
+
+  // Take into account the fact that the annotation is shown indented, with
+  // the same indent as the line it's attached to.
+  int indent = edit->GetLineIndentation(line);
+
+  // This is just a hack to account for the width of the box, there doesn't
+  // seem to be any way to get it directly from Scintilla.
+  indent += 3;
+
+  const int widthAnn = edit->TextWidth(ANNOTATION_STYLE, ann + wxString(indent, ' '));
+
+  if (widthAnn > width)
+    edit->SetScrollWidth(widthAnn);
+}
+
+void Notebook::OnAnnotationRemove(wxCommandEvent& WXUNUSED(event))
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->AnnotationSetText(edit->GetCurrentLine(), wxString());
+}
+
+void Notebook::OnAnnotationClear(wxCommandEvent& WXUNUSED(event))
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  edit->AnnotationClearAll();
+}
+
+void Notebook::OnAnnotationStyle(wxCommandEvent& event)
+{
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  int style = 0;
+  switch (event.GetId()) {
+  case myID_ANNOTATION_STYLE_HIDDEN:
+    style = wxSTC_ANNOTATION_HIDDEN;
+    break;
+
+  case myID_ANNOTATION_STYLE_STANDARD:
+    style = wxSTC_ANNOTATION_STANDARD;
+    break;
+
+  case myID_ANNOTATION_STYLE_BOXED:
+    style = wxSTC_ANNOTATION_BOXED;
+    break;
+  }
+
+  edit->AnnotationSetVisible(style);
+}
+
+void Notebook::OnChangeCase(wxCommandEvent &event) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  switch (event.GetId()) {
+  case myID_CHANGELOWER: {
+    edit->CmdKeyExecute(wxSTC_CMD_LOWERCASE);
+    break;
+  }
+  case myID_CHANGEUPPER: {
+    edit->CmdKeyExecute(wxSTC_CMD_UPPERCASE);
+    break;
+  }
+  }
+}
+
+//! misc
+void Notebook::OnMarginClick(wxStyledTextEvent &event) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+  
+  if (event.GetMargin() == 2) {
+    int lineClick = edit->LineFromPosition(event.GetPosition());
+    int levelClick = edit->GetFoldLevel(lineClick);
+    if ((levelClick & wxSTC_FOLDLEVELHEADERFLAG) > 0) {
+      edit->ToggleFold(lineClick);
+    }
+  }
+}
+
+void Notebook::OnCharAdded(wxStyledTextEvent &event) {
+  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  if (!edit) {
+    return;
+  }
+
+  char chr = (char)event.GetKey();
+  int currentLine = edit->GetCurrentLine();
+  // Change this if support for mac files with \r is needed
+  if (chr == '\n') {
+    int lineInd = 0;
+    if (currentLine > 0) {
+      lineInd = edit->GetLineIndentation(currentLine - 1);
+    }
+    if (lineInd == 0) return;
+    edit->SetLineIndentation(currentLine, lineInd);
+    edit->GotoPos(edit->PositionFromLine(currentLine) + lineInd);
+  }
+}
+
+//----------------------------------------------------------------------------
 // Edit
 //----------------------------------------------------------------------------
 
 BEGIN_EVENT_TABLE (Edit, wxStyledTextCtrl)
     // common
-    EVT_SIZE (                         Edit::OnSize)
-    // edit
-    EVT_MENU (wxID_CLEAR,              Edit::OnEditClear)
-    EVT_MENU (wxID_CUT,                Edit::OnEditCut)
-    EVT_MENU (wxID_COPY,               Edit::OnEditCopy)
-    EVT_MENU (wxID_PASTE,              Edit::OnEditPaste)
-    EVT_MENU (myID_INDENTINC,          Edit::OnEditIndentInc)
-    EVT_MENU (myID_INDENTRED,          Edit::OnEditIndentRed)
-    EVT_MENU (wxID_SELECTALL,          Edit::OnEditSelectAll)
-    EVT_MENU (myID_SELECTLINE,         Edit::OnEditSelectLine)
-    EVT_MENU (wxID_REDO,               Edit::OnEditRedo)
-    EVT_MENU (wxID_UNDO,               Edit::OnEditUndo)
-    // find
-    EVT_MENU (wxID_FIND,               Edit::OnFind)
-    EVT_MENU (myID_FINDNEXT,           Edit::OnFindNext)
-    EVT_MENU (myID_REPLACE,            Edit::OnReplace)
-    EVT_MENU (myID_REPLACENEXT,        Edit::OnReplaceNext)
-    EVT_MENU (myID_BRACEMATCH,         Edit::OnBraceMatch)
-    EVT_MENU (myID_GOTO,               Edit::OnGoto)
-    // view
-    EVT_MENU_RANGE (myID_HILIGHTFIRST, myID_HILIGHTLAST,
-                                       Edit::OnHilightLang)
-    EVT_MENU (myID_DISPLAYEOL,         Edit::OnDisplayEOL)
-    EVT_MENU (myID_INDENTGUIDE,        Edit::OnIndentGuide)
-    EVT_MENU (myID_LINENUMBER,         Edit::OnLineNumber)
-    EVT_MENU (myID_LONGLINEON,         Edit::OnLongLineOn)
-    EVT_MENU (myID_WHITESPACE,         Edit::OnWhiteSpace)
-    EVT_MENU (myID_FOLDTOGGLE,         Edit::OnFoldToggle)
-    EVT_MENU (myID_OVERTYPE,           Edit::OnSetOverType)
-    EVT_MENU (myID_READONLY,           Edit::OnSetReadOnly)
-    EVT_MENU (myID_WRAPMODEON,         Edit::OnWrapmodeOn)
-    EVT_MENU (myID_CHARSETANSI,        Edit::OnUseCharset)
-    EVT_MENU (myID_CHARSETMAC,         Edit::OnUseCharset)
-    // annotations
-    EVT_MENU (myID_ANNOTATION_ADD,     Edit::OnAnnotationAdd)
-    EVT_MENU (myID_ANNOTATION_REMOVE,  Edit::OnAnnotationRemove)
-    EVT_MENU (myID_ANNOTATION_CLEAR,   Edit::OnAnnotationClear)
-    EVT_MENU (myID_ANNOTATION_STYLE_HIDDEN,   Edit::OnAnnotationStyle)
-    EVT_MENU (myID_ANNOTATION_STYLE_STANDARD, Edit::OnAnnotationStyle)
-    EVT_MENU (myID_ANNOTATION_STYLE_BOXED,    Edit::OnAnnotationStyle)
-    // extra
-    EVT_MENU (myID_CHANGELOWER,        Edit::OnChangeCase)
-    EVT_MENU (myID_CHANGEUPPER,        Edit::OnChangeCase)
-    EVT_MENU (myID_CONVERTCR,          Edit::OnConvertEOL)
-    EVT_MENU (myID_CONVERTCRLF,        Edit::OnConvertEOL)
-    EVT_MENU (myID_CONVERTLF,          Edit::OnConvertEOL)
-    // stc
-    EVT_STC_MARGINCLICK (wxID_ANY,     Edit::OnMarginClick)
-    EVT_STC_CHARADDED (wxID_ANY,       Edit::OnCharAdded)
-    EVT_STC_KEY( wxID_ANY , Edit::OnKey )
+    EVT_SIZE(Edit::OnSize)
+    EVT_MENU(myID_SELECTLINE, Edit::OnEditSelectLine)
+    EVT_MENU(myID_LINENUMBER, Edit::OnLineNumber)
+    EVT_MENU(myID_BRACEMATCH, Edit::OnBraceMatch)
 END_EVENT_TABLE()
 
 Edit::Edit (wxWindow *parent, wxWindowID id,
@@ -293,272 +700,36 @@ Edit::~Edit () {}
 
 //----------------------------------------------------------------------------
 // common event handlers
-void Edit::OnSize( wxSizeEvent& event ) {
-    int x = GetClientSize().x +
-            (g_CommonPrefs.lineNumberEnable? m_LineNrMargin: 0) +
-            (g_CommonPrefs.foldEnable? m_FoldingMargin: 0);
-    if (x > 0) SetScrollWidth (x);
-    event.Skip();
+void Edit::OnSize(wxSizeEvent& event) {
+  int x = GetClientSize().x +
+    (g_CommonPrefs.lineNumberEnable ? m_LineNrMargin : 0) +
+    (g_CommonPrefs.foldEnable ? m_FoldingMargin : 0);
+  if (x > 0) SetScrollWidth(x);
+  event.Skip();
 }
 
-// edit event handlers
-void Edit::OnEditRedo (wxCommandEvent &WXUNUSED(event)) {
-    if (!CanRedo()) return;
-    Redo ();
+void Edit::OnEditSelectLine(wxCommandEvent &WXUNUSED(event)) {
+  int lineStart = PositionFromLine(GetCurrentLine());
+  int lineEnd = PositionFromLine(GetCurrentLine() + 1);
+  SetSelection(lineStart, lineEnd);
 }
 
-void Edit::OnEditUndo (wxCommandEvent &WXUNUSED(event)) {
-    if (!CanUndo()) return;
-    Undo ();
-}
-
-void Edit::OnEditClear (wxCommandEvent &WXUNUSED(event)) {
-    if (GetReadOnly()) return;
-    Clear ();
-}
-
-void Edit::OnKey (wxStyledTextEvent &WXUNUSED(event))
+void Edit::OnLineNumber(wxCommandEvent &WXUNUSED(event))
 {
-    wxMessageBox("OnKey");
+  SetMarginWidth(m_LineNrID, GetMarginWidth(m_LineNrID) == 0 ? m_LineNrMargin : 0);
 }
 
-void Edit::OnEditCut (wxCommandEvent &WXUNUSED(event)) {
-    if (GetReadOnly() || (GetSelectionEnd()-GetSelectionStart() <= 0)) return;
-    Cut ();
+void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
+  int min = GetCurrentPos();
+  int max = BraceMatch(min);
+  if (max > (min + 1)) {
+    BraceHighlight(min + 1, max);
+    SetSelection(min + 1, max);
+  }
+  else{
+    BraceBadLight(min);
+  }
 }
-
-void Edit::OnEditCopy (wxCommandEvent &WXUNUSED(event)) {
-    if (GetSelectionEnd()-GetSelectionStart() <= 0) return;
-    Copy ();
-}
-
-void Edit::OnEditPaste (wxCommandEvent &WXUNUSED(event)) {
-    if (!CanPaste()) return;
-    Paste ();
-}
-
-void Edit::OnFind (wxCommandEvent &WXUNUSED(event)) {
-}
-
-void Edit::OnFindNext (wxCommandEvent &WXUNUSED(event)) {
-}
-
-void Edit::OnReplace (wxCommandEvent &WXUNUSED(event)) {
-}
-
-void Edit::OnReplaceNext (wxCommandEvent &WXUNUSED(event)) {
-}
-
-void Edit::OnBraceMatch (wxCommandEvent &WXUNUSED(event)) {
-    int min = GetCurrentPos ();
-    int max = BraceMatch (min);
-    if (max > (min+1)) {
-        BraceHighlight (min+1, max);
-        SetSelection (min+1, max);
-    }else{
-        BraceBadLight (min);
-    }
-}
-
-void Edit::OnGoto (wxCommandEvent &WXUNUSED(event)) {
-}
-
-void Edit::OnEditIndentInc (wxCommandEvent &WXUNUSED(event)) {
-    CmdKeyExecute (wxSTC_CMD_TAB);
-}
-
-void Edit::OnEditIndentRed (wxCommandEvent &WXUNUSED(event)) {
-    CmdKeyExecute (wxSTC_CMD_DELETEBACK);
-}
-
-void Edit::OnEditSelectAll (wxCommandEvent &WXUNUSED(event)) {
-    SetSelection (0, GetTextLength ());
-}
-
-void Edit::OnEditSelectLine (wxCommandEvent &WXUNUSED(event)) {
-    int lineStart = PositionFromLine (GetCurrentLine());
-    int lineEnd = PositionFromLine (GetCurrentLine() + 1);
-    SetSelection (lineStart, lineEnd);
-}
-
-void Edit::OnHilightLang (wxCommandEvent &event) {
-    InitializePrefs (g_LanguagePrefs [event.GetId() - myID_HILIGHTFIRST].name);
-}
-
-void Edit::OnDisplayEOL (wxCommandEvent &WXUNUSED(event)) {
-    SetViewEOL (!GetViewEOL());
-}
-
-void Edit::OnIndentGuide (wxCommandEvent &WXUNUSED(event)) {
-    SetIndentationGuides (!GetIndentationGuides());
-}
-
-void Edit::OnLineNumber (wxCommandEvent &WXUNUSED(event)) {
-    SetMarginWidth (m_LineNrID,
-                    GetMarginWidth (m_LineNrID) == 0? m_LineNrMargin: 0);
-}
-
-void Edit::OnLongLineOn (wxCommandEvent &WXUNUSED(event)) {
-    SetEdgeMode (GetEdgeMode() == 0? wxSTC_EDGE_LINE: wxSTC_EDGE_NONE);
-}
-
-void Edit::OnWhiteSpace (wxCommandEvent &WXUNUSED(event)) {
-    SetViewWhiteSpace (GetViewWhiteSpace() == 0?
-                       wxSTC_WS_VISIBLEALWAYS: wxSTC_WS_INVISIBLE);
-}
-
-void Edit::OnFoldToggle (wxCommandEvent &WXUNUSED(event)) {
-    ToggleFold (GetFoldParent(GetCurrentLine()));
-}
-
-void Edit::OnSetOverType (wxCommandEvent &WXUNUSED(event)) {
-    SetOvertype (!GetOvertype());
-}
-
-void Edit::OnSetReadOnly (wxCommandEvent &WXUNUSED(event)) {
-    SetReadOnly (!GetReadOnly());
-}
-
-void Edit::OnWrapmodeOn (wxCommandEvent &WXUNUSED(event)) {
-    SetWrapMode (GetWrapMode() == 0? wxSTC_WRAP_WORD: wxSTC_WRAP_NONE);
-}
-
-void Edit::OnUseCharset (wxCommandEvent &event) {
-    int Nr;
-    int charset = GetCodePage();
-    switch (event.GetId()) {
-        case myID_CHARSETANSI: {charset = wxSTC_CHARSET_ANSI; break;}
-        case myID_CHARSETMAC: {charset = wxSTC_CHARSET_ANSI; break;}
-    }
-    for (Nr = 0; Nr < wxSTC_STYLE_LASTPREDEFINED; Nr++) {
-        StyleSetCharacterSet (Nr, charset);
-    }
-    SetCodePage (charset);
-}
-
-void Edit::OnAnnotationAdd(wxCommandEvent& WXUNUSED(event))
-{
-    const int line = GetCurrentLine();
-
-    wxString ann = AnnotationGetText(line);
-    ann = wxGetTextFromUser
-          (
-            wxString::Format("Enter annotation for the line %d", line),
-            "Edit annotation",
-            ann,
-            this
-          );
-    if ( ann.empty() )
-        return;
-
-    AnnotationSetText(line, ann);
-    AnnotationSetStyle(line, ANNOTATION_STYLE);
-
-    // Scintilla doesn't update the scroll width for annotations, even with
-    // scroll width tracking on, so do it manually.
-    const int width = GetScrollWidth();
-
-    // NB: The following adjustments are only needed when using
-    //     wxSTC_ANNOTATION_BOXED annotations style, but we apply them always
-    //     in order to make things simpler and not have to redo the width
-    //     calculations when the annotations visibility changes. In a real
-    //     program you'd either just stick to a fixed annotations visibility or
-    //     update the width when it changes.
-
-    // Take into account the fact that the annotation is shown indented, with
-    // the same indent as the line it's attached to.
-    int indent = GetLineIndentation(line);
-
-    // This is just a hack to account for the width of the box, there doesn't
-    // seem to be any way to get it directly from Scintilla.
-    indent += 3;
-
-    const int widthAnn = TextWidth(ANNOTATION_STYLE, ann + wxString(indent, ' '));
-
-    if (widthAnn > width)
-        SetScrollWidth(widthAnn);
-}
-
-void Edit::OnAnnotationRemove(wxCommandEvent& WXUNUSED(event))
-{
-    AnnotationSetText(GetCurrentLine(), wxString());
-}
-
-void Edit::OnAnnotationClear(wxCommandEvent& WXUNUSED(event))
-{
-    AnnotationClearAll();
-}
-
-void Edit::OnAnnotationStyle(wxCommandEvent& event)
-{
-    int style = 0;
-    switch (event.GetId()) {
-        case myID_ANNOTATION_STYLE_HIDDEN:
-            style = wxSTC_ANNOTATION_HIDDEN;
-            break;
-
-        case myID_ANNOTATION_STYLE_STANDARD:
-            style = wxSTC_ANNOTATION_STANDARD;
-            break;
-
-        case myID_ANNOTATION_STYLE_BOXED:
-            style = wxSTC_ANNOTATION_BOXED;
-            break;
-    }
-
-    AnnotationSetVisible(style);
-}
-
-void Edit::OnChangeCase (wxCommandEvent &event) {
-    switch (event.GetId()) {
-        case myID_CHANGELOWER: {
-            CmdKeyExecute (wxSTC_CMD_LOWERCASE);
-            break;
-        }
-        case myID_CHANGEUPPER: {
-            CmdKeyExecute (wxSTC_CMD_UPPERCASE);
-            break;
-        }
-    }
-}
-
-void Edit::OnConvertEOL (wxCommandEvent &event) {
-    int eolMode = GetEOLMode();
-    switch (event.GetId()) {
-        case myID_CONVERTCR: { eolMode = wxSTC_EOL_CR; break;}
-        case myID_CONVERTCRLF: { eolMode = wxSTC_EOL_CRLF; break;}
-        case myID_CONVERTLF: { eolMode = wxSTC_EOL_LF; break;}
-    }
-    ConvertEOLs (eolMode);
-    SetEOLMode (eolMode);
-}
-
-//! misc
-void Edit::OnMarginClick (wxStyledTextEvent &event) {
-    if (event.GetMargin() == 2) {
-        int lineClick = LineFromPosition (event.GetPosition());
-        int levelClick = GetFoldLevel (lineClick);
-        if ((levelClick & wxSTC_FOLDLEVELHEADERFLAG) > 0) {
-            ToggleFold (lineClick);
-        }
-    }
-}
-
-void Edit::OnCharAdded (wxStyledTextEvent &event) {
-    char chr = (char)event.GetKey();
-    int currentLine = GetCurrentLine();
-    // Change this if support for mac files with \r is needed
-    if (chr == '\n') {
-        int lineInd = 0;
-        if (currentLine > 0) {
-            lineInd = GetLineIndentation(currentLine - 1);
-        }
-        if (lineInd == 0) return;
-        SetLineIndentation (currentLine, lineInd);
-        GotoPos(PositionFromLine (currentLine) + lineInd);
-    }
-}
-
 
 //----------------------------------------------------------------------------
 // private functions

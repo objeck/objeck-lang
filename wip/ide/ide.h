@@ -131,6 +131,7 @@ public:
   void OnFileSave(wxCommandEvent &event);
   void OnFileSaveAs(wxCommandEvent &event);
   void OnFileClose(wxCommandEvent &event);
+  void OnEdit(wxCommandEvent &event);
 
   DECLARE_EVENT_TABLE()
 };

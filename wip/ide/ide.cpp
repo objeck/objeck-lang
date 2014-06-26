@@ -41,6 +41,8 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
   EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
   EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
   EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
+  // And all our edit-related menu commands.
+  EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
 END_EVENT_TABLE()
 
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
@@ -81,6 +83,11 @@ void MyFrame::DoUpdate()
 }
 
 // common event handlers
+void MyFrame::OnEdit(wxCommandEvent &event) 
+{
+  if (m_notebook) m_notebook->GetEventHandler()->ProcessEvent(event);
+}
+
 void MyFrame::OnClose(wxCloseEvent &event) 
 {
   /*
@@ -165,14 +172,22 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
   menuFile->Append(wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
   menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
-  menuFile->AppendSeparator();
+
+  // View menu
+  wxMenu *menuView = new wxMenu;
+  menuView->AppendCheckItem(myID_FOLDTOGGLE, _("&Toggle current fold\tCtrl+T"));
+  menuView->AppendCheckItem(myID_OVERTYPE, _("&Overwrite mode\tIns"));
+  menuView->AppendCheckItem(myID_WRAPMODEON, _("&Wrap mode\tCtrl+U"));
+  menuView->AppendSeparator();
+  menuView->AppendCheckItem(myID_DISPLAYEOL, _("Show line &endings"));
+  menuView->AppendCheckItem(myID_INDENTGUIDE, _("Show &indent guides"));
+  menuView->AppendCheckItem(myID_LINENUMBER, _("Show line &numbers"));
+  menuView->AppendCheckItem(myID_LONGLINEON, _("Show &long line marker"));
+  menuView->AppendCheckItem(myID_WHITESPACE, _("Show white&space"));
 
   wxMenuBar* menu_bar = new wxMenuBar;
   menu_bar->Append(menuFile, wxT("&File"));
-  menu_bar->Append(new wxMenu, wxT("&View"));
-  menu_bar->Append(new wxMenu, wxT("&Perspectives"));
-  menu_bar->Append(new wxMenu, wxT("&Options"));
-  menu_bar->Append(new wxMenu, wxT("&Notebook"));
+  menu_bar->Append(menuView, wxT("&View"));
   menu_bar->Append(new wxMenu, wxT("&Help"));
 
   return menu_bar;
