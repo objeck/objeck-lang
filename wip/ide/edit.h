@@ -23,22 +23,42 @@
 
 //! wxWidgets/contrib headers
 #include "wx/stc/stc.h"  // styled text control
+#include "wx/hashmap.h"
+#include "wx/aui/aui.h"
 
 //! application headers
 #include "prefs.h"       // preferences
-
 
 //============================================================================
 // declarations
 //============================================================================
 
-class EditPrint;
+class Edit;
 class EditProperties;
 
+//----------------------------------------------------------------------------
+//! Notebook
+class Notebook : public wxAuiNotebook {
+  WX_DECLARE_STRING_HASH_MAP(Edit*, Pages);
+  Pages pages;
+
+public:
+  Notebook(wxWindow *parent, wxWindowID id = wxID_ANY, const wxPoint &pos = wxDefaultPosition,
+    const wxSize &size = wxDefaultSize, long style = wxAUI_NB_DEFAULT_STYLE);
+
+  ~Notebook();
+
+  void OnPageClose(wxAuiNotebookEvent& event);
+  void OnPageChanged(wxAuiNotebookEvent& event);
+
+  void OpenFile(wxString& fn);
+
+  DECLARE_EVENT_TABLE()
+};
 
 //----------------------------------------------------------------------------
 //! Edit
-class Edit: public wxStyledTextCtrl {
+class Edit : public wxStyledTextCtrl {
     friend class EditProperties;
 
     enum
