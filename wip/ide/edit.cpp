@@ -57,6 +57,84 @@ const int ANNOTATION_STYLE = wxSTC_STYLE_LASTPREDEFINED + 1;
 //============================================================================
 
 //----------------------------------------------------------------------------
+// Notebook
+//----------------------------------------------------------------------------
+
+BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
+    EVT_AUINOTEBOOK_PAGE_CLOSE(wxID_ANY, OnPageClose)
+    EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, OnPageChanged)
+END_EVENT_TABLE()
+
+
+Notebook::Notebook(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style) : 
+  wxAuiNotebook(parent, id, pos, size, style)
+{
+
+}
+
+Notebook::~Notebook()
+{
+
+}
+
+void Notebook::OnPageClose(wxAuiNotebookEvent& event)
+{
+  Edit* edit = static_cast<Edit*>(GetPage(GetSelection()));
+  if (edit) {
+    if (edit->Modified()) {
+      if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
+        wxYES_NO | wxICON_QUESTION) == wxYES) {
+        edit->SaveFile();
+        if (edit->Modified()) {
+          wxMessageBox(_("Text could not be saved!"), _("Close abort"),
+            wxOK | wxICON_EXCLAMATION);
+          return;
+        }
+      }
+    }
+    pages.erase(edit->GetFilename());
+    edit->SetFilename(wxEmptyString);
+    edit->ClearAll();
+    edit->SetSavePoint();
+  }
+}
+
+void Notebook::OnPageChanged(wxAuiNotebookEvent& event)
+{
+  int type = event.GetEventType();
+}
+
+void Notebook::OpenFile(wxString& fn)
+{
+  wxFileName w(fn); 
+  w.Normalize(); 
+  wxString filename = w.GetFullPath();
+
+  // set page focus
+  Pages::iterator found = pages.find(filename);
+  if (found != pages.end()) {
+    int page_index = GetPageIndex(found->second);
+    if (page_index != wxNOT_FOUND) {
+      SetSelection(page_index);
+    }
+  }
+  // add new page and set focus
+  else {    
+    Edit* edit = new Edit(this);
+    edit->LoadFile(filename);
+    edit->SelectNone();
+    const wxString page_name = w.GetName() + wxT('.') + w.GetExt();
+    AddPage(edit, page_name);
+    pages[filename] = edit;
+
+    int page_index = GetPageIndex(edit);
+    if (page_index != wxNOT_FOUND) {
+      SetSelection(page_index);
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
 // Edit
 //----------------------------------------------------------------------------
 
@@ -664,8 +742,8 @@ bool Edit::LoadFile (const wxString &filename) {
     EmptyUndoBuffer();
 
     // determine lexer language
-    wxFileName fname (m_filename);
-    InitializePrefs (DeterminePrefs (fname.GetFullName()));
+    wxFileName file (m_filename);
+    InitializePrefs(DeterminePrefs(file.GetFullName()));
 
     return true;
 }
