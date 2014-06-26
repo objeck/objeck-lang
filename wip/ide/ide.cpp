@@ -106,8 +106,7 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
   if (dlg.ShowModal() != wxID_OK) {
     return;
   }
-
-  wxString fname = dlg.GetPath();
+  m_notebook->OpenFile(dlg.GetPath());
 }
 
 void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
@@ -246,20 +245,20 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
   return tree;
 }
 
-wxAuiNotebook* MyFrame::CreateNotebook()
+Notebook* MyFrame::CreateNotebook()
 {
   // create the notebook off-window to avoid flicker
   wxSize client_size = GetClientSize();
 
-  wxAuiNotebook* ctrl = new wxAuiNotebook(this, wxID_ANY,
+  Notebook* ctrl = new Notebook(this, wxID_ANY,
     wxPoint(client_size.x, client_size.y),
     wxSize(430, 200),
     wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER);
-  ctrl->Freeze();
 
+  ctrl->Freeze();
   wxBitmap page_bmp = wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16));
-  
   ctrl->Thaw();
+
   return ctrl;
 }
 
