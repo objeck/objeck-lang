@@ -78,10 +78,14 @@ Notebook::~Notebook()
 
 }
 
+Edit* Notebook::GetEdit() {
+  return static_cast<Edit*>(GetCurrentPage());
+}
+
 // common event handlers
 void Notebook::OnEdit(wxCommandEvent &event)
 {
-  Edit* edit = static_cast<Edit*>(GetCurrentPage());
+  Edit* edit = GetEdit();
   if (!edit) {
     return;
   }
