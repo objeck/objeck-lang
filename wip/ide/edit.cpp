@@ -260,14 +260,11 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetProperty(wxT("fold.comment"), wxT("1"));
     SetProperty(wxT("fold.compact"), wxT("1"));
 
-    
-     SetProperty(wxT("fold"), wxT("1"));
+    SetProperty(wxT("fold"), wxT("1"));
     SetProperty(wxT("fold.comment"), wxT("1"));
     SetProperty(wxT("fold.compact"), wxT("1"));
     SetProperty(wxT("fold.preprocessor"), wxT("1"));
-    SetProperty(wxT("fold.html"), wxT("1"));
-    SetProperty(wxT("fold.html.preprocessor"), wxT("1"));
-
+    
     SetMarginType(margin_id_lineno, wxSTC_MARGIN_NUMBER);
     SetMarginWidth(margin_id_lineno, 32);
 
@@ -279,24 +276,18 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("GREY"));
 
+    /*
     SetMarginMask(margin_id_fold, wxSTC_MASK_FOLDERS);
     SetMarginWidth(margin_id_fold, 32);
     SetMarginSensitive(margin_id_fold, true);
+    */
 
     SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED | wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
-
-    SetTabWidth(4);
-    SetUseTabs(false);
-    SetWrapMode(wxSTC_WRAP_WORD);
-    SetWrapVisualFlags(wxSTC_WRAPVISUALFLAG_END);
-
-    // annotations
-    AnnotationSetVisible(wxSTC_ANNOTATION_BOXED);
 
     // miscellaneous
     m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
     m_FoldingMargin = 16;
-    CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
+//    CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
     SetLayoutCache (wxSTC_CACHE_PAGE);
 
 }
@@ -693,24 +684,16 @@ bool Edit::InitializePrefs(const wxString &name) {
       (curInfo->folds & mySTC_FOLD_COMPACT) > 0 ? wxT("1") : wxT("0"));
     SetProperty(wxT("fold.preprocessor"),
       (curInfo->folds & mySTC_FOLD_PREPROC) > 0 ? wxT("1") : wxT("0"));
-    SetProperty(wxT("fold.html"),
-      (curInfo->folds & mySTC_FOLD_HTML) > 0 ? wxT("1") : wxT("0"));
-    SetProperty(wxT("fold.html.preprocessor"),
-      (curInfo->folds & mySTC_FOLD_HTMLPREP) > 0 ? wxT("1") : wxT("0"));
-    SetProperty(wxT("fold.comment.python"),
-      (curInfo->folds & mySTC_FOLD_COMMENTPY) > 0 ? wxT("1") : wxT("0"));
-    SetProperty(wxT("fold.quotes.python"),
-      (curInfo->folds & mySTC_FOLD_QUOTESPY) > 0 ? wxT("1") : wxT("0"));
   }
   SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED |
     wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
 
   // set spaces and indention
-  SetTabWidth(4);
-  SetUseTabs(false);
+  SetTabWidth(3);
+  SetUseTabs(true);
   SetTabIndents(true);
   SetBackSpaceUnIndents(true);
-  SetIndent(g_CommonPrefs.indentEnable ? 4 : 0);
+  SetIndent(g_CommonPrefs.indentEnable ? 3 : 0);
 
   // others
   SetViewEOL(g_CommonPrefs.displayEOLEnable);
@@ -783,29 +766,13 @@ bool Edit::SaveFile()
 }
 
 bool Edit::SaveFile(const wxString &filename) {
-
   // return if no change
   if (!Modified()) return true;
 
-  //     // save edit in file and clear undo
-  //     if (!filename.empty()) m_filename = filename;
-  //     wxFile file (m_filename, wxFile::write);
-  //     if (!file.IsOpened()) return false;
-  //     wxString buf = GetText();
-  //     bool okay = file.Write (buf);
-  //     file.Close();
-  //     if (!okay) return false;
-  //     EmptyUndoBuffer();
-  //     SetSavePoint();
-
-  //     return true;
-
   return wxStyledTextCtrl::SaveFile(filename);
-
 }
 
 bool Edit::Modified() {
-
   // return modified state
   return (GetModify() && !GetReadOnly());
 }

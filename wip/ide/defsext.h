@@ -23,7 +23,7 @@
 // declarations
 //============================================================================
 
-#define DEFAULT_LANGUAGE "<default>"
+#define DEFAULT_LANGUAGE "Objeck"
 
 #define PAGE_COMMON _("Common")
 #define PAGE_LANGUAGES _("Languages")
