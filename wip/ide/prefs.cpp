@@ -80,26 +80,11 @@ const char* CppWordlist3 =
     "retval sa section see showinitializer since skip skipline struct "
     "subsection test throw todo typedef union until var verbatim "
     "verbinclude version warning weakgroup $ @ \"\" & < > # { }";
-
-// Python
-const char* PythonWordlist1 =
-    "and assert break class continue def del elif else except exec "
-    "finally for from global if import in is lambda None not or pass "
-    "print raise return try while yield";
-const char* PythonWordlist2 =
-    "ACCELERATORS ALT AUTO3STATE AUTOCHECKBOX AUTORADIOBUTTON BEGIN "
-    "BITMAP BLOCK BUTTON CAPTION CHARACTERISTICS CHECKBOX CLASS "
-    "COMBOBOX CONTROL CTEXT CURSOR DEFPUSHBUTTON DIALOG DIALOGEX "
-    "DISCARDABLE EDITTEXT END EXSTYLE FONT GROUPBOX ICON LANGUAGE "
-    "LISTBOX LTEXT MENU MENUEX MENUITEM MESSAGETABLE POPUP PUSHBUTTON "
-    "RADIOBUTTON RCDATA RTEXT SCROLLBAR SEPARATOR SHIFT STATE3 "
-    "STRINGTABLE STYLE TEXTINCLUDE VALUE VERSION VERSIONINFO VIRTKEY";
-
   // Objeck
 const char* ObjeckWordlist1 =
     "and break bundle class critical do each else "
     "enum false for from function if interface label leaving "
-    "method native or other private return select "
+    "method native or other public private return select "
     "static true use virtual while xor";
 
 const char* ObjeckWordlist2 =
@@ -182,43 +167,6 @@ const LanguageInfo g_LanguagePrefs [] = {
       {-1, NULL},
       {-1, NULL}},
      mySTC_FOLD_COMMENT | mySTC_FOLD_COMPACT | mySTC_FOLD_PREPROC},
-    // Python
-    {"Python",
-     "*.py;*.pyw",
-     wxSTC_LEX_PYTHON,
-     {{mySTC_TYPE_DEFAULT, NULL},
-      {mySTC_TYPE_COMMENT_LINE, NULL},
-      {mySTC_TYPE_NUMBER, NULL},
-      {mySTC_TYPE_STRING, NULL},
-      {mySTC_TYPE_CHARACTER, NULL},
-      {mySTC_TYPE_WORD1, PythonWordlist1}, // KEYWORDS
-      {mySTC_TYPE_DEFAULT, NULL}, // TRIPLE
-      {mySTC_TYPE_DEFAULT, NULL}, // TRIPLEDOUBLE
-      {mySTC_TYPE_DEFAULT, NULL}, // CLASSNAME
-      {mySTC_TYPE_DEFAULT, PythonWordlist2}, // DEFNAME
-      {mySTC_TYPE_OPERATOR, NULL},
-      {mySTC_TYPE_IDENTIFIER, NULL},
-      {mySTC_TYPE_DEFAULT, NULL}, // COMMENT_BLOCK
-      {mySTC_TYPE_STRING_EOL, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL},
-      {-1, NULL}},
-     mySTC_FOLD_COMMENTPY | mySTC_FOLD_QUOTESPY},
     // * (any)
     {wxTRANSLATE(DEFAULT_LANGUAGE),
      "*.*",
