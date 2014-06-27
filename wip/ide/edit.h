@@ -53,6 +53,8 @@ public:
 
   ~Notebook();
 
+  Edit* GetEdit();
+
   void OpenFile(wxString& fn);
 
   // event handlers

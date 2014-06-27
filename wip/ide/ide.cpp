@@ -118,50 +118,45 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
 {
-  /*
-  if (!m_edit) return;
-  if (!m_edit->Modified()) {
+  if (!m_notebook->GetEdit()) return;
+
+  if (!m_notebook->GetEdit()->Modified()) {
     wxMessageBox(_("There is nothing to save!"), _("Save file"),
       wxOK | wxICON_EXCLAMATION);
     return;
   }
-  m_edit->SaveFile();
-  */
+  m_notebook->GetEdit()->SaveFile();
 }
 
 void MyFrame::OnFileSaveAs(wxCommandEvent &WXUNUSED(event)) 
 {
-  /*
-  if (!m_edit) return;
+  if (!m_notebook->GetEdit()) return;
 #if wxUSE_FILEDLG
   wxString filename = wxEmptyString;
   wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
   if (dlg.ShowModal() != wxID_OK) return;
   filename = dlg.GetPath();
-  m_edit->SaveFile(filename);
+  m_notebook->GetEdit()->SaveFile(filename);
 #endif // wxUSE_FILEDLG
-  */
 }
 
 void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event)) 
 {
-  /*
-  if (!m_edit) return;
-  if (m_edit->Modified()) {
+  if (!m_notebook->GetEdit()) return;
+  if (m_notebook->GetEdit()->Modified()) {
     if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
       wxYES_NO | wxICON_QUESTION) == wxYES) {
-      m_edit->SaveFile();
-      if (m_edit->Modified()) {
+      m_notebook->GetEdit()->SaveFile();
+      if (m_notebook->GetEdit()->Modified()) {
         wxMessageBox(_("Text could not be saved!"), _("Close abort"),
           wxOK | wxICON_EXCLAMATION);
         return;
       }
     }
   }
-  m_edit->SetFilename(wxEmptyString);
-  m_edit->ClearAll();
-  m_edit->SetSavePoint();
-  */
+  m_notebook->GetEdit()->SetFilename(wxEmptyString);
+  m_notebook->GetEdit()->ClearAll();
+  m_notebook->GetEdit()->SetSavePoint();
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
