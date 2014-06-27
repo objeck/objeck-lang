@@ -293,7 +293,6 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     m_FoldingMargin = 16;
 //    CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
     SetLayoutCache (wxSTC_CACHE_PAGE);
-
 }
 
 Edit::~Edit () {}
