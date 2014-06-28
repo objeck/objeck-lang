@@ -368,10 +368,13 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
 
   if (type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
   {
-    wxLogMessage(wxT("Find %s'%s' (flags: %s)"),
-      type == wxEVT_FIND_NEXT ? wxT("next ") : wxT(""),
-      event.GetFindString(),
-      DecodeFindDialogEventFlags(event.GetFlags()));
+    const wxString find_string = event.GetFindString();
+    SearchAnchor();
+    int pos = SearchNext(m_FindData.GetFlags(), find_string);
+    if (pos > -1) {
+      GotoPos(pos);
+      SetSelection(pos, pos + find_string.size());
+    }
   }
   else if (type == wxEVT_FIND_REPLACE ||
     type == wxEVT_FIND_REPLACE_ALL)
