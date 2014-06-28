@@ -267,7 +267,7 @@ Notebook* MyFrame::CreateNotebook()
 
   ctrl->Freeze();
   wxBitmap page_bmp = wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16));
-  ctrl->AddPage(new Edit(ctrl), wxT("New"));
+  ctrl->AddPage(new Edit(ctrl), wxT("new"));
 
   ctrl->Thaw();
 
