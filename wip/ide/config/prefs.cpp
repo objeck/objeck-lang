@@ -99,7 +99,7 @@ const char* PythonWordlist2 =
 const char* ObjeckWordlist1 =
     "and break bundle class critical do each else "
     "enum false for from function if interface label leaving "
-    "method native or other private return select "
+    "method native or other private public return select "
     "static true use virtual while xor";
 
 const char* ObjeckWordlist2 =
