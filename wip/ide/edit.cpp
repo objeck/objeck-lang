@@ -256,7 +256,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
     SetMarginWidth(MARGIN_FOLD, 15);
     SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
-    StyleSetBackground(MARGIN_FOLD, wxColor(200, 200, 200));
+ // StyleSetBackground(MARGIN_FOLD, wxColor(200, 200, 200));
     SetMarginSensitive(MARGIN_FOLD, true);
 
     // Properties found from http://www.scintilla.org/SciTEDoc.html
@@ -291,7 +291,7 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     // miscellaneous
     m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
     m_FoldingMargin = 16;
-//    CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
+//  CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
     SetLayoutCache (wxSTC_CACHE_PAGE);
 }
 
