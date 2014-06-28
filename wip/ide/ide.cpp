@@ -41,7 +41,8 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
   EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
   EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
   EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
-  // And all our edit-related menu commands.
+  // And all our edit-related menu commands.  
+  EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
   EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
 END_EVENT_TABLE()
 
@@ -85,7 +86,9 @@ void MyFrame::DoUpdate()
 // common event handlers
 void MyFrame::OnEdit(wxCommandEvent &event) 
 {
-  if (m_notebook) m_notebook->GetEventHandler()->ProcessEvent(event);
+  if (m_notebook) {
+    m_notebook->GetEventHandler()->ProcessEvent(event);
+  }
 }
 
 void MyFrame::OnClose(wxCloseEvent &event) 
@@ -168,6 +171,21 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuFile->Append(wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
   menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
 
+  // Edit menu
+  wxMenu *menuEdit = new wxMenu;
+  menuEdit->Append(wxID_UNDO, _("&Undo\tCtrl+Z"));
+  menuEdit->Append(wxID_REDO, _("&Redo\tCtrl+Shift+Z"));
+  menuEdit->AppendSeparator();
+  menuEdit->Append(wxID_CUT, _("Cu&t\tCtrl+X"));
+  menuEdit->Append(wxID_COPY, _("&Copy\tCtrl+C"));
+  menuEdit->Append(wxID_PASTE, _("&Paste\tCtrl+V"));
+  menuEdit->Append(wxID_CLEAR, _("&Delete\tDel"));
+  menuEdit->AppendSeparator();
+  menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find\tCtrl+F"));
+  menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
+  menuEdit->Append(myID_REPLACE, _("&Replace\tCtrl+H"));
+  menuEdit->Append(myID_REPLACENEXT, _("Replace &again\tShift+F4"));
+  
   // View menu
   wxMenu *menuView = new wxMenu;
   menuView->AppendCheckItem(myID_FOLDTOGGLE, _("&Toggle current fold\tCtrl+T"));
@@ -182,6 +200,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
 
   wxMenuBar* menu_bar = new wxMenuBar;
   menu_bar->Append(menuFile, wxT("&File"));
+  menu_bar->Append(menuEdit, wxT("&Edit"));
   menu_bar->Append(menuView, wxT("&View"));
   menu_bar->Append(new wxMenu, wxT("&Help"));
 

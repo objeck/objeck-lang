@@ -24,13 +24,12 @@
 //! wxWidgets/contrib headers
 #include "wx/stc/stc.h"
 #include "wx/aui/aui.h"
+#include "wx/fdrepdlg.h"
 #include "wx/hashmap.h"
 #include "wx/stack.h"
 
 //! application headers
 #include "prefs.h"       // preferences
-
-#define PAGE_MAX_CLEAN_UP 5
 
 //============================================================================
 // declarations
@@ -84,6 +83,19 @@ class Edit : public wxStyledTextCtrl {
     int m_FoldingID;
     int m_FoldingMargin;
     int m_DividerID;
+    wxFindReplaceDialog* m_findReplace;
+    wxFindReplaceData m_FindData;
+
+    static wxString DecodeFindDialogEventFlags(int flags)
+    {
+      wxString str;
+      str << (flags & wxFR_DOWN ? wxT("down") : wxT("up")) << wxT(", ")
+        << (flags & wxFR_WHOLEWORD ? wxT("whole words only, ") : wxT(""))
+        << (flags & wxFR_MATCHCASE ? wxT("") : wxT("not "))
+        << wxT("case sensitive");
+
+      return str;
+    }
 
     DECLARE_EVENT_TABLE()
 
@@ -116,6 +128,8 @@ public:
     void OnFindNext(wxCommandEvent &event);
     void OnReplace(wxCommandEvent &event);
     void OnReplaceNext(wxCommandEvent &event);
+    void OnFindDialog(wxFindDialogEvent& event);
+
     void OnBraceMatch(wxCommandEvent &event);
     void OnGoto(wxCommandEvent &event);
     void OnEditIndentInc(wxCommandEvent &event);
