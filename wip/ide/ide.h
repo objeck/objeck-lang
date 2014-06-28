@@ -132,6 +132,7 @@ public:
   void OnFileSaveAs(wxCommandEvent &event);
   void OnFileClose(wxCommandEvent &event);
   void OnEdit(wxCommandEvent &event);
+  void OnFindReplace(wxCommandEvent &event);
 
   DECLARE_EVENT_TABLE()
 };
