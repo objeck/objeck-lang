@@ -65,6 +65,7 @@ BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, OnPageChanged)
     // And all our edit-related menu commands.
     EVT_MENU(myID_DLG_FIND_TEXT, Notebook::OnEdit)
+    EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
     EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, Notebook::OnEdit)
 END_EVENT_TABLE()
 
@@ -171,7 +172,8 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_MENU(wxID_UNDO, Edit::OnEditUndo)
     // find
     EVT_MENU(myID_DLG_FIND_TEXT, Edit::OnFind)
-    
+    EVT_MENU(myID_FINDNEXT, Edit::OnFind)
+
     EVT_FIND(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_NEXT(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_REPLACE(wxID_ANY, Edit::OnFindDialog)
@@ -352,30 +354,68 @@ void Edit::OnEditPaste(wxCommandEvent &WXUNUSED(event)) {
 
 
 
-void Edit::OnFind(wxCommandEvent &WXUNUSED(event)) {
-  if (m_findReplace) {
-    delete m_findReplace;
-    m_findReplace = NULL;
+void Edit::OnFind(wxCommandEvent &event) {
+  if (event.GetId() == myID_FINDNEXT) {
+    const wxString find_string = m_FindData.GetFindString();
+    GotoPos(GetCurrentPos());
+    SearchAnchor();
+    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
+    if (found_start > -1) {
+      const int found_end = found_start + find_string.size();
+      GotoPos(found_start);
+      SetSelection(found_start, found_end);
+    }
+    else {
+      wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
+      dialog.ShowModal();
+    }
   }
-  
-  m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find/Replace"));
-  m_findReplace->Show();
+  else {
+    if (m_findReplace) {
+      delete m_findReplace;
+      m_findReplace = NULL;
+    }
+
+    m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find/Replace"));
+    m_findReplace->Show();
+  }
 }
 
 void Edit::OnFindDialog(wxFindDialogEvent& event)
 {
-  wxEventType type = event.GetEventType();
+  const wxEventType type = event.GetEventType();
 
-  if (type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
+  if (type == wxEVT_FIND)
   {
     const wxString find_string = event.GetFindString();
     SearchAnchor();
-    int pos = SearchNext(m_FindData.GetFlags(), find_string);
-    if (pos > -1) {
-      GotoPos(pos);
-      SetSelection(pos, pos + find_string.size());
+    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
+    if (found_start > -1) {
+      const int found_end = found_start + find_string.size();
+      GotoPos(found_start);
+      SetSelection(found_start, found_end);
+    }
+    else {
+      wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
+      dialog.ShowModal();
     }
   }
+  else if (type == wxEVT_FIND_NEXT) {
+    const wxString find_string = m_FindData.GetFindString();
+    GotoPos(GetCurrentPos());
+    SearchAnchor();
+    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
+    if (found_start > -1) {
+      const int found_end = found_start + find_string.size();
+      GotoPos(found_start);
+      SetSelection(found_start, found_end);
+    }
+    else {
+      wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
+      dialog.ShowModal();
+    }
+  }
+  /*
   else if (type == wxEVT_FIND_REPLACE ||
     type == wxEVT_FIND_REPLACE_ALL)
   {
@@ -394,7 +434,7 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     if (dlg == m_findReplace)
     {
       txt = wxT("Find");
-      /*
+      
       idMenu = DIALOGS_FIND;
       m_findReplace = NULL;
     }
@@ -403,7 +443,6 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
       txt = wxT("Replace");
       idMenu = DIALOGS_REPLACE;
       m_dlgReplace = NULL;
-      */
     }
     else
     {
@@ -414,20 +453,19 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     }
 
     wxLogMessage(wxT("%s dialog is being closed."), txt);
-
-    /*
+    
     if (idMenu != wxID_ANY)
     {
       GetMenuBar()->Check(idMenu, false);
     }
-    */
-
+    
     dlg->Destroy();
   }
   else
   {
     wxLogError(wxT("Unknown find dialog event!"));
   }
+  */
 }
 
 void Edit::OnReplace(wxCommandEvent &WXUNUSED(event)) {

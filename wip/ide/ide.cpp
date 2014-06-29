@@ -43,6 +43,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
   EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
   // And all our edit-related menu commands.  
   EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
+  EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
   EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
 END_EVENT_TABLE()
 
