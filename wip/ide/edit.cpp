@@ -351,20 +351,25 @@ void Edit::OnEditPaste(wxCommandEvent &WXUNUSED(event)) {
   Paste();
 }
 
-
-
-
 void Edit::OnFind(wxCommandEvent &event) {
   if (event.GetId() == myID_FINDNEXT) {
+    const int flags = m_FindData.GetFlags();
+    const bool find_down = (flags & wxFR_DOWN) ? true : false;
     const wxString find_string = m_FindData.GetFindString();
-    GotoPos(GetCurrentPos());
+
+    GotoPos(find_down ? GetCurrentPos() : GetCurrentPos() - find_string.size());
     SearchAnchor();
-    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
+
+    // search up/down
+    const int found_start = find_down ? SearchNext(flags, find_string) : SearchPrev(flags, find_string);
+
+    // found
     if (found_start > -1) {
       const int found_end = found_start + find_string.size();
       GotoPos(found_start);
       SetSelection(found_start, found_end);
     }
+    // not found
     else {
       wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
       dialog.ShowModal();
@@ -384,49 +389,36 @@ void Edit::OnFind(wxCommandEvent &event) {
 void Edit::OnFindDialog(wxFindDialogEvent& event)
 {
   const wxEventType type = event.GetEventType();
+  const int flags = m_FindData.GetFlags();
+  const bool find_down = (flags & wxFR_DOWN) ? true : false;
+  const wxString find_string = m_FindData.GetFindString();
 
-  if (type == wxEVT_FIND)
-  {
-    const wxString find_string = event.GetFindString();
+  if (type == wxEVT_FIND || type == wxEVT_FIND_NEXT) {
+    if (type == wxEVT_FIND_NEXT) {
+      GotoPos(find_down ? GetCurrentPos() : GetCurrentPos() - find_string.size());
+    }
     SearchAnchor();
-    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
+
+    // search up/down
+    const int found_start = find_down ?  SearchNext(flags, find_string) : SearchPrev(flags, find_string);
+
+    // found
     if (found_start > -1) {
       const int found_end = found_start + find_string.size();
       GotoPos(found_start);
       SetSelection(found_start, found_end);
     }
+    // not found
     else {
       wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
       dialog.ShowModal();
     }
   }
-  else if (type == wxEVT_FIND_NEXT) {
-    const wxString find_string = m_FindData.GetFindString();
-    GotoPos(GetCurrentPos());
-    SearchAnchor();
-    const int found_start = SearchNext(m_FindData.GetFlags(), find_string);
-    if (found_start > -1) {
-      const int found_end = found_start + find_string.size();
-      GotoPos(found_start);
-      SetSelection(found_start, found_end);
-    }
-    else {
-      wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
-      dialog.ShowModal();
-    }
+  else if (type == wxEVT_FIND_REPLACE || type == wxEVT_FIND_REPLACE_ALL) {
+    
   }
-  /*
-  else if (type == wxEVT_FIND_REPLACE ||
-    type == wxEVT_FIND_REPLACE_ALL)
-  {
-    wxLogMessage(wxT("Replace %s'%s' with '%s' (flags: %s)"),
-      type == wxEVT_FIND_REPLACE_ALL ? wxT("all ") : wxT(""),
-      event.GetFindString(),
-      event.GetReplaceString(),
-      DecodeFindDialogEventFlags(event.GetFlags()));
-  }
-  else if (type == wxEVT_FIND_CLOSE)
-  {
+  else if (type == wxEVT_FIND_CLOSE) {
+    /*
     wxFindReplaceDialog *dlg = event.GetDialog();
 
     int idMenu;
@@ -460,12 +452,12 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     }
     
     dlg->Destroy();
+    */
   }
   else
   {
     wxLogError(wxT("Unknown find dialog event!"));
   }
-  */
 }
 
 void Edit::OnReplace(wxCommandEvent &WXUNUSED(event)) {
