@@ -34,17 +34,19 @@ IMPLEMENT_APP(MyApp)
 /////////////////////////
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
-  // common
-  EVT_CLOSE(MyFrame::OnClose)
-  // file
-  EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
-  EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
-  EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
-  EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
-  // And all our edit-related menu commands.  
-  EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
-  EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
-  EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
+// common
+EVT_CLOSE(MyFrame::OnClose)
+// file
+EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
+EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
+EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
+EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
+// find/replace
+EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
+EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
+// editor operations
+EVT_MENU_RANGE(wxID_EDIT, wxID_PROPERTIES, MyFrame::OnEdit)
+EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
 END_EVENT_TABLE()
 
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
@@ -180,7 +182,6 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(wxID_CUT, _("Cu&t\tCtrl+X"));
   menuEdit->Append(wxID_COPY, _("&Copy\tCtrl+C"));
   menuEdit->Append(wxID_PASTE, _("&Paste\tCtrl+V"));
-  menuEdit->Append(wxID_CLEAR, _("&Delete\tDel"));
   menuEdit->AppendSeparator();
   menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find\tCtrl+F"));
   menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
