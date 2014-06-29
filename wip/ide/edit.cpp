@@ -415,7 +415,7 @@ void Edit::OnFindDialog(wxFindDialogEvent& event)
     }
   }
   else if (type == wxEVT_FIND_REPLACE || type == wxEVT_FIND_REPLACE_ALL) {
-    
+    // ReplaceSelection(..)
   }
   else if (type == wxEVT_FIND_CLOSE) {
     /*
