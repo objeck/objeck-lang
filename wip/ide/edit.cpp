@@ -63,9 +63,11 @@ const int ANNOTATION_STYLE = wxSTC_STYLE_LASTPREDEFINED + 1;
 BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     EVT_AUINOTEBOOK_PAGE_CLOSE(wxID_ANY, OnPageClose)
     EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, OnPageChanged)
-    // And all our edit-related menu commands.
+    // find/replace
     EVT_MENU(myID_DLG_FIND_TEXT, Notebook::OnEdit)
     EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
+    // editor operations
+    EVT_MENU_RANGE(wxID_EDIT, wxID_PROPERTIES, Notebook::OnEdit)
     EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, Notebook::OnEdit)
 END_EVENT_TABLE()
 
