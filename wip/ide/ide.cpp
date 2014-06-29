@@ -57,7 +57,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left());
   m_notebook = CreateNotebook(), 
     aui_manager.AddPane(m_notebook, wxAuiPaneInfo().Centre());
-  aui_manager.AddPane(CreateTextCtrl(wxT("blah")), wxAuiPaneInfo().Bottom());
+  aui_manager.AddPane(CreateTextCtrl(), wxAuiPaneInfo().Bottom());
   
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
@@ -308,17 +308,22 @@ wxHtmlWindow* MyFrame::CreateHTMLCtrl(wxWindow* parent)
 }
 
 // Demo text
-wxTextCtrl* MyFrame::CreateTextCtrl(const wxString& ctrl_text)
+wxTextCtrl* MyFrame::CreateTextCtrl()
 {
-  static int n = 0;
-
+  wxArrayString output, errors;
+  int code = wxExecute("\"C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy\\bin\\obc.exe\"", output, errors);
+  
   wxString text;
-  if (!ctrl_text.empty())
-    text = ctrl_text;
-  else
-    text.Printf(wxT("This is text box %d"), ++n);
+  if (errors.size() > 0) {
+    for (int i = 0; i < errors.size(); ++i) {
+      text += errors[i] + wxT('\n');
+    }
+  }
+  else {
+    for (int i = 0; i < output.size(); ++i) {
+      text += output[i] + wxT('\n');
+    }
+  }
 
-  return new wxTextCtrl(this, wxID_ANY, text,
-    wxPoint(0, 0), wxSize(150, 90),
-    wxNO_BORDER | wxTE_MULTILINE);
+  return new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 90), wxNO_BORDER | wxTE_MULTILINE);
 }
