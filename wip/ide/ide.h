@@ -23,6 +23,8 @@
 #include "wx/treectrl.h"
 #include "wx/artprov.h"
 #include "wx/wxhtml.h"
+#include "wx/utils.h"
+#include "wx/process.h"
 
 #include "edit.h"
 
@@ -48,7 +50,7 @@ class MyFrame : public wxFrame {
   wxTreeCtrl* CreateTreeCtrl();
   Notebook* CreateNotebook();
   wxHtmlWindow* CreateHTMLCtrl(wxWindow* parent);
-  wxTextCtrl* CreateTextCtrl(const wxString& ctrl_text);
+  wxTextCtrl* CreateTextCtrl();
 
   wxString GetIntroText() {
     const char* text =
