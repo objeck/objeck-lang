@@ -85,6 +85,7 @@ class Edit : public wxStyledTextCtrl {
     int m_DividerID;
     wxFindReplaceDialog* m_findReplace;
     wxFindReplaceData m_FindData;
+    int m_foundStart;
 
     static wxString DecodeFindDialogEventFlags(int flags)
     {
