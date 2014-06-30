@@ -59,7 +59,6 @@ public:
   // event handlers
   void OnEdit(wxCommandEvent &event);
   void OnPageClose(wxAuiNotebookEvent& event);
-  void OnPageChanged(wxAuiNotebookEvent& event);
   
   DECLARE_EVENT_TABLE()
 };
@@ -86,6 +85,7 @@ class Edit : public wxStyledTextCtrl {
     wxFindReplaceDialog* m_findReplace;
     wxFindReplaceData m_FindData;
     int m_foundStart;
+    bool m_modified;
 
     static wxString DecodeFindDialogEventFlags(int flags)
     {
@@ -160,7 +160,7 @@ public:
     // stc
     void OnMarginClick(wxStyledTextEvent &event);
     void OnCharAdded(wxStyledTextEvent &event);
-    void OnKey(wxStyledTextEvent &event);
+    void OnModified(wxStyledTextEvent &event);
     
     //! load/save file
     bool LoadFile();
