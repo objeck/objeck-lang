@@ -62,7 +62,6 @@ const int ANNOTATION_STYLE = wxSTC_STYLE_LASTPREDEFINED + 1;
 
 BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     EVT_AUINOTEBOOK_PAGE_CLOSE(wxID_ANY, Notebook::OnPageClose)
-    EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, Notebook::OnPageChanged)
     // find/replace
     EVT_MENU(myID_DLG_FIND_TEXT, Notebook::OnEdit)
     EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
@@ -119,11 +118,6 @@ void Notebook::OnPageClose(wxAuiNotebookEvent& event)
   }
 }
 
-void Notebook::OnPageChanged(wxAuiNotebookEvent& event)
-{
-  int type = event.GetEventType();
-}
-
 void Notebook::OpenFile(wxString& fn)
 {
   wxFileName w(fn); 
@@ -172,32 +166,30 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_MENU(myID_SELECTLINE, Edit::OnEditSelectLine)
     EVT_MENU(wxID_REDO, Edit::OnEditRedo)
     EVT_MENU(wxID_UNDO, Edit::OnEditUndo)
+    // mode
+    EVT_MENU(myID_OVERTYPE, Edit::OnSetOverType)
+    EVT_MENU(myID_READONLY, Edit::OnSetReadOnly)
+    EVT_MENU(myID_WRAPMODEON, Edit::OnWrapmodeOn)
+    EVT_MENU(myID_CHARSETANSI, Edit::OnUseCharset)
+    EVT_MENU(myID_CHARSETMAC, Edit::OnUseCharset)
     // find
     EVT_MENU(myID_DLG_FIND_TEXT, Edit::OnFind)
     EVT_MENU(myID_FINDNEXT, Edit::OnFind)
-
     EVT_FIND(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_NEXT(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_REPLACE(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_REPLACE_ALL(wxID_ANY, Edit::OnFindDialog)
     EVT_FIND_CLOSE(wxID_ANY, Edit::OnFindDialog)
-
     EVT_MENU(myID_BRACEMATCH, Edit::OnBraceMatch)
     EVT_MENU(myID_GOTO, Edit::OnGoto)
     // view
-    EVT_MENU_RANGE(myID_HILIGHTFIRST, myID_HILIGHTLAST,
-    Edit::OnHilightLang)
+    EVT_MENU_RANGE(myID_HILIGHTFIRST, myID_HILIGHTLAST, Edit::OnHilightLang)
     EVT_MENU(myID_DISPLAYEOL, Edit::OnDisplayEOL)
     EVT_MENU(myID_INDENTGUIDE, Edit::OnIndentGuide)
     EVT_MENU(myID_LINENUMBER, Edit::OnLineNumber)
     EVT_MENU(myID_LONGLINEON, Edit::OnLongLineOn)
     EVT_MENU(myID_WHITESPACE, Edit::OnWhiteSpace)
     EVT_MENU(myID_FOLDTOGGLE, Edit::OnFoldToggle)
-    EVT_MENU(myID_OVERTYPE, Edit::OnSetOverType)
-    EVT_MENU(myID_READONLY, Edit::OnSetReadOnly)
-    EVT_MENU(myID_WRAPMODEON, Edit::OnWrapmodeOn)
-    EVT_MENU(myID_CHARSETANSI, Edit::OnUseCharset)
-    EVT_MENU(myID_CHARSETMAC, Edit::OnUseCharset)
     // annotations
     EVT_MENU(myID_ANNOTATION_ADD, Edit::OnAnnotationAdd)
     EVT_MENU(myID_ANNOTATION_REMOVE, Edit::OnAnnotationRemove)
@@ -214,7 +206,7 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     // stc
     EVT_STC_MARGINCLICK(wxID_ANY, Edit::OnMarginClick)
     EVT_STC_CHARADDED(wxID_ANY, Edit::OnCharAdded)
-    EVT_STC_KEY(wxID_ANY, Edit::OnKey)
+    EVT_STC_MODIFIED(wxID_ANY, Edit::OnModified)
 END_EVENT_TABLE()
 
 Edit::Edit (wxWindow *parent, wxWindowID id,
@@ -235,6 +227,9 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
 
     // Use all the bits in the style byte as styles, not indicators.
     SetStyleBits(8);
+    
+    m_modified = false;
+    SetModEventMask(wxSTC_MOD_INSERTTEXT | wxSTC_MOD_DELETETEXT);
     
     // default font for all styles
     SetViewEOL (g_CommonPrefs.displayEOLEnable);
@@ -331,11 +326,6 @@ void Edit::OnEditUndo(wxCommandEvent &WXUNUSED(event)) {
 void Edit::OnEditClear(wxCommandEvent &WXUNUSED(event)) {
   if (GetReadOnly()) return;
   Clear();
-}
-
-void Edit::OnKey(wxStyledTextEvent &WXUNUSED(event))
-{
-  wxMessageBox("OnKey");
 }
 
 void Edit::OnEditCut(wxCommandEvent &WXUNUSED(event)) {
@@ -679,6 +669,21 @@ void Edit::OnCharAdded(wxStyledTextEvent &event) {
   }
 }
 
+void Edit::OnModified(wxStyledTextEvent& WXUNUSED(event))
+{
+  if (m_modified) {
+    return;
+  }
+
+  Notebook* notebook = static_cast<Notebook*>(GetParent());
+  const int page_index = notebook->GetPageIndex(this);
+  if (page_index > -1) {
+    wxString page_text = notebook->GetPageText(page_index);
+    page_text += wxT('*');
+    notebook->SetPageText(page_index, page_text);
+    m_modified = true;
+  }
+}
 
 //----------------------------------------------------------------------------
 // private functions
@@ -885,12 +890,34 @@ bool Edit::SaveFile(const wxString &filename) {
   // return if no change
   if (!Modified()) return true;
 
+  Notebook* notebook = static_cast<Notebook*>(GetParent());
+  if (notebook->GetCurrentPage()) {
+    const int page_index = notebook->GetSelection();
+    wxString page_text = notebook->GetPageText(page_index);
+    if (page_text.EndsWith(wxT('*'))) {
+      page_text.RemoveLast();
+      notebook->SetPageText(page_index, page_text);
+    }
+  }
+
+  if (m_modified) {
+    Notebook* notebook = static_cast<Notebook*>(GetParent());
+    const int page_index = notebook->GetPageIndex(this);
+    if (page_index > -1) {
+      wxString page_text = notebook->GetPageText(page_index);
+      if (page_text.EndsWith(wxT('*'))) {
+        page_text.RemoveLast();
+        notebook->SetPageText(page_index, page_text);
+      }
+      m_modified = false;
+    }
+  }
+  
   return wxStyledTextCtrl::SaveFile(filename);
 }
 
 bool Edit::Modified() {
-  // return modified state
-  return (GetModify() && !GetReadOnly());
+  return (IsModified() && !GetReadOnly());
 }
 
 //----------------------------------------------------------------------------
