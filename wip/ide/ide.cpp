@@ -54,10 +54,10 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
 {
   // setup window manager
   aui_manager.SetManagedWindow(this);
-  aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left());
+  aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
   m_notebook = CreateNotebook(), 
-    aui_manager.AddPane(m_notebook, wxAuiPaneInfo().Centre());
-  aui_manager.AddPane(CreateTextCtrl(), wxAuiPaneInfo().Bottom());
+    aui_manager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
+  aui_manager.AddPane(CreateTextCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
   
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
