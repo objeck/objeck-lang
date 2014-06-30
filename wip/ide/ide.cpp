@@ -119,7 +119,8 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
   if (dlg.ShowModal() != wxID_OK) {
     return;
   }
-  m_notebook->OpenFile(dlg.GetPath());
+	wxString path = dlg.GetPath();
+  m_notebook->OpenFile(path);
 }
 
 void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
