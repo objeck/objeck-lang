@@ -114,7 +114,7 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
     return;
   }
 
-  wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"),
+  wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, wxT("Objeck file (*.obs)|*.obs;*.obw|All types (*.*)|*.*"),
     wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR);
   if (dlg.ShowModal() != wxID_OK) {
     return;
