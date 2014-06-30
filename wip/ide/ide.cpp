@@ -56,7 +56,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   aui_manager.SetManagedWindow(this);
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
   m_notebook = CreateNotebook(), 
-    aui_manager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
+  aui_manager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
   aui_manager.AddPane(CreateTextCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
   
   // set menu and status bars
@@ -183,6 +183,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(wxID_CUT, _("Cu&t\tCtrl+X"));
   menuEdit->Append(wxID_COPY, _("&Copy\tCtrl+C"));
   menuEdit->Append(wxID_PASTE, _("&Paste\tCtrl+V"));
+  menuEdit->AppendSeparator();
+  menuEdit->AppendCheckItem(myID_OVERTYPE, _("Over &type\tCtrl+Shift+T"));
+  menuEdit->AppendCheckItem(myID_READONLY, _("&Read-only\tCtrl+Shift+R"));
+  menuEdit->AppendCheckItem(myID_WRAPMODEON, _("Word wrap\tCtrl+Shift+W"));
   menuEdit->AppendSeparator();
   menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find\tCtrl+F"));
   menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
@@ -316,12 +320,12 @@ wxTextCtrl* MyFrame::CreateTextCtrl()
   
   wxString text;
   if (errors.size() > 0) {
-    for (int i = 0; i < errors.size(); ++i) {
+    for (size_t i = 0; i < errors.size(); ++i) {
       text += errors[i] + wxT('\n');
     }
   }
   else {
-    for (int i = 0; i < output.size(); ++i) {
+    for (size_t i = 0; i < output.size(); ++i) {
       text += output[i] + wxT('\n');
     }
   }
