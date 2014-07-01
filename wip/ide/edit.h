@@ -1,10 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////
-// File:        edit.h
-// Purpose:     STC test module
-// Maintainer:  Wyo
-// Created:     2003-09-01
-// Copyright:   (c) wxGuide
-// Licence:     wxWindows licence
+// Original authors:  Wyo, John Labenski, Otto Wyss
+// Copyright: (c) wxGuide, (c) John Labenski, Otto Wyss
+// Modified by: Randy Hollines
+// Licence: wxWindows licence
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef _EDIT_H_

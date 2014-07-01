@@ -1,10 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////
-// File:        contrib/samples/stc/edit.cpp
-// Purpose:     STC test module
-// Maintainer:  Wyo
-// Created:     2003-09-01
-// Copyright:   (c) wxGuide
-// Licence:     wxWindows licence
+// Original authors:  Wyo, John Labenski, Otto Wyss
+// Copyright: (c) wxGuide, (c) John Labenski, Otto Wyss
+// Modified by: Randy Hollines
+// Licence: wxWindows licence
 //////////////////////////////////////////////////////////////////////////////
 
 //----------------------------------------------------------------------------
@@ -664,20 +662,18 @@ void Edit::OnMarginClick(wxStyledTextEvent &event) {
 }
 
 void Edit::OnCharAdded(wxStyledTextEvent &event) {
-  /*
-  char chr = (char)event.GetKey();
-  int currentLine = GetCurrentLine();
-  // Change this if support for mac files with \r is needed
-  if (chr == '\n') {
-    int lineInd = 0;
-    if (currentLine > 0) {
-      lineInd = GetLineIndentation(currentLine - 1);
+  event.Skip();
+  
+  const wxChar c = event.GetKey();
+  if (c == wxT('\n')) {
+    const int line = GetCurrentLine();
+    const int indent = line < 1 ? 0 : GetLineIndentation(line - 1);
+
+    if (indent != 0) {
+      SetLineIndentation(line, indent);
+      GotoPos(GetLineIndentPosition(line));
     }
-    if (lineInd == 0) return;
-    SetLineIndentation(currentLine, lineInd);
-    GotoPos(PositionFromLine(currentLine) + lineInd);
   }
-  */
 }
 
 void Edit::OnModified(wxStyledTextEvent& WXUNUSED(event))
