@@ -41,6 +41,8 @@ EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
 // find/replace
 EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
+EVT_MENU(myID_DLG_REPLACE_TEXT, MyFrame::OnEdit)
+EVT_MENU(myID_REPLACENEXT, MyFrame::OnEdit)
 // editor operations
 EVT_MENU(wxID_UNDO, MyFrame::OnEdit)
 EVT_MENU(wxID_REDO, MyFrame::OnEdit)
@@ -96,25 +98,15 @@ void MyFrame::OnEdit(wxCommandEvent &event)
 
 void MyFrame::OnClose(wxCloseEvent &event) 
 {
-  /*
-  wxCommandEvent evt;
-  OnFileClose(evt);
-  if (m_edit && m_edit->Modified()) {
-    if (event.CanVeto()) event.Veto(true);
-    return;
-  }
+  m_notebook->CloseAll();
   Destroy();
-  */
 }
 
 // file event handlers
 void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event)) 
 {
-  if (!m_notebook) {
-    return;
-  }
-
-  wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, wxT("Objeck file (*.obs)|*.obs;*.obw|All types (*.*)|*.*"),
+  wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, 
+    wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"),
     wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR);
   if (dlg.ShowModal() != wxID_OK) {
     return;
@@ -128,23 +120,21 @@ void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event))
   if (!m_notebook->GetEdit()) return;
 
   if (!m_notebook->GetEdit()->Modified()) {
-    wxMessageBox(_("There is nothing to save!"), _("Save file"),
-      wxOK | wxICON_EXCLAMATION);
-    return;
+    m_notebook->GetEdit()->SaveFile();
   }
-  m_notebook->GetEdit()->SaveFile();
 }
 
 void MyFrame::OnFileSaveAs(wxCommandEvent &WXUNUSED(event)) 
 {
   if (!m_notebook->GetEdit()) return;
-#if wxUSE_FILEDLG
+
   wxString filename = wxEmptyString;
-  wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+  wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, 
+    wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"), 
+    wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
   if (dlg.ShowModal() != wxID_OK) return;
   filename = dlg.GetPath();
   m_notebook->GetEdit()->SaveFile(filename);
-#endif // wxUSE_FILEDLG
 }
 
 void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event)) 
@@ -191,8 +181,8 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->AppendSeparator();
   menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find\tCtrl+F"));
   menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
-  menuEdit->Append(myID_REPLACE, _("&Replace\tCtrl+H"));
-  menuEdit->Append(myID_REPLACENEXT, _("Replace &again\tShift+F4"));
+  menuEdit->Append(myID_DLG_REPLACE_TEXT, _("&Replace\tCtrl+H"));
+  menuEdit->Append(myID_REPLACENEXT, _("Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   
   // View menu
