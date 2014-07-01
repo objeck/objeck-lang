@@ -184,10 +184,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
 {
   // File menu
   wxMenu *menuFile = new wxMenu;
-  menuFile->Append(wxID_NEW, _("&New ..\tCtrl+N"));
-  menuFile->Append(wxID_OPEN, _("&Open ..\tCtrl+O"));
+  menuFile->Append(wxID_NEW, _("&New...\tCtrl+N"));
+  menuFile->Append(wxID_OPEN, _("&Open...\tCtrl+O"));
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
-  menuFile->Append(wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
+  menuFile->Append(wxID_SAVEAS, _("Save &as...\tCtrl+Shift+S"));
   menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
 
   // Edit menu
