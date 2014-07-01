@@ -34,6 +34,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 // common
 EVT_CLOSE(MyFrame::OnClose)
 // file
+EVT_MENU(wxID_NEW, MyFrame::OnFileNew)
 EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
 EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
 EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
@@ -54,12 +55,14 @@ END_EVENT_TABLE()
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
     wxFrame(parent, id, title, pos, size, style) 
 {
+  new_page_count = 1;
+
   // setup window manager
   aui_manager.SetManagedWindow(this);
   aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
   m_notebook = CreateNotebook(), 
   aui_manager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
-  aui_manager.AddPane(CreateTextCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
+  aui_manager.AddPane(CreateInfoCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
   
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
@@ -75,6 +78,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
     ToolbarPane().Top().Row(1).Position(1));
 
   // update
+  m_notebook->SetFocus();
   aui_manager.Update();
 }
 
@@ -96,13 +100,23 @@ void MyFrame::OnEdit(wxCommandEvent &event)
   }
 }
 
-void MyFrame::OnClose(wxCloseEvent &event) 
+void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
 {
+  // close all pages and prompt to save files
   m_notebook->CloseAll();
   Destroy();
 }
 
 // file event handlers
+void MyFrame::OnFileNew(wxCommandEvent &WXUNUSED(event))
+{
+  m_notebook->Freeze();
+  const wxString title = wxString::Format(wxT("new %d"), new_page_count++);
+  m_notebook->AddPage(new Edit(m_notebook), title);
+  m_notebook->SetSelection(m_notebook->GetPageCount() - 1);
+  m_notebook->Thaw();
+}
+
 void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event)) 
 {
   wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, 
@@ -119,7 +133,7 @@ void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event))
 {
   if (!m_notebook->GetEdit()) return;
 
-  if (!m_notebook->GetEdit()->Modified()) {
+  if (m_notebook->GetEdit()->Modified()) {
     m_notebook->GetEdit()->SaveFile();
   }
 }
@@ -140,6 +154,8 @@ void MyFrame::OnFileSaveAs(wxCommandEvent &WXUNUSED(event))
 void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event)) 
 {
   if (!m_notebook->GetEdit()) return;
+
+  // check to see if file has been modified
   if (m_notebook->GetEdit()->Modified()) {
     if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
       wxYES_NO | wxICON_QUESTION) == wxYES) {
@@ -151,15 +167,24 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
       }
     }
   }
+
+  // close file
   m_notebook->GetEdit()->SetFilename(wxEmptyString);
   m_notebook->GetEdit()->ClearAll();
   m_notebook->GetEdit()->SetSavePoint();
+
+  // destroy page
+  const int page_index = m_notebook->GetSelection();
+  if (page_index > -1) {
+    m_notebook->DeletePage(page_index);
+  }
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
 {
   // File menu
   wxMenu *menuFile = new wxMenu;
+  menuFile->Append(wxID_NEW, _("&New ..\tCtrl+N"));
   menuFile->Append(wxID_OPEN, _("&Open ..\tCtrl+O"));
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
   menuFile->Append(wxID_SAVEAS, _("Save &as ..\tCtrl+Shift+S"));
@@ -176,13 +201,13 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(wxID_SELECTALL, _("&Select All\tCtrl+A"));
   menuEdit->AppendSeparator();
   menuEdit->AppendCheckItem(myID_OVERTYPE, _("Over &type\tCtrl+Shift+T"));
-  menuEdit->AppendCheckItem(myID_READONLY, _("&Read-only\tCtrl+Shift+R"));
-  menuEdit->AppendCheckItem(myID_WRAPMODEON, _("Word wrap\tCtrl+Shift+W"));
+  menuEdit->AppendCheckItem(myID_READONLY, _("Read-&only\tCtrl+Shift+R"));
+  menuEdit->AppendCheckItem(myID_WRAPMODEON, _("&Word wrap\tCtrl+Shift+W"));
   menuEdit->AppendSeparator();
-  menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find\tCtrl+F"));
+  menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find...\tCtrl+F"));
   menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
-  menuEdit->Append(myID_DLG_REPLACE_TEXT, _("&Replace\tCtrl+H"));
-  menuEdit->Append(myID_REPLACENEXT, _("Replace &again\tShift+F3"));
+  menuEdit->Append(myID_DLG_REPLACE_TEXT, _("&Replace...\tCtrl+H"));
+  menuEdit->Append(myID_REPLACENEXT, _("&Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   
   // View menu
@@ -232,12 +257,9 @@ wxAuiToolBar* MyFrame::CreateToolBar()
   return toolbar;
 }
 
-// Demo tree
 wxTreeCtrl* MyFrame::CreateTreeCtrl() 
 {
-  wxTreeCtrl* tree = new wxTreeCtrl(this, wxID_ANY,
-    wxPoint(0, 0), wxSize(160, 250),
-    wxTR_DEFAULT_STYLE | wxNO_BORDER);
+  wxTreeCtrl* tree = new wxTreeCtrl(this, wxID_ANY, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
   imglist->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));
@@ -247,15 +269,12 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
   wxTreeItemId root = tree->AddRoot(wxT("wxAUI Project"), 0);
   wxArrayTreeItemIds items;
 
-
-
   items.Add(tree->AppendItem(root, wxT("Item 1"), 0));
   items.Add(tree->AppendItem(root, wxT("Item 2"), 0));
   items.Add(tree->AppendItem(root, wxT("Item 3"), 0));
   items.Add(tree->AppendItem(root, wxT("Item 4"), 0));
   items.Add(tree->AppendItem(root, wxT("Item 5"), 0));
-
-
+  
   int i, count;
   for (i = 0, count = items.Count(); i < count; ++i)
   {
@@ -266,8 +285,6 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
     tree->AppendItem(id, wxT("Subitem 4"), 1);
     tree->AppendItem(id, wxT("Subitem 5"), 1);
   }
-
-
   tree->Expand(root);
 
   return tree;
@@ -277,35 +294,18 @@ Notebook* MyFrame::CreateNotebook()
 {
   // create the notebook off-window to avoid flicker
   wxSize client_size = GetClientSize();
-
-  Notebook* ctrl = new Notebook(this, wxID_ANY,
-    wxPoint(client_size.x, client_size.y),
-    wxSize(430, 200),
+  Notebook* notebook_ctrl = new Notebook(this, wxID_ANY, wxPoint(client_size.x, client_size.y), wxSize(430, 200), 
     wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER);
 
-  ctrl->Freeze();
-  wxBitmap page_bmp = wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16));
-  ctrl->AddPage(new Edit(ctrl), wxT("new"));
+  notebook_ctrl->Freeze();
+  const wxString title = wxString::Format(wxT("new %d"), new_page_count++);
+  notebook_ctrl->AddPage(new Edit(notebook_ctrl), title);
+  notebook_ctrl->Thaw();
 
-  ctrl->Thaw();
-
-  return ctrl;
+  return notebook_ctrl;
 }
 
-wxHtmlWindow* MyFrame::CreateHTMLCtrl(wxWindow* parent)
-{
-  if (!parent)
-    parent = this;
-
-  wxHtmlWindow* ctrl = new wxHtmlWindow(parent, wxID_ANY,
-    wxDefaultPosition,
-    wxSize(400, 300));
-  ctrl->SetPage(GetIntroText());
-  return ctrl;
-}
-
-// Demo text
-wxTextCtrl* MyFrame::CreateTextCtrl()
+wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
   wxArrayString output, errors;
   int code = wxExecute("\"C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy\\bin\\obc.exe\"", output, errors);
@@ -322,5 +322,10 @@ wxTextCtrl* MyFrame::CreateTextCtrl()
     }
   }
 
-  return new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 90), wxNO_BORDER | wxTE_MULTILINE);
+  wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
+    wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
+  info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE), wxT("Output"));
+  info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, wxEmptyString), wxT("Debug"));
+
+  return info_ctrl;
 }
