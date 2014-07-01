@@ -157,8 +157,12 @@ void Notebook::OpenFile(wxString& fn)
     Edit* edit = new Edit(this);    
     edit->LoadFile(filename);
     edit->SelectNone();
-    const wxString page_name = w.GetName() + wxT('.') + w.GetExt();
-    AddPage(edit, page_name);
+    
+    Freeze();
+    const wxString title = w.GetName() + wxT('.') + w.GetExt();
+    AddPage(edit, title);
+    Thaw();
+
     pages[filename] = edit;
 
     int page_index = GetPageIndex(edit);
