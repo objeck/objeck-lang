@@ -45,6 +45,9 @@ EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
 EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
 // editor operations
+EVT_MENU(wxID_UNDO, MyFrame::OnEdit)
+EVT_MENU(wxID_REDO, MyFrame::OnEdit)
+EVT_MENU(wxID_SELECTALL, MyFrame::OnEdit)
 EVT_MENU_RANGE(wxID_EDIT, wxID_PROPERTIES, MyFrame::OnEdit)
 EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, MyFrame::OnEdit)
 END_EVENT_TABLE()
@@ -178,11 +181,12 @@ wxMenuBar* MyFrame::CreateMenuBar()
   // Edit menu
   wxMenu *menuEdit = new wxMenu;
   menuEdit->Append(wxID_UNDO, _("&Undo\tCtrl+Z"));
-  menuEdit->Append(wxID_REDO, _("&Redo\tCtrl+Shift+Z"));
+  menuEdit->Append(wxID_REDO, _("&Redo\tCtrl+Y"));
   menuEdit->AppendSeparator();
   menuEdit->Append(wxID_CUT, _("Cu&t\tCtrl+X"));
   menuEdit->Append(wxID_COPY, _("&Copy\tCtrl+C"));
   menuEdit->Append(wxID_PASTE, _("&Paste\tCtrl+V"));
+  menuEdit->Append(wxID_SELECTALL, _("&Select All\tCtrl+A"));
   menuEdit->AppendSeparator();
   menuEdit->AppendCheckItem(myID_OVERTYPE, _("Over &type\tCtrl+Shift+T"));
   menuEdit->AppendCheckItem(myID_READONLY, _("&Read-only\tCtrl+Shift+R"));
@@ -192,6 +196,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(myID_FINDNEXT, _("Find &next\tF3"));
   menuEdit->Append(myID_REPLACE, _("&Replace\tCtrl+H"));
   menuEdit->Append(myID_REPLACENEXT, _("Replace &again\tShift+F4"));
+  menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   
   // View menu
   wxMenu *menuView = new wxMenu;
