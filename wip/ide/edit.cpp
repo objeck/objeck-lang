@@ -66,27 +66,73 @@ BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
     EVT_MENU(myID_DLG_REPLACE_TEXT, Notebook::OnEdit)
     EVT_MENU(myID_REPLACENEXT, Notebook::OnEdit)
+    // view
+    EVT_MENU(myID_DISPLAYEOL, Notebook::OnDisplayEOL)
+    EVT_MENU(myID_INDENTGUIDE, Notebook::OnIndentGuide)
+    EVT_MENU(myID_LINENUMBER, Notebook::OnLineNumber)
+    EVT_MENU(myID_LONGLINEON, Notebook::OnLongLineOn)
+    EVT_MENU(myID_WHITESPACE, Notebook::OnWhiteSpace)
     // editor operations
     EVT_MENU(wxID_UNDO, Notebook::OnEdit)
     EVT_MENU(wxID_REDO, Notebook::OnEdit)
     EVT_MENU(wxID_SELECTALL, Notebook::OnEdit)
     EVT_MENU_RANGE(wxID_EDIT, wxID_PROPERTIES, Notebook::OnEdit)
-    EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, Notebook::OnEdit)
+    EVT_MENU_RANGE(myID_EDIT_SECOND, myID_EDIT_LAST, Notebook::OnEdit)
 END_EVENT_TABLE()
 
 Notebook::Notebook(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style) : 
   wxAuiNotebook(parent, id, pos, size, style)
 {
-
 }
 
 Notebook::~Notebook()
 {
-
 }
 
 Edit* Notebook::GetEdit() {
   return static_cast<Edit*>(GetCurrentPage());
+}
+
+void Notebook::OpenFile(wxString& fn)
+{
+  wxFileName w(fn);
+  w.Normalize();
+  wxString filename = w.GetFullPath();
+
+  // set page focus
+  Pages::iterator found = pages.find(filename);
+  if (found != pages.end()) {
+    int page_index = GetPageIndex(found->second);
+    if (page_index != wxNOT_FOUND) {
+      SetSelection(page_index);
+    }
+  }
+  // add new page and set focus
+  else {
+    Edit* edit = new Edit(this);
+    edit->LoadFile(filename);
+    edit->SelectNone();
+
+    Freeze();
+    const wxString title = w.GetName() + wxT('.') + w.GetExt();
+    AddPage(edit, title);
+    Thaw();
+
+    pages[filename] = edit;
+
+    int page_index = GetPageIndex(edit);
+    if (page_index != wxNOT_FOUND) {
+      SetSelection(page_index);
+    }
+  }
+}
+
+void Notebook::CloseAll()
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    ClosePage(static_cast<Edit*>(GetPage(i)));
+  }
 }
 
 // common event handlers
@@ -105,14 +151,6 @@ void Notebook::OnPageClose(wxAuiNotebookEvent& event)
   Edit* edit = static_cast<Edit*>(GetPage(GetSelection()));
   if (edit) {
     ClosePage(edit);
-  }
-}
-
-void Notebook::CloseAll()
-{
-  const size_t page_count = GetPageCount();
-  for (size_t i = 0; i < page_count; ++i) {
-    ClosePage(static_cast<Edit*>(GetPage(i)));
   }
 }
 
@@ -138,37 +176,43 @@ void Notebook::ClosePage(Edit* edit)
   edit->SetSavePoint();
 }
 
-void Notebook::OpenFile(wxString& fn)
+void Notebook::OnDisplayEOL(wxCommandEvent &WXUNUSED(event))
 {
-  wxFileName w(fn); 
-  w.Normalize(); 
-  wxString filename = w.GetFullPath();
-
-  // set page focus
-  Pages::iterator found = pages.find(filename);
-  if (found != pages.end()) {
-    int page_index = GetPageIndex(found->second);
-    if (page_index != wxNOT_FOUND) {
-      SetSelection(page_index);
-    }
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    static_cast<Edit*>(GetPage(i))->ShowEOL();
   }
-  // add new page and set focus
-  else {
-    Edit* edit = new Edit(this);    
-    edit->LoadFile(filename);
-    edit->SelectNone();
-    
-    Freeze();
-    const wxString title = w.GetName() + wxT('.') + w.GetExt();
-    AddPage(edit, title);
-    Thaw();
+}
 
-    pages[filename] = edit;
+void Notebook::OnIndentGuide(wxCommandEvent &WXUNUSED(event))
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    static_cast<Edit*>(GetPage(i))->ShowIndentGuide();
+  }
+}
 
-    int page_index = GetPageIndex(edit);
-    if (page_index != wxNOT_FOUND) {
-      SetSelection(page_index);
-    }
+void Notebook::OnLineNumber(wxCommandEvent &WXUNUSED(event))
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    static_cast<Edit*>(GetPage(i))->ShowLineNumbers();
+  }
+}
+
+void Notebook::OnLongLineOn(wxCommandEvent &WXUNUSED(event))
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    static_cast<Edit*>(GetPage(i))->ShowLongLines();
+  }
+}
+
+void Notebook::OnWhiteSpace(wxCommandEvent &WXUNUSED(event))
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    static_cast<Edit*>(GetPage(i))->ShowWhiteSpace();
   }
 }
 
@@ -191,9 +235,7 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_MENU(wxID_REDO, Edit::OnEditRedo)
     EVT_MENU(wxID_UNDO, Edit::OnEditUndo)
     // mode
-    EVT_MENU(myID_OVERTYPE, Edit::OnSetOverType)
-    EVT_MENU(myID_READONLY, Edit::OnSetReadOnly)
-    EVT_MENU(myID_WRAPMODEON, Edit::OnWrapmodeOn)
+    EVT_MENU(myID_FOLDTOGGLE, Edit::OnFoldToggle)
     EVT_MENU(myID_CHARSETANSI, Edit::OnUseCharset)
     EVT_MENU(myID_CHARSETMAC, Edit::OnUseCharset)
     // find
@@ -208,15 +250,6 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_FIND_CLOSE(wxID_ANY, Edit::OnFindReplaceDialog)
     EVT_MENU(myID_BRACEMATCH, Edit::OnBraceMatch)
     EVT_MENU(myID_GOTO, Edit::OnGoto)
-    // view
-    // TODO: change view for all windows...
-    EVT_MENU_RANGE(myID_HILIGHTFIRST, myID_HILIGHTLAST, Edit::OnHilightLang)
-    EVT_MENU(myID_DISPLAYEOL, Edit::OnDisplayEOL)
-    EVT_MENU(myID_INDENTGUIDE, Edit::OnIndentGuide)
-    EVT_MENU(myID_LINENUMBER, Edit::OnLineNumber)
-    EVT_MENU(myID_LONGLINEON, Edit::OnLongLineOn)
-    EVT_MENU(myID_WHITESPACE, Edit::OnWhiteSpace)
-    EVT_MENU(myID_FOLDTOGGLE, Edit::OnFoldToggle)
     // annotations
     EVT_MENU(myID_ANNOTATION_ADD, Edit::OnAnnotationAdd)
     EVT_MENU(myID_ANNOTATION_REMOVE, Edit::OnAnnotationRemove)
@@ -468,6 +501,15 @@ void Edit::ReplaceText(const wxString &find_string)
   }
 }
 
+void Edit::OnGoto(wxCommandEvent &WXUNUSED(event)) {
+  const wxString message = wxString::Format(_("Line number : 1 - %d"), GetLineCount());
+  const long line_number = wxGetNumberFromUser(wxEmptyString, message, wxT("Go To Line"), 1, 1, 100, this);
+  if (line_number > 0) {
+    GotoLine(line_number - 1);
+  }
+}
+
+
 void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
   int min = GetCurrentPos();
   int max = BraceMatch(min);
@@ -480,20 +522,16 @@ void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
   }
 }
 
-void Edit::OnGoto(wxCommandEvent &WXUNUSED(event)) {
-  const wxString message = wxString::Format(_("Line number : 1 - %d"), GetLineCount());
-  const long line_number = wxGetNumberFromUser(wxEmptyString, message, wxT("Go To Line"), 1, 1, 100, this);
-  if(line_number > 0) {
-    GotoLine(line_number - 1);
-  }
-}
-
 void Edit::OnEditIndentInc(wxCommandEvent &WXUNUSED(event)) {
   CmdKeyExecute(wxSTC_CMD_TAB);
 }
 
 void Edit::OnEditIndentRed(wxCommandEvent &WXUNUSED(event)) {
   CmdKeyExecute(wxSTC_CMD_DELETEBACK);
+}
+
+void Edit::OnFoldToggle(wxCommandEvent &WXUNUSED(event)) {
+  ToggleFold(GetFoldParent(GetCurrentLine()));
 }
 
 void Edit::OnEditSelectAll(wxCommandEvent &WXUNUSED(event)) {
@@ -504,48 +542,6 @@ void Edit::OnEditSelectLine(wxCommandEvent &WXUNUSED(event)) {
   int lineStart = PositionFromLine(GetCurrentLine());
   int lineEnd = PositionFromLine(GetCurrentLine() + 1);
   SetSelection(lineStart, lineEnd);
-}
-
-void Edit::OnHilightLang(wxCommandEvent &event) {
-  InitializePrefs(g_LanguagePrefs[event.GetId() - myID_HILIGHTFIRST].name);
-}
-
-void Edit::OnDisplayEOL(wxCommandEvent &WXUNUSED(event)) {
-  SetViewEOL(!GetViewEOL());
-}
-
-void Edit::OnIndentGuide(wxCommandEvent &WXUNUSED(event)) {
-  SetIndentationGuides(!GetIndentationGuides());
-}
-
-void Edit::OnLineNumber(wxCommandEvent &WXUNUSED(event)) {
-  SetMarginWidth(m_LineNrID,
-    GetMarginWidth(m_LineNrID) == 0 ? m_LineNrMargin : 0);
-}
-
-void Edit::OnLongLineOn(wxCommandEvent &WXUNUSED(event)) {
-  SetEdgeMode(GetEdgeMode() == 0 ? wxSTC_EDGE_LINE : wxSTC_EDGE_NONE);
-}
-
-void Edit::OnWhiteSpace(wxCommandEvent &WXUNUSED(event)) {
-  SetViewWhiteSpace(GetViewWhiteSpace() == 0 ?
-  wxSTC_WS_VISIBLEALWAYS : wxSTC_WS_INVISIBLE);
-}
-
-void Edit::OnFoldToggle(wxCommandEvent &WXUNUSED(event)) {
-  ToggleFold(GetFoldParent(GetCurrentLine()));
-}
-
-void Edit::OnSetOverType(wxCommandEvent &WXUNUSED(event)) {
-  SetOvertype(!GetOvertype());
-}
-
-void Edit::OnSetReadOnly(wxCommandEvent &WXUNUSED(event)) {
-  SetReadOnly(!GetReadOnly());
-}
-
-void Edit::OnWrapmodeOn(wxCommandEvent &WXUNUSED(event)) {
-  SetWrapMode(GetWrapMode() == 0 ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
 }
 
 void Edit::OnUseCharset(wxCommandEvent &event) {

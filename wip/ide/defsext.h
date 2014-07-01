@@ -39,8 +39,16 @@
 enum {
     // menu IDs
     myID_PROPERTIES = wxID_HIGHEST,
+    // 1st group
     myID_EDIT_FIRST,
-    myID_INDENTINC = myID_EDIT_FIRST,
+    myID_DISPLAYEOL = myID_EDIT_FIRST,
+    myID_INDENTGUIDE,
+    myID_LINENUMBER,
+    myID_LONGLINEON,
+    myID_WHITESPACE,    
+    // 2nd group
+    myID_INDENTINC,
+    myID_EDIT_SECOND = myID_INDENTINC,
     myID_INDENTRED,
     myID_FINDNEXT,
     myID_REPLACE,
@@ -48,11 +56,6 @@ enum {
     myID_BRACEMATCH,
     myID_GOTO,
     myID_PAGEACTIVE,
-    myID_DISPLAYEOL,
-    myID_INDENTGUIDE,
-    myID_LINENUMBER,
-    myID_LONGLINEON,
-    myID_WHITESPACE,
     myID_FOLDTOGGLE,
     myID_OVERTYPE,
     myID_READONLY,
@@ -80,6 +83,7 @@ enum {
     myID_PAGEPREV,
     myID_PAGENEXT,
     myID_SELECTLINE,
+    // end groups
     myID_EDIT_LAST = myID_SELECTLINE,
     myID_WINDOW_MINIMAL,
 
