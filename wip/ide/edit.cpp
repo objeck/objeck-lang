@@ -33,6 +33,7 @@
 //! wxWidgets headers
 #include "wx/file.h"     // raw file io support
 #include "wx/filename.h" // filename support
+#include "wx/numdlg.h"
 
 //! application headers
 #include "defsext.h"     // additional definitions
@@ -66,6 +67,9 @@ BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     EVT_MENU(myID_DLG_FIND_TEXT, Notebook::OnEdit)
     EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
     // editor operations
+    EVT_MENU(wxID_UNDO, Notebook::OnEdit)
+    EVT_MENU(wxID_REDO, Notebook::OnEdit)
+    EVT_MENU(wxID_SELECTALL, Notebook::OnEdit)
     EVT_MENU_RANGE(wxID_EDIT, wxID_PROPERTIES, Notebook::OnEdit)
     EVT_MENU_RANGE(myID_EDIT_FIRST, myID_EDIT_LAST, Notebook::OnEdit)
 END_EVENT_TABLE()
@@ -471,6 +475,11 @@ void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnGoto(wxCommandEvent &WXUNUSED(event)) {
+  const wxString message = wxString::Format(_("Line number : 1 - %d"), GetLineCount());
+  const long line_number = wxGetNumberFromUser(wxEmptyString, message, wxT("Go To Line"), 1, 1, 100, this);
+  if(line_number > 0) {
+    GotoLine(line_number - 1);
+  }
 }
 
 void Edit::OnEditIndentInc(wxCommandEvent &WXUNUSED(event)) {
@@ -655,6 +664,7 @@ void Edit::OnMarginClick(wxStyledTextEvent &event) {
 }
 
 void Edit::OnCharAdded(wxStyledTextEvent &event) {
+  /*
   char chr = (char)event.GetKey();
   int currentLine = GetCurrentLine();
   // Change this if support for mac files with \r is needed
@@ -667,6 +677,7 @@ void Edit::OnCharAdded(wxStyledTextEvent &event) {
     SetLineIndentation(currentLine, lineInd);
     GotoPos(PositionFromLine(currentLine) + lineInd);
   }
+  */
 }
 
 void Edit::OnModified(wxStyledTextEvent& WXUNUSED(event))
