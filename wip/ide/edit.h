@@ -42,8 +42,8 @@ class Notebook : public wxAuiNotebook {
   WX_DECLARE_STRING_HASH_MAP(Edit*, Pages);
   Pages pages;
 
+  void ClosePage(Edit* edit);
   
-
 public:
   Notebook(wxWindow *parent, wxWindowID id = wxID_ANY, const wxPoint &pos = wxDefaultPosition,
     const wxSize &size = wxDefaultSize, long style = wxAUI_NB_DEFAULT_STYLE);
@@ -53,6 +53,7 @@ public:
   Edit* GetEdit();
 
   void OpenFile(wxString& fn);
+  void CloseAll();
 
   // event handlers
   void OnEdit(wxCommandEvent &event);
@@ -84,6 +85,9 @@ class Edit : public wxStyledTextCtrl {
     wxFindReplaceData m_FindData;
     int m_foundStart;
     bool m_modified;
+
+    bool FindText(int &found_start, int &found_end, bool find_next);
+    void ReplaceText(const wxString &find_string);
 
     static wxString DecodeFindDialogEventFlags(int flags)
     {
@@ -122,19 +126,15 @@ public:
     void OnEditCut(wxCommandEvent &event);
     void OnEditCopy(wxCommandEvent &event);
     void OnEditPaste(wxCommandEvent &event);
-    // find
-    void OnFind(wxCommandEvent &event);
-    void OnFindNext(wxCommandEvent &event);
-    void OnReplace(wxCommandEvent &event);
-    void OnReplaceNext(wxCommandEvent &event);
-    void OnFindDialog(wxFindDialogEvent& event);
-
     void OnBraceMatch(wxCommandEvent &event);
     void OnGoto(wxCommandEvent &event);
     void OnEditIndentInc(wxCommandEvent &event);
     void OnEditIndentRed(wxCommandEvent &event);
     void OnEditSelectAll(wxCommandEvent &event);
     void OnEditSelectLine(wxCommandEvent &event);
+    // find & replace
+    void OnFindReplace(wxCommandEvent &event);
+    void OnFindReplaceDialog(wxFindDialogEvent& event);
     //! view
     void OnHilightLang(wxCommandEvent &event);
     void OnDisplayEOL(wxCommandEvent &event);

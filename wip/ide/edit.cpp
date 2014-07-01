@@ -64,6 +64,8 @@ BEGIN_EVENT_TABLE(Notebook, wxAuiNotebook)
     // find/replace
     EVT_MENU(myID_DLG_FIND_TEXT, Notebook::OnEdit)
     EVT_MENU(myID_FINDNEXT, Notebook::OnEdit)
+    EVT_MENU(myID_DLG_REPLACE_TEXT, Notebook::OnEdit)
+    EVT_MENU(myID_REPLACENEXT, Notebook::OnEdit)
     // editor operations
     EVT_MENU(wxID_UNDO, Notebook::OnEdit)
     EVT_MENU(wxID_REDO, Notebook::OnEdit)
@@ -102,22 +104,38 @@ void Notebook::OnPageClose(wxAuiNotebookEvent& event)
 {
   Edit* edit = static_cast<Edit*>(GetPage(GetSelection()));
   if (edit) {
-    if (edit->Modified()) {
-      if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
-        wxYES_NO | wxICON_QUESTION) == wxYES) {
-        edit->SaveFile();
-        if (edit->Modified()) {
-          wxMessageBox(_("Text could not be saved!"), _("Close abort"),
-            wxOK | wxICON_EXCLAMATION);
-          return;
-        }
+    ClosePage(edit);
+  }
+}
+
+void Notebook::CloseAll()
+{
+  const size_t page_count = GetPageCount();
+  for (size_t i = 0; i < page_count; ++i) {
+    ClosePage(static_cast<Edit*>(GetPage(i)));
+  }
+}
+
+void Notebook::ClosePage(Edit* edit)
+{
+  if (!edit) return;
+
+  if (edit->Modified()) {
+    if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
+      wxYES_NO | wxICON_QUESTION) == wxYES) {
+      edit->SaveFile();
+      if (edit->Modified()) {
+        wxMessageBox(_("Text could not be saved!"), _("Close abort"),
+          wxOK | wxICON_EXCLAMATION);
+        return;
       }
     }
-    pages.erase(edit->GetFilename());
-    edit->SetFilename(wxEmptyString);
-    edit->ClearAll();
-    edit->SetSavePoint();
   }
+
+  pages.erase(edit->GetFilename());
+  edit->SetFilename(wxEmptyString);
+  edit->ClearAll();
+  edit->SetSavePoint();
 }
 
 void Notebook::OpenFile(wxString& fn)
@@ -175,16 +193,19 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_MENU(myID_CHARSETANSI, Edit::OnUseCharset)
     EVT_MENU(myID_CHARSETMAC, Edit::OnUseCharset)
     // find
-    EVT_MENU(myID_DLG_FIND_TEXT, Edit::OnFind)
-    EVT_MENU(myID_FINDNEXT, Edit::OnFind)
-    EVT_FIND(wxID_ANY, Edit::OnFindDialog)
-    EVT_FIND_NEXT(wxID_ANY, Edit::OnFindDialog)
-    EVT_FIND_REPLACE(wxID_ANY, Edit::OnFindDialog)
-    EVT_FIND_REPLACE_ALL(wxID_ANY, Edit::OnFindDialog)
-    EVT_FIND_CLOSE(wxID_ANY, Edit::OnFindDialog)
+    EVT_MENU(myID_DLG_FIND_TEXT, Edit::OnFindReplace)
+    EVT_MENU(myID_FINDNEXT, Edit::OnFindReplace)
+    EVT_MENU(myID_DLG_REPLACE_TEXT, Edit::OnFindReplace)
+    EVT_MENU(myID_REPLACENEXT, Edit::OnFindReplace)
+    EVT_FIND(wxID_ANY, Edit::OnFindReplaceDialog)
+    EVT_FIND_NEXT(wxID_ANY, Edit::OnFindReplaceDialog)
+    EVT_FIND_REPLACE(wxID_ANY, Edit::OnFindReplaceDialog)
+    EVT_FIND_REPLACE_ALL(wxID_ANY, Edit::OnFindReplaceDialog)
+    EVT_FIND_CLOSE(wxID_ANY, Edit::OnFindReplaceDialog)
     EVT_MENU(myID_BRACEMATCH, Edit::OnBraceMatch)
     EVT_MENU(myID_GOTO, Edit::OnGoto)
     // view
+    // TODO: change view for all windows...
     EVT_MENU_RANGE(myID_HILIGHTFIRST, myID_HILIGHTLAST, Edit::OnHilightLang)
     EVT_MENU(myID_DISPLAYEOL, Edit::OnDisplayEOL)
     EVT_MENU(myID_INDENTGUIDE, Edit::OnIndentGuide)
@@ -263,7 +284,6 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
     SetMarginWidth(MARGIN_FOLD, 15);
     SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
- // StyleSetBackground(MARGIN_FOLD, wxColor(200, 200, 200));
     SetMarginSensitive(MARGIN_FOLD, true);
 
     // Properties found from http://www.scintilla.org/SciTEDoc.html
@@ -276,9 +296,6 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     SetProperty(wxT("fold.compact"), wxT("1"));
     SetProperty(wxT("fold.preprocessor"), wxT("1"));
     
-    SetMarginType(margin_id_lineno, wxSTC_MARGIN_NUMBER);
-    SetMarginWidth(margin_id_lineno, 32);
-
     MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("GREY"));
@@ -286,19 +303,11 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("GREY"));
     MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("GREY"));
-
-    /*
-    SetMarginMask(margin_id_fold, wxSTC_MASK_FOLDERS);
-    SetMarginWidth(margin_id_fold, 32);
-    SetMarginSensitive(margin_id_fold, true);
-    */
-
     SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED | wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
 
     // miscellaneous
     m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
     m_FoldingMargin = 16;
-//  CmdKeyClear (wxSTC_KEY_TAB, 0); // this is done by the menu accelerator key
     SetLayoutCache (wxSTC_CACHE_PAGE);
 }
 
@@ -345,29 +354,23 @@ void Edit::OnEditPaste(wxCommandEvent &WXUNUSED(event)) {
   Paste();
 }
 
-void Edit::OnFind(wxCommandEvent &event) {
+void Edit::OnFindReplace(wxCommandEvent &event) {
+  const wxEventType type = event.GetId();
+  const wxString find_string = m_FindData.GetFindString();
+  int found_start, found_end;
+
   if (event.GetId() == myID_FINDNEXT) {
-    const int flags = m_FindData.GetFlags();
-    const bool find_down = (flags & wxFR_DOWN) ? true : false;
-    const wxString find_string = m_FindData.GetFindString();
-
-    GotoPos(find_down ? GetCurrentPos() : GetCurrentPos() - find_string.size());
-    SearchAnchor();
-
-    // search up/down
-    const int found_start = find_down ? SearchNext(flags, find_string) : SearchPrev(flags, find_string);
-
-    // found
-    if (found_start > -1) {
-      const int found_end = found_start + find_string.size();
-      GotoPos(found_start);
+    // search
+    if (FindText(found_start, found_end, true)) {
       SetSelection(found_start, found_end);
     }
-    // not found
     else {
       wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
       dialog.ShowModal();
     }
+  }
+  if (event.GetId() == myID_REPLACENEXT) {
+    ReplaceText(find_string);
   }
   else {
     if (m_findReplace) {
@@ -375,89 +378,90 @@ void Edit::OnFind(wxCommandEvent &event) {
       m_findReplace = NULL;
     }
 
-    m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find/Replace"));
+    if (event.GetId() == myID_DLG_FIND_TEXT) {
+      m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find"));
+    }
+    else {
+      m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find & Replace"), wxFR_REPLACEDIALOG);
+    }
     m_findReplace->Show();
   }
 }
 
-void Edit::OnFindDialog(wxFindDialogEvent& event)
+void Edit::OnFindReplaceDialog(wxFindDialogEvent& event)
 {
   const wxEventType type = event.GetEventType();
-  const int flags = m_FindData.GetFlags();
-  const bool find_down = (flags & wxFR_DOWN) ? true : false;
   const wxString find_string = m_FindData.GetFindString();
+  int found_start, found_end;
 
   if (type == wxEVT_FIND || type == wxEVT_FIND_NEXT) {
-    if (type == wxEVT_FIND_NEXT) {
-      GotoPos(find_down ? GetCurrentPos() : GetCurrentPos() - find_string.size());
-    }
-    SearchAnchor();
-
-    // search up/down
-    const int found_start = find_down ?  SearchNext(flags, find_string) : SearchPrev(flags, find_string);
-
-    // found
-    if (found_start > -1) {
-      const int found_end = found_start + find_string.size();
-      GotoPos(found_start);
+    // search
+    if (FindText(found_start, found_end, type == wxEVT_FIND_NEXT)) {
       SetSelection(found_start, found_end);
     }
-    // not found
     else {
       wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
       dialog.ShowModal();
     }
   }
-  else if (type == wxEVT_FIND_REPLACE || type == wxEVT_FIND_REPLACE_ALL) {
-    // ReplaceSelection(..)
+  else if (type == wxEVT_FIND_REPLACE) {
+    ReplaceText(find_string);
   }
-  else if (type == wxEVT_FIND_CLOSE) {
-    /*
-    wxFindReplaceDialog *dlg = event.GetDialog();
+  else if (type == wxEVT_FIND_REPLACE_ALL) {
 
-    int idMenu;
-    const wxChar *txt;
-    if (dlg == m_findReplace)
-    {
-      txt = wxT("Find");
-      
-      idMenu = DIALOGS_FIND;
-      m_findReplace = NULL;
-    }
-    else if (dlg == m_dlgReplace)
-    {
-      txt = wxT("Replace");
-      idMenu = DIALOGS_REPLACE;
-      m_dlgReplace = NULL;
-    }
-    else
-    {
-      txt = wxT("Unknown");
-      idMenu = wxID_ANY;
-
-      wxFAIL_MSG(wxT("unexpected event"));
-    }
-
-    wxLogMessage(wxT("%s dialog is being closed."), txt);
-    
-    if (idMenu != wxID_ANY)
-    {
-      GetMenuBar()->Check(idMenu, false);
-    }
-    
-    dlg->Destroy();
-    */
-  }
-  else
-  {
-    wxLogError(wxT("Unknown find dialog event!"));
   }
 }
 
-void Edit::OnReplace(wxCommandEvent &WXUNUSED(event)) {
+bool Edit::FindText(int &found_start, int &found_end, bool find_next)
+{
+  const int flags = m_FindData.GetFlags();
+  const bool find_down = (flags & wxFR_DOWN) ? true : false;
+  const wxString find_string = m_FindData.GetFindString();
+  found_start = found_end = -1;
+
+  if (find_next) {
+    GotoPos(find_down ? GetCurrentPos() : GetCurrentPos() - find_string.size());
+  }
+  SearchAnchor();
+
+  // search up/down
+  found_start = find_down ? SearchNext(flags, find_string) : SearchPrev(flags, find_string);
+
+  // found
+  if (found_start > -1) {
+    found_end = found_start + find_string.size();
+    GotoPos(found_start);
+    return true;
+  }
+  
+  return false;
 }
 
-void Edit::OnReplaceNext(wxCommandEvent &WXUNUSED(event)) {
+void Edit::ReplaceText(const wxString &find_string)
+{
+  int found_start, found_end;
+  const int select_start = GetSelectionStart();
+  const int select_end = GetSelectionEnd();
+
+  // replace & search
+  if (select_start > -1 && select_end > select_start) {
+    const wxString select_string = GetSelectedText();
+    if (select_string == find_string) {
+      ReplaceSelection(m_FindData.GetReplaceString());
+      // search
+      if (FindText(found_start, found_end, false)) {
+        SetSelection(found_start, found_end);
+      }
+      else {
+        wxMessageDialog dialog(this, wxT("Cannot find the text \"" + find_string + "\" from current position"), wxT("Find"));
+        dialog.ShowModal();
+      }
+    }
+  }
+  // search
+  else if (FindText(found_start, found_end, false)) {
+    SetSelection(found_start, found_end);
+  }
 }
 
 void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
@@ -880,7 +884,7 @@ bool Edit::SaveFile()
 
   // get filname
   if (!m_filename) {
-    wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, wxT("Any file (*)|*"),
+    wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"),
       wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (dlg.ShowModal() != wxID_OK) return false;
     m_filename = dlg.GetPath();

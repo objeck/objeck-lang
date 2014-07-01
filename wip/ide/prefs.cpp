@@ -81,12 +81,12 @@ const char* CppWordlist3 =
   // Objeck
 const char* ObjeckWordlist1 =
     "and break bundle class critical do each else "
-    "enum false for from function if interface label leaving "
+    "enum for from function if interface label leaving "
     "method native or other public private return select "
-    "static true use virtual while xor";
+    "static use virtual while xor";
 
 const char* ObjeckWordlist2 =
-    "Bool Byte Char Float Int Nil String";
+    "Bool Byte Char Float Int Nil String true false";
 
 //----------------------------------------------------------------------------
 //! languages
