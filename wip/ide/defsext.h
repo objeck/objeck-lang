@@ -91,6 +91,7 @@ enum {
 
     // dialog find IDs
     myID_DLG_FIND_TEXT,
+    myID_DLG_REPLACE_TEXT,
 
     // preferences IDs
     myID_PREFS_LANGUAGE,
