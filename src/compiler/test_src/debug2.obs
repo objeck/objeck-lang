@@ -16,10 +16,11 @@ class Test {
 		b += "wft? ";
 		b += Foo->New();
 		b->PrintLine();
+		"Fin."->PrintLine();
 	}
 
 	function : Foo() ~ String {
-		return "foo";
+		return "foo2";
 	}
 
 	function : Bar() ~ String {
