@@ -1,11 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////
-// Purpose:     Objeck IDE Demo
-// Maintainer:  Modified by Randy Hollines
-// Maintainer:  Otto Wyss
-// Created:     2003-09-01
-// Modified By: Randy Hollines (c) 2014
-// Copyright:   (c) wxGuide
-// Licence:     wxWindows licence
+// Original authors:  Wyo, John Labenski, Otto Wyss
+// Copyright: (c) wxGuide, (c) John Labenski, Otto Wyss
+// Modified by: Randy Hollines
+// Licence: wxWindows licence
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef __IDE_H__

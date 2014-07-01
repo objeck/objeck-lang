@@ -1,10 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////
-// File:        contrib/samples/stc/prefs.cpp
-// Purpose:     STC test Preferences initialization
-// Maintainer:  Wyo
-// Created:     2003-09-01
-// Copyright:   (c) wxGuide
-// Licence:     wxWindows licence
+// Original author:  Wyo
+// Copyright: (c) wxGuide
+// Modified by: Randy Hollines
+// Licence: wxWindows licence
 //////////////////////////////////////////////////////////////////////////////
 
 //----------------------------------------------------------------------------
