@@ -47,17 +47,20 @@ class Notebook : public wxAuiNotebook {
 public:
   Notebook(wxWindow *parent, wxWindowID id = wxID_ANY, const wxPoint &pos = wxDefaultPosition,
     const wxSize &size = wxDefaultSize, long style = wxAUI_NB_DEFAULT_STYLE);
-
   ~Notebook();
 
   Edit* GetEdit();
-
   void OpenFile(wxString& fn);
   void CloseAll();
 
   // event handlers
   void OnEdit(wxCommandEvent &event);
   void OnPageClose(wxAuiNotebookEvent& event);
+  void OnDisplayEOL(wxCommandEvent &event);
+  void OnIndentGuide(wxCommandEvent &event);
+  void OnLineNumber(wxCommandEvent &event);
+  void OnLongLineOn(wxCommandEvent &event);
+  void OnWhiteSpace(wxCommandEvent &event);
   
   DECLARE_EVENT_TABLE()
 };
@@ -117,6 +120,42 @@ public:
     //! destructor
     ~Edit ();
 
+    void ShowEOL() {
+      SetViewEOL(!GetViewEOL());
+    }
+
+    void ShowIndentGuide() {
+      SetIndentationGuides(!GetIndentationGuides());
+    }
+
+    void ShowLineNumbers() {
+      SetMarginWidth(m_LineNrID, GetMarginWidth(m_LineNrID) == 0 ? m_LineNrMargin : 0);
+    }
+
+    void ShowLongLines() {
+      SetEdgeMode(GetEdgeMode() == 0 ? wxSTC_EDGE_LINE : wxSTC_EDGE_NONE);
+    }
+
+    void ShowWhiteSpace() {
+      SetViewWhiteSpace(GetViewWhiteSpace() == 0 ? wxSTC_WS_VISIBLEALWAYS : wxSTC_WS_INVISIBLE);
+    }
+
+    void FoldToggle() {
+      ToggleFold(GetFoldParent(GetCurrentLine()));
+    }
+
+    void OverType() {
+      SetOvertype(!GetOvertype());
+    }
+
+    void ReadOnly() {
+      SetReadOnly(!GetReadOnly());
+    }
+
+    void WrapmodeOn() {
+      SetWrapMode(GetWrapMode() == 0 ? wxSTC_WRAP_WORD : wxSTC_WRAP_NONE);
+    }
+
     // event handlers
     void OnSize(wxSizeEvent &event);
     // edit
@@ -136,12 +175,6 @@ public:
     void OnFindReplace(wxCommandEvent &event);
     void OnFindReplaceDialog(wxFindDialogEvent& event);
     //! view
-    void OnHilightLang(wxCommandEvent &event);
-    void OnDisplayEOL(wxCommandEvent &event);
-    void OnIndentGuide(wxCommandEvent &event);
-    void OnLineNumber(wxCommandEvent &event);
-    void OnLongLineOn(wxCommandEvent &event);
-    void OnWhiteSpace(wxCommandEvent &event);
     void OnFoldToggle(wxCommandEvent &event);
     void OnSetOverType(wxCommandEvent &event);
     void OnSetReadOnly(wxCommandEvent &event);
