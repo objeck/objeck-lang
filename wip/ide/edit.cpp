@@ -445,7 +445,27 @@ void Edit::OnFindReplaceDialog(wxFindDialogEvent& event)
     ReplaceText(find_string);
   }
   else if (type == wxEVT_FIND_REPLACE_ALL) {
+    const wxString replace_string = m_FindData.GetReplaceString();
+    int start_index = 0;
+    bool found = true;
+    do {
+      // set search area
+      SetTargetStart(start_index); SetTargetEnd(GetLastPosition());
 
+      // search and replace
+      found_start = SearchInTarget(find_string);
+      if (found_start > -1) {
+        found_end = found_start + find_string.size();
+        SetTargetStart(found_start);
+        SetTargetEnd(found_end);
+        ReplaceTarget(replace_string);
+        start_index = found_start + replace_string.size();
+      }
+      else {
+        found = false;
+      }
+    }
+    while (found);
   }
 }
 
