@@ -415,10 +415,23 @@ void Edit::OnFindReplace(wxCommandEvent &event) {
       m_findReplace = NULL;
     }
 
+    const int select_start = GetSelectionStart();
+    const int select_end = GetSelectionEnd();
+    wxString find_text;
+    if (select_start > -1 && select_end > select_start) {
+      find_text = GetSelectedText();
+    }
+
     if (event.GetId() == myID_DLG_FIND_TEXT) {
+      if (find_text.size() > 0) {
+        m_FindData.SetFindString(find_text);
+      }
       m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find"));
     }
     else {
+      if (find_text.size() > 0) {
+        m_FindData.SetFindString(find_text);
+      }
       m_findReplace = new wxFindReplaceDialog(this, &m_FindData, wxT("Find & Replace"), wxFR_REPLACEDIALOG);
     }
     m_findReplace->Show();
@@ -448,6 +461,7 @@ void Edit::OnFindReplaceDialog(wxFindDialogEvent& event)
     const wxString replace_string = m_FindData.GetReplaceString();
     int start_index = 0;
     bool found = true;
+    int found_count = 0;
     do {
       // set search area
       SetTargetStart(start_index); SetTargetEnd(GetLastPosition());
@@ -460,12 +474,18 @@ void Edit::OnFindReplaceDialog(wxFindDialogEvent& event)
         SetTargetEnd(found_end);
         ReplaceTarget(replace_string);
         start_index = found_start + replace_string.size();
+        found_count++;
       }
       else {
         found = false;
       }
     }
     while (found);
+
+    const wxString message = wxString::Format(wxT("%d occurrence(s) of \"%s\" were replaced with \"%s\"."), 
+      found_count, find_string, replace_string);
+    wxMessageDialog replace_dialog(this, message, wxT("Replaced Text"));
+    replace_dialog.ShowModal();
   }
 }
 
