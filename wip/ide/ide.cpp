@@ -308,8 +308,7 @@ Notebook* MyFrame::CreateNotebook()
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
   wxArrayString output, errors;
-  int code = wxExecute("\"C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy\\bin\\obc.exe\"", output, errors);
-  
+  int code = wxExecute(wxT("deploy/bin/obc.exe -src deploy/examples/hello.obs -dest a.obe"), output);  
   wxString text;
   if (errors.size() > 0) {
     for (size_t i = 0; i < errors.size(); ++i) {
