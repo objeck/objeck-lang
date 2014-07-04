@@ -5,41 +5,36 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>5C86FEAE-6B9E-4476-9F27-B411897B65DD</string>
+	<string>F6BDE00D-7804-47CC-9D69-7B3BB0D84B56</string>
 	<key>IDESourceControlProjectName</key>
 	<string>Xcode-Compiler</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
-		<string>https://svn.code.sf.net/p/objeck-lang/code/main</string>
+		<key>A5AF9636-4865-4A85-9505-D801969FD4AC</key>
+		<string>ssh://github.com/objeck/objeck-lang.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
 	<string>src/compiler/Xcode-Compiler/Xcode-Compiler.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
+		<key>A5AF9636-4865-4A85-9505-D801969FD4AC</key>
 		<string>../../../../..</string>
 	</dict>
-	<key>IDESourceControlProjectRepositoryRootDictionary</key>
-	<dict>
-		<key>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</key>
-		<string>https://svn.code.sf.net/p/objeck-lang/code</string>
-	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>https://svn.code.sf.net/p/objeck-lang/code/main/src/compiler/Xcode-Compiler/Xcode-Compiler.xcodeproj</string>
+	<string>ssh://github.com/objeck/objeck-lang.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</string>
+	<string>A5AF9636-4865-4A85-9505-D801969FD4AC</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
-			<string>public.vcs.subversion</string>
+			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>F59D56A7-39EB-4777-A4A0-7D78CA023FF0</string>
+			<string>A5AF9636-4865-4A85-9505-D801969FD4AC</string>
 			<key>IDESourceControlWCCName</key>
-			<string>main</string>
+			<string>objeck-lang</string>
 		</dict>
 	</array>
 </dict>
