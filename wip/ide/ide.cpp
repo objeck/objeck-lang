@@ -309,6 +309,7 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
+  // TODO: move this into a class
   MyProcess process; wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = wxT("C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler");
   const int code = wxExecute(wxT("\"C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\objeck\\Release\\obc.exe\" -src 'C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler\\rc\\hello.obs' -dest a.obe"), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
