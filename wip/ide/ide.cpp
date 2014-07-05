@@ -309,65 +309,18 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
-  MyProcess process;  wxExecuteEnv env;
+  MyProcess process; wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = wxT("C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler");
-
-  int code = wxExecute(wxT("\"C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\objeck\\Release\\obc.exe\" -src 'C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler\\rc\\hello.obs' -dest a.obe"), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
-  wxInputStream* error_stream = process.GetErrorStream();
-  wxInputStream* out_stream = process.GetInputStream();
+  const int code = wxExecute(wxT("\"C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\objeck\\Release\\obc.exe\" -src 'C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler\\rc\\hello.obs' -dest a.obe"), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
   
-  wxStringOutputStream error_out_stream;
-  error_stream->Read(error_out_stream);
-  
-  wxString error_text = error_out_stream.GetString();
-
-  /*
-  wxStringOutputStream std_out_stream;
-  out_stream->Read(std_out_stream);
-  wxString out_text = std_out_stream.GetString();
-  */
-
-  wxString out_text;
-
-  /*
-  wxMemoryInputStream out2(out_stream);
-  wxStreamBuffer* buffer = out2.GetInputStreamBuffer();
-  for (size_t i = 0; i < buffer->GetBufferSize(); ++i) {
-    char c = buffer->GetChar();
-    if (c != wxT('\0')) {
-      out_text += c;
-    }
-  }
-  */
-  
-  wxChar buffer[1024];
-  size_t read = 0;
-  wxChar c;
-  while (out_stream->CanRead() && !out_stream->Eof()) {
-    out_stream->Read(&c, sizeof(c));
-    out_text.Append(c);
-    /*
-    out_stream->Read(buffer, 1024);
-    read = out_stream->LastRead();
-    out_text.Append(buffer, read);
-    */
-  }
-
-  /*
-  while (!out_stream->Eof()) {
-    wxChar c = out_stream->GetC();
-    if (c != wxT('\0')) {
-      out_text += c;
-    }
-  }
-  */
-
+  const wxString error_text = ReadInputStream(process.GetErrorStream());
+  const wxString out_text = ReadInputStream(process.GetInputStream());
   wxString text = error_text + out_text;
 
   wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
     wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
-  info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE), wxT("Output"));
-  info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, wxEmptyString), wxT("Debug"));
+    info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE), wxT("Output"));
+    info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, wxEmptyString), wxT("Debug"));
 
   return info_ctrl;
 }
