@@ -48,6 +48,21 @@ class MyFrame : public wxFrame {
   Notebook* CreateNotebook();
   wxAuiNotebook* CreateInfoCtrl();
   
+  wxString ReadInputStream(wxInputStream* in) {
+    if (!in) {
+      return wxEmptyString;
+    }
+
+    wxString out;
+    wxChar c;
+    while (in->CanRead() && !in->Eof()) {
+      in->Read(&c, sizeof(c));
+      out.Append(c);
+    }
+
+    return out;
+  }
+
 public:
   MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
     const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
@@ -70,17 +85,12 @@ public:
 };
 
 class MyProcess : public wxProcess {
-
 public:
-  MyProcess() : wxProcess(wxPROCESS_REDIRECT) {
-  }
+  MyProcess() : wxProcess(wxPROCESS_REDIRECT) {}
 
-  ~MyProcess() {
-  }
+  ~MyProcess() {}
 
-  void OnTerminate(int pid, int status) {
-
-  }
+  void OnTerminate(int pid, int status) {}
 };
 
 #endif
