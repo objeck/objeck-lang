@@ -309,19 +309,34 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
+  const wxString base_path = wxT("C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy");
   // TODO: move this into a class
   MyProcess process; wxExecuteEnv env;
-  env.env[wxT("OBJECK_LIB_PATH")] = wxT("C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler");
-  const int code = wxExecute(wxT("\"C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\objeck\\Release\\obc.exe\" -src 'C:\\Users\\Randy Hollines\\Documents\\Code\\objeck-lang\\src\\compiler\\rc\\hello.obs' -dest a.obe"), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
+  env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("\\bin");
+  wxString cmd = "\"";
+  cmd += base_path;
+  cmd += wxT("\\bin\\obc.exe\" -src '");
+  cmd += base_path;
+  cmd += wxT("\\examples\\hello.obs' -dest a.obe");
+
+  const int code = wxExecute(cmd, wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
   
   const wxString error_text = ReadInputStream(process.GetErrorStream());
   const wxString out_text = ReadInputStream(process.GetInputStream());
   wxString text = error_text + out_text;
 
+  wxFont font(10, wxMODERN, wxNORMAL, wxNORMAL);
+
+  wxTextCtrl* output_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  output_ctrl->SetFont(font);
+
+  wxTextCtrl* debug_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  debug_ctrl->SetFont(font);
+
   wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
     wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
-    info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE), wxT("Output"));
-    info_ctrl->AddPage(new wxTextCtrl(this, wxID_ANY, wxEmptyString), wxT("Debug"));
+  info_ctrl->AddPage(output_ctrl, wxT("Output"));
+  info_ctrl->AddPage(debug_ctrl, wxT("Debug"));
 
   return info_ctrl;
 }
