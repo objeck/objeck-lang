@@ -56,8 +56,11 @@ class MyFrame : public wxFrame {
     wxString out;
     wxChar c;
     while (in->CanRead() && !in->Eof()) {
-      in->Read(&c, sizeof(c));
-      out.Append(c);
+      // in->Read(&c, sizeof(c));
+      c = in->GetC();
+      if (c != wxT('\0')) {
+        out.Append(c);
+      }
     }
 
     return out;
