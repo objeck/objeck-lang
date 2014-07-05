@@ -84,6 +84,7 @@ public:
   DECLARE_EVENT_TABLE()
 };
 
+// TODO: move this into a class
 class MyProcess : public wxProcess {
 public:
   MyProcess() : wxProcess(wxPROCESS_REDIRECT) {}
