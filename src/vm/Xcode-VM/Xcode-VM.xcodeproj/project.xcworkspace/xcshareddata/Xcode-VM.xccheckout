@@ -5,19 +5,19 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>F6BDE00D-7804-47CC-9D69-7B3BB0D84B56</string>
+	<string>0E6AB69B-5CEC-4C75-ABB8-CB9BBBD30AFF</string>
 	<key>IDESourceControlProjectName</key>
-	<string>Xcode-Compiler</string>
+	<string>Xcode-VM</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>A5AF9636-4865-4A85-9505-D801969FD4AC</key>
+		<key>31EED125-FAAA-41E0-87E9-B0C28AB1B0DC</key>
 		<string>ssh://github.com/objeck/objeck-lang.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>src/compiler/Xcode-Compiler/Xcode-Compiler.xcodeproj/project.xcworkspace</string>
+	<string>src/vm/Xcode-VM/Xcode-VM.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>A5AF9636-4865-4A85-9505-D801969FD4AC</key>
+		<key>31EED125-FAAA-41E0-87E9-B0C28AB1B0DC</key>
 		<string>../../../../..</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
@@ -25,14 +25,14 @@
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>A5AF9636-4865-4A85-9505-D801969FD4AC</string>
+	<string>31EED125-FAAA-41E0-87E9-B0C28AB1B0DC</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>A5AF9636-4865-4A85-9505-D801969FD4AC</string>
+			<string>31EED125-FAAA-41E0-87E9-B0C28AB1B0DC</string>
 			<key>IDESourceControlWCCName</key>
 			<string>objeck-lang</string>
 		</dict>
