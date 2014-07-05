@@ -69,4 +69,18 @@ public:
   DECLARE_EVENT_TABLE()
 };
 
+class MyProcess : public wxProcess {
+
+public:
+  MyProcess() : wxProcess(wxPROCESS_REDIRECT) {
+  }
+
+  ~MyProcess() {
+  }
+
+  void OnTerminate(int pid, int status) {
+
+  }
+};
+
 #endif

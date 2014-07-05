@@ -6,6 +6,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "ide.h"
+#include <wx/sstream.h>
 
 /////////////////////////
 // MyApp
@@ -307,19 +308,29 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
-  wxArrayString output, errors;
-  int code = wxExecute(wxT("deploy/bin/obc.exe -src deploy/examples/hello.obs -dest a.obe"), output);  
-  wxString text;
-  if (errors.size() > 0) {
-    for (size_t i = 0; i < errors.size(); ++i) {
-      text += errors[i] + wxT('\n');
+  MyProcess process;
+  int code = wxExecute(wxT("C:/Users/Randy/Documents/Code/objeck-lang/src/objeck/deploy/bin/obc.exe -src 'C:/Users/Randy/Documents/Code/objeck-lang/src/objeck/deploy/examples/hello.obs' -dest a.obe"), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
+  wxInputStream* error_stream = process.GetErrorStream();
+  wxInputStream* out_stream = process.GetInputStream();
+  
+  wxStringOutputStream error_out_stream;
+  error_stream->Read(error_out_stream);
+  wxString error_text = error_out_stream.GetString();
+
+  /*
+  wxStringOutputStream std_out_stream;
+  out_stream->Read(std_out_stream);
+  wxString out_text = std_out_stream.GetString();
+  */
+  wxString out_text;
+  while (!out_stream->Eof()) {
+    wxChar c = out_stream->GetC();
+    if (c != wxT('\0')) {
+      out_text += c;
     }
   }
-  else {
-    for (size_t i = 0; i < output.size(); ++i) {
-      text += output[i] + wxT('\n');
-    }
-  }
+
+  wxString text = error_text + out_text;
 
   wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
     wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
