@@ -191,6 +191,8 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
   menuFile->Append(wxID_SAVEAS, _("Save &as...\tCtrl+Shift+S"));
   menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
+  menuFile->AppendSeparator();
+  menuFile->Append(wxID_PROPERTIES, _("&Properties\tCtrl+P"));
 
   // Edit menu
   wxMenu *menuEdit = new wxMenu;
