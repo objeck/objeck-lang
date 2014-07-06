@@ -83,6 +83,7 @@ public:
   void OnFileClose(wxCommandEvent &event);
   void OnEdit(wxCommandEvent &event);
   void OnFindReplace(wxCommandEvent &event);
+  void OnOptions(wxCommandEvent &event);
 
   DECLARE_EVENT_TABLE()
 };
@@ -95,6 +96,19 @@ public:
   ~MyProcess() {}
 
   void OnTerminate(int pid, int status) {}
+};
+
+//----------------------------------------------------------------------------
+//! EditProperties
+class GlobalOptions : public wxDialog {
+
+public:
+
+  //! constructor
+  GlobalOptions(wxWindow* parent, long style = 0);
+
+private:
+
 };
 
 #endif
