@@ -174,6 +174,7 @@ public:
     // find & replace
     void OnFindReplace(wxCommandEvent &event);
     void OnFindReplaceDialog(wxFindDialogEvent& event);
+    void OnProperties(wxCommandEvent &event);
     //! view
     void OnFoldToggle(wxCommandEvent &event);
     void OnSetOverType(wxCommandEvent &event);

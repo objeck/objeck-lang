@@ -250,6 +250,7 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_FIND_CLOSE(wxID_ANY, Edit::OnFindReplaceDialog)
     EVT_MENU(myID_BRACEMATCH, Edit::OnBraceMatch)
     EVT_MENU(myID_GOTO, Edit::OnGoto)
+    EVT_MENU(wxID_PROPERTIES, Edit::OnProperties)
     // annotations
     EVT_MENU(myID_ANNOTATION_ADD, Edit::OnAnnotationAdd)
     EVT_MENU(myID_ANNOTATION_REMOVE, Edit::OnAnnotationRemove)
@@ -291,6 +292,11 @@ Edit::Edit (wxWindow *parent, wxWindowID id,
     m_modified = false;
     SetModEventMask(wxSTC_MOD_INSERTTEXT | wxSTC_MOD_DELETETEXT);
     
+    // setup unicode support
+    SetKeysUnicode(true);
+    SetCodePage(wxSTC_CP_UTF8);
+    wxConvCurrent = &wxConvUTF8;
+
     // default font for all styles
     SetViewEOL (g_CommonPrefs.displayEOLEnable);
     SetIndentationGuides (g_CommonPrefs.indentGuideEnable);
@@ -541,6 +547,11 @@ void Edit::ReplaceText(const wxString &find_string)
   }
 }
 
+void Edit::OnProperties(wxCommandEvent &WXUNUSED(event))
+{
+  EditProperties dlg(this, 0);
+}
+
 void Edit::OnGoto(wxCommandEvent &WXUNUSED(event)) {
   const wxString message = wxString::Format(_("Line number : 1 - %d"), GetLineCount());
   const long line_number = wxGetNumberFromUser(wxEmptyString, message, wxT("Go To Line"), 1, 1, 100, this);
@@ -548,7 +559,6 @@ void Edit::OnGoto(wxCommandEvent &WXUNUSED(event)) {
     GotoLine(line_number - 1);
   }
 }
-
 
 void Edit::OnBraceMatch(wxCommandEvent &WXUNUSED(event)) {
   int min = GetCurrentPos();
@@ -941,16 +951,6 @@ bool Edit::SaveFile(const wxString &filename) {
   // return if no change
   if (!Modified()) return true;
 
-  Notebook* notebook = static_cast<Notebook*>(GetParent());
-  if (notebook->GetCurrentPage()) {
-    const int page_index = notebook->GetSelection();
-    wxString page_text = notebook->GetPageText(page_index);
-    if (page_text.EndsWith(wxT('*'))) {
-      page_text.RemoveLast();
-      notebook->SetPageText(page_index, page_text);
-    }
-  }
-
   if (m_modified) {
     Notebook* notebook = static_cast<Notebook*>(GetParent());
     const int page_index = notebook->GetPageIndex(this);
@@ -975,12 +975,8 @@ bool Edit::Modified() {
 // EditProperties
 //----------------------------------------------------------------------------
 
-EditProperties::EditProperties (Edit *edit,
-                                long style)
-        : wxDialog (edit, wxID_ANY, wxEmptyString,
-                    wxDefaultPosition, wxDefaultSize,
-                    style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
-
+EditProperties::EditProperties (Edit *edit, long style) : 
+  wxDialog (edit, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
     // sets the application title
     SetTitle (_("Properties"));
     wxString text;
