@@ -46,6 +46,7 @@ EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
 EVT_MENU(myID_DLG_REPLACE_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_REPLACENEXT, MyFrame::OnEdit)
+EVT_MENU(myID_DLG_OPTIONS, MyFrame::OnOptions)
 // editor operations
 EVT_MENU(wxID_UNDO, MyFrame::OnEdit)
 EVT_MENU(wxID_REDO, MyFrame::OnEdit)
@@ -182,6 +183,11 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
   }
 }
 
+void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
+{
+  GlobalOptions dlg(this, 0);
+}
+
 wxMenuBar* MyFrame::CreateMenuBar()
 {
   // File menu
@@ -192,7 +198,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuFile->Append(wxID_SAVEAS, _("Save &as...\tCtrl+Shift+S"));
   menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
   menuFile->AppendSeparator();
-  menuFile->Append(wxID_PROPERTIES, _("&Properties\tCtrl+P"));
+  menuFile->Append(wxID_PROPERTIES, _("Proper&ties\tCtrl+T"));
 
   // Edit menu
   wxMenu *menuEdit = new wxMenu;
@@ -213,6 +219,8 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(myID_DLG_REPLACE_TEXT, _("&Replace...\tCtrl+H"));
   menuEdit->Append(myID_REPLACENEXT, _("&Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
+  menuEdit->AppendSeparator();
+  menuEdit->Append(myID_DLG_OPTIONS, _("Options...\tCtrl+ALT+O"));
   
   // View menu
   wxMenu *menuView = new wxMenu;
@@ -342,3 +350,135 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 
   return info_ctrl;
 }
+
+//----------------------------------------------------------------------------
+// GlobalOptions
+//----------------------------------------------------------------------------
+
+GlobalOptions::GlobalOptions(wxWindow* parent, long style) :
+  wxDialog(parent, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
+  // sets the application title
+  SetTitle(wxT("Options"));
+  
+  wxBoxSizer *topsizer = new wxBoxSizer(wxVERTICAL);
+  // create text ctrl with minimal size 100x60
+  topsizer->Add(
+    new wxTextCtrl(this, -1, "My text.", wxDefaultPosition, wxSize(100, 60), wxTE_MULTILINE),
+    1,            // make vertically stretchable
+    wxEXPAND |    // make horizontally stretchable
+    wxALL,        //   and make border all around
+    10);         // set border width to 10
+  wxBoxSizer *button_sizer = new wxBoxSizer(wxHORIZONTAL);
+  button_sizer->Add(
+    new wxButton(this, wxID_OK, "OK"),
+    0,           // make horizontally unstretchable
+    wxALL,       // make border all around (implicit top alignment)
+    10);        // set border width to 10
+  button_sizer->Add(
+    new wxButton(this, wxID_CANCEL, "Cancel"),
+    0,           // make horizontally unstretchable
+    wxALL,       // make border all around (implicit top alignment)
+    10);        // set border width to 10
+  topsizer->Add(
+    button_sizer,
+    0,                // make vertically unstretchable
+    wxALIGN_CENTER); // no border and centre horizontally
+  SetSizerAndFit(topsizer); // use the sizer for layout and size window
+  // accordingly and prevent it from being resized
+  // to smaller size
+
+  /*
+  // fullname
+  wxBoxSizer *fullname = new wxBoxSizer(wxHORIZONTAL);
+  fullname->Add(10, 0);
+  fullname->Add(new wxStaticText(this, wxID_ANY, _("Full filename"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+  fullname->Add(new wxStaticText(this, wxID_ANY, edit->GetFilename()),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+
+  // text info
+  wxGridSizer *textinfo = new wxGridSizer(4, 0, 2);
+  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Language"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  textinfo->Add(new wxStaticText(this, wxID_ANY, edit->m_language->name),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Lexer-ID: "),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  text = wxString::Format(wxT("%d"), edit->GetLexer());
+  textinfo->Add(new wxStaticText(this, wxID_ANY, text),
+    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+  wxString EOLtype = wxEmptyString;
+  switch (edit->GetEOLMode()) {
+  case wxSTC_EOL_CR: {EOLtype = wxT("CR (Unix)"); break; }
+  case wxSTC_EOL_CRLF: {EOLtype = wxT("CRLF (Windows)"); break; }
+  case wxSTC_EOL_LF: {EOLtype = wxT("CR (Macintosh)"); break; }
+  }
+  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Line endings"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  textinfo->Add(new wxStaticText(this, wxID_ANY, EOLtype),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+
+  // text info box
+  wxStaticBoxSizer *textinfos = new wxStaticBoxSizer(
+    new wxStaticBox(this, wxID_ANY, _("Informations")),
+    wxVERTICAL);
+  textinfos->Add(textinfo, 0, wxEXPAND);
+  textinfos->Add(0, 6);
+
+  // statistic
+  wxGridSizer *statistic = new wxGridSizer(4, 0, 2);
+  statistic->Add(new wxStaticText(this, wxID_ANY, _("Total lines"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  text = wxString::Format(wxT("%d"), edit->GetLineCount());
+  statistic->Add(new wxStaticText(this, wxID_ANY, text),
+    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+  statistic->Add(new wxStaticText(this, wxID_ANY, _("Total chars"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  text = wxString::Format(wxT("%d"), edit->GetTextLength());
+  statistic->Add(new wxStaticText(this, wxID_ANY, text),
+    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+  statistic->Add(new wxStaticText(this, wxID_ANY, _("Current line"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  text = wxString::Format(wxT("%d"), edit->GetCurrentLine());
+  statistic->Add(new wxStaticText(this, wxID_ANY, text),
+    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+  statistic->Add(new wxStaticText(this, wxID_ANY, _("Current pos"),
+    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
+    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
+  text = wxString::Format(wxT("%d"), edit->GetCurrentPos());
+  statistic->Add(new wxStaticText(this, wxID_ANY, text),
+    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+
+  // char/line statistics
+  wxStaticBoxSizer *statistics = new wxStaticBoxSizer(
+    new wxStaticBox(this, wxID_ANY, _("Statistics")),
+    wxVERTICAL);
+  statistics->Add(statistic, 0, wxEXPAND);
+  statistics->Add(0, 6);
+
+  // total pane
+  wxBoxSizer *totalpane = new wxBoxSizer(wxVERTICAL);
+  totalpane->Add(fullname, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
+  totalpane->Add(0, 6);
+  totalpane->Add(textinfos, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+  totalpane->Add(0, 10);
+  totalpane->Add(statistics, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+  totalpane->Add(0, 6);
+  wxButton *okButton = new wxButton(this, wxID_OK, _("OK"));
+  okButton->SetDefault();
+  totalpane->Add(okButton, 0, wxALIGN_CENTER | wxALL, 10);
+
+  SetSizerAndFit(totalpane);
+  */
+
+  ShowModal();
+}
+
+

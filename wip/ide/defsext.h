@@ -97,6 +97,9 @@ enum {
     myID_DLG_FIND_TEXT,
     myID_DLG_REPLACE_TEXT,
 
+    // dialog options ID
+    myID_DLG_OPTIONS,
+
     // preferences IDs
     myID_PREFS_LANGUAGE,
     myID_PREFS_STYLETYPE,
