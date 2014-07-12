@@ -9,6 +9,24 @@
 #include <wx/sstream.h>
 #include <wx/mstream.h>
 
+
+#include <wx/artprov.h>
+#include <wx/xrc/xmlres.h>
+#include <wx/string.h>
+#include <wx/stattext.h>
+#include <wx/gdicmn.h>
+#include <wx/font.h>
+#include <wx/colour.h>
+#include <wx/settings.h>
+#include <wx/textctrl.h>
+#include <wx/button.h>
+#include <wx/sizer.h>
+#include <wx/radiobut.h>
+#include <wx/spinctrl.h>
+#include <wx/combobox.h>
+#include <wx/statbox.h>
+#include <wx/dialog.h>
+
 /////////////////////////
 // MyApp
 /////////////////////////
@@ -356,34 +374,126 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 //----------------------------------------------------------------------------
 
 GlobalOptions::GlobalOptions(wxWindow* parent, long style) :
-  wxDialog(parent, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
-  // sets the application title
-  SetTitle(wxT("Options"));
-  
-  wxBoxSizer *topsizer = new wxBoxSizer(wxVERTICAL);
-  // create text ctrl with minimal size 100x60
-  topsizer->Add(
-    new wxTextCtrl(this, -1, "My text.", wxDefaultPosition, wxSize(100, 60), wxTE_MULTILINE),
-    1,            // make vertically stretchable
-    wxEXPAND |    // make horizontally stretchable
-    wxALL,        //   and make border all around
-    10);         // set border width to 10
-  wxBoxSizer *button_sizer = new wxBoxSizer(wxHORIZONTAL);
-  button_sizer->Add(
-    new wxButton(this, wxID_OK, "OK"),
-    0,           // make horizontally unstretchable
-    wxALL,       // make border all around (implicit top alignment)
-    10);        // set border width to 10
-  button_sizer->Add(
-    new wxButton(this, wxID_CANCEL, "Cancel"),
-    0,           // make horizontally unstretchable
-    wxALL,       // make border all around (implicit top alignment)
-    10);        // set border width to 10
-  topsizer->Add(
-    button_sizer,
-    0,                // make vertically unstretchable
-    wxALIGN_CENTER); // no border and centre horizontally
-  SetSizerAndFit(topsizer); // use the sizer for layout and size window
+  wxDialog(parent, wxID_ANY, wxT("Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
+
+  wxStaticText* m_staticText4;
+  wxTextCtrl* m_textCtrl4;
+  wxButton* m_button6;
+  wxStaticText* m_staticText6;
+  wxRadioButton* win_ending;
+  wxRadioButton* unix_ending;
+  wxRadioButton* mac_endig;
+  wxStaticText* m_staticText8;
+  wxRadioButton* tab_ident;
+  wxRadioButton* space_ident;
+  wxSpinCtrl* ident_size;
+  wxStaticText* font_select;
+  wxComboBox* m_comboBox1;
+  wxStaticText* m_staticText10;
+  wxSpinCtrl* font_size;
+
+
+  this->SetSizeHints(wxDefaultSize, wxDefaultSize);
+
+  wxBoxSizer* bSizer1;
+  bSizer1 = new wxBoxSizer(wxVERTICAL);
+
+  wxBoxSizer* bSizer3;
+  bSizer3 = new wxBoxSizer(wxHORIZONTAL);
+
+  m_staticText4 = new wxStaticText(this, wxID_ANY, wxT("Objeck Path"), wxDefaultPosition, wxDefaultSize, 0);
+  m_staticText4->Wrap(-1);
+  bSizer3->Add(m_staticText4, 0, wxALL, 5);
+
+  m_textCtrl4 = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+  bSizer3->Add(m_textCtrl4, 1, wxALL, 5);
+
+  m_button6 = new wxButton(this, wxID_ANY, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+  bSizer3->Add(m_button6, 0, wxALL, 5);
+
+
+  bSizer1->Add(bSizer3, 0, wxEXPAND, 5);
+
+  wxStaticBoxSizer* sbSizer1;
+  sbSizer1 = new wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, wxT("Editor")), wxVERTICAL);
+
+  wxFlexGridSizer* fgSizer1;
+  fgSizer1 = new wxFlexGridSizer(3, 2, 0, 0);
+  fgSizer1->SetFlexibleDirection(wxBOTH);
+  fgSizer1->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
+
+  m_staticText6 = new wxStaticText(this, wxID_ANY, wxT("Line Endings"), wxDefaultPosition, wxDefaultSize, 0);
+  m_staticText6->Wrap(-1);
+  fgSizer1->Add(m_staticText6, 0, wxALL, 5);
+
+  wxBoxSizer* bSizer6;
+  bSizer6 = new wxBoxSizer(wxHORIZONTAL);
+
+  win_ending = new wxRadioButton(this, wxID_ANY, wxT("Windows"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+  bSizer6->Add(win_ending, 0, wxALL, 5);
+
+  unix_ending = new wxRadioButton(this, wxID_ANY, wxT("Unix"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer6->Add(unix_ending, 0, wxALL, 5);
+
+  mac_endig = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer6->Add(mac_endig, 0, wxALL, 5);
+
+
+  fgSizer1->Add(bSizer6, 1, wxEXPAND | wxLEFT, 5);
+
+  m_staticText8 = new wxStaticText(this, wxID_ANY, wxT("Indent"), wxDefaultPosition, wxDefaultSize, 0);
+  m_staticText8->Wrap(-1);
+  fgSizer1->Add(m_staticText8, 0, wxALL, 5);
+
+  wxBoxSizer* bSizer7;
+  bSizer7 = new wxBoxSizer(wxHORIZONTAL);
+
+  tab_ident = new wxRadioButton(this, wxID_ANY, wxT("Tab"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+  bSizer7->Add(tab_ident, 0, wxALL, 5);
+
+  space_ident = new wxRadioButton(this, wxID_ANY, wxT("Spaces"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer7->Add(space_ident, 0, wxALL, 5);
+
+  ident_size = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(50, -1), wxSP_ARROW_KEYS, 0, 10, 0);
+  bSizer7->Add(ident_size, 0, wxALL, 5);
+
+
+  fgSizer1->Add(bSizer7, 1, wxEXPAND | wxLEFT, 5);
+
+  font_select = new wxStaticText(this, wxID_ANY, wxT("Font"), wxDefaultPosition, wxDefaultSize, 0);
+  font_select->Wrap(-1);
+  fgSizer1->Add(font_select, 0, wxALL, 5);
+
+  wxBoxSizer* bSizer8;
+  bSizer8 = new wxBoxSizer(wxHORIZONTAL);
+
+  m_comboBox1 = new wxComboBox(this, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
+  bSizer8->Add(m_comboBox1, 0, wxALL, 5);
+
+  m_staticText10 = new wxStaticText(this, wxID_ANY, wxT("Size"), wxDefaultPosition, wxDefaultSize, 0);
+  m_staticText10->Wrap(-1);
+  bSizer8->Add(m_staticText10, 0, wxALL, 5);
+
+  font_size = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10, 0);
+  font_size->SetMinSize(wxSize(50, -1));
+
+  bSizer8->Add(font_size, 0, wxALL, 5);
+
+
+  fgSizer1->Add(bSizer8, 1, wxEXPAND, 5);
+
+
+  sbSizer1->Add(fgSizer1, 1, wxEXPAND, 5);
+
+
+  bSizer1->Add(sbSizer1, 1, wxEXPAND, 5);
+
+
+  this->SetSizer(bSizer1);
+  this->Layout();
+
+  this->Centre(wxBOTH);
+
   // accordingly and prevent it from being resized
   // to smaller size
 
