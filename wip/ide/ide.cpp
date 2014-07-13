@@ -376,217 +376,103 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 GlobalOptions::GlobalOptions(wxWindow* parent, long style) :
   wxDialog(parent, wxID_ANY, wxT("Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
 
-  wxStaticText* m_staticText4;
-  wxTextCtrl* m_textCtrl4;
-  wxButton* m_button6;
-  wxStaticText* m_staticText6;
-  wxRadioButton* win_ending;
-  wxRadioButton* unix_ending;
-  wxRadioButton* mac_endig;
-  wxStaticText* m_staticText8;
-  wxRadioButton* tab_ident;
-  wxRadioButton* space_ident;
-  wxSpinCtrl* ident_size;
-  wxStaticText* font_select;
-  wxComboBox* m_comboBox1;
-  wxStaticText* m_staticText10;
-  wxSpinCtrl* font_size;
+  SetSizeHints(wxDefaultSize, wxDefaultSize);
 
+  wxBoxSizer* bSizer1 = new wxBoxSizer(wxVERTICAL);
 
-  this->SetSizeHints(wxDefaultSize, wxDefaultSize);
+  wxBoxSizer* bSizer3 = new wxBoxSizer(wxHORIZONTAL);
 
-  wxBoxSizer* bSizer1;
-  bSizer1 = new wxBoxSizer(wxVERTICAL);
-
-  wxBoxSizer* bSizer3;
-  bSizer3 = new wxBoxSizer(wxHORIZONTAL);
-
-  m_staticText4 = new wxStaticText(this, wxID_ANY, wxT("Objeck Path"), wxDefaultPosition, wxDefaultSize, 0);
-  m_staticText4->Wrap(-1);
-  bSizer3->Add(m_staticText4, 0, wxALL, 5);
+  wxStaticText* staticText4 = new wxStaticText(this, wxID_ANY, wxT("Objeck Path"), wxDefaultPosition, wxDefaultSize, 0);
+  staticText4->Wrap(-1);
+  bSizer3->Add(staticText4, 0, wxALL, 5);
 
   m_textCtrl4 = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
   bSizer3->Add(m_textCtrl4, 1, wxALL, 5);
 
-  m_button6 = new wxButton(this, wxID_ANY, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-  bSizer3->Add(m_button6, 0, wxALL, 5);
+  m_pathButton = new wxButton(this, wxID_ANY, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+  bSizer3->Add(m_pathButton, 0, wxALL, 5);
 
 
   bSizer1->Add(bSizer3, 0, wxEXPAND, 5);
 
-  wxStaticBoxSizer* sbSizer1;
-  sbSizer1 = new wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, wxT("Editor")), wxVERTICAL);
+  wxStaticBoxSizer* sbSizer1 = new wxStaticBoxSizer(new wxStaticBox(this, wxID_ANY, wxT("Editor")), wxVERTICAL);
 
   wxFlexGridSizer* fgSizer1;
   fgSizer1 = new wxFlexGridSizer(3, 2, 0, 0);
   fgSizer1->SetFlexibleDirection(wxBOTH);
   fgSizer1->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
 
-  m_staticText6 = new wxStaticText(this, wxID_ANY, wxT("Line Endings"), wxDefaultPosition, wxDefaultSize, 0);
-  m_staticText6->Wrap(-1);
-  fgSizer1->Add(m_staticText6, 0, wxALL, 5);
+  wxStaticText* staticText6 = new wxStaticText(this, wxID_ANY, wxT("Line Endings"), wxDefaultPosition, wxDefaultSize, 0);
+  staticText6->Wrap(-1);
+  fgSizer1->Add(staticText6, 0, wxALL, 5);
 
-  wxBoxSizer* bSizer6;
-  bSizer6 = new wxBoxSizer(wxHORIZONTAL);
+  wxBoxSizer* bSizer6 = new wxBoxSizer(wxHORIZONTAL);
 
-  win_ending = new wxRadioButton(this, wxID_ANY, wxT("Windows"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
-  bSizer6->Add(win_ending, 0, wxALL, 5);
+  m_winEnding = new wxRadioButton(this, wxID_ANY, wxT("Windows"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+  bSizer6->Add(m_winEnding, 0, wxALL, 5);
 
-  unix_ending = new wxRadioButton(this, wxID_ANY, wxT("Unix"), wxDefaultPosition, wxDefaultSize, 0);
-  bSizer6->Add(unix_ending, 0, wxALL, 5);
+  m_unixEnding = new wxRadioButton(this, wxID_ANY, wxT("Unix"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer6->Add(m_unixEnding, 0, wxALL, 5);
 
-  mac_endig = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
-  bSizer6->Add(mac_endig, 0, wxALL, 5);
+  m_macEndig = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer6->Add(m_macEndig, 0, wxALL, 5);
 
 
   fgSizer1->Add(bSizer6, 1, wxEXPAND | wxLEFT, 5);
 
-  m_staticText8 = new wxStaticText(this, wxID_ANY, wxT("Indent"), wxDefaultPosition, wxDefaultSize, 0);
-  m_staticText8->Wrap(-1);
-  fgSizer1->Add(m_staticText8, 0, wxALL, 5);
+  wxStaticText* staticText8 = new wxStaticText(this, wxID_ANY, wxT("Indent"), wxDefaultPosition, wxDefaultSize, 0);
+  staticText8->Wrap(-1);
+  fgSizer1->Add(staticText8, 0, wxALL, 5);
 
-  wxBoxSizer* bSizer7;
-  bSizer7 = new wxBoxSizer(wxHORIZONTAL);
+  wxBoxSizer* bSizer7 = new wxBoxSizer(wxHORIZONTAL);
 
-  tab_ident = new wxRadioButton(this, wxID_ANY, wxT("Tab"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
-  bSizer7->Add(tab_ident, 0, wxALL, 5);
+  m_tabIdent = new wxRadioButton(this, wxID_ANY, wxT("Tab"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+  bSizer7->Add(m_tabIdent, 0, wxALL, 5);
 
-  space_ident = new wxRadioButton(this, wxID_ANY, wxT("Spaces"), wxDefaultPosition, wxDefaultSize, 0);
-  bSizer7->Add(space_ident, 0, wxALL, 5);
+  m_spaceIdent = new wxRadioButton(this, wxID_ANY, wxT("Spaces"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer7->Add(m_spaceIdent, 0, wxALL, 5);
 
-  ident_size = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(50, -1), wxSP_ARROW_KEYS, 0, 10, 0);
-  bSizer7->Add(ident_size, 0, wxALL, 5);
+  m_identSize = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(50, -1), wxSP_ARROW_KEYS, 0, 10, 0);
+  bSizer7->Add(m_identSize, 0, wxALL, 5);
 
 
   fgSizer1->Add(bSizer7, 1, wxEXPAND | wxLEFT, 5);
 
-  font_select = new wxStaticText(this, wxID_ANY, wxT("Font"), wxDefaultPosition, wxDefaultSize, 0);
-  font_select->Wrap(-1);
-  fgSizer1->Add(font_select, 0, wxALL, 5);
+  m_fontSelect = new wxStaticText(this, wxID_ANY, wxT("Font"), wxDefaultPosition, wxDefaultSize, 0);
+  m_fontSelect->Wrap(-1);
+  fgSizer1->Add(m_fontSelect, 0, wxALL, 5);
 
-  wxBoxSizer* bSizer8;
-  bSizer8 = new wxBoxSizer(wxHORIZONTAL);
+  wxBoxSizer* bSizer8 = new wxBoxSizer(wxHORIZONTAL);
 
   m_comboBox1 = new wxComboBox(this, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
   bSizer8->Add(m_comboBox1, 0, wxALL, 5);
 
-  m_staticText10 = new wxStaticText(this, wxID_ANY, wxT("Size"), wxDefaultPosition, wxDefaultSize, 0);
-  m_staticText10->Wrap(-1);
-  bSizer8->Add(m_staticText10, 0, wxALL, 5);
+  wxStaticText* staticText10 = new wxStaticText(this, wxID_ANY, wxT("Size"), wxDefaultPosition, wxDefaultSize, 0);
+  staticText10->Wrap(-1);
+  bSizer8->Add(staticText10, 0, wxALL, 5);
 
   font_size = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10, 0);
   font_size->SetMinSize(wxSize(50, -1));
 
   bSizer8->Add(font_size, 0, wxALL, 5);
-
-
   fgSizer1->Add(bSizer8, 1, wxEXPAND, 5);
-
-
   sbSizer1->Add(fgSizer1, 1, wxEXPAND, 5);
-
-
   bSizer1->Add(sbSizer1, 1, wxEXPAND, 5);
 
+  m_sdbSizer1 = new wxStdDialogButtonSizer();
+  m_sdbSizer1OK = new wxButton(this, wxID_OK);
+  m_sdbSizer1->AddButton(m_sdbSizer1OK);
+  m_sdbSizer1Cancel = new wxButton(this, wxID_CANCEL);
+  m_sdbSizer1->AddButton(m_sdbSizer1Cancel);
+  m_sdbSizer1->Realize();
 
-  this->SetSizer(bSizer1);
-  this->Layout();
+  bSizer1->Add(m_sdbSizer1, 1, wxEXPAND, 5);
 
-  this->Centre(wxBOTH);
 
-  // accordingly and prevent it from being resized
-  // to smaller size
+  SetSizer(bSizer1);
+  Layout();
 
-  /*
-  // fullname
-  wxBoxSizer *fullname = new wxBoxSizer(wxHORIZONTAL);
-  fullname->Add(10, 0);
-  fullname->Add(new wxStaticText(this, wxID_ANY, _("Full filename"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
-  fullname->Add(new wxStaticText(this, wxID_ANY, edit->GetFilename()),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
-
-  // text info
-  wxGridSizer *textinfo = new wxGridSizer(4, 0, 2);
-  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Language"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  textinfo->Add(new wxStaticText(this, wxID_ANY, edit->m_language->name),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Lexer-ID: "),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  text = wxString::Format(wxT("%d"), edit->GetLexer());
-  textinfo->Add(new wxStaticText(this, wxID_ANY, text),
-    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-  wxString EOLtype = wxEmptyString;
-  switch (edit->GetEOLMode()) {
-  case wxSTC_EOL_CR: {EOLtype = wxT("CR (Unix)"); break; }
-  case wxSTC_EOL_CRLF: {EOLtype = wxT("CRLF (Windows)"); break; }
-  case wxSTC_EOL_LF: {EOLtype = wxT("CR (Macintosh)"); break; }
-  }
-  textinfo->Add(new wxStaticText(this, wxID_ANY, _("Line endings"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  textinfo->Add(new wxStaticText(this, wxID_ANY, EOLtype),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-
-  // text info box
-  wxStaticBoxSizer *textinfos = new wxStaticBoxSizer(
-    new wxStaticBox(this, wxID_ANY, _("Informations")),
-    wxVERTICAL);
-  textinfos->Add(textinfo, 0, wxEXPAND);
-  textinfos->Add(0, 6);
-
-  // statistic
-  wxGridSizer *statistic = new wxGridSizer(4, 0, 2);
-  statistic->Add(new wxStaticText(this, wxID_ANY, _("Total lines"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  text = wxString::Format(wxT("%d"), edit->GetLineCount());
-  statistic->Add(new wxStaticText(this, wxID_ANY, text),
-    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-  statistic->Add(new wxStaticText(this, wxID_ANY, _("Total chars"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  text = wxString::Format(wxT("%d"), edit->GetTextLength());
-  statistic->Add(new wxStaticText(this, wxID_ANY, text),
-    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-  statistic->Add(new wxStaticText(this, wxID_ANY, _("Current line"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  text = wxString::Format(wxT("%d"), edit->GetCurrentLine());
-  statistic->Add(new wxStaticText(this, wxID_ANY, text),
-    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-  statistic->Add(new wxStaticText(this, wxID_ANY, _("Current pos"),
-    wxDefaultPosition, wxSize(80, wxDefaultCoord)),
-    0, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
-  text = wxString::Format(wxT("%d"), edit->GetCurrentPos());
-  statistic->Add(new wxStaticText(this, wxID_ANY, text),
-    0, wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
-
-  // char/line statistics
-  wxStaticBoxSizer *statistics = new wxStaticBoxSizer(
-    new wxStaticBox(this, wxID_ANY, _("Statistics")),
-    wxVERTICAL);
-  statistics->Add(statistic, 0, wxEXPAND);
-  statistics->Add(0, 6);
-
-  // total pane
-  wxBoxSizer *totalpane = new wxBoxSizer(wxVERTICAL);
-  totalpane->Add(fullname, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 10);
-  totalpane->Add(0, 6);
-  totalpane->Add(textinfos, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-  totalpane->Add(0, 10);
-  totalpane->Add(statistics, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-  totalpane->Add(0, 6);
-  wxButton *okButton = new wxButton(this, wxID_OK, _("OK"));
-  okButton->SetDefault();
-  totalpane->Add(okButton, 0, wxALIGN_CENTER | wxALL, 10);
-
-  SetSizerAndFit(totalpane);
-  */
+  Centre(wxBOTH);
 
   ShowModal();
 }
