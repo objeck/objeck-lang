@@ -108,7 +108,20 @@ public:
   GlobalOptions(wxWindow* parent, long style = 0);
 
 private:
-
+  wxStaticText* m_fontSelect;
+  wxTextCtrl* m_textCtrl4;
+  wxButton* m_pathButton;
+  wxRadioButton* m_winEnding;
+  wxRadioButton* m_unixEnding;
+  wxRadioButton* m_macEndig;
+  wxRadioButton* m_tabIdent;
+  wxRadioButton* m_spaceIdent;
+  wxSpinCtrl* m_identSize;
+  wxComboBox* m_comboBox1;
+  wxSpinCtrl* font_size;
+  wxStdDialogButtonSizer* m_sdbSizer1;
+  wxButton* m_sdbSizer1OK;
+  wxButton* m_sdbSizer1Cancel;
 };
 
 #endif
