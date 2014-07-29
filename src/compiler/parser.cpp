@@ -501,6 +501,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       NextToken();
     }
     // TODO: add enum to bundle
+
     else if(Match(TOKEN_ENUM_ID)) {
       ParseEnum(depth + 1);
     }
