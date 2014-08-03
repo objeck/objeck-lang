@@ -332,12 +332,13 @@ Enum* Parser::ParseEnum(int depth)
     ProcessError(TOKEN_IDENT);
   }
   // identifier
-  wstring enum_name = scanner->GetToken()->GetIdentifier();
+  const wstring enum_name = scanner->GetToken()->GetIdentifier();
   if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
     ProcessError(L"Class, interface or enum already defined in this bundle");
   }
   NextToken();
-
+  const wstring enum_scope_name = GetScopeName(enum_name);
+  
   int offset = 0;
   if(Match(TOKEN_ASSIGN)) {
     NextToken();
@@ -355,7 +356,7 @@ Enum* Parser::ParseEnum(int depth)
   }
   NextToken();
 
-  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, enum_name, offset);
+  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, enum_scope_name, offset);
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
@@ -498,7 +499,11 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
       NextToken();
-    } 
+    }
+    // TODO: add enum to bundle
+    else if(Match(TOKEN_ENUM_ID)) {
+      ParseEnum(depth + 1);
+    }
     else {
       ProcessError(L"Expected declaration", TOKEN_SEMI_COLON);
       NextToken();
@@ -2785,7 +2790,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       NextToken();
       method_call->SetFunctionReturn(ParseType(depth + 1));
     }
-  } 
+  }
+  // TODO: find class enum
   else {
     ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
   }
