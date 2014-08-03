@@ -44,7 +44,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/randy/Documents/Code/objeck/main/src/compiler"
+      customWorkingDirectory = "/Users/randy/Documents/Code/objeck-lang/src/compiler"
       buildConfiguration = "Debug"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -60,7 +60,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-src /Users/randy/Documents/Code/objeck/main/src/compiler/test_src/debug.obs -dest a.obe"
+            argument = "-src test_src/prgm129.obs -dest a.obe"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
