@@ -22,6 +22,13 @@
 #include "wx/wxhtml.h"
 #include "wx/utils.h"
 #include "wx/process.h"
+#include <wx/button.h>
+#include <wx/sizer.h>
+#include <wx/radiobut.h>
+#include <wx/spinctrl.h>
+#include <wx/combobox.h>
+#include <wx/statbox.h>
+#include <wx/dialog.h>
 
 #include "edit.h"
 
