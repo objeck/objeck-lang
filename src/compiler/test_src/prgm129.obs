@@ -1,0 +1,18 @@
+enum Foo {
+	FIE,
+	FOO,
+	FUM
+}
+
+class Car {
+	enum Part {
+		TIRE,
+		DOOR,
+		ROOF
+	}
+
+  function : Main(args : String[]) ~ Nil {
+#		f := Foo->FIE;
+		p := Car->Part->TIRE;
+  }
+}

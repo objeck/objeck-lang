@@ -2353,9 +2353,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-    MethodCall(const wstring &f, const int l,
-      const wstring &v, const wstring &m) :
-    Statement(f, l), Expression(f, l) {
+    MethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) 
+      : Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2374,11 +2373,9 @@ namespace frontend {
       func_rtrn = NULL;
       anonymous_klass = NULL;
     }
-
-    MethodCall(const wstring &f, const int l,
-      Variable* v, const wstring &m,
-      ExpressionList* e) :
-    Statement(f, l), Expression(f, l) {
+    
+    MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) 
+      : Statement(f, l), Expression(f, l) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
