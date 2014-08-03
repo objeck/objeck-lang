@@ -1358,7 +1358,7 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring &f, const int l, wstring &n, int o) :
+    Enum(const wstring &f, const int l, const wstring &n, int o) :
       ParseNode(f, l) {
         name = n;
         index = offset = o;
@@ -2649,7 +2649,7 @@ namespace frontend {
       instance = NULL;
     }
 
-    Enum* MakeEnum(const wstring &file_name, const int line_num, wstring &name, int offset) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, name, offset);
       nodes.push_back(tmp);
       return tmp;
