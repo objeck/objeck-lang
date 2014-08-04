@@ -502,7 +502,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     }
     // TODO: add enum to bundle
     else if(Match(TOKEN_ENUM_ID)) {
-      ParseEnum(depth + 1);
+      current_bundle->AddEnum(ParseEnum(depth + 1));
     }
     else {
       ProcessError(L"Expected declaration", TOKEN_SEMI_COLON);
