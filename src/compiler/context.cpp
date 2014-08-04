@@ -1356,56 +1356,67 @@ bool ContextAnalyzer::Analyze()
     }
     // enum call
     else if(method_call->GetCallType() == ENUM_CALL) {
-      Enum* eenum = SearchProgramEnums(method_call->GetVariableName());
+      wstring enum_name; wstring variable_name;
+      
+      if(method_call->GetMethodCall()) {
+        enum_name = method_call->GetVariableName() + L":" + method_call->GetMethodName();
+        variable_name = method_call->GetMethodCall()->GetVariableName();
+      }
+      else {
+        enum_name = method_call->GetVariableName();
+        variable_name = method_call->GetMethodName();
+      }
+
+      Enum* eenum = SearchProgramEnums(enum_name);
       if(eenum) {
-        EnumItem* item = eenum->GetItem(method_call->GetMethodName());
+        EnumItem* item = eenum->GetItem(variable_name);
         if(item) {
           method_call->SetEnumItem(item, eenum->GetName());
+          if(method_call->GetMethodCall()) {
+            method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
+          }
         } 
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" +
-                       method_call->GetMethodName() + L"'");
+          ProcessError(static_cast<Expression*>(method_call), 
+                       L"Undefined enum item: '" + variable_name + L"'");
         }
       } 
       else {
-        LibraryEnum* lib_eenum = linker->SearchEnumLibraries(method_call->GetVariableName(),
-                                                             program->GetUses());
+        LibraryEnum* lib_eenum = linker->SearchEnumLibraries(enum_name, program->GetUses());
         if(lib_eenum) {
-          LibraryEnumItem* lib_item = lib_eenum->GetItem(method_call->GetMethodName());
+          LibraryEnumItem* lib_item = lib_eenum->GetItem(variable_name);
           if(lib_item) {
             method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
           } 
           else {
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" +
-                         method_call->GetMethodName() + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + variable_name + L"'");
           }
         } 
         else {
           // '@self' reference
-          if(method_call->GetVariableName() == SELF_ID) {
-            SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+          if(enum_name == SELF_ID) {
+            SymbolEntry* entry = GetEntry(variable_name);
             if(entry && !entry->IsLocal() && !entry->IsStatic()) {
               AddMethodParameter(method_call, entry, depth + 1);
             }
             else {
-              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@self' reference for variable: '" +
-                           method_call->GetMethodName() + L"'");
+              ProcessError(static_cast<Expression*>(method_call), 
+                           L"Invalid '@self' reference for variable: '" +
+                           variable_name + L"'");
             }
           }
           // '@parent' reference
-          else if(method_call->GetVariableName() == PARENT_ID) {
-            SymbolEntry* entry = GetEntry(method_call->GetMethodName(), true);
+          else if(enum_name == PARENT_ID) {
+            SymbolEntry* entry = GetEntry(variable_name, true);
             if(entry && !entry->IsLocal() && !entry->IsStatic()) {
               AddMethodParameter(method_call, entry, depth + 1);
             }
             else {
-              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" +
-                           method_call->GetMethodName() + L"'");
+              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + variable_name + L"'");
             }
           }
           else {	  
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum: '" +
-                         method_call->GetVariableName() + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum: '" + enum_name + L"'");
           }
         }
       }
@@ -1686,7 +1697,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const int depth)
   {
     MethodCall* method_call = expression->GetMethodCall();
-    if(method_call) {
+    if(method_call && method_call->GetCallType() != ENUM_CALL) {
       wstring encoding;
       Class* klass = NULL;
       LibraryClass* lib_klass = NULL;
