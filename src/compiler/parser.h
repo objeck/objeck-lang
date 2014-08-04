@@ -133,10 +133,10 @@ class Parser {
           name += L'.';
           NextToken();
         }
-	else if(Match(TOKEN_IDENT)) {
-	  ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-	  NextToken();
-	}
+        else if(Match(TOKEN_IDENT)) {
+          ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+          NextToken();
+        }
       }
     } 
     else {
