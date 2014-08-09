@@ -11,14 +11,17 @@ class Car {
 		ROOF
 	}
 
+  function : Foo(p : Car->Part, m : Int ) ~ Nil {
+		(p * m)->PrintLine();
+	}
+
   function : Main(args : String[]) ~ Nil {
-	x := Car->Part->ROOF;
-	x->PrintLine();
-  
-	f : Foo := Foo->FIE;
-	p : Car->Part := Car->Part->ROOF;
-	p->PrintLine();
-	# p := f;
+		x := Car->Part->ROOF;
+		x->PrintLine();
 		
+		f : Foo := Foo->FIE;
+		p : Car->Part := Car->Part->ROOF;
+		Foo(p,10);
+# 	p := f;
   }
 }
