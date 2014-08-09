@@ -979,6 +979,15 @@ class ContextAnalyzer {
     }
   }
 
+  wstring ReplaceSubstring(wstring in, const wstring& f, const wstring &r) {
+    size_t index = in.find(f);
+    if(index != string::npos) {
+      in.replace(index, f.size(), r);
+    }
+
+    return in;
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessError(const wstring &msg);

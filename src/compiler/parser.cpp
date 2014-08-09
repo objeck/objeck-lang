@@ -3460,7 +3460,12 @@ Type* Parser::ParseType(int depth)
     break;
 
   case TOKEN_IDENT: {
-    const wstring ident = ParseBundleName();
+    wstring ident = ParseBundleName();
+    if(Match(TOKEN_ASSESSOR)) {
+      NextToken();
+      ident += L":";
+      ident += ParseBundleName();
+    }
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
   }
     break;
