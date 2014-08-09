@@ -3938,18 +3938,18 @@ bool ContextAnalyzer::Analyze()
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
       if(right_enum) {
         if(left_enum->GetName() != right_enum->GetName()) {
-          ProcessError(expression, L"Invalid cast between enums: '" +
-                       left->GetClassName() + L"' and '" +
-                       right->GetClassName() + L"'");
+          const wstring left_str = ReplaceSubstring(left->GetClassName(), L":", L"->");
+          const wstring right_str = ReplaceSubstring(right->GetClassName(), L":", L"->");
+          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
       // library
       else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
         LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
         if(left_enum->GetName() != right_lib_enum->GetName()) {
-          ProcessError(expression, L"Invalid cast between enums: '" +
-                       left->GetClassName() + L"' and '" +
-                       right->GetClassName() + L"'");
+          const wstring left_str = ReplaceSubstring(left->GetClassName(), L":", L"->");
+          const wstring right_str = ReplaceSubstring(right->GetClassName(), L":", L"->");
+          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
       else {
@@ -4023,18 +4023,18 @@ bool ContextAnalyzer::Analyze()
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
       if(right_enum) {
         if(left_lib_enum->GetName() != right_enum->GetName()) {
-          ProcessError(expression, L"Invalid cast between enums: '" +
-                       left_lib_enum->GetName() + L"' and '" +
-                       right_enum->GetName() + L"'");
+          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L":", L"->");
+          const wstring right_str = ReplaceSubstring(right_enum->GetName(), L":", L"->");
+          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
       // library
       else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
         LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
         if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
-          ProcessError(expression, L"Invalid cast between enums: '" +
-                       left_lib_enum->GetName() + L"' and '" +
-                       right_lib_enum->GetName() + L"'");
+          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L":", L"->");
+          const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L":", L"->");
+          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       } else {
         ProcessError(expression, L"Invalid cast between enum and class");
