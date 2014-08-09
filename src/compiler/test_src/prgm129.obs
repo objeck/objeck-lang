@@ -12,9 +12,13 @@ class Car {
 	}
 
   function : Main(args : String[]) ~ Nil {
-		f := Foo->FIE;
-		p := Car->Part->ROOF;
-		p->PrintLine();
-		p := f;
+	x := Car->Part->ROOF;
+	x->PrintLine();
+  
+	f : Foo := Foo->FIE;
+	p : Car->Part := Car->Part->ROOF;
+	p->PrintLine();
+	# p := f;
+		
   }
 }
