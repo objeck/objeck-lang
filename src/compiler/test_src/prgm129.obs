@@ -12,7 +12,7 @@ class Car {
 	}
 
   function : Foo(p : Car->Part, m : Int ) ~ Nil {
-		(p * m)->PrintLine();
+		p->PrintLine();
 	}
 
   function : Main(args : String[]) ~ Nil {
