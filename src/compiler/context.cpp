@@ -241,12 +241,12 @@ bool ContextAnalyzer::Analyze()
 
     if(!SearchProgramEnums(eenum->GetName()) &&
        !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
-      ProcessError(eenum, L"Undefined enum: '" + eenum->GetName() + L"'");
+      ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L":", L"->") + L"'");
     }
 
     if(SearchProgramEnums(eenum->GetName()) &&
        linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
-      ProcessError(eenum, L"Enum '" + eenum->GetName() +
+      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L":", L"->") +
                    L"' defined in program and shared libraries");
     }
   }
@@ -1416,7 +1416,7 @@ bool ContextAnalyzer::Analyze()
             }
           }
           else {	  
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum: '" + enum_name + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum or enum type");
           }
         }
       }
