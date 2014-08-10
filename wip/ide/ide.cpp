@@ -328,7 +328,7 @@ Notebook* MyFrame::CreateNotebook()
     wxAUI_NB_DEFAULT_STYLE | wxAUI_NB_TAB_EXTERNAL_MOVE | wxNO_BORDER);
 
   notebook_ctrl->Freeze();
-  const wxString title = wxString::Format(wxT("new %d"), new_page_count++);
+  const wxString title = wxT("new");
   notebook_ctrl->AddPage(new Edit(notebook_ctrl), title);
   notebook_ctrl->Thaw();
 
@@ -337,6 +337,8 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
+  wxString text;
+/*
   const wxString base_path = wxT("C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy");
   // TODO: move this into a class
   MyProcess process; wxExecuteEnv env;
@@ -351,10 +353,10 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
   
   const wxString error_text = ReadInputStream(process.GetErrorStream());
   const wxString out_text = ReadInputStream(process.GetInputStream());
-  wxString text = error_text + out_text;
-
+  text = error_text + out_text;
+*/
+  
   wxFont font(10, wxMODERN, wxNORMAL, wxNORMAL);
-
   wxTextCtrl* output_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
   output_ctrl->SetFont(font);
 
