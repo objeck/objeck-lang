@@ -6,10 +6,9 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "ide.h"
+
 #include <wx/sstream.h>
 #include <wx/mstream.h>
-
-
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/string.h>
@@ -26,6 +25,8 @@
 #include <wx/combobox.h>
 #include <wx/statbox.h>
 #include <wx/dialog.h>
+#include <wx/persist.h>
+#include <wx/persist/toplevel.h>
 
 /////////////////////////
 // MyApp
@@ -76,7 +77,7 @@ END_EVENT_TABLE()
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
     wxFrame(parent, id, title, pos, size, style) 
 {
-  new_page_count = 1;
+  m_newPageCount = 1;
 
   // setup window manager
   aui_manager.SetManagedWindow(this);
@@ -97,6 +98,16 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   aui_manager.AddPane(CreateToolBar(), wxAuiPaneInfo().
     Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
     ToolbarPane().Top().Row(1).Position(1));
+
+  // wxPersistenceManager& persistenceManager = wxPersistenceManager::Get();
+
+  m_globalOptions = new GlobalOptions(this, 0);
+  m_globalOptions->SetName("My Global Options");
+
+  bool flag = wxPersistenceManager::Get().RegisterAndRestore(m_globalOptions);
+  if(flag) {
+
+  }
 
   // update
   m_notebook->SetFocus();
@@ -132,7 +143,7 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
 void MyFrame::OnFileNew(wxCommandEvent &WXUNUSED(event))
 {
   m_notebook->Freeze();
-  const wxString title = wxString::Format(wxT("new %d"), new_page_count++);
+  const wxString title = wxString::Format(wxT("new %d"), m_newPageCount++);
   m_notebook->AddPage(new Edit(m_notebook), title);
   m_notebook->SetSelection(m_notebook->GetPageCount() - 1);
   m_notebook->Thaw();
@@ -203,7 +214,8 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 {
-  GlobalOptions dlg(this, 0);
+  m_globalOptions->ShowModal();
+  wxPersistenceManager::Get().Save(m_globalOptions);
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
@@ -475,8 +487,6 @@ GlobalOptions::GlobalOptions(wxWindow* parent, long style) :
   Layout();
 
   Centre(wxBOTH);
-
-  ShowModal();
 }
 
 
