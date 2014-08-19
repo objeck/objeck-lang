@@ -1,0 +1,28 @@
+enum Foo {
+	FIE,
+	FOO,
+	FUM
+}
+
+class Car {
+	enum Part {
+		TIRE,
+		DOOR,
+		ROOF
+	}
+
+  function : Foo(p : Car->Part, m : Int ) ~ Nil {
+		p->PrintLine();
+	}
+
+  function : Main(args : String[]) ~ Nil {
+		x := Car->Part->ROOF;
+		x->PrintLine();
+		
+		f : Foo := Foo->FOO->DOOR;
+g : Car->Part := Car->Part;
+		p : Car->Part := Car->Part->ROOF;
+		Foo(p,10);
+# 	p := f;
+  }
+}
