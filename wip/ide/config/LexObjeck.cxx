@@ -268,15 +268,17 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
       }
       break;
     case SCE_OBJECK_COMMENT_BLOCK:
-      if (sc.Match('~', '#')) {
+      if (sc.Match('*', '/')) {
         sc.Forward();
-        sc.SetState(SCE_OBJECK_DEFAULT);
+        nestLevel--;
+        int nextState = (nestLevel == 0) ? SCE_OBJECK_DEFAULT : SCE_OBJECK_COMMENT_BLOCK;
+        sc.ForwardSetState(nextState);
       }
-      else if (sc.Match('#', '~')) {
+      else if (sc.Match('/', '*')) {
         sc.Forward();
-        sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
+        nestLevel++;
       }
-      else if (sc.ch == '#') {
+      else if (sc.ch == '%') {
         sc.SetState(SCE_OBJECK_COMMENT_LINE);
       }
       break;
@@ -284,12 +286,13 @@ void SCI_METHOD LexerObjeck::Lex(unsigned int startPos, int length, int initStyl
 
     // Determine if a new state should be entered.
     if (sc.state == SCE_OBJECK_DEFAULT) {
-      if (sc.Match('#', '~')) {
-        sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
-        sc.Forward();
-      }
-      else if (sc.ch == '#') {
+      if (sc.ch == '#'){
         sc.SetState(SCE_OBJECK_COMMENT_LINE);
+      }
+      else if (sc.Match('#', '~')) {
+        sc.SetState(SCE_OBJECK_COMMENT_BLOCK);
+        nestLevel = 1;
+        sc.Forward();	// Eat the * so it isn't used for the end of the comment
       }
       else if (isascii(sc.ch) && (isdigit(sc.ch) || (sc.ch == '.' && isascii(sc.chNext) && isdigit(sc.chNext)))) {
         sc.SetState(SCE_OBJECK_NUMBER);
