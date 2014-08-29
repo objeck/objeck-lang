@@ -22,6 +22,13 @@
 #include "wx/wxhtml.h"
 #include "wx/utils.h"
 #include "wx/process.h"
+#include <wx/button.h>
+#include <wx/sizer.h>
+#include <wx/radiobut.h>
+#include <wx/spinctrl.h>
+#include <wx/combobox.h>
+#include <wx/statbox.h>
+#include <wx/dialog.h>
 
 #include "edit.h"
 
@@ -31,6 +38,32 @@ public:
   bool OnInit();
 };
 
+//----------------------------------------------------------------------------
+//! EditProperties
+class GlobalOptions : public wxDialog {
+
+public:
+
+  //! constructor
+  GlobalOptions(wxWindow* parent, long style = 0);
+
+private:
+  wxStaticText* m_fontSelect;
+  wxTextCtrl* m_textCtrl4;
+  wxButton* m_pathButton;
+  wxRadioButton* m_winEnding;
+  wxRadioButton* m_unixEnding;
+  wxRadioButton* m_macEndig;
+  wxRadioButton* m_tabIdent;
+  wxRadioButton* m_spaceIdent;
+  wxSpinCtrl* m_identSize;
+  wxComboBox* m_comboBox1;
+  wxSpinCtrl* font_size;
+  wxStdDialogButtonSizer* m_sdbSizer1;
+  wxButton* m_sdbSizer1OK;
+  wxButton* m_sdbSizer1Cancel;
+};
+
 class MyFrame : public wxFrame {
   enum {
     ID_SampleItem
@@ -38,7 +71,8 @@ class MyFrame : public wxFrame {
 
   wxAuiManager aui_manager;
   Notebook* m_notebook;
-  size_t new_page_count;
+  size_t m_newPageCount;
+  GlobalOptions* m_globalOptions;
   
   void DoUpdate();
   
@@ -96,32 +130,6 @@ public:
   ~MyProcess() {}
 
   void OnTerminate(int pid, int status) {}
-};
-
-//----------------------------------------------------------------------------
-//! EditProperties
-class GlobalOptions : public wxDialog {
-
-public:
-
-  //! constructor
-  GlobalOptions(wxWindow* parent, long style = 0);
-
-private:
-  wxStaticText* m_fontSelect;
-  wxTextCtrl* m_textCtrl4;
-  wxButton* m_pathButton;
-  wxRadioButton* m_winEnding;
-  wxRadioButton* m_unixEnding;
-  wxRadioButton* m_macEndig;
-  wxRadioButton* m_tabIdent;
-  wxRadioButton* m_spaceIdent;
-  wxSpinCtrl* m_identSize;
-  wxComboBox* m_comboBox1;
-  wxSpinCtrl* font_size;
-  wxStdDialogButtonSizer* m_sdbSizer1;
-  wxButton* m_sdbSizer1OK;
-  wxButton* m_sdbSizer1Cancel;
 };
 
 #endif
