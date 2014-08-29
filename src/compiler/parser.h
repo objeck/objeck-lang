@@ -98,10 +98,14 @@ class Parser {
     wstring scope_name;
     if(current_method) {
       scope_name = current_method->GetName() + L":" + ident;
-    } else {
+    } 
+    else if(current_class) {
       scope_name = current_class->GetName() + L":" + ident;
     }
-
+    else {
+      scope_name = ident;
+    }
+    
     return scope_name;
   }
 
@@ -129,10 +133,10 @@ class Parser {
           name += L'.';
           NextToken();
         }
-	else if(Match(TOKEN_IDENT)) {
-	  ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-	  NextToken();
-	}
+        else if(Match(TOKEN_IDENT)) {
+          ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+          NextToken();
+        }
       }
     } 
     else {
