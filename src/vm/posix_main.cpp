@@ -40,8 +40,10 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // enable UTF-8 enviroment
-    setlocale(LC_ALL, "");
-    setlocale(LC_CTYPE, "UTF-8");
+		char* locale = setlocale(LC_ALL, ""); 
+    std::locale lollocale(locale);
+    setlocale(LC_ALL, locale); 
+    std::wcout.imbue(lollocale);
 
     // Initialize OpenSSL
     CRYPTO_malloc_init();
