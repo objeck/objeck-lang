@@ -1735,7 +1735,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     }
   }
   
-  if(alt_syntax) {
+  if(alt_syntax && statement) {
     switch(statement->GetStatementType()) {
     case IF_STMT:
     case WHILE_STMT:
