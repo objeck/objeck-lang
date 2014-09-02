@@ -585,7 +585,8 @@ void Scanner::ParseToken(int index)
   // ignore white space
   Whitespace();
   // ignore comments
-  while((cur_char == COMMENT || (alt_syntax && cur_char == ALT_COMMENT)) && 
+  while((cur_char == COMMENT || 
+         (alt_syntax && (cur_char == ALT_COMMENT && (nxt_char == ALT_COMMENT || cur_char == ALT_EXTENDED_COMMENT)))) && 
         cur_char != EOB) {
     NextChar();
     
@@ -1032,35 +1033,35 @@ void Scanner::ParseToken(int index)
         break;
 
       case L'&':
-	if(alt_syntax && nxt_char == L'&') {
+        if(alt_syntax && nxt_char == L'&') {
           NextChar();
           tokens[index]->SetType(TOKEN_AND);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_AND);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
+        }
+        else {
+          tokens[index]->SetType(TOKEN_AND);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         break;
-	
+        
       case L'|':
-	if(alt_syntax && nxt_char == L'|') {
+        if(alt_syntax && nxt_char == L'|') {
           NextChar();
           tokens[index]->SetType(TOKEN_OR);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();
-	}
-	else {
-	  tokens[index]->SetType(TOKEN_OR);
-	  tokens[index]->SetLineNbr(line_nbr);
-	  tokens[index]->SetFileName(filename);
-	  NextChar();
-	}
+        }
+        else {
+          tokens[index]->SetType(TOKEN_OR);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         break;
 
       case L'?':
@@ -1098,10 +1099,10 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'>') {
           NextChar();
           if(alt_syntax) {
-             tokens[index]->SetType(TOKEN_UNKNOWN);
-             tokens[index]->SetLineNbr(line_nbr);
-             tokens[index]->SetFileName(filename);
-             NextChar();
+            tokens[index]->SetType(TOKEN_UNKNOWN);
+            tokens[index]->SetLineNbr(line_nbr);
+            tokens[index]->SetFileName(filename);
+            NextChar();
           }
           else {
             tokens[index]->SetType(TOKEN_NEQL);
@@ -1186,7 +1187,7 @@ void Scanner::ParseToken(int index)
           NextChar();
         }
         break;
-
+        
       case L'/':
         if(nxt_char == L'=') {
           NextChar();
