@@ -10,7 +10,9 @@
 	<true/>
 	<key>BBLMKeywordList</key>
 	<array>
-	    <string>leaving</string>
+		<string>critical</string>
+      <string>use</string>
+	   <string>leaving</string>
 		<string>and</string>
 		<string>or</string>
 		<string>xor</string>
@@ -19,7 +21,6 @@
 		<string>else</string>
 		<string>do</string>
 		<string>while</string>
-		<string>use</string>
 		<string>bundle</string>
 		<string>native</string>
 		<string>static</string>
