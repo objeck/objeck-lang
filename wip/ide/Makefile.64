@@ -1,7 +1,9 @@
 CC=g++
 WX_ROOT=./../../../wxWidgets-3.0.1
+# MODE=-O2
+MODE=-g -D_DEBUG
 
-ARGS=-D__WXGTK__ -I. -DWXUSINGDLL -I$(WX_ROOT)/samples -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -D_FILE_OFFSET_BITS=64 -I$(WX_ROOT)/lib/wx/include/gtk2-unicode-3.0 -I$(WX_ROOT)/include -pthread -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/libpng12 -I/usr/include/harfbuzz -DWX_PRECOMP -pthread -O2 -fno-strict-aliasing -pthread -I/usr/include/gtk-unix-print-2.0 -I/usr/include/gtk-2.0 -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/gio-unix-2.0/ -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/libpng12 -I/usr/include/harfbuzz -fvisibility=hidden -fvisibility-inlines-hidden 
+ARGS=-D__WXGTK__ -I. -DWXUSINGDLL -I$(WX_ROOT)/samples -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -D_FILE_OFFSET_BITS=64 -I$(WX_ROOT)/lib/wx/include/gtk2-unicode-3.0 -I$(WX_ROOT)/include -pthread -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/libpng12 -I/usr/include/harfbuzz -DWX_PRECOMP -pthread -fno-strict-aliasing -pthread -I/usr/include/gtk-unix-print-2.0 -I/usr/include/gtk-2.0 -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/gio-unix-2.0/ -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/libpng12 -I/usr/include/harfbuzz -fvisibility=hidden -fvisibility-inlines-hidden 
 
 INCS=-L$(WX_ROOT)/lib  -Wl,-rpath,$(WX_ROOT)/lib
 
@@ -11,10 +13,10 @@ SRC=prefs.o edit.o ide.o
 EXE=ide_demo
 
 $(EXE): $(SRC)
-	$(CC) -o $(EXE) $(SRC) $(INCS) $(LIBS) 
+	$(CC) -o $(EXE) $(SRC) $(MODE) $(INCS) $(LIBS) 
 
 %.o: %.cpp
-	$(CC) -c $< $(INCS) $(ARGS)
+	$(CC) -c $< $(MODE) $(INCS) $(ARGS) 
 
 clean:
 	rm -rf ./.deps ./.pch
