@@ -86,17 +86,15 @@ class MyFrame : public wxFrame {
     if (!in) {
       return wxEmptyString;
     }
-
+    
     wxString out;
-    wxChar c;
     while (in->CanRead() && !in->Eof()) {
-      // in->Read(&c, sizeof(c));
-      c = in->GetC();
-      if (c != wxT('\0')) {
+      wxChar c = in->GetC();
+      if(iswprint(c) || isspace(c)) {
         out.Append(c);
       }
     }
-
+    
     return out;
   }
 
