@@ -515,22 +515,29 @@ conditional tests or labels. Enums may be nested in classes as well.
 
 \begin{verbatim}
 enum Color {
-   Red,
-   Black,
-   Green
+  Red,
+  Black,
+  Green
 }
 
 class Token {
-   enum Type := -100 {
-      NUMBER,
-      STRING,
-      ARRAY,
-      STRUCT
-   }
+  @type : Token->Type;
+
+  New() {
+     @type := Token->Type->ARRAY;
+  }
+
+  method : public : GetType() ~ Token->Type {
+     return @type;
+  }
+
+  enum Type := -100 {
+    NUMBER,
+    STRING,
+    ARRAY,
+    STRUCT
+  }
 }
-...
-color := Color->Red;
-type := Token->Type->ARRAY;
 \end{verbatim}
 
 \subsection{Classes}
