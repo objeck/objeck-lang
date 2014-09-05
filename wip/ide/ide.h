@@ -29,8 +29,14 @@
 #include <wx/combobox.h>
 #include <wx/statbox.h>
 #include <wx/dialog.h>
+#include <string>
+#include <map>
+#include <fstream>
 
 #include "edit.h"
+#include "../../src/shared/sys.h"
+
+using namespace std;
 
 class MyApp : public wxApp {
 
@@ -39,16 +45,34 @@ public:
 };
 
 //----------------------------------------------------------------------------
+//! InIManager
+class InIManager {
+  map<const wstring, map<const wstring, const wstring>*> section_map;
+  wstring filename, input;
+  wchar_t cur_char, next_char;
+  size_t cur_pos;
+  
+  wstring LoadFile(wstring filename);
+  bool WriteFile(const wstring &filename, const wstring &output);
+  void NextChar();
+  void Clear();
+  wstring Serialize();
+  void Deserialize();
+  
+ public:
+  InIManager(const wstring &f);
+  ~InIManager();
+  
+  wstring GetValue(const wstring &sec, const wstring &key);
+  void SetValue(const wstring &sec, const wstring &key, const wstring &value);
+  void Read();
+  void Write();
+};
+
+//----------------------------------------------------------------------------
 //! EditProperties
 class GlobalOptions : public wxDialog {
-
-public:
-
-  //! constructor
-  GlobalOptions(wxWindow* parent, long style = 0);
-
-private:
-  wxStaticText* m_fontSelect;
+wxStaticText* m_fontSelect;
   wxTextCtrl* m_textCtrl4;
   wxButton* m_pathButton;
   wxRadioButton* m_winEnding;
@@ -62,8 +86,16 @@ private:
   wxStdDialogButtonSizer* m_sdbSizer1;
   wxButton* m_sdbSizer1OK;
   wxButton* m_sdbSizer1Cancel;
+  InIManager* m_IniManager;
+  
+ public:
+  //! constructor
+  GlobalOptions(wxWindow* parent, InIManager* ini, long style = 0);
+  void DoShow();
 };
 
+//----------------------------------------------------------------------------
+//! MyFrame
 class MyFrame : public wxFrame {
   enum {
     ID_SampleItem
@@ -73,11 +105,12 @@ class MyFrame : public wxFrame {
   Notebook* m_notebook;
   size_t m_newPageCount;
   GlobalOptions* m_globalOptions;
+  InIManager* m_iniManager;
   
   void DoUpdate();
   
   wxMenuBar* CreateMenuBar();
-  wxAuiToolBar* CreateToolBar();
+  wxAuiToolBar* DoCreateToolBar();
   wxTreeCtrl* CreateTreeCtrl();
   Notebook* CreateNotebook();
   wxAuiNotebook* CreateInfoCtrl();
@@ -126,7 +159,7 @@ public:
   MyProcess() : wxProcess(wxPROCESS_REDIRECT) {}
 
   ~MyProcess() {}
-
+  
   void OnTerminate(int pid, int status) {}
 };
 
