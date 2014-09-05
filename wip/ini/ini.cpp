@@ -78,7 +78,7 @@ class IniManager {
   /******************************
    * Write file
    ******************************/
-  bool WriteFile(wstring &filename, wstring &output) {
+  bool WriteFile(const wstring &filename, const wstring &output) {
     string fn(filename.begin(), filename.end());
     ofstream out(fn.c_str(), ios_base::out | ios_base::binary);
     if(out.good()) {
@@ -126,6 +126,7 @@ class IniManager {
       delete value_map;
       value_map = NULL;
     }
+    section_map.clear();
   }
   
   /******************************
@@ -239,14 +240,10 @@ public:
     filename = f;
     cur_char = next_char = L'\0';
     cur_pos = 0;
-    
-    input = LoadFile(filename);
-    if(input.size() > 0) {
-      Deserialize();
-    }
   }
   
   ~IniManager() {
+    Clear();
   }
   
   /******************************
@@ -274,13 +271,28 @@ public:
     }
   }
   
+/******************************
+   * Write contentes of memory
+   * to file
+   ******************************/
+  void Read() {
+    Clear();
+    
+    input = LoadFile(filename);
+    if(input.size() > 0) {
+      Deserialize();
+    }
+  }
+
   /******************************
    * Write contentes of memory
    * to file
    ******************************/
   void Write() {
-    wstring output = Serialize();
-    WriteFile(filename, output);
+    const wstring output = Serialize();
+    if(output.size() > 0) {
+      WriteFile(filename, output);
+    }
   }
 };
 
@@ -289,6 +301,7 @@ int main(int argc, char* argv[]) {
   const wstring filename(fn.begin(), fn.end());
 
   IniManager ini(filename);
+  ini.Read();
   wcout << ini.GetValue(L"header 1", L"cdef") << endl;
   ini.SetValue(L"header 1", L"objeck", L"-lang-");
   ini.Write();
