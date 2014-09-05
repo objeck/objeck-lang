@@ -47,7 +47,7 @@ public:
 //----------------------------------------------------------------------------
 //! InIManager
 class InIManager {
-  map<const wstring, map<const wstring, const wstring>*> section_map;
+  map<const wstring, map<const wstring, wstring>*> section_map;
   wstring filename, input;
   wchar_t cur_char, next_char;
   size_t cur_pos;
@@ -64,7 +64,7 @@ class InIManager {
   ~InIManager();
   
   wstring GetValue(const wstring &sec, const wstring &key);
-  void SetValue(const wstring &sec, const wstring &key, const wstring &value);
+  void SetValue(const wstring &sec, const wstring &key, wstring &value);
   void Read();
   void Write();
 };

@@ -96,12 +96,12 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   SetMinSize(wxSize(400, 300));
   
   // set tool bar
-  aui_manager.AddPane(CreateToolBar(), wxAuiPaneInfo().
+  aui_manager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().
                       Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
                       ToolbarPane().Top().Row(1).Position(1));
   
   // set global options dialog
-  m_globalOptions = new GlobalOptions(this, 0);
+  m_globalOptions = new GlobalOptions(this, m_iniManager, 0);
   m_globalOptions->SetName("My Global Options");
   
   // update
@@ -213,7 +213,7 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 {
-  m_globalOptions->ShowModal();
+  m_globalOptions->DoShow();
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
@@ -462,9 +462,9 @@ void InIManager::NextChar() {
  * Clear sections and names/values
  ******************************/
 void InIManager::Clear() {
-  map<const wstring, map<const wstring, const wstring>*>::iterator iter;
+  map<const wstring, map<const wstring, wstring>*>::iterator iter;
   for(iter = section_map.begin(); iter != section_map.end(); ++iter) {
-    map<const wstring, const wstring>* value_map = iter->second;
+    map<const wstring, wstring>* value_map = iter->second;
     value_map->clear();
     // free map
     delete value_map;
@@ -482,13 +482,13 @@ void InIManager::Clear() {
 wstring InIManager::Serialize() {
   wstring out;
   // sections
-  map<const wstring, map<const wstring, const wstring>*>::iterator section_iter;
+  map<const wstring, map<const wstring, wstring>*>::iterator section_iter;
   for(section_iter = section_map.begin(); section_iter != section_map.end(); ++section_iter) {
     out += L"[";
     out += section_iter->first;
     out += L"]\r\n";
     // name/value pairs
-    map<const wstring, const wstring>::iterator value_iter;
+    map<const wstring, wstring>::iterator value_iter;
     for(value_iter = section_iter->second->begin(); value_iter != section_iter->second->end(); ++value_iter) {
       out += value_iter->first;
       out += L"=";
@@ -506,7 +506,7 @@ wstring InIManager::Serialize() {
  * structures 
  ******************************/
 void InIManager::Deserialize() {
-  map<const wstring, const wstring>* value_map = NULL;
+  map<const wstring, wstring>* value_map = NULL;
     
   NextChar();    
   while(cur_char != L'\0') {
@@ -526,8 +526,8 @@ void InIManager::Deserialize() {
       if(cur_char == L']') {
         NextChar();
       }        
-      value_map = new map<const wstring, const wstring>;
-      section_map.insert(pair<const wstring, map<const wstring, const wstring>*>(section, value_map));
+      value_map = new map<const wstring, wstring>;
+      section_map.insert(pair<const wstring, map<const wstring, wstring>*>(section, value_map));
     }
     // comment
     else if(cur_char == L'#') {
@@ -571,7 +571,7 @@ void InIManager::Deserialize() {
       
       // add key/value pair
       if(value_map) {
-        value_map->insert(pair<const wstring, const wstring>(key, value));
+        value_map->insert(pair<const wstring, wstring>(key, value));
       }
     } 
   }
@@ -597,9 +597,9 @@ InIManager::~InIManager() {
  * Fetch value per section and key
  ******************************/
 wstring InIManager::GetValue(const wstring &sec, const wstring &key) {
-  map<const wstring, map<const wstring, const wstring>*>::iterator section = section_map.find(sec);
+  map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if(section != section_map.end()) {
-    map<const wstring, const wstring>::iterator value = section->second->find(key);
+    map<const wstring, wstring>::iterator value = section->second->find(key);
     if(value != section->second->end()) {
       return value->second;
     }
@@ -611,13 +611,13 @@ wstring InIManager::GetValue(const wstring &sec, const wstring &key) {
 /******************************
  * Fetch value per section and key
  ******************************/
-void InIManager::SetValue(const wstring &sec, const wstring &key, const wstring &value) {
-  map<const wstring, map<const wstring, const wstring>*>::iterator section = section_map.find(sec);
+void InIManager::SetValue(const wstring &sec, const wstring &key, wstring &value) {
+  map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if(section != section_map.end()) {
-    section->second->insert(pair<const wstring, const wstring>(key, value));      
+    (*section->second)[key] = value;
   }
 }
-  
+
 /******************************
  * Write contentes of memory
  * to file
@@ -750,8 +750,9 @@ void GlobalOptions::DoShow() {
   ShowModal();
   
   // write out values
-  const wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
+  wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
   m_IniManager->SetValue(wxT("Options"), wxT("path"), path_string);
+  m_IniManager->Write();
 }
 
 
