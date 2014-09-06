@@ -1,33 +1,23 @@
-#~
-This is a test class
-~#
-class Test {
-	#~
-	Main method 
-		for the program
-		blah blah blah...
-	@param args command line arguments
-	~#
-	method : Main(args : String[]) ~ Nil {
-		in := "";
-		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
-		in += "<section name=\"health\">";
-		in += "<item upc=\"123456789\" stock=\"12\">";
+class Token {
+	@type : Token->Type;
 
-		in += "<inventory title=\"OmniCorp Store #45x10^3\">";
-		in += "<section name=\"health\">";
-		in += "<item upc=\"123456789\" stock=\"12\">";
-
-		in->PrintLine();
+	function : public : Main(a : String[]) ~ Nil {
+		t := Token->New();
+		t->GetType()->PrintLine();
 	}
 
-	#~
-	Adds two values
-	@param a lhs value
-	@param b rhs value
-	@return sum of two values
-	~#
-	method : Add(a : Int, b : Int) ~ Int {
-		return 13;
+	New() {
+		@type := Token->Type->ARRAY;	
 	}
+
+	method : public : GetType() ~ Token->Type {
+		return @type;
+	}
+
+	enum Type := -100 {
+ 		NUMBER,
+		STRING,
+		ARRAY,
+		STRUCT
+	} 
 }
