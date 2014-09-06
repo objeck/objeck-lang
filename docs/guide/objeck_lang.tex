@@ -134,7 +134,7 @@ identifiers.
     for & from & function & if & Int \\ \hline
     interface & label & leaving & method & native \\ \hline
     New & or & other & Parent & private \\ \hline
-    New & return & select & static & true \\ \hline
+    return & select & --- & static & true \\ \hline
     TypeOf & use & virtual & while & xor \\ \hline
   \end{tabular}
 \end{center}
@@ -511,20 +511,32 @@ enums are as follows:
 \end{itemize}
 
 In addition, enum values may be used in \texttt{select} statements as
-conditional tests or labels.
+conditional tests or labels. Enums may be nested in classes as well.
 
 \begin{verbatim}
 enum Color {
-   Red,
-   Black,
-   Green
+  Red,
+  Black,
+  Green
 }
 
-enum Type := -100 {
-   TYPES,
-   CLASSES,
-   INT,
-   FLOAT
+class Token {
+  @type : Token->Type;
+
+  New() {
+     @type := Token->Type->ARRAY;
+  }
+
+  method : public : GetType() ~ Token->Type {
+     return @type;
+  }
+
+  enum Type := -100 {
+    NUMBER,
+    STRING,
+    ARRAY,
+    STRUCT
+  }
 }
 \end{verbatim}
 
