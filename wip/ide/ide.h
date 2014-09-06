@@ -86,14 +86,22 @@ wxStaticText* m_fontSelect;
   wxStdDialogButtonSizer* m_sdbSizer1;
   wxButton* m_sdbSizer1OK;
   wxButton* m_sdbSizer1Cancel;
-  InIManager* m_IniManager;
+  InIManager* m_iniManager;
+  wxString m_filePath;
+  bool m_isOk;
   
   void OnFilePath(wxCommandEvent& event);
+  void OnOkCancel(wxCommandEvent& event);
 
  public:
   //! constructor
   GlobalOptions(wxWindow* parent, InIManager* ini, long style = 0);
-  void DoShow();
+  
+  wxString GetPath() {
+    return m_filePath;
+  }
+  
+  void ShowSave();
 
   DECLARE_EVENT_TABLE()
 };
