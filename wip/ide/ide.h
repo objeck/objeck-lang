@@ -88,10 +88,14 @@ wxStaticText* m_fontSelect;
   wxButton* m_sdbSizer1Cancel;
   InIManager* m_IniManager;
   
+  void OnFilePath(wxCommandEvent& event);
+
  public:
   //! constructor
   GlobalOptions(wxWindow* parent, InIManager* ini, long style = 0);
   void DoShow();
+
+  DECLARE_EVENT_TABLE()
 };
 
 //----------------------------------------------------------------------------

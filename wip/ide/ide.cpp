@@ -646,6 +646,20 @@ void InIManager::Write() {
 // GlobalOptions
 //----------------------------------------------------------------------------
 
+BEGIN_EVENT_TABLE(GlobalOptions, wxDialog)
+EVT_BUTTON(myID_DLG_OPTIONS_PATH, GlobalOptions::OnFilePath)
+END_EVENT_TABLE()
+
+void GlobalOptions::OnFilePath(wxCommandEvent& event)
+{
+  wxDirDialog dirDialog(NULL, _("Choose directory path"), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+  if(dirDialog.ShowModal() == wxID_CANCEL) {
+    return;
+  }
+  
+  wxString path = dirDialog.GetPath();
+}
+
 GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   wxDialog(parent, wxID_ANY, wxT("Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
   m_IniManager = ini;
@@ -663,7 +677,7 @@ GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   m_textCtrl4 = new wxTextCtrl(this, wxID_ANY, path_string, wxDefaultPosition, wxDefaultSize, 0);
   bSizer3->Add(m_textCtrl4, 1, wxALL, 5);
 
-  m_pathButton = new wxButton(this, wxID_ANY, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+  m_pathButton = new wxButton(this, myID_DLG_OPTIONS_PATH, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
   bSizer3->Add(m_pathButton, 0, wxALL, 5);
   
   bSizer1->Add(bSizer3, 0, wxEXPAND, 5);
