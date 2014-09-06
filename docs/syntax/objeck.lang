@@ -158,6 +158,9 @@
                     <keyword>each</keyword>
                     <keyword>label</keyword>
                     <keyword>return</keyword>
+                    <keyword>critical</keyword>
+                    <keyword>leaving</keyword>
+                    <keyword>use</keyword>
 					<keyword>leaving</keyword>
                 </context>
 
