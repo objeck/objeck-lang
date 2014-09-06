@@ -100,6 +100,8 @@ enum {
     // dialog options ID
     myID_DLG_OPTIONS,
     myID_DLG_OPTIONS_PATH,
+    myID_DLG_OPTIONS_OK,
+    myID_DLG_OPTIONS_CANCEL,
 
     // preferences IDs
     myID_PREFS_LANGUAGE,
