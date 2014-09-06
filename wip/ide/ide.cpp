@@ -78,6 +78,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
     wxFrame(parent, id, title, pos, size, style) 
 {
   m_iniManager = new InIManager(wxT("ide.ini"));
+  m_globalOptions = NULL;
   m_newPageCount = 1;
   
   // setup window manager
@@ -213,7 +214,7 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 {
-  m_globalOptions->DoShow();
+  m_globalOptions->ShowSave();
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
@@ -349,32 +350,34 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
   wxString text;
 
-  // const wxString base_path = wxT("C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy");
-  const wxString base_path = wxT("/home/objeck/Documents/Code/objeck-lang/src/objeck/deploy");
+  if(m_globalOptions) {
+    // const wxString base_path = wxT("C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy");
+    // const wxString base_path = wxT("/home/objeck/Documents/Code/objeck-lang/src/objeck/deploy");
+    const wxString base_path = m_globalOptions->GetPath();
   
-  // TODO: move this into a class
-  MyProcess process; wxExecuteEnv env;
-  // env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("\\bin");
-  env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("/bin");
-  env.env[wxT("LANG")] = wxT("en_US.UTF-8");
+    // TODO: move this into a class
+    MyProcess process; wxExecuteEnv env;
+    // env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("\\bin");
+    env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("/bin");
+    env.env[wxT("LANG")] = wxT("en_US.UTF-8");
   
-  wxString cmd = wxT("\"");
-  cmd += base_path;
-  // cmd += wxT("\\bin\\obc.exe\" -src '");
-  cmd += wxT("/bin/obc\" -src '");
-  cmd += base_path;
-  // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
-  cmd += wxT("/examples/hello.obs' -dest a.obe");
+    wxString cmd = wxT("\"");
+    cmd += base_path;
+    // cmd += wxT("\\bin\\obc.exe\" -src '");
+    cmd += wxT("/bin/obc\" -src '");
+    cmd += base_path;
+    // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
+    cmd += wxT("/examples/hello.obs' -dest a.obe");
 
-  const int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
+    const int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
   
-  const wxString error_text = ReadInputStream(process.GetErrorStream());
-  const wxString out_text = ReadInputStream(process.GetInputStream());
-  text = error_text + out_text;
-  const char* cc = text.mb_str(); 		
+    const wxString error_text = ReadInputStream(process.GetErrorStream());
+    const wxString out_text = ReadInputStream(process.GetInputStream());
+    text = error_text + out_text;
+  } 		
   
   wxFont font(10, wxMODERN, wxNORMAL, wxNORMAL);
-  wxTextCtrl* output_ctrl = new wxTextCtrl(this, wxID_ANY, cc, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  wxTextCtrl* output_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
   output_ctrl->SetFont(font);
 
   wxTextCtrl* debug_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
@@ -648,6 +651,8 @@ void InIManager::Write() {
 
 BEGIN_EVENT_TABLE(GlobalOptions, wxDialog)
 EVT_BUTTON(myID_DLG_OPTIONS_PATH, GlobalOptions::OnFilePath)
+EVT_BUTTON(wxID_OK, GlobalOptions::OnOkCancel)
+EVT_BUTTON(wxID_CANCEL, GlobalOptions::OnOkCancel)
 END_EVENT_TABLE()
 
 void GlobalOptions::OnFilePath(wxCommandEvent& event)
@@ -657,23 +662,36 @@ void GlobalOptions::OnFilePath(wxCommandEvent& event)
     return;
   }
   
-  wxString path = dirDialog.GetPath();
+  m_filePath = dirDialog.GetPath();
+}
+
+void GlobalOptions::OnOkCancel(wxCommandEvent& event)
+{
+  // okay
+  if(event.GetEventObject() == m_sdbSizer1OK) {
+    m_isOk = true;
+  }
+  // cancel
+  else {
+    m_isOk = false;
+  }
 }
 
 GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
-  wxDialog(parent, wxID_ANY, wxT("Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
-  m_IniManager = ini;
+  wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
+  m_iniManager = ini;
+  m_isOk = false;
+  
+  // add controls
   SetSizeHints(wxDefaultSize, wxDefaultSize);
-
   wxBoxSizer* bSizer1 = new wxBoxSizer(wxVERTICAL);
-
   wxBoxSizer* bSizer3 = new wxBoxSizer(wxHORIZONTAL);
-
+  
   wxStaticText* staticText4 = new wxStaticText(this, wxID_ANY, wxT("Objeck Path"), wxDefaultPosition, wxDefaultSize, 0);
   staticText4->Wrap(-1);
   bSizer3->Add(staticText4, 0, wxALL, 5);
   
-  wxString path_string = m_IniManager->GetValue(wxT("Options"), wxT("path"));
+  wxString path_string = m_iniManager->GetValue(wxT("Options"), wxT("path"));
   m_textCtrl4 = new wxTextCtrl(this, wxID_ANY, path_string, wxDefaultPosition, wxDefaultSize, 0);
   bSizer3->Add(m_textCtrl4, 1, wxALL, 5);
 
@@ -703,9 +721,8 @@ GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   m_macEndig = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
   bSizer6->Add(m_macEndig, 0, wxALL, 5);
 
-
   fgSizer1->Add(bSizer6, 1, wxEXPAND | wxLEFT, 5);
-
+  
   wxStaticText* staticText8 = new wxStaticText(this, wxID_ANY, wxT("Indent"), wxDefaultPosition, wxDefaultSize, 0);
   staticText8->Wrap(-1);
   fgSizer1->Add(staticText8, 0, wxALL, 5);
@@ -721,9 +738,8 @@ GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   m_identSize = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(50, -1), wxSP_ARROW_KEYS, 0, 10, 0);
   bSizer7->Add(m_identSize, 0, wxALL, 5);
 
-
   fgSizer1->Add(bSizer7, 1, wxEXPAND | wxLEFT, 5);
-
+  
   m_fontSelect = new wxStaticText(this, wxID_ANY, wxT("Font"), wxDefaultPosition, wxDefaultSize, 0);
   m_fontSelect->Wrap(-1);
   fgSizer1->Add(m_fontSelect, 0, wxALL, 5);
@@ -756,17 +772,23 @@ GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   
   SetSizer(bSizer1);
   Layout();
-
+  
   Centre(wxBOTH);
 }
 
-void GlobalOptions::DoShow() {
+void GlobalOptions::ShowSave() {
   ShowModal();
   
   // write out values
-  wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
-  m_IniManager->SetValue(wxT("Options"), wxT("path"), path_string);
-  m_IniManager->Write();
+  if(m_isOk) {
+    // save values
+    wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
+    m_iniManager->SetValue(wxT("Options"), wxT("path"), path_string);
+    
+    // write out
+    m_iniManager->Write();
+  }
+  m_isOk = false;
 }
 
 
