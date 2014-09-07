@@ -88,10 +88,8 @@ wxStaticText* m_fontSelect;
   wxButton* m_sdbSizer1Cancel;
   InIManager* m_iniManager;
   wxString m_filePath;
-  bool m_isOk;
   
   void OnFilePath(wxCommandEvent& event);
-  void OnOkCancel(wxCommandEvent& event);
 
  public:
   //! constructor
