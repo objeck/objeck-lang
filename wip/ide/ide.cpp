@@ -154,7 +154,7 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
   wxFileDialog dlg(this, wxT("Open file"), wxEmptyString, wxEmptyString, 
     wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"),
     wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR);
-  if (dlg.ShowModal() != wxID_OK) {
+  if(dlg.ShowModal() != wxID_OK) {
     return;
   }
 	wxString path = dlg.GetPath();
@@ -651,8 +651,6 @@ void InIManager::Write() {
 
 BEGIN_EVENT_TABLE(GlobalOptions, wxDialog)
 EVT_BUTTON(myID_DLG_OPTIONS_PATH, GlobalOptions::OnFilePath)
-EVT_BUTTON(wxID_OK, GlobalOptions::OnOkCancel)
-EVT_BUTTON(wxID_CANCEL, GlobalOptions::OnOkCancel)
 END_EVENT_TABLE()
 
 void GlobalOptions::OnFilePath(wxCommandEvent& event)
@@ -665,22 +663,9 @@ void GlobalOptions::OnFilePath(wxCommandEvent& event)
   m_filePath = dirDialog.GetPath();
 }
 
-void GlobalOptions::OnOkCancel(wxCommandEvent& event)
-{
-  // okay
-  if(event.GetEventObject() == m_sdbSizer1OK) {
-    m_isOk = true;
-  }
-  // cancel
-  else {
-    m_isOk = false;
-  }
-}
-
 GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
   wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
   m_iniManager = ini;
-  m_isOk = false;
   
   // add controls
   SetSizeHints(wxDefaultSize, wxDefaultSize);
@@ -777,18 +762,14 @@ GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
 }
 
 void GlobalOptions::ShowSave() {
-  ShowModal();
-  
   // write out values
-  if(m_isOk) {
+  if(ShowModal() ==  wxID_OK) {
     // save values
     wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
-    m_iniManager->SetValue(wxT("Options"), wxT("path"), path_string);
-    
+    m_iniManager->SetValue(wxT("Options"), wxT("path"), path_string);    
     // write out
     m_iniManager->Write();
   }
-  m_isOk = false;
 }
 
 
