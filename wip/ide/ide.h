@@ -43,7 +43,7 @@ class MyFrame : public wxFrame {
   Notebook* m_notebook;
   size_t m_newPageCount;
   GlobalOptions* m_globalOptions;
-  InIManager* m_iniManager;
+  IniManager* m_iniManager;
   
   void DoUpdate();
   

@@ -77,7 +77,7 @@ END_EVENT_TABLE()
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
     wxFrame(parent, id, title, pos, size, style) 
 {
-  m_iniManager = new InIManager(wxT("ide.ini"));
+  m_iniManager = new IniManager(wxT("ide.ini"));
   m_globalOptions = NULL;
   m_newPageCount = 1;
   

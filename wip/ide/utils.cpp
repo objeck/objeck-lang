@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------
 // ProjectManager
 //----------------------------------------------------------------------------
-ProjectManager::ProjectManager(wstring &project_file) 
+ProjectManager::ProjectManager(wstring &file_name) : ini_manager(file_name)
 {
 
 }
@@ -13,13 +13,28 @@ ProjectManager::~ProjectManager()
 
 }
 
+void ProjectManager::Load()
+{
+  ini_manager.Load();
+  project_name = ini_manager.GetValue(L"Project", L"name");
+  // TODO: parse into vector
+  wstring src_string = ini_manager.GetValue(L"Project", L"files");
+  // TODO: parse into vector
+  wstring lib_string = ini_manager.GetValue(L"Project", L"libraries");
+}
+
+void ProjectManager::Store()
+{
+  
+}
+
 //----------------------------------------------------------------------------
-// InIManager
+// IniManager
 //----------------------------------------------------------------------------
 /******************************
  * Load file into memory
  ******************************/
-wstring InIManager::LoadFile(wstring filename) {
+wstring IniManager::LoadFile(wstring filename) {
   char* buffer;
 
   string fn(filename.begin(), filename.end());
@@ -47,7 +62,7 @@ wstring InIManager::LoadFile(wstring filename) {
 /******************************
  * Write file
  ******************************/
-bool InIManager::WriteFile(const wstring &filename, const wstring &output) {
+bool IniManager::WriteFile(const wstring &filename, const wstring &output) {
   string fn(filename.begin(), filename.end());
   ofstream out(fn.c_str(), ios_base::out | ios_base::binary);
   if (out.good()) {
@@ -68,7 +83,7 @@ bool InIManager::WriteFile(const wstring &filename, const wstring &output) {
 /******************************
  * Next parse token
  ******************************/
-void InIManager::NextChar() {
+void IniManager::NextChar() {
   if (cur_pos < input.size()) {
     cur_char = input[cur_pos++];
     if (cur_pos < input.size()) {
@@ -86,7 +101,7 @@ void InIManager::NextChar() {
 /******************************
  * Clear sections and names/values
  ******************************/
-void InIManager::Clear() {
+void IniManager::Clear() {
   map<const wstring, map<const wstring, wstring>*>::iterator iter;
   for (iter = section_map.begin(); iter != section_map.end(); ++iter) {
     map<const wstring, wstring>* value_map = iter->second;
@@ -104,7 +119,7 @@ void InIManager::Clear() {
 /******************************
  * Serializes internal structures
  ******************************/
-wstring InIManager::Serialize() {
+wstring IniManager::Serialize() {
   wstring out;
   // sections
   map<const wstring, map<const wstring, wstring>*>::iterator section_iter;
@@ -130,7 +145,7 @@ wstring InIManager::Serialize() {
  * pairs and loads internal
  * structures
  ******************************/
-void InIManager::Deserialize() {
+void IniManager::Deserialize() {
   map<const wstring, wstring>* value_map = NULL;
 
   NextChar();
@@ -205,23 +220,24 @@ void InIManager::Deserialize() {
 /******************************
  * Constructor/deconstructor
  ******************************/
-InIManager::InIManager(const wstring &f) {
+IniManager::IniManager(const wstring &f)
+{
   filename = f;
   cur_char = next_char = L'\0';
   cur_pos = 0;
 
-  Read();
+  Load();
 }
 
-InIManager::~InIManager() {
-  Write();
+IniManager::~IniManager() {
+  Store();
   Clear();
 }
 
 /******************************
  * Fetch value per section and key
  ******************************/
-wstring InIManager::GetValue(const wstring &sec, const wstring &key) {
+wstring IniManager::GetValue(const wstring &sec, const wstring &key) {
   map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     map<const wstring, wstring>::iterator value = section->second->find(key);
@@ -236,7 +252,7 @@ wstring InIManager::GetValue(const wstring &sec, const wstring &key) {
 /******************************
  * Fetch value per section and key
  ******************************/
-void InIManager::SetValue(const wstring &sec, const wstring &key, wstring &value) {
+void IniManager::SetValue(const wstring &sec, const wstring &key, wstring &value) {
   map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     (*section->second)[key] = value;
@@ -247,7 +263,7 @@ void InIManager::SetValue(const wstring &sec, const wstring &key, wstring &value
  * Write contentes of memory
  * to file
  ******************************/
-void InIManager::Read() {
+void IniManager::Load() {
   Clear();
 
   input = LoadFile(filename);
@@ -260,7 +276,7 @@ void InIManager::Read() {
  * Write contentes of memory
  * to file
  ******************************/
-void InIManager::Write() {
+void IniManager::Store() {
   const wstring output = Serialize();
   if (output.size() > 0) {
     WriteFile(filename, output);
@@ -283,9 +299,10 @@ void GlobalOptions::OnFilePath(wxCommandEvent& event)
   }
 
   m_filePath = dirDialog.GetPath();
+  m_textCtrl4->SetValue(m_filePath);
 }
 
-GlobalOptions::GlobalOptions(wxWindow* parent, InIManager* ini, long style) :
+GlobalOptions::GlobalOptions(wxWindow* parent, IniManager* ini, long style) :
 wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefaultSize, style | wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER) {
   m_iniManager = ini;
 
@@ -298,6 +315,7 @@ wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefault
   staticText4->Wrap(-1);
   bSizer3->Add(staticText4, 0, wxALL, 5);
 
+  // file path
   wxString path_string = m_iniManager->GetValue(wxT("Options"), wxT("path"));
   m_textCtrl4 = new wxTextCtrl(this, wxID_ANY, path_string, wxDefaultPosition, wxDefaultSize, 0);
   bSizer3->Add(m_textCtrl4, 1, wxALL, 5);
@@ -312,7 +330,9 @@ wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefault
   fgSizer1 = new wxFlexGridSizer(3, 2, 0, 0);
   fgSizer1->SetFlexibleDirection(wxBOTH);
   fgSizer1->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-
+  
+  // line endings
+  wxString cr_ending_string = m_iniManager->GetValue(wxT("Options"), wxT("cr_ending"));
   wxStaticText* staticText6 = new wxStaticText(this, wxID_ANY, wxT("Line Endings"), wxDefaultPosition, wxDefaultSize, 0);
   staticText6->Wrap(-1);
   fgSizer1->Add(staticText6, 0, wxALL, 5);
@@ -325,11 +345,25 @@ wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefault
   m_unixEnding = new wxRadioButton(this, wxID_ANY, wxT("Unix"), wxDefaultPosition, wxDefaultSize, 0);
   bSizer6->Add(m_unixEnding, 0, wxALL, 5);
 
-  m_macEndig = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
-  bSizer6->Add(m_macEndig, 0, wxALL, 5);
+  m_macEnding = new wxRadioButton(this, wxID_ANY, wxT("Mac"), wxDefaultPosition, wxDefaultSize, 0);
+  bSizer6->Add(m_macEnding, 0, wxALL, 5);
+
+  if(cr_ending_string == L"win") {
+    m_winEnding->SetValue(true);
+  }
+  else if(cr_ending_string == L"unix") {
+    m_unixEnding->SetValue(true);
+  }
+  else if(cr_ending_string == L"mac") {
+    m_macEnding->SetValue(true);
+  }
+  else {
+    m_winEnding->SetValue(true);
+  }
 
   fgSizer1->Add(bSizer6, 1, wxEXPAND | wxLEFT, 5);
 
+  // ident settings
   wxStaticText* staticText8 = new wxStaticText(this, wxID_ANY, wxT("Indent"), wxDefaultPosition, wxDefaultSize, 0);
   staticText8->Wrap(-1);
   fgSizer1->Add(staticText8, 0, wxALL, 5);
@@ -344,16 +378,17 @@ wxDialog(parent, wxID_ANY, wxT("General Settings"), wxDefaultPosition, wxDefault
 
   m_identSize = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(50, -1), wxSP_ARROW_KEYS, 0, 10, 0);
   bSizer7->Add(m_identSize, 0, wxALL, 5);
-
+  
   fgSizer1->Add(bSizer7, 1, wxEXPAND | wxLEFT, 5);
 
+  // font
   m_fontSelect = new wxStaticText(this, wxID_ANY, wxT("Font"), wxDefaultPosition, wxDefaultSize, 0);
   m_fontSelect->Wrap(-1);
   fgSizer1->Add(m_fontSelect, 0, wxALL, 5);
 
   wxBoxSizer* bSizer8 = new wxBoxSizer(wxHORIZONTAL);
 
-  m_comboBox1 = new wxComboBox(this, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
+  m_comboBox1 = new wxComboBox(this, wxID_ANY, wxT("AFont"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
   bSizer8->Add(m_comboBox1, 0, wxALL, 5);
 
   wxStaticText* staticText10 = new wxStaticText(this, wxID_ANY, wxT("Size"), wxDefaultPosition, wxDefaultSize, 0);
@@ -390,6 +425,6 @@ void GlobalOptions::ShowSave() {
     wstring path_string = m_textCtrl4->GetValue().ToStdWstring();
     m_iniManager->SetValue(wxT("Options"), wxT("path"), path_string);
     // write out
-    m_iniManager->Write();
+    m_iniManager->Store();
   }
 }
