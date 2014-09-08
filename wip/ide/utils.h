@@ -27,20 +27,8 @@
 using namespace std;
 
 //----------------------------------------------------------------------------
-//! InIManager
-class ProjectManager {
-  wstring name;
-  vector<wstring> file_names;
-  vector<wstring> lib_names;
-  
- public:
-  ProjectManager(wstring &project_file);
-  ~ProjectManager();
-};
-
-//----------------------------------------------------------------------------
-//! InIManager
-class InIManager {
+//! IniManager
+class IniManager {
   map<const wstring, map<const wstring, wstring>*> section_map;
   wstring filename, input;
   wchar_t cur_char, next_char;
@@ -54,13 +42,29 @@ class InIManager {
   void Deserialize();
 
 public:
-  InIManager(const wstring &f);
-  ~InIManager();
+  IniManager(const wstring &f);
+  ~IniManager();
 
   wstring GetValue(const wstring &sec, const wstring &key);
   void SetValue(const wstring &sec, const wstring &key, wstring &value);
-  void Read();
-  void Write();
+  void Load();
+  void Store();
+};
+
+//----------------------------------------------------------------------------
+//! IniManager
+class ProjectManager {
+  IniManager ini_manager;
+  wstring project_name;
+  vector<wstring> src_files;
+  vector<wstring> lib_files;
+  
+ public:
+  ProjectManager(wstring &filename);
+  ~ProjectManager();
+  
+  void Load();
+  void Store();
 };
 
 //----------------------------------------------------------------------------
@@ -71,7 +75,7 @@ class GlobalOptions : public wxDialog {
   wxButton* m_pathButton;
   wxRadioButton* m_winEnding;
   wxRadioButton* m_unixEnding;
-  wxRadioButton* m_macEndig;
+  wxRadioButton* m_macEnding;
   wxRadioButton* m_tabIdent;
   wxRadioButton* m_spaceIdent;
   wxSpinCtrl* m_identSize;
@@ -80,14 +84,14 @@ class GlobalOptions : public wxDialog {
   wxStdDialogButtonSizer* m_sdbSizer1;
   wxButton* m_sdbSizer1OK;
   wxButton* m_sdbSizer1Cancel;
-  InIManager* m_iniManager;
+  IniManager* m_iniManager;
   wxString m_filePath;
 
   void OnFilePath(wxCommandEvent& event);
 
 public:
   //! constructor
-  GlobalOptions(wxWindow* parent, InIManager* ini, long style = 0);
+  GlobalOptions(wxWindow* parent, IniManager* ini, long style = 0);
 
   wxString GetPath() {
     return m_filePath;
