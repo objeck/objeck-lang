@@ -5,6 +5,7 @@
 #include "wx/wxprec.h"
 
 #include <string>
+#include <vector>
 #include <map>
 #include <fstream>
 
@@ -24,6 +25,18 @@
 #include "defsext.h"
 
 using namespace std;
+
+//----------------------------------------------------------------------------
+//! InIManager
+class ProjectManager {
+  wstring name;
+  vector<wstring> file_names;
+  vector<wstring> lib_names;
+  
+ public:
+  ProjectManager(wstring &project_file);
+  ~ProjectManager();
+};
 
 //----------------------------------------------------------------------------
 //! InIManager
