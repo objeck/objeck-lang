@@ -34,6 +34,9 @@ class IniManager {
   wchar_t cur_char, next_char;
   size_t cur_pos;
   bool locked;
+  wstring objeck_path;
+  wstring indent_spacing;
+  wstring line_ending;
   
   wstring LoadFile(const wstring &fn);
   bool WriteFile(const wstring &fn, const wstring &out);
@@ -49,13 +52,30 @@ public:
   // basic operations
   bool IsLocked() { return locked; }
   wstring GetValue(const wstring &sec, const wstring &key);
-  void SetValue(const wstring &sec, const wstring &key, wstring &value);
+  void SetValue(const wstring &sec, const wstring &key, const wstring &value);
   void Load();
   void Save();
   
-  // UI operations
+
+  // options
   void ShowOptionsDialog(wxWindow* parent);
+  
+  wstring GetObjeckPath() {
+    return GetValue(L"Options", L"objeck_path");
+  }
+
+  wstring GetIdentSpacing() {
+    return GetValue(L"Options", L"indent_spacing");
+  }
+
+  wstring GetLineEnding() {
+    return GetValue(L"Options", L"line_ending");
+  }
+  
+  // project
   void ShowNewProjectDialog(wxWindow* parent);
+  
+  // opened files
   void AddOpenedFile(const wxString &fn);
 };
 

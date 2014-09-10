@@ -38,6 +38,18 @@ class GeneralOptions : public wxDialog {
                   wxWindowID id = wxID_ANY, const wxString& title = wxT("Options"), const wxPoint& pos = wxDefaultPosition, 
                   const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~GeneralOptions();
+  
+  wxString GetObjeckPath() {
+    return wxEmptyString;
+  }
+
+  wxString GetIdentSpacing() {
+    return wxEmptyString;
+  }
+  
+  wxString GetLineEnding() {
+    return wxEmptyString;
+  }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -57,7 +69,6 @@ class NewProject : public wxDialog
  public:	
   NewProject( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("New Project"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~NewProject();
-	
 };
 
 #endif
