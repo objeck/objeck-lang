@@ -19,11 +19,11 @@ ProjectManager::~ProjectManager()
 /******************************
  * Load file into memory
  ******************************/
-wstring IniManager::LoadFile(wstring filename) {
+wstring IniManager::LoadFile(const wstring &fn) {
   char* buffer;
 
-  string fn(filename.begin(), filename.end());
-  ifstream in(fn.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
+  string file(fn.begin(), fn.end());
+  ifstream in(file.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
   if (in.good()) {
     // get file size
     in.seekg(0, ios::end);
@@ -35,7 +35,7 @@ wstring IniManager::LoadFile(wstring filename) {
     in.close();
   }
   else {
-    wcerr << L"Unable to read file: " << filename << endl;
+    wcerr << L"Unable to read file: " << fn << endl;
     exit(1);
   }
   wstring out = BytesToUnicode(buffer);
@@ -47,18 +47,18 @@ wstring IniManager::LoadFile(wstring filename) {
 /******************************
  * Write file
  ******************************/
-bool IniManager::WriteFile(const wstring &filename, const wstring &output) {
-  string fn(filename.begin(), filename.end());
-  ofstream out(fn.c_str(), ios_base::out | ios_base::binary);
+bool IniManager::WriteFile(const wstring &fn, const wstring &buffer) {
+  string file(fn.begin(), fn.end());
+  ofstream out(file.c_str(), ios_base::out | ios_base::binary);
   if (out.good()) {
-    const string bytes = UnicodeToBytes(output);
+    const string bytes = UnicodeToBytes(buffer);
     out.write(bytes.c_str(), bytes.size());
     // close file
     out.close();
     return true;
   }
   else {
-    wcerr << L"Unable to write file: " << filename << endl;
+    wcerr << L"Unable to write file: " << fn << endl;
     exit(1);
   }
 
@@ -262,8 +262,21 @@ void IniManager::Load() {
  * to file
  ******************************/
 void IniManager::Save() {
-  const wstring output = Serialize();
-  if (output.size() > 0) {
-    WriteFile(filename, output);
+  const wstring out = Serialize();
+  if (out.size() > 0) {
+    WriteFile(filename, out);
   }
+}
+
+// TODO: UI operations
+void IniManager::ShowOptionsDialog(wxWindow* parent) {
+  
+}
+
+void IniManager::ShowNewProjectDialog(wxWindow* parent) {
+  
+}
+
+void IniManager::AddOpenedFile(const wxString &fn) {
+
 }
