@@ -33,6 +33,7 @@ class IniManager {
   wstring filename, input;
   wchar_t cur_char, next_char;
   size_t cur_pos;
+  bool locked;
   
   wstring LoadFile(const wstring &fn);
   bool WriteFile(const wstring &fn, const wstring &out);
@@ -46,7 +47,7 @@ public:
   ~IniManager();
 
   // basic operations
-  // TODO: add lock to operations
+  bool IsLocked() { return locked; }
   wstring GetValue(const wstring &sec, const wstring &key);
   void SetValue(const wstring &sec, const wstring &key, wstring &value);
   void Load();
