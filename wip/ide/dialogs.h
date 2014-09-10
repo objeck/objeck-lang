@@ -34,7 +34,9 @@ class GeneralOptions : public wxDialog {
   wxButton* m_OkCancelSizerCancel;
 	
  public:	
-  GeneralOptions( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("Options"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+  GeneralOptions( wxWindow* parent, const wxString &objeck_path, const wxString &indentation, const wxString &line_endings, 
+                  wxWindowID id = wxID_ANY, const wxString& title = wxT("Options"), const wxPoint& pos = wxDefaultPosition, 
+                  const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~GeneralOptions();
 };
 

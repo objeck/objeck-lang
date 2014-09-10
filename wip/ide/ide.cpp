@@ -209,7 +209,7 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 {
-  // TODO: call into m_iniManager
+  m_iniManager->ShowOptionsDialog(this);
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
