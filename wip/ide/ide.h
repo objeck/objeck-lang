@@ -25,6 +25,7 @@
 
 #include "edit.h"
 #include "utils.h"
+#include "dialogs.h"
 
 class MyApp : public wxApp {
 
@@ -42,7 +43,6 @@ class MyFrame : public wxFrame {
   wxAuiManager aui_manager;
   Notebook* m_notebook;
   size_t m_newPageCount;
-  GlobalOptions* m_globalOptions;
   IniManager* m_iniManager;
   
   void DoUpdate();

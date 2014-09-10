@@ -33,73 +33,31 @@ class IniManager {
   wstring filename, input;
   wchar_t cur_char, next_char;
   size_t cur_pos;
-
+  
   wstring LoadFile(wstring filename);
   bool WriteFile(const wstring &filename, const wstring &output);
   void NextChar();
   void Clear();
   wstring Serialize();
   void Deserialize();
-
+  
 public:
-  IniManager(const wstring &f);
+  IniManager(const wstring &fn);
   ~IniManager();
 
+  // TODO: add lock to operations
   wstring GetValue(const wstring &sec, const wstring &key);
   void SetValue(const wstring &sec, const wstring &key, wstring &value);
   void Load();
-  void Store();
+  void Save();
 };
 
 //----------------------------------------------------------------------------
 //! IniManager
 class ProjectManager {
-  IniManager ini_manager;
-  wstring project_name;
-  vector<wstring> src_files;
-  vector<wstring> lib_files;
-  
  public:
-  ProjectManager(wstring &filename);
+  ProjectManager(const wstring &name, const wstring &fn);
   ~ProjectManager();
-  
-  void Load();
-  void Store();
-};
-
-//----------------------------------------------------------------------------
-//! EditProperties
-class GlobalOptions : public wxDialog {
-  wxStaticText* m_fontSelect;
-  wxTextCtrl* m_textCtrl4;
-  wxButton* m_pathButton;
-  wxRadioButton* m_winEnding;
-  wxRadioButton* m_unixEnding;
-  wxRadioButton* m_macEnding;
-  wxRadioButton* m_tabIdent;
-  wxRadioButton* m_spaceIdent;
-  wxSpinCtrl* m_identSize;
-  wxComboBox* m_comboBox1;
-  wxSpinCtrl* font_size;
-  wxStdDialogButtonSizer* m_sdbSizer1;
-  wxButton* m_sdbSizer1OK;
-  wxButton* m_sdbSizer1Cancel;
-  IniManager* m_iniManager;
-  wxString m_filePath;
-
-  void OnFilePath(wxCommandEvent& event);
-
-public:
-  //! constructor
-  GlobalOptions(wxWindow* parent, IniManager* ini, long style = 0);
-
-  wxString GetPath() {
-    return m_filePath;
-  }
-
-  void ShowSave();
-
-  DECLARE_EVENT_TABLE()
 };
 
 #endif
