@@ -13,6 +13,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, c
 	wxBoxSizer* dialogSizer;
 	dialogSizer = new wxBoxSizer( wxVERTICAL );
 	
+  // objeck path
 	wxBoxSizer* pathSizer;
 	pathSizer = new wxBoxSizer( wxHORIZONTAL );
 	
@@ -25,6 +26,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, c
 	
 	dialogSizer->Add( pathSizer, 1, wxEXPAND, 5 );
 	
+  // indentation spacing
 	wxBoxSizer* spacingBoxer;
 	spacingBoxer = new wxBoxSizer( wxHORIZONTAL );
 	
@@ -43,6 +45,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, c
 	
 	dialogSizer->Add( spacingBoxer, 1, wxEXPAND, 5 );
 	
+  // line endings
 	wxBoxSizer* lineEndingSizer;
 	lineEndingSizer = new wxBoxSizer( wxHORIZONTAL );
 	
