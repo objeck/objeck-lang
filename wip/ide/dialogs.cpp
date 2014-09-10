@@ -51,6 +51,8 @@ GeneralOptions::GeneralOptions( wxWindow* parent, wxWindowID id, const wxString&
 	lineEndingSizer->Add( m_lineFeedRadio, 1, wxALL, 5 );
 	
 	dialogSizer->Add( lineEndingSizer, 0, 0, 5 );
+  
+	dialogSizer->Add( new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL ), 0, wxEXPAND | wxALL, 5 );
 	
 	m_OkCancelSizer = new wxStdDialogButtonSizer();
 	m_OkCancelSizerSave = new wxButton( this, wxID_SAVE );
@@ -107,6 +109,8 @@ NewProject::NewProject( wxWindow* parent, wxWindowID id, const wxString& title, 
 	
 	bSizer11->Add( pathSizer1, 1, wxEXPAND, 5 );
 	
+  bSizer11->Add( new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL ), 0, wxEXPAND | wxALL, 5 );
+  
 	m_sdbSizer4 = new wxStdDialogButtonSizer();
 	m_sdbSizer4OK = new wxButton( this, wxID_OK );
 	m_sdbSizer4->AddButton( m_sdbSizer4OK );
