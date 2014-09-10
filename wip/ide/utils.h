@@ -34,8 +34,8 @@ class IniManager {
   wchar_t cur_char, next_char;
   size_t cur_pos;
   
-  wstring LoadFile(wstring filename);
-  bool WriteFile(const wstring &filename, const wstring &output);
+  wstring LoadFile(const wstring &fn);
+  bool WriteFile(const wstring &fn, const wstring &out);
   void NextChar();
   void Clear();
   wstring Serialize();
@@ -45,11 +45,17 @@ public:
   IniManager(const wstring &fn);
   ~IniManager();
 
+  // basic operations
   // TODO: add lock to operations
   wstring GetValue(const wstring &sec, const wstring &key);
   void SetValue(const wstring &sec, const wstring &key, wstring &value);
   void Load();
   void Save();
+  
+  // UI operations
+  void ShowOptionsDialog(wxWindow* parent);
+  void ShowNewProjectDialog(wxWindow* parent);
+  void AddOpenedFile(const wxString &fn);
 };
 
 //----------------------------------------------------------------------------
