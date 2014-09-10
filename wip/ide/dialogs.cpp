@@ -4,7 +4,9 @@
 /// Class GeneralOptions
 ///////////////////////////////////////////////////////////////////////////////
 
-GeneralOptions::GeneralOptions( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, const wxString &indentation, const wxString &line_endings, 
+                                wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) 
+  : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxSize( 300,-1 ), wxDefaultSize );
 	
@@ -18,7 +20,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, wxWindowID id, const wxString&
 	m_PathLabel->Wrap( -1 );
 	pathSizer->Add( m_PathLabel, 0, wxALL, 5 );
 	
-	m_pathText = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	m_pathText = new wxTextCtrl( this, wxID_ANY, objeck_path, wxDefaultPosition, wxDefaultSize, 0 );
 	pathSizer->Add( m_pathText, 1, wxALL, 5 );
 	
 	dialogSizer->Add( pathSizer, 1, wxEXPAND, 5 );
