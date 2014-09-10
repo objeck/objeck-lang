@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "dialogs.h"
 
 //----------------------------------------------------------------------------
 // ProjectManager
@@ -99,6 +100,7 @@ void IniManager::Clear() {
   if (!section_map.empty()) {
     section_map.clear();
   }
+  cur_pos = 0;
 }
 
 /******************************
@@ -210,6 +212,7 @@ IniManager::IniManager(const wstring &fn)
   filename = fn;
   cur_char = next_char = L'\0';
   cur_pos = 0;
+  locked = false;
 
   Load();
 }
@@ -223,14 +226,21 @@ IniManager::~IniManager() {
  * Fetch value per section and key
  ******************************/
 wstring IniManager::GetValue(const wstring &sec, const wstring &key) {
+  if(locked) {
+    return L"";
+  }
+  
+  locked = true;
   map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     map<const wstring, wstring>::iterator value = section->second->find(key);
     if (value != section->second->end()) {
+      locked = false;
       return value->second;
     }
   }
 
+  locked = false;
   return L"";
 }
 
@@ -238,10 +248,16 @@ wstring IniManager::GetValue(const wstring &sec, const wstring &key) {
  * Fetch value per section and key
  ******************************/
 void IniManager::SetValue(const wstring &sec, const wstring &key, wstring &value) {
+  if(locked) {
+    return;
+  }
+
+  locked = true;
   map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     (*section->second)[key] = value;
   }
+  locked = false;
 }
 
 /******************************
@@ -249,12 +265,17 @@ void IniManager::SetValue(const wstring &sec, const wstring &key, wstring &value
  * to file
  ******************************/
 void IniManager::Load() {
+  if(locked) {
+    return;
+  }
+  
+  locked = true;
   Clear();
-
   input = LoadFile(filename);
   if (input.size() > 0) {
     Deserialize();
   }
+  locked = false;
 }
 
 /******************************
@@ -262,21 +283,41 @@ void IniManager::Load() {
  * to file
  ******************************/
 void IniManager::Save() {
+  if(locked) {
+    return;
+  }
+
+  locked = true;
   const wstring out = Serialize();
   if (out.size() > 0) {
     WriteFile(filename, out);
   }
+  locked = false;
 }
 
 // TODO: UI operations
-void IniManager::ShowOptionsDialog(wxWindow* parent) {
+void IniManager::ShowOptionsDialog(wxWindow* parent) 
+{
+  // load and read values
+  Load();
+  const wxString objeck_path(GetValue(L"Options", L"objeck_path"));
+  const wxString indentation(GetValue(L"Options", L"indentation"));
+  const wxString line_endings(GetValue(L"Options", L"line_endings"));
+  
+  // show dialog
+  GeneralOptions options(parent, objeck_path, indentation, line_endings);
+  options.ShowModal();
+  
+  // save changes
+  //...
+}
+
+void IniManager::ShowNewProjectDialog(wxWindow* parent)
+{
   
 }
 
-void IniManager::ShowNewProjectDialog(wxWindow* parent) {
-  
-}
-
-void IniManager::AddOpenedFile(const wxString &fn) {
+void IniManager::AddOpenedFile(const wxString &fn) 
+{
 
 }
