@@ -82,7 +82,7 @@ public:
 //! IniManager
 class ProjectManager {
  public:
-  ProjectManager(const wstring &name, const wstring &fn);
+  ProjectManager(const wxString &name, const wxString &full_name);
   ~ProjectManager();
 };
 
