@@ -4,10 +4,12 @@
 /// Class GeneralOptions
 ///////////////////////////////////////////////////////////////////////////////
 
-GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, const wxString &indentation, const wxString &line_endings, 
-                                wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) 
+GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxString &objeck_path, const wxString &indentation, 
+                                const wxString &line_endings, wxWindowID id, const wxString& title, const wxPoint& pos, 
+                                const wxSize& size, long style ) 
   : wxDialog( parent, id, title, pos, size, style )
 {
+  iniManager = ini;
 	this->SetSizeHints( wxSize( 300,-1 ), wxDefaultSize );
 	
 	wxBoxSizer* dialogSizer;
@@ -74,6 +76,23 @@ GeneralOptions::GeneralOptions( wxWindow* parent, const wxString &objeck_path, c
 
 GeneralOptions::~GeneralOptions()
 {
+}
+
+// TODO: get values from controls
+void GeneralOptions::ShowAndUpdate() 
+{
+  if(ShowModal() == wxID_OK) {    
+    // save changes
+    const wstring std_objeck_path; //  = wxEmptyString.ToStdWstring();
+    iniManager->SetValue(L"Options", L"objeck_path", std_objeck_path);
+    
+    const wstring std_ident_spacing; // =  wxEmptyString.ToStdWstring();
+    iniManager->SetValue(L"Options", L"ident_spacing", std_ident_spacing);
+    
+    const wstring std_line_ending; // =  wxEmptyString.ToStdWstring();
+    iniManager->SetValue(L"Options", L"line_ending", std_line_ending);
+    
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

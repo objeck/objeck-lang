@@ -305,18 +305,8 @@ void IniManager::ShowOptionsDialog(wxWindow* parent)
   const wxString line_ending(GetValue(L"Options", L"line_ending"));
   
   // show dialog
-  GeneralOptions options(parent, objeck_path, indent_spacing, line_ending);
-  options.ShowModal();
-  
-  // save changes
-  const wstring std_objeck_path = options.GetObjeckPath().ToStdWstring();
-  SetValue(L"Options", L"objeck_path", std_objeck_path);
-
-  const wstring std_ident_spacing = options.GetIdentSpacing().ToStdWstring();
-  SetValue(L"Options", L"ident_spacing", std_ident_spacing);
-  
-  const wstring std_line_ending = options.GetLineEnding().ToStdWstring();
-  SetValue(L"Options", L"line_ending", std_line_ending);
+  GeneralOptions options(parent, this, objeck_path, indent_spacing, line_ending);
+  options.ShowAndUpdate();
 }
 
 void IniManager::ShowNewProjectDialog(wxWindow* parent)
