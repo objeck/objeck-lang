@@ -4,7 +4,7 @@
 /// Class GeneralOptions
 ///////////////////////////////////////////////////////////////////////////////
 
-GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxString &objeck_path, const wxString &indentation, 
+GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxString &objeck_path, const wxString &ident, 
                                 const wxString &line_endings, wxWindowID id, const wxString& title, const wxPoint& pos, 
                                 const wxSize& size, long style ) 
   : wxDialog( parent, id, title, pos, size, style )
@@ -44,6 +44,16 @@ GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxStrin
 	
 	m_numSpacesText = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
 	spacingBoxer->Add( m_numSpacesText, 0, wxALIGN_BOTTOM|wxTOP|wxBOTTOM|wxRIGHT, 5 );
+
+  const size_t space_index = ident.find(L';');
+  if(space_index == wstring::npos) {
+    m_spacesTabButton->SetValue(true);
+  }
+  else {
+    m_spacesTabButton->SetValue(true);
+    const wxString num_spaces(ident.substr(space_index + 1));
+    m_numSpacesText->SetValue(num_spaces);
+  }
 	
 	dialogSizer->Add( spacingBoxer, 1, wxEXPAND, 5 );
 	
