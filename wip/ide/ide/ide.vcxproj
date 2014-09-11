@@ -12,12 +12,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\defsext.h" />
+    <ClInclude Include="..\dialogs.h" />
     <ClInclude Include="..\edit.h" />
     <ClInclude Include="..\ide.h" />
     <ClInclude Include="..\prefs.h" />
     <ClInclude Include="..\utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\dialogs.cpp" />
     <ClCompile Include="..\edit.cpp" />
     <ClCompile Include="..\ide.cpp" />
     <ClCompile Include="..\prefs.cpp" />
