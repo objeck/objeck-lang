@@ -88,6 +88,9 @@ enum {
     myID_WINDOW_MINIMAL,
 
     // other IDs
+    myID_NEW_FILE,
+    myID_NEW_PROJECT,
+    
     myID_STATUSBAR,
     myID_TITLEBAR,
     myID_ABOUTTIMER,
