@@ -27,6 +27,8 @@
 #include <wx/dialog.h>
 #include <wx/persist.h>
 #include <wx/persist/toplevel.h>
+#include <wx/file.h>
+#include <wx/filename.h>
 
 /////////////////////////
 // MyApp
@@ -57,6 +59,7 @@ EVT_CLOSE(MyFrame::OnClose)
 // file
 EVT_MENU(wxID_NEW, MyFrame::OnFileNew)
 EVT_MENU(myID_NEW_FILE, MyFrame::OnFileNew)
+EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
 EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
 EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
 EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
@@ -79,6 +82,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
     wxFrame(parent, id, title, pos, size, style) 
 {
   m_iniManager = new IniManager(wxT("ide.ini"));
+  m_projectManager = NULL;
   m_newPageCount = 1;
   
   // setup window manager
@@ -136,6 +140,26 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
 }
 
 // file event handlers
+void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
+{
+  NewProject project_dialog(this);
+  if(project_dialog.ShowModal() == wxID_OK) {
+    const wstring name = project_dialog.GetName().ToStdWstring();
+    const wstring path = project_dialog.GetPath().ToStdWstring();
+
+    wxFileName project_filename(project_dialog.GetPath() + wxFileName::GetPathSeparator() + project_dialog.GetName());
+    if(project_filename.FileExists()) {
+      // prompt to override
+    }
+    else {
+      
+    }
+
+
+    m_projectManager = new ProjectManager(name, path);
+  }
+}
+
 void MyFrame::OnFileNew(wxCommandEvent &WXUNUSED(event))
 {
   m_notebook->Freeze();
@@ -217,17 +241,29 @@ wxMenuBar* MyFrame::CreateMenuBar()
 {
   // File menu
   wxMenu* menuFile = new wxMenu;
+  // new
   wxMenu* menuFileNew = new wxMenu;
   menuFileNew->Append(myID_NEW_FILE, _("&File\tCtrl+N"));
-  menuFileNew->Append(myID_NEW_PROJECT, _("&Project\tCtrl+P"));
+  menuFileNew->Append(myID_NEW_PROJECT, _("&Project\tCtrl+Shift+N"));
   menuFile->Append(wxID_ANY, _("New..."), menuFileNew);
-  menuFile->Append(wxID_OPEN, _("&Open...\tCtrl+O"));
+  // open
+  wxMenu* menuFileOpen = new wxMenu;
+  menuFileOpen->Append(myID_OPEN_FILE, _("&File\tCtrl+O"));
+  menuFileOpen->Append(myID_OPEN_PROJECT, _("&Project\tCtrl+Shift+O"));
+  menuFile->Append(wxID_ANY, _("Open..."), menuFileOpen);
+  
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
   menuFile->Append(wxID_SAVEAS, _("Save &as...\tCtrl+Shift+S"));
-  menuFile->Append(wxID_CLOSE, _("&Close\tCtrl+W"));
+
+  // close
+  wxMenu* menuFileClose = new wxMenu;
+  menuFileClose->Append(myID_CLOSE_FILE, _("&File\tCtrl+W"));
+  menuFileClose->Append(myID_CLOSE_PROJECT, _("&Project\tCtrl+Shift+W"));  
+  menuFile->Append(wxID_ANY, _("Close..."), menuFileClose);
+  
   menuFile->AppendSeparator();
   menuFile->Append(wxID_PROPERTIES, _("Proper&ties\tCtrl+T"));
-
+  
   // Edit menu
   wxMenu *menuEdit = new wxMenu;
   menuEdit->Append(wxID_UNDO, _("&Undo\tCtrl+Z"));

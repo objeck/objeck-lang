@@ -90,6 +90,10 @@ enum {
     // other IDs
     myID_NEW_FILE,
     myID_NEW_PROJECT,
+    myID_OPEN_FILE,
+    myID_OPEN_PROJECT,
+    myID_CLOSE_FILE,
+    myID_CLOSE_PROJECT,
     
     myID_STATUSBAR,
     myID_TITLEBAR,
@@ -105,7 +109,8 @@ enum {
     myID_DLG_OPTIONS_PATH,
     myID_DLG_OPTIONS_SPACES,
     myID_DLG_OPTIONS_TABS,
-    
+    myID_DLG_PROJECT_PATH,
+
     // preferences IDs
     myID_PREFS_LANGUAGE,
     myID_PREFS_STYLETYPE,

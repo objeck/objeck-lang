@@ -70,18 +70,30 @@ class GeneralOptions : public wxDialog {
 ///////////////////////////////////////////////////////////////////////////////
 class NewProject : public wxDialog 
 {
+  wxStaticText* m_NameLabel;
+  wxTextCtrl* m_nameText;
   wxStaticText* m_PathLabel;
   wxTextCtrl* m_pathText;
-  wxStaticText* m_PathLabel1;
-  wxTextCtrl* m_pathText1;
   wxButton* m_button1;
   wxStdDialogButtonSizer* m_sdbSizer4;
   wxButton* m_sdbSizer4OK;
   wxButton* m_sdbSizer4Cancel;
+
+  void OnFilePath(wxCommandEvent& event);
 	
  public:	
   NewProject( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("New Project"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~NewProject();
+
+  const wxString GetName() {
+    return m_nameText->GetValue();
+  }
+
+  const wxString GetPath() {
+    return m_pathText->GetValue();
+  }
+
+  DECLARE_EVENT_TABLE()
 };
 
 #endif
