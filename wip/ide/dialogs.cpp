@@ -54,7 +54,20 @@ GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxStrin
 	wxString m_lineFeedRadioChoices[] = { wxT("Windows"), wxT("Unix"), wxT("Mac") };
 	int m_lineFeedRadioNChoices = sizeof( m_lineFeedRadioChoices ) / sizeof( wxString );
 	m_lineFeedRadio = new wxRadioBox( this, wxID_ANY, wxT("Line Feeds"), wxDefaultPosition, wxDefaultSize, m_lineFeedRadioNChoices, m_lineFeedRadioChoices, 1, 0 );
-	m_lineFeedRadio->SetSelection( 2 );
+
+  if(line_endings == L"Windows") {
+    m_lineFeedRadio->SetSelection(0);  
+  }
+  else if(line_endings == L"Unix") {
+    m_lineFeedRadio->SetSelection(1);  
+  }
+  else if(line_endings == L"Mac") {
+    m_lineFeedRadio->SetSelection(2);  
+  }
+  else {
+    m_lineFeedRadio->SetSelection(0);
+  }
+	
 	lineEndingSizer->Add( m_lineFeedRadio, 1, wxALL, 5 );
 	
 	dialogSizer->Add( lineEndingSizer, 0, 0, 5 );
@@ -62,7 +75,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxStrin
 	dialogSizer->Add( new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL ), 0, wxEXPAND | wxALL, 5 );
 	
 	m_OkCancelSizer = new wxStdDialogButtonSizer();
-	m_OkCancelSizerSave = new wxButton( this, wxID_SAVE );
+	m_OkCancelSizerSave = new wxButton( this, wxID_OK );
 	m_OkCancelSizer->AddButton( m_OkCancelSizerSave );
 	m_OkCancelSizerCancel = new wxButton( this, wxID_CANCEL );
 	m_OkCancelSizer->AddButton( m_OkCancelSizerCancel );
@@ -81,17 +94,26 @@ GeneralOptions::~GeneralOptions()
 // TODO: get values from controls
 void GeneralOptions::ShowAndUpdate() 
 {
-  if(ShowModal() == wxID_OK) {    
+  int id = ShowModal();
+  if(id == wxID_OK) {    
     // save changes
-    const wstring std_objeck_path; //  = wxEmptyString.ToStdWstring();
+    const wstring std_objeck_path = m_pathText->GetValue().ToStdWstring();
     iniManager->SetValue(L"Options", L"objeck_path", std_objeck_path);
     
+    if(m_lineFeedRadio->GetSelection() == 0) {
+      iniManager->SetValue(L"Options", L"line_ending", L"Windows");  
+    }
+    else if(m_lineFeedRadio->GetSelection() == 1) {
+      iniManager->SetValue(L"Options", L"line_ending", L"Unix");  
+    } 
+    else {
+      iniManager->SetValue(L"Options", L"line_ending", L"Mac");  
+    }
+    
+    
     const wstring std_ident_spacing; // =  wxEmptyString.ToStdWstring();
-    iniManager->SetValue(L"Options", L"ident_spacing", std_ident_spacing);
     
-    const wstring std_line_ending; // =  wxEmptyString.ToStdWstring();
-    iniManager->SetValue(L"Options", L"line_ending", std_line_ending);
-    
+    iniManager->Save();
   }
 }
 
