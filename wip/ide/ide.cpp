@@ -56,6 +56,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 EVT_CLOSE(MyFrame::OnClose)
 // file
 EVT_MENU(wxID_NEW, MyFrame::OnFileNew)
+EVT_MENU(myID_NEW_FILE, MyFrame::OnFileNew)
 EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
 EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
 EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
@@ -138,7 +139,7 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
 void MyFrame::OnFileNew(wxCommandEvent &WXUNUSED(event))
 {
   m_notebook->Freeze();
-  const wxString title = wxString::Format(wxT("new %d"), m_newPageCount++);
+  const wxString title = wxString::Format(wxT("new %zu"), m_newPageCount++);
   m_notebook->AddPage(new Edit(m_notebook), title);
   m_notebook->SetSelection(m_notebook->GetPageCount() - 1);
   m_notebook->Thaw();
@@ -215,8 +216,11 @@ void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 wxMenuBar* MyFrame::CreateMenuBar()
 {
   // File menu
-  wxMenu *menuFile = new wxMenu;
-  menuFile->Append(wxID_NEW, _("&New...\tCtrl+N"));
+  wxMenu* menuFile = new wxMenu;
+  wxMenu* menuFileNew = new wxMenu;
+  menuFileNew->Append(myID_NEW_FILE, _("&File\tCtrl+N"));
+  menuFileNew->Append(myID_NEW_PROJECT, _("&Project\tCtrl+P"));
+  menuFile->Append(wxID_ANY, _("New..."), menuFileNew);
   menuFile->Append(wxID_OPEN, _("&Open...\tCtrl+O"));
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
   menuFile->Append(wxID_SAVEAS, _("Save &as...\tCtrl+Shift+S"));
@@ -244,7 +248,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(myID_REPLACENEXT, _("&Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   menuEdit->AppendSeparator();
-  menuEdit->Append(myID_DLG_OPTIONS, _("Options...\tCtrl+ALT+O"));
+  menuEdit->Append(myID_DLG_OPTIONS, _("Options...\tALT+O"));
   
   // View menu
   wxMenu *menuView = new wxMenu;
