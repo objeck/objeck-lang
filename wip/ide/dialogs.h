@@ -17,6 +17,7 @@
 #include <wx/button.h>
 #include <wx/dialog.h>
 #include <wx/statline.h>
+#include <wx/spinctrl.h>
 
 #include "utils.h"
 
@@ -27,10 +28,11 @@ class GeneralOptions : public wxDialog {
   IniManager* iniManager;
   wxStaticText* m_PathLabel;
   wxTextCtrl* m_pathText;
+  wxButton* m_pathSelectButton;
   wxStaticText* m_spacingLabel;
-  wxRadioButton* m_tabSpacingButton;
-  wxRadioButton* m_spacesTabButton;
-  wxTextCtrl* m_numSpacesText;
+  wxRadioButton* m_tabIndentButton;
+  wxRadioButton* m_spaceIndentButton;
+  wxSpinCtrl* m_numSpacesSpin;
   wxRadioBox* m_lineFeedRadio;
   wxStdDialogButtonSizer* m_OkCancelSizer;
   wxButton* m_OkCancelSizerSave;
@@ -43,6 +45,10 @@ class GeneralOptions : public wxDialog {
   ~GeneralOptions();
 
   void ShowAndUpdate();
+  void OnFilePath(wxCommandEvent& event);
+  void OnSpaces(wxCommandEvent& event);
+  void OnTabs(wxCommandEvent& event);
+
   
   wxString GetObjeckPath() {
     return wxEmptyString;
@@ -55,6 +61,8 @@ class GeneralOptions : public wxDialog {
   wxString GetLineEnding() {
     return wxEmptyString;
   }
+
+  DECLARE_EVENT_TABLE()
 };
 
 ///////////////////////////////////////////////////////////////////////////////
