@@ -44,6 +44,7 @@ class MyFrame : public wxFrame {
   Notebook* m_notebook;
   size_t m_newPageCount;
   IniManager* m_iniManager;
+  ProjectManager* m_projectManager;
   
   void DoUpdate();
   
@@ -77,6 +78,7 @@ public:
   // common
   void OnClose(wxCloseEvent &event);
   // file
+  void OnProjectNew(wxCommandEvent &event);
   void OnFileNew(wxCommandEvent &event);
   void OnFileNewFrame(wxCommandEvent &event);
   void OnFileOpen(wxCommandEvent &event);

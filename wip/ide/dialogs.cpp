@@ -171,6 +171,10 @@ void GeneralOptions::ShowAndUpdate()
 /// Class NewProject
 ///////////////////////////////////////////////////////////////////////////////
 
+BEGIN_EVENT_TABLE(NewProject, wxDialog)
+EVT_BUTTON(myID_DLG_PROJECT_PATH, NewProject::OnFilePath)
+END_EVENT_TABLE()
+
 NewProject::NewProject( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxSize( 300,-1 ), wxDefaultSize );
@@ -181,26 +185,26 @@ NewProject::NewProject( wxWindow* parent, wxWindowID id, const wxString& title, 
 	wxBoxSizer* pathSizer;
 	pathSizer = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_PathLabel = new wxStaticText( this, wxID_ANY, wxT("Name"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_PathLabel->Wrap( -1 );
-	pathSizer->Add( m_PathLabel, 0, wxALL, 5 );
+	m_NameLabel = new wxStaticText( this, wxID_ANY, wxT("Name"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_NameLabel->Wrap( -1 );
+	pathSizer->Add( m_NameLabel, 0, wxALL, 5 );
 	
-	m_pathText = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	pathSizer->Add( m_pathText, 1, wxALL, 5 );
+	m_nameText = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	pathSizer->Add( m_nameText, 1, wxALL, 5 );
 	
 	bSizer11->Add( pathSizer, 1, wxEXPAND, 5 );
 	
 	wxBoxSizer* pathSizer1;
 	pathSizer1 = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_PathLabel1 = new wxStaticText( this, wxID_ANY, wxT("Location"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_PathLabel1->Wrap( -1 );
-	pathSizer1->Add( m_PathLabel1, 0, wxALL, 5 );
+	m_PathLabel = new wxStaticText( this, wxID_ANY, wxT("Location"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_PathLabel->Wrap( -1 );
+	pathSizer1->Add( m_PathLabel, 0, wxALL, 5 );
 	
-	m_pathText1 = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	pathSizer1->Add( m_pathText1, 1, wxTOP|wxBOTTOM, 5 );
+	m_pathText = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	pathSizer1->Add( m_pathText, 1, wxTOP|wxBOTTOM, 5 );
 	
-	m_button1 = new wxButton( this, wxID_ANY, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT );
+	m_button1 = new wxButton( this, myID_DLG_PROJECT_PATH, wxT("..."), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT );
 	pathSizer1->Add( m_button1, 0, wxALL, 5 );
 	
 	bSizer11->Add( pathSizer1, 1, wxEXPAND, 5 );
@@ -222,4 +226,13 @@ NewProject::NewProject( wxWindow* parent, wxWindowID id, const wxString& title, 
 
 NewProject::~NewProject()
 {
+}
+
+// events
+void NewProject::OnFilePath(wxCommandEvent& event)
+{
+  wxDirDialog dirDialog(this, wxT("Project Path"), wxEmptyString, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+  if(dirDialog.ShowModal() == wxID_OK) {
+    m_pathText->SetValue(dirDialog.GetPath());
+  }
 }
