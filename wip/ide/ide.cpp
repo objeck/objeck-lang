@@ -144,19 +144,20 @@ void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
 {
   NewProject project_dialog(this);
   if(project_dialog.ShowModal() == wxID_OK) {
-    const wstring name = project_dialog.GetName().ToStdWstring();
-    const wstring path = project_dialog.GetPath().ToStdWstring();
-
-    wxFileName project_filename(project_dialog.GetPath() + wxFileName::GetPathSeparator() + project_dialog.GetName());
-    if(project_filename.FileExists()) {
-      // prompt to override
+    const wxString name = project_dialog.GetName();
+    const wxString path = project_dialog.GetPath();
+    
+    wxFileName full_name(path + wxFileName::GetPathSeparator() + name + wxT(".obp"));
+    if(full_name.FileExists()) {
+      wxMessageDialog fileOverWrite(this, wxT("File ") + full_name.GetFullName() + wxT(" already exists.\nWould you like to overwrite it?"),
+                                  "Overwrite File", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_INFORMATION);
+      if(fileOverWrite.ShowModal() == wxID_YES) {
+        m_projectManager = new ProjectManager(name, path);
+      }
     }
     else {
-      
+      m_projectManager = new ProjectManager(name, path);      
     }
-
-
-    m_projectManager = new ProjectManager(name, path);
   }
 }
 
