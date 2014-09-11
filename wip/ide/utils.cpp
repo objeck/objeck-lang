@@ -4,7 +4,7 @@
 //----------------------------------------------------------------------------
 // ProjectManager
 //----------------------------------------------------------------------------
-ProjectManager::ProjectManager(const wstring &name, const wstring &fn)
+ProjectManager::ProjectManager(const wxString &name, const wxString &full_name)
 {
 
 }
