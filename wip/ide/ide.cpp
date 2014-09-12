@@ -152,11 +152,11 @@ void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
       wxMessageDialog fileOverWrite(this, wxT("File ") + full_name.GetFullName() + wxT(" already exists.\nWould you like to overwrite it?"),
                                   "Overwrite File", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_INFORMATION);
       if(fileOverWrite.ShowModal() == wxID_YES) {
-        m_projectManager = new ProjectManager(name, path);
+		  m_projectManager = new ProjectManager(name, full_name.GetFullPath());
       }
     }
     else {
-      m_projectManager = new ProjectManager(name, path);      
+		m_projectManager = new ProjectManager(name, full_name.GetFullPath());
     }
   }
 }
