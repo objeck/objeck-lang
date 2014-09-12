@@ -2,25 +2,12 @@
 #include "dialogs.h"
 
 //----------------------------------------------------------------------------
-// ProjectManager
-//----------------------------------------------------------------------------
-ProjectManager::ProjectManager(const wxString &name, const wxString &full_name)
-{
-
-}
-
-ProjectManager::~ProjectManager()
-{
-
-}
-
-//----------------------------------------------------------------------------
 // IniManager
 //----------------------------------------------------------------------------
 /******************************
  * Load file into memory
  ******************************/
-wstring IniManager::LoadFile(const wstring &fn) {
+wxString IniManager::LoadFile(const wxString &fn) {
   char* buffer;
 
   string file(fn.begin(), fn.end());
@@ -39,7 +26,7 @@ wstring IniManager::LoadFile(const wstring &fn) {
     wcerr << L"Unable to read file: " << fn << endl;
     exit(1);
   }
-  wstring out = BytesToUnicode(buffer);
+  wxString out = BytesToUnicode(buffer);
 
   free(buffer);
   return out;
@@ -48,11 +35,11 @@ wstring IniManager::LoadFile(const wstring &fn) {
 /******************************
  * Write file
  ******************************/
-bool IniManager::WriteFile(const wstring &fn, const wstring &buffer) {
+bool IniManager::WriteFile(const wxString &fn, const wxString &buffer) {
   string file(fn.begin(), fn.end());
   ofstream out(file.c_str(), ios_base::out | ios_base::binary);
   if (out.good()) {
-    const string bytes = UnicodeToBytes(buffer);
+    const string bytes = UnicodeToBytes(buffer.ToStdWstring());
     out.write(bytes.c_str(), bytes.size());
     // close file
     out.close();
@@ -88,9 +75,9 @@ void IniManager::NextChar() {
  * Clear sections and names/values
  ******************************/
 void IniManager::Clear() {
-  map<const wstring, map<const wstring, wstring>*>::iterator iter;
+  map<const wxString, map<const wxString, wxString>*>::iterator iter;
   for (iter = section_map.begin(); iter != section_map.end(); ++iter) {
-    map<const wstring, wstring>* value_map = iter->second;
+    map<const wxString, wxString>* value_map = iter->second;
     value_map->clear();
     // free map
     delete value_map;
@@ -106,16 +93,16 @@ void IniManager::Clear() {
 /******************************
  * Serializes internal structures
  ******************************/
-wstring IniManager::Serialize() {
-  wstring out;
+wxString IniManager::Serialize() {
+  wxString out;
   // sections
-  map<const wstring, map<const wstring, wstring>*>::iterator section_iter;
+  map<const wxString, map<const wxString, wxString>*>::iterator section_iter;
   for (section_iter = section_map.begin(); section_iter != section_map.end(); ++section_iter) {
     out += L"[";
     out += section_iter->first;
     out += L"]\r\n";
     // name/value pairs
-    map<const wstring, wstring>::iterator value_iter;
+    map<const wxString, wxString>::iterator value_iter;
     for (value_iter = section_iter->second->begin(); value_iter != section_iter->second->end(); ++value_iter) {
       out += value_iter->first;
       out += L"=";
@@ -133,7 +120,7 @@ wstring IniManager::Serialize() {
  * structures
  ******************************/
 void IniManager::Deserialize() {
-  map<const wstring, wstring>* value_map = NULL;
+  map<const wxString, wxString>* value_map = NULL;
 
   NextChar();
   while (cur_char != L'\0') {
@@ -149,12 +136,12 @@ void IniManager::Deserialize() {
       while (cur_pos < input.size() && iswprint(cur_char) && cur_char != L']') {
         NextChar();
       }
-      const wstring section = input.substr(start, cur_pos - start - 1);
+      const wxString section = input.substr(start, cur_pos - start - 1);
       if (cur_char == L']') {
         NextChar();
       }
-      value_map = new map<const wstring, wstring>;
-      section_map.insert(pair<const wstring, map<const wstring, wstring>*>(section, value_map));
+      value_map = new map<const wxString, wxString>;
+      section_map.insert(pair<const wxString, map<const wxString, wxString>*>(section, value_map));
     }
     // comment
     else if (cur_char == L'#') {
@@ -168,10 +155,10 @@ void IniManager::Deserialize() {
       while (cur_pos < input.size() && iswprint(cur_char) && cur_char != L'=') {
         NextChar();
       }
-      const wstring key = input.substr(start, cur_pos - start - 1);
+      const wxString key = input.substr(start, cur_pos - start - 1);
       NextChar();
 
-      wstring value;
+      wxString value;
       start = cur_pos - 1;
       while (cur_pos < input.size() && iswprint(cur_char) && cur_char != L'\r' && cur_char != L'\n') {
         if (cur_char == L'\\') {
@@ -198,7 +185,7 @@ void IniManager::Deserialize() {
 
       // add key/value pair
       if (value_map) {
-        value_map->insert(pair<const wstring, wstring>(key, value));
+        value_map->insert(pair<const wxString, wxString>(key, value));
       }
     }
   }
@@ -207,7 +194,7 @@ void IniManager::Deserialize() {
 /******************************
  * Constructor/deconstructor
  ******************************/
-IniManager::IniManager(const wstring &fn)
+IniManager::IniManager(const wxString &fn)
 {
   filename = fn;
   cur_char = next_char = L'\0';
@@ -225,15 +212,15 @@ IniManager::~IniManager() {
 /******************************
  * Fetch value per section and key
  ******************************/
-wstring IniManager::GetValue(const wstring &sec, const wstring &key) {
+wxString IniManager::GetValue(const wxString &sec, const wxString &key) {
   if(locked) {
     return L"";
   }
   
   locked = true;
-  map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
+  map<const wxString, map<const wxString, wxString>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
-    map<const wstring, wstring>::iterator value = section->second->find(key);
+    map<const wxString, wxString>::iterator value = section->second->find(key);
     if (value != section->second->end()) {
       locked = false;
       return value->second;
@@ -247,13 +234,13 @@ wstring IniManager::GetValue(const wstring &sec, const wstring &key) {
 /******************************
  * Fetch value per section and key
  ******************************/
-void IniManager::SetValue(const wstring &sec, const wstring &key, const wstring &value) {
+void IniManager::SetValue(const wxString &sec, const wxString &key, const wxString &value) {
   if(locked) {
     return;
   }
 
   locked = true;
-  map<const wstring, map<const wstring, wstring>*>::iterator section = section_map.find(sec);
+  map<const wxString, map<const wxString, wxString>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     (*section->second)[key] = value;
   }
@@ -288,7 +275,7 @@ void IniManager::Save() {
   }
 
   locked = true;
-  const wstring out = Serialize();
+  const wxString out = Serialize();
   if (out.size() > 0) {
     WriteFile(filename, out);
   }
@@ -309,12 +296,19 @@ void IniManager::ShowOptionsDialog(wxWindow* parent)
   options.ShowAndUpdate();
 }
 
-void IniManager::ShowNewProjectDialog(wxWindow* parent)
+//----------------------------------------------------------------------------
+// ProjectManager
+//----------------------------------------------------------------------------
+ProjectManager::ProjectManager(const wxString &name, const wxString &full_name)
 {
-  
+	wxString project_string = wxT("name=" + name + "\r\n");
+	project_string += wxT("src_files=\r\n");
+	project_string += wxT("lib_files=\r\n");
+
+	IniManager::WriteFile(full_name, project_string);
 }
 
-void IniManager::AddOpenedFile(const wxString &fn) 
+ProjectManager::~ProjectManager()
 {
 
 }
