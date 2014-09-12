@@ -60,7 +60,7 @@ EVT_CLOSE(MyFrame::OnClose)
 EVT_MENU(wxID_NEW, MyFrame::OnFileNew)
 EVT_MENU(myID_NEW_FILE, MyFrame::OnFileNew)
 EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
-EVT_MENU(wxID_OPEN, MyFrame::OnFileOpen)
+EVT_MENU(myID_OPEN_FILE, MyFrame::OnFileOpen)
 EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
 EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
 EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
@@ -339,31 +339,32 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
   wxTreeCtrl* tree = new wxTreeCtrl(this, wxID_ANY, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
-  imglist->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));
+  imglist->Add(wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)));
+  imglist->Add(wxArtProvider::GetBitmap(wxART_LIST_VIEW, wxART_OTHER, wxSize(16, 16)));
   imglist->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16)));
+  imglist->Add(wxArtProvider::GetBitmap(wxART_EXECUTABLE_FILE, wxART_OTHER, wxSize(16, 16)));
   tree->AssignImageList(imglist);
 
-  wxTreeItemId root = tree->AddRoot(wxT("wxAUI Project"), 0);
-  wxArrayTreeItemIds items;
+  // root
+  wxTreeItemId root = tree->AddRoot(wxT("XML Parser"), 0);
 
-  items.Add(tree->AppendItem(root, wxT("Item 1"), 0));
-  items.Add(tree->AppendItem(root, wxT("Item 2"), 0));
-  items.Add(tree->AppendItem(root, wxT("Item 3"), 0));
-  items.Add(tree->AppendItem(root, wxT("Item 4"), 0));
-  items.Add(tree->AppendItem(root, wxT("Item 5"), 0));
+  // source
+  wxArrayTreeItemIds source_items;
+  wxTreeItemId source = tree->AppendItem(root, wxT("Source"), 1);
+  source_items.Add(tree->AppendItem(source, wxT("scanner.obs"), 2));
+  source_items.Add(tree->AppendItem(source, wxT("tree.obs"), 2));
+  source_items.Add(tree->AppendItem(source, wxT("print.obs"), 2));
   
-  int i, count;
-  for (i = 0, count = items.Count(); i < count; ++i)
-  {
-    wxTreeItemId id = items.Item(i);
-    tree->AppendItem(id, wxT("Subitem 1"), 1);
-    tree->AppendItem(id, wxT("Subitem 2"), 1);
-    tree->AppendItem(id, wxT("Subitem 3"), 1);
-    tree->AppendItem(id, wxT("Subitem 4"), 1);
-    tree->AppendItem(id, wxT("Subitem 5"), 1);
-  }
-  tree->Expand(root);
+  // libraries
+  wxArrayTreeItemIds lib_items;
+  wxTreeItemId libs = tree->AppendItem(root, wxT("Libaries"), 1);
+  lib_items.Add(tree->AppendItem(libs, wxT("lang.obl"), 3));
+  lib_items.Add(tree->AppendItem(libs, wxT("collect.obl"), 3));
 
+  tree->Expand(root);
+  tree->Expand(source);
+  tree->Expand(libs);
+ 
   return tree;
 }
 
