@@ -98,7 +98,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   GetStatusBar()->SetStatusText(wxT("Ready"));
 
   // set windows sizes
-  SetMinSize(wxSize(400, 300));
+  SetMinSize(wxSize(800, 600));
   
   // set tool bar
   aui_manager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().
@@ -265,7 +265,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuFile->AppendSeparator();
   menuFile->Append(wxID_PROPERTIES, _("Proper&ties\tCtrl+T"));
   
-  // Edit menu
+  // edit menu
   wxMenu *menuEdit = new wxMenu;
   menuEdit->Append(wxID_UNDO, _("&Undo\tCtrl+Z"));
   menuEdit->Append(wxID_REDO, _("&Redo\tCtrl+Y"));
@@ -285,9 +285,9 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(myID_REPLACENEXT, _("&Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   menuEdit->AppendSeparator();
-  menuEdit->Append(myID_DLG_OPTIONS, _("Options...\tALT+O"));
+  menuEdit->Append(myID_DLG_OPTIONS, _("Genearl Options...\tALT+O"));
   
-  // View menu
+  // view menu
   wxMenu *menuView = new wxMenu;
   menuView->AppendCheckItem(myID_FOLDTOGGLE, _("&Toggle current fold\tCtrl+T"));
   menuView->AppendCheckItem(myID_OVERTYPE, _("&Overwrite mode\tIns"));
@@ -299,9 +299,20 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuView->AppendCheckItem(myID_LONGLINEON, _("Show &long line marker"));
   menuView->AppendCheckItem(myID_WHITESPACE, _("Show white&space"));
 
+  // project menu
+  wxMenu *projectView = new wxMenu;
+  projectView->AppendCheckItem(wxID_ANY, _("Build\tCtrl+Shift+B"));
+  projectView->AppendSeparator();
+  projectView->AppendCheckItem(wxID_ANY, _("&Add file\tCtrl+Shift+A"));
+  projectView->AppendCheckItem(wxID_ANY, _("&Remove file\tCtrl+Shift+R"));
+  projectView->AppendSeparator();
+  projectView->Append(wxID_ANY, _("Project options...\tALT+Shift+O"));
+  
+  // menu bar
   wxMenuBar* menu_bar = new wxMenuBar;
   menu_bar->Append(menuFile, wxT("&File"));
   menu_bar->Append(menuEdit, wxT("&Edit"));
+  menu_bar->Append(projectView, wxT("&Project"));
   menu_bar->Append(menuView, wxT("&View"));
   menu_bar->Append(new wxMenu, wxT("&Help"));
 
@@ -315,20 +326,23 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
   wxAuiToolBar* toolbar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
     wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_OVERFLOW);
   toolbar->SetToolBitmapSize(wxSize(16, 16));
+  
   wxBitmap tb3_bmp1 = wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16));
-  toolbar->AddTool(ID_SampleItem + 16, wxT("Check 1"), tb3_bmp1, wxT("Check 1"), wxITEM_CHECK);
-  toolbar->AddTool(ID_SampleItem + 17, wxT("Check 2"), tb3_bmp1, wxT("Check 2"), wxITEM_CHECK);
-  toolbar->AddTool(ID_SampleItem + 18, wxT("Check 3"), tb3_bmp1, wxT("Check 3"), wxITEM_CHECK);
-  toolbar->AddTool(ID_SampleItem + 19, wxT("Check 4"), tb3_bmp1, wxT("Check 4"), wxITEM_CHECK);
+
+  toolbar->AddTool(ID_SampleItem + 16, wxT("New File"), wxArtProvider::GetBitmap(wxART_NEW, wxART_OTHER, wxSize(16, 16)), wxT("Check 1"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 17, wxT("Open File"), wxArtProvider::GetBitmap(wxART_FILE_OPEN, wxART_OTHER, wxSize(16, 16)), wxT("Check 2"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 18, wxT("Save File"), wxArtProvider::GetBitmap(wxART_FILE_SAVE, wxART_OTHER, wxSize(16, 16)), wxT("Check 3"), wxITEM_CHECK);
+  toolbar->AddTool(ID_SampleItem + 19, wxT("Save File As..."), wxArtProvider::GetBitmap(wxART_FILE_SAVE_AS, wxART_OTHER, wxSize(16, 16)), wxT("Check 4"), wxITEM_CHECK);
   toolbar->AddSeparator();
-  toolbar->AddTool(ID_SampleItem + 20, wxT("Radio 1"), tb3_bmp1, wxT("Radio 1"), wxITEM_RADIO);
-  toolbar->AddTool(ID_SampleItem + 21, wxT("Radio 2"), tb3_bmp1, wxT("Radio 2"), wxITEM_RADIO);
-  toolbar->AddTool(ID_SampleItem + 22, wxT("Radio 3"), tb3_bmp1, wxT("Radio 3"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 20, wxT("Copy"), wxArtProvider::GetBitmap(wxART_COPY, wxART_OTHER, wxSize(16, 16)), wxT("Copy"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 21, wxT("Cut"), wxArtProvider::GetBitmap(wxART_CUT, wxART_OTHER, wxSize(16, 16)), wxT("Cut"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 22, wxT("Paste"), wxArtProvider::GetBitmap(wxART_PASTE, wxART_OTHER, wxSize(16, 16)), wxT("Paste"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 23, wxT("Undo"), wxArtProvider::GetBitmap(wxART_UNDO, wxART_OTHER, wxSize(16, 16)), wxT("Undo"), wxITEM_RADIO);
+  toolbar->AddTool(ID_SampleItem + 24, wxT("Redo"), wxArtProvider::GetBitmap(wxART_REDO, wxART_OTHER, wxSize(16, 16)), wxT("Redo"), wxITEM_RADIO);
   toolbar->AddSeparator();
-  toolbar->AddTool(ID_SampleItem + 23, wxT("Radio 1 (Group 2)"), tb3_bmp1, wxT("Radio 1 (Group 2)"), wxITEM_RADIO);
-  toolbar->AddTool(ID_SampleItem + 24, wxT("Radio 2 (Group 2)"), tb3_bmp1, wxT("Radio 2 (Group 2)"), wxITEM_RADIO);
-  toolbar->AddTool(ID_SampleItem + 25, wxT("Radio 3 (Group 2)"), tb3_bmp1, wxT("Radio 3 (Group 2)"), wxITEM_RADIO);
-  toolbar->SetCustomOverflowItems(prepend_items, append_items);
+  toolbar->AddTool(ID_SampleItem + 25, wxT("Build Project"), wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)), wxT("Build Project"), wxITEM_RADIO);toolbar->AddSeparator();
+  toolbar->AddTool(ID_SampleItem + 26, wxT("Project Options"), wxArtProvider::GetBitmap(wxART_HELP_SETTINGS, wxART_OTHER, wxSize(16, 16)), wxT("Project Options"), wxITEM_RADIO);
+  // toolbar->SetCustomOverflowItems(prepend_items, append_items);
   toolbar->Realize();
 
   return toolbar;
