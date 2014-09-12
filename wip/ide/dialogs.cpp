@@ -177,7 +177,7 @@ END_EVENT_TABLE()
 
 NewProject::NewProject( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
-	this->SetSizeHints( wxSize( 300,-1 ), wxDefaultSize );
+	this->SetSizeHints( wxSize( 320,-1 ), wxDefaultSize );
 	
 	wxBoxSizer* bSizer11;
 	bSizer11 = new wxBoxSizer( wxVERTICAL );
