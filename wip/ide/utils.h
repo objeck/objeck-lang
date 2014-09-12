@@ -29,53 +29,47 @@ using namespace std;
 //----------------------------------------------------------------------------
 //! IniManager
 class IniManager {
-  map<const wstring, map<const wstring, wstring>*> section_map;
-  wstring filename, input;
+  map<const wxString, map<const wxString, wxString>*> section_map;
+  wxString filename, input;
   wchar_t cur_char, next_char;
   size_t cur_pos;
   bool locked;
-  wstring objeck_path;
-  wstring indent_spacing;
-  wstring line_ending;
+  wxString objeck_path;
+  wxString indent_spacing;
+  wxString line_ending;
   
-  wstring LoadFile(const wstring &fn);
-  bool WriteFile(const wstring &fn, const wstring &out);
+  wxString LoadFile(const wxString &fn);
   void NextChar();
   void Clear();
-  wstring Serialize();
+  wxString Serialize();
   void Deserialize();
   
 public:
-  IniManager(const wstring &fn);
+  IniManager(const wxString &fn);
   ~IniManager();
 
   // basic operations
+  static bool WriteFile(const wxString &fn, const wxString &out);
   bool IsLocked() { return locked; }
-  wstring GetValue(const wstring &sec, const wstring &key);
-  void SetValue(const wstring &sec, const wstring &key, const wstring &value);
+  wxString GetValue(const wxString &sec, const wxString &key);
+  void SetValue(const wxString &sec, const wxString &key, const wxString &value);
   void Load();
   void Save();
   
   // options
   void ShowOptionsDialog(wxWindow* parent);
   
-  wstring GetObjeckPath() {
+  wxString GetObjeckPath() {
     return GetValue(L"Options", L"objeck_path");
   }
 
-  wstring GetIdentSpacing() {
+  wxString GetIdentSpacing() {
     return GetValue(L"Options", L"indent_spacing");
   }
 
-  wstring GetLineEnding() {
+  wxString GetLineEnding() {
     return GetValue(L"Options", L"line_ending");
   }
-  
-  // project
-  void ShowNewProjectDialog(wxWindow* parent);
-  
-  // opened files
-  void AddOpenedFile(const wxString &fn);
 };
 
 //----------------------------------------------------------------------------
