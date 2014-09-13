@@ -21,6 +21,7 @@
 #include <wx/utils.h>
 #include <wx/process.h>
 #include <wx/arrstr.h>
+#include <wx/hashset.h>
 
 #include "../../src/shared/sys.h"
 #include "defsext.h"
@@ -31,6 +32,12 @@ class MyFrame;
 
 //----------------------------------------------------------------------------
 //! IniManager
+
+WX_DECLARE_HASH_SET(wxString,
+                    wxStringHash,
+                    wxStringEqual,
+                    StringSet);
+
 class IniManager {
   map<const wxString, map<const wxString, wxString>*> section_map;
   wxString filename, input;

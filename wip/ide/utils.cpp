@@ -258,17 +258,26 @@ wxArrayString IniManager::GetListValues(const wxString &sec, const wxString &key
 {
   wxArrayString values;
   
+  const wxString raw_value = GetValue(sec, key);    
+  wxStringTokenizer tokenizer(raw_value, L";");
+  while(tokenizer.HasMoreTokens()) {
+    const wxString value = tokenizer.GetNextToken();
+    values.Add(value);
+  }
+  
   return values;
 }
- 
+
 bool IniManager::AddListValue(const wxString &sec, const wxString &key)
 {
+  StringSet value_set;
   
+  return false;
 }
 
 bool IniManager::RemoveListValue(const wxString &sec, const wxString &key)
 {
-  
+  return false;
 }
 
 /******************************
