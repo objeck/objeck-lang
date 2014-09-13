@@ -55,9 +55,15 @@ public:
   static bool WriteFile(const wxString &fn, const wxString &out);
 
   // set/retrieve values
-  bool IsLocked() { return locked; }
+  bool IsLocked() { 
+    return locked; 
+  }
   wxString GetValue(const wxString &sec, const wxString &key);
   bool SetValue(const wxString &sec, const wxString &key, const wxString &value);
+
+  wxArrayString GetListValues(const wxString &sec, const wxString &key);
+  bool AddListValue(const wxString &sec, const wxString &key);
+  bool RemoveListValue(const wxString &sec, const wxString &key);
 
   // load and save to file 
   bool Load();
@@ -100,6 +106,10 @@ class GeneralOptionsManager {
     return iniManager->GetValue(L"Options", L"line_ending");
   }
 
+  void Load() {
+    iniManager->Load();
+  }
+  
   void Save() {
     iniManager->Save();
   }
@@ -115,6 +125,14 @@ class ProjectManager {
   ProjectManager(MyFrame* parent, const wxString &filename);
   ~ProjectManager();
 
+  void Load() {
+    iniManager->Load();
+  }
+  
+  void Save() {
+    iniManager->Save();
+  }
+  
   bool AddFile(const wxString &filename);
   bool RemoveFile(const wxString &filename);
   wxArrayString GetFiles(); 
