@@ -13,10 +13,10 @@ SRC=prefs.o utils.o dialogs.o edit.o ide.o
 EXE=ide_demo
 
 $(EXE): $(SRC)
-	$(CC) -o $(EXE) $(SRC) $(MODE) $(INCS) $(LIBS) 
+	$(CC) -o $(EXE) $(SRC) $(MODE) $(INCS) $(LIBS)
 
 %.o: %.cpp
-	$(CC) -c $< $(MODE) $(INCS) $(ARGS) 
+	$(CC) -c $< $(MODE) $(INCS) $(ARGS) -Wno-unused-parameter -Wno-unused-function 
 
 clean:
 	rm -rf ./.deps ./.pch

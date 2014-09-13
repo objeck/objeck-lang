@@ -398,7 +398,6 @@ void Edit::OnEditPaste(wxCommandEvent &WXUNUSED(event)) {
 }
 
 void Edit::OnFindReplace(wxCommandEvent &event) {
-  const wxEventType type = event.GetId();
   const wxString find_string = m_FindData.GetFindString();
   int found_start, found_end;
 
