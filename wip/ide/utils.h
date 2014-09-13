@@ -69,8 +69,8 @@ public:
   bool SetValue(const wxString &sec, const wxString &key, const wxString &value);
 
   wxArrayString GetListValues(const wxString &sec, const wxString &key);
-  bool AddListValue(const wxString &sec, const wxString &key);
-  bool RemoveListValue(const wxString &sec, const wxString &key);
+  bool AddListValue(const wxString &sec, const wxString &key, const wxString &val);
+  bool RemoveListValue(const wxString &sec, const wxString &key, const wxString &val);
 
   // load and save to file 
   bool Load();
