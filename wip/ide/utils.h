@@ -26,6 +26,8 @@
 
 using namespace std;
 
+class MyFrame;
+
 //----------------------------------------------------------------------------
 //! IniManager
 class IniManager {
@@ -75,9 +77,19 @@ public:
 //----------------------------------------------------------------------------
 //! IniManager
 class ProjectManager {
+  IniManager* iniManager;
+  
  public:
-  ProjectManager(const wxString &name, const wxString &full_name);
+  ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename);
   ~ProjectManager();
+
+  bool AddFile(const wxString &filename);
+  bool RemoveFile(const wxString &filename);
+
+  bool AddLibrary(const wxString &name);
+  bool RemoveLibrary(const wxString &name);
+
+  bool Compile();
 };
 
 #endif
