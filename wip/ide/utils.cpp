@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "dialogs.h"
+#include "ide.h"
 
 //----------------------------------------------------------------------------
 // IniManager
@@ -299,16 +300,41 @@ void IniManager::ShowOptionsDialog(wxWindow* parent)
 //----------------------------------------------------------------------------
 // ProjectManager
 //----------------------------------------------------------------------------
-ProjectManager::ProjectManager(const wxString &name, const wxString &full_name)
+ProjectManager::ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename)
 {
 	wxString project_string = wxT("name=" + name + "\r\n");
 	project_string += wxT("src_files=\r\n");
 	project_string += wxT("lib_files=\r\n");
 
-	IniManager::WriteFile(full_name, project_string);
+	IniManager::WriteFile(filename, project_string);
 }
 
 ProjectManager::~ProjectManager()
+{
+
+}
+
+bool ProjectManager::AddFile(const wxString &filename)
+{
+
+}
+ 
+bool ProjectManager::RemoveFile(const wxString &filename)
+{
+
+}
+
+bool ProjectManager::AddLibrary(const wxString &name)
+{
+
+}
+
+bool ProjectManager::RemoveLibrary(const wxString &name)
+{
+
+}
+
+bool ProjectManager::Compile()
 {
 
 }
