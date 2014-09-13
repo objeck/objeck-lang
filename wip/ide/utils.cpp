@@ -237,26 +237,30 @@ wxString IniManager::GetValue(const wxString &sec, const wxString &key) {
 /******************************
  * Fetch value per section and key
  ******************************/
-void IniManager::SetValue(const wxString &sec, const wxString &key, const wxString &value) {
+bool IniManager::SetValue(const wxString &sec, const wxString &key, const wxString &value) {
   if(locked) {
-    return;
+    return false;
   }
 
   locked = true;
   map<const wxString, map<const wxString, wxString>*>::iterator section = section_map.find(sec);
   if (section != section_map.end()) {
     (*section->second)[key] = value;
+    locked = false;
+    return true;
   }
+
   locked = false;
+  return false;
 }
 
 /******************************
  * Write contentes of memory
  * to file
  ******************************/
-void IniManager::Load() {
+bool IniManager::Load() {
   if(locked) {
-    return;
+    return false;
   }
   
   locked = true;
@@ -264,25 +268,33 @@ void IniManager::Load() {
   input = LoadFile(filename);
   if (input.size() > 0) {
     Deserialize();
+    locked = false;
+    return true;
   }
+  
   locked = false;
+  return false;
 }
 
 /******************************
  * Write contentes of memory
  * to file
  ******************************/
-void IniManager::Save() {
+bool IniManager::Save() {
   if(locked) {
-    return;
+    return false;
   }
 
   locked = true;
   const wxString out = Serialize();
   if (out.size() > 0) {
-    WriteFile(filename, out);
+    bool wrote = WriteFile(filename, out);
+    locked = false;
+    return wrote;
   }
+  
   locked = false;
+  return false;
 }
 
 // TODO: UI operations
