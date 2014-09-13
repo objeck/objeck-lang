@@ -10,12 +10,12 @@ EVT_RADIOBUTTON(myID_DLG_OPTIONS_TABS, GeneralOptions::OnTabs)
 EVT_RADIOBUTTON(myID_DLG_OPTIONS_SPACES, GeneralOptions::OnSpaces)
 END_EVENT_TABLE()
 
-GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxString &objeck_path, const wxString &ident, 
+GeneralOptions::GeneralOptions( wxWindow* parent, GeneralOptionsManager* mgr, const wxString &objeck_path, const wxString &ident, 
                                 const wxString &line_endings, wxWindowID id, const wxString& title, const wxPoint& pos, 
                                 const wxSize& size, long style ) 
   : wxDialog( parent, id, title, pos, size, style )
 {
-  iniManager = ini;
+  manager = mgr;
 	this->SetSizeHints( wxSize( 300,-1 ), wxDefaultSize );
 	
 	wxBoxSizer* dialogSizer;
@@ -51,7 +51,7 @@ GeneralOptions::GeneralOptions( wxWindow* parent, IniManager* ini, const wxStrin
 	m_spaceIndentButton = new wxRadioButton( this, myID_DLG_OPTIONS_TABS, wxT("Spaces"), wxDefaultPosition, wxDefaultSize, 0 );
 	spacingBoxer->Add( m_spaceIndentButton, 0, wxALL, 5 );
 	
-	m_numSpacesSpin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 8, 3); // new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	m_numSpacesSpin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 8, 3);
 	spacingBoxer->Add( m_numSpacesSpin, 0, wxALIGN_BOTTOM|wxTOP|wxBOTTOM|wxRIGHT, 5 );
 
   // tabs
@@ -140,30 +140,30 @@ void GeneralOptions::ShowAndUpdate()
   if(ShowModal() == wxID_OK) {    
     // objeck path
     const wstring std_objeck_path = m_pathText->GetValue().ToStdWstring();
-    iniManager->SetValue(L"Options", L"objeck_path", std_objeck_path);
+    manager->SetObjeckPath(std_objeck_path);
     
     // line endings
     if(m_lineFeedRadio->GetSelection() == 0) {
-      iniManager->SetValue(L"Options", L"line_ending", L"Windows");  
+      manager->SetLineEnding(L"Windows");  
     }
     else if(m_lineFeedRadio->GetSelection() == 1) {
-      iniManager->SetValue(L"Options", L"line_ending", L"Unix");  
+      manager->SetLineEnding(L"Unix");  
     } 
     else {
-      iniManager->SetValue(L"Options", L"line_ending", L"Mac");  
+      manager->SetLineEnding(L"Mac");  
     }
     
     // indentation
     if(m_tabIndentButton->GetValue()) {
-      iniManager->SetValue(L"Options", L"indent_spacing", L"tabs");
+      manager->SetIdentSpacing(L"tabs");
     }
     else if(m_spaceIndentButton->GetValue()) {
       wstring indent = wxString::Format(wxT("%s;%i"),wxT("spaces"), m_numSpacesSpin->GetValue()).ToStdWstring();
-      iniManager->SetValue(L"Options", L"indent_spacing", indent);
+      manager->SetIdentSpacing(indent);
     }
     
     // save
-    iniManager->Save();
+    manager->Save();
   }
 }
 

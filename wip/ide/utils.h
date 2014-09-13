@@ -51,27 +51,57 @@ public:
   IniManager(const wxString &fn);
   ~IniManager();
 
-  // basic operations
+  // writes a file
   static bool WriteFile(const wxString &fn, const wxString &out);
+
+  // set/retrieve values
   bool IsLocked() { return locked; }
   wxString GetValue(const wxString &sec, const wxString &key);
   bool SetValue(const wxString &sec, const wxString &key, const wxString &value);
+
+  // load and save to file 
   bool Load();
   bool Save();
+};
+
+//----------------------------------------------------------------------------
+//! GeneralOptionsManager
+class GeneralOptionsManager {
+  IniManager* iniManager;
+  
+ public:
+  GeneralOptionsManager(const wxString &filename);
+  ~GeneralOptionsManager();
   
   // options
   void ShowOptionsDialog(wxWindow* parent);
   
+  void SetObjeckPath(const wxString &path) {
+    iniManager->SetValue(L"Options", L"objeck_path", path);
+  }
+  
   wxString GetObjeckPath() {
-    return GetValue(L"Options", L"objeck_path");
+    return iniManager->GetValue(L"Options", L"objeck_path");
+  }
+
+  void SetIdentSpacing(const wxString &spacing) {
+    iniManager->SetValue(L"Options", L"indent_spacing", spacing);
   }
 
   wxString GetIdentSpacing() {
-    return GetValue(L"Options", L"indent_spacing");
+    return iniManager->GetValue(L"Options", L"indent_spacing");
+  }
+
+  void SetLineEnding(const wxString &ending) {
+    iniManager->SetValue(L"Options", L"line_ending", ending);
   }
 
   wxString GetLineEnding() {
-    return GetValue(L"Options", L"line_ending");
+    return iniManager->GetValue(L"Options", L"line_ending");
+  }
+
+  void Save() {
+    iniManager->Save();
   }
 };
 

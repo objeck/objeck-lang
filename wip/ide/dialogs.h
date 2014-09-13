@@ -25,7 +25,7 @@
 /// Class GeneralOptions
 ///////////////////////////////////////////////////////////////////////////////
 class GeneralOptions : public wxDialog {
-  IniManager* iniManager;
+  GeneralOptionsManager* manager;
   wxStaticText* m_PathLabel;
   wxTextCtrl* m_pathText;
   wxButton* m_pathSelectButton;
@@ -37,9 +37,9 @@ class GeneralOptions : public wxDialog {
   wxStdDialogButtonSizer* m_OkCancelSizer;
   wxButton* m_OkCancelSizerSave;
   wxButton* m_OkCancelSizerCancel;
-	
- public:	
-  GeneralOptions( wxWindow* parent, IniManager* ini, const wxString &objeck_path, const wxString &indentation, 
+
+ public:
+  GeneralOptions( wxWindow* parent, GeneralOptionsManager* mgr, const wxString &objeck_path, const wxString &indentation, 
                   const wxString &line_endings, wxWindowID id = wxID_ANY, const wxString& title = wxT("Options"), 
                   const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~GeneralOptions();
