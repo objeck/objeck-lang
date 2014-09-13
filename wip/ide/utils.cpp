@@ -2,6 +2,8 @@
 #include "dialogs.h"
 #include "ide.h"
 
+#include <wx/tokenzr.h>
+
 //----------------------------------------------------------------------------
 // IniManager
 //----------------------------------------------------------------------------
@@ -303,15 +305,21 @@ void IniManager::ShowOptionsDialog(wxWindow* parent)
 ProjectManager::ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename)
 {
 	wxString project_string = wxT("name=" + name + "\r\n");
-	project_string += wxT("src_files=\r\n");
-	project_string += wxT("lib_files=\r\n");
+	project_string += wxT("source=\r\n");
+	project_string += wxT("libraries=\r\n");
 
 	IniManager::WriteFile(filename, project_string);
+  iniManager = new IniManager(filename);
+}
+
+ProjectManager::ProjectManager(MyFrame* parent, const wxString &filename)
+{
+  iniManager = new IniManager(filename);
 }
 
 ProjectManager::~ProjectManager()
 {
-
+  delete iniManager;
 }
 
 bool ProjectManager::AddFile(const wxString &filename)
@@ -322,6 +330,20 @@ bool ProjectManager::AddFile(const wxString &filename)
 bool ProjectManager::RemoveFile(const wxString &filename)
 {
 
+}
+
+wxArrayString ProjectManager::GetFiles() 
+{
+  wxArrayString source_files;
+  
+  const wxString source_string = iniManager->GetValue(L"Project", L"source");
+  wxStringTokenizer tokenizer(source_string, L";");
+  while (tokenizer.HasMoreTokens()) {
+    const wxString source = tokenizer.GetNextToken();
+    source_files.Add(source);
+  }
+
+  return source_files;
 }
 
 bool ProjectManager::AddLibrary(const wxString &name)
