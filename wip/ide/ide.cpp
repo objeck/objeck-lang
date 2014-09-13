@@ -81,7 +81,7 @@ END_EVENT_TABLE()
 MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : 
     wxFrame(parent, id, title, pos, size, style) 
 {
-  m_iniManager = new IniManager(wxT("ide.ini"));
+  m_optionsManager = new GeneralOptionsManager(wxT("ide.ini"));
   m_projectManager = NULL;
   m_newPageCount = 1;
   
@@ -112,9 +112,9 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
 
 MyFrame::~MyFrame() 
 {
-  if(m_iniManager) {
-    delete m_iniManager;
-    m_iniManager = NULL;
+  if(m_optionsManager) {
+    delete m_optionsManager;
+    m_optionsManager = NULL;
   }
   aui_manager.UnInit();
 }
@@ -237,7 +237,7 @@ void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnOptions(wxCommandEvent &WXUNUSED(event))
 {
-  m_iniManager->ShowOptionsDialog(this);
+  m_optionsManager->ShowOptionsDialog(this);
 }
 
 wxMenuBar* MyFrame::CreateMenuBar()
