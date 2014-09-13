@@ -254,6 +254,23 @@ bool IniManager::SetValue(const wxString &sec, const wxString &key, const wxStri
   return false;
 }
 
+wxArrayString IniManager::GetListValues(const wxString &sec, const wxString &key)
+{
+  wxArrayString values;
+  
+  return values;
+}
+ 
+bool IniManager::AddListValue(const wxString &sec, const wxString &key)
+{
+  
+}
+
+bool IniManager::RemoveListValue(const wxString &sec, const wxString &key)
+{
+  
+}
+
 /******************************
  * Write contentes of memory
  * to file
@@ -349,12 +366,12 @@ ProjectManager::~ProjectManager()
 
 bool ProjectManager::AddFile(const wxString &filename)
 {
-
+  return false;
 }
  
 bool ProjectManager::RemoveFile(const wxString &filename)
 {
-
+  return false;
 }
 
 wxArrayString ProjectManager::GetFiles() 
@@ -373,15 +390,15 @@ wxArrayString ProjectManager::GetFiles()
 
 bool ProjectManager::AddLibrary(const wxString &name)
 {
-
+  return false;
 }
 
 bool ProjectManager::RemoveLibrary(const wxString &name)
 {
-
+  return false;
 }
 
 bool ProjectManager::Compile()
 {
-
+  return false;
 }

@@ -84,8 +84,8 @@ class NewProject : public wxDialog
  public:	
   NewProject( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("New Project"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
   ~NewProject();
-
-  const wxString GetName() {
+  
+  const wxString GetProjectName() {
     return m_nameText->GetValue();
   }
 

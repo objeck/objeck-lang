@@ -9,7 +9,7 @@ SRC=prefs.o dialogs.o utils.o edit.o ide.o
 EXE=ide_demo
 
 $(EXE): $(SRC)
-	$(CC) -o $(EXE) $(SRC) $(LIBS) $(MODE)
+	$(CC) -o $(EXE) $(SRC) $(LIBS) $(MODE) -Wno-unused-parameter -Wno-unused-function
 	SetFile -t APPL $(EXE)
 	mkdir -p $(EXE).app/Contents
 	mkdir -p $(EXE).app/Contents/MacOS
