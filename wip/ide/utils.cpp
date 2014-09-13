@@ -284,7 +284,7 @@ bool IniManager::Save() {
   if(locked) {
     return false;
   }
-
+  
   locked = true;
   const wxString out = Serialize();
   if (out.size() > 0) {
@@ -297,14 +297,27 @@ bool IniManager::Save() {
   return false;
 }
 
+//----------------------------------------------------------------------------
+// GeneralOptionsManager
+//----------------------------------------------------------------------------
+GeneralOptionsManager::GeneralOptionsManager(const wxString &filename)
+{
+  iniManager = new IniManager(filename);
+}
+ 
+GeneralOptionsManager::~GeneralOptionsManager()
+{
+  delete iniManager;
+}
+
 // TODO: UI operations
-void IniManager::ShowOptionsDialog(wxWindow* parent) 
+void GeneralOptionsManager::ShowOptionsDialog(wxWindow* parent) 
 {
   // load and read values
-  Load();
-  const wxString objeck_path(GetValue(L"Options", L"objeck_path"));
-  const wxString indent_spacing(GetValue(L"Options", L"indent_spacing"));
-  const wxString line_ending(GetValue(L"Options", L"line_ending"));
+  iniManager->Load();
+  const wxString objeck_path(iniManager->GetValue(L"Options", L"objeck_path"));
+  const wxString indent_spacing(iniManager->GetValue(L"Options", L"indent_spacing"));
+  const wxString line_ending(iniManager->GetValue(L"Options", L"line_ending"));
   
   // show dialog
   GeneralOptions options(parent, this, objeck_path, indent_spacing, line_ending);
