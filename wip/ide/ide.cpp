@@ -156,7 +156,9 @@ void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
       }
     }
     else {
-      m_projectManager = new ProjectManager(this, name, full_name.GetFullPath());
+      // m_projectManager = new ProjectManager(this, name, full_name.GetFullPath());
+      m_projectManager = new ProjectManager(this, L"/home/randy/Documents/Code/objeck-lang/wip/ide/proj.ini");
+      m_projectManager->GetFiles();
     }
   }
 }
