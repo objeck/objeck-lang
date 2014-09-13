@@ -268,16 +268,61 @@ wxArrayString IniManager::GetListValues(const wxString &sec, const wxString &key
   return values;
 }
 
-bool IniManager::AddListValue(const wxString &sec, const wxString &key)
+bool IniManager::AddListValue(const wxString &sec, const wxString &key, const wxString &val)
 {
-  StringSet value_set;
+  // put values into a set
+  StringSet values_set;
+  wxArrayString list_values = GetListValues(sec, key);
+  for(size_t i  = 0; i < list_values.size(); ++i) {
+    const wxString value = list_values[i];
+    if(value.size() > 0) {
+      values_set.insert(value);
+    }
+  }
+
+  // check for existing entry
+  StringSet::iterator iter = values_set.find(val);
+  if(iter != values_set.end()) {
+    // found
+    return false;
+  }
+  else {
+    values_set.insert(val);
+  }
   
-  return false;
+  // rebuilt and save value
+  wxString new_value;
+  for(iter = values_set.begin(); iter != values_set.end(); ++iter) {
+    new_value += *iter;
+    new_value += L";";
+  }
+  
+  return SetValue(sec, key, new_value);
 }
 
-bool IniManager::RemoveListValue(const wxString &sec, const wxString &key)
+bool IniManager::RemoveListValue(const wxString &sec, const wxString &key, const wxString &val)
 {
-  return false;
+  // put values into a set
+  StringSet values_set;
+  wxArrayString list_values = GetListValues(sec, key);
+  for(size_t i  = 0; i < list_values.size(); ++i) {
+    const wxString value = list_values[i];
+    if(value.size() > 0) {
+      values_set.insert(value);
+    }
+  }
+  
+  // rebuilt and save value
+  wxString new_value;
+  for(StringSet::iterator iter = values_set.begin(); iter != values_set.end(); ++iter) {
+    const wxString list_value = *iter;
+    if(list_value != val) {
+      new_value += list_value;
+      new_value += L";";
+    }
+  }
+  
+  return SetValue(sec, key, new_value);
 }
 
 /******************************
