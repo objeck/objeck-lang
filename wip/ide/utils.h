@@ -20,6 +20,7 @@
 #include <wx/wxhtml.h>
 #include <wx/utils.h>
 #include <wx/process.h>
+#include <wx/arrstr.h>
 
 #include "../../src/shared/sys.h"
 #include "defsext.h"
@@ -81,10 +82,12 @@ class ProjectManager {
   
  public:
   ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename);
+  ProjectManager(MyFrame* parent, const wxString &filename);
   ~ProjectManager();
 
   bool AddFile(const wxString &filename);
   bool RemoveFile(const wxString &filename);
+  wxArrayString GetFiles(); 
 
   bool AddLibrary(const wxString &name);
   bool RemoveLibrary(const wxString &name);
