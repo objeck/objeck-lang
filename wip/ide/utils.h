@@ -55,9 +55,9 @@ public:
   static bool WriteFile(const wxString &fn, const wxString &out);
   bool IsLocked() { return locked; }
   wxString GetValue(const wxString &sec, const wxString &key);
-  void SetValue(const wxString &sec, const wxString &key, const wxString &value);
-  void Load();
-  void Save();
+  bool SetValue(const wxString &sec, const wxString &key, const wxString &value);
+  bool Load();
+  bool Save();
   
   // options
   void ShowOptionsDialog(wxWindow* parent);
