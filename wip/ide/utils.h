@@ -62,12 +62,10 @@ public:
   static bool WriteFile(const wxString &fn, const wxString &out);
 
   // set/retrieve values
-  bool IsLocked() { 
-    return locked; 
-  }
   wxString GetValue(const wxString &sec, const wxString &key);
   bool SetValue(const wxString &sec, const wxString &key, const wxString &value);
-
+  
+  // set/retrieve/remove list values
   wxArrayString GetListValues(const wxString &sec, const wxString &key);
   bool AddListValue(const wxString &sec, const wxString &key, const wxString &val);
   bool RemoveListValue(const wxString &sec, const wxString &key, const wxString &val);
@@ -75,6 +73,9 @@ public:
   // load and save to file 
   bool Load();
   bool Save();
+  bool IsLocked() { 
+    return locked; 
+  }
 };
 
 //----------------------------------------------------------------------------
