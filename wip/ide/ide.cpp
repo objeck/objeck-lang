@@ -29,6 +29,7 @@
 #include <wx/persist/toplevel.h>
 #include <wx/file.h>
 #include <wx/filename.h>
+#include <wx/platinfo.h>
 
 /////////////////////////
 // MyApp
@@ -177,7 +178,50 @@ void MyFrame::OnProjectClose(wxCommandEvent &event)
 
 void MyFrame::OnProjectBuild(wxCommandEvent &event)
 {
+  if(!m_projectManager) {
+    wxMessageDialog fileOverWrite(this, wxT("There is no project loaded."), wxT("Build Project"));
+    fileOverWrite.ShowModal();
+    return;
+  }
   
+  wstring objeck_exe = wxT("obc");
+  wxPlatformInfo platform;
+  if(platform.GetOperatingSystemId() == wxOS_WINDOWS) {
+    objeck_exe += wxT(".exe");
+  }
+  wxString objeck_path_exe = wxFileName::GetPathSeparator();
+  objeck_path_exe += wxT("bin");
+  objeck_path_exe += wxFileName::GetPathSeparator();
+  objeck_path_exe += objeck_exe;
+  
+  wxFileName objeck_compiler_file(m_optionsManager->GetObjeckPath() + objeck_path_exe);
+  // ensure compiler exists
+  if(!objeck_compiler_file.FileExists()) {
+    return;
+  }
+
+  const wxString base_path = m_optionsManager->GetObjeckPath() + wxFileName::GetPathSeparator() + L"bin";
+  MyProcess process; wxExecuteEnv env;
+  env.env[wxT("OBJECK_LIB_PATH")] = base_path;
+  env.env[wxT("LANG")] = wxT("en_US.UTF-8");
+  
+  wxString cmd = wxT("\"");
+  cmd += base_path;
+  // cmd += wxT("\\bin\\obc.exe\" -src '");
+  cmd += objeck_path_exe;
+
+  /*
+  cmd += base_path;
+  // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
+  cmd += wxT("/examples/hello.obs' -dest a.obe");
+  
+  //---------
+  
+  const int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env); 
+  const wxString error_text = ReadInputStream(process.GetErrorStream());
+  const wxString out_text = ReadInputStream(process.GetInputStream());
+  text = error_text + out_text;
+  */
 }
 
 void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
