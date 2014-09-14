@@ -112,6 +112,7 @@ public:
   void OnProjectNew(wxCommandEvent &event);
   void OnProjectOpen(wxCommandEvent &event);
   void OnProjectClose(wxCommandEvent &event);
+  void OnProjectBuild(wxCommandEvent &event);
   // file
   void OnFileNew(wxCommandEvent &event);
   void OnFileNewFrame(wxCommandEvent &event);

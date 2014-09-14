@@ -94,12 +94,13 @@ enum {
     myID_OPEN_PROJECT,
     myID_CLOSE_FILE,
     myID_CLOSE_PROJECT,
+    myID_BUILD_PROJECT,
     
     myID_STATUSBAR,
     myID_TITLEBAR,
     myID_ABOUTTIMER,
     myID_UPDATETIMER,
-
+    
     // dialog find IDs
     myID_DLG_FIND_TEXT,
     myID_DLG_REPLACE_TEXT,
