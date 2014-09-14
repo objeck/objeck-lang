@@ -35,6 +35,28 @@ public:
 
 //----------------------------------------------------------------------------
 //! MyFrame
+class TreeData : public wxTreeItemData {
+  wxString name;
+  wxString full_path;
+
+ public:
+  TreeData(const wxString &n, const wxString &p) {
+    name = n;
+    full_path = p;
+  }
+
+  ~TreeData() {
+  }
+
+  wxString GetName() {
+    return name;
+  }
+
+  wxString GetFullPath() {
+    return full_path;
+  }
+};
+
 class MyFrame : public wxFrame {
   enum {
     ID_SampleItem
@@ -45,12 +67,21 @@ class MyFrame : public wxFrame {
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
   ProjectManager* m_projectManager;
+
+  wxTreeCtrl* m_Tree;
+  wxArrayTreeItemIds m_sourceTreeItemsIds;
+  wxTreeItemId m_sourceTreeItemId;
   
   void DoUpdate();
   
+  // tree
+  wxTreeCtrl* CreateTreeCtrl();
+  void AddProjectSource(const wxString &source);
+  void RemoveProjectSource(const wxString &source);
+  // menu and toolbar
   wxMenuBar* CreateMenuBar();
   wxAuiToolBar* DoCreateToolBar();
-  wxTreeCtrl* CreateTreeCtrl();
+  // tabbed editor
   Notebook* CreateNotebook();
   wxAuiNotebook* CreateInfoCtrl();
   
@@ -77,8 +108,11 @@ public:
 
   // common
   void OnClose(wxCloseEvent &event);
-  // file
+  // project
   void OnProjectNew(wxCommandEvent &event);
+  void OnProjectOpen(wxCommandEvent &event);
+  void OnProjectClose(wxCommandEvent &event);
+  // file
   void OnFileNew(wxCommandEvent &event);
   void OnFileNewFrame(wxCommandEvent &event);
   void OnFileOpen(wxCommandEvent &event);
