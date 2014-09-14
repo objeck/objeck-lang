@@ -48,7 +48,6 @@ class GeneralOptions : public wxDialog {
   void OnFilePath(wxCommandEvent& event);
   void OnSpaces(wxCommandEvent& event);
   void OnTabs(wxCommandEvent& event);
-
   
   wxString GetObjeckPath() {
     return wxEmptyString;
