@@ -414,7 +414,7 @@ wxTreeCtrl* MyFrame::CreateTreeCtrl()
   m_Tree->Expand(root);
   m_Tree->Expand(libs);
  
-  return tree;
+  return m_Tree;
 }
 
 Notebook* MyFrame::CreateNotebook()
