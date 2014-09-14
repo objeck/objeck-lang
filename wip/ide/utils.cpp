@@ -403,6 +403,7 @@ ProjectManager::ProjectManager(MyFrame* parent, const wxString &name, const wxSt
 	wxString project_string = wxT("name=" + name + "\r\n");
 	project_string += wxT("source=\r\n");
 	project_string += wxT("libraries=\r\n");
+  project_string += wxT("output=\r\n");
 
 	IniManager::WriteFile(filename, project_string);
   iniManager = new IniManager(filename);
