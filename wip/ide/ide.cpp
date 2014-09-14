@@ -67,6 +67,7 @@ EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
 EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
 EVT_MENU(myID_OPEN_PROJECT, MyFrame::OnProjectOpen)
 EVT_MENU(myID_CLOSE_PROJECT, MyFrame::OnProjectClose)
+EVT_MENU(myID_BUILD_PROJECT, MyFrame::OnProjectBuild)
 // find/replace
 EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
@@ -172,6 +173,11 @@ void MyFrame::RemoveProjectSource(const wxString &source)
 void MyFrame::OnProjectClose(wxCommandEvent &event)
 {
 
+}
+
+void MyFrame::OnProjectBuild(wxCommandEvent &event)
+{
+  
 }
 
 void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
@@ -336,7 +342,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
 
   // project menu
   wxMenu *projectView = new wxMenu;
-  projectView->AppendCheckItem(wxID_ANY, _("Build\tCtrl+Shift+B"));
+  projectView->AppendCheckItem(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
   projectView->AppendSeparator();
   projectView->AppendCheckItem(wxID_ANY, _("&Add file...\tCtrl+Shift+A"));
   projectView->AppendCheckItem(wxID_ANY, _("&Remove file...\tCtrl+Shift+R"));
