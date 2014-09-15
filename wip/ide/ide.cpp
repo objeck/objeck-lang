@@ -186,7 +186,7 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   
   wstring objeck_exe = wxT("obc");
   wxPlatformInfo platform;
-  if(platform.GetOperatingSystemId() == wxOS_WINDOWS) {
+  if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
     objeck_exe += wxT(".exe");
   }
   wxString objeck_path_exe = wxFileName::GetPathSeparator();
@@ -199,7 +199,7 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   if(!objeck_compiler_file.FileExists()) {
     return;
   }
-
+   
   const wxString base_path = m_optionsManager->GetObjeckPath() + wxFileName::GetPathSeparator() + L"bin";
   MyProcess process; wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = base_path;
@@ -207,10 +207,29 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   
   wxString cmd = wxT("\"");
   cmd += base_path;
-  // cmd += wxT("\\bin\\obc.exe\" -src '");
   cmd += objeck_path_exe;
+  cmd += wxT("\" -src ");
+
+  wxArrayString source_files = m_projectManager->GetFiles();
+  for(size_t i = 0; i < source_files.size(); ++i) {
+	cmd += wxT("'");
+	cmd += source_files[i];
+	cmd += wxT("'");
+	
+	if(i + i < source_files.size()) {
+		cmd += wxT(",");
+	}
+  }
+
+  // TODO: add libs
+
+  cmd += wxT(" -dest \"");
+  // m_projectManager->GetOutputFile();
+  cmd += wxT(" -dest \"");
+
 
   /*
+  cmd += wxT("\\bin\\obc.exe\" -src '");
   cmd += base_path;
   // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
   cmd += wxT("/examples/hello.obs' -dest a.obe");
@@ -386,10 +405,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
 
   // project menu
   wxMenu *projectView = new wxMenu;
-  projectView->AppendCheckItem(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
+  projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
   projectView->AppendSeparator();
-  projectView->AppendCheckItem(wxID_ANY, _("&Add file...\tCtrl+Shift+A"));
-  projectView->AppendCheckItem(wxID_ANY, _("&Remove file...\tCtrl+Shift+R"));
+  projectView->Append(wxID_ANY, _("&Add file...\tCtrl+Shift+A"));
+  projectView->Append(wxID_ANY, _("&Remove file...\tCtrl+Shift+R"));
   projectView->AppendSeparator();
   projectView->Append(wxID_ANY, _("Project options...\tALT+Shift+O"));
   
