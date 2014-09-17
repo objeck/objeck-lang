@@ -19,7 +19,7 @@
 #include <wx/statline.h>
 #include <wx/spinctrl.h>
 
-#include "utils.h"
+#include "opers.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Class GeneralOptions
