@@ -23,10 +23,13 @@
 #include "wx/utils.h"
 #include "wx/process.h"
 
-#include "edit.h"
-#include "utils.h"
+#include "editor.h"
 #include "dialogs.h"
+#include "opers.h"
 
+
+//----------------------------------------------------------------------------
+//! MyApp
 class MyApp : public wxApp {
 
 public:
@@ -34,7 +37,7 @@ public:
 };
 
 //----------------------------------------------------------------------------
-//! MyFrame
+//! TreeData
 class TreeData : public wxTreeItemData {
   wxString name;
   wxString full_path;
@@ -57,6 +60,8 @@ class TreeData : public wxTreeItemData {
   }
 };
 
+//----------------------------------------------------------------------------
+//! MyFrame
 class MyFrame : public wxFrame {
   enum {
     ID_SampleItem
@@ -99,6 +104,10 @@ class MyFrame : public wxFrame {
     }
     
     return out;
+  }
+
+  bool IsProjectLoaded() {
+	  return m_Tree != NULL;
   }
 
 public:
