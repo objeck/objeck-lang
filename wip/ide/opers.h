@@ -130,6 +130,7 @@ class ProjectManager {
 
  public:
   // creates a new project
+  // TODO: pass in necessary UI controls (i.e. tree)
   ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename);
   // loads an existing project
   ProjectManager(MyFrame* parent, const wxString &filename);
