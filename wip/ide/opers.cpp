@@ -411,7 +411,7 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
 
 	IniManager::WriteFile(filename, project_string);
   iniManager = new IniManager(filename);
-  BuildTree();
+  BuildTree(name);
 
   // enable project menu
   m_parent->EnableProjectMenu();
@@ -422,7 +422,7 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
   m_parent = parent;
   m_tree = tree;
   iniManager = new IniManager(filename);
-  BuildTree();
+  BuildTree(iniManager->GetValue(L"Project", L"name"));
 
   // add project files
   wxArrayString src_files = GetFiles();
@@ -445,12 +445,12 @@ ProjectManager::~ProjectManager()
   delete iniManager;
 }
 
-void ProjectManager::BuildTree()
+void ProjectManager::BuildTree(const wxString &name)
 {
   m_tree->DeleteAllItems();
 
   // root
-  wxTreeItemId root = m_tree->AddRoot(wxT("XML Parser"), 0);
+  wxTreeItemId root = m_tree->AddRoot(name, 0);
 
   // source
   m_sourceTreeItemId = m_tree->AppendItem(root, wxT("Source"), 1);

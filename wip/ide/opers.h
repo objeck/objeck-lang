@@ -133,7 +133,7 @@ class ProjectManager {
 	  iniManager->Load();
   }
 
-  void BuildTree();
+  void BuildTree(const wxString &name);
 
  public:
   // creates a new project
