@@ -398,8 +398,12 @@ void GeneralOptionsManager::ShowOptionsDialog(wxWindow* parent)
 //----------------------------------------------------------------------------
 // ProjectManager
 //----------------------------------------------------------------------------
-ProjectManager::ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename)
+ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename)
 {
+  m_parent = parent;
+  m_tree = tree;
+  
+  // create project file
 	wxString project_string = wxT("name=" + name + "\r\n");
 	project_string += wxT("source=\r\n");
 	project_string += wxT("libraries=\r\n");
@@ -407,26 +411,73 @@ ProjectManager::ProjectManager(MyFrame* parent, const wxString &name, const wxSt
 
 	IniManager::WriteFile(filename, project_string);
   iniManager = new IniManager(filename);
+  BuildTree();
+
+  // enable project menu
+  m_parent->EnableProjectMenu();
 }
 
-ProjectManager::ProjectManager(MyFrame* parent, const wxString &filename)
+ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename)
 {
+  m_parent = parent;
+  m_tree = tree;
   iniManager = new IniManager(filename);
+  BuildTree();
+
+  // add project files
+  wxArrayString src_files = GetFiles();
+  for(size_t i = 0; i < src_files.size(); ++i) {
+    const wxString full_path = src_files[i];
+    wxFileName source_file(full_path);
+    const wxString file_name = source_file.GetFullName();
+    AddFile(file_name, full_path);    
+  }
+  m_parent->EnableProjectNode(m_sourceTreeItemId);
+
+  // enable project menu
+  m_parent->EnableProjectMenu();
 }
 
 ProjectManager::~ProjectManager()
 {
+  m_tree->DeleteAllItems();
+  m_parent->DisableProjectMenu();
   delete iniManager;
 }
 
-bool ProjectManager::AddFile(const wxString &filename)
+void ProjectManager::BuildTree()
 {
-  return false;
+  m_tree->DeleteAllItems();
+
+  // root
+  wxTreeItemId root = m_tree->AddRoot(wxT("XML Parser"), 0);
+
+  // source
+  m_sourceTreeItemId = m_tree->AppendItem(root, wxT("Source"), 1);
+  /*
+  m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, wxT("scanner.obs"), 2));
+  m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, wxT("tree.obs"), 2));
+  m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, wxT("print.obs"), 2));
+  */
+
+  // libraries
+  wxArrayTreeItemIds lib_items;
+  wxTreeItemId libs = m_tree->AppendItem(root, wxT("Libaries"), 1);
+  lib_items.Add(m_tree->AppendItem(libs, wxT("lang.obl"), 3));
+  lib_items.Add(m_tree->AppendItem(libs, wxT("collect.obl"), 3));
+
+  m_tree->Expand(root);
+  m_tree->Expand(libs);
+}
+
+void ProjectManager::AddFile(const wxString &filename, const wxString &full_path)
+{
+  m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, filename, 2, -1, new TreeData(filename, full_path)));
 }
  
-bool ProjectManager::RemoveFile(const wxString &filename)
+void ProjectManager::RemoveFile(const wxString &filename)
 {
-  return false;
+
 }
 
 wxArrayString ProjectManager::GetFiles() 
