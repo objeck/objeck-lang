@@ -63,57 +63,77 @@ class TreeData : public wxTreeItemData {
 //----------------------------------------------------------------------------
 //! MyFrame
 class MyFrame : public wxFrame {
-  enum {
-    ID_SampleItem
-  };
+	enum {
+		ID_SampleItem
+	};
 
-  wxAuiManager aui_manager;
-  Notebook* m_notebook;
-  size_t m_newPageCount;
-  GeneralOptionsManager* m_optionsManager;
-  ProjectManager* m_projectManager;
+	wxAuiManager aui_manager;
+	Notebook* m_notebook;
+	size_t m_newPageCount;
+	GeneralOptionsManager* m_optionsManager;
+	ProjectManager* m_projectManager;
+  wxMenu* m_projectView;
+	wxTreeCtrl* m_tree;
+	
+	void DoUpdate();
 
-  wxTreeCtrl* m_Tree;
-  wxArrayTreeItemIds m_sourceTreeItemsIds;
-  wxTreeItemId m_sourceTreeItemId;
-  
-  void DoUpdate();
-  
-  // tree
-  wxTreeCtrl* CreateTreeCtrl();
-  void AddProjectSource(const wxString &source);
-  void RemoveProjectSource(const wxString &source);
-  // menu and toolbar
-  wxMenuBar* CreateMenuBar();
-  wxAuiToolBar* DoCreateToolBar();
-  // tabbed editor
-  Notebook* CreateNotebook();
-  wxAuiNotebook* CreateInfoCtrl();
-  
-  wxString ReadInputStream(wxInputStream* in) {
-    if (!in) {
-      return wxEmptyString;
-    }
-    
-    wxString out;
-    while (in->CanRead() && !in->Eof()) {
-      wxChar c = in->GetC();
-      if(iswprint(c) || isspace(c)) {
-        out.Append(c);
-      }
-    }
-    
-    return out;
-  }
+	// tree
+	wxTreeCtrl* CreateTreeCtrl();
+	// menu and toolbar
+	wxMenuBar* CreateMenuBar();
+	wxAuiToolBar* DoCreateToolBar();
+	// tabbed editor
+	Notebook* CreateNotebook();
+	wxAuiNotebook* CreateInfoCtrl();
 
-  bool IsProjectLoaded() {
-	  return m_Tree != NULL;
-  }
+	wxString ReadInputStream(wxInputStream* in) {
+		if(!in) {
+			return wxEmptyString;
+		}
+
+		wxString out;
+		while(in->CanRead() && !in->Eof()) {
+			wxChar c = in->GetC();
+			if(iswprint(c) || isspace(c)) {
+				out.Append(c);
+			}
+		}
+
+		return out;
+	}
+
+	bool IsProjectLoaded() {
+		return m_tree != NULL;
+	}
 
 public:
   MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
-    const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
+		  const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
   ~MyFrame();
+
+  // project operations
+  void EnableProjectMenu() {
+    m_projectView->Enable(myID_BUILD_PROJECT, true);
+    m_projectView->Enable(myID_ADD_FILE_PROJECT, true);
+    m_projectView->Enable(myID_REMOVE_FILE_PROJECT, true);
+    m_projectView->Enable(myID_PROJECT_OPTIONS, true);
+  }
+
+  void DisableProjectMenu() {
+    m_projectView->Enable(myID_BUILD_PROJECT, false);
+    m_projectView->Enable(myID_ADD_FILE_PROJECT, false);
+    m_projectView->Enable(myID_REMOVE_FILE_PROJECT, false);
+    m_projectView->Enable(myID_PROJECT_OPTIONS, false);
+  }
+
+  void EnableProjectNode(wxTreeItemId id) {
+    if(m_tree) {
+      m_tree->Expand(id);
+    }
+  }
+
+  void AddProjectSource(const wxString &source);
+  void RemoveProjectSource(const wxString &source);
 
   // common
   void OnClose(wxCloseEvent &event);

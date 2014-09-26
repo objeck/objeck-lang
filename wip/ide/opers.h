@@ -22,6 +22,7 @@
 #include <wx/process.h>
 #include <wx/arrstr.h>
 #include <wx/hashset.h>
+#include "wx/treectrl.h"
 
 #include "../../src/shared/sys.h"
 #include "defsext.h"
@@ -122,18 +123,23 @@ class GeneralOptionsManager {
 //----------------------------------------------------------------------------
 //! IniManager
 class ProjectManager {
+  MyFrame* m_parent;
+  wxTreeCtrl* m_tree;
+  wxArrayTreeItemIds m_sourceTreeItemsIds;
+  wxTreeItemId m_sourceTreeItemId;
   IniManager* iniManager;
   
   void Load() {
 	  iniManager->Load();
   }
 
+  void BuildTree();
+
  public:
   // creates a new project
-  // TODO: pass in necessary UI controls (i.e. tree)
-  ProjectManager(MyFrame* parent, const wxString &name, const wxString &filename);
+   ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename);
   // loads an existing project
-  ProjectManager(MyFrame* parent, const wxString &filename);
+   ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename);
   ~ProjectManager();
 
   // save and close project
@@ -148,8 +154,8 @@ class ProjectManager {
   // parser that runs when files are saved?
 
   // file operations
-  bool AddFile(const wxString &filename);
-  bool RemoveFile(const wxString &filename);
+  void AddFile(const wxString &filename, const wxString &full_path);
+  void RemoveFile(const wxString &filename);
   wxArrayString GetFiles(); 
 
   // library operations

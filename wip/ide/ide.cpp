@@ -150,20 +150,17 @@ void MyFrame::OnProjectOpen(wxCommandEvent &event)
    wxFileDialog fileDialog(this, L"Open Objeck Project", L"", L"", 
                            L"Project Files (*.obp)|*.obp", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
    if(fileDialog.ShowModal() == wxID_OK) {
-     m_projectManager = new ProjectManager(this, fileDialog.GetPath());     
-     wxArrayString src_files = m_projectManager->GetFiles();
-     for(size_t i = 0; i < src_files.size(); ++i) {
-       AddProjectSource(src_files[i]);
-     }
+     m_projectManager = new ProjectManager(this, m_tree, fileDialog.GetPath());
    }
-   m_Tree->Expand(m_sourceTreeItemId);
 }
 
 void MyFrame::AddProjectSource(const wxString &full_path) 
 {
   wxFileName source_file(full_path);
   const wxString file_name = source_file.GetFullName();
-  m_sourceTreeItemsIds.Add(m_Tree->AppendItem(m_sourceTreeItemId, file_name, 2, -1, new TreeData(file_name, full_path)));
+  if(m_projectManager) {
+    m_projectManager->AddFile(file_name, full_path);
+  }
 }
 
 void MyFrame::RemoveProjectSource(const wxString &source) 
@@ -173,7 +170,10 @@ void MyFrame::RemoveProjectSource(const wxString &source)
 
 void MyFrame::OnProjectClose(wxCommandEvent &event)
 {
-
+  if(m_projectManager) {
+    delete m_projectManager;
+    m_projectManager = NULL;
+  }
 }
 
 void MyFrame::OnProjectBuild(wxCommandEvent &event)
@@ -256,11 +256,11 @@ void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
                                     wxT(" already exists.\nWould you like to overwrite it?"),
                                     "Overwrite File", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_INFORMATION);
       if(fileOverWrite.ShowModal() == wxID_YES) {
-        m_projectManager = new ProjectManager(this, name, full_name.GetFullPath());
+        m_projectManager = new ProjectManager(this, m_tree, name, full_name.GetFullPath());
       }
     }
     else {
-      m_projectManager = new ProjectManager(this, name, full_name.GetFullPath());      
+      m_projectManager = new ProjectManager(this, m_tree, name, full_name.GetFullPath());
     }
   }
 }
@@ -404,22 +404,23 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuView->AppendCheckItem(myID_WHITESPACE, _("Show white&space"));
 
   // project menu
-  wxMenu *projectView = new wxMenu;
-  projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
-  projectView->AppendSeparator();
-  projectView->Append(wxID_ANY, _("&Add file...\tCtrl+Shift+A"));
-  projectView->Append(wxID_ANY, _("&Remove file...\tCtrl+Shift+R"));
-  projectView->AppendSeparator();
-  projectView->Append(wxID_ANY, _("Project options...\tALT+Shift+O"));
-  
+  m_projectView = new wxMenu;
+  m_projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
+  m_projectView->AppendSeparator();
+  m_projectView->Append(myID_ADD_FILE_PROJECT, _("&Add file...\tCtrl+Shift+A"));
+  m_projectView->Append(myID_REMOVE_FILE_PROJECT, _("&Remove file...\tCtrl+Shift+R"));
+  m_projectView->AppendSeparator();
+  m_projectView->Append(myID_PROJECT_OPTIONS, _("Project options...\tALT+Shift+O"));
+  DisableProjectMenu();
+
   // menu bar
   wxMenuBar* menu_bar = new wxMenuBar;
   menu_bar->Append(menuFile, wxT("&File"));
   menu_bar->Append(menuEdit, wxT("&Edit"));
-  menu_bar->Append(projectView, wxT("&Project"));
+  menu_bar->Append(m_projectView, wxT("&Project"));
   menu_bar->Append(menuView, wxT("&View"));
   menu_bar->Append(new wxMenu, wxT("&Help"));
-
+  
   return menu_bar;
 }
 
@@ -454,36 +455,18 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
 
 wxTreeCtrl* MyFrame::CreateTreeCtrl() 
 {
-  m_Tree = new wxTreeCtrl(this, wxID_ANY, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
+  m_tree = new wxTreeCtrl(this, wxID_ANY, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
   imglist->Add(wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)));
   imglist->Add(wxArtProvider::GetBitmap(wxART_LIST_VIEW, wxART_OTHER, wxSize(16, 16)));
   imglist->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16)));
   imglist->Add(wxArtProvider::GetBitmap(wxART_EXECUTABLE_FILE, wxART_OTHER, wxSize(16, 16)));
-  m_Tree->AssignImageList(imglist);
+  m_tree->AssignImageList(imglist);
 
-  // root
-  wxTreeItemId root = m_Tree->AddRoot(wxT("XML Parser"), 0);
-
-  // source
-  m_sourceTreeItemId = m_Tree->AppendItem(root, wxT("Source"), 1);
-  /*
-  m_sourceTreeItemsIds.Add(m_Tree->AppendItem(m_sourceTreeItemId, wxT("scanner.obs"), 2));
-  m_sourceTreeItemsIds.Add(m_Tree->AppendItem(m_sourceTreeItemId, wxT("tree.obs"), 2));
-  m_sourceTreeItemsIds.Add(m_Tree->AppendItem(m_sourceTreeItemId, wxT("print.obs"), 2));
-  */  
-
-  // libraries
-  wxArrayTreeItemIds lib_items;
-  wxTreeItemId libs = m_Tree->AppendItem(root, wxT("Libaries"), 1);
-  lib_items.Add(m_Tree->AppendItem(libs, wxT("lang.obl"), 3));
-  lib_items.Add(m_Tree->AppendItem(libs, wxT("collect.obl"), 3));
-
-  m_Tree->Expand(root);
-  m_Tree->Expand(libs);
- 
-  return m_Tree;
+  m_tree->AddRoot(wxT("<no project>"), 0);
+  
+  return m_tree;
 }
 
 Notebook* MyFrame::CreateNotebook()

@@ -89,12 +89,16 @@ enum {
 
     // other IDs
     myID_NEW_FILE,
-    myID_NEW_PROJECT,
     myID_OPEN_FILE,
-    myID_OPEN_PROJECT,
     myID_CLOSE_FILE,
+
+    myID_NEW_PROJECT,
+    myID_OPEN_PROJECT,
     myID_CLOSE_PROJECT,
     myID_BUILD_PROJECT,
+    myID_ADD_FILE_PROJECT,
+    myID_REMOVE_FILE_PROJECT,
+    myID_PROJECT_OPTIONS,
     
     myID_STATUSBAR,
     myID_TITLEBAR,
