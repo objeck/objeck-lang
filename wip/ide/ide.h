@@ -171,6 +171,8 @@ public:
   void OnProjectOpen(wxCommandEvent &event);
   void OnProjectClose(wxCommandEvent &event);
   void OnProjectBuild(wxCommandEvent &event);
+  void OnAddProjectFile(wxCommandEvent &event);
+  void OnRemoveProjectFile(wxCommandEvent &event);
   // file
   void OnFileNew(wxCommandEvent &event);
   void OnFileNewFrame(wxCommandEvent &event);
