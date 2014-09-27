@@ -69,6 +69,8 @@ EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
 EVT_MENU(myID_OPEN_PROJECT, MyFrame::OnProjectOpen)
 EVT_MENU(myID_CLOSE_PROJECT, MyFrame::OnProjectClose)
 EVT_MENU(myID_BUILD_PROJECT, MyFrame::OnProjectBuild)
+EVT_MENU(myID_PROJECT_ADD_FILE, MyFrame::OnAddProjectFile)
+EVT_MENU(myID_PROJECT_REMOVE_FILE, MyFrame::OnRemoveProjectFile)
 // find/replace
 EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
@@ -153,11 +155,25 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
 // file event handlers
 void MyFrame::OnProjectOpen(wxCommandEvent &event)
 {
-   wxFileDialog fileDialog(this, L"Open Objeck Project", L"", L"", 
-                           L"Project Files (*.obp)|*.obp", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+   wxFileDialog fileDialog(this, L"Open Objeck Project", L"", L"", L"Project Files (*.obp)|*.obp", 
+                           wxFD_OPEN|wxFD_FILE_MUST_EXIST);
    if(fileDialog.ShowModal() == wxID_OK) {
      m_projectManager = new ProjectManager(this, m_tree, fileDialog.GetPath());
    }
+}
+
+void MyFrame::OnAddProjectFile(wxCommandEvent &event)
+{
+  wxFileDialog fileDialog(this, L"Add Source File...", L"", L"", L"Source Files (*.obs)|*.obs", 
+                          wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+  if(fileDialog.ShowModal() == wxID_OK) {
+    AddProjectSource(fileDialog.GetPath());
+  }
+}
+
+void MyFrame::OnRemoveProjectFile(wxCommandEvent &event)
+{
+  
 }
 
 void MyFrame::AddProjectSource(const wxString &full_path) 
@@ -568,12 +584,12 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
     }
     else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Add library..."));
+      menu.Append(myID_PROJECT_ADD_LIB, _("&Add library..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitSource(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Add source..."));
+      menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(item) {
