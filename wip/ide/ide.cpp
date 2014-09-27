@@ -282,7 +282,7 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
   if(dlg.ShowModal() != wxID_OK) {
     return;
   }
-	wxString path = dlg.GetPath();
+	const wxString path = dlg.GetPath();
   m_notebook->OpenFile(path);
 }
 
@@ -414,14 +414,14 @@ wxMenuBar* MyFrame::CreateMenuBar()
   DisableProjectMenu();
 
   // menu bar
-  wxMenuBar* menu_bar = new wxMenuBar;
-  menu_bar->Append(menuFile, wxT("&File"));
-  menu_bar->Append(menuEdit, wxT("&Edit"));
-  menu_bar->Append(m_projectView, wxT("&Project"));
-  menu_bar->Append(menuView, wxT("&View"));
-  menu_bar->Append(new wxMenu, wxT("&Help"));
+  wxMenuBar* menuBar = new wxMenuBar;
+  menuBar->Append(menuFile, wxT("&File"));
+  menuBar->Append(menuEdit, wxT("&Edit"));
+  menuBar->Append(m_projectView, wxT("&Project"));
+  menuBar->Append(menuView, wxT("&View"));
+  menuBar->Append(new wxMenu, wxT("&Help"));
   
-  return menu_bar;
+  return menuBar;
 }
 
 wxAuiToolBar* MyFrame::DoCreateToolBar()
@@ -464,7 +464,7 @@ MyTreeCtrl* MyFrame::CreateTreeCtrl()
   imglist->Add(wxArtProvider::GetBitmap(wxART_EXECUTABLE_FILE, wxART_OTHER, wxSize(16, 16)));
   m_tree->AssignImageList(imglist);
 
-  m_tree->AddRoot(wxT("<no project>"), 0);
+  m_tree->AddRoot(wxT("<empty project>"), 0);
   
   return m_tree;
 }
@@ -537,9 +537,10 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 /////////////////////////
 wxBEGIN_EVENT_TABLE(MyTreeCtrl, wxTreeCtrl)
 EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, MyTreeCtrl::OnItemMenu)
+EVT_TREE_ITEM_ACTIVATED(myID_PROJECT_TREE, MyTreeCtrl::OnItemActivated)
 wxEND_EVENT_TABLE()
 
-MyTreeCtrl::MyTreeCtrl(MyFrame *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+MyTreeCtrl::MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
   : wxTreeCtrl(parent, id, pos, size, style)
 {
   m_frame = parent;
@@ -548,7 +549,7 @@ MyTreeCtrl::MyTreeCtrl(MyFrame *parent, const wxWindowID id, const wxPoint& pos,
 void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
 {
   wxTreeItemId itemId = event.GetItem();
-  TreeData *item = (TreeData *)GetItemData(itemId);
+  TreeData* item = (TreeData*)GetItemData(itemId);
 
   if(m_frame->GetProjectManager()) {
     if(m_frame->GetProjectManager()->HitProject(itemId)) {
@@ -556,24 +557,22 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
       menu.Append(wxID_ANY, _("&Add source"));
       menu.Append(wxID_ANY, _("&Add library"));
       menu.AppendSeparator();
-      menu.Append(wxID_ANY, wxT("&Properties"));
+      menu.Append(wxID_ANY, wxT("&Project options..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Add library"));
-      menu.AppendSeparator();
-      menu.Append(wxID_ANY, wxT("&Properties"));
+      menu.Append(wxID_ANY, _("&Add library..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitSource(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Add source"));
+      menu.Append(wxID_ANY, _("&Add source..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(item) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Remove file"));
+      menu.Append(wxID_ANY, _("&Remove"));
       menu.AppendSeparator();
       menu.Append(wxID_ANY, wxT("&Properties"));
       PopupMenu(&menu, event.GetPoint());
@@ -591,6 +590,24 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
   event.Skip();
 }
 
+void MyTreeCtrl::OnItemActivated(wxTreeEvent& event)
+{
+  wxTreeItemId itemId = event.GetItem();
+  TreeData* item = (TreeData*)GetItemData(itemId);
+
+  if(item) {
+    const wxString full_path = item->GetFullPath();
+    wxFileName source_file(full_path);
+    if(source_file.Exists()) {
+      m_frame->OpenFile(source_file.GetFullPath());
+    }
+    else {
+      wxMessageDialog fileOverWrite(this, wxT("Unable to open file \'") + source_file.GetFullName() + 
+                                    wxT("'.\nPlease check the full file path."), wxT("Unable to Open File"));
+      fileOverWrite.ShowModal();
+    }
+  }
+}
 
 
 

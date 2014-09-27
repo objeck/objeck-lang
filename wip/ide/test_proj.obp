@@ -2,4 +2,4 @@
 libraries=lang.obl;collect.obl
 name=FooBar
 output=a.obe
-source=/home/objeck/Documents/Code/objeck-lang/src/compiler/rc/http.obs;/home/objeck/Documents/Code/objeck-lang/src/compiler/test_src/prgm67.obs
+source=C:/Users/Randy/Documents/Code/objeck-lang/src/compiler/rc/cipher.obs;C:/Users/Randy/Documents/Code/objeck-lang/src/compiler/test_src/prgm67.obs
