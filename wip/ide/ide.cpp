@@ -121,6 +121,12 @@ MyFrame::~MyFrame()
     delete m_optionsManager;
     m_optionsManager = NULL;
   }
+
+  if(m_projectManager) {
+    delete m_projectManager;
+    m_projectManager = NULL;
+  }
+
   aui_manager.UnInit();
 }
 
