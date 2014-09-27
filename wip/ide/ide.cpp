@@ -181,7 +181,7 @@ void MyFrame::AddProjectSource(const wxString &full_path)
   wxFileName source_file(full_path);
   const wxString file_name = source_file.GetFullName();
   if(m_projectManager) {
-    m_projectManager->AddFile(file_name, full_path);
+    m_projectManager->AddFile(file_name, full_path, true);
   }
 }
 
