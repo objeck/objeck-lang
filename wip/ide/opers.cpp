@@ -450,10 +450,10 @@ void ProjectManager::BuildTree(const wxString &name)
   m_tree->DeleteAllItems();
 
   // root
-  wxTreeItemId root = m_tree->AddRoot(name, 0);
+  m_root = m_tree->AddRoot(name, 0);
 
   // source
-  m_sourceTreeItemId = m_tree->AppendItem(root, wxT("Source"), 1);
+  m_sourceTreeItemId = m_tree->AppendItem(m_root, wxT("Source"), 1);
   /*
   m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, wxT("scanner.obs"), 2));
   m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, wxT("tree.obs"), 2));
@@ -462,12 +462,12 @@ void ProjectManager::BuildTree(const wxString &name)
 
   // libraries
   wxArrayTreeItemIds lib_items;
-  wxTreeItemId libs = m_tree->AppendItem(root, wxT("Libaries"), 1);
-  lib_items.Add(m_tree->AppendItem(libs, wxT("lang.obl"), 3));
-  lib_items.Add(m_tree->AppendItem(libs, wxT("collect.obl"), 3));
+  m_libraryTreeItemId = m_tree->AppendItem(m_root, wxT("Libaries"), 1);
+  lib_items.Add(m_tree->AppendItem(m_libraryTreeItemId, wxT("lang.obl"), 3));
+  lib_items.Add(m_tree->AppendItem(m_libraryTreeItemId, wxT("collect.obl"), 3));
 
-  m_tree->Expand(root);
-  m_tree->Expand(libs);
+  m_tree->Expand(m_root);
+  m_tree->Expand(m_libraryTreeItemId);
 }
 
 void ProjectManager::AddFile(const wxString &filename, const wxString &full_path)

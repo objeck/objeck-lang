@@ -126,7 +126,9 @@ class ProjectManager {
   MyFrame* m_parent;
   wxTreeCtrl* m_tree;
   wxArrayTreeItemIds m_sourceTreeItemsIds;
+  wxTreeItemId m_root;
   wxTreeItemId m_sourceTreeItemId;
+  wxTreeItemId m_libraryTreeItemId;
   IniManager* iniManager;
   
   void Load() {
@@ -141,6 +143,19 @@ class ProjectManager {
   // loads an existing project
    ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename);
   ~ProjectManager();
+
+  // hit traget
+  bool HitProject(wxTreeItemId &hit) {
+    return m_root == hit;
+  }
+
+  bool HitLibrary(wxTreeItemId &hit) {
+    return m_libraryTreeItemId == hit;
+  }
+
+  bool HitSource(wxTreeItemId &hit) {
+    return m_sourceTreeItemId == hit;
+  }
 
   // save and close project
   void Save() {

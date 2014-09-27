@@ -99,6 +99,7 @@ enum {
     myID_ADD_FILE_PROJECT,
     myID_REMOVE_FILE_PROJECT,
     myID_PROJECT_OPTIONS,
+    myID_PROJECT_TREE,
     
     myID_STATUSBAR,
     myID_TITLEBAR,
