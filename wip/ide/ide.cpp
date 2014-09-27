@@ -453,9 +453,9 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
   return toolbar;
 }
 
-wxTreeCtrl* MyFrame::CreateTreeCtrl() 
+MyTreeCtrl* MyFrame::CreateTreeCtrl() 
 {
-  m_tree = new wxTreeCtrl(this, wxID_ANY, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
+  m_tree = new MyTreeCtrl(this, myID_PROJECT_TREE, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
   imglist->Add(wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)));
@@ -531,6 +531,66 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 
   return info_ctrl;
 }
+
+/////////////////////////
+// MyTreeCtrl
+/////////////////////////
+wxBEGIN_EVENT_TABLE(MyTreeCtrl, wxTreeCtrl)
+EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, MyTreeCtrl::OnItemMenu)
+wxEND_EVENT_TABLE()
+
+MyTreeCtrl::MyTreeCtrl(MyFrame *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+  : wxTreeCtrl(parent, id, pos, size, style)
+{
+  m_frame = parent;
+}
+
+void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
+{
+  wxTreeItemId itemId = event.GetItem();
+  TreeData *item = (TreeData *)GetItemData(itemId);
+
+  if(m_frame->GetProjectManager()) {
+    if(m_frame->GetProjectManager()->HitProject(itemId)) {
+      wxMenu menu;
+      menu.Append(wxID_ANY, _("&Add source"));
+      menu.Append(wxID_ANY, _("&Add library"));
+      menu.AppendSeparator();
+      menu.Append(wxID_ANY, wxT("&Properties"));
+      PopupMenu(&menu, event.GetPoint());
+    }
+    else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
+      wxMenu menu;
+      menu.Append(wxID_ANY, _("&Add library"));
+      menu.AppendSeparator();
+      menu.Append(wxID_ANY, wxT("&Properties"));
+      PopupMenu(&menu, event.GetPoint());
+    }
+    else if(m_frame->GetProjectManager()->HitSource(itemId)) {
+      wxMenu menu;
+      menu.Append(wxID_ANY, _("&Add source"));
+      PopupMenu(&menu, event.GetPoint());
+    }
+    else if(item) {
+      wxMenu menu;
+      menu.Append(wxID_ANY, _("&Remove file"));
+      menu.AppendSeparator();
+      menu.Append(wxID_ANY, wxT("&Properties"));
+      PopupMenu(&menu, event.GetPoint());
+
+      /*
+      MyTreeItemData *item = (MyTreeItemData *)GetItemData(itemId);
+      wxLogMessage(wxT("OnItemMenu for item \"%s\" at screen coords (%i, %i)"),
+      item->GetDesc(), screenpt.x, screenpt.y);
+
+      ShowMenu(itemId, clientpt);
+      */
+    }
+  }
+
+  event.Skip();
+}
+
 
 
 
