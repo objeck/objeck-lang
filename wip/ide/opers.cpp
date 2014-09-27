@@ -468,9 +468,13 @@ void ProjectManager::BuildTree(const wxString &name)
   m_tree->Thaw();
 }
 
-void ProjectManager::AddFile(const wxString &filename, const wxString &full_path)
+void ProjectManager::AddFile(const wxString &filename, const wxString &full_path, bool save)
 {
   m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, filename, 2, -1, new TreeData(filename, full_path)));
+  if(save) {
+    iniManager->AddListValue(L"Project", L"source", full_path);
+    iniManager->Save();
+  }
 }
  
 void ProjectManager::RemoveFile(const wxString &filename)

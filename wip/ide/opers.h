@@ -169,7 +169,7 @@ class ProjectManager {
   // parser that runs when files are saved?
 
   // file operations
-  void AddFile(const wxString &filename, const wxString &full_path);
+  void AddFile(const wxString &filename, const wxString &full_path, bool save = false);
   void RemoveFile(const wxString &filename);
   wxArrayString GetFiles(); 
 
