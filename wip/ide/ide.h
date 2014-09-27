@@ -27,6 +27,7 @@
 #include "dialogs.h"
 #include "opers.h"
 
+class MyFrame;
 
 //----------------------------------------------------------------------------
 //! MyApp
@@ -61,6 +62,21 @@ class TreeData : public wxTreeItemData {
 };
 
 //----------------------------------------------------------------------------
+//! MyTreeCtrl
+class MyTreeCtrl : public wxTreeCtrl {
+  MyFrame* m_frame;
+
+  void OnItemMenu(wxTreeEvent& event);
+
+public:
+  MyTreeCtrl(MyFrame *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
+  ~MyTreeCtrl() {
+  }
+  
+  DECLARE_EVENT_TABLE();
+};
+
+//----------------------------------------------------------------------------
 //! MyFrame
 class MyFrame : public wxFrame {
 	enum {
@@ -73,12 +89,12 @@ class MyFrame : public wxFrame {
 	GeneralOptionsManager* m_optionsManager;
 	ProjectManager* m_projectManager;
   wxMenu* m_projectView;
-	wxTreeCtrl* m_tree;
+	MyTreeCtrl* m_tree;
 	
 	void DoUpdate();
 
 	// tree
-	wxTreeCtrl* CreateTreeCtrl();
+	MyTreeCtrl* CreateTreeCtrl();
 	// menu and toolbar
 	wxMenuBar* CreateMenuBar();
 	wxAuiToolBar* DoCreateToolBar();
@@ -112,6 +128,10 @@ public:
   ~MyFrame();
 
   // project operations
+  ProjectManager* GetProjectManager() {
+    return m_projectManager;
+  }
+
   void EnableProjectMenu() {
     m_projectView->Enable(myID_BUILD_PROJECT, true);
     m_projectView->Enable(myID_ADD_FILE_PROJECT, true);
