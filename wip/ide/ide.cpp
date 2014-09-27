@@ -562,8 +562,6 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
     else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
       wxMenu menu;
       menu.Append(wxID_ANY, _("&Add library"));
-      menu.AppendSeparator();
-      menu.Append(wxID_ANY, wxT("&Properties"));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitSource(itemId)) {
