@@ -269,88 +269,89 @@ BEGIN_EVENT_TABLE(Edit, wxStyledTextCtrl)
     EVT_STC_MODIFIED(wxID_ANY, Edit::OnModified)
 END_EVENT_TABLE()
 
-Edit::Edit (wxWindow *parent, wxWindowID id,
-            const wxPoint &pos,
-            const wxSize &size,
-            long style)
-    : wxStyledTextCtrl (parent, id, pos, size, style) {
+Edit::Edit (wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style)
+: wxStyledTextCtrl (parent, id, pos, size, style) {
 
-    m_findReplace = NULL;
-    m_filename = wxEmptyString;
+  m_findReplace = NULL;
+  m_filename = wxEmptyString;
 
-    m_LineNrID = 0;
-    m_DividerID = 1;
-    m_FoldingID = 2;
+  m_LineNrID = 0;
+  m_DividerID = 1;
+  m_FoldingID = 2;
 
-    // initialize language
-    m_language = NULL;
+  // initialize language
+  m_language = NULL;
 
-    // Use all the bits in the style byte as styles, not indicators.
-    SetStyleBits(8);
+  // Use all the bits in the style byte as styles, not indicators.
+  SetStyleBits(8);
+
+#ifdef __WXOSX_COCOA__
+  SetZoom(4);
+#endif
+
+  m_modified = false;
+  SetModEventMask(wxSTC_MOD_INSERTTEXT | wxSTC_MOD_DELETETEXT);
     
-    m_modified = false;
-    SetModEventMask(wxSTC_MOD_INSERTTEXT | wxSTC_MOD_DELETETEXT);
+  // setup unicode support
+  SetKeysUnicode(true);
+  SetCodePage(wxSTC_CP_UTF8);
+  wxConvCurrent = &wxConvUTF8;
+
+  // default font for all styles
+  SetViewEOL (g_CommonPrefs.displayEOLEnable);
+  SetIndentationGuides (g_CommonPrefs.indentGuideEnable);
+  SetEdgeMode (g_CommonPrefs.longLineOnEnable?
+               wxSTC_EDGE_LINE: wxSTC_EDGE_NONE);
+  SetViewWhiteSpace (g_CommonPrefs.whiteSpaceEnable?
+                     wxSTC_WS_VISIBLEALWAYS: wxSTC_WS_INVISIBLE);
+  SetOvertype (g_CommonPrefs.overTypeInitial);
+  SetReadOnly (g_CommonPrefs.readOnlyInitial);
+  SetWrapMode (g_CommonPrefs.wrapModeInitial?
+               wxSTC_WRAP_WORD: wxSTC_WRAP_NONE);
+  wxFont font (10, wxMODERN, wxNORMAL, wxNORMAL);
+  StyleSetFont (wxSTC_STYLE_DEFAULT, font);
+  StyleSetForeground (wxSTC_STYLE_DEFAULT, *wxBLACK);
+  StyleSetBackground (wxSTC_STYLE_DEFAULT, *wxWHITE);
+  StyleSetForeground (wxSTC_STYLE_LINENUMBER, wxColour (wxT("DARK GREY")));
+  StyleSetBackground (wxSTC_STYLE_LINENUMBER, *wxWHITE);
+  StyleSetForeground(wxSTC_STYLE_INDENTGUIDE, wxColour (wxT("DARK GREY")));
+  InitializePrefs (DEFAULT_LANGUAGE);
+
+  // set visibility
+  SetVisiblePolicy (wxSTC_VISIBLE_STRICT|wxSTC_VISIBLE_SLOP, 1);
+  SetXCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
+  SetYCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
+
+  // markers
+  // ---- Enable code folding
+  SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+  SetMarginWidth(MARGIN_FOLD, 15);
+  SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+  SetMarginSensitive(MARGIN_FOLD, true);
+
+  // Properties found from http://www.scintilla.org/SciTEDoc.html
+  SetProperty(wxT("fold"), wxT("1"));
+  SetProperty(wxT("fold.comment"), wxT("1"));
+  SetProperty(wxT("fold.compact"), wxT("1"));
+
+  SetProperty(wxT("fold"), wxT("1"));
+  SetProperty(wxT("fold.comment"), wxT("1"));
+  SetProperty(wxT("fold.compact"), wxT("1"));
+  SetProperty(wxT("fold.preprocessor"), wxT("1"));
     
-    // setup unicode support
-    SetKeysUnicode(true);
-    SetCodePage(wxSTC_CP_UTF8);
-    wxConvCurrent = &wxConvUTF8;
+  MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("GREY"));
+  MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("GREY"));
+  SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED | wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
 
-    // default font for all styles
-    SetViewEOL (g_CommonPrefs.displayEOLEnable);
-    SetIndentationGuides (g_CommonPrefs.indentGuideEnable);
-    SetEdgeMode (g_CommonPrefs.longLineOnEnable?
-                 wxSTC_EDGE_LINE: wxSTC_EDGE_NONE);
-    SetViewWhiteSpace (g_CommonPrefs.whiteSpaceEnable?
-                       wxSTC_WS_VISIBLEALWAYS: wxSTC_WS_INVISIBLE);
-    SetOvertype (g_CommonPrefs.overTypeInitial);
-    SetReadOnly (g_CommonPrefs.readOnlyInitial);
-    SetWrapMode (g_CommonPrefs.wrapModeInitial?
-                 wxSTC_WRAP_WORD: wxSTC_WRAP_NONE);
-    wxFont font (10, wxMODERN, wxNORMAL, wxNORMAL);
-    StyleSetFont (wxSTC_STYLE_DEFAULT, font);
-    StyleSetForeground (wxSTC_STYLE_DEFAULT, *wxBLACK);
-    StyleSetBackground (wxSTC_STYLE_DEFAULT, *wxWHITE);
-    StyleSetForeground (wxSTC_STYLE_LINENUMBER, wxColour (wxT("DARK GREY")));
-    StyleSetBackground (wxSTC_STYLE_LINENUMBER, *wxWHITE);
-    StyleSetForeground(wxSTC_STYLE_INDENTGUIDE, wxColour (wxT("DARK GREY")));
-    InitializePrefs (DEFAULT_LANGUAGE);
-
-    // set visibility
-    SetVisiblePolicy (wxSTC_VISIBLE_STRICT|wxSTC_VISIBLE_SLOP, 1);
-    SetXCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
-    SetYCaretPolicy (wxSTC_CARET_EVEN|wxSTC_VISIBLE_STRICT|wxSTC_CARET_SLOP, 1);
-
-    // markers
-    // ---- Enable code folding
-    SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
-    SetMarginWidth(MARGIN_FOLD, 15);
-    SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
-    SetMarginSensitive(MARGIN_FOLD, true);
-
-    // Properties found from http://www.scintilla.org/SciTEDoc.html
-    SetProperty(wxT("fold"), wxT("1"));
-    SetProperty(wxT("fold.comment"), wxT("1"));
-    SetProperty(wxT("fold.compact"), wxT("1"));
-
-    SetProperty(wxT("fold"), wxT("1"));
-    SetProperty(wxT("fold.comment"), wxT("1"));
-    SetProperty(wxT("fold.compact"), wxT("1"));
-    SetProperty(wxT("fold.preprocessor"), wxT("1"));
-    
-    MarkerDefine(wxSTC_MARKNUM_FOLDER,        wxSTC_MARK_BOXPLUS, wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN,    wxSTC_MARK_BOXMINUS,  wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDERSUB,     wxSTC_MARK_VLINE,     wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDEREND,     wxSTC_MARK_BOXPLUSCONNECTED, wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_BOXMINUSCONNECTED, wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_TCORNER,     wxT("WHITE"), wxT("GREY"));
-    MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL,    wxSTC_MARK_LCORNER,     wxT("WHITE"), wxT("GREY"));
-    SetFoldFlags(wxSTC_FOLDFLAG_LINEBEFORE_CONTRACTED | wxSTC_FOLDFLAG_LINEAFTER_CONTRACTED);
-
-    // miscellaneous
-    m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
-    m_FoldingMargin = 16;
-    SetLayoutCache (wxSTC_CACHE_PAGE);
+  // miscellaneous
+  m_LineNrMargin = TextWidth (wxSTC_STYLE_LINENUMBER, wxT("_999999"));
+  m_FoldingMargin = 16;
+  SetLayoutCache (wxSTC_CACHE_PAGE);
 }
 
 Edit::~Edit () {}

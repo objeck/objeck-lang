@@ -1,7 +1,7 @@
 CC=g++ -mmacosx-version-min=10.5
 WX_ROOT=../../../wxWidgets-3.0.1
-# MODE=O2
-MODE=-g -D_DEBUG
+MODE=-O2
+# MODE=-g -D_DEBUG
 ARGS=-D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -fno-strict-aliasing -fno-common
 INCS=-I. -DWXUSINGDLL -I$(WX_ROOT)/samples -I$(WX_ROOT)/lib/wx/include/osx_cocoa-unicode-3.0 -I$(WX_ROOT)/include -DWX_PRECOMP
 LIBS=-L$(WX_ROOT)/lib   -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL   -lwx_osx_cocoau_aui-3.0  -lwx_osx_cocoau_html-3.0  -lwx_osx_cocoau_adv-3.0  -lwx_osx_cocoau_core-3.0  -lwx_baseu_xml-3.0 -lexpat -lwx_baseu-3.0 -lwx_osx_cocoau_stc-3.0 -lwxscintilla-3.0 -lwxtiff-3.0 -lwxjpeg-3.0 -lwxpng-3.0  -framework WebKit  -lwxregexu-3.0  -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL  -lz -lpthread -liconv -llzma  -lz -lpthread -liconv -llzma
