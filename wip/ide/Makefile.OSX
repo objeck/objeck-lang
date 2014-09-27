@@ -5,11 +5,11 @@ MODE=-g -D_DEBUG
 ARGS=-D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -fno-strict-aliasing -fno-common
 INCS=-I. -DWXUSINGDLL -I$(WX_ROOT)/samples -I$(WX_ROOT)/lib/wx/include/osx_cocoa-unicode-3.0 -I$(WX_ROOT)/include -DWX_PRECOMP
 LIBS=-L$(WX_ROOT)/lib   -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL   -lwx_osx_cocoau_aui-3.0  -lwx_osx_cocoau_html-3.0  -lwx_osx_cocoau_adv-3.0  -lwx_osx_cocoau_core-3.0  -lwx_baseu_xml-3.0 -lexpat -lwx_baseu-3.0 -lwx_osx_cocoau_stc-3.0 -lwxscintilla-3.0 -lwxtiff-3.0 -lwxjpeg-3.0 -lwxpng-3.0  -framework WebKit  -lwxregexu-3.0  -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL  -lz -lpthread -liconv -llzma  -lz -lpthread -liconv -llzma
-SRC=prefs.o dialogs.o opers.o edit.o ide.o
+SRC=prefs.o dialogs.o opers.o editor.o ide.o
 EXE=ide_demo
 
 $(EXE): $(SRC)
-	$(CC) -o $(EXE) $(SRC) $(LIBS) $(MODE) -Wno-unused-parameter -Wno-unused-function
+	$(CC) -o $(EXE) $(SRC) $(LIBS) $(MODE)
 	SetFile -t APPL $(EXE)
 	mkdir -p $(EXE).app/Contents
 	mkdir -p $(EXE).app/Contents/MacOS
@@ -23,7 +23,7 @@ $(EXE): $(SRC)
 	cp -f $(WX_ROOT)/src/osx/carbon/wxmac.icns $(EXE).app/Contents/Resources/wxmac.icns
 
 %.o: %.cpp
-	$(CC) -c $< $(INCS) $(ARGS) $(MODE)
+	$(CC) -c $< $(INCS) $(ARGS) $(MODE) -Wno-unused-parameter -Wno-unused-function
 
 clean:
 	rm -rf ./.deps ./.pch
