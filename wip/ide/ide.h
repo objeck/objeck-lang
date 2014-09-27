@@ -67,9 +67,10 @@ class MyTreeCtrl : public wxTreeCtrl {
   MyFrame* m_frame;
 
   void OnItemMenu(wxTreeEvent& event);
+  void OnItemActivated(wxTreeEvent& event);
 
 public:
-  MyTreeCtrl(MyFrame *parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
+  MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
   ~MyTreeCtrl() {
   }
   
@@ -79,53 +80,59 @@ public:
 //----------------------------------------------------------------------------
 //! MyFrame
 class MyFrame : public wxFrame {
-	enum {
-		ID_SampleItem
-	};
+  enum {
+    ID_SampleItem
+  };
 
-	wxAuiManager aui_manager;
-	Notebook* m_notebook;
-	size_t m_newPageCount;
-	GeneralOptionsManager* m_optionsManager;
-	ProjectManager* m_projectManager;
+  wxAuiManager aui_manager;
+  Notebook* m_notebook;
+  size_t m_newPageCount;
+  GeneralOptionsManager* m_optionsManager;
+  ProjectManager* m_projectManager;
   wxMenu* m_projectView;
-	MyTreeCtrl* m_tree;
-	
-	void DoUpdate();
+  MyTreeCtrl* m_tree;
 
-	// tree
-	MyTreeCtrl* CreateTreeCtrl();
-	// menu and toolbar
-	wxMenuBar* CreateMenuBar();
-	wxAuiToolBar* DoCreateToolBar();
-	// tabbed editor
-	Notebook* CreateNotebook();
-	wxAuiNotebook* CreateInfoCtrl();
+  void DoUpdate();
 
-	wxString ReadInputStream(wxInputStream* in) {
-		if(!in) {
-			return wxEmptyString;
-		}
+  // tree
+  MyTreeCtrl* CreateTreeCtrl();
+  // menu and toolbar
+  wxMenuBar* CreateMenuBar();
+  wxAuiToolBar* DoCreateToolBar();
+  // tabbed editor
+  Notebook* CreateNotebook();
+  wxAuiNotebook* CreateInfoCtrl();
 
-		wxString out;
-		while(in->CanRead() && !in->Eof()) {
-			wxChar c = in->GetC();
-			if(iswprint(c) || isspace(c)) {
-				out.Append(c);
-			}
-		}
+  wxString ReadInputStream(wxInputStream* in) {
+    if(!in) {
+      return wxEmptyString;
+    }
 
-		return out;
-	}
+    wxString out;
+    while(in->CanRead() && !in->Eof()) {
+      wxChar c = in->GetC();
+      if(iswprint(c) || isspace(c)) {
+        out.Append(c);
+      }
+    }
 
-	bool IsProjectLoaded() {
-		return m_tree != NULL;
-	}
+    return out;
+  }
+
+  bool IsProjectLoaded() {
+    return m_tree != NULL;
+  }
 
 public:
   MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
-		  const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
+          const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
   ~MyFrame();
+
+  void OpenFile(const wxString &path) {
+    if(m_notebook && path.size() > 0) {
+      m_notebook->OpenFile(path);
+    }
+  }
 
   // project operations
   ProjectManager* GetProjectManager() {
