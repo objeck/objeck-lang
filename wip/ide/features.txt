@@ -1,10 +1,10 @@
-editor
+TODO
 ---
-split editor support (http://www.yellowbrain.com/stc/mult_views.html)
-search/replace
-file tabs
-status bar line/column display
-
-debugger
+* store all windows paths using '/'
+* file properties
+* project properties
+* editor fonts
 ---
-inital features of command line
+* project build
+* error output
+* execution output
