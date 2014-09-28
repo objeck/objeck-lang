@@ -477,9 +477,24 @@ void ProjectManager::AddFile(const wxString &filename, const wxString &full_path
   }
 }
  
-void ProjectManager::RemoveFile(const wxString &filename)
+void ProjectManager::RemoveFile(const wxString &full_path)
 {
+  long found = false;
+  wxTreeItemId item;
+  for(size_t i = 0; i < m_sourceTreeItemsIds.size(); ++i) {
+    item = m_sourceTreeItemsIds[i];
+    TreeData* data = static_cast<TreeData*>(m_tree->GetItemData(item));
+    if(data && data->GetFullPath() == full_path) {
+      m_tree->Delete(item);
+      found = true;
+    }
+  }
 
+  if(found) {
+    m_sourceTreeItemsIds.Remove(item);
+    iniManager->RemoveListValue(L"Project", L"source", full_path);
+    iniManager->Save();
+  }
 }
 
 wxArrayString ProjectManager::GetFiles() 
