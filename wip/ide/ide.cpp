@@ -173,7 +173,11 @@ void MyFrame::OnAddProjectFile(wxCommandEvent &event)
 
 void MyFrame::OnRemoveProjectFile(wxCommandEvent &event)
 {
-  
+  if(m_tree) {
+    const wxString filename = m_tree->GetRemovePropertyName();
+    RemoveProjectSource(filename);
+    m_tree->CleanRemovePropertyName();
+  }
 }
 
 void MyFrame::AddProjectSource(const wxString &full_path) 
@@ -187,7 +191,9 @@ void MyFrame::AddProjectSource(const wxString &full_path)
 
 void MyFrame::RemoveProjectSource(const wxString &source) 
 {
-  
+  if(source.size() > 0) {
+    m_projectManager->RemoveFile(source);
+  }
 }
 
 void MyFrame::OnProjectClose(wxCommandEvent &event)
@@ -594,7 +600,8 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
     }
     else if(item) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Remove"));
+      menu.Append(myID_PROJECT_REMOVE_FILE, _("&Remove"));
+      m_removePropertyName = item->GetFullPath();
       menu.AppendSeparator();
       menu.Append(wxID_ANY, wxT("&Properties"));
       PopupMenu(&menu, event.GetPoint());
