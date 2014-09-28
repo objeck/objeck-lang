@@ -54,11 +54,11 @@ class TreeData : public wxTreeItemData {
   ~TreeData() {
   }
 
-  wxString GetName() {
+  const wxString GetName() {
     return name;
   }
 
-  wxString GetFullPath() {
+  const wxString GetFullPath() {
     return full_path;
   }
 };
@@ -67,6 +67,7 @@ class TreeData : public wxTreeItemData {
 //! MyTreeCtrl
 class MyTreeCtrl : public wxTreeCtrl {
   MyFrame* m_frame;
+  wxString m_removePropertyName;
 
   void OnItemMenu(wxTreeEvent& event);
   void OnItemActivated(wxTreeEvent& event);
@@ -74,6 +75,14 @@ class MyTreeCtrl : public wxTreeCtrl {
 public:
   MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
   ~MyTreeCtrl() {
+  }
+
+  const wxString GetRemovePropertyName() {
+    return m_removePropertyName;
+  }
+
+  void CleanRemovePropertyName() {
+    m_removePropertyName = wxEmptyString;
   }
   
   DECLARE_EVENT_TABLE();
