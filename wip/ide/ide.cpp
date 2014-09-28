@@ -492,7 +492,7 @@ MyTreeCtrl* MyFrame::CreateTreeCtrl()
   imglist->Add(wxArtProvider::GetBitmap(wxART_EXECUTABLE_FILE, wxART_OTHER, wxSize(16, 16)));
   m_tree->AssignImageList(imglist);
 
-  m_tree->AddRoot(wxT("<empty project>"), 0);
+  m_tree->AddRoot(wxT("<empty>"), 0);
   
   return m_tree;
 }
@@ -582,10 +582,12 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
   if(m_frame->GetProjectManager()) {
     if(m_frame->GetProjectManager()->HitProject(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Add source"));
-      menu.Append(wxID_ANY, _("&Add library"));
+      menu.Append(wxID_ANY, _("&Build"));
       menu.AppendSeparator();
-      menu.Append(wxID_ANY, wxT("&Project options..."));
+      menu.Append(wxID_ANY, _("&Add source..."));
+      menu.Append(wxID_ANY, _("&Add library..."));
+      menu.AppendSeparator();
+      menu.Append(wxID_ANY, wxT("&Project options"));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
