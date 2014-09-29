@@ -40,49 +40,20 @@ public:
 };
 
 //----------------------------------------------------------------------------
-//! TreeData
-class TreeData : public wxTreeItemData {
-  wxString name;
-  wxString full_path;
-
- public:
-  TreeData(const wxString &n, const wxString &p) {
-    name = n;
-    full_path = p;
-  }
-
-  ~TreeData() {
-  }
-
-  const wxString GetName() {
-    return name;
-  }
-
-  const wxString GetFullPath() {
-    return full_path;
-  }
-};
-
-//----------------------------------------------------------------------------
 //! MyTreeCtrl
 class MyTreeCtrl : public wxTreeCtrl {
   MyFrame* m_frame;
-  wxString m_removePropertyName;
+  TreeData* item_data;
 
   void OnItemMenu(wxTreeEvent& event);
   void OnItemActivated(wxTreeEvent& event);
 
 public:
   MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
-  ~MyTreeCtrl() {
-  }
+  ~MyTreeCtrl() {}
 
-  const wxString GetRemovePropertyName() {
-    return m_removePropertyName;
-  }
-
-  void CleanRemovePropertyName() {
-    m_removePropertyName = wxEmptyString;
+  TreeData* GetData() {
+    return item_data;
   }
   
   DECLARE_EVENT_TABLE();

@@ -429,7 +429,7 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
   wxArrayString src_files = GetFiles();
   for(size_t i = 0; i < src_files.size(); ++i) {
     const wxString full_path = src_files[i];
-    wxFileName source_file(full_path, wxPATH_UNIX);
+    wxFileName source_file(full_path);
     const wxString file_name = source_file.GetFullName();
     AddFile(file_name, full_path);    
   }
@@ -470,30 +470,19 @@ void ProjectManager::BuildTree(const wxString &name)
 
 void ProjectManager::AddFile(const wxString &filename, const wxString &full_path, bool save)
 {
-  m_sourceTreeItemsIds.Add(m_tree->AppendItem(m_sourceTreeItemId, filename, 2, -1, new TreeData(filename, full_path)));
+  m_tree->AppendItem(m_sourceTreeItemId, filename, 2, -1, new TreeData(filename, full_path));
   if(save) {
     iniManager->AddListValue(L"Project", L"source", full_path);
     iniManager->Save();
   }
 }
  
-void ProjectManager::RemoveFile(const wxString &full_path)
+void ProjectManager::RemoveFile(TreeData* data)
 {
-  long found = false;
-  wxTreeItemId item;
-  for(size_t i = 0; i < m_sourceTreeItemsIds.size(); ++i) {
-    item = m_sourceTreeItemsIds[i];
-    TreeData* data = static_cast<TreeData*>(m_tree->GetItemData(item));
-    if(data && data->GetFullPath() == full_path) {
-      m_tree->Delete(item);
-      found = true;
-    }
-  }
-
-  if(found) {
-    m_sourceTreeItemsIds.Remove(item);
-    iniManager->RemoveListValue(L"Project", L"source", full_path);
+  if(data) {
+    iniManager->RemoveListValue(L"Project", L"source", data->GetFullPath());
     iniManager->Save();
+    m_tree->Delete(data->GetId());
   }
 }
 
