@@ -66,7 +66,9 @@ class MyFrame : public wxFrame {
     ID_SampleItem
   };
 
-  wxAuiManager aui_manager;
+  wxAuiManager m_auiManager;
+  wxTextCtrl* m_buildOutput;
+  wxTextCtrl* m_executeOutput;
   Notebook* m_notebook;
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
@@ -75,6 +77,7 @@ class MyFrame : public wxFrame {
   MyTreeCtrl* m_tree;
 
   void DoUpdate();
+  void UpdateCompilerOutput(const wxString output);
 
   // tree
   MyTreeCtrl* CreateTreeCtrl();
