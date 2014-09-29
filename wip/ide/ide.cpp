@@ -93,11 +93,11 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   m_newPageCount = 1;
   
   // setup window manager
-  aui_manager.SetManagedWindow(this);
-  aui_manager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
+  m_auiManager.SetManagedWindow(this);
+  m_auiManager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
   m_notebook = CreateNotebook(), 
-  aui_manager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
-  aui_manager.AddPane(CreateInfoCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
+  m_auiManager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
+  m_auiManager.AddPane(CreateInfoCtrl(), wxAuiPaneInfo().Bottom().PaneBorder(false));
   
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
@@ -108,13 +108,13 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   SetMinSize(wxSize(800, 600));
   
   // set tool bar
-  aui_manager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().
+  m_auiManager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().
                       Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
                       ToolbarPane().Top().Row(1).Position(1));
   
   // update
   m_notebook->SetFocus();
-  aui_manager.Update();
+  m_auiManager.Update();
 }
 
 MyFrame::~MyFrame() 
@@ -129,12 +129,12 @@ MyFrame::~MyFrame()
     m_projectManager = NULL;
   }
 
-  aui_manager.UnInit();
+  m_auiManager.UnInit();
 }
 
 void MyFrame::DoUpdate() 
 {
-  aui_manager.Update();
+  m_auiManager.Update();
 }
 
 // common event handlers
@@ -203,63 +203,70 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
     return;
   }
   
-  wstring objeck_exe = wxT("obc");
+  const wxString objeck_base_path = m_optionsManager->GetObjeckPath();
+
+  // build path to compiler exe
+  wstring obr_exe = wxT("obc");
   wxPlatformInfo platform;
   if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
-    objeck_exe += wxT(".exe");
+    obr_exe += wxT(".exe");
   }
-  wxString objeck_path_exe = wxFileName::GetPathSeparator();
-  objeck_path_exe += wxT("bin");
-  objeck_path_exe += wxFileName::GetPathSeparator();
-  objeck_path_exe += objeck_exe;
+  wxString obr_path_exe = wxT("bin");
+  obr_path_exe += wxFileName::GetPathSeparator();
+  obr_path_exe += obr_exe;
   
-  wxFileName objeck_compiler_file(m_optionsManager->GetObjeckPath() + objeck_path_exe);
+  const wxString obr_full_path = objeck_base_path + obr_path_exe;
+  wxFileName objeck_compiler_file(obr_full_path);
   // ensure compiler exists
   if(!objeck_compiler_file.FileExists()) {
+    wxMessageDialog fileOverWrite(this, wxT("Unable to find compiler executable, please check path."), wxT("Build Project"));
+    fileOverWrite.ShowModal();
     return;
   }
    
-  const wxString base_path = m_optionsManager->GetObjeckPath() + wxFileName::GetPathSeparator() + L"bin";
   MyProcess process; wxExecuteEnv env;
-  env.env[wxT("OBJECK_LIB_PATH")] = base_path;
+  env.env[wxT("OBJECK_LIB_PATH")] = objeck_base_path + wxT("bin");
   env.env[wxT("LANG")] = wxT("en_US.UTF-8");
   
   wxString cmd = wxT("\"");
-  cmd += base_path;
-  cmd += objeck_path_exe;
+  cmd += obr_full_path;
   cmd += wxT("\" -src ");
 
   wxArrayString source_files = m_projectManager->GetFiles();
   for(size_t i = 0; i < source_files.size(); ++i) {
-	cmd += wxT("'");
-	cmd += source_files[i];
-	cmd += wxT("'");
+	  cmd += wxT("'");
+	  cmd += source_files[i];
+	  cmd += wxT("'");
 	
-	if(i + i < source_files.size()) {
-		cmd += wxT(",");
-	}
+	  if(i + 1 < source_files.size()) {
+		  cmd += wxT(",");
+	  }
   }
 
-  // TODO: add libs
-
-  cmd += wxT(" -dest \"");
-  // m_projectManager->GetOutputFile();
-  cmd += wxT(" -dest \"");
+  // TODO: add libs (from PM)
 
 
-  /*
-  cmd += wxT("\\bin\\obc.exe\" -src '");
-  cmd += base_path;
-  // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
-  cmd += wxT("/examples/hello.obs' -dest a.obe");
+  // TODO: add dest (from PM)
+  cmd += wxT(" -dest \"a.obe\"");
   
-  //---------
-  
-  const int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env); 
-  const wxString error_text = ReadInputStream(process.GetErrorStream());
-  const wxString out_text = ReadInputStream(process.GetInputStream());
-  text = error_text + out_text;
-  */
+  int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
+  if(code != 0) {
+    wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
+    fileOverWrite.ShowModal();
+    return;
+  }
+
+  wxString output = ReadInputStream(process.GetErrorStream());
+  output += ReadInputStream(process.GetInputStream());
+  UpdateCompilerOutput(output);
+}
+
+void MyFrame::UpdateCompilerOutput(const wxString output)
+{
+  if(m_executeOutput) {
+    m_buildOutput->DiscardEdits();
+    m_buildOutput->AppendText(output);
+  }
 }
 
 void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
@@ -408,7 +415,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(myID_REPLACENEXT, _("&Replace &again\tShift+F3"));
   menuEdit->Append(myID_GOTO, _("&Go To...\tCtrl+G"));
   menuEdit->AppendSeparator();
-  menuEdit->Append(myID_DLG_OPTIONS, _("Genearl Options...\tALT+O"));
+  menuEdit->Append(myID_DLG_OPTIONS, _("General Options...\tALT+O"));
   
   // view menu
   wxMenu *menuView = new wxMenu;
@@ -505,48 +512,22 @@ Notebook* MyFrame::CreateNotebook()
 
 wxAuiNotebook* MyFrame::CreateInfoCtrl()
 {
-  wxString text;
+#ifdef __WXOSX_COCOA__
+  wxFont font(11, wxMODERN, wxNORMAL, wxNORMAL);
+#else
+  wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
+#endif
 
-  // TODO: move to OnBuild
-  /*
-  if(m_globalOptions) {
-    // const wxString base_path = wxT("C:\\Users\\Randy\\Documents\\Code\\objeck-lang\\src\\objeck\\deploy");
-    // const wxString base_path = wxT("/home/objeck/Documents/Code/objeck-lang/src/objeck/deploy");
-    const wxString base_path = m_globalOptions->GetPath();
-  
-    // TODO: move this into a class
-    MyProcess process; wxExecuteEnv env;
-    // env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("\\bin");
-    env.env[wxT("OBJECK_LIB_PATH")] = base_path + wxT("/bin");
-    env.env[wxT("LANG")] = wxT("en_US.UTF-8");
-  
-    wxString cmd = wxT("\"");
-    cmd += base_path;
-    // cmd += wxT("\\bin\\obc.exe\" -src '");
-    cmd += wxT("/bin/obc\" -src '");
-    cmd += base_path;
-    // cmd += wxT("\\examples\\hello.obs' -dest a.obe");
-    cmd += wxT("/examples/hello.obs' -dest a.obe");
+  m_buildOutput = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  m_buildOutput->SetFont(font);
 
-    const int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
-  
-    const wxString error_text = ReadInputStream(process.GetErrorStream());
-    const wxString out_text = ReadInputStream(process.GetInputStream());
-    text = error_text + out_text;
-  } 		
-  */
-
-  wxFont font(10, wxMODERN, wxNORMAL, wxNORMAL);
-  wxTextCtrl* output_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
-  output_ctrl->SetFont(font);
-
-  wxTextCtrl* debug_ctrl = new wxTextCtrl(this, wxID_ANY, text, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
-  debug_ctrl->SetFont(font);
+  m_executeOutput = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  m_executeOutput->SetFont(font);
   
   wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
     wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
-  info_ctrl->AddPage(output_ctrl, wxT("Build"));
-  info_ctrl->AddPage(debug_ctrl, wxT("Output"));
+  info_ctrl->AddPage(m_buildOutput, wxT("Build"));
+  info_ctrl->AddPage(m_executeOutput, wxT("Output"));
 
   return info_ctrl;
 }
@@ -573,10 +554,10 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
   if(m_frame->GetProjectManager()) {
     if(m_frame->GetProjectManager()->HitProject(itemId)) {
       wxMenu menu;
-      menu.Append(wxID_ANY, _("&Build"));
+      menu.Append(myID_BUILD_PROJECT, _("&Build"));
       menu.AppendSeparator();
-      menu.Append(wxID_ANY, _("&Add source..."));
-      menu.Append(wxID_ANY, _("&Add library..."));
+      menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
+      menu.Append(myID_PROJECT_ADD_LIB, _("&Add library..."));
       menu.AppendSeparator();
       menu.Append(wxID_ANY, wxT("&Project options"));
       PopupMenu(&menu, event.GetPoint());
