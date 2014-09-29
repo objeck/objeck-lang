@@ -95,7 +95,7 @@ Edit* Notebook::GetEdit() {
 
 void Notebook::OpenFile(const wxString& fn)
 {
-  wxFileName w(fn, wxPATH_UNIX);
+  wxFileName w(fn);
   w.Normalize();
   wxString filename = w.GetFullPath();
 
@@ -919,7 +919,7 @@ bool Edit::LoadFile(const wxString &filename) {
   EmptyUndoBuffer();
 
   // determine lexer language
-  wxFileName fname(m_filename, wxPATH_UNIX);
+  wxFileName fname(m_filename);
   InitializePrefs(DeterminePrefs(fname.GetFullName()));
 
   return true;
