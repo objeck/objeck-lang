@@ -2,4 +2,4 @@
 libraries=lang.obl;collect.obl
 name=FooBar
 output=a.obe
-source=/Users/randy/Documents/Code/objeck-lang/src/compiler/rc/jensen.obs;/home/randy/Documents/Code/objeck-lang/src/compiler/rc/avg_mode.obs;C:\Users\Randy\Documents\Code\objeck-lang\src\compiler\test_src\prgm0.obs;/home/randy/Documents/Code/objeck-lang/src/compiler/test_src/debug.obs;
+source=/home/randy/Documents/Code/objeck-lang/src/compiler/rc/avg_mode.obs;/home/randy/Documents/Code/objeck-lang/src/compiler/test_src/debug.obs;/Users/randy/Documents/Code/objeck-lang/src/compiler/rc/jensen.obs;
