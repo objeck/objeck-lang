@@ -8,7 +8,7 @@
 #ifndef __IDE_H__
 #define __IDE_H__
 
-#include <vld.h>
+// #include <vld.h>
 
 // For compilers that support precompilation, includes "wx/wx.h".
 #include "wx/wxprec.h"
