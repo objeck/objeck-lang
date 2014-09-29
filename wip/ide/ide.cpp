@@ -41,7 +41,7 @@ bool MyApp::OnInit()
     return false;
   }
 
-  wxFrame* frame = new MyFrame(NULL, wxID_ANY, wxT("wxAUI Sample Application"), wxDefaultPosition, wxSize(800, 600));
+  wxFrame* frame = new MyFrame(NULL, wxID_ANY, wxT("Objeckor"), wxDefaultPosition, wxSize(800, 600));
   frame->Show();
 
   return true;
@@ -50,9 +50,8 @@ bool MyApp::OnInit()
 DECLARE_APP(MyApp)
 IMPLEMENT_APP(MyApp)
 
-/////////////////////////
-// MyFrame
-/////////////////////////
+//----------------------------------------------------------------------------
+//! MyFrame
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 // common
@@ -202,7 +201,7 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
     fileOverWrite.ShowModal();
     return;
   }
-  
+
   const wxString objeck_base_path = m_optionsManager->GetObjeckPath();
 
   // build path to compiler exe
@@ -214,7 +213,7 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   wxString obr_path_exe = wxT("bin");
   obr_path_exe += wxFileName::GetPathSeparator();
   obr_path_exe += obr_exe;
-  
+
   const wxString obr_full_path = objeck_base_path + obr_path_exe;
   wxFileName objeck_compiler_file(obr_full_path);
   // ensure compiler exists
@@ -223,24 +222,24 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
     fileOverWrite.ShowModal();
     return;
   }
-   
-  MyProcess process; wxExecuteEnv env;
+
+  BuildProcess process; wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = objeck_base_path + wxT("bin");
   env.env[wxT("LANG")] = wxT("en_US.UTF-8");
-  
+
   wxString cmd = wxT("\"");
   cmd += obr_full_path;
   cmd += wxT("\" -src ");
 
   wxArrayString source_files = m_projectManager->GetFiles();
   for(size_t i = 0; i < source_files.size(); ++i) {
-	  cmd += wxT("'");
-	  cmd += source_files[i];
-	  cmd += wxT("'");
-	
-	  if(i + 1 < source_files.size()) {
-		  cmd += wxT(",");
-	  }
+    cmd += wxT("'");
+    cmd += source_files[i];
+    cmd += wxT("'");
+
+    if(i + 1 < source_files.size()) {
+      cmd += wxT(",");
+    }
   }
 
   // TODO: add libs (from PM)
@@ -248,9 +247,9 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
 
   // TODO: add dest (from PM)
   cmd += wxT(" -dest \"a.obe\"");
-  
+
   int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
-  if(code != 0) {
+  if(code < 0) {
     wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
     fileOverWrite.ShowModal();
     return;
@@ -258,14 +257,19 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
 
   wxString output = ReadInputStream(process.GetErrorStream());
   output += ReadInputStream(process.GetInputStream());
-  UpdateCompilerOutput(output);
-}
 
-void MyFrame::UpdateCompilerOutput(const wxString output)
-{
-  if(m_executeOutput) {
-    m_buildOutput->DiscardEdits();
-    m_buildOutput->AppendText(output);
+  switch(code) {
+  case 0:
+    m_buildOutput->BuildSuccess(output);
+    break;
+
+  case 2:
+    m_buildOutput->SyntaxError(output);
+    break;
+
+  case 3:
+    m_buildOutput->ContextError(output);
+    break;
   }
 }
 
@@ -479,9 +483,9 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
   return toolbar;
 }
 
-MyTreeCtrl* MyFrame::CreateTreeCtrl() 
+ProjectTreeCtrl* MyFrame::CreateTreeCtrl() 
 {
-  m_tree = new MyTreeCtrl(this, myID_PROJECT_TREE, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
+  m_tree = new ProjectTreeCtrl(this, myID_PROJECT_TREE, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
   imglist->Add(wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)));
@@ -518,10 +522,10 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
   wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
 #endif
 
-  m_buildOutput = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  m_buildOutput = new BuildTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE | wxTE_RICH);
   m_buildOutput->SetFont(font);
 
-  m_executeOutput = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE);
+  m_executeOutput = new ExecuteTextCtrl(this, wxID_ANY, wxEmptyString, wxPoint(0, 0), wxSize(150, 100), wxNO_BORDER | wxTE_MULTILINE | wxTE_RICH);
   m_executeOutput->SetFont(font);
   
   wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(150, 100),
@@ -532,21 +536,74 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
   return info_ctrl;
 }
 
-/////////////////////////
-// MyTreeCtrl
-/////////////////////////
-wxBEGIN_EVENT_TABLE(MyTreeCtrl, wxTreeCtrl)
-EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, MyTreeCtrl::OnItemMenu)
-EVT_TREE_ITEM_ACTIVATED(myID_PROJECT_TREE, MyTreeCtrl::OnItemActivated)
+//----------------------------------------------------------------------------
+//! BuildTextCtrl
+wxBEGIN_EVENT_TABLE(BuildTextCtrl, wxTextCtrl)
+
 wxEND_EVENT_TABLE()
 
-MyTreeCtrl::MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+BuildTextCtrl::BuildTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style) 
+                             : wxTextCtrl(parent, id, value, pos, size, style)
+{
+
+}
+
+BuildTextCtrl::~BuildTextCtrl() 
+{
+
+}
+
+void BuildTextCtrl::BuildSuccess(const wxString output)
+{
+  DiscardEdits();
+  AppendText(output);
+}
+
+void BuildTextCtrl::SyntaxError(const wxString output)
+{
+  DiscardEdits();
+  SetDefaultStyle(wxTextAttr(*wxRED));
+  AppendText(output);
+}
+
+void BuildTextCtrl::ContextError(const wxString output)
+{
+  DiscardEdits();
+  SetDefaultStyle(wxTextAttr(*wxBLUE));
+  AppendText(output);
+}
+
+//----------------------------------------------------------------------------
+//! ExecuteTextCtrl
+wxBEGIN_EVENT_TABLE(ExecuteTextCtrl, wxTextCtrl)
+
+wxEND_EVENT_TABLE()
+
+ExecuteTextCtrl::ExecuteTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style)
+: wxTextCtrl(parent, id, value, pos, size, style)
+{
+
+}
+
+ExecuteTextCtrl::~ExecuteTextCtrl()
+{
+
+}
+
+//----------------------------------------------------------------------------
+//! ProjectTreeCtrl
+wxBEGIN_EVENT_TABLE(ProjectTreeCtrl, wxTreeCtrl)
+EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, ProjectTreeCtrl::OnItemMenu)
+EVT_TREE_ITEM_ACTIVATED(myID_PROJECT_TREE, ProjectTreeCtrl::OnItemActivated)
+wxEND_EVENT_TABLE()
+
+ProjectTreeCtrl::ProjectTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
   : wxTreeCtrl(parent, id, pos, size, style)
 {
   m_frame = parent;
 }
 
-void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
+void ProjectTreeCtrl::OnItemMenu(wxTreeEvent& event)
 {
   wxTreeItemId itemId = event.GetItem();
   TreeData* data = (TreeData*)GetItemData(itemId);
@@ -586,7 +643,7 @@ void MyTreeCtrl::OnItemMenu(wxTreeEvent& event)
   event.Skip();
 }
 
-void MyTreeCtrl::OnItemActivated(wxTreeEvent& event)
+void ProjectTreeCtrl::OnItemActivated(wxTreeEvent& event)
 {
   wxTreeItemId itemId = event.GetItem();
   TreeData* item = (TreeData*)GetItemData(itemId);

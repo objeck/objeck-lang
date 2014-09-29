@@ -8,7 +8,7 @@
 #ifndef __IDE_H__
 #define __IDE_H__
 
-// #include <vld.h>
+#include <vld.h>
 
 // For compilers that support precompilation, includes "wx/wx.h".
 #include "wx/wxprec.h"
@@ -32,16 +32,8 @@
 class MyFrame;
 
 //----------------------------------------------------------------------------
-//! MyApp
-class MyApp : public wxApp {
-
-public:
-  bool OnInit();
-};
-
-//----------------------------------------------------------------------------
-//! MyTreeCtrl
-class MyTreeCtrl : public wxTreeCtrl {
+//! ProjectTreeCtrl
+class ProjectTreeCtrl : public wxTreeCtrl {
   MyFrame* m_frame;
   TreeData* item_data;
 
@@ -49,14 +41,40 @@ class MyTreeCtrl : public wxTreeCtrl {
   void OnItemActivated(wxTreeEvent& event);
 
 public:
-  MyTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
-  ~MyTreeCtrl() {}
+  ProjectTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
+  ~ProjectTreeCtrl() {}
 
   TreeData* GetData() {
     return item_data;
   }
   
   DECLARE_EVENT_TABLE();
+};
+
+//----------------------------------------------------------------------------
+//! BuildTextCtrl
+class BuildTextCtrl : public wxTextCtrl {
+
+public:
+  BuildTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style);
+  ~BuildTextCtrl();
+
+  void BuildSuccess(const wxString output);
+  void SyntaxError(const wxString output);
+  void ContextError(const wxString output);
+
+  DECLARE_EVENT_TABLE()
+};
+
+//----------------------------------------------------------------------------
+//! ExecuteTextCtrl
+class ExecuteTextCtrl : public wxTextCtrl {
+
+public:
+  ExecuteTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style);
+  ~ExecuteTextCtrl();
+
+  DECLARE_EVENT_TABLE()
 };
 
 //----------------------------------------------------------------------------
@@ -67,20 +85,19 @@ class MyFrame : public wxFrame {
   };
 
   wxAuiManager m_auiManager;
-  wxTextCtrl* m_buildOutput;
-  wxTextCtrl* m_executeOutput;
+  BuildTextCtrl* m_buildOutput;
+  ExecuteTextCtrl* m_executeOutput;
   Notebook* m_notebook;
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
   ProjectManager* m_projectManager;
   wxMenu* m_projectView;
-  MyTreeCtrl* m_tree;
+  ProjectTreeCtrl* m_tree;
 
   void DoUpdate();
-  void UpdateCompilerOutput(const wxString output);
-
+  
   // tree
-  MyTreeCtrl* CreateTreeCtrl();
+  ProjectTreeCtrl* CreateTreeCtrl();
   // menu and toolbar
   wxMenuBar* CreateMenuBar();
   wxAuiToolBar* DoCreateToolBar();
@@ -170,14 +187,22 @@ public:
   DECLARE_EVENT_TABLE()
 };
 
-// TODO: move this into a class
-class MyProcess : public wxProcess {
+//----------------------------------------------------------------------------
+//! BuildProcess
+class BuildProcess : public wxProcess {
 public:
-  MyProcess() : wxProcess(wxPROCESS_REDIRECT) {}
+  BuildProcess() : wxProcess(wxPROCESS_REDIRECT) {}
 
-  ~MyProcess() {}
+  ~BuildProcess() {}
   
   void OnTerminate(int pid, int status) {}
 };
 
+//----------------------------------------------------------------------------
+//! MyApp
+class MyApp : public wxApp {
+
+public:
+  bool OnInit();
+};
 #endif
