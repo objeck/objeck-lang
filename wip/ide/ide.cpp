@@ -202,7 +202,10 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
     return;
   }
 
-  const wxString objeck_base_path = m_optionsManager->GetObjeckPath();
+  wxString objeck_base_path = m_optionsManager->GetObjeckPath();
+  if(objeck_base_path.Last() != wxFileName::GetPathSeparator()) {
+    objeck_base_path += wxFileName::GetPathSeparator();
+  }
 
   // build path to compiler exe
   wstring obr_exe = wxT("obc");
