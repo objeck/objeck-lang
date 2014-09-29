@@ -173,26 +173,21 @@ void MyFrame::OnAddProjectFile(wxCommandEvent &event)
 
 void MyFrame::OnRemoveProjectFile(wxCommandEvent &event)
 {
-  if(m_tree) {
-    const wxString filename = m_tree->GetRemovePropertyName();
-    RemoveProjectSource(filename);
+  if(m_projectManager) {
+    const wxString full_path = m_tree->GetRemovePropertyName();
+    if(full_path.size() > 0) {
+      m_projectManager->RemoveFile(full_path);
+    }
     m_tree->CleanRemovePropertyName();
   }
 }
 
 void MyFrame::AddProjectSource(const wxString &full_path) 
 {
-  wxFileName source_file(full_path);
+  wxFileName source_file(full_path, wxPATH_UNIX);
   const wxString file_name = source_file.GetFullName();
   if(m_projectManager) {
     m_projectManager->AddFile(file_name, full_path, true);
-  }
-}
-
-void MyFrame::RemoveProjectSource(const wxString &source) 
-{
-  if(source.size() > 0) {
-    m_projectManager->RemoveFile(source);
   }
 }
 
@@ -217,18 +212,18 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
     objeck_exe += wxT(".exe");
   }
-  wxString objeck_path_exe = wxFileName::GetPathSeparator();
+  wxString objeck_path_exe = wxFileName::GetPathSeparator(wxPATH_UNIX);
   objeck_path_exe += wxT("bin");
-  objeck_path_exe += wxFileName::GetPathSeparator();
+  objeck_path_exe += wxFileName::GetPathSeparator(wxPATH_UNIX);
   objeck_path_exe += objeck_exe;
   
-  wxFileName objeck_compiler_file(m_optionsManager->GetObjeckPath() + objeck_path_exe);
+  wxFileName objeck_compiler_file(m_optionsManager->GetObjeckPath() + objeck_path_exe, wxPATH_UNIX);
   // ensure compiler exists
   if(!objeck_compiler_file.FileExists()) {
     return;
   }
    
-  const wxString base_path = m_optionsManager->GetObjeckPath() + wxFileName::GetPathSeparator() + L"bin";
+  const wxString base_path = m_optionsManager->GetObjeckPath() + wxFileName::GetPathSeparator(wxPATH_UNIX) + L"bin";
   MyProcess process; wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = base_path;
   env.env[wxT("LANG")] = wxT("en_US.UTF-8");
@@ -278,7 +273,7 @@ void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
     const wxString name = project_dialog.GetName();
     const wxString path = project_dialog.GetPath();
     
-    wxFileName full_name(path + wxFileName::GetPathSeparator() + name + wxT(".obp"));
+    wxFileName full_name(path + wxFileName::GetPathSeparator(wxPATH_UNIX) + name + wxT(".obp"));
     if(full_name.FileExists()) {
       wxMessageDialog fileOverWrite(this, wxT("File ") + full_name.GetFullName() + 
                                     wxT(" already exists.\nWould you like to overwrite it?"),
@@ -628,7 +623,7 @@ void MyTreeCtrl::OnItemActivated(wxTreeEvent& event)
 
   if(item) {
     const wxString full_path = item->GetFullPath();
-    wxFileName source_file(full_path);
+    wxFileName source_file(full_path, wxPATH_UNIX);
     if(source_file.Exists()) {
       m_frame->OpenFile(source_file.GetFullPath());
     }

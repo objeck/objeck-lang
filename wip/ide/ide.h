@@ -171,8 +171,7 @@ public:
   }
 
   void AddProjectSource(const wxString &source);
-  void RemoveProjectSource(const wxString &source);
-
+  
   // common
   void OnClose(wxCloseEvent &event);
   // project

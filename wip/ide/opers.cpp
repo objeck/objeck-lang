@@ -429,7 +429,7 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
   wxArrayString src_files = GetFiles();
   for(size_t i = 0; i < src_files.size(); ++i) {
     const wxString full_path = src_files[i];
-    wxFileName source_file(full_path);
+    wxFileName source_file(full_path, wxPATH_UNIX);
     const wxString file_name = source_file.GetFullName();
     AddFile(file_name, full_path);    
   }
