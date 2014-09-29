@@ -34,6 +34,30 @@ class MyFrame;
 WX_DECLARE_HASH_SET(wxString, wxStringHash, wxStringEqual, StringSet);
 
 //----------------------------------------------------------------------------
+//! TreeData
+class TreeData : public wxTreeItemData {
+  wxString name;
+  wxString full_path;
+
+public:
+  TreeData(const wxString &n, const wxString &p) {
+    name = n;
+    full_path = p;
+  }
+
+  ~TreeData() {
+  }
+
+  const wxString GetName() {
+    return name;
+  }
+
+  const wxString GetFullPath() {
+    return full_path;
+  }
+};
+
+//----------------------------------------------------------------------------
 //! IniManager
 class IniManager {
   map<const wxString, map<const wxString, wxString>*> section_map;
@@ -125,12 +149,11 @@ class GeneralOptionsManager {
 class ProjectManager {
   MyFrame* m_parent;
   wxTreeCtrl* m_tree;
-  wxArrayTreeItemIds m_sourceTreeItemsIds;
+  IniManager* iniManager;
   wxTreeItemId m_root;
   wxTreeItemId m_sourceTreeItemId;
   wxTreeItemId m_libraryTreeItemId;
-  IniManager* iniManager;
-  
+    
   void Load() {
 	  iniManager->Load();
   }
@@ -170,7 +193,7 @@ class ProjectManager {
 
   // file operations
   void AddFile(const wxString &filename, const wxString &full_path, bool save = false);
-  void RemoveFile(const wxString &filename);
+  void RemoveFile(TreeData* data);
   wxArrayString GetFiles(); 
 
   // library operations
