@@ -2,4 +2,4 @@
 libraries=lang.obl;collect.obl
 name=FooBar
 output=a.obe
-source=
+source=C:\Users\Randy\Documents\Code\objeck-lang\src\compiler\test_src\debug.obs;
