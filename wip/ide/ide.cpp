@@ -30,6 +30,7 @@
 #include <wx/file.h>
 #include <wx/filename.h>
 #include <wx/platinfo.h>
+#include <wx/tokenzr.h>
 
 /////////////////////////
 // MyApp
@@ -556,22 +557,79 @@ BuildTextCtrl::~BuildTextCtrl()
 
 }
 
-void BuildTextCtrl::BuildSuccess(const wxString output)
+void BuildTextCtrl::BuildSuccess(const wxString &output)
 {
-  DiscardEdits();
+  Clear();
   AppendText(output);
 }
 
-void BuildTextCtrl::SyntaxError(const wxString output)
+void BuildTextCtrl::SyntaxError(const wxString &output)
 {
-  DiscardEdits();
-  SetDefaultStyle(wxTextAttr(*wxRED));
-  AppendText(output);
+  wxArrayString lines;
+  wxStringTokenizer line_tokenizer(output, wxT("\r\n"));
+  while(line_tokenizer.HasMoreTokens()) {
+    lines.Add(line_tokenizer.GetNextToken());
+  }
+
+  Clear();
+
+  SetDefaultStyle(wxTextAttr(*wxBLACK));
+  AppendText(wxT("Objeck Compiler v3.3.1\r\n=======================\r\n"));
+
+  for(size_t i = 0; i < lines.size(); ++i) {
+    wxString line = lines[i];
+    // additonal message output
+    if(line.size() > 0 && line[0] == wxT('\t')) {
+      AppendText(line);
+    }
+    else {
+      // parse error message
+      wxArrayString error_parts;
+      wxStringTokenizer message_tokenizer(line, wxT(":"));
+      while(message_tokenizer.HasMoreTokens()) {
+        error_parts.Add(message_tokenizer.GetNextToken());
+      }
+
+      // inspect parts and style output
+      size_t index = 0;
+      wxString full_file = error_parts[index++];
+#ifdef __WXMSW__
+      full_file += wxT(':');
+      full_file += error_parts[index++];
+#endif
+      // line number
+      const wxString line_nbr = error_parts[index++];
+      // message
+      wxString message = error_parts[index++];
+
+      wxFileName file(full_file);
+      wxString error_nbr = wxString::Format(wxT("%u"), i + 1);
+      
+      
+
+      SetDefaultStyle(wxTextAttr(*wxRED));
+      AppendText(error_nbr);
+      SetDefaultStyle(wxTextAttr(*wxBLACK));
+      AppendText(wxT(") "));
+      AppendText(file.GetFullName());
+      AppendText(wxT("("));
+      SetDefaultStyle(wxTextAttr(*wxBLUE));
+      AppendText(line_nbr);
+      SetDefaultStyle(wxTextAttr(*wxBLACK));
+      AppendText(wxT(") => "));
+      AppendText(message);
+      AppendText(wxT("\r\n"));
+    }
+  }
+
+  
+  // SetDefaultStyle(wxTextAttr(*wxRED));
+  // AppendText(output);
 }
 
-void BuildTextCtrl::ContextError(const wxString output)
+void BuildTextCtrl::ContextError(const wxString &output)
 {
-  DiscardEdits();
+  Clear();
   SetDefaultStyle(wxTextAttr(*wxBLUE));
   AppendText(output);
 }

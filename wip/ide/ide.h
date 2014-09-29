@@ -59,9 +59,9 @@ public:
   BuildTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style);
   ~BuildTextCtrl();
 
-  void BuildSuccess(const wxString output);
-  void SyntaxError(const wxString output);
-  void ContextError(const wxString output);
+  void BuildSuccess(const wxString &output);
+  void SyntaxError(const wxString &output);
+  void ContextError(const wxString &output);
 
   DECLARE_EVENT_TABLE()
 };
