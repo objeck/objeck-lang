@@ -528,7 +528,7 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
   wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
 #endif
   // build output
-  m_buildOutput = new wxBuildErrorList(this, myID_BUILD_CTRL, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME);
+  m_buildOutput = new wxBuildErrorList(this, m_notebook, myID_BUILD_CTRL, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME);
   m_buildOutput->AppendColumn(wxT("#"));
   m_buildOutput->AppendColumn(wxT("File"));
   m_buildOutput->AppendColumn(wxT("Line"));
@@ -552,10 +552,10 @@ wxBEGIN_EVENT_TABLE(wxBuildErrorList, wxListCtrl)
 EVT_LIST_ITEM_ACTIVATED(myID_BUILD_CTRL, wxBuildErrorList::OnActivated)
 wxEND_EVENT_TABLE()
 
-wxBuildErrorList::wxBuildErrorList(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style)
+wxBuildErrorList::wxBuildErrorList(wxWindow *parent, Notebook* notebook, wxWindowID id, const wxPoint &pos, const wxSize &size, long style)
   : wxListCtrl(parent, id, pos, size, style)
 {
-
+  m_notebook = notebook;
 }
 
 wxBuildErrorList::~wxBuildErrorList()
@@ -565,11 +565,17 @@ wxBuildErrorList::~wxBuildErrorList()
 
 void wxBuildErrorList::OnActivated(wxListEvent& event)
 {
-  int row = event.GetIndex();
+  const int row = event.GetIndex();
   if(row > -1) {
-    wxString file = GetItemText(row, 1);
-    wxString line = GetItemText(row, 2);
+    wxString full_path = GetItemText(row, 1);
+    wxString line_text = GetItemText(row, 2);
 
+    long line_nbr;
+    m_notebook->OpenFile(full_path);
+    if(m_notebook->GetEdit() && line_text.ToLong(&line_nbr)) {
+      m_notebook->GetEdit()->GotoLine(line_nbr - 1);
+      m_notebook->GetEdit()->SetFocus();
+    }
   }
 }
 
@@ -628,7 +634,7 @@ int wxBuildErrorList::ShowErrors(const wxString &output)
 
       // set values
       int row = InsertItem(i, error_id);
-      SetItem(row, 1, source_file.GetFullName());
+      SetItem(row, 1, source_file.GetFullPath());
       SetItem(row, 2, line_nbr);
       SetItem(row, 3, message);
     }
