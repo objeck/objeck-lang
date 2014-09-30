@@ -24,6 +24,7 @@
 #include "wx/wxhtml.h"
 #include "wx/utils.h"
 #include "wx/process.h"
+#include "wx/listctrl.h"
 
 #include "editor.h"
 #include "dialogs.h"
@@ -52,12 +53,12 @@ public:
 };
 
 //----------------------------------------------------------------------------
-//! BuildTextCtrl
-class BuildTextCtrl : public wxTextCtrl {
+//! wxBuildErrorList
+class wxBuildErrorList : public wxListCtrl {
 
 public:
-  BuildTextCtrl(wxWindow* parent, wxWindowID id, const wxString &value, const wxPoint &pos, const wxSize &size, long style);
-  ~BuildTextCtrl();
+  wxBuildErrorList(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style);
+  ~wxBuildErrorList();
 
   void BuildSuccess(const wxString &output);
   void SyntaxError(const wxString &output);
@@ -85,7 +86,7 @@ class MyFrame : public wxFrame {
   };
 
   wxAuiManager m_auiManager;
-  BuildTextCtrl* m_buildOutput;
+  wxBuildErrorList* m_buildOutput;
   ExecuteTextCtrl* m_executeOutput;
   Notebook* m_notebook;
   size_t m_newPageCount;
