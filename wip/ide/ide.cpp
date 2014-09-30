@@ -528,7 +528,7 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
   wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
 #endif
   // build output
-  m_buildOutput = new wxBuildErrorList(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME | wxLC_EDIT_LABELS);
+  m_buildOutput = new wxBuildErrorList(this, myID_BUILD_CTRL, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME);
   m_buildOutput->AppendColumn(wxT("#"));
   m_buildOutput->AppendColumn(wxT("File"));
   m_buildOutput->AppendColumn(wxT("Line"));
@@ -549,6 +549,7 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 //----------------------------------------------------------------------------
 //! BuildTextCtrl
 wxBEGIN_EVENT_TABLE(wxBuildErrorList, wxListCtrl)
+EVT_LIST_ITEM_ACTIVATED(myID_BUILD_CTRL, wxBuildErrorList::OnActivated)
 wxEND_EVENT_TABLE()
 
 wxBuildErrorList::wxBuildErrorList(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style)
@@ -560,6 +561,16 @@ wxBuildErrorList::wxBuildErrorList(wxWindow *parent, wxWindowID id, const wxPoin
 wxBuildErrorList::~wxBuildErrorList()
 {
 
+}
+
+void wxBuildErrorList::OnActivated(wxListEvent& event)
+{
+  int row = event.GetIndex();
+  if(row > -1) {
+    wxString file = GetItemText(row, 1);
+    wxString line = GetItemText(row, 2);
+
+  }
 }
 
 void wxBuildErrorList::BuildSuccess(const wxString &output)
@@ -616,10 +627,10 @@ int wxBuildErrorList::ShowErrors(const wxString &output)
       wxString message = error_parts[index++];
 
       // set values
-      InsertItem(i, error_id);
-      SetItem(i, 1, source_file.GetFullName());
-      SetItem(i, 2, line_nbr);
-      SetItem(i, 3, message);
+      int row = InsertItem(i, error_id);
+      SetItem(row, 1, source_file.GetFullName());
+      SetItem(row, 2, line_nbr);
+      SetItem(row, 3, message);
     }
   }
 
