@@ -618,7 +618,7 @@ int wxBuildErrorList::ShowErrors(const wxString &output)
       wxFileName source_file(full_path);
 
       // error id
-      wxString error_id = wxString::Format(wxT("%u"), i + 1);
+      wxString error_id = wxString::Format(wxT("%zu"), i + 1);
 
       // line number
       const wxString line_nbr = error_parts[index++];
