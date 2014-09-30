@@ -108,8 +108,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   SetMinSize(wxSize(800, 600));
   
   // set tool bar
-  m_auiManager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().
-                      Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
+  m_auiManager.AddPane(DoCreateToolBar(), wxAuiPaneInfo().Name(wxT("toolbar")).Caption(wxT("Toolbar 3")).
                       ToolbarPane().Top().Row(1).Position(1));
   
   // update
@@ -197,6 +196,8 @@ void MyFrame::OnProjectClose(wxCommandEvent &event)
 
 void MyFrame::OnProjectBuild(wxCommandEvent &event)
 {
+  // TODO: prompt to save files before build...
+
   if(!m_projectManager) {
     wxMessageDialog fileOverWrite(this, wxT("There is no project loaded."), wxT("Build Project"));
     fileOverWrite.ShowModal();
@@ -265,14 +266,15 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   switch(code) {
   case 0:
     m_buildOutput->BuildSuccess(output);
+    GetStatusBar()->SetStatusText(wxT("Build successful"));
     break;
 
   case 2:
-    m_buildOutput->SyntaxError(output);
-    break;
-
-  case 3:
-    m_buildOutput->ContextError(output);
+  case 3: {
+    int error_num = m_buildOutput->ShowErrors(output);
+    wxString build_status = wxString::Format(wxT("%d build error(s)"), error_num);
+    GetStatusBar()->SetStatusText(build_status);
+  }
     break;
   }
 }
@@ -525,18 +527,14 @@ wxAuiNotebook* MyFrame::CreateInfoCtrl()
 #else
   wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
 #endif
+  // build output
   m_buildOutput = new wxBuildErrorList(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME | wxLC_EDIT_LABELS);
-  int id1 = m_buildOutput->AppendColumn(wxT("#"));
-  int id2 = m_buildOutput->AppendColumn(wxT("File"));
-  int id3 = m_buildOutput->AppendColumn(wxT("Line"));
-  int id4 = m_buildOutput->AppendColumn(wxT("Message"), wxLIST_FORMAT_LEFT, 400);
+  m_buildOutput->AppendColumn(wxT("#"));
+  m_buildOutput->AppendColumn(wxT("File"));
+  m_buildOutput->AppendColumn(wxT("Line"));
+  m_buildOutput->AppendColumn(wxT("Message"));
 
-  int x = m_buildOutput->InsertItem(id1, wxT("1"));
-  m_buildOutput->SetItem(x, 1, wxT("hello.obs"));
-  m_buildOutput->SetItem(x, 2, wxT("3"));
-  m_buildOutput->SetItem(x, 3, wxT("Expected ';'"));
-
-
+  // runtime output
   m_executeOutput = new ExecuteTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxTE_MULTILINE | wxTE_RICH);
   m_executeOutput->SetFont(font);
   
@@ -566,30 +564,30 @@ wxBuildErrorList::~wxBuildErrorList()
 
 void wxBuildErrorList::BuildSuccess(const wxString &output)
 {
-
+  DeleteAllItems();
 }
 
-void wxBuildErrorList::SyntaxError(const wxString &output)
+int wxBuildErrorList::ShowErrors(const wxString &output)
 {
-  /*
+  // parse line
   wxArrayString lines;
   wxStringTokenizer line_tokenizer(output, wxT("\r\n"));
   while(line_tokenizer.HasMoreTokens()) {
     lines.Add(line_tokenizer.GetNextToken());
   }
-
   
-  Clear();
-  SetDefaultStyle(wxTextAttr(*wxBLACK));
-  AppendText(wxT("Objeck Compiler v3.3.1\r\n=======================\r\n"));
-  
+  // parse error line
+  int error_count = 0;
+  DeleteAllItems();
   for(size_t i = 0; i < lines.size(); ++i) {
     wxString line = lines[i];
     // additonal message output
     if(line.size() > 0 && line[0] == wxT('\t')) {
-      AppendText(line);
+      // AppendText(line);
     }
     else {
+      ++error_count;
+
       // parse error message
       wxArrayString error_parts;
       wxStringTokenizer message_tokenizer(line, wxT(":"));
@@ -597,45 +595,50 @@ void wxBuildErrorList::SyntaxError(const wxString &output)
         error_parts.Add(message_tokenizer.GetNextToken());
       }
 
-      // inspect parts and style output
+      // inspect parts
       size_t index = 0;
-      wxString full_file = error_parts[index++];
+      
+      // file name and path
+      wxString full_path = error_parts[index++];
 #ifdef __WXMSW__
-      full_file += wxT(':');
-      full_file += error_parts[index++];
+      full_path += wxT(':');
+      full_path += error_parts[index++];
 #endif
+      wxFileName source_file(full_path);
+
+      // error id
+      wxString error_id = wxString::Format(wxT("%u"), i + 1);
+
       // line number
       const wxString line_nbr = error_parts[index++];
+
       // message
       wxString message = error_parts[index++];
 
-      wxFileName file(full_file);
-      wxString error_nbr = wxString::Format(wxT("%u"), i + 1);
-      
-      SetDefaultStyle(wxTextAttr(*wxRED));
-      AppendText(error_nbr);
-      SetDefaultStyle(wxTextAttr(*wxBLACK));
-      AppendText(wxT(") "));
-      AppendText(file.GetFullName());
-      AppendText(wxT("("));
-      SetDefaultStyle(wxTextAttr(*wxBLUE));
-      AppendText(line_nbr);
-      SetDefaultStyle(wxTextAttr(*wxBLACK));
-      AppendText(wxT(") => "));
-      AppendText(message);
-      AppendText(wxT("\r\n"));
+      // set values
+      InsertItem(i, error_id);
+      SetItem(i, 1, source_file.GetFullName());
+      SetItem(i, 2, line_nbr);
+      SetItem(i, 3, message);
     }
   }
-  
-  // SetDefaultStyle(wxTextAttr(*wxRED));
-  // AppendText(output);
 
+  SetColumnWidth(0, wxLIST_AUTOSIZE);
+  SetColumnWidth(3, wxLIST_AUTOSIZE_USEHEADER);
+  
+  /*
+  // m_buildOutput->SetColumnWidth(4, 0);
+
+  int x = m_buildOutput->InsertItem(id1, wxT("1"));
+  m_buildOutput->SetItem(x, 1, wxT("hello.obs"));
+  m_buildOutput->SetItem(x, 2, wxT("3"));
+  m_buildOutput->SetItem(x, 3, wxT("Expected ';' dkfkdasf kasdf adskf asdkf kasdfk asdkf"));
+
+  m_buildOutput->SetColumnWidth(0, wxLIST_AUTOSIZE);
+  m_buildOutput->SetColumnWidth(3, wxLIST_AUTOSIZE_USEHEADER);
   */
-}
 
-void wxBuildErrorList::ContextError(const wxString &output)
-{
-  
+  return error_count;
 }
 
 //----------------------------------------------------------------------------

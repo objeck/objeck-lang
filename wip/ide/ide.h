@@ -61,8 +61,7 @@ public:
   ~wxBuildErrorList();
 
   void BuildSuccess(const wxString &output);
-  void SyntaxError(const wxString &output);
-  void ContextError(const wxString &output);
+  int ShowErrors(const wxString &output);
 
   DECLARE_EVENT_TABLE()
 };
