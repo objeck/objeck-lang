@@ -55,10 +55,12 @@ public:
 //----------------------------------------------------------------------------
 //! wxBuildErrorList
 class wxBuildErrorList : public wxListCtrl {
+  Notebook* m_notebook;
+
   void OnActivated(wxListEvent& event);
 
 public:
-  wxBuildErrorList(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style);
+  wxBuildErrorList(wxWindow *parent, Notebook* notebook, wxWindowID id, const wxPoint &pos, const wxSize &size, long style);
   ~wxBuildErrorList();
 
   void BuildSuccess(const wxString &output);
