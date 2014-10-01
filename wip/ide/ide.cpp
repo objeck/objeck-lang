@@ -69,6 +69,7 @@ EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
 EVT_MENU(myID_OPEN_PROJECT, MyFrame::OnProjectOpen)
 EVT_MENU(myID_CLOSE_PROJECT, MyFrame::OnProjectClose)
 EVT_MENU(myID_BUILD_PROJECT, MyFrame::OnProjectBuild)
+EVT_MENU(myID_RUN_PROJECT, MyFrame::OnProjectRun)
 EVT_MENU(myID_PROJECT_ADD_FILE, MyFrame::OnAddProjectFile)
 EVT_MENU(myID_PROJECT_REMOVE_FILE, MyFrame::OnRemoveProjectFile)
 // find/replace
@@ -195,6 +196,50 @@ void MyFrame::OnProjectClose(wxCommandEvent &event)
   }
 }
 
+void MyFrame::OnProjectRun(wxCommandEvent &event)
+{
+  wxFileName foo(wxT("a.obe"));
+  if(foo.FileExists()) {
+    // build path to compiler exe
+    wstring obr_exe = wxT("obr");
+    wxPlatformInfo platform;
+    if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
+      obr_exe += wxT(".exe");
+    }
+    wxString obr_path_exe = wxT("bin");
+    obr_path_exe += wxFileName::GetPathSeparator();
+    obr_path_exe += obr_exe;
+
+    wxString objeck_base_path = m_optionsManager->GetObjeckPath();
+    if(objeck_base_path.Last() != wxFileName::GetPathSeparator()) {
+      objeck_base_path += wxFileName::GetPathSeparator();
+    }
+    
+    const wxString obr_full_path = objeck_base_path + obr_path_exe;
+    wxString cmd = obr_full_path;
+    cmd += wxT(" ");
+    cmd += wxT("a.obe");
+    
+    BuildProcess process;
+    wxExecuteEnv env;
+    env.env[wxT("LANG")] = wxT("en_US.UTF-8");
+
+    int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
+    if(code < 0) {
+      wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
+      fileOverWrite.ShowModal();
+      return;
+    }
+    
+    wxString output = ReadInputStream(process.GetErrorStream());
+    output += ReadInputStream(process.GetInputStream());
+    
+    m_executeOutput->Clear();
+    m_executeOutput->AppendText(output);
+    m_executeOutput->SetFocus();
+  }
+}
+
 void MyFrame::OnProjectBuild(wxCommandEvent &event)
 {
   // TODO: prompt to save files before build...
@@ -211,17 +256,17 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
   }
 
   // build path to compiler exe
-  wstring obr_exe = wxT("obc");
+  wstring obc_exe = wxT("obc");
   wxPlatformInfo platform;
   if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
-    obr_exe += wxT(".exe");
+    obc_exe += wxT(".exe");
   }
-  wxString obr_path_exe = wxT("bin");
-  obr_path_exe += wxFileName::GetPathSeparator();
-  obr_path_exe += obr_exe;
+  wxString obc_path_exe = wxT("bin");
+  obc_path_exe += wxFileName::GetPathSeparator();
+  obc_path_exe += obc_exe;
 
-  const wxString obr_full_path = objeck_base_path + obr_path_exe;
-  wxFileName objeck_compiler_file(obr_full_path);
+  const wxString obc_full_path = objeck_base_path + obc_path_exe;
+  wxFileName objeck_compiler_file(obc_full_path);
   // ensure compiler exists
   if(!objeck_compiler_file.FileExists()) {
     wxMessageDialog fileOverWrite(this, wxT("Unable to find compiler executable, please check path."), wxT("Build Project"));
@@ -229,12 +274,13 @@ void MyFrame::OnProjectBuild(wxCommandEvent &event)
     return;
   }
 
-  BuildProcess process; wxExecuteEnv env;
+  BuildProcess process; 
+  wxExecuteEnv env;
   env.env[wxT("OBJECK_LIB_PATH")] = objeck_base_path + wxT("bin");
   env.env[wxT("LANG")] = wxT("en_US.UTF-8");
 
   wxString cmd = wxT("\"");
-  cmd += obr_full_path;
+  cmd += obc_full_path;
   cmd += wxT("\" -src ");
 
   wxArrayString source_files = m_projectManager->GetFiles();
@@ -444,6 +490,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   // project menu
   m_projectView = new wxMenu;
   m_projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
+  m_projectView->Append(myID_RUN_PROJECT, _("Run...\tCtrl+Shift+R"));
   m_projectView->AppendSeparator();
   m_projectView->Append(myID_ADD_FILE_PROJECT, _("&Add file...\tCtrl+Shift+A"));
   m_projectView->Append(myID_REMOVE_FILE_PROJECT, _("&Remove file...\tCtrl+Shift+R"));
@@ -642,22 +689,12 @@ int wxBuildErrorList::ShowErrors(const wxString &output)
       SetItem(row, 3, message);
     }
   }
-
-  SetColumnWidth(0, wxLIST_AUTOSIZE);
-  SetColumnWidth(3, wxLIST_AUTOSIZE_USEHEADER);
   
-  /*
-  // m_buildOutput->SetColumnWidth(4, 0);
-
-  int x = m_buildOutput->InsertItem(id1, wxT("1"));
-  m_buildOutput->SetItem(x, 1, wxT("hello.obs"));
-  m_buildOutput->SetItem(x, 2, wxT("3"));
-  m_buildOutput->SetItem(x, 3, wxT("Expected ';' dkfkdasf kasdf adskf asdkf kasdfk asdkf"));
-
-  m_buildOutput->SetColumnWidth(0, wxLIST_AUTOSIZE);
-  m_buildOutput->SetColumnWidth(3, wxLIST_AUTOSIZE_USEHEADER);
-  */
-
+  SetColumnWidth(0, wxLIST_AUTOSIZE);
+  SetColumnWidth(1, wxLIST_AUTOSIZE);
+  SetColumnWidth(2, wxLIST_AUTOSIZE);
+  SetColumnWidth(3, wxLIST_AUTOSIZE);
+  
   return error_count;
 }
 
@@ -700,6 +737,7 @@ void ProjectTreeCtrl::OnItemMenu(wxTreeEvent& event)
     if(m_frame->GetProjectManager()->HitProject(itemId)) {
       wxMenu menu;
       menu.Append(myID_BUILD_PROJECT, _("&Build"));
+      menu.Append(myID_RUN_PROJECT, _("&Run..."));
       menu.AppendSeparator();
       menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
       menu.Append(myID_PROJECT_ADD_LIB, _("&Add library..."));

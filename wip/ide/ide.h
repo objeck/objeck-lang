@@ -25,6 +25,7 @@
 #include "wx/utils.h"
 #include "wx/process.h"
 #include "wx/listctrl.h"
+#include <wx/datstrm.h>
 
 #include "editor.h"
 #include "dialogs.h"
@@ -115,12 +116,21 @@ class MyFrame : public wxFrame {
     }
 
     wxString out;
-    while(in->CanRead() && !in->Eof()) {
-      wxChar c = in->GetC();
-      if(iswprint(c) || isspace(c)) {
-        out.Append(c);
+
+    int i = 0;
+    char buffer[256];
+    while(!in->Eof()) {
+      if(i < 256) {
+        buffer[i++] = in->GetC();
+      }
+      else {
+        buffer[i - 1] = '\0';
+        out += wxString::FromUTF8(buffer);
+        i = 0;
       }
     }
+    buffer[i - 1] = '\0';
+    out += wxString::FromUTF8(buffer);
 
     return out;
   }
@@ -173,6 +183,7 @@ public:
   void OnProjectNew(wxCommandEvent &event);
   void OnProjectOpen(wxCommandEvent &event);
   void OnProjectClose(wxCommandEvent &event);
+  void OnProjectRun(wxCommandEvent &event);
   void OnProjectBuild(wxCommandEvent &event);
   void OnAddProjectFile(wxCommandEvent &event);
   void OnRemoveProjectFile(wxCommandEvent &event);
