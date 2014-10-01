@@ -2,4 +2,4 @@
 libraries=lang.obl;collect.obl
 name=FooBar
 output=a.obe
-source=/home/randy/Documents/Code/objeck-lang/src/compiler/test_src/prgm8.obs;
+source=/home/randy/Documents/Code/objeck-lang/src/objeck/deploy/examples/hello.obs;
