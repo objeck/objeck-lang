@@ -29,7 +29,7 @@ bundle Default {
 			value : Float := 3.14;
 			digit : Int := 2;
 			
-			value->PrintLine(;
+			value->PrintLine();
 			value := value - digit * 10.0;
 			value->PrintLine();
 		}
