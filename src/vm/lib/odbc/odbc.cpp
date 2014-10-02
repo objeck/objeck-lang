@@ -469,7 +469,7 @@ extern "C" {
   void odbc_stmt_set_smallint(VMContext& context) 
   {
     long* value = APITools_GetIntAddress(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -496,7 +496,7 @@ extern "C" {
   void odbc_stmt_set_bit(VMContext& context) 
   {
     long* value = APITools_GetIntAddress(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -523,7 +523,7 @@ extern "C" {
   void odbc_stmt_set_int(VMContext& context) 
   {
     long* value = APITools_GetIntAddress(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -550,7 +550,7 @@ extern "C" {
   void odbc_stmt_set_double(VMContext& context) 
   {
     long* value = APITools_GetFloatAddress(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -577,7 +577,7 @@ extern "C" {
   void odbc_stmt_set_real(VMContext& context) 
   {
     long* value = APITools_GetFloatAddress(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -603,7 +603,7 @@ extern "C" {
 #endif
   void odbc_result_get_int_by_id(VMContext& context) 
   {
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -642,7 +642,7 @@ extern "C" {
 #endif
   void odbc_result_get_smallint_by_id(VMContext& context) 
   {
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -680,7 +680,7 @@ extern "C" {
 #endif
   void odbc_result_get_bit_by_id(VMContext& context) 
   {
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -719,7 +719,7 @@ extern "C" {
 #endif
   void odbc_result_get_double_by_id(VMContext& context) 
   {
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -758,7 +758,7 @@ extern "C" {
 #endif
   void odbc_result_get_real_by_id(VMContext& context) 
   {
-    SQLUSMALLINT i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -799,7 +799,7 @@ extern "C" {
   {
     long* byte_array = (long*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		
 #ifdef _DEBUG
@@ -828,7 +828,7 @@ extern "C" {
     long* byte_array = (long*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
     int value_size = APITools_GetArraySize(byte_array);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 		
 #ifdef _DEBUG
@@ -857,7 +857,7 @@ extern "C" {
     long* byte_array = (long*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
     long* value_size = APITools_GetIntAddress(context, 2);
-    long i = APITools_GetIntValue(context, 3);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
     map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 5);		
     
@@ -888,7 +888,7 @@ extern "C" {
   void odbc_stmt_set_timestamp(VMContext& context) 
   {
     long* value = APITools_GetObjectValue(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -899,13 +899,13 @@ extern "C" {
 #endif
 
     SQL_TIMESTAMP_STRUCT time_stamp;    
-    time_stamp.year = value[1];
-    time_stamp.month = value[2];
-    time_stamp.day = value[3];
-    time_stamp.hour = value[4];
-    time_stamp.minute = value[5];
-    time_stamp.second = value[6];
-    time_stamp.fraction = value[7];
+    time_stamp.year = (SQLUSMALLINT)value[1];
+    time_stamp.month = (SQLUSMALLINT)value[2];
+    time_stamp.day = (SQLUSMALLINT)value[3];
+    time_stamp.hour = (SQLUSMALLINT)value[4];
+    time_stamp.minute = (SQLUSMALLINT)value[5];
+    time_stamp.second = (SQLUSMALLINT)value[6];
+    time_stamp.fraction = (SQLUSMALLINT)value[7];
 
     long* data = (long*)value[0];
     data += 3;
@@ -930,7 +930,7 @@ extern "C" {
   void odbc_stmt_set_date(VMContext& context) 
   {
     long* value = APITools_GetObjectValue(context, 1);
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
 #ifdef _DEBUG
@@ -939,9 +939,9 @@ extern "C" {
 #endif
 
     SQL_DATE_STRUCT time_stamp;    
-    time_stamp.year = value[1];
-    time_stamp.month = value[2];
-    time_stamp.day = value[3];
+    time_stamp.year = (SQLUSMALLINT)value[1];
+    time_stamp.month = (SQLUSMALLINT)value[2];
+    time_stamp.day = (SQLUSMALLINT)value[3];
 
     long* data = (long*)value[0];
     data += 3;
@@ -965,7 +965,7 @@ extern "C" {
 #endif
   void odbc_result_get_varchar_by_id(VMContext& context) 
   {
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -1010,7 +1010,7 @@ extern "C" {
     char* buffer = (char*)APITools_GetByteArray(byte_array);
     int buffer_size = APITools_GetArraySize(byte_array);
 		
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -1028,9 +1028,6 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_BINARY, buffer, buffer_size, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-#ifdef _DEBUG
-      wcout << L"  " << value << endl;
-#endif
     }
     else {
       APITools_SetIntValue(context, 0, 0);
@@ -1055,7 +1052,7 @@ extern "C" {
       APITools_SetObjectValue(context, 1, 0);
       return;
     }
-    long i = result->second;
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
@@ -1094,7 +1091,7 @@ extern "C" {
 #endif
   void odbc_result_get_timestamp_by_id(VMContext& context) 
   {
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
@@ -1152,7 +1149,7 @@ extern "C" {
 #endif
   void odbc_result_get_date_by_id(VMContext& context) 
   {
-    long i = APITools_GetIntValue(context, 2);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
