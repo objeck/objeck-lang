@@ -67,6 +67,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <MinimumRequiredVersion />
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
