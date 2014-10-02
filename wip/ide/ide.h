@@ -110,6 +110,70 @@ class MyFrame : public wxFrame {
   Notebook* CreateNotebook();
   wxAuiNotebook* CreateInfoCtrl();
 
+  /****************************
+  * Converts a UTF-8 bytes to
+  * native a unicode string
+  ****************************/
+  static bool BytesToUnicode(const string &in, wstring &out) {
+#ifdef _WIN32
+    // allocate space
+    int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
+    if(!wsize) {
+      return false;
+    }
+    wchar_t* buffer = new wchar_t[wsize];
+
+    // convert
+    int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
+    if(!check) {
+      delete[] buffer;
+      buffer = NULL;
+      return false;
+    }
+
+    // create string
+    out.append(buffer, wsize - 1);
+
+    // clean up
+    delete[] buffer;
+    buffer = NULL;
+#else
+    // allocate space
+    size_t size = mbstowcs(NULL, in.c_str(), in.size());
+    if(size == (size_t)-1) {
+      return false;
+    }
+    wchar_t* buffer = new wchar_t[size + 1];
+
+    // convert
+    size_t check = mbstowcs(buffer, in.c_str(), in.size());
+    if(check == (size_t)-1) {
+      delete[] buffer;
+      buffer = NULL;
+      return false;
+    }
+    buffer[size] = L'\0';
+
+    // create string
+    out.append(buffer, size);
+
+    // clean up
+    delete[] buffer;
+    buffer = NULL;
+#endif
+
+    return true;
+  }
+
+  static wstring BytesToUnicode(const string &in) {
+    wstring out;
+    if(BytesToUnicode(in, out)) {
+      return out;
+    }
+
+    return L"";
+  }
+
   wxString ReadInputStream(wxInputStream* in) {
     if(!in) {
       return wxEmptyString;
@@ -117,6 +181,24 @@ class MyFrame : public wxFrame {
 
     wxString out;
 
+#ifdef __WXMSW__
+    int i = 0;
+    wxChar buffer[256];
+    while(!in->Eof()) {
+      if(i < 256) {
+        wxChar c;
+        in->Read(&c, sizeof(c));
+        buffer[i++] = c;
+      }
+      else {
+        buffer[i - 1] = '\0';
+        out += buffer;
+        i = 0;
+      }
+    }
+    buffer[i - 1] = '\0';
+    out += buffer;
+#else
     int i = 0;
     char buffer[256];
     while(!in->Eof()) {
@@ -131,6 +213,7 @@ class MyFrame : public wxFrame {
     }
     buffer[i - 1] = '\0';
     out += wxString::FromUTF8(buffer);
+#endif
 
     return out;
   }
