@@ -221,10 +221,7 @@ void MyFrame::OnProjectRun(wxCommandEvent &event)
     cmd += wxT("a.obe");
     
     BuildProcess process;
-    wxExecuteEnv env;
-    env.env[wxT("LANG")] = wxT("en_US.UTF-8");
-
-    int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
+    int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
     if(code < 0) {
       wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
       fileOverWrite.ShowModal();
@@ -464,7 +461,7 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuEdit->Append(wxID_SELECTALL, _("&Select All\tCtrl+A"));
   menuEdit->AppendSeparator();
   menuEdit->AppendCheckItem(myID_OVERTYPE, _("Over &type\tCtrl+Shift+T"));
-  menuEdit->AppendCheckItem(myID_READONLY, _("Read-&only\tCtrl+Shift+R"));
+  // menuEdit->AppendCheckItem(myID_READONLY, _("Read-&only\tCtrl+Shift+R"));
   menuEdit->AppendCheckItem(myID_WRAPMODEON, _("&Word wrap\tCtrl+Shift+W"));
   menuEdit->AppendSeparator();
   menuEdit->Append(myID_DLG_FIND_TEXT, _("&Find...\tCtrl+F"));
@@ -490,10 +487,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
   // project menu
   m_projectView = new wxMenu;
   m_projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
-  m_projectView->Append(myID_RUN_PROJECT, _("Run...\tCtrl+Shift+R"));
+  m_projectView->Append(myID_RUN_PROJECT, _("Run...\tCtrl+Shift+E"));
   m_projectView->AppendSeparator();
   m_projectView->Append(myID_ADD_FILE_PROJECT, _("&Add file...\tCtrl+Shift+A"));
-  m_projectView->Append(myID_REMOVE_FILE_PROJECT, _("&Remove file...\tCtrl+Shift+R"));
+  m_projectView->Append(myID_REMOVE_FILE_PROJECT, _("&Remove file"));
   m_projectView->AppendSeparator();
   m_projectView->Append(myID_PROJECT_OPTIONS, _("Project options...\tALT+Shift+O"));
   DisableProjectMenu();
@@ -674,7 +671,11 @@ int wxBuildErrorList::ShowErrors(const wxString &output)
       wxFileName source_file(full_path);
 
       // error id
+#ifdef __WXMSW__
+      wxString error_id = wxString::Format(wxT("%Iu"), i + 1);
+#else
       wxString error_id = wxString::Format(wxT("%zu"), i + 1);
+#endif
 
       // line number
       const wxString line_nbr = error_parts[index++];
