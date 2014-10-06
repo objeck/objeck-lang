@@ -218,8 +218,11 @@ void MyFrame::OnProjectRun(wxCommandEvent &event)
     const wxString obr_full_path = objeck_base_path + obr_path_exe;
     wxString cmd = obr_full_path;
     cmd += wxT(" ");
-    cmd += wxT("a.obe");
-    
+    cmd += wxT("a.obe & pause");
+
+    wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_SHOW_CONSOLE);
+
+    /*
     BuildProcess process;
     int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
     if(code < 0) {
@@ -234,6 +237,7 @@ void MyFrame::OnProjectRun(wxCommandEvent &event)
     m_executeOutput->Clear();
     m_executeOutput->AppendText(output);
     m_executeOutput->SetFocus();
+    */
   }
 }
 
@@ -787,6 +791,43 @@ void ProjectTreeCtrl::OnItemActivated(wxTreeEvent& event)
       fileOverWrite.ShowModal();
     }
   }
+}
+
+//----------------------------------------------------------------------------
+//! MyThread
+MyThread::MyThread(MyFrame *handler, wxString &cmd, ExecuteTextCtrl* executeOutput) 
+  : wxThread(wxTHREAD_DETACHED)
+{
+  m_pHandler = handler;
+  m_cmd = cmd;
+  m_executeOutput = executeOutput;
+}
+
+MyThread::~MyThread()
+{
+  m_pHandler->m_pThread = NULL;
+}
+
+wxThread::ExitCode MyThread::Entry()
+{
+  if(!TestDestroy()) {
+    BuildProcess process;
+    int code = wxExecute(m_cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
+    if(code < 0) {
+      wxMessageDialog fileOverWrite(m_pHandler, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
+      fileOverWrite.ShowModal();
+      return (wxThread::ExitCode)1;
+    }
+
+    wxString output = MyFrame::ReadInputStream(process.GetErrorStream());
+    output += MyFrame::ReadInputStream(process.GetInputStream());
+
+    m_executeOutput->Clear();
+    m_executeOutput->AppendText(output);
+    m_executeOutput->SetFocus();
+  }
+  
+  return (wxThread::ExitCode)0;
 }
 
 
