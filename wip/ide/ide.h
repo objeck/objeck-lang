@@ -32,6 +32,20 @@
 #include "opers.h"
 
 class MyFrame;
+class ExecuteTextCtrl;
+
+class MyThread : public wxThread {
+  MyFrame* m_pHandler;
+  wxString m_cmd;
+  ExecuteTextCtrl* m_executeOutput;
+
+public:
+  MyThread(MyFrame *handler, wxString &cmd, ExecuteTextCtrl* executeOutput);
+  ~MyThread();
+
+  ExitCode Entry();
+  
+};
 
 //----------------------------------------------------------------------------
 //! ProjectTreeCtrl
@@ -98,7 +112,7 @@ class MyFrame : public wxFrame {
   ProjectManager* m_projectManager;
   wxMenu* m_projectView;
   ProjectTreeCtrl* m_tree;
-
+  
   void DoUpdate();
   
   // tree
@@ -110,71 +124,18 @@ class MyFrame : public wxFrame {
   Notebook* CreateNotebook();
   wxAuiNotebook* CreateInfoCtrl();
 
-  /****************************
-  * Converts a UTF-8 bytes to
-  * native a unicode string
-  ****************************/
-  static bool BytesToUnicode(const string &in, wstring &out) {
-#ifdef _WIN32
-    // allocate space
-    int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
-    if(!wsize) {
-      return false;
-    }
-    wchar_t* buffer = new wchar_t[wsize];
-
-    // convert
-    int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
-    if(!check) {
-      delete[] buffer;
-      buffer = NULL;
-      return false;
-    }
-
-    // create string
-    out.append(buffer, wsize - 1);
-
-    // clean up
-    delete[] buffer;
-    buffer = NULL;
-#else
-    // allocate space
-    size_t size = mbstowcs(NULL, in.c_str(), in.size());
-    if(size == (size_t)-1) {
-      return false;
-    }
-    wchar_t* buffer = new wchar_t[size + 1];
-
-    // convert
-    size_t check = mbstowcs(buffer, in.c_str(), in.size());
-    if(check == (size_t)-1) {
-      delete[] buffer;
-      buffer = NULL;
-      return false;
-    }
-    buffer[size] = L'\0';
-
-    // create string
-    out.append(buffer, size);
-
-    // clean up
-    delete[] buffer;
-    buffer = NULL;
-#endif
-
-    return true;
+  bool IsProjectLoaded() {
+    return m_tree != NULL;
   }
 
-  static wstring BytesToUnicode(const string &in) {
-    wstring out;
-    if(BytesToUnicode(in, out)) {
-      return out;
-    }
+public:
+  MyThread* m_pThread;
 
-    return L"";
-  }
+  MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
+          const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
+  ~MyFrame();
 
-  wxString ReadInputStream(wxInputStream* in) {
+  static wxString ReadInputStream(wxInputStream* in) {
     if(!in) {
       return wxEmptyString;
     }
@@ -191,12 +152,12 @@ class MyFrame : public wxFrame {
         buffer[i++] = c;
       }
       else {
-        buffer[i - 1] = '\0';
+        buffer[i - 1] = L'\0';
         out += buffer;
         i = 0;
       }
     }
-    buffer[i - 1] = '\0';
+    buffer[i - 1] = L'\0';
     out += buffer;
 #else
     int i = 0;
@@ -217,15 +178,6 @@ class MyFrame : public wxFrame {
 
     return out;
   }
-
-  bool IsProjectLoaded() {
-    return m_tree != NULL;
-  }
-
-public:
-  MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
-          const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE | wxSUNKEN_BORDER);
-  ~MyFrame();
 
   void OpenFile(const wxString &path) {
     if(m_notebook && path.size() > 0) {
