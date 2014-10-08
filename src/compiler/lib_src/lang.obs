@@ -1358,12 +1358,13 @@ bundle System {
 				return false;
 			};
 			
-			tmp : Char[] := Char->New[@pos - 1];
+			size := @pos - 1;
+			tmp : Char[] := Char->New[size];
 			Runtime->Copy(tmp, 0, @string, 0, index);
 			Runtime->Copy(tmp, index, @string, index + 1, @pos - index - 1);
 			
 			@string := tmp;
-			@pos -= 1;
+			@pos := size;
 			@max := @pos;
 			
 			return true;
@@ -1375,15 +1376,38 @@ bundle System {
 			};
 
 			length := end - start + 1;
-			tmp : Char[] := Char->New[@pos - length];
+			size := @pos - length;
+			tmp : Char[] := Char->New[size];
 			Runtime->Copy(tmp, 0, @string, 0, start);
-			Runtime->Copy(tmp, start, @string, end + 1, @pos - length - start);
+			Runtime->Copy(tmp, start, @string, end + 1, size - start);
 
 			@string := tmp;
-			@pos -= length;
+			@pos := size;
 			@max := @pos;
 			
 			return true;
+		}
+
+		method : public : native : Insert(index : Int, s : String) ~ Bool {
+			if(index < 0 | index > @pos) {
+				return false;
+			};
+			
+			size := @pos + s->Size();
+			tmp : Char[] := Char->New[size];
+			Runtime->Copy(tmp, 0, @string, 0, index);
+
+			buf := s->ToCharArray();
+			Runtime->Copy(tmp, index, buf, 0, buf->Size());
+
+			Runtime->Copy(tmp, index + buf->Size(), @string, index, @pos - index);
+
+			@string := tmp;
+			@pos := size;
+			@max := @pos;
+			
+			return true;
+
 		}
 
 		method : public : native : IsEmpty() ~ Bool {

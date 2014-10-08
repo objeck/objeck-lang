@@ -4,5 +4,12 @@ class Test {
 		s->Delete(1,2);
 		s->Append('z');
 		s->PrintLine();
+
+		f := "cat";	
+		g := "foo";	
+		
+		f->Insert(3, g);
+		f->Append('r');
+		f->PrintLine();
 	} 
 }
