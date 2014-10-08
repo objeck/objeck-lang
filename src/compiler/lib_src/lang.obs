@@ -1204,7 +1204,7 @@ bundle System {
 			};
 
 			@string[@pos] := c;
-			@pos := @pos + 1;
+			@pos += 1;
 		}
 		
 		method : public : native : Append(c : Byte) ~ Nil {
@@ -1218,7 +1218,7 @@ bundle System {
 			};
 
 			@string[@pos] := c;
-			@pos := @pos + 1;
+			@pos += 1;
 		}
 		
 		method : public : Find(char : Char) ~ Int {
@@ -1353,6 +1353,39 @@ bundle System {
 			return new_string;
 		}
 		
+		method : public : native : Delete(index : Int) ~ Bool {
+			if(index < 0 | index >= @pos) {
+				return false;
+			};
+			
+			tmp : Char[] := Char->New[@pos - 1];
+			Runtime->Copy(tmp, 0, @string, 0, index);
+			Runtime->Copy(tmp, index, @string, index + 1, @pos - index - 1);
+			
+			@string := tmp;
+			@pos -= 1;
+			@max := @pos;
+			
+			return true;
+		}
+
+		method : public : native : Delete(start : Int, end : Int) ~ Bool {
+			if(start < 0 | start >= @pos | end < 0 | end >= @pos | start >= end) {
+				return false;
+			};
+
+			length := end - start + 1;
+			tmp : Char[] := Char->New[@pos - length];
+			Runtime->Copy(tmp, 0, @string, 0, start);
+			Runtime->Copy(tmp, start, @string, end + 1, @pos - length - start);
+
+			@string := tmp;
+			@pos -= length;
+			@max := @pos;
+			
+			return true;
+		}
+
 		method : public : native : IsEmpty() ~ Bool {
 			return @pos = 0 ? true : false; 			
 		}
