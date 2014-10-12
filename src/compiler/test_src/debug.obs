@@ -1,23 +1,8 @@
-class Token {
-	@type : Token->Type;
-
+class Test {
 	function : public : Main(a : String[]) ~ Nil {
-		t := Token->New();
-		t->GetType()->PrintLine();
-	}
-
-	New() {
-		@type := Token->Type->ARRAY;	
-	}
-
-	method : public : GetType() ~ Token->Type {
-		return @type;
-	}
-
-	enum Type := -100 {
- 		NUMBER,
-		STRING,
-		ARRAY,
-		STRUCT
+		s := "123456";
+		s->Delete(1,2);
+		s->Append('z');
+		s->PrintLine();
 	} 
 }
