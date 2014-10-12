@@ -218,11 +218,10 @@ void MyFrame::OnProjectRun(wxCommandEvent &event)
     const wxString obr_full_path = objeck_base_path + obr_path_exe;
     wxString cmd = obr_full_path;
     cmd += wxT(" ");
-    cmd += wxT("a.obe & pause");
+    cmd += wxT("a.obe");
 
-    wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_SHOW_CONSOLE);
+    // wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_SHOW_CONSOLE);
 
-    /*
     BuildProcess process;
     int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
     if(code < 0) {
@@ -237,7 +236,6 @@ void MyFrame::OnProjectRun(wxCommandEvent &event)
     m_executeOutput->Clear();
     m_executeOutput->AppendText(output);
     m_executeOutput->SetFocus();
-    */
   }
 }
 
