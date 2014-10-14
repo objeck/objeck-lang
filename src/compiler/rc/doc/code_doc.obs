@@ -144,7 +144,7 @@ class Doc {
 		};
 	}
 
-	method : CommentStart() ~ Bool {
+	method : MatchCommentStart() ~ Bool {
 		ParseWhiteSpace();
 		start := @cur_char = '#' & @nxt_char = '~';
 		if(start) {
@@ -155,7 +155,7 @@ class Doc {
 		return false;
 	}
 
-	method : CommentEnd() ~ Bool {
+	method : MatchCommentEnd() ~ Bool {
 		ParseWhiteSpace();
 		start := @cur_char = '~' & @nxt_char = '#';
 		if(start) {
@@ -166,6 +166,10 @@ class Doc {
 		return false;
 	}
 	
+	method : MatchIdent(ident : String) ~ Bool {
+		return ParseIdent().Equals(ident);
+	}
+
 	method : ParseIdent() ~ String {
 		ParseWhiteSpace();
 		
