@@ -12,11 +12,11 @@ class Parser {
 	
 	function : native : Parse(file : String) ~ Nil {
 		capture := 0;
-		block := "";
+		Elem := "";
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(file);
-		class_doc : ClassDoc;
+		class_doc : ClassElem;
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -50,18 +50,18 @@ class Parser {
 						select(line->Get(i)) {
 							label '{': {
 								if(capture = 3) {
-									block->Append(line);
-									block->Append('\n');
-									class_doc := ClassDoc->New(block);								
-									block := "";
+									Elem->Append(line);
+									Elem->Append('\n');
+									class_doc := ClassElem->New(Elem);								
+									Elem := "";
 "---"->PrintLine();									
 								}
 								else if(capture = 4) {
-									block->Append(line);
-									block->Append('\n');
+									Elem->Append(line);
+									Elem->Append('\n');
 									if(class_doc <> Nil) {
-#										class_doc->AddFunctionDoc(block);
-										block := "";
+#										class_doc->AddFunctionDoc(Elem);
+										Elem := "";
 "---"->PrintLine();										
 									};
 								};
@@ -99,15 +99,15 @@ class Parser {
 			};				
 			
 			if(capture > 0) {
-				block->Append(line);
-				block->Append('\n');
+				Elem->Append(line);
+				Elem->Append('\n');
 			};
 		};
 		reader->Close();
 	}
 }
 
-class Doc {
+class DocElem {
 	@buffer : String;
 	@buffer_index : Int;
 	@cur_char : Char;
@@ -146,8 +146,8 @@ class Doc {
 
 	method : MatchCommentStart() ~ Bool {
 		ParseWhiteSpace();
-		start := @cur_char = '#' & @nxt_char = '~';
-		if(start) {
+		match := @cur_char = '#' & @nxt_char = '~';
+		if(match) {
 			NextChar();	NextChar();
 			return true;
 		};
@@ -157,8 +157,8 @@ class Doc {
 
 	method : MatchCommentEnd() ~ Bool {
 		ParseWhiteSpace();
-		start := @cur_char = '~' & @nxt_char = '#';
-		if(start) {
+		match := @cur_char = '~' & @nxt_char = '#';
+		if(match) {
 			NextChar();	NextChar();
 			return true;
 		};
@@ -166,8 +166,18 @@ class Doc {
 		return false;
 	}
 	
+	method : MatchChar(char : Char) ~ Bool {
+		match := @cur_char = char;
+		if(match) {
+			NextChar();
+			return true;
+		};
+		
+		return false;
+	}
+
 	method : MatchIdent(ident : String) ~ Bool {
-		return ParseIdent().Equals(ident);
+		return ParseIdent()->Equals(ident);
 	}
 
 	method : ParseIdent() ~ String {
@@ -183,7 +193,10 @@ class Doc {
 				label '{':
 				label ':':
 				label '(':
-				label ')': {
+				label ')':
+				label '~':
+				label '#':
+				label '\0': {
 					done := true;
 				}				
 				other: {
@@ -207,11 +220,15 @@ class Doc {
 				label '\r':
 				label '\n': {
 					ident->Append(' ');
+					NextChar();
 				}
 				label '{':
 				label ':':
 				label '(':
-				label ')': {
+				label ')':
+				label '~':
+				label '#':
+				label '\0': {
 					done := true;
 				}				
 				other: {
@@ -229,7 +246,8 @@ class Doc {
 	}
 }
 
-class ClassDoc from Doc {
+class ClassElem from DocElem {
+	@name : String;
 	@functions : StringMap;
 	
 	New(buffer : String) {
@@ -238,22 +256,28 @@ class ClassDoc from Doc {
 	}
 
 	method : public : GetName() ~ String {
-		return "";
+		return @name;
 	}
 
 	method : native : Parse() ~ Bool {
-		buffer := "";
-
-		while(@cur_char <> '\0') {
-			start := false;
-			
-			if(@cur_char = '#' & @nxt_char = '~') {
-				start := true;
-			};
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		desc := ParseDesc();
+# IO.Console->Print('|')->Print(desc)->PrintLine('|');
+		if(<>MatchCommentEnd()) {
+			return false;
 		};
 
-buffer->PrintLine();		
+		if(<>MatchIdent("class")) {
+			return false;
+		};
 
-		return true;
+		@name := ParseIdent();
+		if(@name->Size() > 0) {
+			return true;
+		};
+		
+		return false;
 	}
 }
