@@ -20,7 +20,7 @@
   features.  This article is intended to introduce programmers and
   compiler enthusiasts to the unique features and design of the Objeck
   programming language.  Unless otherwise noted, this article covers
-  functionality that's part of v3.3.2  For additional information
+  functionality that's part of v3.3.4  For additional information
   please refer to the
   \htmladdnormallink{project website}{http://www.objeck.org}.
 \end{abstract}
@@ -1206,10 +1206,20 @@ Base class for all objects.
   \item method : public : native : Replace(find : String, replace :
     String) \textasciitilde String
   \end{itemize}
-\item \texttt{ReplaceAll} - find and replace all string instances.
+\item \texttt{ReplaceAll} - find and replace all string instances
   \begin{itemize}
   \item method : public : native : ReplaceAll(find : String, replace :
     String) \textasciitilde String
+  \end{itemize}
+\item \texttt{Insert} - inserts a string
+  \begin{itemize}
+  \item method : public : native : Insert(index : Int, string :
+    String) \textasciitilde Bool
+  \end{itemize}
+\item \texttt{Delete} - deletes a portion of the string
+  \begin{itemize}
+  \item method : public : native : Delete(index : Int) \textasciitilde Bool
+  \item method : public : native : Delete(start : Int, end : Int) \textasciitilde Bool      
   \end{itemize}
 \item \texttt{Size} - returns the size of the String
   \begin{itemize}
