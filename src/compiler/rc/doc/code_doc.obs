@@ -60,7 +60,7 @@ class Parser {
 									block->Append(line);
 									block->Append('\n');
 									if(class_doc <> Nil) {
-										class_doc->AddFunctionDoc(block);
+#										class_doc->AddFunctionDoc(block);
 										block := "";
 "---"->PrintLine();										
 									};
@@ -112,10 +112,12 @@ class Doc {
 	@buffer_index : Int;
 	@cur_char : Char;
 	@nxt_char : Char;
+	@parsed : Bool;
 	
 	New(buffer : String) {
 		@buffer := buffer;
 		@buffer_index := 0;
+		@parsed := false;
 		NextChar();
 	}
 	
@@ -136,189 +138,118 @@ class Doc {
 		};
 	}
 	
-	method : native : ParseFrag() ~ String {
+	method : ParseWhiteSpace() ~ Nil {
 		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\n')) {
 			NextChar();
 		};
+	}
 
-		start := @buffer_index - 1;
-		while(@buffer_index < @buffer->Size() & @cur_char <> '\n') {
-			NextChar();
+	method : CommentStart() ~ Bool {
+		ParseWhiteSpace();
+		start := @cur_char = '#' & @nxt_char = '~';
+		if(start) {
+			NextChar();	NextChar();
+			return true;
 		};
 		
-		if(@buffer_index < @buffer->Size()) {
-			return @buffer->SubString(start, @buffer_index - start - 1)->Trim;
+		return false;
+	}
+
+	method : CommentEnd() ~ Bool {
+		ParseWhiteSpace();
+		start := @cur_char = '~' & @nxt_char = '#';
+		if(start) {
+			NextChar();	NextChar();
+			return true;
 		};
 		
-		return Nil;
+		return false;
+	}
+	
+	method : ParseIdent() ~ String {
+		ParseWhiteSpace();
+		
+		ident := "";
+		done := false;
+		while(<>done) {
+			select(@cur_char) {
+				label ' ':
+				label '\r':
+				label '\n':
+				label '{':
+				label ':':
+				label '(':
+				label ')': {
+					done := true;
+				}				
+				other: {
+					ident->Append(@cur_char);
+					NextChar();
+				}
+			};
+		};
+		
+		return ident->Trim();
+	}
+	
+	method : ParseDesc() ~ String {
+		ParseWhiteSpace();
+		
+		ident := "";
+		done := false;
+		while(<>done) {
+			select(@cur_char) {
+				label ' ':
+				label '\r':
+				label '\n': {
+					ident->Append(' ');
+				}
+				label '{':
+				label ':':
+				label '(':
+				label ')': {
+					done := true;
+				}				
+				other: {
+					ident->Append(@cur_char);
+					NextChar();
+				}
+			};
+		};
+		
+		return ident->Trim();
+	}
+
+	method : WasParsed() ~ Bool {
+		return @parsed;
 	}
 }
 
 class ClassDoc from Doc {
-	enum Type {
-		NONE,
-		START,
-		END
-	}
-
 	@functions : StringMap;
 	
 	New(buffer : String) {
 		Parent(buffer);
-		Parse()->PrintLine();
+		@parsed := Parse();
 	}
 
 	method : public : GetName() ~ String {
 		return "";
 	}
 
-	method : public : AddFunctionDoc(buffer : String) ~ Nil {
-		func_method := FunctionDoc->New(buffer);
-	}
-	
 	method : native : Parse() ~ Bool {
-		state := ClassDoc->Type->NONE;
-		line : String;
-		do {
-			line_frag := ParseFrag();
-			if(line_frag = Nil) {
-				return false;
-			};
-# IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
+		buffer := "";
 
-			if(line_frag->StartsWith("#~")) {
-				state := ClassDoc->Type->START;
-			}
-			else if(line_frag->EndsWith("~#")) {
-				state := ClassDoc->Type->END;
-			}
-			else {				
-				if(state = ClassDoc->Type->START) {
-					line := line_frag;
-				}
-				else {				
-					line += ' ';
-					line += line_frag;					
-				};
-			};						
-		}
-		while(state <> ClassDoc->Type->END);
-		
-		return true;
-	}
-}
-
-class FunctionDoc from Doc {
-	enum Type {
-		NONE,
-		START,
-		END,
-		PARAM,
-		RETURN,
-		FUNC,
-		METHOD,
-		DESC
-	}
-	
-	@comment : String;
-	@name : String;
-
-	New(buffer : String) {
-		Parent(buffer);
-		Parse()->PrintLine();
-	}
-
-	method : native : Parse() ~ Bool {
-		state := FunctionDoc->Type->NONE;
-		line : String;
-		do {
-			line_frag := ParseFrag();
-			if(line_frag = Nil) {
-				return false;
-			};
-			line_frag := line_frag->Trim();
+		while(@cur_char <> '\0') {
+			start := false;
 			
-# IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
-
-			if(line_frag->StartsWith("@param")) {
-				ParseLine(line, state);
-				state := FunctionDoc->Type->PARAM;
-				line := String->New(line_frag);
-			}
-			else if(line_frag->StartsWith("@return")) {
-				ParseLine(line, state);
-				state := FunctionDoc->Type->RETURN;
-				line := String->New(line_frag);
-			}
-			else if(line_frag->StartsWith("function")) {
-				ParseLine(line, state);
-				state := FunctionDoc->Type->FUNC;
-				line := String->New(line_frag);
-"--function--"->PrintLine();
-			}
-			else if(line_frag->StartsWith("method")) {
-				ParseLine(line, state);
-				state := FunctionDoc->Type->METHOD;
-				line := String->New(line_frag);
-"--method--"->PrintLine();
-			}
-			else if(line_frag->StartsWith("#~")) {
-				state := FunctionDoc->Type->START;
-			}
-			else if(line_frag->EndsWith("~#")) {
-				ParseLine(line, state);
-				state := FunctionDoc->Type->END;
-			}
-			else {				
-				if(state = FunctionDoc->Type->START) {
-					line := String->New(line_frag);
-					state := FunctionDoc->Type->DESC;
-				}
-				else {
-					line += ' ';
-					line += line_frag;
-				};
+			if(@cur_char = '#' & @nxt_char = '~') {
+				start := true;
 			};
-		}
-		while(state <> FunctionDoc->Type->END);
-		
-		return true;
-	}	
-
-	method : native : ParseLine(line : String, state : FunctionDoc->Type) ~ Nil {
-		select(state) {
-			label FunctionDoc->Type->PARAM: {
-				ParseParam(line);
-			}
-			
-			label FunctionDoc->Type->RETURN: {
-				ParseReturn(line);
-			}
-			
-			label FunctionDoc->Type->DESC: {
-				IO.Console->Print("\tdesc='")->Print(line)->PrintLine("'");
-			}
 		};
-	}	
 
-	method : native : ParseParam(line : String) ~ Nil {
-		index := "@param"->Size() + 1;
-		start := index;
-		while(index < line->Size() & line->Get(index) <> ' ' & line->Get(index) <> '\t') {
-			index += 1;
-		};
-		name := line->SubString(start, index - start);
-		desc := line->SubString(index + 1, line->Size() - index - 1);
-IO.Console->Print("\tparam: name='")->Print(name)->Print("', desc='")->Print(desc)->PrintLine("'");
-	}
+buffer->PrintLine();		
 
-	method : native : ParseReturn(line : String) ~ Nil {
-		index := "@return"->Size() + 1;
-		desc := line->SubString(index, line->Size() - index);
-IO.Console->Print("\treturn: desc='")->Print(desc)->PrintLine("'");
-	}
-	
-	method : public : GetName() ~ String {
-		return "";
+		return true;
 	}
 }
