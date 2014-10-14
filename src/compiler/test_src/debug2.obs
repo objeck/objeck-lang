@@ -1,29 +1,28 @@
-class Foo {
+class Gee {
 	New() {}
+	
+	method : public : A() ~ String {
+		return "a";
+	}
 }
 
-class Test {
+class Fee {
+#~
+	enum Fie { A, B }
+
+	function : Bar() ~ Fee->Fie {
+		return Fee->Fie->B;
+	}
+~#
+
 	function : Main(args : String[]) ~ Nil {
-		f := Foo();
-		b := Bar();
-		f += b;	
-#		f->Append(b);
-		f += b->Get(1);
-		f += 101;
-		f += ", ";
-		f += 1.33;
-		f->PrintLine();
-		b += "wft? ";
-		b += Foo->New();
-		b->PrintLine();
-		"Fin."->PrintLine();
-	}
+#~
+		s := "abc";
+		s->SubString(0,1)->Trim;
+~#
+		g := Gee->New();
+		g->A()->Trim;
 
-	function : Foo() ~ String {
-		return "foo2";
-	}
-
-	function : Bar() ~ String {
-		return "+bar";
+#		Bar()->PrintLine();
 	}
 }

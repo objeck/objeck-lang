@@ -2072,6 +2072,12 @@ bool ContextAnalyzer::Analyze()
       if(method_call->GetMethodCall()) {
         method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
       }
+
+      // enum check
+      if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
+      }
+
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
@@ -2202,6 +2208,11 @@ bool ContextAnalyzer::Analyze()
       if(method_call->GetMethodCall()) {
         method_call->GetMethodCall()->SetEvalType(lib_method->GetReturn(), false);
       }
+      // enum check
+      if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
+      }
+      
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
