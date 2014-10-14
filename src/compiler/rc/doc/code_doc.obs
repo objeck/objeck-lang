@@ -11,29 +11,16 @@ class Parser {
 	}
 	
 	function : native : Parse(file : String) ~ Nil {
-		reserved := StringMap->New();
-		reserved->Insert("bundle", "keyword: bundle");
-		reserved->Insert("class", "keyword: class");
-		reserved->Insert("method", "keyword: method");
-		reserved->Insert("function", "keyword: function");
-		reserved->Insert("native", "keyword: native");
-		reserved->Insert("public", "keyword: public");
-		reserved->Insert("private", "keyword: private");
-		reserved->Insert("Int", "keyword: Int");
-		reserved->Insert("Float", "keyword: Float");
-		reserved->Insert("Char", "keyword: Char");
-		reserved->Insert("Byte", "keyword: Byte");
-		
 		capture := 0;
 		block := "";
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(file);
 		class_doc : ClassDoc;
-		while(reader->IsEOF() <> true) {
+		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
-				
+			
 			i := 0;	
 			while(i < line->Size()) {		
 				# skip whitespace
@@ -50,35 +37,32 @@ class Parser {
 							string->Append(line->Get(i));
 							i += 1;
 						};
-					
-						result := reserved->Find(string)->As(String);
-						if(result <> Nil) {
-							if(capture = 2 & string->Equals("class")) {
-								capture := 3;
-							}
-							else if(capture = 2 & (string->Equals("function") | string->Equals("method"))) {
-								capture := 4;
-							};
-						};
+						
+						if(capture = 2 & string->Equals("class")) {
+							capture := 3;
+						}
+						else if(capture = 2 & (string->Equals("function") | string->Equals("method"))) {
+							capture := 4;
+						};						
 					}
 					# other
 					else {
 						select(line->Get(i)) {
 							label '{': {
 								if(capture = 3) {
-"class tag"->PrintLine();
 									block->Append(line);
 									block->Append('\n');
-									class_doc := ClassDoc->New(block);
+									class_doc := ClassDoc->New(block);								
 									block := "";
+"---"->PrintLine();									
 								}
 								else if(capture = 4) {
-"function/method tag"->PrintLine();									
 									block->Append(line);
 									block->Append('\n');
 									if(class_doc <> Nil) {
-										class_doc->AddFunctionMethod(block);
+										class_doc->AddFunctionDoc(block);
 										block := "";
+"---"->PrintLine();										
 									};
 								};
 								capture := 0;
@@ -123,49 +107,18 @@ class Parser {
 	}
 }
 
-class ClassDoc {
-	@functions : StringMap;
-	
-	New(buffer : String) {
-	}
-
-	method : public : GetName() ~ String {
-		return "";
-	}
-
-	method : public : AddFunctionMethod(buffer : String) ~ Nil {
-		func_method := ClassFunctionMethod->New(buffer);
-#		@functions->Insert(func_method->GetName(), func_method);
-	}
-}
-
-enum ClassFunctionMethodType {
-	NONE,
-	START,
-	END,
-	PARAM,
-	RETURN,
-	FUNC,
-	METHOD,
-	DESC
-}
-
-class ClassFunctionMethod {
+class Doc {
 	@buffer : String;
 	@buffer_index : Int;
 	@cur_char : Char;
 	@nxt_char : Char;
-	@comment : String;
-	@name : String;
-
+	
 	New(buffer : String) {
-# buffer->PrintLine();	
 		@buffer := buffer;
 		@buffer_index := 0;
 		NextChar();
-		Parse()->PrintLine();
 	}
-
+	
 	method : NextChar() ~ Nil {
 		if(@buffer_index < @buffer->Size()) {
 			@cur_char := @buffer->Get(@buffer_index);
@@ -182,9 +135,101 @@ class ClassFunctionMethod {
 			@nxt_char := '\0';
 		};
 	}
+	
+	method : native : ParseFrag() ~ String {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\n')) {
+			NextChar();
+		};
+
+		start := @buffer_index - 1;
+		while(@buffer_index < @buffer->Size() & @cur_char <> '\n') {
+			NextChar();
+		};
+		
+		if(@buffer_index < @buffer->Size()) {
+			return @buffer->SubString(start, @buffer_index - start - 1)->Trim;
+		};
+		
+		return Nil;
+	}
+}
+
+class ClassDoc from Doc {
+	enum Type {
+		NONE,
+		START,
+		END
+	}
+
+	@functions : StringMap;
+	
+	New(buffer : String) {
+		Parent(buffer);
+		Parse()->PrintLine();
+	}
+
+	method : public : GetName() ~ String {
+		return "";
+	}
+
+	method : public : AddFunctionDoc(buffer : String) ~ Nil {
+		func_method := FunctionDoc->New(buffer);
+	}
+	
+	method : native : Parse() ~ Bool {
+		state := ClassDoc->Type->NONE;
+		line : String;
+		do {
+			line_frag := ParseFrag();
+			if(line_frag = Nil) {
+				return false;
+			};
+# IO.Console->Print("frag='")->Print(line_frag)->PrintLine("'");
+
+			if(line_frag->StartsWith("#~")) {
+				state := ClassDoc->Type->START;
+			}
+			else if(line_frag->EndsWith("~#")) {
+				state := ClassDoc->Type->END;
+			}
+			else {				
+				if(state = ClassDoc->Type->START) {
+					line := line_frag;
+				}
+				else {				
+					line += ' ';
+					line += line_frag;					
+				};
+			};						
+		}
+		while(state <> ClassDoc->Type->END);
+		
+		return true;
+	}
+}
+
+class FunctionDoc from Doc {
+	enum Type {
+		NONE,
+		START,
+		END,
+		PARAM,
+		RETURN,
+		FUNC,
+		METHOD,
+		DESC
+	}
+	
+	@comment : String;
+	@name : String;
+
+	New(buffer : String) {
+		Parent(buffer);
+		Parse()->PrintLine();
+	}
 
 	method : native : Parse() ~ Bool {
-		state := ClassFunctionMethodType->NONE;
+		state := FunctionDoc->Type->NONE;
 		line : String;
 		do {
 			line_frag := ParseFrag();
@@ -197,37 +242,37 @@ class ClassFunctionMethod {
 
 			if(line_frag->StartsWith("@param")) {
 				ParseLine(line, state);
-				state := ClassFunctionMethodType->PARAM;
+				state := FunctionDoc->Type->PARAM;
 				line := String->New(line_frag);
 			}
 			else if(line_frag->StartsWith("@return")) {
 				ParseLine(line, state);
-				state := ClassFunctionMethodType->RETURN;
+				state := FunctionDoc->Type->RETURN;
 				line := String->New(line_frag);
 			}
 			else if(line_frag->StartsWith("function")) {
 				ParseLine(line, state);
-				state := ClassFunctionMethodType->FUNC;
+				state := FunctionDoc->Type->FUNC;
 				line := String->New(line_frag);
 "--function--"->PrintLine();
 			}
 			else if(line_frag->StartsWith("method")) {
 				ParseLine(line, state);
-				state := ClassFunctionMethodType->METHOD;
+				state := FunctionDoc->Type->METHOD;
 				line := String->New(line_frag);
 "--method--"->PrintLine();
 			}
 			else if(line_frag->StartsWith("#~")) {
-				state := ClassFunctionMethodType->START;
+				state := FunctionDoc->Type->START;
 			}
 			else if(line_frag->EndsWith("~#")) {
 				ParseLine(line, state);
-				state := ClassFunctionMethodType->END;
+				state := FunctionDoc->Type->END;
 			}
 			else {				
-				if(state = ClassFunctionMethodType->START) {
+				if(state = FunctionDoc->Type->START) {
 					line := String->New(line_frag);
-					state := ClassFunctionMethodType->DESC;
+					state := FunctionDoc->Type->DESC;
 				}
 				else {
 					line += ' ';
@@ -235,29 +280,22 @@ class ClassFunctionMethod {
 				};
 			};
 		}
-		while(state <> ClassFunctionMethodType->END);
+		while(state <> FunctionDoc->Type->END);
 		
 		return true;
 	}	
 
-	method : native : ParseLine(line : String, state : ClassFunctionMethodType) ~ Nil {
-# line->PrintLine();	
+	method : native : ParseLine(line : String, state : FunctionDoc->Type) ~ Nil {
 		select(state) {
-			label ClassFunctionMethodType->PARAM: {
+			label FunctionDoc->Type->PARAM: {
 				ParseParam(line);
 			}
 			
-			label ClassFunctionMethodType->RETURN: {
+			label FunctionDoc->Type->RETURN: {
 				ParseReturn(line);
 			}
 			
-			label ClassFunctionMethodType->FUNC: {
-			}
-			
-			label ClassFunctionMethodType->METHOD: {
-			}
-			
-			label ClassFunctionMethodType->DESC: {
+			label FunctionDoc->Type->DESC: {
 				IO.Console->Print("\tdesc='")->Print(line)->PrintLine("'");
 			}
 		};
@@ -278,23 +316,6 @@ IO.Console->Print("\tparam: name='")->Print(name)->Print("', desc='")->Print(des
 		index := "@return"->Size() + 1;
 		desc := line->SubString(index, line->Size() - index);
 IO.Console->Print("\treturn: desc='")->Print(desc)->PrintLine("'");
-	}
-
-	method : native : ParseFrag() ~ String {
-		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\n')) {
-			NextChar();
-		};
-
-		start := @buffer_index - 1;
-		while(@buffer_index < @buffer->Size() & @cur_char <> '\n') {
-			NextChar();
-		};
-		
-		if(@buffer_index < @buffer->Size()) {
-			return @buffer->SubString(start, @buffer_index - start - 1);
-		};
-		
-		return Nil;
 	}
 	
 	method : public : GetName() ~ String {

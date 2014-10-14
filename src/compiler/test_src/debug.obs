@@ -1,5 +1,14 @@
+#~
+This is a 
+test class
+~#
 class Test {
-	function : public : Main(a : String[]) ~ Nil {
+	#~
+	Main function
+	@param a parameters
+	~#
+	function : public : 
+			Main(a : String[]) ~ Nil {
 		s := "123456";
 		s->Delete(1,2);
 		s->Append('z');
