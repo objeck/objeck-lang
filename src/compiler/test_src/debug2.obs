@@ -3,19 +3,28 @@ class Gee {
 		t := "   "->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 		
-		t := "   aaaa"->Trim();
+		t := "   1234"->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 
-		t := "bbb    "->Trim();
+		t := "1234    "->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 
-		t := "  abc  "->Trim();
+		t := "  1234  "->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 
 		t := ""->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 		
-		t := "aaaa"->Trim();
+		t := "1234"->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+		
+		t := "a"->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+
+		t := " a"->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+
+		t := "a "->Trim();
 		IO.Console->Print('|')->Print(t)->PrintLine('|');
 	}
 }
