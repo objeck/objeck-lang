@@ -1,6 +1,6 @@
 #~~
 # Objeck system classes.
-# Copyright (c) 2008-2013 Randy Hollines
+# Copyright (c) 2008-2014 Randy Hollines
 #
 # note: this file is a system file and can only be compiled using -D_SYSTEM option
 ~~#	
@@ -1668,14 +1668,13 @@ bundle System {
 				c := @string[start];
 			};
 
-			end := @pos - 1;
+			end := @pos;
 			do {
 				end -= 1;
 			} 
-			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | 
-				@string[end] = '\r' | @string[end] = '\n'));
+			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | @string[end] = '\r' | @string[end] = '\n'));
 
-			if(end <= start) {
+			if(end < start) {
 				return "";
 			};
 	
@@ -1737,7 +1736,6 @@ bundle System {
 						delim_index += 1;
 					}
 					else if(delim_index = delim->Size()) {
-#						parsed_strings[count] := SubString(start_index, found_index + delim->Size() - start_index);
 						parsed_strings[count] := SubString(start_index, found_index - start_index);
 						count += 1;
 						
