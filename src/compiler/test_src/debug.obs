@@ -5,7 +5,9 @@ test class
 class Test {
 	#~
 	Main function
+more text
 	@param a parameters
+	@return none
 	~#
 	function : public : 
 			Main(a : String[]) ~ Nil {

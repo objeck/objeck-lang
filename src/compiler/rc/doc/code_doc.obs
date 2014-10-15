@@ -5,6 +5,8 @@ use Collection;
 
 class Parser {
 	function : Main(args : String[]) ~ Nil {
+x := "    "->Trim();
+IO.Console->Print("'")->Print(x)->PrintLine("'");		
 		if(args->Size() = 1) {
 			Parse(args[0]);
 		};
@@ -12,7 +14,7 @@ class Parser {
 	
 	function : native : Parse(file : String) ~ Nil {
 		capture := 0;
-		Elem := "";
+		block := "";
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(file);
@@ -50,18 +52,18 @@ class Parser {
 						select(line->Get(i)) {
 							label '{': {
 								if(capture = 3) {
-									Elem->Append(line);
-									Elem->Append('\n');
-									class_doc := ClassElem->New(Elem);								
-									Elem := "";
+									block->Append(line);
+									block->Append('\n');
+									class_doc := ClassElem->New(block);								
+									block := "";
 "---"->PrintLine();									
 								}
 								else if(capture = 4) {
-									Elem->Append(line);
-									Elem->Append('\n');
+									block->Append(line);
+									block->Append('\n');
 									if(class_doc <> Nil) {
-#										class_doc->AddFunctionDoc(Elem);
-										Elem := "";
+										class_doc->AddFunction(block);
+										block := "";
 "---"->PrintLine();										
 									};
 								};
@@ -99,8 +101,8 @@ class Parser {
 			};				
 			
 			if(capture > 0) {
-				Elem->Append(line);
-				Elem->Append('\n');
+				block->Append(line);
+				block->Append('\n');
 			};
 		};
 		reader->Close();
@@ -218,7 +220,8 @@ class DocElem {
 			select(@cur_char) {
 				label ' ':
 				label '\r':
-				label '\n': {
+				label '\n':
+				label '#': {
 					ident->Append(' ');
 					NextChar();
 				}
@@ -227,7 +230,7 @@ class DocElem {
 				label '(':
 				label ')':
 				label '~':
-				label '#':
+				label '@':
 				label '\0': {
 					done := true;
 				}				
@@ -259,12 +262,18 @@ class ClassElem from DocElem {
 		return @name;
 	}
 
+	method : public : AddFunction(block : String) ~ Nil {
+		func := FuncElem->New(block);
+		if(func->WasParsed()) {
+			@functions->Insert(func->GetName(), func);
+		};
+	}
+
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
 		};
 		desc := ParseDesc();
-# IO.Console->Print('|')->Print(desc)->PrintLine('|');
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
@@ -278,6 +287,30 @@ class ClassElem from DocElem {
 			return true;
 		};
 		
+		return false;
+	}
+}
+
+class FuncElem from DocElem {
+	@name : String;
+	@params : List;
+	
+	New(buffer : String) {
+		Parent(buffer);
+		@parsed := Parse();
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		desc := ParseDesc();
+IO.Console->Print("desc ='")->Print(desc->Trim())->PrintLine("'");
+
 		return false;
 	}
 }
