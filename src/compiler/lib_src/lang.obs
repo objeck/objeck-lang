@@ -1661,31 +1661,25 @@ bundle System {
 				return "";
 			};
 
-			i := 0;
-			c := @string[i];
-			while(i < @pos & (c = ' ' | c = '\t' | c = '\n' | c = '\n')) {
-				i += 1;
-				c := @string[i];
-			};	
+			start := 0;
+			c := @string[start];
+			while(start < @pos & (c = ' ' | c = '\t' | c = '\r' | c = '\n')) {
+				start += 1;
+				c := @string[start];
+			};
 
-			j := @pos - 1;
-			if(j < 0) {
+			end := @pos - 1;
+			do {
+				end -= 1;
+			} 
+			while(end > -1 & (@string[end] = ' ' | @string[end] = '\t' | 
+				@string[end] = '\r' | @string[end] = '\n'));
+
+			if(end <= start) {
 				return "";
 			};
-
-			c := @string[j];
-			while(j > -1 & (c = ' ' | c = '\t' | c = '\n' | c = '\n')) {
-				j -= 1;
-				c := @string[i];
-			};	
-
-			tmp := String->New();
-			while(i <= j) {
-				tmp->Append(@string[i]);
-				i += 1;
-			};
-
-			return tmp;
+	
+			return String->New(@string, start, end - start + 1);
 		}
 		
 		method : public : native : Split(delim : String) ~ String[] {

@@ -1,28 +1,21 @@
 class Gee {
-	New() {}
-	
-	method : public : A() ~ String {
-		return "a";
-	}
-}
-
-class Fee {
-#~
-	enum Fie { A, B }
-
-	function : Bar() ~ Fee->Fie {
-		return Fee->Fie->B;
-	}
-~#
-
 	function : Main(args : String[]) ~ Nil {
-#~
-		s := "abc";
-		s->SubString(0,1)->Trim;
-~#
-		g := Gee->New();
-		g->A()->Trim;
+		t := "   "->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+		
+		t := "   aaaa"->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
 
-#		Bar()->PrintLine();
+		t := "bbb    "->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+
+		t := "  abc  "->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+
+		t := ""->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
+		
+		t := "aaaa"->Trim();
+		IO.Console->Print('|')->Print(t)->PrintLine('|');
 	}
 }
