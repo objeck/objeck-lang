@@ -255,10 +255,11 @@ class DocElem {
 
 class ClassElem from DocElem {
 	@name : String;
-	@functions : StringMap;
+	@funcs : StringMap;
 	
 	New(buffer : String) {
 		Parent(buffer);
+		@funcs := StringMap->New();
 		@parsed := Parse();
 	}
 
@@ -296,11 +297,17 @@ class ClassElem from DocElem {
 }
 
 class FuncElem from DocElem {
+	enum Type {
+		FUNC,
+		MTHD
+	}
+
 	@name : String;
 	@params : List;
 	
 	New(buffer : String) {
 		Parent(buffer);
+		@params := List->New();
 		@parsed := Parse();
 	}
 
@@ -352,6 +359,20 @@ IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
+
+		# ----
+		fun_mthd := ParseIdent();
+		if(fun_mthd->Size() > 0) {
+			if(fun_mthd->Equals("function")) {
+				@type := Type->FUNC;
+			}
+			else if(fun_mthd->Equals("method")) {
+				@type := Type->MTHD;
+			}
+			else {
+				return false;
+			}
+		}
 		
 		return false;
 	}
