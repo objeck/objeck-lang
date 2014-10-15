@@ -270,7 +270,7 @@ class ClassElem from DocElem {
 	method : public : AddFunction(block : String) ~ Nil {
 		func := FuncElem->New(block);
 		if(func->WasParsed()) {
-			@functions->Insert(func->GetName(), func);
+			@funcs->Insert(func->GetName(), func);
 		};
 	}
 
@@ -299,7 +299,10 @@ class ClassElem from DocElem {
 class FuncElem from DocElem {
 	enum Type {
 		FUNC,
-		MTHD
+		MTHD,
+		PUBLIC,
+		PRIVATE,
+		NATIVE
 	}
 
 	@name : String;
@@ -323,7 +326,7 @@ class FuncElem from DocElem {
 IO.Console->Print("func desc='")->Print(desc)->PrintLine("'");
 
 		are_tags := true;
-		while(are_tags) {
+		while(@cur_char <> '\0' & are_tags) {
 			type := ParseIdent();
 			if(type->Size() > 0) {
 IO.Console->Print("param type='")->Print(type)->PrintLine("'");
@@ -360,20 +363,48 @@ IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
 			return false;
 		};
 
-		# ----
-		fun_mthd := ParseIdent();
-		if(fun_mthd->Size() > 0) {
-			if(fun_mthd->Equals("function")) {
-				@type := Type->FUNC;
+"---"->PrintLine();
+
+		type := ParseIdent();
+		if(type->Size() > 0) {
+			if(type->Equals("function")) {
+				@type := FuncElem->Type->FUNC;
+"\tfunction"->PrintLine();
 			}
-			else if(fun_mthd->Equals("method")) {
-				@type := Type->MTHD;
+			else if(type->Equals("method")) {
+				@type := FuncElem->Type->MTHD;
+"\tmethod"->PrintLine();
 			}
 			else {
 				return false;
-			}
-		}
-		
-		return false;
+			};
+		};
+
+		ParseWhiteSpace();
+		while(MatchChar(':')) {
+			meta := ParseIdent();
+			if(meta->Size() > 0) {
+				if(meta->Equals("public")) {
+"\tpublic"->PrintLine();
+				}
+				else if(meta->Equals("private")) {
+"\tprivate"->PrintLine();
+				}
+				else if(meta->Equals("native")) {
+"\tnative"->PrintLine();
+				}
+				else {
+					@name := meta;
+				};
+			};
+			ParseWhiteSpace();
+		};
+
+		if(@name = Nil & <>MatchChar('(')) {
+			return false;
+		};
+IO.Console->Print("\tname='")->Print(@name)->PrintLine("'");
+
+		return true;
 	}
 }
