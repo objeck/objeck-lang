@@ -25,4 +25,12 @@ more text
 		f->Append('r');
 		f->PrintLine();
 	} 
+
+	method : A(f : (Int) ~ Int, g : Float) ~ Nil {
+	}
+
+#~
+	method : A(f : (Int) ~ Int, g : ((Int) ~ Int) ~ Int) ~ Nil {
+	}
+~#
 }
