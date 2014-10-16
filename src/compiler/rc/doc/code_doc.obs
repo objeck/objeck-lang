@@ -426,7 +426,10 @@ IO.Console->Print("parsed type='")->Print(type_name)->PrintLine("'");
 	}
 	
 	method : ParseType(type_name : String) ~ Bool {
-		if(@cur_char = '(') {
+		ParseWhiteSpace();
+		
+		if(MatchChar('(')) {
+			type_name->Append('(');
 			return ParseFuncType(type_name);
 		};
 		
