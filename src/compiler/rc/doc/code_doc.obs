@@ -400,11 +400,44 @@ IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
 			ParseWhiteSpace();
 		};
 
-		if(@name = Nil & <>MatchChar('(')) {
+		if(@name = Nil | <>MatchChar('(')) {
 			return false;
 		};
 IO.Console->Print("\tname='")->Print(@name)->PrintLine("'");
 
+		param_name := ParseIdent();
+		if(param_name->Size() = 0) {
+			return false;
+		};
+IO.Console->Print("parsed name='")->Print(param_name)->PrintLine("'");
+
+		ParseWhiteSpace();
+		if(<>MatchChar(':')) {
+			return false;
+		};
+		
+		type_name := "";
+		if(<>ParseType(type_name)) {
+			return false;
+		};
+IO.Console->Print("parsed type='")->Print(type_name)->PrintLine("'");
+		
 		return true;
+	}
+	
+	method : ParseType(type_name : String) ~ Bool {
+		if(@cur_char = '(') {
+			return ParseFuncType(type_name);
+		};
+		
+		ident := ParseIdent();
+		status := ident->Size() > 0;
+		type_name->Append(ident);
+		
+		return status;
+	}
+	
+	method : ParseFuncType(type_name : String) ~ Bool {
+		return false;
 	}
 }
