@@ -416,16 +416,13 @@ class FuncBlock from DocBlock {
 			if(param_name->Size() = 0) {
 				return false;
 			};
-IO.Console->Print("parsed name='")->Print(param_name)->PrintLine("'");
 		
 			if(<>MatchChar(':')) {
 				return false;
 			};
 		
-			type_name := "";
-			type_param := ParseType(type_name);
+			type_param := ParseType(param_name);
 			if(type_param <> Nil) {
-IO.Console->Print("\tparsed type='")->Print(type_name)->PrintLine("'");
 				MatchChar(',');
 			};
 		}
