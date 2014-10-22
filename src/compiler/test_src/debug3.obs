@@ -1,9 +1,8 @@
-class Hello {
-  function : Main(args : String[]) ~ Nil {
-		Add(2, 3)->PrintLine();
-  }
+enum DataType { A, B, C, D }
 
-  function : native : Add(a : Int, b : Int) ~ Int {
-		return a + b;
-	}
+class Test {
+  function : Main(args : String[]) ~ Nil {
+		a := DataType->A;
+		a->PrintLine();
+  }
 }

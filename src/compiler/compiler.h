@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language compiler.
  *
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2008-2014, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without

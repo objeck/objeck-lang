@@ -1,7 +1,7 @@
 /***************************************************************************
  * Performs contextual analysis.
  *
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2008-2014, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,10 +42,9 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
   wcout << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
         << L": " << msg << endl;
 #endif
-
+  
   const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() +
-                                   L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":" + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -243,10 +242,10 @@ bool ContextAnalyzer::Analyze()
        !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
       ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L":", L"->") + L"'");
     }
-
-    if(SearchProgramEnums(eenum->GetName()) &&
+    
+    if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses()) ||       
        linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
-      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L":", L"->") +
+      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L":", L"->") + 
                    L"' defined in program and shared libraries");
     }
   }
@@ -378,7 +377,7 @@ bool ContextAnalyzer::Analyze()
       L"; virtual=" + ToString(klass->IsVirtual()) + L"]";
     Show(msg, klass->GetLineNumber(), depth);
 #endif
-
+    
     current_class = klass;
     current_class->SetCalled(true);
     klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
@@ -386,13 +385,12 @@ bool ContextAnalyzer::Analyze()
        !linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
       ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
     }
-
-    if(SearchProgramClasses(klass->GetName()) &&
-       linker->SearchClassLibraries(klass->GetName(), program->GetUses())) {
-      ProcessError(klass, L"Class '" + klass->GetName() +
-                   L"' defined in program and shared libraries");
+    
+    if(linker->SearchClassLibraries(klass->GetName(), program->GetUses()) ||       
+       linker->SearchEnumLibraries(klass->GetName(), program->GetUses())) {
+      ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
     }
-
+    
     // check parent class
     Class* parent_klass = klass->GetParent();
     if(parent_klass && parent_klass->IsInterface()) {
