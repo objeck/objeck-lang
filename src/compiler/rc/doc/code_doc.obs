@@ -325,6 +325,10 @@ class FuncBlock from DocBlock {
 	method : public : GetDesc() ~ String {
 		return @desc;
 	}
+
+	method : public : GetReturn() ~ DocType {
+		return @return_type;
+	}
 	
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
