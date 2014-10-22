@@ -1,8 +1,8 @@
 /***************************************************************************
 * Defines how the intermediate code is written to output files
 *
-* Copyright (c) 2008-2013, Randy Hollines
-* All rights reserved.wstring
+* Copyright (c) 2008-2014, Randy Hollines
+* All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
