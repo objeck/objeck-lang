@@ -26,6 +26,11 @@ more text
 		f->PrintLine();
 	} 
 
+	#~
+	Hi ya...
+	@param f f of a function
+	@param g g of a function
+	~#
 	method : A(f : (Int) ~ Int, g : Float) ~ Nil {
 	}
 

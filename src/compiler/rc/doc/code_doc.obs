@@ -302,6 +302,7 @@ class FuncBlock from DocBlock {
 	@name : String;
 	@desc : String;
 	@tags : StringHash;
+	@return_type : DocType;
 	@func_types : List;
 	@is_func : Bool;
 	@is_private : Bool;
@@ -346,7 +347,7 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := Tag->New(tag_name, tag_desc);
+					tag := DocTag->New(tag_name, tag_desc);
 					@tags->Insert(tag->GetName(), tag);
 				}
 				else if(type->Equals("@return")) {
@@ -354,7 +355,7 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := Tag->New(tag_desc);
+					tag := DocTag->New(tag_desc);
 				}
 				else {
 					return false;
@@ -439,8 +440,21 @@ IO.Console->Print("\tparsed type='")->Print(type_name)->PrintLine("'");
 		if(rtrn_name->Size() = 0) {
 			return false;
 		};
-IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
-		
+			
+		# TODO: make this a hash	
+		if(rtrn_name->Equals("Int")) {
+			@return_type := DocType->New(rtrn_name, DocDataType->INT);
+		}
+		else if(rtrn_name->Equals("Float")) {
+			@return_type := DocType->New(rtrn_name, DocDataType->FLOAT);
+		}
+		else if(rtrn_name->Equals("Nil")) {
+			@return_type := DocType->New(rtrn_name, DocDataType->NIL);
+		}
+		else {
+			@return_type := DocType->New(rtrn_name, DocDataType->CLASS);
+		}; 		
+
 		return true;
 	}
 	
@@ -470,7 +484,7 @@ IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 				return DocType->New(type_name, DocDataType->FLOAT);
 			}
 			else {
-				return Nil;
+				return DocType->New(type_name, DocDataType->CLASS);
 			};
 		};
 	}
@@ -505,29 +519,29 @@ IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 	}
 }
 
-enum TagType {
+enum DocTagType {
 	PARAM,
 	RETURN
 }	
 
-class Tag {
-	@type : TagType;
+class DocTag {
+	@type : DocTagType;
 	@name : String;
 	@desc : String;
 
 	New(name : String, desc : String) {
-		@type := TagType->PARAM;
+		@type := DocTagType->PARAM;
 		@name := name;
 		@desc := desc;
 	}
 
 	New(desc : String) {
-		@type := TagType->RETURN;
+		@type := DocTagType->RETURN;
 		@name := "";
 		@desc := desc;
 	}
 	
-	method : public : GetType() ~ TagType {
+	method : public : GetType() ~ DocTagType {
 		return @type;
 	}
 
@@ -546,7 +560,8 @@ enum DocDataType {
 	INT,
 	FLOAT,
 	CLASS,
-	FUNC
+	FUNC,
+	NIL
 }
 
 class DocType {
