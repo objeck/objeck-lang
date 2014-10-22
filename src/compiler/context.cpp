@@ -792,18 +792,18 @@ bool ContextAnalyzer::Analyze()
           }
         }
       }
-
+      
 #ifndef _SYSTEM
       // check for return
       if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
          current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
          current_method->GetReturn()->GetType() != NIL_TYPE) {
-        if(statements.size() == 0 || statements.back()->GetStatementType() != RETURN_STMT) {
-          ProcessError(current_method, L"Method/function does not return a value");
+        if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1)) {
+          ProcessError(current_method, L"All method/function paths must return a value");
         }
       }
 #endif
-
+      
       // check program main
       const wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
       if(current_method->GetEncodedName() ==  main_str) {
@@ -841,6 +841,90 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
+  /****************************
+   * Analyzes method return 
+   * paths
+   ****************************/
+  bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const int depth)
+  {
+    vector<Statement*> statements = statement_list->GetStatements();
+    if(statements.size() == 0) {
+      ProcessError(current_method, L"All method/function paths must return a value");      
+    }
+    else {
+      Statement* last_statement = statements.back();
+      switch(last_statement->GetStatementType()) {
+      case SELECT_STMT:
+        return AnalyzeReturnPaths(static_cast<Select*>(last_statement), depth + 1);
+        
+      case IF_STMT:
+        return AnalyzeReturnPaths(static_cast<If*>(last_statement), false, depth + 1);
+        
+      case RETURN_STMT:
+        return true;
+        
+      default:
+        ProcessError(current_method, L"All method/function paths must return a value");
+        break;
+      }
+    }
+    
+    return false;
+  }
+
+  bool ContextAnalyzer::AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth)
+  {
+    bool if_ok = false;
+    bool if_else_ok = false;
+    bool else_ok = false;
+
+    // 'if' statements
+    StatementList* if_list = if_stmt->GetIfStatements();
+    if(if_list) {
+      if_ok = AnalyzeReturnPaths(if_list, depth + 1);
+    }
+    
+    If* next = if_stmt->GetNext();
+    if(next) {
+      if_else_ok = AnalyzeReturnPaths(next, true, depth);
+    }
+    
+    // 'else'
+    StatementList* else_list = if_stmt->GetElseStatements();
+    if(else_list) {
+      else_ok = AnalyzeReturnPaths(else_list, depth + 1);
+    }
+    else if (!if_else_ok){
+      return false;
+    }
+
+    // if and else
+    if(!next) {
+      return if_ok && else_ok;
+    }
+    
+    // if, else-if and else
+    if(!nested && if_ok && if_else_ok && next->GetElseStatements()) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
+  {
+    map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
+    map<int, StatementList*> label_statements;
+    for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin(); 
+        iter != statements.end(); ++iter) {
+      if(!AnalyzeReturnPaths(iter->second, depth + 1)) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
   /****************************
    * Analyzes a statements
    ****************************/
