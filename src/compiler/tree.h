@@ -1,33 +1,33 @@
 /***************************************************************************
-* Language parse tree.
-*
-* Copyright (c) 2008-2013, Randy Hollines
-* All rights reserved.
-*
-* Redistribution and uses in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* - Redistributions of source code must retain the above copyright
-* notice, this list of conditions and the following disclaimer.
-* - Redistributions in binary form must reproduce the above copyright
-* notice, this list of conditions and the following disclaimer in
-* the documentation and/or other materials provided with the distribution.
-* - Neither the name of the Objeck team nor the names of its
-* contributors may be used to endorse or promote products derived
-* from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
-* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ * Language parse tree.
+ *
+ * Copyright (c) 2008-2013, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and uses in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the Objeck team nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
 
 #ifndef __TREE_H__
 #define __TREE_H__
@@ -75,8 +75,8 @@ namespace frontend {
   class ParsedProgram;
 
   /****************************
-  * StatementType enum
-  ****************************/
+   * StatementType enum
+   ****************************/
   typedef enum _StatementType {
     DECLARATION_STMT,
     ASSIGN_STMT,
@@ -102,8 +102,8 @@ namespace frontend {
   } StatementType;
 
   /****************************
-  * SymbolEntry class
-  ****************************/
+   * SymbolEntry class
+   ****************************/
   class SymbolEntry : public ParseNode {
     friend class TreeFactory;
     vector<Variable*> variables;
@@ -114,14 +114,14 @@ namespace frontend {
     bool is_local;
     bool is_self;
 
-    SymbolEntry(const wstring &f, int l, const wstring &n, Type* t, bool s, bool c, bool e = false) :
-      ParseNode(f, l) {
-        name = n;
-        id = -1;
-        type = t;
-        is_static = s;
-        is_local = c;
-        is_self = e;
+  SymbolEntry(const wstring &f, int l, const wstring &n, Type* t, bool s, bool c, bool e = false) :
+    ParseNode(f, l) {
+      name = n;
+      id = -1;
+      type = t;
+      is_static = s;
+      is_local = c;
+      is_self = e;
     }
 
     ~SymbolEntry() {
@@ -166,8 +166,8 @@ namespace frontend {
   };
 
   /****************************
-  * ScopeTable class
-  ****************************/
+   * ScopeTable class
+   ****************************/
   class ScopeTable {
     map<const wstring, SymbolEntry*> entries;
     ScopeTable* parent;
@@ -238,8 +238,8 @@ namespace frontend {
   };
 
   /****************************
-  * SymbolTable class
-  ****************************/
+   * SymbolTable class
+   ****************************/
   class SymbolTable {
     ScopeTable *head, *parse_ptr, *iter_ptr;
     vector<SymbolEntry*> entries;
@@ -338,8 +338,8 @@ namespace frontend {
   };
 
   /****************************
-  * SymbolTableManager class
-  ****************************/
+   * SymbolTableManager class
+   ****************************/
   class SymbolTableManager {
     stack<SymbolTable*> scope;
     map<const wstring, SymbolTable*> tables;
@@ -397,11 +397,11 @@ namespace frontend {
   };
 
   /****************************
-  * Statement base class
-  ****************************/
+   * Statement base class
+   ****************************/
   class Statement : public ParseNode {
   public:
-    Statement(const wstring &f, const int l) : ParseNode(f, l) {
+  Statement(const wstring &f, const int l) : ParseNode(f, l) {
     }
 
     virtual ~Statement() {
@@ -411,8 +411,8 @@ namespace frontend {
   };
 
   /****************************
-  * StatementList class
-  ****************************/
+   * StatementList class
+   ****************************/
   class StatementList {
     friend class TreeFactory;
     vector<Statement*> statements;
@@ -434,8 +434,8 @@ namespace frontend {
   };
 
   /****************************
-  * ExpressionType enum
-  ****************************/
+   * ExpressionType enum
+   ****************************/
   typedef enum _ExpressionType {
     METHOD_CALL_EXPR,
     COND_EXPR,
@@ -468,8 +468,8 @@ namespace frontend {
   } ExpressionType;
 
   /****************************
-  * Expression base class
-  ****************************/
+   * Expression base class
+   ****************************/
   class Expression : public ParseNode {
     friend class TreeFactory;
 
@@ -483,7 +483,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-    Expression(const wstring &f, const int l) : ParseNode(f, l) {
+  Expression(const wstring &f, const int l) : ParseNode(f, l) {
       base_type = eval_type = cast_type = type_of = NULL;
       method_call = NULL;
       prev_expr = NULL;
@@ -491,7 +491,7 @@ namespace frontend {
       to_lib_class = NULL;
     }
 
-    Expression(const wstring &f, const int l, Type* t) : ParseNode(f, l) {
+  Expression(const wstring &f, const int l, Type* t) : ParseNode(f, l) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = NULL;
       method_call = NULL;
@@ -583,8 +583,8 @@ namespace frontend {
   };
 
   /****************************
-  * ExpressionList class
-  ****************************/
+   * ExpressionList class
+   ****************************/
   class ExpressionList {
     friend class TreeFactory;
     vector<Expression*> expressions;
@@ -606,8 +606,8 @@ namespace frontend {
   };
 
   /****************************
-  * StaticArray class
-  ****************************/
+   * StaticArray class
+   ****************************/
   class StaticArray : public Expression {
     friend class TreeFactory;
     int id;
@@ -649,7 +649,7 @@ namespace frontend {
     }
 
   public:
-    StaticArray(const wstring &f, int l, ExpressionList* e) : Expression(f, l) {
+  StaticArray(const wstring &f, int l, ExpressionList* e) : Expression(f, l) {
       elements = e;
       all_elements = NULL;
       matching_types = matching_lengths = true;
@@ -721,8 +721,8 @@ namespace frontend {
   };
 
   /****************************
-  * CharacterString class
-  ****************************/
+   * CharacterString class
+   ****************************/
   enum CharacterStringSegmentType {
     STRING,
     ENTRY
@@ -809,11 +809,11 @@ namespace frontend {
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-    CharacterString(const wstring &f, int l, const wstring &c) :
-      Expression(f, l, Type::CharStringType()) {
-        char_string = c;
-        is_processed = false;
-        concat = NULL;
+  CharacterString(const wstring &f, int l, const wstring &c) :
+    Expression(f, l, Type::CharStringType()) {
+      char_string = c;
+      is_processed = false;
+      concat = NULL;
     }
 
     ~CharacterString() {      
@@ -945,18 +945,18 @@ namespace frontend {
   };
 
   /****************************
-  * CalculatedExpression class
-  ****************************/
+   * CalculatedExpression class
+   ****************************/
   class CalculatedExpression : public Expression {
     friend class TreeFactory;
     ExpressionType type;
     Expression* left;
     Expression* right;
 
-    CalculatedExpression(const wstring &f, int l, ExpressionType t) :
-      Expression(f, l) {
-        left = right = NULL;
-        type = t;
+  CalculatedExpression(const wstring &f, int l, ExpressionType t) :
+    Expression(f, l) {
+      left = right = NULL;
+      type = t;
     }
 
     ~CalculatedExpression() {
@@ -985,8 +985,8 @@ namespace frontend {
   };
 
   /****************************
-  * Variable class
-  ****************************/
+   * Variable class
+   ****************************/
   class Variable : public Expression {
     friend class TreeFactory;
     int id;
@@ -994,7 +994,7 @@ namespace frontend {
     ExpressionList* indices;
     SymbolEntry* entry;
 
-    Variable(const wstring &f, int l, const wstring &n) : Expression(f, l) {
+  Variable(const wstring &f, int l, const wstring &n) : Expression(f, l) {
       name = n;
       indices = NULL;
       entry = NULL;
@@ -1041,15 +1041,15 @@ namespace frontend {
   };
 
   /****************************
-  * BooleanLiteral class
-  ****************************/
+   * BooleanLiteral class
+   ****************************/
   class BooleanLiteral : public Expression {
     friend class TreeFactory;
     bool value;
 
-    BooleanLiteral(const wstring &f, const int l, bool v) :
-      Expression(f, l, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
-        value = v;
+  BooleanLiteral(const wstring &f, const int l, bool v) :
+    Expression(f, l, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+      value = v;
     }
 
     ~BooleanLiteral() {
@@ -1066,12 +1066,12 @@ namespace frontend {
   };
 
   /****************************
-  * NilLiteral class
-  ****************************/
+   * NilLiteral class
+   ****************************/
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const wstring &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+  NilLiteral(const wstring &f, const int l) : Expression(f, l, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
     }
 
     ~NilLiteral() {
@@ -1084,15 +1084,15 @@ namespace frontend {
   };
 
   /****************************
-  * CharacterLiteral class
-  ****************************/
+   * CharacterLiteral class
+   ****************************/
   class CharacterLiteral : public Expression {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const wstring &f, const int l, wchar_t v) :
-      Expression(f, l, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
-        value = v;
+  CharacterLiteral(const wstring &f, const int l, wchar_t v) :
+    Expression(f, l, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+      value = v;
     }
 
     ~CharacterLiteral() {
@@ -1109,15 +1109,15 @@ namespace frontend {
   };
 
   /****************************
-  * IntegerLiteral class
-  ****************************/
+   * IntegerLiteral class
+   ****************************/
   class IntegerLiteral : public Expression {
     friend class TreeFactory;
     INT_VALUE value;
 
-    IntegerLiteral(const wstring &f, const int l, INT_VALUE v) :
-      Expression(f, l, TypeFactory::Instance()->MakeType(INT_TYPE)) {
-        value = v;
+  IntegerLiteral(const wstring &f, const int l, INT_VALUE v) :
+    Expression(f, l, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+      value = v;
     }
 
     ~IntegerLiteral() {
@@ -1134,15 +1134,15 @@ namespace frontend {
   };
 
   /****************************
-  * FloatLiteral class
-  ****************************/
+   * FloatLiteral class
+   ****************************/
   class FloatLiteral : public Expression {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-    FloatLiteral(const wstring &f, const int l, FLOAT_VALUE v) :
-      Expression(f, l, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
-        value = v;
+  FloatLiteral(const wstring &f, const int l, FLOAT_VALUE v) :
+    Expression(f, l, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+      value = v;
     }
 
     ~FloatLiteral() {
@@ -1159,15 +1159,15 @@ namespace frontend {
   };
 
   /****************************
-  * Cond class
-  ****************************/
+   * Cond class
+   ****************************/
   class Cond : public Expression {
     friend class TreeFactory;
     Expression* expression;
     Expression* if_expression;
     Expression* else_expression;
 
-    Cond(const wstring &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
+  Cond(const wstring &f, const int l, Expression* c, Expression* s, Expression* e) : Expression(f, l) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1199,13 +1199,13 @@ namespace frontend {
   };
 
   /****************************
-  * Return class
-  ****************************/
+   * Return class
+   ****************************/
   class Return : public Statement {
     friend class TreeFactory;
     Expression* expression;
 
-    Return(const wstring &f, const int l, Expression* e) : Statement(f, l) {
+  Return(const wstring &f, const int l, Expression* e) : Statement(f, l) {
       expression = e;
     }
 
@@ -1223,13 +1223,13 @@ namespace frontend {
   };
 
   /****************************
-  * Leaving class
-  ****************************/
+   * Leaving class
+   ****************************/
   class Leaving : public Statement {
     friend class TreeFactory;
     StatementList* statements;
     
-    Leaving(const wstring &f, const int l, StatementList* s) : Statement(f, l) {
+  Leaving(const wstring &f, const int l, StatementList* s) : Statement(f, l) {
       statements = s;
     }
 
@@ -1247,12 +1247,12 @@ namespace frontend {
   };
 
   /****************************
-  * Break class
-  ****************************/
+   * Break class
+   ****************************/
   class Break : public Statement {
     friend class TreeFactory;
 
-    Break(const wstring &f, const int l) : Statement(f, l) {
+  Break(const wstring &f, const int l) : Statement(f, l) {
     }
 
     ~Break() {
@@ -1265,8 +1265,8 @@ namespace frontend {
   };
 
   /****************************
-  * If class
-  ****************************/
+   * If class
+   ****************************/
   class If : public Statement {
     friend class TreeFactory;
     Expression* expression;
@@ -1274,12 +1274,12 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring &f, const int l, Expression* e, StatementList* s, If* n = NULL) :
-      Statement(f, l) {
-        expression = e;
-        if_statements = s;
-        next = n;
-        else_statements = NULL;
+  If(const wstring &f, const int l, Expression* e, StatementList* s, If* n = NULL) :
+    Statement(f, l) {
+      expression = e;
+      if_statements = s;
+      next = n;
+      else_statements = NULL;
     }
 
     ~If() {
@@ -1312,19 +1312,19 @@ namespace frontend {
   };
 
   /****************************
-  * EnumItem class
-  ****************************/
+   * EnumItem class
+   ****************************/
   class EnumItem : public ParseNode {
     friend class TreeFactory;
     wstring name;
     int id;
     Enum* eenum;
 
-    EnumItem(const wstring &f, const int l, const wstring &n, Enum* e) :
-      ParseNode(f, l) {
-        name = n;
-        id = -1;
-        eenum = e;
+  EnumItem(const wstring &f, const int l, const wstring &n, Enum* e) :
+    ParseNode(f, l) {
+      name = n;
+      id = -1;
+      eenum = e;
     }
 
     ~EnumItem() {
@@ -1349,8 +1349,8 @@ namespace frontend {
   };
 
   /****************************
-  * Enum class
-  ****************************/
+   * Enum class
+   ****************************/
   class Enum : public ParseNode {
     friend class TreeFactory;
     wstring name;
@@ -1358,10 +1358,10 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring &f, const int l, const wstring &n, int o) :
-      ParseNode(f, l) {
-        name = n;
-        index = offset = o;
+  Enum(const wstring &f, const int l, const wstring &n, int o) :
+    ParseNode(f, l) {
+      name = n;
+      index = offset = o;
     }
 
     ~Enum() {
@@ -1396,8 +1396,8 @@ namespace frontend {
   };
 
   /****************************
-  * Select class
-  ****************************/
+   * Select class
+   ****************************/
   class Select : public Statement {
     friend class TreeFactory;
     Expression* eval_expression;
@@ -1406,9 +1406,9 @@ namespace frontend {
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-    Select(const wstring &f, const int l, Expression* e, 
-      map<ExpressionList*, StatementList*> s, 
-      vector<StatementList*> sl, StatementList* o) :
+  Select(const wstring &f, const int l, Expression* e, 
+         map<ExpressionList*, StatementList*> s, 
+         vector<StatementList*> sl, StatementList* o) :
     Statement(f, l) {
       eval_expression = e;
       statement_map = s;
@@ -1450,14 +1450,14 @@ namespace frontend {
   };
 
   /****************************
-  * CriticalSection class
-  ****************************/
+   * CriticalSection class
+   ****************************/
   class CriticalSection : public Statement {
     Variable* variable;
     StatementList* statements;
 
   public:
-    CriticalSection(const wstring &f, const int l, Variable* v, StatementList* s) : Statement(f, l) {
+  CriticalSection(const wstring &f, const int l, Variable* v, StatementList* s) : Statement(f, l) {
       variable = v;
       statements = s;
     }
@@ -1479,8 +1479,8 @@ namespace frontend {
   };
 
   /****************************
-  * For class
-  ****************************/
+   * For class
+   ****************************/
   class For : public Statement {
     friend class TreeFactory;
     Statement* pre_stmt;
@@ -1488,12 +1488,12 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-    For(const wstring &f, const int l, Statement* pre, Expression* cond,
+  For(const wstring &f, const int l, Statement* pre, Expression* cond,
       Statement* update, StatementList* stmts) : Statement(f, l) {
-        pre_stmt = pre;
-        cond_expr = cond;
-        update_stmt = update;
-        statements = stmts;
+      pre_stmt = pre;
+      cond_expr = cond;
+      update_stmt = update;
+      statements = stmts;
     }
 
     ~For() {
@@ -1522,14 +1522,14 @@ namespace frontend {
   };
 
   /****************************
-  * DoWhile class
-  ****************************/
+   * DoWhile class
+   ****************************/
   class DoWhile : public Statement {
     friend class TreeFactory;
     Expression* expression;
     StatementList* statements;
 
-    DoWhile(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
+  DoWhile(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
       expression = e;
       statements = s;
     }
@@ -1552,14 +1552,14 @@ namespace frontend {
   };
 
   /****************************
-  * While class
-  ****************************/
+   * While class
+   ****************************/
   class While : public Statement {
     friend class TreeFactory;
     Expression* expression;
     StatementList* statements;
 
-    While(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
+  While(const wstring &f, const int l, Expression* e, StatementList* s) : Statement(f, l) {
       expression = e;
       statements = s;
     }
@@ -1582,13 +1582,13 @@ namespace frontend {
   };
 
   /****************************
-  * SystemStatement class
-  ****************************/
+   * SystemStatement class
+   ****************************/
   class SystemStatement : public Statement {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const wstring &f, const int l, int i) : Statement(f, l) {
+  SystemStatement(const wstring &f, const int l, int i) : Statement(f, l) {
       id = i;
     }
 
@@ -1606,15 +1606,15 @@ namespace frontend {
   };
 
   /****************************
-  * SimpleStatement class
-  ****************************/
+   * SimpleStatement class
+   ****************************/
   class SimpleStatement : public Statement {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const wstring &f, const int l, Expression* e) :
-      Statement(f, l) {
-        expression = e;
+  SimpleStatement(const wstring &f, const int l, Expression* e) :
+    Statement(f, l) {
+      expression = e;
     }
 
     ~SimpleStatement() {
@@ -1637,7 +1637,7 @@ namespace frontend {
     friend class TreeFactory;
 
   public:
-    EmptyStatement(const wstring &f, const int l) : Statement(f, l) {
+  EmptyStatement(const wstring &f, const int l) : Statement(f, l) {
     }
     
     ~EmptyStatement() {
@@ -1649,18 +1649,18 @@ namespace frontend {
   };
 
   /****************************
-  * Assignment class
-  ****************************/
+   * Assignment class
+   ****************************/
   class Assignment : public Statement {
   protected:
     friend class TreeFactory;
     Variable* variable;
     Expression* expression;
 
-    Assignment(const wstring &f, const int l, Variable* v, Expression* e) :
-      Statement(f, l) {
-        variable = v;
-        expression = e;
+  Assignment(const wstring &f, const int l, Variable* v, Expression* e) :
+    Statement(f, l) {
+      variable = v;
+      expression = e;
     }
 
     virtual ~Assignment() {
@@ -1681,14 +1681,14 @@ namespace frontend {
   };
 
   /****************************
-  * Assignment class
-  ****************************/
+   * Assignment class
+   ****************************/
   class OperationAssignment : public Assignment {
     friend class TreeFactory;
     StatementType stmt_type;
     bool is_string_concat;
 
-    OperationAssignment(const wstring &f, const int l, Variable* v, Expression* e, StatementType t) : 
+  OperationAssignment(const wstring &f, const int l, Variable* v, Expression* e, StatementType t) : 
     Assignment(f, l, v, e) {
       stmt_type = t;
       is_string_concat = false;
@@ -1712,23 +1712,23 @@ namespace frontend {
   };
 
   /****************************
-  * Declaration class
-  ****************************/
+   * Declaration class
+   ****************************/
   class Declaration : public Statement {
     friend class TreeFactory;
     SymbolEntry* entry;
     Assignment* assignment;
 
-    Declaration(const wstring &f, const int l, SymbolEntry* e, Assignment* a) :
-      Statement(f, l) {
-        entry = e;
-        assignment = a;
+  Declaration(const wstring &f, const int l, SymbolEntry* e, Assignment* a) :
+    Statement(f, l) {
+      entry = e;
+      assignment = a;
     }
 
-    Declaration(const wstring &f, const int l, SymbolEntry* e) :
-      Statement(f, l) {
-        entry = e;
-        assignment = NULL;
+  Declaration(const wstring &f, const int l, SymbolEntry* e) :
+    Statement(f, l) {
+      entry = e;
+      assignment = NULL;
     }
 
     ~Declaration() {
@@ -1752,8 +1752,8 @@ namespace frontend {
   };
 
   /****************************
-  * DeclarationList class
-  ****************************/
+   * DeclarationList class
+   ****************************/
   class DeclarationList {
     friend class TreeFactory;
     vector<Declaration*> declarations;
@@ -1775,8 +1775,8 @@ namespace frontend {
   };
 
   /****************************
-  * Method class
-  ****************************/
+   * Method class
+   ****************************/
   class Method : public ParseNode {
     friend class TreeFactory;
     int id;
@@ -1796,18 +1796,18 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 
-    Method(const wstring &f, const int l, const wstring &n, MethodType m, bool s, bool c) :
-      ParseNode(f, l) {
-        name = n;
-        method_type = m;
-        is_static = s;
-        is_native = c;
-        statements = NULL;
-        return_type = NULL;
-        leaving = NULL;
-        declarations = NULL;
-        id = -1;
-        has_and_or = false;
+  Method(const wstring &f, const int l, const wstring &n, MethodType m, bool s, bool c) :
+    ParseNode(f, l) {
+      name = n;
+      method_type = m;
+      is_static = s;
+      is_native = c;
+      statements = NULL;
+      return_type = NULL;
+      leaving = NULL;
+      declarations = NULL;
+      id = -1;
+      has_and_or = false;
     }
 
     ~Method() {
@@ -1816,27 +1816,27 @@ namespace frontend {
     wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
 
     /****************************
-    * Encodes a function type
-    ****************************/
+     * Encodes a function type
+     ****************************/
     wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
-      ParsedProgram* program, Linker* linker) {  
-        wstring encoded_name = L"(";
-        for(size_t i = 0; i < func_params.size(); ++i) {
-          // encode params
-          encoded_name += EncodeType(func_params[i], program, linker);
+                               ParsedProgram* program, Linker* linker) {  
+      wstring encoded_name = L"(";
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        // encode params
+        encoded_name += EncodeType(func_params[i], program, linker);
 
-          // encode dimension   
-          for(int j = 0; j < func_params[i]->GetDimension(); j++) {
-            encoded_name += L'*';
-          }    
-          encoded_name += L',';
-        }
+        // encode dimension   
+        for(int j = 0; j < func_params[i]->GetDimension(); j++) {
+          encoded_name += L'*';
+        }    
+        encoded_name += L',';
+      }
 
-        // encode return
-        encoded_name += L")~";
-        encoded_name += EncodeType(func_rtrn, program, linker);
+      // encode return
+      encoded_name += L")~";
+      encoded_name += EncodeType(func_rtrn, program, linker);
 
-        return encoded_name;
+      return encoded_name;
     }
 
     wstring EncodeType(Type* type) {
@@ -2032,8 +2032,8 @@ namespace frontend {
   };
 
   /****************************
-  * class Class
-  ****************************/
+   * class Class
+   ****************************/
   class Class : public ParseNode {
     friend class TreeFactory;
     int id;
@@ -2055,18 +2055,18 @@ namespace frontend {
     MethodCall* anonymous_call;
     vector<wstring> interface_strings;
 
-    Class(const wstring &f, const int l, const wstring &n, 
-      const wstring &p, vector<wstring> e, bool i) : ParseNode(f, l) {
-        name = n;
-        parent_name = p;
-        is_interface = i;
-        id = -1;
-        parent = NULL;
-        interface_strings = e;
-        lib_parent = NULL;
-        is_virtual = false;
-        was_called = false;
-	anonymous_call = NULL;
+  Class(const wstring &f, const int l, const wstring &n, 
+        const wstring &p, vector<wstring> e, bool i) : ParseNode(f, l) {
+      name = n;
+      parent_name = p;
+      is_interface = i;
+      id = -1;
+      parent = NULL;
+      interface_strings = e;
+      lib_parent = NULL;
+      is_virtual = false;
+      was_called = false;
+      anonymous_call = NULL;
     }
 
     ~Class() {
@@ -2257,8 +2257,8 @@ namespace frontend {
   };
 
   /****************************
-  * MethodCall class
-  ****************************/
+   * MethodCall class
+   ****************************/
   class MethodCall : public Statement, public Expression {
     friend class TreeFactory;
     EnumItem* enum_item;
@@ -2281,8 +2281,8 @@ namespace frontend {
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
 
-    MethodCall(const wstring &f, const int l, MethodCallType t,
-      const wstring &v, ExpressionList* e) :
+  MethodCall(const wstring &f, const int l, MethodCallType t,
+             const wstring &v, ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = t;
@@ -2330,9 +2330,9 @@ namespace frontend {
       SetEvalType(array_type, false);
     }
 
-    MethodCall(const wstring &f, const int l,
-      const wstring &v, const wstring &m,
-      ExpressionList* e) :
+  MethodCall(const wstring &f, const int l,
+             const wstring &v, const wstring &m,
+             ExpressionList* e) :
     Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = METHOD_CALL;
@@ -2353,8 +2353,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-    MethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) 
-      : Statement(f, l), Expression(f, l) {
+  MethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) 
+    : Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2374,8 +2374,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
     
-    MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) 
-      : Statement(f, l), Expression(f, l) {
+  MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) 
+    : Statement(f, l), Expression(f, l) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2552,8 +2552,8 @@ namespace frontend {
   };
 
   /****************************
-  * TreeFactory class
-  ****************************/
+   * TreeFactory class
+   ****************************/
   class TreeFactory {
     static TreeFactory* instance;
 
@@ -2659,11 +2659,11 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-      const wstring &parent_name, vector<wstring> enforces, 
-      bool is_interface) {
-        Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
-        nodes.push_back(tmp);
-        return tmp;
+                     const wstring &parent_name, vector<wstring> enforces, 
+                     bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
+      nodes.push_back(tmp);
+      return tmp;
     }
 
     Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, MethodType type, bool is_function, bool is_native) {
@@ -2787,10 +2787,10 @@ namespace frontend {
     }
 
     MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, MethodCallType type,
-      const wstring &value, ExpressionList* exprs) {
-        MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
-        calls.push_back(tmp);
-        return tmp;
+                               const wstring &value, ExpressionList* exprs) {
+      MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
+      calls.push_back(tmp);
+      return tmp;
     }
 
     MethodCall* MakeMethodCall(const wstring &f, const int l, const wstring &v, const wstring &m, ExpressionList* e) {
@@ -2812,10 +2812,10 @@ namespace frontend {
     }
 
     If* MakeIf(const wstring &file_name, const int line_num, Expression* expression,
-      StatementList* if_statements, If* next = NULL) {
-        If* tmp = new If(file_name, line_num, expression, if_statements, next);
-        statements.push_back(tmp);
-        return tmp;
+               StatementList* if_statements, If* next = NULL) {
+      If* tmp = new If(file_name, line_num, expression, if_statements, next);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     Break* MakeBreak(const wstring &file_name, const int line_num) {
@@ -2825,24 +2825,24 @@ namespace frontend {
     }
 
     DoWhile* MakeDoWhile(const wstring &file_name, const int line_num,
-      Expression* expression, StatementList* stmts) {
-        DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
-        statements.push_back(tmp);
-        return tmp;
+                         Expression* expression, StatementList* stmts) {
+      DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     While* MakeWhile(const wstring &file_name, const int line_num,
-      Expression* expression, StatementList* stmts) {
-        While* tmp = new While(file_name, line_num, expression, stmts);
-        statements.push_back(tmp);
-        return tmp;
+                     Expression* expression, StatementList* stmts) {
+      While* tmp = new While(file_name, line_num, expression, stmts);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     For* MakeFor(const wstring &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
-      Statement* update_stmt, StatementList* stmts) {
-        For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
-        statements.push_back(tmp);
-        return tmp;
+                 Statement* update_stmt, StatementList* stmts) {
+      For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, Variable* var, StatementList* stmts) {
@@ -2852,12 +2852,12 @@ namespace frontend {
     }
 
     Select* MakeSelect(const wstring &file_name, const int line_num, Expression* eval_expression,
-      map<ExpressionList*, StatementList*> statement_map, 
-      vector<StatementList*> statement_lists, StatementList* other) {
-        Select* tmp = new Select(file_name, line_num, eval_expression, 
-          statement_map, statement_lists, other);
-        statements.push_back(tmp);
-        return tmp;
+                       map<ExpressionList*, StatementList*> statement_map, 
+                       vector<StatementList*> statement_lists, StatementList* other) {
+      Select* tmp = new Select(file_name, line_num, eval_expression, 
+                               statement_map, statement_lists, other);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     Return* MakeReturn(const wstring &file_name, const int line_num, Expression* expression) {
@@ -2873,32 +2873,32 @@ namespace frontend {
     }
     
     Assignment* MakeAssignment(const wstring &file_name, const int line_num,
-      Variable* variable, Expression* expression) {
-        Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
-        statements.push_back(tmp);
-        return tmp;
+                               Variable* variable, Expression* expression) {
+      Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num,
-      Variable* variable, Expression* expression, 
-      StatementType stmt_type) {
-        OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
-          expression, stmt_type);
-        statements.push_back(tmp);
-        return tmp;
+                                                 Variable* variable, Expression* expression, 
+                                                 StatementType stmt_type) {
+      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
+                                                         expression, stmt_type);
+      statements.push_back(tmp);
+      return tmp;
     }
 
     SymbolEntry* MakeSymbolEntry(const wstring &f, int l, const wstring &n,
-      Type* t, bool s, bool c, bool e = false) {
-        SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
-        entries.push_back(tmp);
-        return tmp;
+                                 Type* t, bool s, bool c, bool e = false) {
+      SymbolEntry* tmp = new SymbolEntry(f, l, n, t, s, c, e);
+      entries.push_back(tmp);
+      return tmp;
     }
   };
 
   /****************************
-  * ParsedBundle class
-  ****************************/
+   * ParsedBundle class
+   ****************************/
   class ParsedBundle {
     wstring name;
     SymbolTableManager* symbol_table;
@@ -2996,8 +2996,8 @@ namespace frontend {
   };
 
   /****************************
-  * ParsedProgram class
-  ****************************/
+   * ParsedProgram class
+   ****************************/
   class ParsedProgram {
     map<IntStringHolder*, int, int_string_comp> int_string_ids;
     vector<IntStringHolder*> int_strings;
@@ -3033,21 +3033,21 @@ namespace frontend {
       }
 
       /*
-      while(!int_strings.empty()) {
-      IntStringHolder* tmp = int_strings.front();
-      int_strings.erase(int_strings.begin());
-      // delete
-      delete tmp;
-      tmp = NULL;
-      }
+        while(!int_strings.empty()) {
+        IntStringHolder* tmp = int_strings.front();
+        int_strings.erase(int_strings.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
+        }
 
-      while(!float_strings.empty()) {
-      FloatStringHolder* tmp = float_strings.front();
-      float_strings.erase(float_strings.begin());
-      // delete
-      delete tmp;
-      tmp = NULL;
-      }
+        while(!float_strings.empty()) {
+        FloatStringHolder* tmp = float_strings.front();
+        float_strings.erase(float_strings.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
+        }
       */
 
       if(linker) {
