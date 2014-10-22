@@ -2,7 +2,6 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
-
 class Parser {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
@@ -16,7 +15,7 @@ class Parser {
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(file);
-		class_doc : ClassElem;
+		class_doc : ClassBlock;
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -52,7 +51,7 @@ class Parser {
 								if(capture = 3) {
 									block->Append(line);
 									block->Append('\n');
-									class_doc := ClassElem->New(block);								
+									class_doc := ClassBlock->New(block);								
 									block := "";
 "--- Class ---"->PrintLine();									
 								}
@@ -107,7 +106,7 @@ class Parser {
 	}
 }
 
-class DocElem {
+class DocBlock {
 	@buffer : String;
 	@buffer_index : Int;
 	@cur_char : Char;
@@ -256,7 +255,7 @@ class DocElem {
 	}
 }
 
-class ClassElem from DocElem {
+class ClassBlock from DocBlock {
 	@name : String;
 	@funcs : StringMap;
 	
@@ -271,7 +270,7 @@ class ClassElem from DocElem {
 	}
 
 	method : public : AddFunction(block : String) ~ Nil {
-		func := FuncElem->New(block);
+		func := FuncBlock->New(block);
 		if(func->WasParsed()) {
 			@funcs->Insert(func->GetName(), func);
 		};
@@ -299,7 +298,7 @@ class ClassElem from DocElem {
 	}
 }
 
-class FuncElem from DocElem {
+class FuncBlock from DocBlock {
 	@name : String;
 	@desc : String;
 	@tags : StringHash;
@@ -347,7 +346,7 @@ class FuncElem from DocElem {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := TagElem->New(tag_name, tag_desc);
+					tag := Tag->New(tag_name, tag_desc);
 					@tags->Insert(tag->GetName(), tag);
 				}
 				else if(type->Equals("@return")) {
@@ -355,7 +354,7 @@ class FuncElem from DocElem {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := TagElem->New(tag_desc);
+					tag := Tag->New(tag_desc);
 				}
 				else {
 					return false;
@@ -445,12 +444,12 @@ IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 		return true;
 	}
 	
-	method : ParseType(type_name : String) ~ TypeElem {
+	method : ParseType(type_name : String) ~ DocType {
 		if(MatchChar('(')) {
 			type_name->Append('(');
 
 			if(ParseFuncType(type_name)) {
-				return TypeElem->New(type_name, TypeElem->Type->FUNC);
+				return DocType->New(type_name, DocDataType->FUNC);
 			}
 			else {
 				return Nil;
@@ -465,10 +464,10 @@ IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 		
 			# TODO: make this a hash	
 			if(type_name->Equals("Int")) {
-				return TypeElem->New(type_name, TypeElem->Type->INT);
+				return DocType->New(type_name, DocDataType->INT);
 			}
 			else if(type_name->Equals("Float")) {
-				return TypeElem->New(type_name, TypeElem->Type->FLOAT);
+				return DocType->New(type_name, DocDataType->FLOAT);
 			}
 			else {
 				return Nil;
@@ -506,29 +505,29 @@ IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 	}
 }
 
-class TagElem {
-	enum Type {
-		PARAM,
-		RETURN
-	}	
-	
-	@type : Type;
+enum TagType {
+	PARAM,
+	RETURN
+}	
+
+class Tag {
+	@type : TagType;
 	@name : String;
 	@desc : String;
 
 	New(name : String, desc : String) {
-		@type := Type->PARAM;
+		@type := TagType->PARAM;
 		@name := name;
 		@desc := desc;
 	}
 
 	New(desc : String) {
-		@type := Type->RETURN;
+		@type := TagType->RETURN;
 		@name := "";
 		@desc := desc;
 	}
 	
-	method : public : GetType() ~ Type {
+	method : public : GetType() ~ TagType {
 		return @type;
 	}
 
@@ -541,20 +540,20 @@ class TagElem {
 	}
 }
 
-class TypeElem {
-	enum Type {
-		BYTE,
-		CHAR,
-		INT,
-		FLOAT,
-		CLASS,
-		FUNC
-	}
-	
-	@type : Type;
+enum DocDataType {
+	BYTE,
+	CHAR,
+	INT,
+	FLOAT,
+	CLASS,
+	FUNC
+}
+
+class DocType {
+	@type : DocDataType;
 	@name : String;	
 	
-	New(name : String, type : Type) {
+	New(name : String, type : DocDataType) {
 		@type := type;
 		@name := name;
 	}
@@ -563,7 +562,7 @@ class TypeElem {
 		return @name;
 	}
 
-	method : public : GetType() ~ Type {
+	method : public : GetType() ~ DocDataType {
 		return @type;
 	}
 }
