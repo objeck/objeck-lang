@@ -104,10 +104,10 @@ namespace frontend {
    * Method types
    ****************************/
   enum MethodCallType {    ENUM_CALL = -6000,
-    NEW_INST_CALL,
-    NEW_ARRAY_CALL,
-    METHOD_CALL,
-    PARENT_CALL
+                           NEW_INST_CALL,
+                           NEW_ARRAY_CALL,
+                           METHOD_CALL,
+                           PARENT_CALL
   };
 
   /******************************
@@ -124,12 +124,12 @@ namespace frontend {
     
     Type(Type* t) {
       if(t) {
-	type = t->type;
-	dimension = t->dimension;
-	class_name = t->class_name;
-	func_rtrn = t->func_rtrn;
-	func_params = t->func_params;
-	func_param_count = -1;
+        type = t->type;
+        dimension = t->dimension;
+        class_name = t->class_name;
+        func_rtrn = t->func_rtrn;
+        func_params = t->func_params;
+        func_param_count = -1;
       }
     }
     
@@ -180,7 +180,7 @@ namespace frontend {
 
     int GetFunctionParameterCount() {
       if(func_param_count < 0) {
-	return func_params.size();
+        return func_params.size();
       }
 
       return func_param_count;
@@ -229,11 +229,11 @@ namespace frontend {
 
     void Clear() {
       while(!types.empty()) {
-	Type* tmp = types.front();
-	types.erase(types.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
+        Type* tmp = types.front();
+        types.erase(types.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
       }
 
       delete instance;
@@ -328,11 +328,11 @@ namespace backend {
   
     ~IntermediateDeclarations() {
       while(!declarations.empty()) {
-	IntermediateDeclaration* tmp = declarations.front();
-	declarations.erase(declarations.begin());
-	// delete
-	delete tmp;
-	tmp = NULL;
+        IntermediateDeclaration* tmp = declarations.front();
+        declarations.erase(declarations.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
       }
     }
 
@@ -346,69 +346,69 @@ namespace backend {
     
     void Debug() {
       if(declarations.size() > 0) {	 
-	wcout << L"memory types:" << endl;	 
-	for(size_t i = 0; i < declarations.size(); ++i) {	 
-	  IntermediateDeclaration* entry = declarations[i];	 
+        wcout << L"memory types:" << endl;	 
+        for(size_t i = 0; i < declarations.size(); ++i) {	 
+          IntermediateDeclaration* entry = declarations[i];	 
  	 
-	  switch(entry->GetType()) {	
-	  case instructions::CHAR_PARM:	 
-	    wcout << L"  " << i << L": CHAR_PARM" << endl;	 
-	    break;
+          switch(entry->GetType()) {	
+          case instructions::CHAR_PARM:	 
+            wcout << L"  " << i << L": CHAR_PARM" << endl;	 
+            break;
 	    
-	  case instructions::INT_PARM:	 
-	    wcout << L"  " << i << L": INT_PARM" << endl;	 
-	    break;	 
+          case instructions::INT_PARM:	 
+            wcout << L"  " << i << L": INT_PARM" << endl;	 
+            break;	 
  	 
-	  case instructions::FLOAT_PARM:	 
-	    wcout << L"  " << i << L": FLOAT_PARM" << endl;	 
-	    break;	 
+          case instructions::FLOAT_PARM:	 
+            wcout << L"  " << i << L": FLOAT_PARM" << endl;	 
+            break;	 
  	 
-	  case instructions::BYTE_ARY_PARM:	 
-	    wcout << L"  " << i << L": BYTE_ARY_PARM" << endl;	 
-	    break;	 
+          case instructions::BYTE_ARY_PARM:	 
+            wcout << L"  " << i << L": BYTE_ARY_PARM" << endl;	 
+            break;	 
  	 
-    case instructions::CHAR_ARY_PARM:	 
-	    wcout << L"  " << i << L": CHAR_ARY_PARM" << endl;	 
-	    break;
+          case instructions::CHAR_ARY_PARM:	 
+            wcout << L"  " << i << L": CHAR_ARY_PARM" << endl;	 
+            break;
 
-	  case instructions::INT_ARY_PARM:	 
-	    wcout << L"  " << i << L": INT_ARY_PARM" << endl;	 
-	    break;	 
+          case instructions::INT_ARY_PARM:	 
+            wcout << L"  " << i << L": INT_ARY_PARM" << endl;	 
+            break;	 
  	 
-	  case instructions::FLOAT_ARY_PARM:	 
-	    wcout << L"  " << i << L": FLOAT_ARY_PARM" << endl;	 
-	    break;	 
+          case instructions::FLOAT_ARY_PARM:	 
+            wcout << L"  " << i << L": FLOAT_ARY_PARM" << endl;	 
+            break;	 
  	 
-	  case instructions::OBJ_PARM:	 
-	    wcout << L"  " << i << L": OBJ_PARM" << endl;	 
-	    break;
+          case instructions::OBJ_PARM:	 
+            wcout << L"  " << i << L": OBJ_PARM" << endl;	 
+            break;
 	     
-	  case instructions::OBJ_ARY_PARM:	 
-	    wcout << L"  " << i << L": OBJ_ARY_PARM" << endl;	 
-	    break;
+          case instructions::OBJ_ARY_PARM:	 
+            wcout << L"  " << i << L": OBJ_ARY_PARM" << endl;	 
+            break;
 	    
-	  case instructions::FUNC_PARM:	 
-	    wcout << L"  " << i << L": FUNC_PARM" << endl;	 
-	    break;
+          case instructions::FUNC_PARM:	 
+            wcout << L"  " << i << L": FUNC_PARM" << endl;	 
+            break;
  	 
-	  default:	 
-	    break;	 
-	  }	 
-	}	 
+          default:	 
+            break;	 
+          }	 
+        }	 
       }	
       else {
-	wcout << L"memory types: none" << endl;
+        wcout << L"memory types: none" << endl;
       }
     }
     
     void Write(bool is_debug, ofstream* file_out) {
       WriteInt((int)declarations.size(), file_out);
       for(size_t i = 0; i < declarations.size(); ++i) {
-	IntermediateDeclaration* entry = declarations[i];
-	WriteInt(entry->GetType(), file_out);
-	if(is_debug) {
-	  WriteString(entry->GetName(), file_out);
-	}
+        IntermediateDeclaration* entry = declarations[i];
+        WriteInt(entry->GetType(), file_out);
+        if(is_debug) {
+          WriteString(entry->GetName(), file_out);
+        }
       }
     }
   };

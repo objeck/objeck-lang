@@ -54,7 +54,7 @@ class Parser {
 									block->Append('\n');
 									class_doc := ClassElem->New(block);								
 									block := "";
-"---"->PrintLine();									
+"--- Class ---"->PrintLine();									
 								}
 								else if(capture = 4) {
 									block->Append(line);
@@ -62,7 +62,7 @@ class Parser {
 									if(class_doc <> Nil) {
 										class_doc->AddFunction(block);
 										block := "";
-"---"->PrintLine();										
+"--- Func ---"->PrintLine();										
 									};
 								};
 								capture := 0;
@@ -167,6 +167,8 @@ class DocElem {
 	}
 	
 	method : MatchChar(char : Char) ~ Bool {
+		ParseWhiteSpace();
+		
 		match := @cur_char = char;
 		if(match) {
 			NextChar();
@@ -192,6 +194,7 @@ class DocElem {
 				label '\n':
 				label '{':
 				label ':':
+				label ',':
 				label '(':
 				label ')':
 				label '~':
@@ -297,58 +300,62 @@ class ClassElem from DocElem {
 }
 
 class FuncElem from DocElem {
-	enum Type {
-		FUNC,
-		MTHD,
-		PUBLIC,
-		PRIVATE,
-		NATIVE
-	}
-
 	@name : String;
-	@params : List;
+	@desc : String;
+	@tags : StringHash;
+	@func_types : List;
+	@is_func : Bool;
+	@is_private : Bool;
+	@is_native : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
-		@params := List->New();
+		@name := "";
+		@desc := "";
+		@tags := StringHash->New();
+		@func_types := List->New();
+		
 		@parsed := Parse();
 	}
-
+	
 	method : public : GetName() ~ String {
 		return @name;
 	}
 
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+	
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
 		};
-		desc := ParseDesc();
-IO.Console->Print("func desc='")->Print(desc)->PrintLine("'");
+		@desc := ParseDesc();
 
+		# parse tags		
 		are_tags := true;
 		while(@cur_char <> '\0' & are_tags) {
 			type := ParseIdent();
 			if(type->Size() > 0) {
-IO.Console->Print("param type='")->Print(type)->PrintLine("'");
 				if(type->Equals("@param")) {
-					param_name := ParseIdent();
-					if(param_name->Size() = 0) {
+					tag_name := ParseIdent();
+					if(tag_name->Size() = 0) {
 						return false;
 					};
-IO.Console->Print("\tname='")->Print(param_name)->PrintLine("'");
 
-					param_desc := ParseDesc();
-					if(param_desc->Size() = 0) {
+					tag_desc := ParseDesc();
+					if(tag_desc->Size() = 0) {
 						return false;
 					};
-IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
+					tag := TagElem->New(tag_name, tag_desc);
+					@tags->Insert(tag->GetName(), tag);
 				}
 				else if(type->Equals("@return")) {
-					param_desc := ParseDesc();
-					if(param_desc->Size() = 0) {
+					tag_desc := ParseDesc();
+					if(tag_desc->Size() = 0) {
 						return false;
 					};
-IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
+					tag := TagElem->New(tag_desc);
 				}
 				else {
 					return false;
@@ -362,85 +369,202 @@ IO.Console->Print("\tdesc='")->Print(param_desc)->PrintLine("'");
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
-
-"---"->PrintLine();
-
+		
+		# parse function
 		type := ParseIdent();
 		if(type->Size() > 0) {
 			if(type->Equals("function")) {
-				@type := FuncElem->Type->FUNC;
-"\tfunction"->PrintLine();
+				@is_fun := true;
 			}
 			else if(type->Equals("method")) {
-				@type := FuncElem->Type->MTHD;
-"\tmethod"->PrintLine();
+				@is_fun := false;
 			}
 			else {
 				return false;
 			};
 		};
 
-		ParseWhiteSpace();
 		while(MatchChar(':')) {
 			meta := ParseIdent();
 			if(meta->Size() > 0) {
 				if(meta->Equals("public")) {
-"\tpublic"->PrintLine();
+					@is_public := true;
 				}
 				else if(meta->Equals("private")) {
-"\tprivate"->PrintLine();
+					@is_public := false;
 				}
 				else if(meta->Equals("native")) {
-"\tnative"->PrintLine();
+					@is_native := true;
 				}
 				else {
 					@name := meta;
 				};
 			};
-			ParseWhiteSpace();
 		};
-
+		
 		if(@name = Nil | <>MatchChar('(')) {
 			return false;
 		};
-IO.Console->Print("\tname='")->Print(@name)->PrintLine("'");
-
-		param_name := ParseIdent();
-		if(param_name->Size() = 0) {
-			return false;
-		};
-IO.Console->Print("parsed name='")->Print(param_name)->PrintLine("'");
-
-		ParseWhiteSpace();
-		if(<>MatchChar(':')) {
-			return false;
-		};
 		
-		type_name := "";
-		if(<>ParseType(type_name)) {
+		# function parameters
+		do {
+			param_name := ParseIdent();
+			if(param_name->Size() = 0) {
+				return false;
+			};
+IO.Console->Print("parsed name='")->Print(param_name)->PrintLine("'");
+		
+			if(<>MatchChar(':')) {
+				return false;
+			};
+		
+			type_name := "";
+			type_param := ParseType(type_name);
+			if(type_param <> Nil) {
+IO.Console->Print("\tparsed type='")->Print(type_name)->PrintLine("'");
+				MatchChar(',');
+			};
+		}
+		while(type_param<> Nil & @cur_char <> ')');
+		
+		if(<>MatchChar(')')) {
 			return false;
 		};
-IO.Console->Print("parsed type='")->Print(type_name)->PrintLine("'");
+
+		if(<>MatchChar('~')) {
+			return false;
+		};
+
+		# return type
+		rtrn_name := ParseIdent();
+		if(rtrn_name->Size() = 0) {
+			return false;
+		};
+IO.Console->Print("return type='")->Print(rtrn_name)->PrintLine("'");
 		
 		return true;
 	}
 	
-	method : ParseType(type_name : String) ~ Bool {
-		ParseWhiteSpace();
-		
+	method : ParseType(type_name : String) ~ TypeElem {
 		if(MatchChar('(')) {
 			type_name->Append('(');
-			return ParseFuncType(type_name);
+
+			if(ParseFuncType(type_name)) {
+				return TypeElem->New(type_name, TypeElem->Type->FUNC);
+			}
+			else {
+				return Nil;
+			};
+		}
+		else {
+			ident := ParseIdent();
+			if(ident->Size() = 0) {
+				return Nil;
+			};
+			type_name->Append(ident);
+		
+			# TODO: make this a hash	
+			if(type_name->Equals("Int")) {
+				return TypeElem->New(type_name, TypeElem->Type->INT);
+			}
+			else if(type_name->Equals("Float")) {
+				return TypeElem->New(type_name, TypeElem->Type->FLOAT);
+			}
+			else {
+				return Nil;
+			};
 		};
-		
-		ident := ParseIdent();
-		status := ident->Size() > 0;
-		type_name->Append(ident);
-		
-		return status;
 	}
 	
 	method : ParseFuncType(type_name : String) ~ Bool {
-		return false;
+		ident := ParseIdent();
+		while(ident->Size() > 0) {
+			type_name->Append(ident);
+			if(MatchChar(',')) {
+				type_name->Append(',');
+			};
+			ident := ParseIdent();
+		};
+
+		if(<>MatchChar(')')) {
+			return false;
+		};
+		type_name->Append(')');
+
+		if(<>MatchChar('~')) {
+			return false;
+		};
+		type_name->Append('~');
+
+		ident := ParseIdent();
+		if(ident->Size() = 0) {
+			return false;
+		};
+		type_name->Append(ident);
+		
+		return true;
 	}
 }
+
+class TagElem {
+	enum Type {
+		PARAM,
+		RETURN
+	}	
+	
+	@type : Type;
+	@name : String;
+	@desc : String;
+
+	New(name : String, desc : String) {
+		@type := Type->PARAM;
+		@name := name;
+		@desc := desc;
+	}
+
+	New(desc : String) {
+		@type := Type->RETURN;
+		@name := "";
+		@desc := desc;
+	}
+	
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+}
+
+class TypeElem {
+	enum Type {
+		BYTE,
+		CHAR,
+		INT,
+		FLOAT,
+		CLASS,
+		FUNC
+	}
+	
+	@type : Type;
+	@name : String;	
+	
+	New(name : String, type : Type) {
+		@type := type;
+		@name := name;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+}
+
