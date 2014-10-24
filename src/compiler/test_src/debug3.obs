@@ -8,14 +8,18 @@
 # DataType
 	
 class Main {
-#~
 	enum Type { A, B, C, D }
 
   function : Foo(p : Type) ~ Nil {
 		p->PrintLine();
 	}
-~#
+
+ # function : Bar() ~ Main->Type {
+  function : Bar() ~ Type {
+		return Main->Type->D;
+	}
+
   function : Main(args : String[]) ~ Nil {
-		Test->Foo(Test->Type);
+#		Main->Foo(Main->Type->C);
   }
 }
