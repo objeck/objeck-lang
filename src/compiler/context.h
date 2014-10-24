@@ -827,15 +827,15 @@ class ContextAnalyzer {
       return true;
     }
 
-    Enum* eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
+    Enum* eenum = SearchProgramEnums(type->GetClassName());
     if(eenum) {
-      type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
+      type->SetClassName(type->GetClassName());
       return true;
     }
     else {
-      eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
+      eenum = SearchProgramEnums(current_class->GetName() + L":" + type->GetClassName());
       if(eenum) {
-        type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
+        type->SetClassName(current_class->GetName() + L":" + type->GetClassName());
         return true;
       }
     }
