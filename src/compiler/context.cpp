@@ -1442,7 +1442,7 @@ bool ContextAnalyzer::Analyze()
       wstring enum_name; wstring variable_name;
       
       if(method_call->GetMethodCall()) {
-        enum_name = method_call->GetVariableName() + L"#" + method_call->GetMethodName();
+        enum_name = method_call->GetVariableName() + L":" + method_call->GetMethodName();
         variable_name = method_call->GetMethodCall()->GetVariableName();
       }
       else {
@@ -4051,6 +4051,7 @@ bool ContextAnalyzer::Analyze()
     //
     // program enum
     //
+    // TODO: enum
     if(left && right && SearchProgramEnums(left->GetClassName())) {
       Enum* left_enum = SearchProgramEnums(left->GetClassName());
       // program

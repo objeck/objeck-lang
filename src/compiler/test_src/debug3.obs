@@ -6,6 +6,7 @@
 #	- already named
 # 
 # DataType
+# change "#" to ":" for write out and lib load
 	
 class Main {
 	enum Type { A, B, C, D }
@@ -14,8 +15,8 @@ class Main {
 		p->PrintLine();
 	}
 
- # function : Bar() ~ Main->Type {
   function : Bar() ~ Type {
+#  function : Bar() ~ Type {
 		return Main->Type->D;
 	}
 

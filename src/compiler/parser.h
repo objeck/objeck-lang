@@ -100,7 +100,7 @@ class Parser {
       scope_name = current_method->GetName() + L":" + ident;
     } 
     else if(current_class) {
-      scope_name = current_class->GetName() + L"#" + ident;
+      scope_name = current_class->GetName() + L":" + ident;
     }
     else {
       scope_name = ident;
