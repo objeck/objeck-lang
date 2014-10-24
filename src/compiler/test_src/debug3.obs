@@ -1,3 +1,10 @@
+# func/mthds sigs
+# items: class vs. int
+# internal/external refs
+# lib support
+#	- full resolution
+#	- already named
+	
 class Test {
 	enum DataType { A, B, C, D }
 
