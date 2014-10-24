@@ -4,13 +4,18 @@
 # lib support
 #	- full resolution
 #	- already named
+# 
+# DataType
 	
-class Test {
-	enum DataType { A, B, C, D }
+class Main {
+#~
+	enum Type { A, B, C, D }
 
-  function : Foo(p : DataType) ~ Nil {
+  function : Foo(p : Type) ~ Nil {
+		p->PrintLine();
 	}
-
+~#
   function : Main(args : String[]) ~ Nil {
+		Test->Foo(Test->Type);
   }
 }
