@@ -1,8 +1,9 @@
-enum DataType { A, B, C, D }
-
 class Test {
+	enum DataType { A, B, C, D }
+
+  function : Foo(p : DataType) ~ Nil {
+	}
+
   function : Main(args : String[]) ~ Nil {
-		a := DataType->A;
-		a->PrintLine();
   }
 }
