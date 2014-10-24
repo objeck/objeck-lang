@@ -84,7 +84,7 @@ void SymbolEntry::SetId(int i)
 /****************************
  * Encodes a method parameter
  ****************************/
-wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
+wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
   wstring name;
   if(type) {
@@ -120,27 +120,27 @@ wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
     case CLASS_TYPE: {
       name = L"o.";
-
+      
       // search program
-      wstring klass_name = type->GetClassName();
-      Class* klass = program->GetClass(klass_name);
-      if(!klass) {
+      const wstring type_klass_name = type->GetClassName();
+      Class* prgm_klass = program->GetClass(type_klass_name);
+      if(!prgm_klass) {
         vector<wstring> uses = program->GetUses();
-        for(size_t i = 0; !klass && i < uses.size(); ++i) {
-          klass = program->GetClass(uses[i] + L"." + klass_name);
+        for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
+          prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
         }
       }
-      if(klass) {
-        name += klass->GetName();
+      if(prgm_klass) {
+        name += prgm_klass->GetName();
       }
       // search libaraires
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
         if(lib_klass) {
           name += lib_klass->GetName();
         } 
         else {
-	  name += type->GetClassName();
+          name += type->GetClassName();
         }
       }
     }
@@ -149,11 +149,10 @@ wstring Method::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
     case FUNC_TYPE:  {
       name = L"m.";
       if(type->GetClassName().size() == 0) {
-	name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(),
-				   program, linker);
+        name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(), klass, program, linker);
       }
       else {
-	name += type->GetClassName();
+        name += type->GetClassName();
       }
     }
       break;

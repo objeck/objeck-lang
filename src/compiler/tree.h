@@ -1813,17 +1813,17 @@ namespace frontend {
     ~Method() {
     }
 
-    wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
+    wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
 
     /****************************
      * Encodes a function type
      ****************************/
     wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
-                               ParsedProgram* program, Linker* linker) {  
+                               Class* klass, ParsedProgram* program, Linker* linker) {  
       wstring encoded_name = L"(";
       for(size_t i = 0; i < func_params.size(); ++i) {
         // encode params
-        encoded_name += EncodeType(func_params[i], program, linker);
+        encoded_name += EncodeType(func_params[i], klass, program, linker);
 
         // encode dimension   
         for(int j = 0; j < func_params[i]->GetDimension(); j++) {
@@ -1834,7 +1834,7 @@ namespace frontend {
 
       // encode return
       encoded_name += L")~";
-      encoded_name += EncodeType(func_rtrn, program, linker);
+      encoded_name += EncodeType(func_rtrn, klass, program, linker);
 
       return encoded_name;
     }
@@ -1923,8 +1923,8 @@ namespace frontend {
       }
     }
 
-    void EncodeSignature(ParsedProgram* program, Linker* linker) {
-      encoded_return = EncodeType(return_type, program, linker);
+    void EncodeSignature(Class* klass, ParsedProgram* program, Linker* linker) {
+      encoded_return = EncodeType(return_type, klass, program, linker);
 
       // name
       encoded_name = name + L':';
@@ -1933,7 +1933,7 @@ namespace frontend {
       for(size_t i = 0; i < declaration_list.size(); ++i) {
         SymbolEntry* entry = declaration_list[i]->GetEntry();
         if(entry) {
-          encoded_name += EncodeType(entry->GetType(), program, linker) + L',';
+          encoded_name += EncodeType(entry->GetType(), klass, program, linker) + L',';
         }
       }
     }
