@@ -124,9 +124,10 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < bundles.size(); ++i) {
     vector<Class*> classes = bundles[i]->GetClasses();
     for(size_t j = 0; j < classes.size(); j++) {
-      vector<Method*> methods = classes[j]->GetMethods();
+      Class* klass = classes[j];
+      vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); k++) {
-        methods[k]->EncodeSignature(program, linker);
+        methods[k]->EncodeSignature(klass, program, linker);
       }
     }
   }
