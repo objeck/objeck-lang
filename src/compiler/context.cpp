@@ -17,7 +17,7 @@
  * from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRAN.TIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
@@ -1442,7 +1442,7 @@ bool ContextAnalyzer::Analyze()
       wstring enum_name; wstring variable_name;
       
       if(method_call->GetMethodCall()) {
-        enum_name = method_call->GetVariableName() + L":" + method_call->GetMethodName();
+        enum_name = method_call->GetVariableName() + L"#" + method_call->GetMethodName();
         variable_name = method_call->GetMethodCall()->GetVariableName();
       }
       else {
@@ -1468,8 +1468,14 @@ bool ContextAnalyzer::Analyze()
         LibraryEnum* lib_eenum = linker->SearchEnumLibraries(enum_name, program->GetUses());
         if(lib_eenum) {
           LibraryEnumItem* lib_item = lib_eenum->GetItem(variable_name);
+          // TODO: enum
           if(lib_item) {
-            method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+            if(method_call->GetMethodCall()) {
+              method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+            }
+            else {
+              method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+            }
           } 
           else {
             ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + variable_name + L"'");
@@ -1499,7 +1505,7 @@ bool ContextAnalyzer::Analyze()
             }
           }
           else {	  
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum or enum type");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type");
           }
         }
       }

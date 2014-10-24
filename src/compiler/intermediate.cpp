@@ -3748,7 +3748,14 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 				EmitVariable(method_call->GetVariable());  
       }
       else {
-				INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();
+				INT_VALUE value;
+        // TODO: enum
+        if(method_call->GetMethodCall()) {
+          value = method_call->GetMethodCall()->GetLibraryEnumItem()->GetId();
+        }
+        else {
+          value = method_call->GetLibraryEnumItem()->GetId();
+        }
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
       }
     }

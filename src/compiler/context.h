@@ -525,7 +525,18 @@ class ContextAnalyzer {
   Type* GetExpressionType(Expression* expression, int depth) {
     Type* type;
     MethodCall* mthd_call = expression->GetMethodCall();
-    if(mthd_call) {
+
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+       static_cast<MethodCall*>(expression)->GetCallType() == ENUM_CALL) {
+      // favor casts
+      if(expression->GetCastType()) {
+        type = expression->GetCastType();
+      }
+      else {
+        type = expression->GetEvalType();
+      }
+    }
+    else if(mthd_call) {
       while(mthd_call) {
         AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
@@ -816,10 +827,17 @@ class ContextAnalyzer {
       return true;
     }
 
-    Enum* eenum = SearchProgramEnums(type->GetClassName());
+    Enum* eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
     if(eenum) {
-      type->SetClassName(eenum->GetName());
+      type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
       return true;
+    }
+    else {
+      eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
+      if(eenum) {
+        type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
+        return true;
+      }
     }
 
     LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
@@ -827,7 +845,14 @@ class ContextAnalyzer {
       type->SetClassName(lib_eenum->GetName());
       return true;
     }
-
+    else {
+      lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
+      if(lib_eenum) {
+        type->SetClassName(lib_eenum->GetName());
+        return true;
+      }
+    }
+    
     return false;
   }
 
