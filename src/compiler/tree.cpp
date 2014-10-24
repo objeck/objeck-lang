@@ -121,26 +121,48 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
     case CLASS_TYPE: {
       name = L"o.";
       
-      // search program
+      // program class check
       const wstring type_klass_name = type->GetClassName();
       Class* prgm_klass = program->GetClass(type_klass_name);
-      if(!prgm_klass) {
+      if(prgm_klass) {
+        name += prgm_klass->GetName();
+      }
+      else {
+        // full path resolution
         vector<wstring> uses = program->GetUses();
         for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
           prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
         }
+        
+        // program enum check
+        if(!prgm_klass) {
+          Enum* prgm_enum = program->GetEnum(type_klass_name);
+          if(prgm_enum) {
+            name += prgm_enum->GetName();
+          }
+          else {
+            prgm_enum = program->GetEnum(klass->GetName() + L"#" + type_klass_name);
+            if(prgm_enum) {
+              name += prgm_enum->GetName();
+            }
+          }
+        }
       }
-      if(prgm_klass) {
-        name += prgm_klass->GetName();
-      }
-      // search libaraires
-      else {
+      
+      // search libaraires      
+      if(!prgm_klass && name == L"o.") {
         LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
         if(lib_klass) {
           name += lib_klass->GetName();
         } 
         else {
-          name += type->GetClassName();
+          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, program->GetUses());
+          if(lib_enum) {
+            name += lib_enum->GetName();
+          }
+          else {
+            name += type->GetClassName();
+          }
         }
       }
     }
