@@ -833,9 +833,9 @@ class ContextAnalyzer {
       return true;
     }
     else {
-      eenum = SearchProgramEnums(current_class->GetName() + L":" + type->GetClassName());
+      eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
       if(eenum) {
-        type->SetClassName(current_class->GetName() + L":" + type->GetClassName());
+        type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
         return true;
       }
     }

@@ -33,6 +33,15 @@
 
 using namespace backend;
 
+wstring backend::ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+  const size_t index = s.find(f);
+  if(index != string::npos) {
+    s.replace(index, f.size(), r);
+  }
+  
+  return s;
+}
+
 /****************************
  * IntermediateFactory class
  ****************************/
