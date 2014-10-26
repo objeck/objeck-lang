@@ -323,10 +323,6 @@ Enum* Parser::ParseEnum(int depth)
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
 
-#ifdef _DEBUG
-  Show(L"Enum", depth);
-#endif
-
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
@@ -337,8 +333,12 @@ Enum* Parser::ParseEnum(int depth)
     ProcessError(L"Class, interface or enum already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetScopeName(enum_name);
+  const wstring enum_scope_name = GetEnumScopeName(enum_name);
   
+#ifdef _DEBUG
+  Show(L"[Enum: name='" + enum_scope_name + L"']", depth);
+#endif
+
   int offset = 0;
   if(Match(TOKEN_ASSIGN)) {
     NextToken();

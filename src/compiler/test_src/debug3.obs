@@ -8,7 +8,8 @@
 # DataType
 # change "#" to ":" for write out and lib load
 	
-class Main {
+class Foo {
+#~
 	enum Type { A, B, C, D }
 
   function : Foo(p : Type) ~ Nil {
@@ -16,11 +17,12 @@ class Main {
 	}
 
   function : Bar() ~ Type {
-#  function : Bar() ~ Type {
-		return Main->Type->D;
+		return Foo->Type->D;
 	}
+~#
 
   function : Main(args : String[]) ~ Nil {
-#		Main->Foo(Main->Type->C);
+#		Bar->Foo(Foo->Type->C);
+		Bar->Bar()->PrintLine();
   }
 }

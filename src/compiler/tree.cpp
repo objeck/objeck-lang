@@ -141,9 +141,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             name += prgm_enum->GetName();
           }
           else {
-            prgm_enum = program->GetEnum(klass->GetName() + L"#" + type_klass_name);
+            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            prgm_enum = program->GetEnum(type_klass_name_ext);
             if(prgm_enum) {
-              name += prgm_enum->GetName();
+              name += type_klass_name_ext;
             }
           }
         }
@@ -161,7 +162,11 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             name += lib_enum->GetName();
           }
           else {
-            name += type->GetClassName();
+            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, program->GetUses());
+            if(lib_enum) {
+              name += type_klass_name_ext;
+            }            
           }
         }
       }

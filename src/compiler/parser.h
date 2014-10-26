@@ -109,6 +109,18 @@ class Parser {
     return scope_name;
   }
 
+  inline const wstring GetEnumScopeName(const wstring &ident) {
+    wstring scope_name;
+    if(current_class) {
+      scope_name = current_class->GetName() + L"#" + ident;
+    }
+    else {
+      scope_name = ident;
+    }
+    
+    return scope_name;
+  }
+
   void Show(const wstring &msg, int depth) {
     wcout << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; i++) {
