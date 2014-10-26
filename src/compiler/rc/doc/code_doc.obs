@@ -16,6 +16,7 @@ class Parser {
 		comment_state := 0;							
 		reader := FileReader->New(file);
 		class_doc : ClassBlock;
+		
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -103,6 +104,31 @@ class Parser {
 			};
 		};
 		reader->Close();
+
+		if(class_doc <> Nil) {
+			IO.Console->Print("class: name='")->Print(class_doc->GetName())->PrintLine("'");
+			funcs := class_doc->GetFunctions();
+			func_names := funcs->GetKeys();
+			each(i : func_names) {
+				func := funcs->Find(func_names->Get(i)->As(String))->As(FuncBlock);
+				if(func <> Nil) {
+					IO.Console->Print("\tfunc: name='")->Print(func->GetName())->Print("', desc='")
+						->Print(func->GetDesc())->PrintLine("'");
+					param_tags := func->GetParamTags();
+					params := func->GetParams();
+					each(j : params) {
+						param := params->Get(j)->As(DocType);
+						if(param <> Nil) {
+							param_tag := param_tags->Find(param->GetName())->As(DocTag);
+							if(param_tag <> Nil) {
+								IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())->Print("', desc='")
+									->Print(param_tag->GetDesc())->PrintLine("'");
+							};
+						};
+					};
+				};	
+			};
+		};
 	}
 }
 
@@ -276,6 +302,10 @@ class ClassBlock from DocBlock {
 		};
 	}
 
+	method : public : GetFunctions() ~ StringMap {
+		return @funcs;
+	}
+
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
@@ -303,7 +333,7 @@ class FuncBlock from DocBlock {
 	@desc : String;
 	@tags : StringHash;
 	@return_type : DocType;
-	@func_types : List;
+	@func_types : Vector;
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
@@ -313,7 +343,7 @@ class FuncBlock from DocBlock {
 		@name := "";
 		@desc := "";
 		@tags := StringHash->New();
-		@func_types := List->New();
+		@func_types := Vector->New();
 		
 		@parsed := Parse();
 	}
@@ -328,6 +358,14 @@ class FuncBlock from DocBlock {
 
 	method : public : GetReturn() ~ DocType {
 		return @return_type;
+	}
+
+	method : public : GetParamTags() ~ StringHash {
+		return @tags;
+	}
+	
+	method : public : GetParams() ~ Vector {
+		return @func_types;
 	}
 	
 	method : native : Parse() ~ Bool {
@@ -421,8 +459,10 @@ class FuncBlock from DocBlock {
 				return false;
 			};
 		
-			type_param := ParseType(param_name);
+			type_name := "";
+			type_param := ParseType(param_name, type_name);
 			if(type_param <> Nil) {
+				@func_types->AddBack(type_param);
 				MatchChar(',');
 			};
 		}
@@ -444,27 +484,27 @@ class FuncBlock from DocBlock {
 			
 		# TODO: make this a hash	
 		if(rtrn_name->Equals("Int")) {
-			@return_type := DocType->New(rtrn_name, DocDataType->INT);
+			@return_type := DocType->New("", rtrn_name, DocType->Type->INT);
 		}
 		else if(rtrn_name->Equals("Float")) {
-			@return_type := DocType->New(rtrn_name, DocDataType->FLOAT);
+			@return_type := DocType->New("", rtrn_name, DocType->Type->FLOAT);
 		}
 		else if(rtrn_name->Equals("Nil")) {
-			@return_type := DocType->New(rtrn_name, DocDataType->NIL);
+			@return_type := DocType->New("", rtrn_name, DocType->Type->NIL);
 		}
 		else {
-			@return_type := DocType->New(rtrn_name, DocDataType->CLASS);
+			@return_type := DocType->New("", rtrn_name, DocType->Type->CLASS);
 		}; 		
 
 		return true;
 	}
 	
-	method : ParseType(type_name : String) ~ DocType {
+	method : ParseType(param_name : String, type_name : String) ~ DocType {
 		if(MatchChar('(')) {
 			type_name->Append('(');
 
 			if(ParseFuncType(type_name)) {
-				return DocType->New(type_name, DocDataType->FUNC);
+				return DocType->New(param_name, type_name, DocType->Type->FUNC);
 			}
 			else {
 				return Nil;
@@ -479,13 +519,13 @@ class FuncBlock from DocBlock {
 		
 			# TODO: make this a hash	
 			if(type_name->Equals("Int")) {
-				return DocType->New(type_name, DocDataType->INT);
+				return DocType->New(param_name, type_name, DocType->Type->INT);
 			}
 			else if(type_name->Equals("Float")) {
-				return DocType->New(type_name, DocDataType->FLOAT);
+				return DocType->New(param_name, type_name, DocType->Type->FLOAT);
 			}
 			else {
-				return DocType->New(type_name, DocDataType->CLASS);
+				return DocType->New(param_name, type_name, DocType->Type->CLASS);
 			};
 		};
 	}
@@ -520,29 +560,29 @@ class FuncBlock from DocBlock {
 	}
 }
 
-enum DocTagType {
-	PARAM,
-	RETURN
-}	
-
 class DocTag {
-	@type : DocTagType;
+	enum Type {
+		PARAM,
+		RETURN
+	}	
+	
+	@type : Type;
 	@name : String;
 	@desc : String;
 
 	New(name : String, desc : String) {
-		@type := DocTagType->PARAM;
+		@type := Type->PARAM;
 		@name := name;
 		@desc := desc;
 	}
 
 	New(desc : String) {
-		@type := DocTagType->RETURN;
+		@type := Type->RETURN;
 		@name := "";
 		@desc := desc;
 	}
 	
-	method : public : GetType() ~ DocTagType {
+	method : public : GetType() ~ DocTag->Type {
 		return @type;
 	}
 
@@ -555,30 +595,36 @@ class DocTag {
 	}
 }
 
-enum DocDataType {
-	BYTE,
-	CHAR,
-	INT,
-	FLOAT,
-	CLASS,
-	FUNC,
-	NIL
-}
-
 class DocType {
-	@type : DocDataType;
-	@name : String;	
+	enum Type {
+		BYTE,
+		CHAR,
+		INT,
+		FLOAT,
+		CLASS,
+		FUNC,
+		NIL
+	}
 	
-	New(name : String, type : DocDataType) {
-		@type := type;
+	@name : String;
+	@type_name : String;		
+	@type : DocType->Type;
+	
+	New(name : String, type_name : String, type : Type) {
 		@name := name;
+		@type_name := type_name;
+		@type := type;
 	}
 
 	method : public : GetName() ~ String {
 		return @name;
 	}
 
-	method : public : GetType() ~ DocDataType {
+	method : public : GetTypeName() ~ String {
+		return @type_name;
+	}
+
+	method : public : GetType() ~ Type {
 		return @type;
 	}
 }
