@@ -813,6 +813,10 @@ class ContextAnalyzer {
   }
 
   inline bool ResolveClassEnumType(Type* type) {
+    return ResolveClassEnumType(type, current_class);
+  }
+  
+  inline bool ResolveClassEnumType(Type* type, Class* context_klass) {
     Class* klass = SearchProgramClasses(type->GetClassName());
     if(klass) {
       klass->SetCalled(true);
@@ -833,9 +837,9 @@ class ContextAnalyzer {
       return true;
     }
     else {
-      eenum = SearchProgramEnums(current_class->GetName() + L"#" + type->GetClassName());
+      eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetClassName());
       if(eenum) {
-        type->SetClassName(current_class->GetName() + L"#" + type->GetClassName());
+        type->SetClassName(context_klass->GetName() + L"#" + type->GetClassName());
         return true;
       }
     }
@@ -1061,7 +1065,7 @@ class ContextAnalyzer {
   void AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
-  void AnalyzeDeclaration(Declaration* declaration, const int depth);
+  void AnalyzeDeclaration(Declaration* declaration, Class* klass, const int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
