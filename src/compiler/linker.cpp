@@ -62,11 +62,11 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
         } 
         else {
           wcerr << L"Error: Unable to resolve external library class: '"
-		<< instr->GetOperand5() << L"'; check library path" << endl;
+                << instr->GetOperand5() << L"'; check library path" << endl;
           exit(1);
         }
       }
-	break;
+        break;
 
       default:
         break;
@@ -118,11 +118,11 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetOperand(lib_klass->GetId());
             } else {
               wcerr << L"Error: Unable to resolve external library class: '"
-		    << instr->GetOperand5() << L"'; check library path" << endl;
+                    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-	  }
-	    break;
+          }
+            break;
 
           case LIB_OBJ_INST_CAST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
@@ -131,13 +131,13 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetOperand(lib_klass->GetId());
             } else {
               wcerr << L"Error: Unable to resolve external library class: '"
-		    << instr->GetOperand5() << L"'; check library path" << endl;
+                    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-	  }
-	    break;
+          }
+            break;
 
-	    // MTHD_CALL
+            // MTHD_CALL
           case instructions::LIB_MTHD_CALL: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
@@ -149,16 +149,16 @@ void Linker::ResolveExternalMethodCalls()
               } else {
                 // TODO: better error handling
                 wcerr << L"Error: Unable to resolve external library method: '"
-		      << instr->GetOperand6() << L"'; check library path" << endl;
+                      << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
             } else {
               wcerr << L"Error: Unable to resolve external library class: '"
-		    << instr->GetOperand5() << L"'; check library path" << endl;
+                    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-	  }
-	    break;
+          }
+            break;
 
           case instructions::LIB_FUNC_DEF: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
@@ -174,16 +174,16 @@ void Linker::ResolveExternalMethodCalls()
               } else {
                 // TODO: better error handling
                 wcerr << L"Error: Unable to resolve external library method: '"
-		      << instr->GetOperand6() << L"'; check library path" << endl;
+                      << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
             } else {
               wcerr << L"Error: Unable to resolve external library class: '"
-		    << instr->GetOperand5() << L"'; check library path" << endl;
+                    << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-	  }
-	    break;
+          }
+            break;
 
 
           default:
@@ -400,8 +400,8 @@ void Library::LoadClasses()
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
-					 cls_space, inst_space, cls_entries, inst_entries, this, 
-					 file_name, is_debug);
+                                         cls_space, inst_space, cls_entries, inst_entries, this, 
+                                         file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
@@ -447,7 +447,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 #endif
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
-					    is_native, is_static, params, mem_size, cls, entries);
+                                            is_native, is_static, params, mem_size, cls, entries);
     // load statements
     LoadStatements(mthd, is_debug);
 

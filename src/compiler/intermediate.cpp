@@ -1568,7 +1568,6 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 4));
     break;
     
-    // TODO: future
   case instructions::SOCK_TCP_SSL_BIND:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
@@ -3747,16 +3746,9 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       if(method_call->GetVariable()) {
 				EmitVariable(method_call->GetVariable());  
       }
-      else {
-				INT_VALUE value;
-        // TODO: enum
-        if(method_call->GetMethodCall()) {
-          value = method_call->GetMethodCall()->GetLibraryEnumItem()->GetId();
-        }
-        else {
-          value = method_call->GetLibraryEnumItem()->GetId();
-        }
-				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
+      else if(method_call->GetLibraryEnumItem()) {
+        INT_VALUE value = method_call->GetLibraryEnumItem()->GetId();        
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
       }
     }
     is_new_inst = false;
