@@ -409,7 +409,7 @@ bool ContextAnalyzer::Analyze()
     // declarations
     vector<Statement*> statements = klass->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
-      AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), depth + 1);
+      AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
     }
   }
 
@@ -763,7 +763,7 @@ bool ContextAnalyzer::Analyze()
     // declarations
     vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
     for(size_t i = 0; i < declarations.size(); ++i) {
-      AnalyzeDeclaration(declarations[i], depth + 1);
+      AnalyzeDeclaration(declarations[i], current_class, depth + 1);
     }
 
     // process statements if function/method is not virtual
@@ -948,7 +948,7 @@ bool ContextAnalyzer::Analyze()
       break;
 
     case DECLARATION_STMT:
-      AnalyzeDeclaration(static_cast<Declaration*>(statement), depth);
+      AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
       break;
 
     case METHOD_CALL_STMT:
@@ -2121,6 +2121,10 @@ bool ContextAnalyzer::Analyze()
       }
 #endif
 
+      for(size_t i = 0; i < mthd_params.size(); ++i) {
+        AnalyzeDeclaration(mthd_params[i], klass, depth + 1);
+      }
+      
       Expression* expression;
       for(size_t i = 0; i < expressions.size(); ++i) {
         expression = expressions[i];
@@ -4242,13 +4246,13 @@ bool ContextAnalyzer::Analyze()
   /****************************
    * Analyzes a declaration
    ****************************/
-  void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, const int depth)
+  void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, Class* klass, const int depth)
   {
     SymbolEntry* entry = declaration->GetEntry();
     if(entry) {
       if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
         // resolve class name
-        if(!ResolveClassEnumType(entry->GetType())) {
+        if(!ResolveClassEnumType(entry->GetType(), klass)) {
           ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'");
         }
       }
