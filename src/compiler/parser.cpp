@@ -3463,7 +3463,7 @@ Type* Parser::ParseType(int depth)
     wstring ident = ParseBundleName();
     if(Match(TOKEN_ASSESSOR)) {
       NextToken();
-      ident += L":";
+      ident += L"#";
       ident += ParseBundleName();
     }
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);

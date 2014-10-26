@@ -5,7 +5,7 @@
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * modification, are permitted provided that the following conditions ar met:
  *
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
@@ -1459,9 +1459,11 @@ bool ContextAnalyzer::Analyze()
       if(eenum) {
         EnumItem* item = eenum->GetItem(variable_name);
         if(item) {
-          method_call->SetEnumItem(item, eenum->GetName());
           if(method_call->GetMethodCall()) {
             method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
+          }
+          else {
+            method_call->SetEnumItem(item, eenum->GetName());
           }
         } 
         else {
@@ -2428,7 +2430,7 @@ bool ContextAnalyzer::Analyze()
         }
         else {
           ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
+                       L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
         }
       }
       method->GetClass()->SetCalled(true);
@@ -2489,7 +2491,7 @@ bool ContextAnalyzer::Analyze()
         }
         else {
           ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
+                       L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
         }
       }
       method->GetLibraryClass()->SetCalled(true);
@@ -2839,7 +2841,7 @@ bool ContextAnalyzer::Analyze()
 
       if(type->GetType() == CLASS_TYPE) {
         if(!ResolveClassEnumType(type)) {
-          ProcessError(rtrn, L"Undefined class or enum: '" + type->GetClassName() + L"'");
+          ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
         }
       }
     }
@@ -4150,7 +4152,6 @@ bool ContextAnalyzer::Analyze()
     //
     // enum libary
     //
-    // TODO: 
     else if(left && right && linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
       LibraryEnum* left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses());
       // program
@@ -4248,7 +4249,7 @@ bool ContextAnalyzer::Analyze()
       if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
         // resolve class name
         if(!ResolveClassEnumType(entry->GetType())) {
-          ProcessError(entry, L"Undefined class or enum: '" + entry->GetType()->GetClassName() + L"'");
+          ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'");
         }
       }
       else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
