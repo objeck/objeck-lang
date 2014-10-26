@@ -135,7 +135,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
         
         // program enum check
-        if(!prgm_klass) {
+        if(prgm_klass) {
+          name += prgm_klass->GetName();
+        }
+        else {
           Enum* prgm_enum = program->GetEnum(type_klass_name);
           if(prgm_enum) {
             name += prgm_enum->GetName();
@@ -151,7 +154,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       }
       
       // search libaraires      
-      if(!prgm_klass && name == L"o.") {
+      if(name == L"o.") {
         LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
         if(lib_klass) {
           name += lib_klass->GetName();
@@ -166,10 +169,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, program->GetUses());
             if(lib_enum) {
               name += type_klass_name_ext;
-            }            
+            }
           }
         }
-      }
+      }      
     }
       break;
       
