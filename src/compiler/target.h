@@ -850,7 +850,6 @@ namespace backend {
     vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
     IntermediateClass* klass;
-    map<IntermediateMethod*, int> registered_inlined_mthds; // TODO: remove
 
   public:
     IntermediateMethod(int i, const wstring &n, bool v, bool h, const wstring &r,
