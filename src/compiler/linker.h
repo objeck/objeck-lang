@@ -194,9 +194,11 @@ class LibraryMethod {
       const wstring &parameters = method_name.substr(start + 1);
       size_t index = 0;
 
+/*
 #ifdef _DEBUG
       wcout << L"### parsing: |" << parameters << L"| ###" << endl;
 #endif
+*/
 
       while(index < parameters.size()) {
 	frontend::Type* type = NULL;

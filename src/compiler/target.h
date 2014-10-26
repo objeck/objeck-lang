@@ -43,7 +43,9 @@ using namespace instructions;
 
 namespace backend {
   class IntermediateClass;
-
+  
+  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r);
+  
   /****************************
   * Intermediate class
   ****************************/
