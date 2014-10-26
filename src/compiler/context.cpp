@@ -241,12 +241,12 @@ bool ContextAnalyzer::Analyze()
 
     if(!SearchProgramEnums(eenum->GetName()) &&
        !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
-      ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L":", L"->") + L"'");
+      ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + L"'");
     }
     
     if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses()) ||       
        linker->SearchEnumLibraries(eenum->GetName(), program->GetUses())) {
-      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L":", L"->") + 
+      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + 
                    L"' defined in program and shared libraries");
     }
   }
@@ -1439,10 +1439,11 @@ bool ContextAnalyzer::Analyze()
     }
     // enum call
     else if(method_call->GetCallType() == ENUM_CALL) {
-      wstring enum_name; wstring variable_name;
+      wstring enum_name; 
+      wstring variable_name;
       
       if(method_call->GetMethodCall()) {
-        enum_name = method_call->GetVariableName() + L":" + method_call->GetMethodName();
+        enum_name = method_call->GetVariableName() + L"#" + method_call->GetMethodName();
         variable_name = method_call->GetMethodCall()->GetVariableName();
       }
       else {
@@ -1451,6 +1452,10 @@ bool ContextAnalyzer::Analyze()
       }
 
       Enum* eenum = SearchProgramEnums(enum_name);
+      if(!eenum) {
+        eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
+      }
+      
       if(eenum) {
         EnumItem* item = eenum->GetItem(variable_name);
         if(item) {
@@ -1466,9 +1471,12 @@ bool ContextAnalyzer::Analyze()
       } 
       else {
         LibraryEnum* lib_eenum = linker->SearchEnumLibraries(enum_name, program->GetUses());
+        if(!lib_eenum) {
+          lib_eenum = linker->SearchEnumLibraries(current_class->GetName() + L"#" + enum_name, program->GetUses());
+        }
+        
         if(lib_eenum) {
           LibraryEnumItem* lib_item = lib_eenum->GetItem(variable_name);
-          // TODO: enum
           if(lib_item) {
             if(method_call->GetMethodCall()) {
               method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
@@ -1505,7 +1513,8 @@ bool ContextAnalyzer::Analyze()
             }
           }
           else {	  
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + 
+                         ReplaceSubstring(enum_name, L"#", L"->") + L"'");
           }
         }
       }
@@ -1564,13 +1573,11 @@ bool ContextAnalyzer::Analyze()
           AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
         } 
         else {
-          ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class: '" + variable_name + L"'");
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
         }
       } 
       else {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined class: '" + variable_name + L"'");
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
       }
     }
   }
@@ -1797,12 +1804,15 @@ bool ContextAnalyzer::Analyze()
         ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
       }
       method_call->SetEnumCall(is_enum_call);
+      
       // check methods
       if(klass) {
         AnalyzeMethodCall(klass, method_call, true, encoding, depth);
-      } else if(lib_klass) {
+      } 
+      else if(lib_klass) {
         AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
-      } else {
+      } 
+      else {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class");
       }
     }
@@ -3312,7 +3322,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3349,7 +3359,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3386,7 +3396,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " + 
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
 
           break;
 
@@ -3424,7 +3434,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3438,13 +3448,13 @@ bool ContextAnalyzer::Analyze()
         switch(right->GetType()) {
         case FUNC_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + 
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + 
                        L" and function reference");
           break;
 
         case VAR_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") +
                        L" and Var");
           break;
 
@@ -3453,22 +3463,22 @@ bool ContextAnalyzer::Analyze()
 
         case BYTE_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Byte");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           break;
 
         case CHAR_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Char");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           break;
 
         case INT_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and Int");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           break;
 
         case FLOAT_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3489,7 +3499,7 @@ bool ContextAnalyzer::Analyze()
 
         case BOOLEAN_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Bool");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
           break;
         }
         break;
@@ -3527,7 +3537,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3553,8 +3563,8 @@ bool ContextAnalyzer::Analyze()
 
           if(left->GetClassName() != right->GetClassName()) {
             ProcessError(expression, L"Invalid operation using functions: " +
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and " + 
-                         ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " + 
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
         }
           break;
@@ -3585,7 +3595,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: function reference and " +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3670,7 +3680,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(expression, L"Invalid cast with classes: Nil and " + 
-                       ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3713,7 +3723,7 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: System.Byte and " + 
-                         ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
           break;
 
@@ -3757,7 +3767,7 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: System.Char and " + 
-                         ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
           break;
 
@@ -3801,7 +3811,7 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(right->GetClassName()) &&
              !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: System.Int and " +
-                         ReplaceSubstring(right->GetClassName(), L":", L"->"));
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
           break;
 
@@ -3843,7 +3853,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(expression, L"Invalid cast with classes: System.Float and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L":", L"->"), L":", L"->"));
+                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3857,18 +3867,18 @@ bool ContextAnalyzer::Analyze()
         switch(right->GetType()) {
         case FUNC_TYPE:
           ProcessError(expression, L"Invalid operation using classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and function reference");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and function reference");
           break;
 
         case VAR_TYPE:
           ProcessError(expression, L"Invalid cast with classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and Var");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Var");
           break;
 
         case NIL_TYPE:
           if(expression->GetExpressionType() != NIL_LIT_EXPR) {
             ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and Nil");
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Nil");
           }
           break;
 
@@ -3876,7 +3886,7 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(left->GetClassName()) &&
              !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Byte");
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           }
           break;
 
@@ -3884,7 +3894,7 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(left->GetClassName()) &&
              !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Char");
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           }
           break;
 
@@ -3892,13 +3902,13 @@ bool ContextAnalyzer::Analyze()
           if(!SearchProgramEnums(left->GetClassName()) &&
              !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and Int");
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           }
           break;
 
         case FLOAT_TYPE:
           ProcessError(expression, L"Invalid cast with classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           break;
 
         case CLASS_TYPE:
@@ -3947,7 +3957,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(expression, L"Invalid cast with classes: System.Bool and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L":", L"->"), L":", L"->"));
+                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -3972,8 +3982,8 @@ bool ContextAnalyzer::Analyze()
 
           if(left->GetClassName() != right->GetClassName()) {
             ProcessError(expression, L"Invalid operation using mismatch functions: " +
-                         ReplaceSubstring(left->GetClassName(), L":", L"->") + L" and " + 
-                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L":", L"->"), L":", L"->"));
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " + 
+                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
           }
         }
           break;
@@ -4004,7 +4014,7 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           ProcessError(expression, L"Invalid cast with classes: function reference and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L":", L"->"), L":", L"->"));
+                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
           break;
 
         case BOOLEAN_TYPE:
@@ -4051,15 +4061,18 @@ bool ContextAnalyzer::Analyze()
     //
     // program enum
     //
-    // TODO: enum
-    if(left && right && SearchProgramEnums(left->GetClassName())) {
-      Enum* left_enum = SearchProgramEnums(left->GetClassName());
+    Enum* left_enum = SearchProgramEnums(left->GetClassName());
+    if(!left_enum) {
+      left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
+    }
+    
+    if(left && right && left_enum) {
       // program
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
       if(right_enum) {
         if(left_enum->GetName() != right_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left->GetClassName(), L":", L"->");
-          const wstring right_str = ReplaceSubstring(right->GetClassName(), L":", L"->");
+          const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
+          const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
@@ -4067,8 +4080,8 @@ bool ContextAnalyzer::Analyze()
       else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
         LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
         if(left_enum->GetName() != right_lib_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left->GetClassName(), L":", L"->");
-          const wstring right_str = ReplaceSubstring(right->GetClassName(), L":", L"->");
+          const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
+          const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
@@ -4104,8 +4117,8 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L"' and '" +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->") + L"'");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       // library
@@ -4127,8 +4140,8 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-                       ReplaceSubstring(left->GetClassName(), L":", L"->") + L"' and '" +
-                       ReplaceSubstring(right->GetClassName(), L":", L"->") + L"'");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       } else {
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
@@ -4137,14 +4150,15 @@ bool ContextAnalyzer::Analyze()
     //
     // enum libary
     //
+    // TODO: 
     else if(left && right && linker->SearchEnumLibraries(left->GetClassName(), program->GetUses())) {
       LibraryEnum* left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses());
       // program
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
       if(right_enum) {
         if(left_lib_enum->GetName() != right_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L":", L"->");
-          const wstring right_str = ReplaceSubstring(right_enum->GetName(), L":", L"->");
+          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
+          const wstring right_str = ReplaceSubstring(right_enum->GetName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       }
@@ -4152,8 +4166,8 @@ bool ContextAnalyzer::Analyze()
       else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses())) {
         LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses());
         if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L":", L"->");
-          const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L":", L"->");
+          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
+          const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
       } else {
@@ -4186,8 +4200,8 @@ bool ContextAnalyzer::Analyze()
         }
         // invalid cast
         else {
-          ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L":", L"->") + 
-                       L"' and '" + ReplaceSubstring(right->GetClassName(), L":", L"->") + L"'");
+          ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") + 
+                       L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       // libary
