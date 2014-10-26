@@ -817,7 +817,7 @@ bundle System {
 			return @value;
 		}
 
-		method : public : native : Compare(rhs : Compare) ~ Int {
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			right : IntHolder := rhs->As(IntHolder);
 			if(@value = right->Get()) {
 				return 0;
@@ -864,7 +864,7 @@ bundle System {
 			return @value;
 		}
 
-		method : public : native : Compare(rhs : Compare) ~ Int {
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			right : FloatHolder := rhs->As(FloatHolder);
 			if(@value = right->Get()) {
 				return 0;
