@@ -24,5 +24,6 @@ g : Car->Part := Car->Part->ROOF;
 		p : Car->Part := Car->Part->DOOR;
 		Foo(p,10);
 # 	p := f;
+		Foo(Car->Part->TIRE,10);
   }
 }
