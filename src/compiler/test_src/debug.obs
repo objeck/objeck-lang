@@ -7,9 +7,7 @@ class Test {
 	Main function
 more text
 			yes more more test
-@param a word is
-		bond
-@param b abc
+@param a main argument
 	~#
 	function : public : 
 			Main(a : String[]) ~ Nil {
