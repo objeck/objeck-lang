@@ -121,8 +121,7 @@ class Parser {
 							if(param_tag <> Nil) {
 								IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())
 									->Print("', type='")->Print(param->GetTypeName())
-									->Print("', desc='")->Print(param_tag->GetDesc())
-									->Print(param_tag->GetDesc())->PrintLine("'");
+									->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
 							};
 						};
 					};
@@ -372,7 +371,7 @@ class FuncBlock from DocBlock {
 		if(<>MatchCommentStart()) {
 			return false;
 		};
-		@desc := ParseDesc();
+		@desc := ParseDesc();	
 
 		# parse tags		
 		are_tags := true;
