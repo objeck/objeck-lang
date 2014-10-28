@@ -54,7 +54,6 @@ class Parser {
 									block->Append('\n');
 									class_doc := ClassBlock->New(block);								
 									block := "";
-"--- Class ---"->PrintLine();									
 								}
 								else if(capture = 4) {
 									block->Append(line);
@@ -62,7 +61,6 @@ class Parser {
 									if(class_doc <> Nil) {
 										class_doc->AddFunction(block);
 										block := "";
-"--- Func ---"->PrintLine();										
 									};
 								};
 								capture := 0;
@@ -121,7 +119,9 @@ class Parser {
 						if(param <> Nil) {
 							param_tag := param_tags->Find(param->GetName())->As(DocTag);
 							if(param_tag <> Nil) {
-								IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())->Print("', desc='")
+								IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())
+									->Print("', type='")->Print(param->GetTypeName())
+									->Print("', desc='")->Print(param_tag->GetDesc())
 									->Print(param_tag->GetDesc())->PrintLine("'");
 							};
 						};
