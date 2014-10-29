@@ -2,21 +2,22 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
-class Parser {
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			Parse(args[0]);
-		};
+class DocParser {
+	@file : String;
+	
+	New(file : String) {
+		@file := file;	
 	}
 	
-	function : native : Parse(file : String) ~ Nil {
+	method : public : native : Parse() ~ Vector {
 		capture := 0;
 		block := "";
 		line_num := 0;
 		comment_state := 0;							
-		reader := FileReader->New(file);
-		class_doc : ClassBlock;
+		reader := FileReader->New(@file);
+		classes := Vector->New();
 		
+		class_doc : ClassBlock;
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -52,7 +53,10 @@ class Parser {
 								if(capture = 3) {
 									block->Append(line);
 									block->Append('\n');
-									class_doc := ClassBlock->New(block);								
+									class_doc := ClassBlock->New(block);
+									if(class_doc <> Nil) {
+										classes->AddBack(class_doc);
+									};								
 									block := "";
 								}
 								else if(capture = 4) {
@@ -101,33 +105,14 @@ class Parser {
 				block->Append('\n');
 			};
 		};
-		reader->Close();
-
-		if(class_doc <> Nil) {
-			IO.Console->Print("class: name='")->Print(class_doc->GetName())->PrintLine("'");
-			funcs := class_doc->GetFunctions();
-			func_names := funcs->GetKeys();
-			each(i : func_names) {
-				func := funcs->Find(func_names->Get(i)->As(String))->As(FuncBlock);
-				if(func <> Nil) {
-					IO.Console->Print("\tfunc: name='")->Print(func->GetName())->Print("', desc='")
-						->Print(func->GetDesc())->PrintLine("'");
-					param_tags := func->GetParamTags();
-					params := func->GetParams();
-					each(j : params) {
-						param := params->Get(j)->As(DocType);
-						if(param <> Nil) {
-							param_tag := param_tags->Find(param->GetName())->As(DocTag);
-							if(param_tag <> Nil) {
-								IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())
-									->Print("', type='")->Print(param->GetTypeName())
-									->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
-							};
-						};
-					};
-				};	
+		
+		leaving {
+			if(reader <> Nil) {
+				reader->Close();
 			};
 		};
+		
+		return classes;
 	}
 }
 
@@ -163,7 +148,8 @@ class DocBlock {
 	}
 	
 	method : ParseWhiteSpace() ~ Nil {
-		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n')) {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | 
+			@cur_char = '\r' | @cur_char = '\n')) {
 			NextChar();
 		};
 	}
@@ -336,6 +322,7 @@ class FuncBlock from DocBlock {
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
+	@types : StringHash;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -343,6 +330,10 @@ class FuncBlock from DocBlock {
 		@desc := "";
 		@tags := StringHash->New();
 		@func_types := Vector->New();
+		
+		@types := StringHash->New();
+		value : Int := DocType->Type->INT;
+		@types->Insert("Byte", IntHolder->New(value));
 		
 		@parsed := Parse();
 	}
@@ -448,7 +439,7 @@ class FuncBlock from DocBlock {
 		};
 		
 		# function parameters
-		do {
+		while(@cur_char <> ')') {
 			param_name := ParseIdent();
 			if(param_name->Size() = 0) {
 				return false;
@@ -464,8 +455,7 @@ class FuncBlock from DocBlock {
 				@func_types->AddBack(type_param);
 				MatchChar(',');
 			};
-		}
-		while(type_param<> Nil & @cur_char <> ')');
+		};
 		
 		if(<>MatchChar(')')) {
 			return false;

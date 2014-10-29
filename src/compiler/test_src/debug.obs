@@ -2,12 +2,25 @@
 This is a 
 test class
 ~#
+class Bar {
+	#~ 
+	foo bar 
+	@return returns value
+	~#
+	function : public : Get() ~ Int {
+		return 13;
+	}
+}
+
+#~
+This is a 
+test class
+~#
 class Test {
 	#~
-	Main function
-more text
-			yes more more test
-@param a main argument
+	Main function more text
+	yes more more test
+	@param a main argument
 	~#
 	function : public : 
 			Main(a : String[]) ~ Nil {
@@ -25,7 +38,7 @@ more text
 	} 
 
 	#~
-	Hi ya...
+	Hi ya 2...
 	@param f f of a function
 	@param g g of a function
 	~#
