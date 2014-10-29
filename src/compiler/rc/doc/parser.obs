@@ -471,7 +471,9 @@ class FuncBlock from DocBlock {
 			return false;
 		};
 			
-		# TODO: make this a hash	
+		# TODO: make this a hash
+		@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
+		
 		if(rtrn_name->Equals("Int")) {
 			@return_type := DocType->New("", rtrn_name, DocType->Type->INT);
 		}
