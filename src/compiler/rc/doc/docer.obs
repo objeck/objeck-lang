@@ -1,0 +1,39 @@
+class DocMaker {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := DocParser->New(args[0]);
+			classes := parser->Parse();
+			if(classes <> Nil) {
+				classes->Size()->PrintLine();
+				each(i : classes) {
+					class_block := classes->Get(i)->As(ClassBlock);
+					if(class_block <> Nil) {
+						IO.Console->Print("class: name='")->Print(class_block->GetName())->PrintLine("'");
+						funcs := class_block->GetFunctions();
+						func_names := funcs->GetKeys();
+						each(j : func_names) {
+							func := funcs->Find(func_names->Get(j)->As(String))->As(FuncBlock);
+							if(func <> Nil) {
+								IO.Console->Print("\tfunc: name='")->Print(func->GetName())->Print("', desc='")
+									->Print(func->GetDesc())->PrintLine("'");
+								param_tags := func->GetParamTags();
+								params := func->GetParams();
+								each(k : params) {
+									param := params->Get(k)->As(DocType);
+									if(param <> Nil) {
+										param_tag := param_tags->Find(param->GetName())->As(DocTag);
+										if(param_tag <> Nil) {
+											IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())
+												->Print("', type='")->Print(param->GetTypeName())
+												->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
+										};
+									};
+								};
+							};	
+						};
+					};
+				};				
+			};
+		};
+	}
+}
