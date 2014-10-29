@@ -1444,6 +1444,89 @@ bool ContextAnalyzer::Analyze()
       
       const wstring variable_name = method_call->GetVariableName();
       const wstring method_name = method_call->GetMethodName();
+      
+      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name, program->GetUses());
+      if(lib_eenum &&  method_call->GetMethodCall()) {
+        item_name = method_call->GetMethodCall()->GetVariableName();
+        LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
+        if(lib_item) {
+          if(method_call->GetMethodCall()) {
+            method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), true);
+            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
+          }
+          else {
+            method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), true);
+          }
+        } 
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
+        }
+      } 
+      else {
+        if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
+          enum_name = method_name;
+          item_name = method_call->GetMethodCall()->GetVariableName();
+        }
+        else {
+          enum_name = variable_name;
+          item_name = method_name;
+        }
+
+        Enum* eenum = SearchProgramEnums(enum_name);
+        if(!eenum) {
+          eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
+        }
+      
+        if(eenum) {
+          EnumItem* item = eenum->GetItem(item_name);
+          if(item) {
+            if(method_call->GetMethodCall()) {
+              method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
+              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
+              method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
+            }
+            else {
+              method_call->SetEnumItem(item, eenum->GetName());
+              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
+            }
+          } 
+          else {
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
+          }
+        }
+        else {
+          // '@self' reference
+          if(enum_name == SELF_ID) {
+            SymbolEntry* entry = GetEntry(item_name);
+            if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+              AddMethodParameter(method_call, entry, depth + 1);
+            }
+            else {
+              ProcessError(static_cast<Expression*>(method_call), 
+                           L"Invalid '@self' reference for variable: '" +
+                           item_name + L"'");
+            }
+          }
+          // '@parent' reference
+          else if(enum_name == PARENT_ID) {
+            SymbolEntry* entry = GetEntry(item_name, true);
+            if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+              AddMethodParameter(method_call, entry, depth + 1);
+            }
+            else {
+              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
+            }
+          }
+          else {	  
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + 
+                         ReplaceSubstring(enum_name, L"#", L"->") + L"'");
+          }
+        }
+      }
+      
+      /*
       if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
         enum_name = method_name;
         item_name = method_call->GetMethodCall()->GetVariableName();
@@ -1527,6 +1610,7 @@ bool ContextAnalyzer::Analyze()
           }
         }
       }
+      */
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
     // parent call
