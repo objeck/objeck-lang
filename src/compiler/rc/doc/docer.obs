@@ -10,20 +10,23 @@ class DocMaker {
 					class_block := classes->Get(i)->As(ClassBlock);
 					if(class_block <> Nil) {
 						class_name := class_block->GetName();
-						IO.Console->Print("class: name='")->Print(class_name <> Nil ? class_name : "(none)")->PrintLine("'");
+						class_desc := class_block->GetDesc();
+						IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
+							->Print(class_name <> Nil ? class_name : "(none)")->Print("', desc='")
+							->Print(class_desc <> Nil ? class_desc : "(none)")->PrintLine("'");
 						funcs := class_block->GetFunctions();
-						func_names := funcs->GetKeys();
-						each(j : func_names) {
-							func := funcs->Find(func_names->Get(j)->As(String))->As(FuncBlock);
+						each(j : funcs) {
+							func := funcs->Get(j)->As(FuncBlock);
 							if(func <> Nil) {
 								IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
 									->Print(func->GetDesc());
 								if(func->GetReturn() <> Nil) {
-									IO.Console->Print("', return: desc='")->Print(func->GetReturn()->GetDesc())->PrintLine("'");
+									IO.Console->Print("', return='")->Print(func->GetReturn()->GetDesc())->Print("'");
 								}
 								else {
-									("'")->PrintLine();
+									("'")->Print();
 								};
+								IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
 
 								param_tags := func->GetParamTags();
 								params := func->GetParams();
@@ -32,8 +35,8 @@ class DocMaker {
 									if(param <> Nil) {
 										param_tag := param_tags->Find(param->GetName())->As(DocTag);
 										if(param_tag <> Nil) {
-											IO.Console->Print("    param: name='")->Print(param_tag->GetName())
-												->Print("', type='")->Print(param->GetTypeName())
+											IO.Console->Print("    param (")->Print(k + 1)->Print("): name='")
+												->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
 												->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
 										};
 									};
