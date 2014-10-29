@@ -11,7 +11,6 @@
 class Foo {
 	enum Type { A, B, C, D }
 
-#~
   function : Foo(p : Foo->Type) ~ Nil {
 		p->PrintLine();
 	}
@@ -19,30 +18,29 @@ class Foo {
   function : Foo2(p : Type) ~ Nil {
 		p->PrintLine();
 	}
-~#
+
   function : Bar() ~ Type {
 		return Foo->Type->D;
 	}
 
-#~
+
   function : Bar2() ~ Type {
 		return Type->D;
 	}
-~#
+
   function : Main(args : String[]) ~ Nil {
-#~
 		Foo->Foo(Foo->Type->C);
 		Foo2(Foo->Type->C);
 		Bar()->PrintLine();
 		Bar2()->PrintLine();
 #		Bar->Bar()->PrintLine();
 
-
+#~
 		Bar->Foo(Bar->Type->C);
 		Bar->Foo2(Bar->Type->C);
-~#
 		Foo->Bar()->PrintLine();
-		Bar->Bar()->PrintLine();
+#		Bar->Bar()->PrintLine();
 #		Foo->Bar2()->PrintLine();
+~#
   }
 }

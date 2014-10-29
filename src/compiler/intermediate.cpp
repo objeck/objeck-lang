@@ -3737,6 +3737,10 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   }
   // enum call
   else if(method_call->GetCallType() == ENUM_CALL) {
+    if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() != ENUM_CALL) {
+      method_call = method_call->GetMethodCall();
+    }
+
     if(method_call->GetEnumItem()) {
       INT_VALUE value = method_call->GetEnumItem()->GetId();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
