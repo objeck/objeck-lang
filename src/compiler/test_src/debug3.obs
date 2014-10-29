@@ -29,16 +29,14 @@ class Foo {
 	}
 
   function : Main(args : String[]) ~ Nil {
-#~
 		Foo->Foo(Foo->Type->C);
 		Foo2(Foo->Type->C);
 		Bar()->PrintLine();
 		Bar2()->PrintLine();
 #		Bar->Bar()->PrintLine();
-~#
 
-		Bar->Foo(Bar->Type->C);
 #~
+		Bar->Foo(Bar->Type->C);
 		Bar->Foo2(Bar->Type->C);
 		Foo->Bar()->PrintLine();
 #		Bar->Bar()->PrintLine();
