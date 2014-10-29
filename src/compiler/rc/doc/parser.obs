@@ -318,6 +318,7 @@ class FuncBlock from DocBlock {
 	@desc : String;
 	@tags : StringHash;
 	@return_type : DocType;
+	@return_tag : DocTag;
 	@func_types : Vector;
 	@is_func : Bool;
 	@is_private : Bool;
@@ -344,12 +345,12 @@ class FuncBlock from DocBlock {
 		return @name;
 	}
 
-	method : public : GetDesc() ~ String {
-		return @desc;
+	method : public : GetReturn() ~ DocTag {
+		return @return_tag;
 	}
 
-	method : public : GetReturn() ~ DocType {
-		return @return_type;
+	method : public : GetDesc() ~ String {
+		return @desc;
 	}
 
 	method : public : GetParamTags() ~ StringHash {
@@ -389,7 +390,7 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := DocTag->New(tag_desc);
+					@return_tag := DocTag->New(tag_desc);
 				}
 				else {
 					return false;
