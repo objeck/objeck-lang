@@ -323,7 +323,7 @@ class FuncBlock from DocBlock {
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
-	@types : StringHash;
+	@types : static : StringHash;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -331,14 +331,19 @@ class FuncBlock from DocBlock {
 		@desc := "";
 		@tags := StringHash->New();
 		@func_types := Vector->New();
-
-		# TODO: make this a hash
-		@types := StringHash->New();
-		@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
-		@types->Insert("Float", IntHolder->New(DocType->Type->FLOAT->As(Int)));
-		@types->Insert("Nil", IntHolder->New(DocType->Type->NIL->As(Int)));
+		
+		Init();
 
 		@parsed := Parse();
+	}
+	
+	function : Init() ~ Nil {
+		if(@types = Nil) {
+			@types := StringHash->New();
+			@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
+			@types->Insert("Float", IntHolder->New(DocType->Type->FLOAT->As(Int)));
+			@types->Insert("Nil", IntHolder->New(DocType->Type->NIL->As(Int)));
+		};
 	}
 	
 	method : public : GetName() ~ String {
@@ -511,7 +516,6 @@ class FuncBlock from DocBlock {
 		
 			v := @types->Find(type_name)->As(IntHolder);
 			if(v <> Nil) {
-"#####"->PrintLine();
 				return DocType->New(param_name, type_name, v->Get()->As(DocType->Type));
 			}
 			else {
