@@ -15,7 +15,7 @@ class DocMaker {
 							func := funcs->Find(func_names->Get(j)->As(String))->As(FuncBlock);
 							if(func <> Nil) {
 								IO.Console->Print("\tfunc: name='")->Print(func->GetName())->Print("', desc='")
-									->Print(func->GetDesc())->PrintLine("'");
+									->Print(func->GetDesc())->Print("', return: desc='")->Print(func->GetReturn()->GetDesc())->PrintLine("'");
 								param_tags := func->GetParamTags();
 								params := func->GetParams();
 								each(k : params) {
