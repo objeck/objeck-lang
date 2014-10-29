@@ -330,11 +330,13 @@ class FuncBlock from DocBlock {
 		@desc := "";
 		@tags := StringHash->New();
 		@func_types := Vector->New();
-		
+
+		# TODO: make this a hash
 		@types := StringHash->New();
-		value : Int := DocType->Type->INT;
-		@types->Insert("Byte", IntHolder->New(value));
-		
+		@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
+		@types->Insert("Float", IntHolder->New(DocType->Type->FLOAT->As(Int)));
+		@types->Insert("Nil", IntHolder->New(DocType->Type->NIL->As(Int)));
+
 		@parsed := Parse();
 	}
 	
@@ -471,8 +473,6 @@ class FuncBlock from DocBlock {
 			return false;
 		};
 			
-		# TODO: make this a hash
-		@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
 		
 		if(rtrn_name->Equals("Int")) {
 			@return_type := DocType->New("", rtrn_name, DocType->Type->INT);
@@ -508,6 +508,15 @@ class FuncBlock from DocBlock {
 			};
 			type_name->Append(ident);
 		
+			v := @types->Find(type_name)->As(IntHolder);
+			if(v <> Nil) {
+"#####"->PrintLine();
+				return DocType->New(param_name, type_name, v->Get()->As(DocType->Type));
+			}
+			else {
+				return DocType->New(param_name, type_name, DocType->Type->CLASS);
+			};
+#~
 			# TODO: make this a hash	
 			if(type_name->Equals("Int")) {
 				return DocType->New(param_name, type_name, DocType->Type->INT);
@@ -518,6 +527,7 @@ class FuncBlock from DocBlock {
 			else {
 				return DocType->New(param_name, type_name, DocType->Type->CLASS);
 			};
+~#
 		};
 	}
 	

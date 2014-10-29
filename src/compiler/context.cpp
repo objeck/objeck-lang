@@ -1459,12 +1459,12 @@ bool ContextAnalyzer::Analyze()
         if(lib_item) {
           if(method_call->GetMethodCall()) {
             method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), true);
-            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
+            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
           }
           else {
             method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), true);
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
           }
         } 
         else {
@@ -1486,7 +1486,7 @@ bool ContextAnalyzer::Analyze()
         
         // check fully qualified name
         Enum* eenum = SearchProgramEnums(enum_name + L"#" + item_name);
-        if(eenum) {
+        if(eenum && method_call->GetMethodCall()) {
           item_name = method_call->GetMethodCall()->GetVariableName();
         }
         
@@ -1504,12 +1504,12 @@ bool ContextAnalyzer::Analyze()
           if(item) {
             if(method_call->GetMethodCall()) {
               method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
-              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
-              method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
+              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
+              method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
             }
             else {
               method_call->SetEnumItem(item, eenum->GetName());
-              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
+              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
             }
           } 
           else {
