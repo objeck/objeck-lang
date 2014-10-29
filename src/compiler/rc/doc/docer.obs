@@ -8,7 +8,7 @@ class DocMaker {
 				each(i : classes) {
 					class_block := classes->Get(i)->As(ClassBlock);
 					if(class_block <> Nil) {
-						IO.Console->Print("class: name='")->Print(class_block->GetName())->PrintLine("'");
+#						IO.Console->Print("class: name='")->Print(class_block->GetName())->PrintLine("'");
 						funcs := class_block->GetFunctions();
 						func_names := funcs->GetKeys();
 						each(j : func_names) {
