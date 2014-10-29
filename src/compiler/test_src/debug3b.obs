@@ -1,3 +1,4 @@
+#~
 class Fie {
 	enum Type { A, B, C, D }
 
@@ -5,6 +6,7 @@ class Fie {
 		p->PrintLine();
 	}
 }
+~#
 
 class Foo {
 	enum Type { A, B, C, D }
@@ -14,14 +16,19 @@ class Foo {
 	}
 
 	function : Main(args : String[]) ~ Nil {
+		x:= Foo->Type->C->As(Int);
+		x->PrintLine();
+#~
 		Bar(Foo->Type->A);
 		@self->Bar(Type->B);
 		Fie->Bar(Fie->Type->C);
 		@self->PrintLine();
+~#
   }
-
 	
+#~
 	function : PrintLine() ~ Nil {
 		"Hello"->PrintLine();
 	}
+~#
 }
