@@ -1440,15 +1440,17 @@ bool ContextAnalyzer::Analyze()
     // enum call
     else if(method_call->GetCallType() == ENUM_CALL) {
       wstring enum_name; 
-      wstring variable_name;
+      wstring item_name;
       
-      if(method_call->GetMethodCall()) {
-        enum_name = method_call->GetVariableName() + L"#" + method_call->GetMethodName();
-        variable_name = method_call->GetMethodCall()->GetVariableName();
+      const wstring variable_name = method_call->GetVariableName();
+      const wstring method_name = method_call->GetMethodName();
+      if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
+        enum_name = method_name;
+        item_name = method_call->GetMethodCall()->GetVariableName();
       }
       else {
-        enum_name = method_call->GetVariableName();
-        variable_name = method_call->GetMethodName();
+        enum_name = variable_name;
+        item_name = method_name;
       }
 
       Enum* eenum = SearchProgramEnums(enum_name);
@@ -1457,18 +1459,20 @@ bool ContextAnalyzer::Analyze()
       }
       
       if(eenum) {
-        EnumItem* item = eenum->GetItem(variable_name);
+        EnumItem* item = eenum->GetItem(item_name);
         if(item) {
           if(method_call->GetMethodCall()) {
             method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
+            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
           }
           else {
             method_call->SetEnumItem(item, eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
           }
         } 
         else {
-          ProcessError(static_cast<Expression*>(method_call), 
-                       L"Undefined enum item: '" + variable_name + L"'");
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
         }
       } 
       else {
@@ -1478,40 +1482,43 @@ bool ContextAnalyzer::Analyze()
         }
         
         if(lib_eenum) {
-          LibraryEnumItem* lib_item = lib_eenum->GetItem(variable_name);
+          LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
           if(lib_item) {
             if(method_call->GetMethodCall()) {
               method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+               method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
+               method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), true);
             }
             else {
               method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), true);
             }
           } 
           else {
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + variable_name + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
           }
         } 
         else {
           // '@self' reference
           if(enum_name == SELF_ID) {
-            SymbolEntry* entry = GetEntry(variable_name);
+            SymbolEntry* entry = GetEntry(item_name);
             if(entry && !entry->IsLocal() && !entry->IsStatic()) {
               AddMethodParameter(method_call, entry, depth + 1);
             }
             else {
               ProcessError(static_cast<Expression*>(method_call), 
                            L"Invalid '@self' reference for variable: '" +
-                           variable_name + L"'");
+                           item_name + L"'");
             }
           }
           // '@parent' reference
           else if(enum_name == PARENT_ID) {
-            SymbolEntry* entry = GetEntry(variable_name, true);
+            SymbolEntry* entry = GetEntry(item_name, true);
             if(entry && !entry->IsLocal() && !entry->IsStatic()) {
               AddMethodParameter(method_call, entry, depth + 1);
             }
             else {
-              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + variable_name + L"'");
+              ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
             }
           }
           else {	  
