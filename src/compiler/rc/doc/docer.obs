@@ -5,17 +5,26 @@ class DocMaker {
 			classes := parser->Parse();
 			if(classes <> Nil) {
 				classes->Size()->PrintLine();
+				"---"->PrintLine();
 				each(i : classes) {
 					class_block := classes->Get(i)->As(ClassBlock);
 					if(class_block <> Nil) {
-#						IO.Console->Print("class: name='")->Print(class_block->GetName())->PrintLine("'");
+						class_name := class_block->GetName();
+						IO.Console->Print("class: name='")->Print(class_name <> Nil ? class_name : "(none)")->PrintLine("'");
 						funcs := class_block->GetFunctions();
 						func_names := funcs->GetKeys();
 						each(j : func_names) {
 							func := funcs->Find(func_names->Get(j)->As(String))->As(FuncBlock);
 							if(func <> Nil) {
-								IO.Console->Print("\tfunc: name='")->Print(func->GetName())->Print("', desc='")
-									->Print(func->GetDesc())->Print("', return: desc='")->Print(func->GetReturn()->GetDesc())->PrintLine("'");
+								IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
+									->Print(func->GetDesc());
+								if(func->GetReturn() <> Nil) {
+									IO.Console->Print("', return: desc='")->Print(func->GetReturn()->GetDesc())->PrintLine("'");
+								}
+								else {
+									("'")->PrintLine();
+								};
+
 								param_tags := func->GetParamTags();
 								params := func->GetParams();
 								each(k : params) {
@@ -23,7 +32,7 @@ class DocMaker {
 									if(param <> Nil) {
 										param_tag := param_tags->Find(param->GetName())->As(DocTag);
 										if(param_tag <> Nil) {
-											IO.Console->Print("\t\tparam: name='")->Print(param_tag->GetName())
+											IO.Console->Print("    param: name='")->Print(param_tag->GetName())
 												->Print("', type='")->Print(param->GetTypeName())
 												->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
 										};
