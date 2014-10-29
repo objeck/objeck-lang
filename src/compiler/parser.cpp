@@ -2758,6 +2758,10 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         method_call = ParseMethodCall(variable, depth + 1);
         method_call->SetCastType(variable->GetCastType());
       }
+      else {
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, L"");
+        method_call->SetCastType(variable->GetCastType());
+      }
     }
     else if(Match(TOKEN_TYPE_OF_ID)) {
       Variable* variable = ParseVariable(ident, depth + 1);
