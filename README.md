@@ -8,7 +8,7 @@ The language contains all of the features of a general-purpose computing languag
 OS	| Version |	CPU
 ----|---------|-----
 Windows (XP-8.1) | [3.3.4](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.4_1_win32.msi/download) | x86
-OS X (Mavericks) | [3.3.4](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.4_1_osx.tgz/download) | AMD64
+OS X (Yosemite) | [3.3.4](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.4_1_osx.tgz/download) | AMD64
 Linux (64-bit) | [3.3.4](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.4_1_linux64.tgz/download) | AMD64
 Linux (32-bit) | [3.3.4](http://sourceforge.net/projects/objeck-lang/files/binaries/objeck_r3.3.4_1_linux32.tgz/download) | x86
 
