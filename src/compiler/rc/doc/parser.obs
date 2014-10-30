@@ -42,7 +42,7 @@ class DocParser {
 						if(capture = 2 & string->Equals("class")) {
 							capture := 3;
 						}
-						else if(capture = 2 & (string->Equals("function") | string->Equals("method"))) {
+						else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
 							capture := 4;
 						};						
 					}
@@ -297,6 +297,10 @@ class ClassBlock from DocBlock {
 		};
 	}
 
+	method : public : GetFunction(name : String) ~ Vector {
+		return @funcs->Find(name)->As(Vector);
+	}
+
 	method : public : GetFunctions() ~ Vector {
 		all_funcs := Vector->New();
 		
@@ -344,6 +348,7 @@ class FuncBlock from DocBlock {
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
+	@is_new : Bool;
 	@types : static : StringHash;
 	
 	New(buffer : String) {
@@ -376,25 +381,29 @@ class FuncBlock from DocBlock {
 		if(@signature = Nil) {
 			@signature := "";
 			
-			if(@is_func) {
-				@signature->Append("function : ");
+			if(@is_new) {
+				@signature->Append("New");
 			}
 			else {
-				@signature->Append("method : ");
-			};
-
-			if(@is_private) {
-				@signature->Append("private : ");
-			}
-			else {
-				@signature->Append("public : ");
-			};
+				if(@is_func) {
+					@signature->Append("function : ");
+				}
+				else {
+					@signature->Append("method : ");
+				};
+				
+				if(@is_private) {
+					@signature->Append("private : ");
+				}
+				else {
+					@signature->Append("public : ");
+				};
 		
-			if(@is_native) {
-				@signature->Append("native : ");
+				if(@is_native) {
+					@signature->Append("native : ");
+				};
+				@signature->Append(@name);
 			};
-
-			@signature->Append(@name);
 			@signature->Append('(');
 
 			each(i : @func_types) {
@@ -408,8 +417,13 @@ class FuncBlock from DocBlock {
 				};
 			};
 		
-			@signature->Append(") ~ ");
-			@signature->Append(@return_type->GetName());
+			if(@is_new) {
+				@signature->Append(')');
+			}
+			else {
+				@signature->Append(") ~ ");
+				@signature->Append(@return_type->GetName());
+			};
 		};
 		
 		return @signature;
@@ -476,12 +490,16 @@ class FuncBlock from DocBlock {
 		};
 		
 		# parse function
-		type := ParseIdent();
-		if(type->Size() > 0) {
-			if(type->Equals("function")) {
+		func_type := ParseIdent();
+		if(func_type->Size() > 0) {
+			if(func_type->Equals("function")) {
 				@is_func := true;
 			}
-			else if(type->Equals("method")) {
+			else if(func_type->Equals("method")) {
+				@is_func := false;
+			}
+			else if(func_type->Equals("New")) {
+				@is_new := true;
 				@is_func := false;
 			}
 			else {
@@ -489,20 +507,25 @@ class FuncBlock from DocBlock {
 			};
 		};
 
-		while(MatchChar(':')) {
-			meta := ParseIdent();
-			if(meta->Size() > 0) {
-				if(meta->Equals("public")) {
-					@is_public := true;
-				}
-				else if(meta->Equals("private")) {
-					@is_public := false;
-				}
-				else if(meta->Equals("native")) {
-					@is_native := true;
-				}
-				else {
-					@name := meta;
+		if(@is_new) {
+			@name := "New";
+		}
+		else {
+			while(MatchChar(':')) {
+				meta := ParseIdent();
+				if(meta->Size() > 0) {
+					if(meta->Equals("public")) {
+						@is_public := true;
+					}
+					else if(meta->Equals("private")) {
+						@is_public := false;
+					}
+					else if(meta->Equals("native")) {
+						@is_native := true;
+					}
+					else {
+						@name := meta;
+					};
 				};
 			};
 		};
@@ -533,23 +556,25 @@ class FuncBlock from DocBlock {
 		if(<>MatchChar(')')) {
 			return false;
 		};
-
-		if(<>MatchChar('~')) {
-			return false;
-		};
-
-		# return type
-		rtrn_name := ParseIdent();
-		if(rtrn_name->Size() = 0) {
-			return false;
-		};
 		
-		rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
-		if(rtrn_type <> Nil) {
-			@return_type := DocType->New(rtrn_name, "", rtrn_type->Get()->As(DocType->Type));
-		}
-		else {
-			@return_type := DocType->New(rtrn_name, "", DocType->Type->CLASS);
+		if(<>@is_new) {
+			if(<>MatchChar('~')) {
+				return false;
+			};
+
+			# return type
+			rtrn_name := ParseIdent();
+			if(rtrn_name->Size() = 0) {
+				return false;
+			};
+		
+			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
+			if(rtrn_type <> Nil) {
+				@return_type := DocType->New(rtrn_name, "", rtrn_type->Get()->As(DocType->Type));
+			}
+			else {
+				@return_type := DocType->New(rtrn_name, "", DocType->Type->CLASS);
+			};
 		};
 		
 		return true;
