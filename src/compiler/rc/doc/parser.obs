@@ -80,9 +80,10 @@ class DocParser {
 								else if(capture = 4) {
 									block->Append(line);
 									block->Append('\n');
+block->PrintLine();
 									enum_doc := EnumBlock->New(block);
 									if(enum_doc <> Nil) {
-block->PrintLine();
+
 										@enums->AddBack(enum_doc);
 									};								
 									block := "";
@@ -98,8 +99,8 @@ block->PrintLine();
 								else if(capture = 6) {
 									block->Append(line);
 									block->Append('\n');
-									if(class_doc <> Nil) {
 block->PrintLine();
+									if(class_doc <> Nil) {
 										class_doc->AddEnum(block);
 										block := "";
 									};
