@@ -2,7 +2,7 @@
 This is a 
 test class
 ~#
-class Bar {
+class FBar {
 	#~ 
 	foo bar 
 	@return returns value
@@ -11,14 +11,24 @@ class Bar {
 		return 13;
 	}
 
-	enum {
+	#~
+	dr. dre
+	~#
+	enum Hello {
 		A, B,
 				c,
 		D}
 }
 
 #~
-This is a 
+rrr
+~#
+enum AYo {
+	a, bba, cc,
+		dfd}
+
+#~
+This is a funkin
 test class
 ~#
 class Test {
