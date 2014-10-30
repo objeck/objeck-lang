@@ -18,6 +18,13 @@ test class
 ~#
 class Test {
 	#~
+	This is new
+	~#
+	New() {
+
+	}
+
+	#~
 	Main function more text
 	yes more more test
 	@param a main argument
