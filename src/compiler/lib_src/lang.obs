@@ -986,14 +986,17 @@ bundle System {
 		}
 	}
 	
-	#~~
-	# Character string class
-	~~#	
+	#~
+	Unicode character string class
+	~#	
 	class String implements System.Compare {
 		@string : Char[];
 		@max : Int;
 		@pos : Int;
 
+		#~
+		Default constructor
+		~#
 		New() {
 			Parent();
 
@@ -1002,6 +1005,10 @@ bundle System {
 			@pos := 0;
 		}
 
+		#~
+		Copy constructor
+		@param string string to be copied
+		~#
 		New(string : String) {
 			Parent();
 
@@ -1013,7 +1020,11 @@ bundle System {
 				Append(string->ToCharArray());
 			};
 		}
-					
+		
+		#~
+		Copy constructor
+		@param array array to be copied
+		~#		
 		New(array : Char[]) {
 			Parent();
 
@@ -1030,6 +1041,12 @@ bundle System {
 			Append(array);
 		}
 		
+		#~
+		Copy constructor
+		@param array array to be copied
+		@param offset offset array index offset
+		@param max offset max max number of characters to copy
+		~#
 		New(array : Char[], offset : Int, max : Int) {
 			Parent();
 

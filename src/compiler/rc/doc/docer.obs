@@ -2,7 +2,12 @@ class DocMaker {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := DocParser->New(args[0]);
-			classes := parser->Parse();
+			if(<>parser->Parse()) {
+				"--- failed ---"->PrintLine();
+				return;
+			};
+			
+			classes := parser->GetClasses();
 			if(classes <> Nil) {
 				classes->Size()->PrintLine();
 				"---"->PrintLine();
@@ -12,8 +17,8 @@ class DocMaker {
 						class_name := class_block->GetName();
 						class_desc := class_block->GetDesc();
 						IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
-							->Print(class_name <> Nil ? class_name : "(none)")->Print("', desc='")
-							->Print(class_desc <> Nil ? class_desc : "(none)")->PrintLine("'");
+							->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
+							->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
 						funcs := class_block->GetFunctions();
 						each(j : funcs) {
 							func := funcs->Get(j)->As(FuncBlock);
