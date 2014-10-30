@@ -4,18 +4,30 @@ use Collection;
 
 class DocParser {
 	@file : String;
+	@classes : Vector;
+	@enums : Vector;
 	
 	New(file : String) {
 		@file := file;	
+		@classes := Vector->New();
+		@enums := Vector->New();
 	}
 	
-	method : public : native : Parse() ~ Vector {
+	method : public : GetClasses() ~ Vector {
+		return @classes;
+	}
+
+	method : public : GetEnums() ~ Vector {
+		return @enums;
+	}
+	
+	method : public : native : Parse() ~ Bool {
 		capture := 0;
 		block := "";
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(@file);
-		classes := Vector->New();
+		
 		
 		class_doc : ClassBlock;
 		while(<>reader->IsEOF()) {
@@ -42,8 +54,14 @@ class DocParser {
 						if(capture = 2 & string->Equals("class")) {
 							capture := 3;
 						}
-						else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
+						else if(capture = 2 & string->Equals("enum")) {
 							capture := 4;
+						}
+						else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
+							capture := 5;
+						}
+						else if(capture = 2 & string->Equals("enum")) {
+							capture := 6;
 						};						
 					}
 					# other
@@ -55,15 +73,32 @@ class DocParser {
 									block->Append('\n');
 									class_doc := ClassBlock->New(block);
 									if(class_doc <> Nil) {
-										classes->AddBack(class_doc);
+										@classes->AddBack(class_doc);
 									};								
 									block := "";
 								}
 								else if(capture = 4) {
 									block->Append(line);
 									block->Append('\n');
+									enum_doc := EnumBlock->New(block);
+									if(enum_doc <> Nil) {
+										@enums->AddBack(enum_doc);
+									};								
+									block := "";
+								}
+								else if(capture = 5) {
+									block->Append(line);
+									block->Append('\n');
 									if(class_doc <> Nil) {
 										class_doc->AddFunction(block);
+										block := "";
+									};
+								}
+								else if(capture = 6) {
+									block->Append(line);
+									block->Append('\n');
+									if(class_doc <> Nil) {
+										class_doc->AddEnum(block);
 										block := "";
 									};
 								};
@@ -111,8 +146,8 @@ class DocParser {
 				reader->Close();
 			};
 		};
-		
-		return classes;
+
+		return true;	
 	}
 }
 
@@ -266,6 +301,30 @@ class DocBlock {
 	}
 }
 
+class EnumBlock from DocBlock {
+	@name : String;
+	@desc : String;
+	@items : Vector;
+	
+	New(buffer : String) {
+		Parent(buffer);
+		@items := Vector->New();
+		@parsed := Parse();
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetItems() ~ Vector {
+		return @items;
+	}
+
+	method : native : Parse() ~ Bool {
+		return false;
+	}
+}
+
 class ClassBlock from DocBlock {
 	@name : String;
 	@desc : String;
@@ -283,6 +342,9 @@ class ClassBlock from DocBlock {
 
 	method : public : GetDesc() ~ String {
 		return @desc;
+	}
+
+	method : public : AddEnum(block : String) ~ Nil {
 	}
 
 	method : public : AddFunction(block : String) ~ Nil {
