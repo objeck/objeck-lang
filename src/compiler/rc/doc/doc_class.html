@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<style>
+body {
+	font-family: sans-serif;
+	line-height: 1;
+	min-width: 960px; 
+	color: #404041;
+	background-color: #f1f1f2;
+	-webkit-font-smoothing: antialiased;
+}
+	
+.doc-table {
+	font-family: sans-serif;
+	-webkit-font-smoothing: antialiased;
+	font-size: 80%;
+	width: auto;
+	overflow: auto;
+	display: block;
+}
+.doc-table th {
+	background-color: #BDBDBD;
+	font-weight: em;
+	padding: 10px 15px;
+	text-align: center;
+}
+.doc-table td {
+	background-color: #E6E6E6;
+	padding: 10px 15px;
+}
+
+code {
+	font-family: Monaco, Courier, monospace;
+	display: block;
+	padding: 5px 10px;
+	font-size: 14px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+	font-family: Monaco, Courier, monospace;
+	overflow-x: auto;
+}
+
+h3 {
+	display: block;
+	margin: 12px 0;
+	padding: 12px 20px;
+	background: #0B243B;
+	border: none;
+	border-radius: 8px;
+	color: #ffffff;
+	overflow: auto;
+}
+
+strong {
+	font-weight: bold;
+	color: black;
+}
+
+</style>
+</head>
+
+<body>
+	<h3>String</h3>
+	<p>Unicode character string</p>
+	
+	<p>
+	Operations
+		<ul type=square>
+			<li><a href="#aa">SubString</a></li>
+			<li><a href="#ab">ToInt</a></li></li>
+			<li><a href="#aa">ToFloat</a></li>
+			<li><a href="#ab">Append</a></li></li>
+			<li><a href="#aa">Delete</a></li>
+		</ul>
+	</p>
+	
+	<hr/>
+	
+	<a name="aa"></a>
+	<p>
+		<p><strong>SubString</strong></p>
+		<p>Creates a sub-string</p>
+		<code>method : public : SubString(offset:Int, length:Int) ~ String</code>
+		<p>
+			Parameters
+			<table class="doc-table">
+				<tr>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td>offset</td>
+					<td>Int</td>
+					<td>index offset</td>
+				</tr>
+				<tr>
+					<td>length</td>
+					<td>Int</td>
+					<td>number of characters to copy</td>
+				</tr>
+			</table>
+		</p>
+		<p>
+			Return
+			<table class="doc-table">
+				<tr>
+					<th>Type</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td>String</td>
+					<td>substring</td>
+				</tr>
+			</table>
+		</p>
+	</p>
+	
+	<a name="ab"></a>
+	<p>
+		<p><strong>ToInt</strong></p>
+		<p>Creates a sub-string</p>
+		<code>method : public : SubString(offset:Int, length:Int) ~ String</code>
+		<p>
+			Parameters
+			<table class="doc-table">
+				<tr>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td>offset</td>
+					<td>Int</td>
+					<td>index offset</td>
+				</tr>
+				<tr>
+					<td>length</td>
+					<td>Int</td>
+					<td>number of characters to copy</td>
+				</tr>
+			</table>
+		</p>
+		<p>
+			Return
+			<table class="doc-table">
+				<tr>
+					<th>Type</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td>String</td>
+					<td>substring</td>
+				</tr>
+			</table>
+		</p>
+	</p>
+	
+</body>
+
+</html>
