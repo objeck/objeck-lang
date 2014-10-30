@@ -27,118 +27,115 @@ class DocParser {
 		line_num := 0;
 		comment_state := 0;							
 		reader := FileReader->New(@file);
-		
-		
 		class_doc : ClassBlock;
+
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
 			line_num += 1;
 			
-			i := 0;	
-			while(i < line->Size()) {		
-				# skip whitespace
-				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+			if(capture = 4) {
+				if(line->Find('}') > -1) {
+					block->Append(line);
+					block->Append('\n');
+IO.Console->Print(class_doc = Nil)->Print(": '")->Print(block)->PrintLine("'");
+EnumBlock->New(block);	
+
+					block := "";
+					capture := 0;
+					comment_state := 0;
+				}
+				else {
+					block->Append(line);
+					block->Append('\n');
+				};
+			}
+			else {
+				i := 0;	
+				while(i < line->Size()) {		
+					# skip whitespace
+					while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+						i += 1;
+					};
+			
+					# parse the line
+					if(i < line->Size()) {
+						if(line->Get(i)->IsChar() = true) {
+							string := "";
+							while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+								string->Append(line->Get(i));
+								i += 1;
+							};
+					
+							if(capture = 2 & string->Equals("class")) {
+								capture := 3;
+							}
+							else if(capture = 2 & string->Equals("enum")) {
+								block->Append(line);
+								block->Append('\n');
+								capture := 4;
+							}
+							else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
+								capture := 5;
+							};					
+						}
+						# other
+						else {
+							select(line->Get(i)) {
+								label '{': {
+									if(capture = 3) {
+										block->Append(line);
+										block->Append('\n');
+										class_doc := ClassBlock->New(block);
+										if(class_doc <> Nil) {
+											@classes->AddBack(class_doc);
+										};								
+										block := "";
+										capture := 0;
+										comment_state := 0;
+									}
+									else if(capture = 5) {
+										block->Append(line);
+										block->Append('\n');
+										if(class_doc <> Nil) {
+											class_doc->AddFunction(block);
+											block := "";
+										};
+										capture := 0;
+										comment_state := 0;
+									};				
+								}
+
+								label '#': {
+									if(comment_state = 2) {
+										capture := 2;
+										comment_state := 0;
+									}
+									else if(comment_state = 0) {
+										comment_state := 1;
+									};
+								}
+
+								label '~': {
+									if(comment_state = 1) {
+										capture := 1;
+										comment_state := 0;
+									}
+									else if(comment_state = 0) {
+										comment_state := 2;
+									};
+								}
+				
+								other: {
+									comment_state := 0;
+								}
+							};						
+						};	
+					};
 					i += 1;
 				};
-				
-				# parse the line
-				if(i < line->Size()) {
-					# word
-					if(line->Get(i)->IsChar() = true) {
-						string := "";
-						while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
-							string->Append(line->Get(i));
-							i += 1;
-						};
-						
-						if(capture = 2 & string->Equals("class")) {
-							capture := 3;
-						}
-						else if(capture = 2 & string->Equals("enum")) {
-							capture := 4;
-						}
-						else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
-							capture := 5;
-						}
-						else if(capture = 2 & string->Equals("enum")) {
-							capture := 6;
-						};						
-					}
-					# other
-					else {
-						select(line->Get(i)) {
-							label '{': {
-								if(capture = 3) {
-									block->Append(line);
-									block->Append('\n');
-									class_doc := ClassBlock->New(block);
-									if(class_doc <> Nil) {
-										@classes->AddBack(class_doc);
-									};								
-									block := "";
-								}
-								else if(capture = 4) {
-									block->Append(line);
-									block->Append('\n');
-block->PrintLine();
-									enum_doc := EnumBlock->New(block);
-									if(enum_doc <> Nil) {
-
-										@enums->AddBack(enum_doc);
-									};								
-									block := "";
-								}
-								else if(capture = 5) {
-									block->Append(line);
-									block->Append('\n');
-									if(class_doc <> Nil) {
-										class_doc->AddFunction(block);
-										block := "";
-									};
-								}
-								else if(capture = 6) {
-									block->Append(line);
-									block->Append('\n');
-block->PrintLine();
-									if(class_doc <> Nil) {
-										class_doc->AddEnum(block);
-										block := "";
-									};
-								};
-								capture := 0;
-								comment_state := 0;
-							}
-			
-							label '#': {
-								if(comment_state = 2) {
-									capture := 2;
-									comment_state := 0;
-								}
-								else if(comment_state = 0) {
-									comment_state := 1;
-								};
-							}
-
-							label '~': {
-								if(comment_state = 1) {
-									capture := 1;
-									comment_state := 0;
-								}
-								else if(comment_state = 0) {
-									comment_state := 2;
-								};
-							}
-					
-							other: {
-								comment_state := 0;
-							}
-						};						
-					};	
-				};
-				i += 1;
 			};				
 			
-			if(capture > 0) {
+			if(capture > 0 & capture <> 4) {
 				block->Append(line);
 				block->Append('\n');
 			};
@@ -241,6 +238,7 @@ class DocBlock {
 				label '\r':
 				label '\n':
 				label '{':
+				label '}':
 				label ':':
 				label ',':
 				label '(':
@@ -281,6 +279,7 @@ class DocBlock {
 				}
 ~#
 				label '{':
+				label '}':
 				label ':':
 				label '(':
 				label ')':
@@ -307,6 +306,7 @@ class DocBlock {
 class EnumBlock from DocBlock {
 	@name : String;
 	@desc : String;
+	@klass : String;
 	@items : Vector;
 	
 	New(buffer : String) {
@@ -319,12 +319,61 @@ class EnumBlock from DocBlock {
 		return @name;
 	}
 
+	method : public : GetClass() ~ String {
+		return @klass;
+	}
+
 	method : public : GetItems() ~ Vector {
 		return @items;
 	}
 
 	method : native : Parse() ~ Bool {
-		return false;
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();	
+
+		# parse tags		
+		type := ParseIdent();
+		if(type->Size() > 0) {
+			if(type->Equals("@class")) {
+				@klass := ParseIdent();
+				if(@klass->Size() = 0) {
+					return false;
+				};
+			};
+		};
+		
+
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+
+		if(<>MatchIdent("enum")) {
+			return false;
+		};
+
+		@name := ParseIdent();
+		if(@name->Size() = 0) {
+			return false;
+		};
+
+		if(<>MatchChar('{')) {
+			return false;
+		};
+	
+		# items
+		while(@cur_char <> '}') {
+			item_name := ParseIdent();
+			if(item_name->Size() = 0) {
+				return false;
+			};
+
+			@items->AddBack(item_name);
+			MatchChar(',');
+		};
+		
+		return true;
 	}
 }
 

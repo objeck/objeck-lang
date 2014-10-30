@@ -13,6 +13,7 @@ class FBar {
 
 	#~
 	dr. dre
+	@class FBar
 	~#
 	enum Hello {
 		A, B,

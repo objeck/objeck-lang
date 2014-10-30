@@ -114,8 +114,7 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
           not_end = path_string[pos] != L'\'';
         }
         else {
-          not_end = path_string[pos] != L' ' && path_string[pos] != L'\t' && 
-            !(path_string[pos] == L'-' && pos + 1 < end && (path_string[pos + 1] == L' ' || path_string[pos + 1] == L'\t'));
+          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t' || path_string[pos] == L'-');
         }
         // update position
         if(not_end) {
