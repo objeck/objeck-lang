@@ -10,6 +10,11 @@ class Bar {
 	function : public : Get() ~ Int {
 		return 13;
 	}
+
+	enum {
+		A, B,
+				c,
+		D}
 }
 
 #~

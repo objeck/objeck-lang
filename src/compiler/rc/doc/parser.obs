@@ -82,6 +82,7 @@ class DocParser {
 									block->Append('\n');
 									enum_doc := EnumBlock->New(block);
 									if(enum_doc <> Nil) {
+block->PrintLine();
 										@enums->AddBack(enum_doc);
 									};								
 									block := "";
@@ -98,6 +99,7 @@ class DocParser {
 									block->Append(line);
 									block->Append('\n');
 									if(class_doc <> Nil) {
+block->PrintLine();
 										class_doc->AddEnum(block);
 										block := "";
 									};
