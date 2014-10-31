@@ -1,4 +1,4 @@
-class DocMaker {
+class DocPrinter {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			parser := DocParser->New(args[0]);

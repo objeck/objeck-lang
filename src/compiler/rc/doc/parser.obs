@@ -461,6 +461,14 @@ class ClassBlock from DocBlock {
 		return @funcs->Find(name)->As(Vector);
 	}
 
+	method : public : GetFunctionNames() ~ Vector {
+		return @funcs->GetKeys();
+	}
+
+	method : public : GetFunctions(name : String) ~ Vector {
+		return @funcs->Find(name)->As(Vector);
+	}
+	
 	method : public : GetAllFunctions() ~ Vector {
 		all_funcs := Vector->New();
 		
