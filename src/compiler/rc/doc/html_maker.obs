@@ -1,0 +1,146 @@
+class DocPrinter {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			parser := DocParser->New(args[0]);
+			if(<>parser->Parse()) {
+				"--- unable to parse file! ---"->PrintLine();
+				return;
+			};
+			
+			font_matter := IO.File.FileReader->ReadFile("../compiler/rc/doc/front.thtml");
+			if(font_matter = Nil) {
+				"--- unable to open font matter! ---"->PrintLine();
+				return;
+			};
+
+			class_matter := IO.File.FileReader->ReadFile("../compiler/rc/doc/class.thtml");
+			if(class_matter = Nil) {
+				"--- unable to open class matter! ---"->PrintLine();
+				return;
+			};
+
+			inner_enum_matter := IO.File.FileReader->ReadFile("../compiler/rc/doc/inner_enum.thtml");
+			if(inner_enum_matter = Nil) {
+				"--- unable to open enum matter! ---"->PrintLine();
+				return;
+			};
+
+
+			oper_start_a_matter := IO.File.FileReader->ReadFile("../compiler/rc/doc/oper_start_a.thtml");
+			if(oper_start_a_matter = Nil) {
+				"--- unable to open oper_start_a matter! ---"->PrintLine();
+				return;
+			};
+
+			oper_start_b_matter := IO.File.FileReader->ReadFile("../compiler/rc/doc/oper_start_b.thtml");
+			if(oper_start_b_matter = Nil) {
+				"--- unable to open oper_start_b matter! ---"->PrintLine();
+				return;
+			};
+			
+			# set front matter
+			html := "";
+			html += font_matter;
+				
+			classes := parser->GetAllClasses();
+			if(classes <> Nil) {
+				"---"->PrintLine();
+				classes->Size()->PrintLine();
+				"---"->PrintLine();
+				#
+				# classes
+				#
+				each(i : classes) {
+					class_block := classes->Get(i)->As(ClassBlock);
+					if(class_block <> Nil) {
+						class_name := class_block->GetName();
+						class_desc := class_block->GetDesc();
+
+						IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
+							->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
+							->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
+			
+						func_short_name_matter := "";
+						class_matter := class_matter->ReplaceAll("@class_name", class_name);
+						func_names := class_block->GetFunctionNames();
+						each(j : func_names) {
+							func_name := func_names->Get(j)->As(String);
+							func_short_name_matter += "\t\t<li><a href='#";
+							func_short_name_matter->Append(func_name->ToLower());
+							func_short_name_matter += "'>";
+							func_short_name_matter->Append(func_name);
+							func_short_name_matter += "</a></li>\n";
+						};						
+						class_matter := class_matter->ReplaceAll("@operation_short_name", func_short_name_matter);
+						
+#~
+						TODO: inner enum
+~#
+
+						#
+						# methods/functions
+						#
+						func_names := class_block->GetFunctionNames();
+						each(j : func_names) {
+							func_short_name := func_names->Get(j)->As(String);
+							oper_start_a_matter := oper_start_a_matter->ReplaceAll("@short_name", func_short_name);
+
+							funcs := class_block->GetFunctions(func_short_name);
+							each(k : funcs) {
+								func := funcs->Get(k)->As(FuncBlock);
+								if(func <> Nil) {
+									IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
+										->Print(func->GetDesc());
+									if(func->GetReturn() <> Nil) {
+										IO.Console->Print("', return='")->Print(func->GetReturn()->GetDesc())->Print("'");
+									}
+									else {
+										("'")->Print();
+									};
+									IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
+
+									#
+									# function parameters
+									#
+									param_tags := func->GetParamTags();
+									params := func->GetParams();
+									each(l : params) {
+										param := params->Get(l)->As(DocType);
+										if(param <> Nil) {
+											param_tag := param_tags->Find(param->GetName())->As(DocTag);
+											if(param_tag <> Nil) {
+												IO.Console->Print("    param (")->Print(l + 1)->Print("): name='")
+													->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
+													->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
+											};
+										};
+									};
+								};	
+							};
+						};
+					};
+				};				
+			};
+
+			enums := parser->GetAllEnums();
+			if(enums <> Nil) {
+				"---"->PrintLine();
+				enums->Size()->PrintLine();
+				"---"->PrintLine();
+				each(i : classes) {
+					enum_block := enums->Get(i)->As(EnumBlock);
+					enum_name := enum_block->GetName();
+					enum_desc := enum_block->GetDesc();
+					IO.Console->Print("enum [")->Print(i + 1)->Print("]: name='")
+						->Print(enum_name <> Nil & enum_name->Size() > 0 ? enum_name : "(none)")->Print("', desc='")
+						->Print(enum_desc <> Nil & enum_desc->Size() > 0 ? enum_desc : "(none)")->PrintLine("'");
+					items := enum_block->GetItems();
+					each(j : items) {
+						item := items->Get(j)->As(String);
+						IO.Console->Print("  item (")->Print(j + 1)->Print("): name='")->Print(item)->PrintLine("'");
+					};
+				};
+			};
+		};
+	}
+}

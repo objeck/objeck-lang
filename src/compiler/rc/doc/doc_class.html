@@ -1,3 +1,5 @@
+<!--- front matter -->
+
 <!DOCTYPE html>
 <html>
 
@@ -73,6 +75,8 @@ strong {
 </head>
 
 <body>
+
+<!--- class -->
 	<h2>String</h2>
 	<p>Unicode character string</p>
 	
@@ -85,9 +89,10 @@ strong {
 			<li><a href="#ab">Append</a></li></li>
 			<li><a href="#aa">Delete</a></li>
 		</ul>
-	</p>
-	
+	</p>	
 	<hr/>
+
+<!--- inner enums -->
 	<h3>Enums</h3>
 	<p><strong>String->Color</strong>
 		<ul type=square>
@@ -96,8 +101,9 @@ strong {
 			<li>BLUE</li>
 		</ul>
 	</p>	
-
 	<hr/>
+
+<!--- operation-start -->
 	<h3>Operations</h3>
 	<a name="aa"></a>
 	<p>
@@ -112,16 +118,15 @@ strong {
 					<th>Type</th>
 					<th>Description</th>
 				</tr>
+
+<!--- parameter-start -->
 				<tr>
 					<td>offset</td>
 					<td>Int</td>
 					<td>index offset</td>
 				</tr>
-				<tr>
-					<td>length</td>
-					<td>Int</td>
-					<td>number of characters to copy</td>
-				</tr>
+<!--- parameter-end -->
+
 			</table>
 		</p>
 		<p>
@@ -131,54 +136,19 @@ strong {
 					<th>Type</th>
 					<th>Description</th>
 				</tr>
+
+<!--- return-start -->
 				<tr>
 					<td>String</td>
 					<td>substring</td>
 				</tr>
+<!--- return-end -->
 			</table>
 		</p>
 	</p>
-	
-	<a name="ab"></a>
-	<p>
-		<p><strong>ToInt</strong></p>
-		<p>Creates a sub-string</p>
-		<code>method : public : SubString(offset:Int, length:Int) ~ String</code>
-		<p>
-			Parameters
-			<table class="doc-table">
-				<tr>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Description</th>
-				</tr>
-				<tr>
-					<td>offset</td>
-					<td>Int</td>
-					<td>index offset</td>
-				</tr>
-				<tr>
-					<td>length</td>
-					<td>Int</td>
-					<td>number of characters to copy</td>
-				</tr>
-			</table>
-		</p>
-		<p>
-			Return
-			<table class="doc-table">
-				<tr>
-					<th>Type</th>
-					<th>Description</th>
-				</tr>
-				<tr>
-					<td>String</td>
-					<td>substring</td>
-				</tr>
-			</table>
-		</p>
-	</p>
+
+<!--- operation-end -->
+<!--- back matter -->
 	
 </body>
-
 </html>
