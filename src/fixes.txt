@@ -1,9 +1,12 @@
+10/31/14
+* debuger support for enums
+
 10/15/14
-* TODO: ctrl flow for ending statements?
-* TODO: enum with shorter internal classs references
+- TODO: ctrl flow for ending statements?
+- TODO: enum with shorter internal classs references
 
 10/6/14
-* Add 'Delete' and 'Insert' to String
+- Add 'Delete' and 'Insert' to String
 
 ========================
 

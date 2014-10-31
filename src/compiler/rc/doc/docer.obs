@@ -7,8 +7,9 @@ class DocMaker {
 				return;
 			};
 			
-			classes := parser->GetClasses();
+			classes := parser->GetAllClasses();
 			if(classes <> Nil) {
+				"---"->PrintLine();
 				classes->Size()->PrintLine();
 				"---"->PrintLine();
 				each(i : classes) {
@@ -19,7 +20,7 @@ class DocMaker {
 						IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
 							->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
 							->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
-						funcs := class_block->GetFunctions();
+						funcs := class_block->GetAllFunctions();
 						each(j : funcs) {
 							func := funcs->Get(j)->As(FuncBlock);
 							if(func <> Nil) {
@@ -50,6 +51,26 @@ class DocMaker {
 						};
 					};
 				};				
+			};
+
+			enums := parser->GetAllEnums();
+			if(enums <> Nil) {
+				"---"->PrintLine();
+				enums->Size()->PrintLine();
+				"---"->PrintLine();
+				each(i : classes) {
+					enum_block := enums->Get(i)->As(EnumBlock);
+					enum_name := enum_block->GetName();
+					enum_desc := enum_block->GetDesc();
+					IO.Console->Print("enum [")->Print(i + 1)->Print("]: name='")
+						->Print(enum_name <> Nil & enum_name->Size() > 0 ? enum_name : "(none)")->Print("', desc='")
+						->Print(enum_desc <> Nil & enum_desc->Size() > 0 ? enum_desc : "(none)")->PrintLine("'");
+					items := enum_block->GetItems();
+					each(j : items) {
+						item := items->Get(j)->As(String);
+						IO.Console->Print("  item (")->Print(j + 1)->Print("): name='")->Print(item)->PrintLine("'");
+					};
+				};
 			};
 		};
 	}

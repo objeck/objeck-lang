@@ -4,21 +4,41 @@ use Collection;
 
 class DocParser {
 	@file : String;
-	@classes : Vector;
-	@enums : Vector;
+	@classes : StringHash;
+	@enums : StringHash;
 	
 	New(file : String) {
 		@file := file;	
-		@classes := Vector->New();
-		@enums := Vector->New();
+		@classes := StringHash->New();
+		@enums := StringHash->New();
 	}
 	
-	method : public : GetClasses() ~ Vector {
-		return @classes;
+	method : public : GetAllClasses() ~ Vector {
+		all_classes := Vector->New();
+		
+		keys := @classes->GetKeys();
+		each(i : keys) {
+			klass := @classes->Find(keys->Get(i)->As(String))->As(ClassBlock);
+			if(klass <> Nil) {
+				all_classes->AddBack(klass);
+			};
+		};
+				
+		return all_classes;
 	}
 
-	method : public : GetEnums() ~ Vector {
-		return @enums;
+	method : public : GetAllEnums() ~ Vector {
+		all_enums := Vector->New();
+		
+		keys := @enums->GetKeys();
+		each(i : keys) {
+			eenum := @enums->Find(keys->Get(i)->As(String))->As(EnumBlock);
+			if(eenum <> Nil) {
+				all_enums->AddBack(eenum);
+			};
+		};
+				
+		return all_enums;
 	}
 	
 	method : public : native : Parse() ~ Bool {
@@ -26,8 +46,15 @@ class DocParser {
 		block := "";
 		line_num := 0;
 		comment_state := 0;							
-		reader := FileReader->New(@file);
 		class_doc : ClassBlock;
+
+		if(<>@file->EndsWith(".obs")) {
+			return false;
+		};
+		reader := FileReader->New(@file);
+		if(<>reader->IsOpen()) {
+			return false;
+		};		
 
 		while(<>reader->IsEOF()) {
 			line := reader->ReadString();
@@ -37,9 +64,10 @@ class DocParser {
 				if(line->Find('}') > -1) {
 					block->Append(line);
 					block->Append('\n');
-IO.Console->Print(class_doc = Nil)->Print(": '")->Print(block)->PrintLine("'");
-EnumBlock->New(block);	
-
+					enum_doc := EnumBlock->New(block);
+					if(enum_doc->IsParsed()) {
+						@enums->Insert(enum_doc->GetName(), enum_doc);
+					};
 					block := "";
 					capture := 0;
 					comment_state := 0;
@@ -74,7 +102,8 @@ EnumBlock->New(block);
 								block->Append('\n');
 								capture := 4;
 							}
-							else if(capture = 2 & (string->Equals("function") | string->Equals("method") | string->Equals("New"))) {
+							else if(capture = 2 & (string->Equals("function") | string->Equals("method") | 
+									string->Equals("New"))) {
 								capture := 5;
 							};					
 						}
@@ -86,8 +115,8 @@ EnumBlock->New(block);
 										block->Append(line);
 										block->Append('\n');
 										class_doc := ClassBlock->New(block);
-										if(class_doc <> Nil) {
-											@classes->AddBack(class_doc);
+										if(class_doc->IsParsed()) {
+											@classes->Insert(class_doc->GetName(), class_doc);
 										};								
 										block := "";
 										capture := 0;
@@ -297,10 +326,6 @@ class DocBlock {
 		
 		return ident->Trim();
 	}
-
-	method : WasParsed() ~ Bool {
-		return @parsed;
-	}
 }
 
 class EnumBlock from DocBlock {
@@ -308,11 +333,16 @@ class EnumBlock from DocBlock {
 	@desc : String;
 	@klass : String;
 	@items : Vector;
+	@parsed : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
 		@items := Vector->New();
 		@parsed := Parse();
+	}
+
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
 	}
 
 	method : public : GetName() ~ String {
@@ -325,6 +355,10 @@ class EnumBlock from DocBlock {
 
 	method : public : GetItems() ~ Vector {
 		return @items;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
 	}
 
 	method : native : Parse() ~ Bool {
@@ -358,6 +392,13 @@ class EnumBlock from DocBlock {
 			return false;
 		};
 
+		if(@klass <> Nil) {
+			name := @klass;
+			name += "->";
+			name += @name;
+			@name := name;
+		};
+
 		if(<>MatchChar('{')) {
 			return false;
 		};
@@ -381,11 +422,16 @@ class ClassBlock from DocBlock {
 	@name : String;
 	@desc : String;
 	@funcs : StringMap;
+	@parsed : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
 		@funcs := StringMap->New();
 		@parsed := Parse();
+	}
+
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
 	}
 
 	method : public : GetName() ~ String {
@@ -401,7 +447,7 @@ class ClassBlock from DocBlock {
 
 	method : public : AddFunction(block : String) ~ Nil {
 		func := FuncBlock->New(block);
-		if(func->WasParsed()) {
+		if(func->IsParsed()) {
 			funcs := @funcs->Find(func->GetName())->As(Vector);
 			if(funcs = Nil) {
 				funcs := Vector->New();
@@ -415,12 +461,12 @@ class ClassBlock from DocBlock {
 		return @funcs->Find(name)->As(Vector);
 	}
 
-	method : public : GetFunctions() ~ Vector {
+	method : public : GetAllFunctions() ~ Vector {
 		all_funcs := Vector->New();
 		
-		func_names := @funcs->GetKeys();
-		each(i : func_names) {
-			funcs := @funcs->Find(func_names->Get(i)->As(String))->As(Vector);
+		keys := @funcs->GetKeys();
+		each(i : keys) {
+			funcs := @funcs->Find(keys->Get(i)->As(String))->As(Vector);
 			each(j : funcs) {
 				all_funcs->AddBack(funcs->Get(j));
 			};
@@ -464,10 +510,11 @@ class FuncBlock from DocBlock {
 	@is_native : Bool;
 	@is_new : Bool;
 	@types : static : StringHash;
+	@parsed : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
-		Init();
+		Initialize();
 		
 		@name := "";
 		@desc := "";
@@ -476,7 +523,7 @@ class FuncBlock from DocBlock {
 		@parsed := Parse();
 	}
 	
-	function : Init() ~ Nil {
+	function : Initialize() ~ Nil {
 		if(@types = Nil) {
 			@types := StringHash->New();
 			@types->Insert("Byte", IntHolder->New(DocType->Type->BYTE->As(Int)));
@@ -487,6 +534,10 @@ class FuncBlock from DocBlock {
 		};
 	}
 	
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
 	method : public : GetName() ~ String {
 		return @name;
 	}
