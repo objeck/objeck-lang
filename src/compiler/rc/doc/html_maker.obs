@@ -85,6 +85,7 @@ class DocPrinter {
 							func_short_name := func_names->Get(j)->As(String);
 							oper_start_a_matter := oper_start_a_matter->ReplaceAll("@short_name", func_short_name);
 
+oper_start_a_matter->PrintLine();
 							funcs := class_block->GetFunctions(func_short_name);
 							each(k : funcs) {
 								func := funcs->Get(k)->As(FuncBlock);
