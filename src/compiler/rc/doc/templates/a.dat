@@ -39,7 +39,7 @@ code {
 	font-family: Monaco, Courier, monospace;
 	display: block;
 	padding: 5px 10px;
-	font-size: 14px;
+	font-size: 18px;
 	border-radius: 4px;
 	margin-bottom: 20px;
 	font-family: Monaco, Courier, monospace;
@@ -77,63 +77,3 @@ strong {
 </head>
 
 <body>
-
-<!-- LOOP START (=>b) -->
-	
-	<h2>@class_name</h2>
-	<p>@class_desc</p>
-
-	Operations
-		<ul>
-<!-- LOOP START (A) -->
-			<li><a href="@func_short_name">@func_short_name</a></li>
-<!-- LOOP END (=>c) -->
-		</ul>
-	<hr/>
-
-	<h3>Operations</h3>
-	<a id="aa"></a>
-	<p><strong>@func_short_name</strong></p>
-
-<!-- LOOP START (C) -->
-	<code>@func_signature</code>
-	<p>@func_desc</p>
-	
-	Parameters
-	<table class="doc-table">
-		<tr>
-			<th>Name</th>
-			<th>Type</th>
-			<th>Description</th>
-		</tr>
-
-<!-- LOOP START (C.1*) -->
-		<tr>
-			<td>@param_name</td>
-			<td>@param_type</td>
-			<td>@param_desc</td>
-		</tr>
-<!-- LOOP END (C.1) -->
-	</table>
-	
-<!-- LOOP END (C) -->
-	
-	</br>
-	Return
-	<table class="doc-table">
-		<tr>
-			<th>Type</th>
-			<th>Description</th>
-		</tr>
-
-		<tr>
-			<td>@return_type</td>
-			<td>@return_desc</td>
-		</tr>
-	</table>
-		
-	
-<!-- LOOP END (?) -->
-	
-</body>
-</html>

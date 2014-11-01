@@ -595,15 +595,19 @@ class FuncBlock from DocBlock {
 			}
 			else {
 				@signature->Append(") ~ ");
-				@signature->Append(@return_type->GetName());
+				@signature->Append(@return_type->GetTypeName());
 			};
 		};
 		
 		return @signature;
 	}
 
-	method : public : GetReturn() ~ DocTag {
+	method : public : GetReturnTag() ~ DocTag {
 		return @return_tag;
+	}
+
+	method : public : GetReturnType() ~ DocType {
+		return @return_type;
 	}
 
 	method : public : GetDesc() ~ String {
@@ -743,10 +747,10 @@ class FuncBlock from DocBlock {
 		
 			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
 			if(rtrn_type <> Nil) {
-				@return_type := DocType->New(rtrn_name, "", rtrn_type->Get()->As(DocType->Type));
+				@return_type := DocType->New("", rtrn_name, rtrn_type->Get()->As(DocType->Type));
 			}
 			else {
-				@return_type := DocType->New(rtrn_name, "", DocType->Type->CLASS);
+				@return_type := DocType->New("", rtrn_name, DocType->Type->CLASS);
 			};
 		};
 		

@@ -39,7 +39,7 @@
 #include <map>
 
 // memory size for local stack frames
-#define LOCAL_SIZE 192
+#define LOCAL_SIZE 512
 
 #ifdef _MINGW
 #define INT_VALUE int

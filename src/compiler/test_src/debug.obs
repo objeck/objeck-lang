@@ -44,6 +44,7 @@ class Test {
 	Main function more text
 	yes more more test
 	@param a main argument
+	@return nada
 	~#
 	function : public : 
 			Main(a : String[]) ~ Nil {
@@ -64,8 +65,18 @@ class Test {
 	Hi ya 2...
 	@param f f of a function
 	@param g g of a function
+	@return nothing again
 	~#
 	method : A(f : (Int) ~ Int, g : Float, h : Int) ~ Nil {
+	}
+
+
+	#~
+	yet another test
+	@param index offset index
+	@return some string
+	~#
+	method : A(index : Float) ~ String {
 	}
 
 #~
