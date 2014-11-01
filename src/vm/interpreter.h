@@ -107,6 +107,7 @@ namespace Runtime {
 			cached_frames.pop();
       
 			frame->method = method;
+      memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
 			frame->mem[0] = (long)instance;
 			frame->ip = -1;
 			frame->jit_called = false;
@@ -133,7 +134,7 @@ namespace Runtime {
 #endif      
       
       // load cache
-      memset(frame->mem, 0, LOCAL_SIZE);
+      memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
       cached_frames.push(frame);
 #ifdef _DEBUG
       wcout << L"caching frame=" << frame << endl;
@@ -245,7 +246,7 @@ namespace Runtime {
 #ifdef _DEBUG
       long v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-						<< (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+						<< hex << v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -259,7 +260,7 @@ namespace Runtime {
     inline void PushInt(long v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-						<< (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+						<< hex << v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -318,7 +319,7 @@ namespace Runtime {
     inline long TopInt(long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       long v = op_stack[(*stack_pos) - 1];
-      wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
+      wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << hex << v
 						<< L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
