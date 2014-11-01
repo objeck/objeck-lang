@@ -3012,9 +3012,9 @@ bool ContextAnalyzer::Analyze()
             }
           }
           // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
-          else if(expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE || 
-                  expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE || 
-                  expr_type->GetType() == BOOLEAN_TYPE) {
+          else if(expr_type && (expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE || 
+                                expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE || 
+                                expr_type->GetType() == BOOLEAN_TYPE)) {
             switch(type) {
             case ADD_ASSIGN_STMT:
               static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);

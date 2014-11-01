@@ -13,41 +13,39 @@ class DocPrinter {
 				classes->Size()->PrintLine();
 				"---"->PrintLine();
 				each(i : classes) {
-					class_block := classes->Get(i)->As(ClassBlock);
-					if(class_block <> Nil) {
-						class_name := class_block->GetName();
-						class_desc := class_block->GetDesc();
-						IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
-							->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
-							->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
-						funcs := class_block->GetAllFunctions();
-						each(j : funcs) {
-							func := funcs->Get(j)->As(FuncBlock);
+				class_block := classes->Get(i)->As(ClassBlock);
+					class_name := class_block->GetName();
+					class_desc := class_block->GetDesc();
+					IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
+						->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
+						->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
+					func_names := class_block->GetFunctionNames();
+					each(j : func_names) {
+						short_name := func_names->Get(j)->As(String);
+						funcs := class_block->GetFunctions(short_name);
+						each(k : funcs) {
+							func := funcs->Get(k)->As(FuncBlock);								
 							if(func <> Nil) {
 								IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
-									->Print(func->GetDesc());
-								if(func->GetReturn() <> Nil) {
-									IO.Console->Print("', return='")->Print(func->GetReturn()->GetDesc())->Print("'");
-								}
-								else {
-									("'")->Print();
+									->Print(func->GetDesc())->Print("')");
+								if(func->GetReturnTag() <> Nil) {
+									IO.Console->Print(", return: type='")->Print(func->GetReturnType()->GetTypeName())
+										->Print("'")->Print("', desc='")->Print(func->GetReturnTag()->GetDesc())->Print("'");
 								};
-								IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
 
+								IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
 								param_tags := func->GetParamTags();
 								params := func->GetParams();
-								each(k : params) {
-									param := params->Get(k)->As(DocType);
-									if(param <> Nil) {
-										param_tag := param_tags->Find(param->GetName())->As(DocTag);
-										if(param_tag <> Nil) {
-											IO.Console->Print("    param (")->Print(k + 1)->Print("): name='")
-												->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
-												->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
-										};
+								each(l : params) {
+									param := params->Get(l)->As(DocType);
+									param_tag := param_tags->Find(param->GetName())->As(DocTag);
+									if(param_tag <> Nil) {
+										IO.Console->Print("    param (")->Print(l + 1)->Print("): name='")
+											->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
+											->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
 									};
 								};
-							};	
+							};
 						};
 					};
 				};				
