@@ -1,30 +1,14 @@
 class Gee {
 	function : Main(args : String[]) ~ Nil {
-		t := "   "->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-		
-		t := "   1234"->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-
-		t := "1234    "->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-
-		t := "  1234  "->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-
-		t := ""->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-		
-		t := "1234"->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-		
-		t := "a"->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-
-		t := " a"->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
-
-		t := "a "->Trim();
-		IO.Console->Print('|')->Print(t)->PrintLine('|');
+		s := "<tr>";
+		g := "g";
+		if(false) {
+#			s ->Append(  "</td>" );
+			s +=  "</td>" ;
+		}
+		else if(g->Equals("New")) {
+#		else if(true) {
+			s := "<td>";
+		};
 	}
 }
