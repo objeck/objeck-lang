@@ -1087,7 +1087,7 @@ bundle System {
 		Copy constructor
 		@param array array to be copied
 		@param offset offset array index offset
-		@param max offset max max number of characters to copy
+		@param max max number of characters to copy
 		~#
 		New(array : Byte[], offset : Int, max : Int) {
 			Parent();
@@ -1189,6 +1189,12 @@ bundle System {
 			};
 		}
 
+		#~
+		Appends a portion of character array
+		@param array array to be copied
+		@param offset offset array index offset
+		@param max max number of characters to copy
+		~#
 		method : public : native : Append(array : Char[], offset : Int, max : Int) ~ Nil {
 			if(offset < 0) {
 				return;
@@ -1210,6 +1216,10 @@ bundle System {
 			};
 		}
 		
+		#~
+		Appends a character array
+		@param array array to be copied
+		~#
 		method : public : native : Append(array : Byte[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
@@ -1227,6 +1237,12 @@ bundle System {
 			};
 		}
 
+		#~
+		Appends a portion of byte array
+		@param array array to be copied
+		@param offset offset array index offset
+		@param max max number of bytes to copy
+		~#
 		method : public : native : Append(array : Byte[], offset : Int, max : Int) ~ Nil {
 			if(offset < 0) {
 				return;
@@ -1248,6 +1264,10 @@ bundle System {
 			};
 		}
 
+		#~
+		Appends a character
+		@param c character to append
+		~#
 		method : public : native : Append(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
@@ -1262,6 +1282,10 @@ bundle System {
 			@pos += 1;
 		}
 		
+		#~
+		Appends a byte
+		@param c byte to append
+		~#
 		method : public : native : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
@@ -1276,10 +1300,21 @@ bundle System {
 			@pos += 1;
 		}
 		
+		#~
+		Searches for the first occurrence of a character
+		@param char character to search for
+		@return index of first occurrence
+		~#
 		method : public : Find(char : Char) ~ Int {
 			return Find(0, char);
 		}
 		
+		#~
+		Searches for the first occurrence of a character
+		@param offset search offset
+		@param char character to search for
+		@return index of first occurrence
+		~#
 		method : public : native : Find(offset : Int, char : Char) ~ Int {
 			if(offset < @pos & offset > -1) {
 				for(i := offset; i < @pos; i += 1;) {
@@ -1292,10 +1327,21 @@ bundle System {
 			return -1;
 		}
 		
+		#~
+		Searches for the last occurrence of a character
+		@param char character to search for
+		@return index of last occurrence
+		~#
 		method : public : FindLast(char : Char) ~ Int {
 			return FindLast(0, char);
 		}
 		
+		#~
+		Searches for the last occurrence of a character
+		@param offset search offset
+		@param char character to search for
+		@return index of last occurrence
+		~#
 		method : public : native : FindLast(offset : Int, char : Char) ~ Int {
 			if(offset < @pos & offset > -1) {
 				for(i := @pos - 1; i > -1; i -= 1;) {
@@ -1308,10 +1354,20 @@ bundle System {
 			return -1;
 		}
 
+		#~
+		Searches for the first occurrence of a string
+		@param find string to search for
+		@return index of first occurrence
+		~#
 		method : public : Find(find : String) ~ Int {
 			return Find(0, find);
 		}
 
+		#~
+		Searches for all occurrences of a string
+		@param find string to search for
+		@return an array of indexes
+		~#
 		method : public : FindAll(find : String) ~ Int[] {
 			buffer_max := 8;
 			buffer := Int->New[buffer_max];
@@ -1347,6 +1403,12 @@ bundle System {
 			return results;
 		}
 
+		#~
+		Searches for the first occurrence of a string
+		@param offset search index offset
+		@param find string to search for
+		@return index of first occurrence
+		~#
 		method : public : native : Find(offset : Int, find : String) ~ Int {
 			size := find->Size();
 			if(size > 0 & offset < @pos) {
@@ -1375,6 +1437,12 @@ bundle System {
 			return -1;
 		}
 		
+		#~
+		Replaces all occurrences the search string
+		@param find string to search for
+		@param replace string to replace with
+		@return new string instance
+		~#
 		method : public : native : ReplaceAll(find : String, replace : String) ~ String {
 			last := @self;
 			result := last->Replace(find, replace);
@@ -1386,6 +1454,12 @@ bundle System {
 			return result;
 		}
 		
+		#~
+		Replaces the first occurrence the search string
+		@param find string to search for
+		@param replace string to replace with
+		@return new string instance
+		~#
 		method : public : native : Replace(find : String, replace : String) ~ String {
 			index := Find(find);
 			if(index < 0) {
@@ -1408,6 +1482,11 @@ bundle System {
 			return new_string;
 		}
 		
+		#~
+		Deletes the character at the given index
+		@param index delete index
+		@return true if deleted, false otherwise 
+		~#
 		method : public : native : Delete(index : Int) ~ Bool {
 			if(index < 0 | index >= @pos) {
 				return false;
@@ -1425,6 +1504,12 @@ bundle System {
 			return true;
 		}
 
+		#~
+		Deletes the characters at the given range
+		@param start start index
+		@param end end index
+		@return true if deleted, false otherwise 
+		~#
 		method : public : native : Delete(start : Int, end : Int) ~ Bool {
 			if(start < 0 | start >= @pos | end < 0 | end >= @pos | start >= end) {
 				return false;
@@ -1443,6 +1528,12 @@ bundle System {
 			return true;
 		}
 
+		#~
+		Insert inserts a string
+		@param index insert offset
+		@param s string to insert
+		@return true if inserted, false otherwise 
+		~#
 		method : public : native : Insert(index : Int, s : String) ~ Bool {
 			if(index < 0 | index > @pos) {
 				return false;
@@ -1465,14 +1556,27 @@ bundle System {
 
 		}
 
+		#~
+		Returns rather the string is empty
+		@return true if empty, false otherwise 
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @pos = 0 ? true : false; 			
 		}
 
+		#~
+		Return the size of the string
+		@return size of the string
+		~#
 		method : public : native : Size() ~ Int {
 			return @pos;			
 		}
   
+		#~
+		Returns character at the given index
+		@param index index offset
+		@return character at index
+		~#
 		method : public : native : Get(index : Int) ~ Char {
 			if(index < @pos) {
 				return @string[index];
@@ -1481,6 +1585,11 @@ bundle System {
 			return '\0';
 		}
 
+		#~
+		Pops the last character from the string reducing the
+		size by 1
+		@return last character of the string
+		~#
 		method : public : native : Pop() ~ Char {
 			if(@pos > 0) {
 				@pos -= 1;
@@ -1492,6 +1601,10 @@ bundle System {
 			return '\0';
 		}
 		
+		#~
+		Parses the string into an integer
+		@return integer value
+		~#
 		method : public : native : ToInt() ~ Int {
 			if(@pos > 1 & @string[0] = '0' & @string[1] = 'x') {
 				end := 1;			
@@ -1567,6 +1680,10 @@ bundle System {
 			return 0;
 		}
 
+		#~
+		Parses the string into a float
+		@return float value
+		~#
 		method : public : native : ToFloat() ~ Float {
 			if(@string->Size() > 0) {
 				val : Float := 0;
@@ -1663,11 +1780,32 @@ bundle System {
 			return 0.0;
 		}
 
+		#~
+		Checks if the string starts with the given character
+		@return true if starts with character, false otherwise
+		~#
 		method : public : native : StartsWith(c : Char) ~ Bool {
 			sc : Char := Get(0);
 			return sc <> '\0' & c = sc;
 		}
+		
+		#~
+		Checks if the string end with the given character
+		@return true if ends with character, false otherwise
+		~#
+		method : public : native : EndsWith(c : Char) ~ Bool {
+			if(@pos > 0) {
+				sc := @string[@pos - 1];
+				return sc <> '\0' & c = sc;
+			};
+			
+			return false;
+		}
 
+		#~
+		Checks if the string starts with the given string
+		@return true if starts with string, false otherwise
+		~#
 		method : public : native : StartsWith(s : String) ~ Bool {
 			if(s->Size() <= @pos) {
 				for(i := 0; i < s->Size(); i += 1;) {
@@ -1682,6 +1820,10 @@ bundle System {
 			return false;
 		}
 
+		#~
+		Checks if the string ends with the given character
+		@return true if ends with character, false otherwise
+		~#
 		method : public : native : EndsWith(s : String) ~ Bool {
 			if(s->Size() <= @pos) {
 				i := s->Size() - 1;
@@ -1700,6 +1842,10 @@ bundle System {
 			return false;
 		}
 		
+		#~
+		Reverses a string
+		@return reversed string 
+		~#
 		method : public : native : Reverse() ~ String {
 			tmp : Char[] := Char->New[@max];
 			i := 0; j := @pos - 1;
