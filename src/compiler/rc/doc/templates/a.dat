@@ -24,6 +24,7 @@ ul {
 	width: auto;
 	overflow: auto;
 	display: block;
+	padding: 5px 10px;
 }
 .doc-table th {
 	background-color: #BDBDBD;
