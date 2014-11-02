@@ -1857,6 +1857,10 @@ bundle System {
 			return String->New(tmp);
 		}
 		
+		#~
+		Removes all leading and ending white space
+		@return trimmed string
+		~#
 		method : public : native : Trim() ~ String {
 			if(@pos = 0) {
 				return "";
@@ -1882,6 +1886,11 @@ bundle System {
 			return String->New(@string, start, end - start + 1);
 		}
 		
+		#~
+		Splits a string based upon delimiter
+		@param delim splitting delimiter
+		@return array of split sub strings 
+		~#
 		method : public : native : Split(delim : String) ~ String[] {
 			if(delim->Size() = 0 | @pos = 0) {
 				return Nil;
@@ -1959,6 +1968,10 @@ bundle System {
 			return parsed_strings;
 		}
 		
+		#~
+		Transforms a to upper case
+		@return upper case string
+		~#
 		method : public : native : ToUpper() ~ String {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
@@ -1972,6 +1985,10 @@ bundle System {
 			return String->New(array);
 		}
 		
+		#~
+		Transforms a to lower case
+		@return lower case string
+		~#
 		method : public : native : ToLower() ~ String {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
@@ -1985,10 +2002,21 @@ bundle System {
 			return String->New(array);
 		}
 
+		#~
+		Creates a sub-string
+		@param length max length of sub-string
+		@return sub-string
+		~#
 		method : public : SubString(length : Int) ~ String {
 			return SubString(0, length);
 		}
 
+		#~
+		Creates a sub-string
+		@param offset index offset
+		@param length max length of sub-string
+		@return sub-string
+		~#
 		method : public : native : SubString(offset : Int, length : Int) ~ String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
@@ -2007,10 +2035,19 @@ bundle System {
 			return String->New(array);
 		}
 	
+		#~
+		Compares two strings
+		@param rhs string to compare
+		@return true if strings are equal, false otherwise
+		~#
 		method : public : Equals(rhs : String) ~ Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
 		}
 
+		#~
+		Returns a unique hash ID for a given string sequence
+		@return hash ID
+		~#
 		method : public : native : HashID() ~ Int {
 			hash := 0;
 			for(i := 0; i < @pos; i += 1;) {
@@ -2021,6 +2058,11 @@ bundle System {
 			return hash;
 		}
 
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return true if objects are equal, false otherwise
+		~#
 		method : public : Compare(rhs : System.Compare) ~ Int {
 			# check class type
 			if(GetClassID() = rhs->GetClassID()) {
@@ -2054,18 +2096,30 @@ bundle System {
 			return -1;
 		}
 
+		#~
+		Print a string
+		~#
 		method : public : native : Print() ~ Nil {
 			@string->Print();
 		}
 
+		#~
+		Print a string with a newline
+		~#
 		method : public : native : PrintLine() ~ Nil {
 			@string->PrintLine();
 		}
 
+		#~
+		Print an error string
+		~#
 		method : public : native : Error() ~ Nil {
 			@string->Error();
 		}
 
+		#~
+		Print an error string with a newline
+		~#
 		method : public : native : ErrorLine() ~ Nil {
 			@string->ErrorLine();
 		}
