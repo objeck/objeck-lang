@@ -78,7 +78,7 @@ class DocPrinter {
 
 			each(k : funcs) {
 				func := funcs->Get(k)->As(FuncBlock);
-				sec_e := "<code>@func_signature</code><p>@func_desc</p>";
+				sec_e := "<p>@func_desc</p><code>@func_signature</code>";
 				sec_e := sec_e->ReplaceAll("@func_signature", func->GetSignature());
 				sec_e := sec_e->ReplaceAll("@func_desc", func->GetDesc());
 				html += sec_e;
