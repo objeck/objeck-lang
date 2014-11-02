@@ -1063,6 +1063,10 @@ bundle System {
 			Append(array, offset, max);
 		}
 		
+		#~
+		Copy constructor
+		@param array array to be copied
+		~#
 		New(array : Byte[]) {
 			Parent();
 
@@ -1079,6 +1083,12 @@ bundle System {
 			Append(array);
 		}
 
+		#~
+		Copy constructor
+		@param array array to be copied
+		@param offset offset array index offset
+		@param max offset max max number of characters to copy
+		~#
 		New(array : Byte[], offset : Int, max : Int) {
 			Parent();
 
@@ -1095,6 +1105,10 @@ bundle System {
 			Append(array, offset, max);
 		}
 
+		#~
+		Returns a array repesentation of the String
+		@return character array
+		~#
 		method : public : native : ToCharArray() ~ Char[] {
 			array : Char[] := Char->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
