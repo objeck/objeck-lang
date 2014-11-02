@@ -60,7 +60,7 @@ class DocParser {
 			line := reader->ReadString();
 			line_num += 1;
 			
-			if(capture = 4) {
+			if(capture = 5) {
 				if(line->Find('}') > -1) {
 					block->Append(line);
 					block->Append('\n');
@@ -97,14 +97,17 @@ class DocParser {
 							if(capture = 2 & string->Equals("class")) {
 								capture := 3;
 							}
+							else if(capture = 2 & string->Equals("interface")) {
+								capture := 4;
+							}
 							else if(capture = 2 & string->Equals("enum")) {
 								block->Append(line);
 								block->Append('\n');
-								capture := 4;
-							}
-							else if(capture = 2 & (string->Equals("function") | string->Equals("method") | 
-									string->Equals("New"))) {
 								capture := 5;
+							}
+							else if(capture = 2 & (string->Equals("function") | 
+									string->Equals("method") | string->Equals("New"))) {
+								capture := 6;
 							};					
 						}
 						# other
@@ -114,7 +117,7 @@ class DocParser {
 									if(capture = 3) {
 										block->Append(line);
 										block->Append('\n');
-										class_doc := ClassBlock->New(block);
+										class_doc := ClassBlock->New(block, false);
 										if(class_doc->IsParsed()) {
 											@classes->Insert(class_doc->GetName(), class_doc);
 										};								
@@ -122,7 +125,20 @@ class DocParser {
 										capture := 0;
 										comment_state := 0;
 									}
-									else if(capture = 5) {
+									else if(capture = 4) {
+										block->Append(line);
+										block->Append('\n');
+"-- INF --"->PrintLine();
+										class_doc := ClassBlock->New(block, true);
+
+										if(class_doc->IsParsed()) {
+											@classes->Insert(class_doc->GetName(), class_doc);
+										};								
+										block := "";
+										capture := 0;
+										comment_state := 0;
+									}
+									else if(capture = 6) {
 										block->Append(line);
 										block->Append('\n');
 										if(class_doc <> Nil) {
@@ -164,7 +180,7 @@ class DocParser {
 				};
 			};				
 			
-			if(capture > 0 & capture <> 4) {
+			if(capture > 0 & capture <> 5) {
 				block->Append(line);
 				block->Append('\n');
 			};
@@ -422,10 +438,12 @@ class ClassBlock from DocBlock {
 	@name : String;
 	@desc : String;
 	@funcs : StringMap;
+	@is_inf : Bool;
 	@parsed : Bool;
 	
-	New(buffer : String) {
+	New(buffer : String, is_inf : Bool) {
 		Parent(buffer);
+		@is_inf := is_inf;
 		@funcs := StringMap->New();
 		@parsed := Parse();
 	}
@@ -434,6 +452,10 @@ class ClassBlock from DocBlock {
 		return @parsed;
 	}
 
+	method : public : IsInterface() ~ Bool {
+		return @is_inf;
+	}
+	
 	method : public : GetName() ~ String {
 		return @name;
 	}
@@ -492,11 +514,18 @@ class ClassBlock from DocBlock {
 			return false;
 		};
 
-		if(<>MatchIdent("class")) {
+@is_inf->PrintLine();
+
+		if(<>@is_inf & <>MatchIdent("class")) {
 			return false;
 		};
 
+		if(@is_inf & <>MatchIdent("interface")) {
+			return false;
+		};
+		
 		@name := ParseIdent();
+IO.Console->Print("-- 2: ")->Print(@name)->PrintLine(" --");
 		if(@name->Size() > 0) {
 			return true;
 		};
@@ -516,6 +545,7 @@ class FuncBlock from DocBlock {
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
+	@is_virtual : Bool;
 	@is_new : Bool;
 	@types : static : StringHash;
 	@parsed : Bool;
@@ -575,6 +605,11 @@ class FuncBlock from DocBlock {
 				if(@is_native) {
 					@signature->Append("native : ");
 				};
+				
+				if(@is_virtual) {
+					@signature->Append("virutal : ");
+				};
+		
 				@signature->Append(@name);
 			};
 			@signature->Append('(');
@@ -699,6 +734,9 @@ class FuncBlock from DocBlock {
 					}
 					else if(meta->Equals("native")) {
 						@is_native := true;
+					}
+					else if(meta->Equals("virtual")) {
+						@is_virtual := true;
 					}
 					else {
 						@name := meta;

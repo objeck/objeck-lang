@@ -84,3 +84,16 @@ class Test {
 	}
 ~#
 }
+
+
+	#~
+   Compare interface
+  ~#
+  interface Compare {
+    #~
+     Compares two objects.
+		@param rhs object to comapre to
+     @return 1 if greater, -1 if less, otherwise 0
+    ~#
+    method : virtual : public : Compare(rhs : System.Compare) ~ Int;
+	}
