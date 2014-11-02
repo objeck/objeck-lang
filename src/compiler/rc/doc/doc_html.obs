@@ -1,6 +1,7 @@
 class DocPrinter {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
+			html := "";
 			parser := DocParser->New(args[0]);
 			if(<>parser->Parse()) {
 				"--- Unable to parse source ---"->Print();
@@ -12,7 +13,7 @@ class DocPrinter {
 				"--- Unable load template a ---"->Print();
 				return;
 			};
-sec_a->Print();
+			html += sec_a;
 
 			classes := parser->GetAllClasses();
 			if(classes <> Nil) {
@@ -21,118 +22,99 @@ sec_a->Print();
 					sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
 					sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
 					sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
-sec_b->PrintLine();
-					
-#~
-					IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
-						->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
-						->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->Print("'");
-~#
+					html += sec_b;
 
 					sec_c := "";					
 					func_names := class_block->GetFunctionNames();
 					if(func_names->Size() > 0) {
 						sec_c += "Operations<ul>";
+			
 						each(j : func_names) {
 							short_name := func_names->Get(j)->As(String);
-							sec_c += "<li><a href='#";
-							sec_c->Append(short_name->ToLower());
-							sec_c += "'>";
-							sec_c->Append(short_name);
-							sec_c += "</a></li>";
+							if(<>short_name->Equals("New")) {
+								sec_c += "<li><a href='#";
+								sec_c->Append(short_name->ToLower());
+								sec_c += "'>";
+								sec_c->Append(short_name);
+								sec_c += "</a></li>";
+							};
+						};
+
+						each(j : func_names) {
+							short_name := func_names->Get(j)->As(String);
+							if(<>short_name->Equals("New")) {
+								sec_c += "<li><a href='#";
+								sec_c->Append(short_name->ToLower());
+								sec_c += "'>";
+								sec_c->Append(short_name);
+								sec_c += "</a></li>";
+							};
 						};
 						sec_c += "</ul><hr/>";
 					};
-sec_c->PrintLine();
+					html += sec_c;
 					
+					PrintFunctions("New", class_block->GetFunctions("New"), html);
 					each(j : func_names) {
-						sec_d := "<h3>@short_name</h3><a name='@short_link'></a>";
 						short_name := func_names->Get(j)->As(String);
-						sec_d := sec_d->ReplaceAll("@short_name", short_name);
-						sec_d := sec_d->ReplaceAll("@short_link", short_name->ToLower());
-sec_d->PrintLine();
-						
-						funcs := class_block->GetFunctions(short_name);
-						each(k : funcs) {
-							func := funcs->Get(k)->As(FuncBlock);
-							sec_e := "<code>@func_signature</code><p>@func_desc</p>";
-							sec_e := sec_e->ReplaceAll("@func_signature", func->GetSignature());
-							sec_e := sec_e->ReplaceAll("@func_desc", func->GetDesc());
-sec_e->PrintLine();
-							
-#~							
-							IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
-								->Print(func->GetDesc())->Print("')");
-							if(func->GetReturnTag() <> Nil) {
-								IO.Console->Print(", return: type='")->Print(func->GetReturnType()->GetTypeName())
-									->Print("'")->Print("', desc='")->Print(func->GetReturnTag()->GetDesc())->Print("'");
-							};
-							IO.Console->Print(", signature='")->Print(func->GetSignature())->Print("'");
-~#
-							param_tags := func->GetParamTags();
-							params := func->GetParams();
-							sec_f := "";
-							if(params->Size() > 0) {
-								sec_f := "Parameters<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
-								sec_f += "Description</th></tr>";
-								
-								each(l : params) {
-									param := params->Get(l)->As(DocType);
-									param_tag := param_tags->Find(param->GetName())->As(DocTag);
-									if(param_tag <> Nil) {
-										sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
-										sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
-										sec_f := sec_f->ReplaceAll("@param_type", param->GetTypeName());
-										sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
-#~
-										IO.Console->Print("    param (")->Print(l + 1)->Print("): name='")
-											->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
-											->Print("', desc='")->Print(param_tag->GetDesc())->Print("'");
-~#
-									};
-								};
-								sec_f += "</table>";
-							};
-sec_f->PrintLine();
-
-							# TODO:
-							sec_g := "";
-							if(func->GetReturnTag() <> Nil) {
-								sec_g += "</br>Return<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
-								sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
-								sec_g := sec_g->ReplaceAll("@return_type", func->GetReturnType()->GetTypeName());
-								sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
-							};
-							sec_g += "</br>";
-							sec_g->PrintLine();
-						};						
+						if(<>short_name->Equals("New")) {
+							PrintFunctions(short_name, class_block->GetFunctions(short_name), html);
+						};
 					};
 				};
+			};
+			html += "</body></html>";
+		
+			html->PrintLine();
+		};
+	}
+
+	function : PrintFunctions(short_name : String, funcs : Vector, html : String) ~ Nil {
+		if(funcs <> Nil) {
+			sec_d := "<h3>@short_name</h3><a name='@short_link'></a>";
+			sec_d := sec_d->ReplaceAll("@short_name", short_name);
+			sec_d := sec_d->ReplaceAll("@short_link", short_name->ToLower());
+			html += sec_d;
+
+			each(k : funcs) {
+				func := funcs->Get(k)->As(FuncBlock);
+				sec_e := "<code>@func_signature</code><p>@func_desc</p>";
+				sec_e := sec_e->ReplaceAll("@func_signature", func->GetSignature());
+				sec_e := sec_e->ReplaceAll("@func_desc", func->GetDesc());
+				html += sec_e;
+
+				param_tags := func->GetParamTags();
+				params := func->GetParams();
+				sec_f := "";
+				if(params->Size() > 0) {
+					sec_f := "Parameters<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
+					sec_f += "Description</th></tr>";
+			
+					each(l : params) {
+						param := params->Get(l)->As(DocType);
+						param_tag := param_tags->Find(param->GetName())->As(DocTag);
+						if(param_tag <> Nil) {
+							sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
+							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
+							sec_f := sec_f->ReplaceAll("@param_type", param->GetTypeName());
+							sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
+						};
+					};
+					sec_f += "</table>";
+				};
+				html += sec_f;
+
 				# TODO:
-			};
-
-#~
-			enums := parser->GetAllEnums();
-			if(enums <> Nil) {
-				"---"->Print();
-				enums->Size()->Print();
-				"---"->Print();
-				each(i : classes) {
-					enum_block := enums->Get(i)->As(EnumBlock);
-					enum_name := enum_block->GetName();
-					enum_desc := enum_block->GetDesc();
-					IO.Console->Print("enum [")->Print(i + 1)->Print("]: name='")
-						->Print(enum_name <> Nil & enum_name->Size() > 0 ? enum_name : "(none)")->Print("', desc='")
-						->Print(enum_desc <> Nil & enum_desc->Size() > 0 ? enum_desc : "(none)")->Print("'");
-					items := enum_block->GetItems();
-					each(j : items) {
-						item := items->Get(j)->As(String);
-						IO.Console->Print("  item (")->Print(j + 1)->Print("): name='")->Print(item)->Print("'");
-					};
+				sec_g := "";
+				if(func->GetReturnTag() <> Nil) {
+					sec_g += "</br>Return<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
+					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
+					sec_g := sec_g->ReplaceAll("@return_type", func->GetReturnType()->GetTypeName());
+					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
 				};
+				sec_g += "</br>";
+				html += sec_g;
 			};
-~#
-			"</body></html>"->PrintLine();
 		};
 	}
 }
