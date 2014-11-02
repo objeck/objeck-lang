@@ -51,6 +51,7 @@ class DocPrinter {
 				};				
 			};
 
+#~
 			enums := parser->GetAllEnums();
 			if(enums <> Nil) {
 				"---"->PrintLine();
@@ -70,6 +71,7 @@ class DocPrinter {
 					};
 				};
 			};
+~#
 		};
 	}
 }

@@ -987,7 +987,7 @@ bundle System {
 	}
 	
 	#~
-	Unicode character string class
+	Unicode string class that support character operations.
 	~#	
 	class String implements System.Compare {
 		@string : Char[];
@@ -1782,6 +1782,7 @@ bundle System {
 
 		#~
 		Checks if the string starts with the given character
+		@param c character to compare
 		@return true if starts with character, false otherwise
 		~#
 		method : public : native : StartsWith(c : Char) ~ Bool {
@@ -1791,6 +1792,7 @@ bundle System {
 		
 		#~
 		Checks if the string end with the given character
+		@param c character to compare
 		@return true if ends with character, false otherwise
 		~#
 		method : public : native : EndsWith(c : Char) ~ Bool {
