@@ -1106,7 +1106,7 @@ bundle System {
 		}
 
 		#~
-		Returns a array repesentation of the String
+		Returns a character array representation of the String
 		@return character array
 		~#
 		method : public : native : ToCharArray() ~ Char[] {
@@ -1118,6 +1118,10 @@ bundle System {
 			return array;
 		}
 		
+		#~
+		Returns a byte array representation of the String
+		@return byte array
+		~#
 		method : public : native : ToByteArray() ~ Byte[] {
 			array : Byte[] := Byte->New[@pos];
 			for(i : Int := 0; i < @pos; i += 1;) {
@@ -1127,6 +1131,10 @@ bundle System {
 			return array;
 		}
 		
+		#~
+		Appends a boolean value
+		@param b boolean value
+		~#
 		method : public : native : Append(b : Bool) ~ Nil {
 			if(b) {
 				Append("true"->ToCharArray());
@@ -1136,18 +1144,34 @@ bundle System {
 			};
 		}
 
+		#~
+		Appends a integer value
+		@param i integer value
+		~#
 		method : public : native : Append(i : Int) ~ Nil {
 			Append(i->ToString()->ToCharArray());
 		}
 
+		#~
+		Appends a float value
+		@param f flaot value
+		~#
 		method : public : native : Append(f : Float) ~ Nil {
 			Append(f->ToString()->ToCharArray());
 		}
 
+		#~
+		Appends a string
+		@param str string object
+		~#
 		method : public : native : Append(str : String) ~ Nil {
 			Append(str->ToCharArray());
 		}
 		
+		#~
+		Appends a character array
+		@param array character array
+		~#
 		method : public : native : Append(array : Char[]) ~ Nil {
 			if(@pos + array->Size() >= @max) {
 				# expand string
