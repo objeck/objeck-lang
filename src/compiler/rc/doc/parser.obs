@@ -128,12 +128,10 @@ class DocParser {
 									else if(capture = 4) {
 										block->Append(line);
 										block->Append('\n');
-"-- INF --"->PrintLine();
 										class_doc := ClassBlock->New(block, true);
-
 										if(class_doc->IsParsed()) {
 											@classes->Insert(class_doc->GetName(), class_doc);
-										};								
+										}else { "###"->PrintLine(); };								
 										block := "";
 										capture := 0;
 										comment_state := 0;
@@ -143,8 +141,8 @@ class DocParser {
 										block->Append('\n');
 										if(class_doc <> Nil) {
 											class_doc->AddFunction(block);
-											block := "";
 										};
+										block := "";
 										capture := 0;
 										comment_state := 0;
 									};				
@@ -270,6 +268,17 @@ class DocBlock {
 
 	method : MatchIdent(ident : String) ~ Bool {
 		return ParseIdent()->Equals(ident);
+	}
+
+	method : MatchEitherIdent(checks : String[]) ~ Bool {
+		ident := ParseIdent();
+		each(i : checks) {
+			if(checks[i]->Equals(ident)) {
+				return true;
+			};
+		};
+		
+		return false;
 	}
 
 	method : ParseIdent() ~ String {
@@ -516,13 +525,9 @@ class ClassBlock from DocBlock {
 
 @is_inf->PrintLine();
 
-		if(<>@is_inf & <>MatchIdent("class")) {
+		if(<>MatchEitherIdent(["class", "interface"])) {
 			return false;
-		};
-
-		if(@is_inf & <>MatchIdent("interface")) {
-			return false;
-		};
+		};		
 		
 		@name := ParseIdent();
 IO.Console->Print("-- 2: ")->Print(@name)->PrintLine(" --");
