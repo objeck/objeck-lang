@@ -115,6 +115,32 @@ class DocParser {
 		return ident->Trim();
 	}
 	
+	method : public : native : ParseEnum(block : String) ~ Nil {
+		block->Append(" enum ");
+		while(@cur_char <> '\0' & @cur_char <> '}') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(" }");					
+IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
+"---"->PrintLine();
+		block := "";
+	}
+
+	method : public : native : ParseClassFunction(name : String, block : String) ~ Nil {
+		block->Append(' ');
+		block->Append(name);
+		block->Append(' ');
+		while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(" {");
+IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
+"---"->PrintLine();
+		block := "";
+	}
+
 	method : public : native : Parse() ~ Bool {
 		if(<>@file->EndsWith(".obs")) {
 			return false;
@@ -134,37 +160,43 @@ class DocParser {
 			if(state = 2) {
 				ident := ParseIdent();
 				if(ident->Equals("class")) {					
-					block->Append(" class ");
-					while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
-						block->Append(@cur_char);
-						NextChar();
-					};
-					block->Append(" {");
-IO.Console->Print("class: block='")->Print(block)->PrintLine("'");
-"---"->PrintLine();
-					block := "";
+					ParseClassFunction(ident, block);
 					state := 3;
 				}
 				else if(ident->Equals("enum")) {
-					block->Append(" enum ");
-					while(@cur_char <> '\0' & @cur_char <> '}') {
-						block->Append(@cur_char);
-						NextChar();
-					};
-					block->Append(" }");					
-IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
-"---"->PrintLine();
-					block := "";
+					ParseEnum(block);
 					state := 4;
 				}
-				else {
-					block := "";
+				else {					
+					state := 0;
+				};
+			}
+			else if(state = 5) {
+"=== 0 ==="->PrintLine();
+				ident := ParseIdent();
+@cur_char->PrintLine();
+@nxt_char->PrintLine();
+ident->PrintLine();
+				if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
+					ParseClassFunction(ident, block);
+					state := 6;
+				}
+				else if(ident->Equals("enum")) {
+					ParseEnum(block);
+					state := 7;
+				}
+				else {					
 					state := 0;
 				};
 			};
 
 			if(@cur_char = '#' & @nxt_char = '~') {
-				state := 1;
+				if(state = 3) {
+					state := 5;
+				} 
+				else {
+					state := 1;
+				};
 				start := @buffer_index - 1;
 			}
 			else if(state = 1 & @cur_char = '~' & @nxt_char = '#') {
