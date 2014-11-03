@@ -5,12 +5,12 @@ class Test {
 }
 ~#
 
-enum { y, z}
+enum Bar { y, z}
 
 #~
 doc me
 ~#
-enum {
+enum Foo {
 	a, b,
 C, D}
 
