@@ -13,65 +13,89 @@ class DocPrinter {
 				classes->Size()->PrintLine();
 				"---"->PrintLine();
 				each(i : classes) {
-				class_block := classes->Get(i)->As(ClassBlock);
-					class_name := class_block->GetName();
-					class_desc := class_block->GetDesc();
-					IO.Console->Print("class [")->Print(i + 1)->Print("]: name='")
-						->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
-						->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
-					func_names := class_block->GetFunctionNames();
-					each(j : func_names) {
-						short_name := func_names->Get(j)->As(String);
-						funcs := class_block->GetFunctions(short_name);
-						each(k : funcs) {
-							func := funcs->Get(k)->As(FuncBlock);								
-							if(func <> Nil) {
-								IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
-									->Print(func->GetDesc())->Print("')");
-								if(func->GetReturnTag() <> Nil) {
-									IO.Console->Print(", return: type='")->Print(func->GetReturnType()->GetTypeName())
-										->Print("'")->Print("', desc='")->Print(func->GetReturnTag()->GetDesc())->Print("'");
-								};
-
-								IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
-								param_tags := func->GetParamTags();
-								params := func->GetParams();
-								each(l : params) {
-									param := params->Get(l)->As(DocType);
-									param_tag := param_tags->Find(param->GetName())->As(DocTag);
-									if(param_tag <> Nil) {
-										IO.Console->Print("    param (")->Print(l + 1)->Print("): name='")
-											->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
-											->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
-									};
-								};
-							};
-						};
-					};
+					class_block := classes->Get(i)->As(ClassBlock);
+					PrintClassInterface(class_block, i);
 				};				
 			};
 
-#~
+			interfaces := parser->GetAllInterfaces();
+			if(interfaces <> Nil) {
+				"---"->PrintLine();
+				interfaces->Size()->PrintLine();
+				"---"->PrintLine();
+				each(i : interfaces) {
+					inf_block := interfaces->Get(i)->As(ClassBlock);
+					PrintClassInterface(inf_block, i);
+				};				
+			};
+
 			enums := parser->GetAllEnums();
 			if(enums <> Nil) {
 				"---"->PrintLine();
 				enums->Size()->PrintLine();
 				"---"->PrintLine();
-				each(i : classes) {
+				each(i : enums) {
 					enum_block := enums->Get(i)->As(EnumBlock);
-					enum_name := enum_block->GetName();
-					enum_desc := enum_block->GetDesc();
-					IO.Console->Print("enum [")->Print(i + 1)->Print("]: name='")
-						->Print(enum_name <> Nil & enum_name->Size() > 0 ? enum_name : "(none)")->Print("', desc='")
-						->Print(enum_desc <> Nil & enum_desc->Size() > 0 ? enum_desc : "(none)")->PrintLine("'");
-					items := enum_block->GetItems();
-					each(j : items) {
-						item := items->Get(j)->As(String);
-						IO.Console->Print("  item (")->Print(j + 1)->Print("): name='")->Print(item)->PrintLine("'");
+					PrintEnum(enum_block, i);
+				};
+			};
+		};
+	}
+
+	function : PrintClassInterface(class_block : ClassBlock, i : Int) ~ Nil {
+		class_name := class_block->GetName();
+		class_desc := class_block->GetDesc();
+
+		if(class_block->IsInterface()) {
+			"interface ["->Print();
+		}
+		else {
+			"class ["->Print();
+		};
+		IO.Console->Print(i + 1)->Print("]: name='")
+			->Print(class_name <> Nil & class_name->Size() > 0 ? class_name : "(none)")->Print("', desc='")
+			->Print(class_desc <> Nil & class_desc->Size() > 0 ? class_desc : "(none)")->PrintLine("'");
+		func_names := class_block->GetFunctionNames();
+		each(j : func_names) {
+			short_name := func_names->Get(j)->As(String);
+			funcs := class_block->GetFunctions(short_name);
+			each(k : funcs) {
+				func := funcs->Get(k)->As(FuncBlock);								
+				if(func <> Nil) {
+					IO.Console->Print("  func: name='")->Print(func->GetName())->Print("', desc='")
+						->Print(func->GetDesc())->Print("')");
+					if(func->GetReturnTag() <> Nil) {
+						IO.Console->Print(", return: type='")->Print(func->GetReturnType()->GetTypeName())
+							->Print("'")->Print("', desc='")->Print(func->GetReturnTag()->GetDesc())->Print("'");
+					};
+
+					IO.Console->Print(", signature='")->Print(func->GetSignature())->PrintLine("'");
+					param_tags := func->GetParamTags();
+					params := func->GetParams();
+					each(l : params) {
+						param := params->Get(l)->As(DocType);
+						param_tag := param_tags->Find(param->GetName())->As(DocTag);
+						if(param_tag <> Nil) {
+							IO.Console->Print("    param (")->Print(l + 1)->Print("): name='")
+								->Print(param_tag->GetName())->Print("', type='")->Print(param->GetTypeName())
+								->Print("', desc='")->Print(param_tag->GetDesc())->PrintLine("'");
+						};
 					};
 				};
 			};
-~#
+		};
+	}
+	
+	function : PrintEnum(enum_block : EnumBlock, i : Int) ~ Nil {
+		enum_name := enum_block->GetName();
+		enum_desc := enum_block->GetDesc();
+		IO.Console->Print("enum [")->Print(i + 1)->Print("]: name='")
+			->Print(enum_name <> Nil & enum_name->Size() > 0 ? enum_name : "(none)")->Print("', desc='")
+			->Print(enum_desc <> Nil & enum_desc->Size() > 0 ? enum_desc : "(none)")->PrintLine("'");
+		items := enum_block->GetItems();
+		each(j : items) {
+			item := items->Get(j)->As(String);
+			IO.Console->Print("  item (")->Print(j + 1)->Print("): name='")->Print(item)->PrintLine("'");
 		};
 	}
 }
