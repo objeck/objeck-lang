@@ -1791,7 +1791,7 @@ bundle System {
 		}
 		
 		#~
-		Checks if the string end with the given character
+		Checks if the string ends with the given character
 		@param c character to compare
 		@return true if ends with character, false otherwise
 		~#
