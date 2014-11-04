@@ -161,10 +161,10 @@ class DocParser {
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
 			@class_inf_block->AddFunction(block);
 		};
-#~
-IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
-"---"->PrintLine();
-~#
+
+# IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
+# "---"->PrintLine();
+
 		block := "";
 	}
 
@@ -323,7 +323,8 @@ class DocBlock {
 				label '#':
 				label '\0': {
 					done := true;
-				}				
+				}
+				
 				other: {
 					ident->Append(@cur_char);
 					NextChar();
@@ -467,6 +468,7 @@ class EnumBlock from DocBlock {
 
 class ClassBlock from DocBlock {
 	@name : String;
+	@from : String;
 	@desc : String;
 	@funcs : StringMap;
 	@is_inf : Bool;
@@ -489,6 +491,10 @@ class ClassBlock from DocBlock {
 	
 	method : public : GetName() ~ String {
 		return @name;
+	}
+
+	method : public : GetFrom() ~ String {
+		return @from;
 	}
 
 	method : public : GetDesc() ~ String {
@@ -547,14 +553,23 @@ class ClassBlock from DocBlock {
 
 		if(<>MatchEitherIdent(["class", "interface"])) {
 			return false;
-		};		
-		
-		@name := ParseIdent();
-		if(@name->Size() > 0) {
-			return true;
 		};
 		
-		return false;
+		@name := ParseIdent();
+		if(@name->Size() = 0) {
+			return false;
+		};
+
+		if(MatchIdent("from")) {
+			@from := ParseIdent();
+			if(@from->Size() = 0) {
+				return false;
+			};
+		};
+		# TODO: parse from
+		#...
+		
+		return true;
 	}
 }
 

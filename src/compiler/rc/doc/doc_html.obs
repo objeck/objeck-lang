@@ -19,10 +19,19 @@ class DocPrinter {
 			if(classes <> Nil) {
 				each(i : classes) {
 					class_block := classes->Get(i)->As(ClassBlock);
-					sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
-					sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
-					sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
-					html += sec_b;
+					if(class_block->GetFrom() <> Nil) {
+						sec_b := "<h2>@class_name [from @from_name]</h2><p>@class_desc</p>";
+						sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+						sec_b := sec_b->ReplaceAll("@from_name", class_block->GetFrom());
+						sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
+						html += sec_b;
+					}
+					else {
+						sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+						sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+						sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
+						html += sec_b;
+					};
 
 					sec_c := "";					
 					func_names := class_block->GetFunctionNames();
@@ -107,7 +116,7 @@ class DocPrinter {
 				# TODO:
 				sec_g := "";
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<br/>Return<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
+					sec_g += "<br/><div style='padding: 5px 10px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", func->GetReturnType()->GetTypeName());
 					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());

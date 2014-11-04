@@ -18,7 +18,7 @@ C, D}
 This is a funkin 2
 test class
 ~#
-class Test {
+class Test from Bar {
 	#~
 	This is new
 	~#
