@@ -202,6 +202,8 @@ void Parser::ParseProgram()
  ****************************/
 void Parser::ParseBundle(int depth)
 {
+  const wstring &file_name = GetFileName();
+
   // uses
   vector<wstring> uses;
   uses.push_back(L"System");
@@ -272,7 +274,7 @@ void Parser::ParseBundle(int depth)
     if(!Match(TOKEN_END_OF_STREAM)) {
       ProcessError(L"Unexpected tokens (likely related to other errors)");
     }
-    program->AddUses(uses);
+    program->AddUses(uses, file_name);
   }
   // parse class
   else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_INTERFACE_ID)) {
@@ -307,7 +309,7 @@ void Parser::ParseBundle(int depth)
     if(!Match(TOKEN_END_OF_STREAM)) {
       ProcessError(L"Unexpected tokens (likely related to other errors)");
     }
-    program->AddUses(uses);
+    program->AddUses(uses, file_name);
   }
   // error
   else {
