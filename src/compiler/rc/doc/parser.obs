@@ -122,8 +122,8 @@ class DocParser {
 			NextChar();
 		};
 		block->Append(" }");					
-IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
-"---"->PrintLine();
+# IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
+# "---"->PrintLine();
 		block := "";
 	}
 
@@ -136,8 +136,8 @@ IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
 			NextChar();
 		};
 		block->Append(" {");
-IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
-"---"->PrintLine();
+# IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
+# "---"->PrintLine();
 		block := "";
 	}
 
@@ -173,9 +173,10 @@ IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
 			}
 			else if(state = 5) {
 "=== 0 ==="->PrintLine();
-				ident := ParseIdent();
 @cur_char->PrintLine();
 @nxt_char->PrintLine();
+				ident := ParseIdent();
+
 ident->PrintLine();
 				if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
 					ParseClassFunction(ident, block);
