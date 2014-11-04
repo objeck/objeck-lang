@@ -3007,7 +3007,8 @@ namespace frontend {
 
     map<wstring, int> char_string_ids;
     vector<wstring> char_strings;
-
+    
+    map<wstring, vector<wstring> > file_uses;
     vector<wstring> uses;
     vector<ParsedBundle*> bundles;
     vector<wstring> bundle_names;
@@ -3060,22 +3061,27 @@ namespace frontend {
       TypeFactory::Instance()->Clear();
     }
 
-    void AddUses(vector<wstring> u) {
+    void AddUses(vector<wstring> &u, const wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
         vector<wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
         if(found == uses.end()) {
           uses.push_back(u[i]);
         }
       }
+      file_uses[f] = u;
     }
 
-    bool HasBundleName(const wstring& name) {
+    bool HasBundleName(const wstring &name) {
       vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
       return found != bundle_names.end();
     }
 
     const vector<wstring> GetUses() {
       return uses;
+    }
+
+    const vector<wstring> GetUses(const wstring &f) {
+      return file_uses[f];
     }
 
     void AddBundle(ParsedBundle* b) {
