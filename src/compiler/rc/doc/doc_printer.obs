@@ -1,3 +1,6 @@
+use System.IO.File;
+use Collection;
+
 class DocPrinter {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
