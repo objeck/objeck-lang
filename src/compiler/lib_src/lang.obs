@@ -1154,7 +1154,7 @@ bundle System {
 
 		#~
 		Appends a float value
-		@param f flaot value
+		@param f float value
 		~#
 		method : public : native : Append(f : Float) ~ Nil {
 			Append(f->ToString()->ToCharArray());
