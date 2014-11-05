@@ -25,6 +25,10 @@ class DocParser {
 		@level := 0;
 	}
 	
+	method : public : GetBundles() ~ StringHash {
+		return @bundles;
+	}
+	
 	method : public : GetAllClasses() ~ Vector {
 		all_classes := Vector->New();
 		
@@ -143,7 +147,7 @@ class DocParser {
 			NextChar();
 		};
 		block->Append(" {");
-
+		
 		bundle_block := BundleBlock->New(block);
 		if(bundle_block->IsParsed()) {
 			SetBundle(bundle_block);
@@ -151,7 +155,7 @@ class DocParser {
 		};
 	}
 
-	method : public : native : ParseEnum(block : String, level : Int) ~ Nil {
+	method : public : native : ParseEnum(block : String) ~ Nil {
 		block->Append(" enum ");
 		while(@cur_char <> '\0' & @cur_char <> '}') {
 			block->Append(@cur_char);
@@ -162,7 +166,6 @@ class DocParser {
 		
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
-			# TODO: look at levels
 			@bundle_block->AddEnum(enum_block);
 		};
 		
@@ -172,7 +175,7 @@ class DocParser {
 		block := "";
 	}
 
-	method : public : native : ParseClassFunction(name : String, block : String, level : Int) ~ Nil {
+	method : public : native : ParseClassFunction(name : String, block : String) ~ Nil {
 		block->Append(' ');
 		block->Append(name);
 		block->Append(' ');
@@ -185,14 +188,12 @@ class DocParser {
 		if(name->Equals("class")) {
 			@class_inf_block := ClassBlock->New(block, false);
 			if(@class_inf_block->IsParsed()) {
-				# TODO: look at levels
 				@bundle_block->AddClass(@class_inf_block);
 			};
 		}
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
-				# TODO: look at levels
 				@bundle_block->AddInterface(@class_inf_block);
 			};
 		}
@@ -255,13 +256,13 @@ class DocParser {
 					ParseBundle(block);				
 				}
 				else if(ident->Equals("class") | ident->Equals("interface")) {
-					ParseClassFunction(ident, block, @level);
+					ParseClassFunction(ident, block);
 				}
 				else if(ident->Equals("enum")) {
-					ParseEnum(block, @level);
+					ParseEnum(block);
 				}
 				else if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
-					ParseClassFunction(ident, block, @level);
+					ParseClassFunction(ident, block);
 				};
 				state := 0;
 			};
@@ -292,8 +293,6 @@ class DocParser {
 			
 			NextChar();
 		};
-
-@bundles->Size()->PrintLine();
 
 		return true;	
 	}
@@ -432,11 +431,6 @@ class DocBlock {
 					ParseWhiteSpace();
 					ident->Append(' ');
 				}
-				label '{':
-				label '}':
-				label ':':
-				label '(':
-				label ')':
 				label '~':
 				label '@':
 				label '\0': {
@@ -473,6 +467,9 @@ class BundleBlock from DocBlock {
 
 	New(buffer : String) {
 		Parent(buffer);
+		@classes := StringHash->New();
+		@interfaces := StringHash->New();
+		@enums := StringHash->New();
 		@parsed := Parse();
 	}
 	
@@ -517,28 +514,14 @@ class BundleBlock from DocBlock {
 		if(<>MatchCommentStart()) {
 			return false;
 		};
-		@desc := ParseDesc();	
-
-		# parse tags		
-		type := ParseIdent();
-		if(type->Size() > 0) {
-			if(type->Equals("@class")) {
-				@klass := ParseIdent();
-				if(@klass->Size() = 0) {
-					return false;
-				};
-			};
-		};
-		
-
+		@desc := ParseDesc();
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
-
 		if(<>MatchIdent("bundle")) {
 			return false;
 		};
-
+		
 		@name := ParseIdent();
 		if(@name->Size() > 0) {
 			return true;
