@@ -2,7 +2,7 @@
 This is a 
 test class
 ~#
-class FBar {
+class FBar from XO implements Foo, Bar {
 	#~ 
 	foo bar 
 	@return returns value
