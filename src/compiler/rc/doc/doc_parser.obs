@@ -1,3 +1,8 @@
+#~
+Objeck HTML code documentation system
+Copyright (c) 2014 Randy Hollines
+~#
+
 use System.IO;
 use System.IO.File;
 use Collection;
@@ -8,29 +13,31 @@ class DocParser {
 	@cur_char : Char;
 	@nxt_char : Char;
 	@file : String;
-	@classes : StringHash;
-	@interfaces : StringHash;
-	@enums : StringHash;
+	@bundles : StringHash;
 	@class_inf_block : ClassBlock;
 	@level : Int;
-	@bundle_name : String;
+	@class_level : Int;
+	@bundle_block : BundleBlock;
 	
 	New(file : String) {
 		@file := file;	
-		@classes := StringHash->New();
-		@interfaces := StringHash->New();
-		@enums := StringHash->New();
+		@bundles := StringHash->New();
 		@level := 0;
 	}
 	
 	method : public : GetAllClasses() ~ Vector {
 		all_classes := Vector->New();
 		
-		keys := @classes->GetKeys();
-		each(i : keys) {
-			klass := @classes->Find(keys->Get(i)->As(String))->As(ClassBlock);
-			if(klass <> Nil) {
-				all_classes->AddBack(klass);
+		bundle_keys := @bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			classes := bundle_block->GetClasses();
+			class_keys := classes->GetKeys();
+			each(j : class_keys) {
+				klass := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+				if(klass <> Nil) {
+					all_classes->AddBack(klass);
+				};
 			};
 		};
 				
@@ -40,11 +47,16 @@ class DocParser {
 	method : public : GetAllInterfaces() ~ Vector {
 		all_interfaces := Vector->New();
 		
-		keys := @interfaces->GetKeys();
-		each(i : keys) {
-			inf := @interfaces->Find(keys->Get(i)->As(String))->As(ClassBlock);
-			if(inf <> Nil) {
-				all_interfaces->AddBack(inf);
+		bundle_keys := @bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			interfaces := bundle_block->GetInterfaces();
+			inf_keys := interfaces->GetKeys();
+			each(j : inf_keys) {
+				inf := interfaces->Find(inf_keys->Get(j)->As(String))->As(ClassBlock);
+				if(inf <> Nil) {
+					all_interfaces->AddBack(inf);
+				};
 			};
 		};
 				
@@ -54,11 +66,16 @@ class DocParser {
 	method : public : GetAllEnums() ~ Vector {
 		all_enums := Vector->New();
 		
-		keys := @enums->GetKeys();
-		each(i : keys) {
-			eenum := @enums->Find(keys->Get(i)->As(String))->As(EnumBlock);
-			if(eenum <> Nil) {
-				all_enums->AddBack(eenum);
+		bundle_keys := @bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			enums := bundle_block->GetEnums();
+			enum_keys := enums->GetKeys();
+			each(j : enum_keys) {
+				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+				if(eenum <> Nil) {
+					all_enums->AddBack(eenum);
+				};
 			};
 		};
 				
@@ -83,8 +100,7 @@ class DocParser {
 	}
 
 	method : ParseWhiteSpace() ~ Nil {
-		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | 
-			@cur_char = '\r' | @cur_char = '\n')) {
+		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n')) {
 			NextChar();
 		};
 	}
@@ -121,9 +137,21 @@ class DocParser {
 	}
 	
 	method : public : native : ParseBundle(block : String) ~ Nil {
+		block->Append(" bundle ");
+		while(@cur_char <> '\0' & @cur_char <> '{' & @cur_char <> ';') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(" {");
+
+		bundle_block := BundleBlock->New(block);
+		if(bundle_block->IsParsed()) {
+			SetBundle(bundle_block);
+			@bundles->Insert(@bundle_block->GetName(), @bundle_block);
+		};
 	}
 
-	method : public : native : ParseEnum(block : String) ~ Nil {
+	method : public : native : ParseEnum(block : String, level : Int) ~ Nil {
 		block->Append(" enum ");
 		while(@cur_char <> '\0' & @cur_char <> '}') {
 			block->Append(@cur_char);
@@ -134,7 +162,8 @@ class DocParser {
 		
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
-			@enums->Insert(enum_block->GetName(), enum_block);
+			# TODO: look at levels
+			@bundle_block->AddEnum(enum_block);
 		};
 		
 # IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
@@ -143,7 +172,7 @@ class DocParser {
 		block := "";
 	}
 
-	method : public : native : ParseClassFunction(name : String, block : String) ~ Nil {
+	method : public : native : ParseClassFunction(name : String, block : String, level : Int) ~ Nil {
 		block->Append(' ');
 		block->Append(name);
 		block->Append(' ');
@@ -156,13 +185,15 @@ class DocParser {
 		if(name->Equals("class")) {
 			@class_inf_block := ClassBlock->New(block, false);
 			if(@class_inf_block->IsParsed()) {
-				@classes->Insert(@class_inf_block->GetName(), @class_inf_block);
+				# TODO: look at levels
+				@bundle_block->AddClass(@class_inf_block);
 			};
 		}
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
-				@interfaces->Insert(@class_inf_block->GetName(), @class_inf_block);
+				# TODO: look at levels
+				@bundle_block->AddInterface(@class_inf_block);
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
@@ -171,22 +202,32 @@ class DocParser {
 
 # IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
 # "---"->PrintLine();
-
 		block := "";
 	}
 
-	method : public : CheckLevel() ~ Nil {
+	method : CheckLevel() ~ Nil {
 		if(@cur_char = '{') {
 			@level += 1;
 		}
 		else if(@cur_char = '}') {
 			@level -= 1;
 			if(@level = 0) {
-				@bundle_name := Nil;
+				@bundle_block := @bundles->Find("Default")->As(BundleBlock);
 			};
 		};
 	}
 
+	method : SetBundle(bundle_block : BundleBlock) ~ Nil {
+		found := @bundles->Find(bundle_block->GetName())->As(BundleBlock);
+		if(found <> Nil) {
+			@bundle_block := found;
+		}
+		else {
+			@bundles->Insert(bundle_block->GetName(), bundle_block);
+			@bundle_block := bundle_block;
+		};
+	}
+	
 	method : public : native : Parse() ~ Bool {
 		if(<>@file->EndsWith(".obs")) {
 			return false;
@@ -199,28 +240,28 @@ class DocParser {
 
 		state := 0;
 		start := 0;
+		bundle_block := BundleBlock->New();
+		bundle_block->SetName("Default");
+		SetBundle(bundle_block);
+
+		block := "";
 		NextChar();
 		ParseWhiteSpace();
-		block := "";
 		while(@cur_char <> '\0') {
 			# states 1-3 for outer classes and enums
 			if(state = 2) {
 				ident := ParseIdent();
 				if(ident->Equals("bundle")) {
-IO.Console->Print("bundle: level=")->Print(@level)->Print(", block='")->Print(block)->PrintLine("'");
 					ParseBundle(block);				
 				}
 				else if(ident->Equals("class") | ident->Equals("interface")) {
-IO.Console->Print("class: level=")->PrintLine(@level);
-					ParseClassFunction(ident, block);
+					ParseClassFunction(ident, block, @level);
 				}
 				else if(ident->Equals("enum")) {
-IO.Console->Print("enum: level=")->PrintLine(@level);
-					ParseEnum(block);
+					ParseEnum(block, @level);
 				}
 				else if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
-IO.Console->Print("function: level=")->PrintLine(@level);
-					ParseClassFunction(ident, block);
+					ParseClassFunction(ident, block, @level);
 				};
 				state := 0;
 			};
@@ -239,13 +280,20 @@ IO.Console->Print("function: level=")->PrintLine(@level);
 				ident := ParseIdent();
 				if(ident->Equals("bundle")) {
 					@bundle_name := ParseIdent();
-IO.Console->Print("bundle: name=")->Print(ident)->Print(", level=")->PrintLine(@level);
+# IO.Console->Print("bundle: name=")->Print(@bundle_name)->Print(", level=")->PrintLine(@level);
+					if(@bundle_name->Size() > 0) {
+						bundle_block := BundleBlock->New();
+						bundle_block->SetName(@bundle_name);
+						SetBundle(bundle_block);
+					};
 				};
 			};
 			CheckLevel();
 			
 			NextChar();
 		};
+
+@bundles->Size()->PrintLine();
 
 		return true;	
 	}
@@ -412,9 +460,57 @@ class DocBlock {
 class BundleBlock from DocBlock {
 	@name : String;
 	@parsed : Bool;
+	@classes : StringHash;
+	@interfaces : StringHash;
+	@enums : StringHash;
+
+	New() {
+		Parent("");
+		@classes := StringHash->New();
+		@interfaces := StringHash->New();
+		@enums := StringHash->New();
+	}
+
+	New(buffer : String) {
+		Parent(buffer);
+		@parsed := Parse();
+	}
 	
 	method : public : IsParsed() ~ Bool {
 		return @parsed;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : SetName(name : String) ~ Nil {
+		@name := name;
+		@parsed := true;
+	}
+
+	method: public : AddClass(class_block : ClassBlock) ~ Nil {
+		@classes->Insert(class_block->GetName(), class_block);
+	}
+
+	method: public : GetClasses() ~ StringHash {
+		return @classes;
+	}
+
+	method: public : AddEnum(enum_block : EnumBlock) ~ Nil {
+		@enums->Insert(enum_block->GetName(), enum_block);
+	}
+
+	method: public : GetEnums() ~ StringHash {
+		return @enums;
+	}
+
+	method: public : AddInterface(inf_block : ClassBlock) ~ Nil {
+		@interfaces->Insert(inf_block->GetName(), inf_block);
+	}
+
+	method: public : GetInterfaces() ~ StringHash {
+		return @interfaces;
 	}
 
 	method : native : Parse() ~ Bool {
@@ -642,8 +738,11 @@ class ClassBlock from DocBlock {
 				return false;
 			};
 		};
-		# TODO: parse from
-		#...
+
+		# TODO: interfaces
+		if(MatchIdent("interface")) {
+
+		};
 		
 		return true;
 	}
