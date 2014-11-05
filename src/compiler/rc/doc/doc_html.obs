@@ -1,3 +1,8 @@
+#~
+Objeck HTML code documentation system
+Copyright (c) 2014 Randy Hollines
+~#
+
 use System.IO.File;
 use Collection;
 
