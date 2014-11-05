@@ -12,13 +12,13 @@ class DocPrinter {
 			html := "";
 			parser := DocParser->New(args[0]);
 			if(<>parser->Parse()) {
-				"--- Unable to parse source ---"->Print();
+				"--- Unable to parse source file ---"->ErrorLine();
 				return;
 			};
 			
-			sec_a := FileReader->ReadFile("../compiler/rc/doc/templates/a.dat");
+			sec_a := FileReader->ReadFile("../compiler/rc/doc/templates/header.dat");
 			if(sec_a = Nil) {
-				"--- Unable load template a ---"->Print();
+				"--- Unable load header template ---"->ErrorLine();
 				return;
 			};
 			html += sec_a;

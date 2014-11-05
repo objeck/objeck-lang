@@ -13,7 +13,7 @@ class DocParser {
 	@cur_char : Char;
 	@nxt_char : Char;
 	@file : String;
-	@bundles : StringHash;
+	@bundles : StringMap;
 	@class_inf_block : ClassBlock;
 	@level : Int;
 	@class_level : Int;
@@ -21,11 +21,11 @@ class DocParser {
 	
 	New(file : String) {
 		@file := file;	
-		@bundles := StringHash->New();
+		@bundles := StringMap->New();
 		@level := 0;
 	}
 	
-	method : public : GetBundles() ~ StringHash {
+	method : public : GetBundles() ~ StringMap {
 		return @bundles;
 	}
 	
@@ -151,7 +151,6 @@ class DocParser {
 		bundle_block := BundleBlock->New(block);
 		if(bundle_block->IsParsed()) {
 			SetBundle(bundle_block);
-			@bundles->Insert(@bundle_block->GetName(), @bundle_block);
 		};
 	}
 
@@ -168,10 +167,6 @@ class DocParser {
 		if(enum_block->IsParsed()) {
 			@bundle_block->AddEnum(enum_block);
 		};
-		
-# IO.Console->Print("enum: block='")->Print(block)->PrintLine("'");
-# "---"->PrintLine();
-
 		block := "";
 	}
 
@@ -200,9 +195,6 @@ class DocParser {
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
 			@class_inf_block->AddFunction(block);
 		};
-
-# IO.Console->Print(name)->Print(": block='")->Print(block)->PrintLine("'");
-# "---"->PrintLine();
 		block := "";
 	}
 
@@ -454,22 +446,22 @@ class DocBlock {
 class BundleBlock from DocBlock {
 	@name : String;
 	@parsed : Bool;
-	@classes : StringHash;
-	@interfaces : StringHash;
-	@enums : StringHash;
+	@classes : StringMap;
+	@interfaces : StringMap;
+	@enums : StringMap;
 
 	New() {
 		Parent("");
-		@classes := StringHash->New();
-		@interfaces := StringHash->New();
-		@enums := StringHash->New();
+		@classes := StringMap->New();
+		@interfaces := StringMap->New();
+		@enums := StringMap->New();
 	}
 
 	New(buffer : String) {
 		Parent(buffer);
-		@classes := StringHash->New();
-		@interfaces := StringHash->New();
-		@enums := StringHash->New();
+		@classes := StringMap->New();
+		@interfaces := StringMap->New();
+		@enums := StringMap->New();
 		@parsed := Parse();
 	}
 	
@@ -490,7 +482,7 @@ class BundleBlock from DocBlock {
 		@classes->Insert(class_block->GetName(), class_block);
 	}
 
-	method: public : GetClasses() ~ StringHash {
+	method: public : GetClasses() ~ StringMap {
 		return @classes;
 	}
 
@@ -498,7 +490,7 @@ class BundleBlock from DocBlock {
 		@enums->Insert(enum_block->GetName(), enum_block);
 	}
 
-	method: public : GetEnums() ~ StringHash {
+	method: public : GetEnums() ~ StringMap {
 		return @enums;
 	}
 
@@ -506,7 +498,7 @@ class BundleBlock from DocBlock {
 		@interfaces->Insert(inf_block->GetName(), inf_block);
 	}
 
-	method: public : GetInterfaces() ~ StringHash {
+	method: public : GetInterfaces() ~ StringMap {
 		return @interfaces;
 	}
 
@@ -659,7 +651,7 @@ class ClassBlock from DocBlock {
 	method : public : AddEnum(block : String) ~ Nil {
 	}
 
-	method : public : AddFunction(block : String) ~ Nil {
+	method : public : AddFunction(block : String) ~ Bool {
 		func := FuncBlock->New(block);
 		if(func->IsParsed()) {
 			funcs := @funcs->Find(func->GetName())->As(Vector);
@@ -668,7 +660,10 @@ class ClassBlock from DocBlock {
 				@funcs->Insert(func->GetName(), funcs);
 			};
 			funcs->AddBack(func);
+			return true;
 		};
+
+		return false;
 	}
 
 	method : public : GetFunction(name : String) ~ Vector {
@@ -735,7 +730,7 @@ class FuncBlock from DocBlock {
 	@name : String;
 	@signature : String;
 	@desc : String;
-	@tags : StringHash;
+	@tags : StringMap;
 	@return_type : DocType;
 	@return_tag : DocTag;
 	@func_types : Vector;
@@ -744,7 +739,7 @@ class FuncBlock from DocBlock {
 	@is_native : Bool;
 	@is_virtual : Bool;
 	@is_new : Bool;
-	@types : static : StringHash;
+	@types : static : StringMap;
 	@parsed : Bool;
 	
 	New(buffer : String) {
@@ -753,14 +748,14 @@ class FuncBlock from DocBlock {
 		
 		@name := "";
 		@desc := "";
-		@tags := StringHash->New();
+		@tags := StringMap->New();
 		@func_types := Vector->New();
 		@parsed := Parse();
 	}
 	
 	function : Initialize() ~ Nil {
 		if(@types = Nil) {
-			@types := StringHash->New();
+			@types := StringMap->New();
 			@types->Insert("Byte", IntHolder->New(DocType->Type->BYTE->As(Int)));
 			@types->Insert("Char", IntHolder->New(DocType->Type->CHAR->As(Int)));
 			@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
@@ -846,7 +841,7 @@ class FuncBlock from DocBlock {
 		return @desc;
 	}
 
-	method : public : GetParamTags() ~ StringHash {
+	method : public : GetParamTags() ~ StringMap {
 		return @tags;
 	}
 	
