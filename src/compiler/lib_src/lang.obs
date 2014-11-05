@@ -1,9 +1,8 @@
-#~~
-# Objeck system classes.
-# Copyright (c) 2008-2014 Randy Hollines
-#
-# note: this file is a system file and can only be compiled using -D_SYSTEM option
-~~#	
+#~
+Objeck system classes.
+Copyright (c) 2008-2014 Randy Hollines
+note: compile compiler with -D_SYSTEM flag
+~#	
 
 bundle System {
 	#~~
