@@ -9,7 +9,46 @@ class DocPrinter {
 				"--- failed ---"->PrintLine();
 				return;
 			};
+
+			bundles := parser->GetBundles();
+
+			# bundles
+			bundle_keys := bundles->GetKeys();
+			each(i : bundle_keys) {
+				bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+				IO.Console->Print("bundle='")->Print(bundle_block->GetName())->PrintLine("'");
+	
+				"--- CLASSES ---"->PrintLine();
+				classes := bundle_block->GetClasses();
+				class_keys := classes->GetKeys();
+				each(j : class_keys) {
+					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+					if(class_block <> Nil) {
+						PrintClassInterface(class_block, j);
+					};
+				};
+
+				"--- INTERFACES ---"->PrintLine();
+				interfaces := bundle_block->GetInterfaces();
+				inf_keys := interfaces->GetKeys();
+				each(j : inf_keys) {
+					inf_block := interfaces->Find(inf_keys->Get(j)->As(String))->As(ClassBlock);
+					if(inf_block <> Nil) {
+						PrintClassInterface(inf_block, j);
+					};
+				};
+
+				"--- ENUMS ---"->PrintLine();
+				enums := bundle_block->GetEnums();
+				enum_keys := enums->GetKeys();
+				each(j : enum_keys) {
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+					if(enum_block <> Nil) {
+						PrintEnum(enum_block, j);
+					};
+				};
 			
+#~
 			classes := parser->GetAllClasses();
 			if(classes <> Nil) {
 				"---"->PrintLine();
@@ -41,7 +80,10 @@ class DocPrinter {
 					enum_block := enums->Get(i)->As(EnumBlock);
 					PrintEnum(enum_block, i);
 				};
+~#
+
 			};
+
 		};
 	}
 
