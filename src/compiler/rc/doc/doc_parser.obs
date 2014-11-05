@@ -615,9 +615,10 @@ class EnumBlock from DocBlock {
 
 class ClassBlock from DocBlock {
 	@name : String;
-	@from : String;
+	@from_class : String;
 	@desc : String;
 	@funcs : StringMap;
+	@implemented : Vector;
 	@is_inf : Bool;
 	@parsed : Bool;
 	
@@ -625,6 +626,7 @@ class ClassBlock from DocBlock {
 		Parent(buffer);
 		@is_inf := is_inf;
 		@funcs := StringMap->New();
+		@implemented := Vector->New();
 		@parsed := Parse();
 	}
 
@@ -635,13 +637,17 @@ class ClassBlock from DocBlock {
 	method : public : IsInterface() ~ Bool {
 		return @is_inf;
 	}
+
+	method : public : GetImplemented() ~ Vector {
+		return @implemented;
+	}
 	
 	method : public : GetName() ~ String {
 		return @name;
 	}
 
 	method : public : GetFrom() ~ String {
-		return @from;
+		return @from_class;
 	}
 
 	method : public : GetDesc() ~ String {
@@ -692,6 +698,15 @@ class ClassBlock from DocBlock {
 		return all_funcs;
 	}
 
+	method : ParseInterfaces() ~ Nil {
+		ident := ParseIdent();
+		while(ident->Size() > 0) {
+			@implemented->AddBack(ident);
+			MatchChar(',');
+			ident := ParseIdent();
+		};	
+	}
+
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
@@ -710,16 +725,21 @@ class ClassBlock from DocBlock {
 			return false;
 		};
 
-		if(MatchIdent("from")) {
-			@from := ParseIdent();
-			if(@from->Size() = 0) {
+		ident := ParseIdent(); 
+		if(ident->Equals("from")) {
+			@from_class := ParseIdent();
+			if(@from_class->Size() = 0) {
 				return false;
+			};
+
+			if(MatchIdent("implements")) {
+				ParseInterfaces();
 			};
 		};
 
 		# TODO: interfaces
-		if(MatchIdent("interface")) {
-
+		if(ident->Equals("implements")) {
+			ParseInterfaces();
 		};
 		
 		return true;
