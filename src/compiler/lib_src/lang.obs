@@ -5,23 +5,39 @@ note: compile compiler with -D_SYSTEM flag
 ~#	
 
 bundle System {
-	#~~
-	# Boolean class support
-	~~#	
+	#~
+	Boolean class
+	~#	
 	class $Bool {
+		#~
+		Prints a boolean value
+		@ignore-params
+		~#
 		function : Print(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 		}
 
+		#~
+		Prints a boolean value with a newline
+		@ignore-params
+		~#
 		function : PrintLine(b : Bool) ~ Nil {
 			STD_OUT_BOOL;
 			'\n'->Print();
 		}
 
+		#~
+		Prints an error boolean value
+		@ignore-params
+		~#
 		function : Error(b : Bool) ~ Nil {
 			STD_ERR_BOOL;
 		}
 
+		#~
+		Prints an error boolean value with a newline
+		@ignore-params
+		~#
 		function : ErrorLine(b : Bool) ~ Nil {
 			STD_ERR_BOOL;
 			'\n'->Print();
@@ -39,6 +55,11 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		#~
+		Formats the boolean value into a string
+		@ignore-params
+		@return string value
+		~#
 		function : native : ToString(b : Bool) ~ String {
 			string : String;
 
@@ -96,8 +117,7 @@ bundle System {
             
 			while(i >= 0) {
 				value := values[i];
-				if(value > 9) {
-# value->PrintLine();				
+				if(value > 9) {	
 					string->Append((value + 55)->As(Char));
 				}
 				else {
@@ -108,10 +128,16 @@ bundle System {
 		}
 	}
 	
-	#~~
-	# Byte class support
-	~~#	
+	#~
+	Byte class
+	~#
 	class $Byte {
+		#~
+		Retruns the smallest byte value
+		@param r value to compare
+		@ignore-param l
+		@return smallest byte value
+		~#
 		function : native : Min(l : Byte, r : Byte) ~ Byte {
 			if(l < r) {
 				return l;
@@ -120,6 +146,12 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Retruns the largest byte value
+		@param r value to compare
+		@ignore-param l
+		@return largest byte value
+		~#
 		function : native : Max(l : Byte, r : Byte) ~ Byte {
 			if(l > r) {
 				return l;
@@ -128,6 +160,11 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Retruns the absolute value
+		@ignore-params l
+		@return absolute value
+		~#
 		function : native : Abs(v : Byte) ~ Byte {
 			if(v < 0) {
 				return v * -1;
@@ -136,19 +173,35 @@ bundle System {
 			return v;
 		}
 
+		#~
+		Prints value 
+		@ignore-params
+		~#
 		function : Print(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 		}
 
+		#~
+		Prints value with newline
+		@ignore-params
+		~#
 		function : PrintLine(b : Byte) ~ Nil {
 			STD_OUT_BYTE;
 			'\n'->Print();
 		}
 
+		#~
+		Prints error value
+		@ignore-params
+		~#
 		function : Error(b : Byte) ~ Nil {
 			STD_ERR_BYTE;
 		}
 
+		#~
+		Prints error value with newline
+		@ignore-params
+		~#
 		function : ErrorLine(b : Byte) ~ Nil {
 			STD_ERR_BYTE;
 			'\n'->Print();
@@ -212,6 +265,11 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 		
+		#~
+		Returns a binary string representation of the value
+		@ignore-params
+		@return binary string representation of the value
+		~#
 		function : native : ToBinaryString(b : Byte) ~ String {
 			out := String->New();
 			while(b > 0) {
@@ -223,6 +281,11 @@ bundle System {
 			return out->Reverse();
 		}
 
+		#~
+		Returns a hexadecimal string representation of the value
+		@ignore-params
+		@return hexadecimal string representation of the value
+		~#
 		function : native : ToHexString(b : Byte) ~ String {
 			str := String->New();
 			Number->IntToHexString(b->As(Int), str);
@@ -240,6 +303,11 @@ bundle System {
 			return out;
 		}
 		
+		#~
+		Returns a string representation of the value
+		@ignore-params
+		@return string representation of the value
+		~#
 		function : native : ToString(b : Byte) ~ String {
 			str := String->New();
 			Number->IntToString(b->As(Int), str);
@@ -257,9 +325,9 @@ bundle System {
 		}
 	}
 
-	#~~
-	# Character class support
-	~~#	
+	#~
+	Character class
+	~#	
 	class $Char {
 		function : native : ToLower(c : Char) ~ Char {
 			if(c >= 'A' & c <= 'Z') {
@@ -986,7 +1054,7 @@ bundle System {
 	}
 	
 	#~
-	Unicode string class that support character operations.
+	Resizable Unicode string class that supports typical string operations.
 	~#	
 	class String implements System.Compare {
 		@string : Char[];
@@ -1302,7 +1370,7 @@ bundle System {
 		#~
 		Searches for the first occurrence of a character
 		@param char character to search for
-		@return index of first occurrence
+		@return index of first occurrence, -1 otherwise
 		~#
 		method : public : Find(char : Char) ~ Int {
 			return Find(0, char);
@@ -1312,7 +1380,7 @@ bundle System {
 		Searches for the first occurrence of a character
 		@param offset search offset
 		@param char character to search for
-		@return index of first occurrence
+		@return index of first occurrence, -1 otherwise
 		~#
 		method : public : native : Find(offset : Int, char : Char) ~ Int {
 			if(offset < @pos & offset > -1) {
@@ -1329,7 +1397,7 @@ bundle System {
 		#~
 		Searches for the last occurrence of a character
 		@param char character to search for
-		@return index of last occurrence
+		@return index of last occurrence, -1 otherwise
 		~#
 		method : public : FindLast(char : Char) ~ Int {
 			return FindLast(0, char);
@@ -1339,7 +1407,7 @@ bundle System {
 		Searches for the last occurrence of a character
 		@param offset search offset
 		@param char character to search for
-		@return index of last occurrence
+		@return index of last occurrence, -1 otherwise
 		~#
 		method : public : native : FindLast(offset : Int, char : Char) ~ Int {
 			if(offset < @pos & offset > -1) {
@@ -1356,7 +1424,7 @@ bundle System {
 		#~
 		Searches for the first occurrence of a string
 		@param find string to search for
-		@return index of first occurrence
+		@return index of first occurrence, -1 otherwise
 		~#
 		method : public : Find(find : String) ~ Int {
 			return Find(0, find);
@@ -1406,7 +1474,7 @@ bundle System {
 		Searches for the first occurrence of a string
 		@param offset search index offset
 		@param find string to search for
-		@return index of first occurrence
+		@return index of first occurrence, -1 otherwise
 		~#
 		method : public : native : Find(offset : Int, find : String) ~ Int {
 			size := find->Size();
