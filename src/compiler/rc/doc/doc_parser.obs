@@ -438,6 +438,18 @@ class DocBlock {
 		return ident->Trim();
 	}
 
+	method : GetShortName(name : String) ~ String {
+		if(name <> Nil) {
+			index := name->Find('.');
+			if(index > -1) {
+				index += 1;
+				return name->SubString(index, name->Size() - index);
+			};
+		};
+
+		return name;
+	}	
+
 	method : public : virtual : IsParsed() ~ Bool;
 
 	method : virtual : Parse() ~ Bool;
@@ -647,7 +659,7 @@ class ClassBlock from DocBlock {
 	}
 
 	method : public : GetFrom() ~ String {
-		return @from_class;
+		return GetShortName(@from_class);
 	}
 
 	method : public : GetDesc() ~ String {
@@ -701,7 +713,7 @@ class ClassBlock from DocBlock {
 	method : ParseInterfaces() ~ Nil {
 		ident := ParseIdent();
 		while(ident->Size() > 0) {
-			@implemented->AddBack(ident);
+			@implemented->AddBack(GetShortName(ident));
 			MatchChar(',');
 			ident := ParseIdent();
 		};	
@@ -724,6 +736,10 @@ class ClassBlock from DocBlock {
 		if(@name->Size() = 0) {
 			return false;
 		};
+		
+		if(@name->Get(0) = '$') {
+			@name := @name->SubString(1, @name->Size() - 1);
+		};
 
 		ident := ParseIdent(); 
 		if(ident->Equals("from")) {
@@ -737,7 +753,6 @@ class ClassBlock from DocBlock {
 			};
 		};
 
-		# TODO: interfaces
 		if(ident->Equals("implements")) {
 			ParseInterfaces();
 		};
@@ -761,6 +776,7 @@ class FuncBlock from DocBlock {
 	@is_new : Bool;
 	@types : static : StringMap;
 	@parsed : Bool;
+	@ignore_params : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -826,17 +842,22 @@ class FuncBlock from DocBlock {
 			};
 			@signature->Append('(');
 
-			each(i : @func_types) {
-				func_type := @func_types->Get(i)->As(DocType);
-				@signature->Append(func_type->GetName());
-				@signature->Append(':');
-				@signature->Append(func_type->GetTypeName());
-			
-				if(i + 1 < @func_types->Size()) {
-					@signature->Append(", ");
+			if(<>@ignore_params) {
+				each(i : @func_types) {
+					func_type := @func_types->Get(i)->As(DocType);
+					param_tag := @tags->Find(func_type->GetName())->As(DocTag);
+					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
+						@signature->Append(func_type->GetName());
+						@signature->Append(':');
+						@signature->Append(func_type->GetTypeName());
+						
+						if(i + 1 < @func_types->Size()) {
+							@signature->Append(", ");
+						};
+					};
 				};
 			};
-		
+
 			if(@is_new) {
 				@signature->Append(')');
 			}
@@ -866,7 +887,12 @@ class FuncBlock from DocBlock {
 	}
 	
 	method : public : GetParams() ~ Vector {
-		return @func_types;
+		if(@ignore_params) {
+			return Vector->New();
+		}
+		else {
+			return @func_types;
+		};
 	}
 	
 	method : native : Parse() ~ Bool {
@@ -890,8 +916,19 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := DocTag->New(tag_name, tag_desc);
+					tag := DocTag->New(tag_name, tag_desc, false);
 					@tags->Insert(tag->GetName(), tag);
+				}
+				else if(type->Equals("@ignore-param")) {
+					tag_name := ParseIdent();
+					if(tag_name->Size() = 0) {
+						return false;
+					};
+					tag := DocTag->New(tag_name, "", true);
+					@tags->Insert(tag->GetName(), tag);
+				}
+				else if(type->Equals("@ignore-params")) {
+					@ignore_params := true;
 				}
 				else if(type->Equals("@return")) {
 					tag_desc := ParseDesc();
@@ -1074,11 +1111,13 @@ class DocTag {
 	@type : Type;
 	@name : String;
 	@desc : String;
+	@ignore : Bool;
 
-	New(name : String, desc : String) {
+	New(name : String, desc : String, ignore : Bool) {
 		@type := Type->PARAM;
 		@name := name;
 		@desc := desc;
+		@ignore := ignore;
 	}
 
 	New(desc : String) {
@@ -1097,6 +1136,10 @@ class DocTag {
 
 	method : public : GetDesc() ~ String {
 		return @desc;
+	}
+
+	method : public : IsIgnore() ~ Bool {
+		return @ignore;
 	}
 }
 
