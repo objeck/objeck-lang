@@ -4,6 +4,9 @@ Copyright (c) 2008-2014 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
 ~#	
 
+#~
+System Bundle
+~#
 bundle System {
 	#~
 	Boolean class
@@ -129,11 +132,11 @@ bundle System {
 	}
 	
 	#~
-	Byte class
+	The byte class represents a 1-byte value.
 	~#
 	class $Byte {
 		#~
-		Retruns the smallest byte value
+		Returns the smallest byte value
 		@param r value to compare
 		@ignore-param l
 		@return smallest byte value
@@ -147,7 +150,7 @@ bundle System {
 		}
 
 		#~
-		Retruns the largest byte value
+		Returns the largest byte value
 		@param r value to compare
 		@ignore-param l
 		@return largest byte value
@@ -161,7 +164,7 @@ bundle System {
 		}
 
 		#~
-		Retruns the absolute value
+		Returns the absolute value
 		@ignore-params l
 		@return absolute value
 		~#
@@ -326,9 +329,14 @@ bundle System {
 	}
 
 	#~
-	Character class
+	Character class represents a Unicode character value.
 	~#	
 	class $Char {
+		#~
+		Converts character to lower-case
+		@ignore-params
+		@return lower-case representation
+		~#
 		function : native : ToLower(c : Char) ~ Char {
 			if(c >= 'A' & c <= 'Z') {
 				return c + 32;
@@ -337,6 +345,11 @@ bundle System {
 			return c;
 		}
 
+		#~
+		Converts character to upper-case
+		@ignore-params
+		@return upper-case representation
+		~#
 		function : native : ToUpper(c : Char) ~ Char {
 			if(c >= 'a' & c <= 'z') {
 				return c - 32;
@@ -345,6 +358,11 @@ bundle System {
 			return c;
 		}
 
+		#~
+		Checks of the character is a numeric digit
+		@ignore-params
+		@return true if numeric digit, false otherwise
+		~#
 		function : native : IsDigit(c : Char) ~ Bool {
 			if(c >= '0' & c <= '9') {
 				return true;
@@ -353,6 +371,11 @@ bundle System {
 			return false;
 		}
 
+		#~
+		Checks of the character is a alpha digit
+		@ignore-params
+		@return true if alpha digit, false otherwise
+		~#
 		function : native : IsChar(c : Char) ~ Bool {
 			if((c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z')) {
 				return true;
@@ -361,6 +384,12 @@ bundle System {
 			return false;
 		}
 		
+		#~
+		Returns the smallest byte value
+		@param r value to compare
+		@ignore-param l
+		@return smallest byte value
+		~#
 		function : native : Min(l : Char, r : Char) ~ Char {
 			if(l < r) {
 				return l;
@@ -369,6 +398,12 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Returns the largest byte value
+		@param r value to compare
+		@ignore-param l
+		@return largest byte value
+		~#
 		function : native : Max(l : Char, r : Char) ~ Char {
 			if(l > r) {
 				return l;
@@ -377,6 +412,10 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Prints value 
+		@ignore-params
+		~#
 		function : Print(c : Char) ~ Nil {
 			STD_OUT_CHAR;
 		}
@@ -386,6 +425,10 @@ bundle System {
 			'\n'->Print();
 		}
 		
+		#~
+		Prints value with newline
+		@ignore-params
+		~#
 		function : native :  Sort(c : Char[]) ~ Char[] {
 			size := c->Size();
 			if(size <= 1) {
@@ -437,10 +480,18 @@ bundle System {
 			'\n'->Print();
 		}
 
+		#~
+		Prints error value
+		@ignore-params
+		~#
 		function : Error(c : Char) ~ Nil {
 			STD_ERR_CHAR;
 		}
 
+		#~
+		Prints error value with newline
+		@ignore-params
+		~#
 		function : ErrorLine(c : Char) ~ Nil {
 			STD_ERR_CHAR;
 			'\n'->Print();
@@ -471,6 +522,11 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		#~
+		Returns a string representation of the value
+		@ignore-params
+		@return string representation of the value
+		~#
 		function : native : ToString(c : Char) ~ String {
 			string : String := String->New();
 			string->Append(c);
@@ -479,14 +535,22 @@ bundle System {
 		}
 	}
 	
-	#~~
-	# Int class support
-	~~#	
+	#~
+	Integer class represents an operating system long value
+	~#
 	class $Int {
+		#~
+		Returns the maximum size of an integer
+		@return maximum size of an integer
+		~#
 		function : native : MaxSize() ~ Int {
 			return 2147483647;
 		}
 		
+		#~
+		Calculates the factorial of existing value
+		@return factorial of existing value
+		~#
 		function : native : Factorial(n : Int) ~ Int {
 			result := 1;
 			for (i := 1; i <= n; i += 1;) {
@@ -496,6 +560,12 @@ bundle System {
 			return result;
 		}
 
+		#~
+		Returns the smallest integer value
+		@param r value to compare
+		@ignore-param l
+		@return smallest integer value
+		~#
 		function : native : Min(l : Int, r : Int) ~ Int {
 			if(l < r) {
 				return l;
@@ -504,6 +574,12 @@ bundle System {
 			return r;
 		}
 	
+		#~
+		Returns the largest integer value
+		@param r value to compare
+		@ignore-param l
+		@return largest integer value
+		~#
 		function : native : Max(l : Int, r : Int) ~ Int {
 			if(l > r) {
 				return l;
@@ -512,6 +588,11 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Returns the absolute value
+		@ignore-params l
+		@return absolute value
+		~#
 		function : native : Abs(v : Int) ~ Int {
 			if(v < 0) {
 				return v * -1;
@@ -520,19 +601,35 @@ bundle System {
 			return v;
 		}
 
+		#~
+		Prints value 
+		@ignore-params
+		~#
 		function : Print(i : Int) ~ Nil {
 			STD_OUT_INT;
 		}
 
+		#~
+		Prints value with newline
+		@ignore-params
+		~#
 		function : PrintLine(i : Int) ~ Nil {
 			STD_OUT_INT;
 			'\n'->Print();
 		}
 		
+		#~
+		Prints error value
+		@ignore-params
+		~#
 		function : Error(i : Int) ~ Nil {
 			STD_ERR_INT;
 		}
 
+		#~
+		Prints error value with newline
+		@ignore-params
+		~#
 		function : ErrorLine(i : Int) ~ Nil {
 			STD_ERR_INT;
 			'\n'->Print();
@@ -626,6 +723,11 @@ bundle System {
 			return str;
 		}
 		
+		#~
+		Returns a string representation of the value
+		@ignore-params
+		@return string representation of the value
+		~#
 		function : native : ToString(v : Int[]) ~ String {
 			out := "[";
 			each(i : v) {
@@ -641,26 +743,50 @@ bundle System {
 		}
 	}
 
-	#~~
-	# Float class support
-	~~#	
+	#~
+	Float class represents a double-precision floating-point value
+	~#	
 	class $Float {
+		#~
+		Value of Pi
+		@return value of Pi
+		~#
 		function : native : Pi() ~ Float {
 			return 3.1415926536;
 		}
 
+		#~
+		Value of E
+		@return value of E
+		~#
 		function : native : E() ~ Float {
 			return 2.7182818285;
 		}	
 
+		#~
+		Converts the value into radians
+		@ignore-params
+		@return radian value
+		~#
 		function : native : ToRadians(v : Float) ~ Float {
 			return v * 3.1415926536 / 180.0;
 		}
 		
+		#~
+		Converts the value into degrees
+		@ignore-params
+		@return degree value
+		~#
 		function : native : ToDegrees(v : Float) ~ Float {
 			return v * 180.0 / 3.1415926536;
 		}
 
+		#~
+		Returns the smallest float value
+		@param r value to compare
+		@ignore-param l
+		@return smallest float value
+		~#
 		function : native : Min(l : Float, r : Float) ~ Float {
 			if(l < r) {
 				return l;
@@ -669,6 +795,12 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Returns the largest float value
+		@param r value to compare
+		@ignore-param l
+		@return largest float value
+		~#
 		function : native : Max(l : Float, r : Float) ~ Float {
 			if(l > r) {
 				return l;
@@ -677,6 +809,11 @@ bundle System {
 			return r;
 		}
 
+		#~
+		Returns the absolute value
+		@ignore-params l
+		@return absolute value
+		~#
 		function : native : Abs(v : Float) ~ Float {
 			if(v < 0) {
 				return v * -1;
@@ -685,69 +822,144 @@ bundle System {
 			return v;
 		}
 		
-		# note: sse4 instruction
+		#~
+		Calculates the floor value
+		@ignore-params l
+		@return floor value
+		~#
 		function : Floor(f : Float) ~ Float {
 			FLOR_FLOAT;
 		}
 		
-		# note: sse4 instruction
+		#~
+		Calculates the ceiling value
+		@ignore-params l
+		@return ceiling value
+		~#
 		function : Ceiling(f : Float) ~ Float {
 			CEIL_FLOAT;
 		}
 		
+		#~
+		Calculates the sine value
+		@ignore-params l
+		@return sine value
+		~#
 		function : Sin(f : Float) ~ Float {
 			SIN_FLOAT;
 		}
 		
+		#~
+		Calculates the cosine value
+		@ignore-params l
+		@return cosine value
+		~#
 		function : Cos(f : Float) ~ Float {
 			COS_FLOAT;
 		}
 		
+		#~
+		Calculates the tangent value
+		@ignore-params l
+		@return tangent value
+		~#
 		function : Tan(f : Float) ~ Float {
 			TAN_FLOAT;
 		}
 
+		#~
+		Calculates the arc-sine value
+		@ignore-params l
+		@return arc-sine value
+		~#
 		function : ArcSin(f : Float) ~ Float {
 			ASIN_FLOAT;
 		}
 		
+		#~
+		Calculates the cosine value
+		@ignore-params l
+		@return cosine value
+		~#
 		function : ArcCos(f : Float) ~ Float {
 			ACOS_FLOAT;
 		}
 		
+		#~
+		Calculates the arc-tangent value
+		@ignore-params l
+		@return arc-tangent value
+		~#
 		function : ArcTan(f : Float) ~ Float {
 			ATAN_FLOAT;
 		}
 		
+		#~
+		Calculates the log value
+		@ignore-params l
+		@return log value
+		~#
 		function : Log(f : Float) ~ Float {
 			LOG_FLOAT;
 		}
 		
+		#~
+		Calculates the natural log value
+		@ignore-params l
+		@return natural log value
+		~#
 		function : SquareRoot(f : Float) ~ Float {
 			SQRT_FLOAT;
 		}
 		
+		#~
+		Returns a pseudo random value between 0.0 and 1.0
+		@ignore-params
+		@return pseudo random value
+		~#
 		function : Random() ~ Float {
 			RAND_FLOAT;
 		}
 		
+		#~
+		Calculates the power value
+		@ignore-param f
+		@param r power to raise
+		@return pseudo power value
+		~#
 		function : Power(f : Float, r : Float) ~ Float {
 			POW_FLOAT;
 		}
 
+		#~
+		Prints value 
+		@ignore-params
+		~#
 		function : Print(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 		}
 
+		#~
+		Prints value with newline
+		@ignore-params
+		~#
 		function : PrintLine(f : Float) ~ Nil {
 			STD_OUT_FLOAT;
 			'\n'->Print();
 		}
 
+		#~
+		Prints error value
+		@ignore-params
+		~#
 		function : Error(f : Float) ~ Nil {
 			STD_ERR_FLOAT;
 		}
 
+		#~
+		Prints error value with newline
+		@ignore-params
+		~#
 		function : ErrorLine(f : Float) ~ Nil {
 			STD_ERR_FLOAT;
 			'\n'->Print();
@@ -765,6 +977,11 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		#~
+		Returns a string representation of the value
+		@ignore-params
+		@return string representation of the value
+		~#
 		function : native : ToString(f : Float) ~ String {
 			str := String->New();
 			if(f < 0.0) {
@@ -864,26 +1081,42 @@ bundle System {
 		}
 	}
 
-	#~~
-	# Holders
-	~~#
+	#~
+	Holds and integer value
+	~#
 	class IntHolder implements Compare {
 		@value : Int;
 
+		#~
+		Default constructor
+		~#
 		New() {
 			Parent();
 			@value := 0;
 		}
 
+		#~
+		Copy constructor
+		@param value integer value
+		~#
 		New(value : Int) {
 			Parent();
 			@value := value;
 		}
 
+		#~
+		Get integer value
+		@return integer value
+		~#
 		method : public : Get() ~ Int {
 			return @value;
 		}
 
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return true if objects are equal, false otherwise
+		~#
 		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			right : IntHolder := rhs->As(IntHolder);
 			if(@value = right->Get()) {
@@ -896,6 +1129,10 @@ bundle System {
 			return 1;
 		}
 
+		#~
+		Returns a unique hash ID for a integer
+		@return hash ID
+		~#
 		method : public : HashID() ~ Int {
 			return @value;
 		}
@@ -1054,7 +1291,7 @@ bundle System {
 	}
 	
 	#~
-	Resizable Unicode string class that supports typical string operations.
+	Resizeable Unicode string class that supports typical string operations.
 	~#	
 	class String implements System.Compare {
 		@string : Char[];
@@ -2244,12 +2481,25 @@ bundle System {
 	}
 }
 
-#------------ API ------------
-bundle System.API {	
-  class DllProxy {
+#~
+System API Bundle
+~#
+bundle System.API {
+	#~
+	Class allow programmers to load native shared 
+	libraries that can be called by Objeck classes. 
+	Programmers can call native C functions within these 
+	libraries.
+	~#	
+	class DllProxy {
 		@name : String;
 		@ptr : Int;
 		
+		#~
+		Path to the shared library. The path should not include the 
+		extension name (i.e. .dll, .so, etc.) for platform portability
+		@name shared library path
+		~#
 		New(name : String) {
 			Parent();
 
@@ -2257,14 +2507,26 @@ bundle System.API {
 			DLL_LOAD;
 		}
 		
+		#~
+		Returns rather the shared library has been successfully loaded
+		@return returns true if the the library has been successfully loaded, false otherwise
+		~#
 		method : public : IsLoaded() ~ Bool {
 			return @ptr <> 0;
 		}
 		
+		#~
+		Unloads the shared library
+		~#
 		method : public : Unload() ~ Nil {
 			DLL_UNLOAD;
 		}
 		
+		#~
+		Calls a native C function.
+		@param name of the native C function
+		@param args argument to the native function
+		~#
 		method : public : CallFunction(name : String, args : Base[]) ~ Nil {
 			DLL_FUNC_CALL;
 		}
@@ -2273,7 +2535,7 @@ bundle System.API {
 
 #------------ Time ------------
 bundle System.Time {	
-  #~~
+	#~~
 	# Date class
 	~~#	
 	class Date {

@@ -440,7 +440,7 @@ class DocBlock {
 
 	method : GetShortName(name : String) ~ String {
 		if(name <> Nil) {
-			index := name->Find('.');
+			index := name->FindLast('.');
 			if(index > -1) {
 				index += 1;
 				return name->SubString(index, name->Size() - index);
@@ -487,7 +487,7 @@ class BundleBlock from DocBlock {
 
 	method : public : SetName(name : String) ~ Nil {
 		@name := name;
-		@parsed := true;
+#		@parsed := true;
 	}
 
 	method: public : AddClass(class_block : ClassBlock) ~ Nil {
@@ -1031,6 +1031,7 @@ class FuncBlock from DocBlock {
 			if(rtrn_name->Size() = 0) {
 				return false;
 			};
+			rtrn_name := GetShortName(rtrn_name);
 		
 			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
 			if(rtrn_type <> Nil) {
@@ -1049,7 +1050,7 @@ class FuncBlock from DocBlock {
 			type_name->Append('(');
 
 			if(ParseFuncType(type_name)) {
-				return DocType->New(param_name, type_name, DocType->Type->FUNC);
+				return DocType->New(GetShortName(param_name), type_name, DocType->Type->FUNC);
 			}
 			else {
 				return Nil;
@@ -1064,10 +1065,10 @@ class FuncBlock from DocBlock {
 		
 			param_type := @types->Find(type_name)->As(IntHolder);
 			if(param_type <> Nil) {
-				return DocType->New(param_name, type_name, param_type->Get()->As(DocType->Type));
+				return DocType->New(GetShortName(param_name), type_name, param_type->Get()->As(DocType->Type));
 			}
 			else {
-				return DocType->New(param_name, type_name, DocType->Type->CLASS);
+				return DocType->New(GetShortName(param_name), type_name, DocType->Type->CLASS);
 			};
 		};
 	}
