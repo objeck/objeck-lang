@@ -6,116 +6,154 @@ Copyright (c) 2014 Randy Hollines
 use System.IO.File;
 use Collection;
 
-class DocPrinter {
+class HtmlMaker {
+	@parser : DocParser;
+	@css_path : String;
+	
+	New(file : String, css_path : String) {
+		@parser := DocParser->New(file);
+		@css_path := css_path;
+	}
+	
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			html := "";
-			parser := DocParser->New(args[0]);
-			if(<>parser->Parse()) {
-				"--- Unable to parse source file ---"->ErrorLine();
-				return;
-			};
-			
-			sec_a := FileReader->ReadFile("../compiler/rc/doc/templates/header.dat");
-			if(sec_a = Nil) {
-				"--- Unable load header template ---"->ErrorLine();
-				return;
-			};
-			html += sec_a;
-
-			classes := parser->GetAllClasses();
-			if(classes <> Nil) {
-				each(i : classes) {
-					#
-					# class description
-					#
-					class_block := classes->Get(i)->As(ClassBlock);					
-					sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
-					sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
-					sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
-					html += sec_b;
-
-					sec_h := "";
-					from_name := class_block->GetFrom();
-					implemented_names := class_block->GetImplemented();
-					if(from_name <> Nil) {
-						sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
-					}
-					else if(implemented_names->Size() > 0) {
-						sec_h += "<p>Implements: <i>";
-						each(j : implemented_names) {
-							implemented_name := implemented_names->Get(j)->As(String);
-							sec_h += implemented_name;
-							if(j + 1 < implemented_names->Size()) {
-								sec_h += ", ";
-							};
-						};
-						sec_h += "</i></p>";
-					};
-					html += sec_h;					
-
-					#
-					# list of operations
-					#
-					sec_c := "";					
-					func_names := class_block->GetFunctionNames();
-					if(func_names->Size() > 0) {
-						sec_c += "Operations<ul>";
-			
-						each(j : func_names) {
-							short_name := func_names->Get(j)->As(String);
-							if(short_name->Equals("New")) {
-								sec_c += "<li><a href='#";
-								
-								link_name := String->New(class_block->GetName());
-								link_name += '-';
-								link_name += short_name;
-
-								sec_c->Append(link_name->ToLower());
-								sec_c += "'>";
-								sec_c->Append(short_name);
-								sec_c += "</a></li>";
-							};
-						};
-
-						each(j : func_names) {
-							short_name := func_names->Get(j)->As(String);
-							if(<>short_name->Equals("New")) {
-								sec_c += "<li><a href='#";
-
-								link_name := String->New(class_block->GetName());
-								link_name += '-';
-								link_name += short_name;
-
-								sec_c->Append(link_name->ToLower());
-								sec_c += "'>";
-								sec_c->Append(short_name);
-								sec_c += "</a></li>";
-							};
-						};
-						sec_c += "</ul><hr/>";
-					};
-					html += sec_c;
-					
-					#
-					# detailed operations
-					#
-					PrintFunctions(class_block->GetName(), "New", class_block->GetFunctions("New"), html);
-					each(j : func_names) {
-						short_name := func_names->Get(j)->As(String);
-						if(<>short_name->Equals("New")) {
-							PrintFunctions(class_block->GetName(), short_name, class_block->GetFunctions(short_name), html);
-						};
-					};
-				};
-			};
-			html += "</body></html>";
-		
-			html->PrintLine();
+		if(args->Size() = 2) {
+			maker := HtmlMaker->New(args[0], args[1]);
+			maker->Make();
 		};
 	}
+	
+	method : Make() ~ Bool {
+		if(<>@parser->Parse()) {
+			"--- Unable to parse source file ---"->ErrorLine();
+			return false;
+		};
+		
+		class_css_path := String->New(@css_path);
+		class_css_path += '/';
+		class_css_path += "class_header.dat";
+		class_header := FileReader->ReadFile(class_css_path);
+		if(class_header = Nil) {
+			"--- Unable load header CSS template ---"->ErrorLine();
+			return false;
+		};
+		
+		bundle_css_path := String->New(@css_path);
+		bundle_css_path += '/';
+		bundle_css_path += "bundle_header.dat";
+		bundle_header := FileReader->ReadFile(bundle_css_path);
+		if(bundle_header = Nil) {
+			"--- Unable load bundle CSS template ---"->ErrorLine();
+			return false;
+		};
+		
+		# create class list doc
+		CreateClassIndexHtml(@parser->GetBundles(), bundle_header);
+		
+		# create class html docs
+		classes := @parser->GetAllClasses();
+		if(classes <> Nil) {				
+			each(i : classes) {
+				CreateClassHtml(classes->Get(i)->As(ClassBlock), class_header);			
+			};
+		};
+		
+		return true;
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateClassHtml(class_block : ClassBlock, class_header : String) ~ Nil {
+		# class description
+		html := String->New(class_header);
+		
+		sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+		sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
+		html += sec_b;
 
-	function : PrintFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
+		sec_h := "";
+		from_name := class_block->GetFrom();
+		implemented_names := class_block->GetImplemented();
+		if(from_name <> Nil) {
+			sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
+		}
+		else if(implemented_names->Size() > 0) {
+			sec_h += "<p>Implements: <i>";
+			each(j : implemented_names) {
+				implemented_name := implemented_names->Get(j)->As(String);
+				sec_h += implemented_name;
+				if(j + 1 < implemented_names->Size()) {
+					sec_h += ", ";
+				};
+			};
+			sec_h += "</i></p>";
+		};
+		html += sec_h;					
+
+		# list of operations
+		sec_c := "";					
+		func_names := class_block->GetFunctionNames();
+		if(func_names->Size() > 0) {
+			sec_c += "Operations<ul>";
+
+			each(j : func_names) {
+				short_name := func_names->Get(j)->As(String);
+				if(short_name->Equals("New")) {
+					sec_c += "<li><a href='#";
+					
+					link_name := String->New(class_block->GetName());
+					link_name += '-';
+					link_name += short_name;
+
+					sec_c->Append(link_name->ToLower());
+					sec_c += "'>";
+					sec_c->Append(short_name);
+					sec_c += "</a></li>";
+				};
+			};
+
+			each(j : func_names) {
+				short_name := func_names->Get(j)->As(String);
+				if(<>short_name->Equals("New")) {
+					sec_c += "<li><a href='#";
+
+					link_name := String->New(class_block->GetName());
+					link_name += '-';
+					link_name += short_name;
+
+					sec_c->Append(link_name->ToLower());
+					sec_c += "'>";
+					sec_c->Append(short_name);
+					sec_c += "</a></li>";
+				};
+			};
+			sec_c += "</ul><hr/>";
+		};
+		html += sec_c;
+		
+		# detailed operations
+		FormatFunctions(class_block->GetName(), "New", class_block->GetFunctions("New"), html);
+		each(j : func_names) {
+			short_name := func_names->Get(j)->As(String);
+			if(<>short_name->Equals("New")) {
+				FormatFunctions(class_block->GetName(), short_name, class_block->GetFunctions(short_name), html);
+			};
+		};
+		html += "</body></html>";
+	
+		file_name := "..\\html\\";
+		file_name += class_block->GetName()->ToLower();
+		file_name += ".html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : FormatFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
 		if(funcs <> Nil) {
 			sec_d := "<h3>@short_name</h3><a name='@short_link'></a>";
 			link_name := String->New(class_name);
@@ -138,7 +176,7 @@ class DocPrinter {
 				sec_f := "";
 				if(params->Size() > 0) {
 					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
-					sec_f := "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
+					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
 					each(l : params) {
@@ -168,5 +206,48 @@ class DocPrinter {
 				html += sec_g;
 			};
 		};
+	}
+	
+	method : CreateClassIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
+		html := String->New(class_header);
+		html += "<h2>Bundles</h2>";
+		
+		# bundles
+		bundle_keys := bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			# class description
+			if(bundle_block->IsParsed()) {
+				html += "<strong>";
+				html += bundle_block->GetName();
+				html += "</strong>";
+				
+				classes := bundle_block->GetClasses();
+				class_keys := classes->GetKeys();			
+				sec_b := "<ul>";
+				each(j : class_keys) {
+					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+					if(class_block->IsParsed()) {
+						sec_b += "<li><a href='";
+						
+						link_name := String->New(class_block->GetName());
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						sec_b->Append(class_block->GetName());
+						sec_b += "</a></li>";
+					};
+				};
+				sec_b += "</ul>";			
+				html += sec_b;
+			};
+		};
+		
+		html += "</body></html>";
+		file_name := "..\\html\\bundles.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();		
 	}
 }
