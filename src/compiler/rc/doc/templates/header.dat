@@ -6,7 +6,7 @@
 <style>
 body {
 	font-family: sans-serif;
-	font-size: 14px;
+	font-size: 13px;
 	line-height: 1;
 	min-width: 960px; 
 	color: #404041;
@@ -15,6 +15,7 @@ body {
 }
 	
 ul {
+	font-size: 14px;
 	list-style-type: square;
 }
 
@@ -24,12 +25,12 @@ ul {
 	width: auto;
 	overflow: auto;
 	display: block;
-	padding: 5px 10px;
+	padding: 4px 8px;
 }
 .doc-table th {
 	background-color: #BDBDBD;
 	font-weight: em;
-	padding: 10px 15px;
+	padding: 6px 10px;
 	text-align: center;
 }
 .doc-table td {
@@ -41,7 +42,7 @@ code {
 	font-family: Monaco, Courier, monospace;
 	display: block;
 	padding: 5px 10px;
-	font-size: 16px;
+	font-size: 15px;
 	border-radius: 4px;
 	margin-bottom: 20px;
 	overflow-x: auto;
@@ -56,6 +57,7 @@ h2 {
 	border-radius: 8px;
 	color: #ffffff;
 	overflow: auto;
+	font-size: 15px;
 }
 
 h3 {
@@ -67,12 +69,13 @@ h3 {
 	border-radius: 8px;
 	color: #ececec;
 	overflow: auto;
+	font-size: 15px;
 }
 
 strong {
 	font-weight: bold;
 	color: black;
-}
+} 
 
 </style>
 </head>

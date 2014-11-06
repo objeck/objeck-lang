@@ -26,21 +26,37 @@ class DocPrinter {
 			classes := parser->GetAllClasses();
 			if(classes <> Nil) {
 				each(i : classes) {
-					class_block := classes->Get(i)->As(ClassBlock);
-					if(class_block->GetFrom() <> Nil) {
-						sec_b := "<h2>@class_name [from @from_name]</h2><p>@class_desc</p>";
-						sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
-						sec_b := sec_b->ReplaceAll("@from_name", class_block->GetFrom());
-						sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
-						html += sec_b;
-					}
-					else {
-						sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
-						sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
-						sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
-						html += sec_b;
-					};
+					#
+					# class description
+					#
+					class_block := classes->Get(i)->As(ClassBlock);					
+					sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+					sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+					sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
+					html += sec_b;
 
+					sec_h := "";
+					from_name := class_block->GetFrom();
+					implemented_names := class_block->GetImplemented();
+					if(from_name <> Nil) {
+						sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
+					}
+					else if(implemented_names->Size() > 0) {
+						sec_h += "<p>Implements: <i>";
+						each(j : implemented_names) {
+							implemented_name := implemented_names->Get(j)->As(String);
+							sec_h += implemented_name;
+							if(j + 1 < implemented_names->Size()) {
+								sec_h += ", ";
+							};
+						};
+						sec_h += "</i></p>";
+					};
+					html += sec_h;					
+
+					#
+					# list of operations
+					#
 					sec_c := "";					
 					func_names := class_block->GetFunctionNames();
 					if(func_names->Size() > 0) {
@@ -50,7 +66,12 @@ class DocPrinter {
 							short_name := func_names->Get(j)->As(String);
 							if(short_name->Equals("New")) {
 								sec_c += "<li><a href='#";
-								sec_c->Append(short_name->ToLower());
+								
+								link_name := String->New(class_block->GetName());
+								link_name += '-';
+								link_name += short_name;
+
+								sec_c->Append(link_name->ToLower());
 								sec_c += "'>";
 								sec_c->Append(short_name);
 								sec_c += "</a></li>";
@@ -61,7 +82,12 @@ class DocPrinter {
 							short_name := func_names->Get(j)->As(String);
 							if(<>short_name->Equals("New")) {
 								sec_c += "<li><a href='#";
-								sec_c->Append(short_name->ToLower());
+
+								link_name := String->New(class_block->GetName());
+								link_name += '-';
+								link_name += short_name;
+
+								sec_c->Append(link_name->ToLower());
 								sec_c += "'>";
 								sec_c->Append(short_name);
 								sec_c += "</a></li>";
@@ -71,11 +97,14 @@ class DocPrinter {
 					};
 					html += sec_c;
 					
-					PrintFunctions("New", class_block->GetFunctions("New"), html);
+					#
+					# detailed operations
+					#
+					PrintFunctions(class_block->GetName(), "New", class_block->GetFunctions("New"), html);
 					each(j : func_names) {
 						short_name := func_names->Get(j)->As(String);
 						if(<>short_name->Equals("New")) {
-							PrintFunctions(short_name, class_block->GetFunctions(short_name), html);
+							PrintFunctions(class_block->GetName(), short_name, class_block->GetFunctions(short_name), html);
 						};
 					};
 				};
@@ -86,11 +115,15 @@ class DocPrinter {
 		};
 	}
 
-	function : PrintFunctions(short_name : String, funcs : Vector, html : String) ~ Nil {
+	function : PrintFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
 		if(funcs <> Nil) {
 			sec_d := "<h3>@short_name</h3><a name='@short_link'></a>";
+			link_name := String->New(class_name);
+			link_name += '-';
+			link_name += short_name;
+
 			sec_d := sec_d->ReplaceAll("@short_name", short_name);
-			sec_d := sec_d->ReplaceAll("@short_link", short_name->ToLower());
+			sec_d := sec_d->ReplaceAll("@short_link", link_name->ToLower());
 			html += sec_d;
 
 			each(k : funcs) {
@@ -104,13 +137,14 @@ class DocPrinter {
 				params := func->GetParams();
 				sec_f := "";
 				if(params->Size() > 0) {
-					sec_f := "<div style='padding: 5px 10px'>Parameters</div><table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
+					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
+					sec_f := "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
 					each(l : params) {
 						param := params->Get(l)->As(DocType);
 						param_tag := param_tags->Find(param->GetName())->As(DocTag);
-						if(param_tag <> Nil) {
+						if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 							sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
 							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
 							sec_f := sec_f->ReplaceAll("@param_type", param->GetTypeName());
@@ -124,7 +158,8 @@ class DocPrinter {
 				# TODO:
 				sec_g := "";
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<br/><div style='padding: 5px 10px'>Return</div><table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
+					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'>Return</div>";
+					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", func->GetReturnType()->GetTypeName());
 					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
