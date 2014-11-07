@@ -218,44 +218,44 @@ IntermediateBlock* ItermediateOptimizer::RemoveUselessInstructions(IntermediateB
     switch(instr->GetType()) {
     case LOAD_INT_VAR:
       if(instr->GetOperand2() == LOCL) {
-	working_stack.push_front(instr);
+        working_stack.push_front(instr);
       }
       else {
-	while(!working_stack.empty()) {
-	  outputs->AddInstruction(working_stack.back());
-	  working_stack.pop_back();
-	}
-	outputs->AddInstruction(instr);
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
       }
       break;
       
     case STOR_INT_VAR:
       if(instr->GetOperand2() == LOCL && !working_stack.empty() && 
-	 working_stack.front()->GetType() == LOAD_INT_VAR) {
-	if(instr->GetOperand() == working_stack.front()->GetOperand()) {
-	  working_stack.pop_front();
-	}
-	else {
-	  while(!working_stack.empty()) {
-	    outputs->AddInstruction(working_stack.back());
-	    working_stack.pop_back();
-	  }
-	  outputs->AddInstruction(instr);
-	}
+         working_stack.front()->GetType() == LOAD_INT_VAR) {
+        if(instr->GetOperand() == working_stack.front()->GetOperand()) {
+          working_stack.pop_front();
+        }
+        else {
+          while(!working_stack.empty()) {
+            outputs->AddInstruction(working_stack.back());
+            working_stack.pop_back();
+          }
+          outputs->AddInstruction(instr);
+        }
       }
       else {
-	while(!working_stack.empty()) {
-	  outputs->AddInstruction(working_stack.back());
-	  working_stack.pop_back();
-	}
-	outputs->AddInstruction(instr);
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
       }
       break;
      
     default:
       while(!working_stack.empty()) {
-	outputs->AddInstruction(working_stack.back());
-	working_stack.pop_back();
+        outputs->AddInstruction(working_stack.back());
+        working_stack.pop_back();
       }
       outputs->AddInstruction(instr);
       break;
@@ -282,7 +282,7 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
     case LBL:
       // ignore jump to next instruction
       if(!working_stack.empty() && working_stack.front()->GetType() == JMP && 
-	 working_stack.front()->GetOperand() == instr->GetOperand()) {
+         working_stack.front()->GetOperand() == instr->GetOperand()) {
         working_stack.pop_front();
       }
       // add back in reverse order
@@ -324,32 +324,32 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
       int status = CanInlineSetterGetter(mthd_called);
       //  getter instance pattern
       if(status == 0) {
-	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-	outputs->AddInstruction(instrs[1]);
+        vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+        vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+        outputs->AddInstruction(instrs[1]);
       }
       // getter instance pattern
       else if(status == 1) {
-	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	outputs->AddInstruction(instrs[0]);
+        vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+        vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        outputs->AddInstruction(instrs[0]);
       }
       // character print pattern
       else if(status == 2) {
-	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-	outputs->AddInstruction(instrs[2]);
-	outputs->AddInstruction(instrs[3]);
+        vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+        vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        outputs->AddInstruction(instrs[2]);
+        outputs->AddInstruction(instrs[3]);
       }
       else if(status == 3) {
-	vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-	outputs->AddInstruction(instrs[3]);
+        vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
+        vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
+        outputs->AddInstruction(instrs[3]);
       }
       else {
-	outputs->AddInstruction(instr);
+        outputs->AddInstruction(instr);
       }
     }
     else {
@@ -385,15 +385,15 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
       if(!working_stack.empty() && working_stack.front()->GetType() == STOR_INT_VAR) {
-	// order matters...
-	while(!working_stack.empty()) {
-	  outputs->AddInstruction(working_stack.back());
-	  working_stack.pop_back();
-	}
-	outputs->AddInstruction(instr);
+        // order matters...
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
       }
       else {
-	working_stack.push_front(instr);
+        working_stack.push_front(instr);
       }
       break;
       
@@ -417,8 +417,8 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
 }
 
 void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr,
-						  deque<IntermediateInstruction*> &working_stack,
-						  IntermediateBlock* outputs)
+                                                  deque<IntermediateInstruction*> &working_stack,
+                                                  IntermediateBlock* outputs)
 {
   if(!working_stack.empty()) {
     IntermediateInstruction* top_instr = working_stack.front();
@@ -429,8 +429,8 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
       working_stack.pop_front();
     } 
     else if(top_instr->GetType() == STOR_FLOAT_VAR && instr->GetType() == LOAD_FLOAT_VAR &&
-	    instr->GetOperand() == top_instr->GetOperand() &&
-	    instr->GetOperand2() == top_instr->GetOperand2()) {
+            instr->GetOperand() == top_instr->GetOperand() &&
+            instr->GetOperand2() == top_instr->GetOperand2()) {
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, COPY_FLOAT_VAR, top_instr->GetOperand(), top_instr->GetOperand2()));
       working_stack.pop_front();
     } 
@@ -490,8 +490,8 @@ IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* in
 }
 
 void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
-					      deque<IntermediateInstruction*> &working_stack,
-					      IntermediateBlock* outputs)
+                                              deque<IntermediateInstruction*> &working_stack,
+                                              IntermediateBlock* outputs)
 {
   if(working_stack.size() > 1) {
     IntermediateInstruction* top_instr = working_stack.front();
@@ -527,10 +527,10 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
 }
 
 void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, 
-					  IntermediateInstruction* instr, 
-					  IntermediateInstruction* top_instr,
-					  deque<IntermediateInstruction*> &working_stack, 
-					  IntermediateBlock* outputs)
+                                          IntermediateInstruction* instr, 
+                                          IntermediateInstruction* top_instr,
+                                          deque<IntermediateInstruction*> &working_stack, 
+                                          IntermediateBlock* outputs)
 {
   int shift = 0;
   switch(test->GetOperand()) {
@@ -604,7 +604,7 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test,
 }
 
 void ItermediateOptimizer::AddBackReduction(IntermediateInstruction* instr, IntermediateInstruction* top_instr,
-					    deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
+                                            deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   // order matters...
   while(!working_stack.empty()) {
@@ -643,75 +643,77 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-	// calculate local offset, +2 in case last variable is a double 
-	int local_instr_offset = GetLastLocalOffset(current_method) + 2;
+        // calculate local offset, +2 in case last variable is a double 
+        int local_instr_offset = GetLastLocalOffset(current_method) + 2;
 	
-	// ajust local space
-	current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
+        // ajust local space
+        current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
 	
-	// fetch inline instructions for called method
-	// vector<IntermediateBlock*> mthd_called_blocks = OptimizeMethod(mthd_called->GetBlocks());
-	vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
-	vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
+        // fetch inline instructions for called method
+        // vector<IntermediateBlock*> mthd_called_blocks = OptimizeMethod(mthd_called->GetBlocks());
+        vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
+        vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
 	
-	// handle the storing of local instance
-	// TODO: might be a better way to do this given the constrains
-	outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
-										 local_instr_offset, LOCL));
+        // handle the storing of local instance
+        // TODO: might be a better way to do this given the constrains
+        if(mthd_called->GetClass() != current_method->GetClass()) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
+                                                                                   local_instr_offset, LOCL));
+        }
+        else {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        }
 	
-	// inline instructions
-	// TODO: inline methods with multiple return values
-	// bool found_rtrn = false;
-	// int end = ++unconditional_label;
-	for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
-	  IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
-	  switch(mthd_called_instr->GetType()) {
-	  case LOAD_INT_VAR:
-	  case STOR_INT_VAR:
-	  case COPY_INT_VAR:
-	  case LOAD_FLOAT_VAR:
-	  case STOR_FLOAT_VAR:
-	  case COPY_FLOAT_VAR:
-	    if(mthd_called_instr->GetOperand2() == LOCL) {
-	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-										       mthd_called_instr->GetOperand() + local_instr_offset + 1,  
-										       LOCL));
-	    }
-	    else if(mthd_called_instr->GetOperand2() == INST) {
-	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-										       mthd_called_instr->GetOperand(), INST));	      
-	    }
-	    else {
-	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-										       mthd_called_instr->GetOperand(), CLS));
-	    }
-	    break;
+        // inline instructions
+        // TODO: inline methods with multiple return values
+        // bool found_rtrn = false;
+        // int end = ++unconditional_label;
+        for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
+          IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
+          switch(mthd_called_instr->GetType()) {
+          case LOAD_INT_VAR:
+          case STOR_INT_VAR:
+          case COPY_INT_VAR:
+          case LOAD_FLOAT_VAR:
+          case STOR_FLOAT_VAR:
+          case COPY_FLOAT_VAR:
+            if(mthd_called_instr->GetOperand2() == LOCL) {
+              if(mthd_called->GetClass() != current_method->GetClass()) {
+                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                                                                         mthd_called_instr->GetOperand() + local_instr_offset + 1, LOCL));
+              }
+              else {
+                outputs->AddInstruction(mthd_called_instr);
+              }
+            }
+            else if(mthd_called_instr->GetOperand2() == INST) {
+              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                                                                       mthd_called_instr->GetOperand(), INST));	      
+            }
+            else {
+              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                                                                       mthd_called_instr->GetOperand(), CLS));
+            }
+            break;
 
-	  case LOAD_INST_MEM:
-	    outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset, LOCL));
-	    break;
-	    
-	    /*
-	      case RTRN:
-	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end, -1));
-	      found_rtrn = true;
-	      break;
-	    */
-
-	  default:
-	    outputs->AddInstruction(mthd_called_instr);
-	    break;
-	  }
-	}
-	/*
-	  if(found_rtrn) {
-	  outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, end));
-	  }
-	*/
-	inlined_mthds.insert(mthd_called);
+          case LOAD_INST_MEM:
+            if(mthd_called->GetClass() != current_method->GetClass()) {
+              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset, LOCL));
+            }
+            else {
+              outputs->AddInstruction(mthd_called_instr);
+            }
+            break;
+            
+          default:
+            outputs->AddInstruction(mthd_called_instr);
+            break;
+          }
+        }
+        inlined_mthds.insert(mthd_called);
       }	
       else {
-	outputs->AddInstruction(instr);
+        outputs->AddInstruction(instr);
       }
     }
     else {
@@ -767,8 +769,8 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
 }
 
 void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
-					    deque<IntermediateInstruction*> &working_stack,
-					    IntermediateBlock* outputs)
+                                            deque<IntermediateInstruction*> &working_stack,
+                                            IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
@@ -880,8 +882,8 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
 }
 
 void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
-					      deque<IntermediateInstruction*> &working_stack,
-					      IntermediateBlock* outputs)
+                                              deque<IntermediateInstruction*> &working_stack,
+                                              IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
