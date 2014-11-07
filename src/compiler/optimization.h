@@ -111,6 +111,11 @@ class ItermediateOptimizer {
     if(mthd_called == current_method) {
       return false;
     }
+
+    // same class
+    if(mthd_called->GetClass() == current_method->GetClass()) {
+      return false;
+    }
     
     // don't inline method calls for primitive objects
     const wstring called_cls_name = mthd_called->GetClass()->GetName();
