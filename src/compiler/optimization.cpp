@@ -64,6 +64,7 @@ void ItermediateOptimizer::Optimize()
 
 vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<IntermediateBlock*> inputs)
 {
+  /* TODO: update the method's local entries
   if(optimization_level > 2) {
     // inline methods
 #ifdef _DEBUG
@@ -84,6 +85,9 @@ vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<Intermediat
   else {
     return inputs;
   }
+  */
+
+  return inputs;
 }
 
 vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<IntermediateBlock*> inputs)
