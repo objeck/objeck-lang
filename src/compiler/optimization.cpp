@@ -64,7 +64,6 @@ void ItermediateOptimizer::Optimize()
 
 vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<IntermediateBlock*> inputs)
 {
-  /* TODO: update the method's local entries
   if(optimization_level > 2) {
     // inline methods
 #ifdef _DEBUG
@@ -85,9 +84,6 @@ vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<Intermediat
   else {
     return inputs;
   }
-  */
-
-  return inputs;
 }
 
 vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<IntermediateBlock*> inputs)
@@ -647,20 +643,26 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        // calculate local offset, +2 in case last variable is a double 
-        int local_instr_offset = GetLastLocalOffset(current_method) + 2;
-	
+        // calculate local offset, +2 in case last variable is a double (for 32-bit) 
+        int local_instr_offset = GetLastLocalOffset(current_method, outputs) + 2;
+        
         // ajust local space
         current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
 	
         // fetch inline instructions for called method
         vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
         vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
-	
+        
         // handle the storing of local instance
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
-                                                                                   local_instr_offset, LOCL));
-	
+        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
+                                                                                 local_instr_offset, LOCL));
+        current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
+        
+        vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
+        for(size_t j = 0; j < entries.size(); ++j) {
+          current_method->GetEntries()->AddParameter(new IntermediateDeclaration(entries[j]->GetName(), entries[j]->GetType()));
+        }
+
         // inline instructions
         // TODO: inline methods with multiple return values        
         for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
