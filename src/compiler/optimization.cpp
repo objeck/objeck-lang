@@ -650,24 +650,15 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
 	
         // fetch inline instructions for called method
-        // vector<IntermediateBlock*> mthd_called_blocks = OptimizeMethod(mthd_called->GetBlocks());
         vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
         vector<IntermediateInstruction*> mthd_called_instrs = mthd_called_blocks[0]->GetInstructions();
 	
         // handle the storing of local instance
-        // TODO: might be a better way to do this given the constrains
-        if(mthd_called->GetClass() != current_method->GetClass()) {
           outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
                                                                                    local_instr_offset, LOCL));
-        }
-        else {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-        }
 	
         // inline instructions
-        // TODO: inline methods with multiple return values
-        // bool found_rtrn = false;
-        // int end = ++unconditional_label;
+        // TODO: inline methods with multiple return values        
         for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
           IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
           switch(mthd_called_instr->GetType()) {
@@ -678,13 +669,8 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           case STOR_FLOAT_VAR:
           case COPY_FLOAT_VAR:
             if(mthd_called_instr->GetOperand2() == LOCL) {
-              if(mthd_called->GetClass() != current_method->GetClass()) {
-                outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-                                                                                         mthd_called_instr->GetOperand() + local_instr_offset + 1, LOCL));
-              }
-              else {
-                outputs->AddInstruction(mthd_called_instr);
-              }
+              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                                                                       mthd_called_instr->GetOperand() + local_instr_offset + 1, LOCL));              
             }
             else if(mthd_called_instr->GetOperand2() == INST) {
               outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
@@ -697,12 +683,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
             break;
 
           case LOAD_INST_MEM:
-            if(mthd_called->GetClass() != current_method->GetClass()) {
-              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset, LOCL));
-            }
-            else {
-              outputs->AddInstruction(mthd_called_instr);
-            }
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, local_instr_offset, LOCL));           
             break;
             
           default:
