@@ -227,7 +227,7 @@ class ItermediateOptimizer {
   // TODO: have final classes for hidden local fields
   // calculate the local offset for inlined variables
   // 
-  int GetLastLocalOffset(IntermediateMethod* mthd) {
+  int GetLastLocalOffset(IntermediateMethod* mthd, IntermediateBlock* outputs) {
     vector<IntermediateBlock*> blocks = mthd->GetBlocks();
     vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
     
@@ -241,13 +241,33 @@ class ItermediateOptimizer {
       case LOAD_FLOAT_VAR:
       case STOR_FLOAT_VAR:
       case COPY_FLOAT_VAR:
-	if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
-	  offset = instr->GetOperand();
-	}
-	break;
+        if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
+          offset = instr->GetOperand();
+        }
+        break;
 
       default:
-	break;
+        break;
+      }
+    }
+    
+    instrs = outputs->GetInstructions();    
+    for(size_t i = 0; i < instrs.size(); ++i) {
+      IntermediateInstruction* instr = instrs[i];
+      switch(instr->GetType()) {
+      case LOAD_INT_VAR:
+      case STOR_INT_VAR:
+      case COPY_INT_VAR:
+      case LOAD_FLOAT_VAR:
+      case STOR_FLOAT_VAR:
+      case COPY_FLOAT_VAR:
+        if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
+          offset = instr->GetOperand();
+        }
+        break;
+
+      default:
+        break;
       }
     }
 
