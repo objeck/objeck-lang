@@ -833,7 +833,7 @@ namespace backend {
 
   /****************************
   * IntermediateMethod class
-  ****************************/
+  **************************/
   class IntermediateMethod : public Intermediate {
     int id;
     wstring name;
@@ -915,7 +915,11 @@ namespace backend {
     int GetId() {
       return id;
     }
-
+    
+    IntermediateDeclarations* GetEntries() {
+      return entries;
+    }
+    
     IntermediateClass* GetClass() {
       return klass;
     }
