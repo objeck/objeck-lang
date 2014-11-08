@@ -1730,1043 +1730,1076 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     long* instance = (long*)PopInt(op_stack, stack_pos);
 
 #ifdef _WIN32
-    if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET)
 #else
-      if(instance && (SOCKET)instance[0] > -1) {
+    if(instance && (SOCKET)instance[0] > -1)
 #endif
-        SOCKET server = (SOCKET)instance[0];
+    {
+      SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
-        wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance 
-              << L"(" << (long)instance << L")" << L"; addr=" << server << L"(" 
-              << (long)server << L") #" << endl;
+      wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance 
+            << L"(" << (long)instance << L")" << L"; addr=" << server << L"(" 
+            << (long)server << L") #" << endl;
 #endif
-        if(IPSocket::Listen(server, backlog)) {
-          PushInt(1, op_stack, stack_pos);    
-        }
-        else {
-          PushInt(0, op_stack, stack_pos);
-        }
+      if(IPSocket::Listen(server, backlog)) {
+        PushInt(1, op_stack, stack_pos);    
       }
       else {
         PushInt(0, op_stack, stack_pos);
       }
     }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
     break;   
     
-    case SOCK_TCP_ACCEPT: {
-      long* instance = (long*)PopInt(op_stack, stack_pos);
+  case SOCK_TCP_ACCEPT: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
 #ifdef _WIN32
-      if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET)
 #else
-        if(instance && (SOCKET)instance[0] > -1) {
+    if(instance && (SOCKET)instance[0] > -1)
 #endif
-          SOCKET server = (SOCKET)instance[0];
-          char client_address[SMALL_BUFFER_MAX + 1];
-          int client_port;
-          SOCKET client = IPSocket::Accept(server, client_address, client_port);
+    {
+      SOCKET server = (SOCKET)instance[0];
+      char client_address[SMALL_BUFFER_MAX + 1];
+      int client_port;
+      SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
-          wcout << L"# socket accept: instance=" << instance << L"(" << (long)instance << L")" << L"; ip=" 
-                << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"(" 
-                << (long)server << L") #" << endl;
+      wcout << L"# socket accept: instance=" << instance << L"(" << (long)instance << L")" << L"; ip=" 
+            << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"(" 
+            << (long)server << L") #" << endl;
 #endif
-          const wstring wclient_address = BytesToUnicode(client_address);
-          long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
-                                                         (long*)op_stack, *stack_pos, false);
-          sock_obj[0] = client;
-          sock_obj[1] = (long)CreateStringObject(wclient_address, program, op_stack, stack_pos);
-          sock_obj[2] = client_port;
+      const wstring wclient_address = BytesToUnicode(client_address);
+      long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
+                                                     (long*)op_stack, *stack_pos, false);
+      sock_obj[0] = client;
+      sock_obj[1] = (long)CreateStringObject(wclient_address, program, op_stack, stack_pos);
+      sock_obj[2] = client_port;
       
-          PushInt((long)sock_obj, op_stack, stack_pos);
-        }
-      }
-      break;
+      PushInt((long)sock_obj, op_stack, stack_pos);
+    }
+  }
+    break;
     
-    case SOCK_TCP_CLOSE: {
-      long* instance = (long*)PopInt(op_stack, stack_pos);
+  case SOCK_TCP_CLOSE: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
 #ifdef _WIN32
-      if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET)
 #else
-        if(instance && (SOCKET)instance[0] > -1) {
+    if(instance && (SOCKET)instance[0] > -1)
 #endif
-          SOCKET sock = (SOCKET)instance[0];
-	
+    {
+      SOCKET sock = (SOCKET)instance[0];
+      
 #ifdef _DEBUG
-          wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << endl;
+      wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << endl;
 #endif	
-          instance[0] = 0;
-          IPSocket::Close(sock);
-        }      
-      }
-      break;
+      instance[0] = 0;
+      IPSocket::Close(sock);
+    }      
+  }
+    break;
     
-      case SOCK_TCP_OUT_STRING: {
-        long* array = (long*)PopInt(op_stack, stack_pos);
-        long* instance = (long*)PopInt(op_stack, stack_pos);
-        if(array && instance) {
-          SOCKET sock = (SOCKET)instance[0];
-          const wchar_t* wdata = (wchar_t*)(array + 3); 
-	
+  case SOCK_TCP_OUT_STRING: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      SOCKET sock = (SOCKET)instance[0];
+      const wchar_t* wdata = (wchar_t*)(array + 3); 
+      
 #ifdef _DEBUG
-          wcout << L"# socket write string: instance=" << instance << L"(" << (long)instance << L")" 
-                << L"; array=" << array << L"(" << (long)array << L")" << L"; data=" << wdata << endl;
+      wcout << L"# socket write string: instance=" << instance << L"(" << (long)instance << L")" 
+            << L"; array=" << array << L"(" << (long)array << L")" << L"; data=" << wdata << endl;
 #endif	
-   
+      
 #ifdef _WIN32
-          if(sock != INVALID_SOCKET) {
+      if(sock != INVALID_SOCKET)
 #else
-            if(sock > -1) {
+      if(sock > -1)
 #endif
-              const string data = UnicodeToBytes(wdata);
-              IPSocket::WriteBytes(data.c_str(), data.size(), sock);
-            }
-          }
-        }
-        break;
-      
-      case SOCK_TCP_IN_STRING: {
-        long* array = (long*)PopInt(op_stack, stack_pos);
-        long* instance = (long*)PopInt(op_stack, stack_pos);
-        if(array && instance) {
-          char buffer[SMALL_BUFFER_MAX + 1];
-          SOCKET sock = (SOCKET)instance[0];	
-          int status;
+      {
+        const string data = UnicodeToBytes(wdata);
+        IPSocket::WriteBytes(data.c_str(), data.size(), sock);
+      }
+    }
+  }
+    break;
+    
+  case SOCK_TCP_IN_STRING: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      char buffer[SMALL_BUFFER_MAX + 1];
+      SOCKET sock = (SOCKET)instance[0];	
+      int status;
 #ifdef _WIN32
-          if(sock != INVALID_SOCKET) {
+      if(sock != INVALID_SOCKET)
 #else
-            if(sock > -1) {
+      if(sock > -1)
 #endif
-              int index = 0;
-              char value;
-              bool end_line = false;
-              do {
-                value = IPSocket::ReadByte(sock, status);
-                if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
-                  buffer[index++] = value;
-                }
-                else {
-                  end_line = true;
-                }
-              }
-              while(!end_line);
-              buffer[index] = '\0';
-	  
-              // assume LF
-              if(value == '\r') {
-                IPSocket::ReadByte(sock, status);
-              }
-	  
-              // copy content
-              const wstring in = BytesToUnicode(buffer);	      
-              wchar_t* out = (wchar_t*)(array + 3);
-              const long max = array[2];
-              wcsncpy(out, in.c_str(), max);
-            }
+      {
+        int index = 0;
+        char value;
+        bool end_line = false;
+        do {
+          value = IPSocket::ReadByte(sock, status);
+          if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
+            buffer[index++] = value;
+          }
+          else {
+            end_line = true;
           }
         }
-        break;
-      
-        // ---------------- secure ip socket i/o ----------------
-        case SOCK_TCP_SSL_CONNECT: {
-          const long port = PopInt(op_stack, stack_pos);
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            array = (long*)array[0];
-            const wstring waddr((wchar_t*)(array + 3));
-            const string addr(waddr.begin(), waddr.end());
-	
-            SSL_CTX* ctx; BIO* bio;
-            instance[2] = IPSecureSocket::Open(addr.c_str(), port, ctx, bio);
-            instance[0] = (long)ctx;
-            instance[1] = (long)bio;
-#ifdef _DEBUG
-            wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-                  << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"(" 
-                  << (long)ctx << L"|"  << (long)bio << L") #" << endl;
-#endif
-          }
+        while(!end_line);
+        buffer[index] = '\0';
+        
+        // assume LF
+        if(value == '\r') {
+          IPSocket::ReadByte(sock, status);
         }
-          break;  
+        
+        // copy content
+        const wstring in = BytesToUnicode(buffer);	      
+        wchar_t* out = (wchar_t*)(array + 3);
+        const long max = array[2];
+        wcsncpy(out, in.c_str(), max);
+      }
+    }
+  }
+    break;
+    
+    // ---------------- secure ip socket i/o ----------------
+  case SOCK_TCP_SSL_CONNECT: {
+    const long port = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      array = (long*)array[0];
+      const wstring waddr((wchar_t*)(array + 3));
+      const string addr(waddr.begin(), waddr.end());
       
-        case SOCK_TCP_SSL_CLOSE: {
-          long* instance = (long*)PopInt(op_stack, stack_pos);    
-          SSL_CTX* ctx = (SSL_CTX*)instance[0];
-          BIO* bio = (BIO*)instance[1];
-      
+      SSL_CTX* ctx; BIO* bio;
+      instance[2] = IPSecureSocket::Open(addr.c_str(), port, ctx, bio);
+      instance[0] = (long)ctx;
+      instance[1] = (long)bio;
 #ifdef _DEBUG
-          wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"(" 
-                << (long)ctx << L"|"  << (long)bio << L") #" << endl;
+      wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
+            << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"(" 
+            << (long)ctx << L"|"  << (long)bio << L") #" << endl;
+#endif
+    }
+  }
+    break;  
+    
+  case SOCK_TCP_SSL_CLOSE: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);    
+    SSL_CTX* ctx = (SSL_CTX*)instance[0];
+    BIO* bio = (BIO*)instance[1];
+    
+#ifdef _DEBUG
+    wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"(" 
+          << (long)ctx << L"|"  << (long)bio << L") #" << endl;
 #endif      
-          IPSecureSocket::Close(ctx, bio);    
-          instance[0] = instance[1] = instance[2] = 0;      
-        }
-          break;
-      
-        case SOCK_TCP_SSL_OUT_STRING: {
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            SSL_CTX* ctx = (SSL_CTX*)instance[0];
-            BIO* bio = (BIO*)instance[1];      
-            const wstring data((wchar_t*)(array + 3));
-            if(instance[2]) {
-              const string out = UnicodeToBytes(data);
-              IPSecureSocket::WriteBytes(out.c_str(), out.size(), ctx, bio);
-            }
+    IPSecureSocket::Close(ctx, bio);    
+    instance[0] = instance[1] = instance[2] = 0;      
+  }
+    break;
+    
+  case SOCK_TCP_SSL_OUT_STRING: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];      
+      const wstring data((wchar_t*)(array + 3));
+      if(instance[2]) {
+        const string out = UnicodeToBytes(data);
+        IPSecureSocket::WriteBytes(out.c_str(), out.size(), ctx, bio);
+      }
+    }
+  }
+    break;
+    
+  case SOCK_TCP_SSL_IN_STRING: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      char buffer[SMALL_BUFFER_MAX + 1];
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1]; 
+      int status;
+      if(instance[2]) {
+        int index = 0;
+        char value;
+        bool end_line = false;
+        do {
+          value = IPSecureSocket::ReadByte(ctx, bio, status);
+          if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
+            buffer[index++] = value;
+          }
+          else {
+            end_line = true;
           }
         }
-          break;
-      
-        case SOCK_TCP_SSL_IN_STRING: {
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            char buffer[SMALL_BUFFER_MAX + 1];
-            SSL_CTX* ctx = (SSL_CTX*)instance[0];
-            BIO* bio = (BIO*)instance[1]; 
-            int status;
-            if(instance[2]) {
-              int index = 0;
-              char value;
-              bool end_line = false;
-              do {
-                value = IPSecureSocket::ReadByte(ctx, bio, status);
-                if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
-                  buffer[index++] = value;
-                }
-                else {
-                  end_line = true;
-                }
-              }
-              while(!end_line);
-              buffer[index] = '\0';
+        while(!end_line);
+        buffer[index] = '\0';
 	  
-              // assume LF
-              if(value == '\r') {
-                IPSecureSocket::ReadByte(ctx, bio, status);
-              }
-	  
-              // copy content
-              const wstring in = BytesToUnicode(buffer);	      
-              wchar_t* out = (wchar_t*)(array + 3);
-              const long max = array[2];
-              wcsncpy(out, in.c_str(), max);
-            }
-          }
+        // assume LF
+        if(value == '\r') {
+          IPSecureSocket::ReadByte(ctx, bio, status);
         }
+	  
+        // copy content
+        const wstring in = BytesToUnicode(buffer);	      
+        wchar_t* out = (wchar_t*)(array + 3);
+        const long max = array[2];
+        wcsncpy(out, in.c_str(), max);
+      }
+    }
+  }
           break;
 	  
           // ---------------- serialization ----------------
-        case SERL_CHAR:
+  case SERL_CHAR:
 #ifdef _DEBUG
-          wcout << L"# serializing char #" << endl;
+    wcout << L"# serializing char #" << endl;
 #endif
-          SerializeInt(CHAR_PARM, inst, op_stack, stack_pos);
-          SerializeChar((wchar_t)frame->mem[1], inst, op_stack, stack_pos);
-          break;
+    SerializeInt(CHAR_PARM, inst, op_stack, stack_pos);
+    SerializeChar((wchar_t)frame->mem[1], inst, op_stack, stack_pos);
+    break;
 	  
-        case SERL_INT:
+  case SERL_INT:
 #ifdef _DEBUG
-          wcout << L"# serializing int #" << endl;
+    wcout << L"# serializing int #" << endl;
 #endif
-          SerializeInt(INT_PARM, inst, op_stack, stack_pos);
-          SerializeInt(frame->mem[1], inst, op_stack, stack_pos);
+    SerializeInt(INT_PARM, inst, op_stack, stack_pos);
+    SerializeInt(frame->mem[1], inst, op_stack, stack_pos);
+    break;
+    
+  case SERL_FLOAT: {
+#ifdef _DEBUG
+    wcout << L"# serializing float #" << endl;
+#endif
+    SerializeInt(FLOAT_PARM, inst, op_stack, stack_pos);
+    FLOAT_VALUE value;
+    memcpy(&value, &(frame->mem[1]), sizeof(value));
+    SerializeFloat(value, inst, op_stack, stack_pos);
+  }
+    break;
+
+  case SERL_OBJ_INST:
+    SerializeObject(inst, frame, op_stack, stack_pos);
+    break;
+
+  case SERL_BYTE_ARY:
+    SerializeInt(BYTE_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeArray((long*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
+    break;
+
+  case SERL_CHAR_ARY:
+    SerializeInt(CHAR_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeArray((long*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
+    break;
+	  
+  case SERL_INT_ARY:
+    SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
+    break;
+
+  case SERL_FLOAT_ARY:
+    SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeArray((long*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
+    break;
+
+  case DESERL_CHAR:
+#ifdef _DEBUG
+    wcout << L"# deserializing char #" << endl;
+#endif
+    if(CHAR_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt(DeserializeChar(inst), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+	  
+  case DESERL_INT:
+#ifdef _DEBUG
+    wcout << L"# deserializing int #" << endl;
+#endif
+    if(INT_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt(DeserializeInt(inst), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+
+  case DESERL_FLOAT:
+#ifdef _DEBUG
+    wcout << L"# deserializing float #" << endl;
+#endif
+    if(FLOAT_PARM == (ParamType)DeserializeInt(inst)) {
+      PushFloat(DeserializeFloat(inst), op_stack, stack_pos);
+    }
+    else {
+      PushFloat(0.0, op_stack, stack_pos);
+    }
+    break;
+
+  case DESERL_OBJ_INST:
+    DeserializeObject(inst, op_stack, stack_pos);
+    break;
+
+  case DESERL_BYTE_ARY:
+#ifdef _DEBUG
+    wcout << L"# deserializing byte array #" << endl;
+#endif
+    if(BYTE_ARY_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt((long)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+	  
+  case DESERL_CHAR_ARY:
+#ifdef _DEBUG
+    wcout << L"# deserializing char array #" << endl;
+#endif
+    if(CHAR_ARY_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt((long)DeserializeArray(CHAR_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+	  
+  case DESERL_INT_ARY:
+#ifdef _DEBUG
+    wcout << L"# deserializing int array #" << endl;
+#endif
+    if(INT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt((long)DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+
+  case DESERL_FLOAT_ARY:
+#ifdef _DEBUG
+    wcout << L"# deserializing float array #" << endl;
+#endif
+    if(FLOAT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt((long)DeserializeArray(FLOAT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+
+    // ---------------- file i/o ----------------
+  case FILE_OPEN_READ: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      array = (long*)array[0];
+      const wstring name((wchar_t*)(array + 3));
+      const string filename(name.begin(), name.end());
+      FILE* file = File::FileOpen(filename.c_str(), "rb");
+#ifdef _DEBUG
+      wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
+            << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
+            << L") #" << endl;
+#endif
+      instance[0] = (long)file;
+    }
+  }
+    break;
+      
+  case FILE_OPEN_WRITE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      array = (long*)array[0];
+      const wstring name((wchar_t*)(array + 3));
+      const string filename(name.begin(), name.end());
+      FILE* file = File::FileOpen(filename.c_str(), "wb");
+#ifdef _DEBUG
+      wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
+            << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
+            << L") #" << endl;
+#endif
+      instance[0] = (long)file;
+    }
+  }
+    break;
+      
+  case FILE_OPEN_READ_WRITE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      array = (long*)array[0];
+      const wstring name((wchar_t*)(array + 3));
+      const string filename(name.begin(), name.end());
+      FILE* file = File::FileOpen(filename.c_str(), "w+b");
+#ifdef _DEBUG
+      wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
+            << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
+            << L") #" << endl;
+#endif
+      instance[0] = (long)file;
+    }
+  }
+    break;
+      
+  case FILE_CLOSE: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+#ifdef _DEBUG
+      wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
+#endif
+      instance[0] = 0;
+      fclose(file);
+    }
+  }
+    break;
+      
+  case FILE_FLUSH: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+#ifdef _DEBUG
+      wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
+#endif
+      instance[0] = 0;
+      fflush(file);
+    }
+  }
+    break;
+	
+  case FILE_IN_STRING: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {	    
+      FILE* file = (FILE*)instance[0];
+      char buffer[SMALL_BUFFER_MAX + 1];
+      if(file && fgets(buffer, SMALL_BUFFER_MAX, file)) {
+        long end_index = strlen(buffer) - 1;
+        if(end_index > -1) {
+          if(buffer[end_index] == '\n') {
+            buffer[end_index] = '\0';
+          }
+        }
+        else {
+          buffer[0] = '\0';
+        }
+        // copy
+        const wstring in = BytesToUnicode(buffer);	      
+        wchar_t* out = (wchar_t*)(array + 3);
+        const long max = array[2]; 
+        wcsncpy(out, in.c_str(), max);
+      }
+    }
+  }
+          break;
+      
+  case FILE_OUT_STRING: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);    
+    if(array && instance) {
+      FILE* file = (FILE*)instance[0];
+      const wchar_t* data = (wchar_t*)(array + 3);      
+      if(file) {
+        fputs(UnicodeToBytes(data).c_str(), file);
+      }
+    }
+  }
           break;
 	
-        case SERL_FLOAT: {
-#ifdef _DEBUG
-          wcout << L"# serializing float #" << endl;
-#endif
-          SerializeInt(FLOAT_PARM, inst, op_stack, stack_pos);
-          FLOAT_VALUE value;
-          memcpy(&value, &(frame->mem[1]), sizeof(value));
-          SerializeFloat(value, inst, op_stack, stack_pos);
-        }
-          break;
-
-        case SERL_OBJ_INST:
-          SerializeObject(inst, frame, op_stack, stack_pos);
-          break;
-
-        case SERL_BYTE_ARY:
-          SerializeInt(BYTE_ARY_PARM, inst, op_stack, stack_pos);
-          SerializeArray((long*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
-          break;
-
-        case SERL_CHAR_ARY:
-          SerializeInt(CHAR_ARY_PARM, inst, op_stack, stack_pos);
-          SerializeArray((long*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
-          break;
-	  
-        case SERL_INT_ARY:
-          SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
-          SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
-          break;
-
-        case SERL_FLOAT_ARY:
-          SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
-          SerializeArray((long*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
-          break;
-
-        case DESERL_CHAR:
-#ifdef _DEBUG
-          wcout << L"# deserializing char #" << endl;
-#endif
-          if(CHAR_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt(DeserializeChar(inst), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-	  
-        case DESERL_INT:
-#ifdef _DEBUG
-          wcout << L"# deserializing int #" << endl;
-#endif
-          if(INT_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt(DeserializeInt(inst), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-
-        case DESERL_FLOAT:
-#ifdef _DEBUG
-          wcout << L"# deserializing float #" << endl;
-#endif
-          if(FLOAT_PARM == (ParamType)DeserializeInt(inst)) {
-            PushFloat(DeserializeFloat(inst), op_stack, stack_pos);
-          }
-          else {
-            PushFloat(0.0, op_stack, stack_pos);
-          }
-          break;
-
-        case DESERL_OBJ_INST:
-          DeserializeObject(inst, op_stack, stack_pos);
-          break;
-
-        case DESERL_BYTE_ARY:
-#ifdef _DEBUG
-          wcout << L"# deserializing byte array #" << endl;
-#endif
-          if(BYTE_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt((long)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-	  
-        case DESERL_CHAR_ARY:
-#ifdef _DEBUG
-          wcout << L"# deserializing char array #" << endl;
-#endif
-          if(CHAR_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt((long)DeserializeArray(CHAR_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-	  
-        case DESERL_INT_ARY:
-#ifdef _DEBUG
-          wcout << L"# deserializing int array #" << endl;
-#endif
-          if(INT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt((long)DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-
-        case DESERL_FLOAT_ARY:
-#ifdef _DEBUG
-          wcout << L"# deserializing float array #" << endl;
-#endif
-          if(FLOAT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-            PushInt((long)DeserializeArray(FLOAT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
-          }
-          else {
-            PushInt(0, op_stack, stack_pos);
-          }
-          break;
-
-          // ---------------- file i/o ----------------
-        case FILE_OPEN_READ: {
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            array = (long*)array[0];
-            const wstring name((wchar_t*)(array + 3));
-            const string filename(name.begin(), name.end());
-            FILE* file = File::FileOpen(filename.c_str(), "rb");
-#ifdef _DEBUG
-            wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
-                  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
-                  << L") #" << endl;
-#endif
-            instance[0] = (long)file;
-          }
-        }
-          break;
-      
-        case FILE_OPEN_WRITE: {
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            array = (long*)array[0];
-            const wstring name((wchar_t*)(array + 3));
-            const string filename(name.begin(), name.end());
-            FILE* file = File::FileOpen(filename.c_str(), "wb");
-#ifdef _DEBUG
-            wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
-                  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
-                  << L") #" << endl;
-#endif
-            instance[0] = (long)file;
-          }
-        }
-          break;
-      
-        case FILE_OPEN_READ_WRITE: {
-          long* array = (long*)PopInt(op_stack, stack_pos);
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {
-            array = (long*)array[0];
-            const wstring name((wchar_t*)(array + 3));
-            const string filename(name.begin(), name.end());
-            FILE* file = File::FileOpen(filename.c_str(), "w+b");
-#ifdef _DEBUG
-            wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
-                  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
-                  << L") #" << endl;
-#endif
-            instance[0] = (long)file;
-          }
-        }
-          break;
-      
-        case FILE_CLOSE: {
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(instance && (FILE*)instance[0]) {
-            FILE* file = (FILE*)instance[0];
-#ifdef _DEBUG
-            wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
-#endif
-            instance[0] = 0;
-            fclose(file);
-          }
-        }
-          break;
-      
-        case FILE_FLUSH: {
-          long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(instance && (FILE*)instance[0]) {
-            FILE* file = (FILE*)instance[0];
-#ifdef _DEBUG
-            wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
-#endif
-            instance[0] = 0;
-            fflush(file);
-          }
-        }
-          break;
-	
-        case FILE_IN_STRING: {
-          const long* array = (long*)PopInt(op_stack, stack_pos);
-          const long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(array && instance) {	    
-            FILE* file = (FILE*)instance[0];
-            char buffer[SMALL_BUFFER_MAX + 1];
-            if(file && fgets(buffer, SMALL_BUFFER_MAX, file)) {
-              long end_index = strlen(buffer) - 1;
-              if(end_index > -1) {
-                if(buffer[end_index] == '\n') {
-                  buffer[end_index] = '\0';
-                }
-              }
-              else {
-                buffer[0] = '\0';
-              }
-              // copy
-              const wstring in = BytesToUnicode(buffer);	      
-              wchar_t* out = (wchar_t*)(array + 3);
-              const long max = array[2]; 
-              wcsncpy(out, in.c_str(), max);
-            }
-          }
-        }
-          break;
-      
-        case FILE_OUT_STRING: {
-          const long* array = (long*)PopInt(op_stack, stack_pos);
-          const long* instance = (long*)PopInt(op_stack, stack_pos);    
-          if(array && instance) {
-            FILE* file = (FILE*)instance[0];
-            const wchar_t* data = (wchar_t*)(array + 3);      
-            if(file) {
-              fputs(UnicodeToBytes(data).c_str(), file);
-            }
-          }
-        }
-          break;
-	
-        case FILE_REWIND: {
-          const long* instance = (long*)PopInt(op_stack, stack_pos);
-          if(instance && (FILE*)instance[0]) {
-            FILE* file = (FILE*)instance[0];
-            rewind(file);
-          }
-        }
+  case FILE_REWIND: {
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+      rewind(file);
+    }
+  }
           break;
       
           // ---------------- socket i/o ----------------
-        case SOCK_TCP_IS_CONNECTED: {
-          long* instance = (long*)PopInt(op_stack, stack_pos);
+  case SOCK_TCP_IS_CONNECTED: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
 #ifdef _WIN32
-          if(instance && (SOCKET)instance[0] != INVALID_SOCKET) {
+    if(instance && (SOCKET)instance[0] != INVALID_SOCKET)
 #else
-            if(instance && (SOCKET)instance[0] > -1) {
+      if(instance && (SOCKET)instance[0] > -1)
 #endif
-              PushInt(1, op_stack, stack_pos);
-            } 
-            else {
-              PushInt(0, op_stack, stack_pos);
-            }
-          }
-          break;
+      {
+        PushInt(1, op_stack, stack_pos);
+      } 
+      else {
+        PushInt(0, op_stack, stack_pos);
+      }
+  }
+    break;
+    
+  case SOCK_TCP_IN_BYTE: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance) {
+      SOCKET sock = (SOCKET)instance[0];
+      int status;
+      PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
       
-          case SOCK_TCP_IN_BYTE: {
-            long* instance = (long*)PopInt(op_stack, stack_pos);
-            if(instance) {
-              SOCKET sock = (SOCKET)instance[0];
-              int status;
-              PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
-            }
-            else {
-              PushInt(0, op_stack, stack_pos);
-            }
-          }
-            break;
-      
-          case SOCK_TCP_IN_BYTE_ARY: {
-            long* array = (long*)PopInt(op_stack, stack_pos);
-            const long num = PopInt(op_stack, stack_pos);
-            const long offset = PopInt(op_stack, stack_pos);
-            long* instance = (long*)PopInt(op_stack, stack_pos);
+  case SOCK_TCP_IN_BYTE_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
       
 #ifdef _WIN32    
-            if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0])
 #else
-              if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0])
 #endif
-                SOCKET sock = (SOCKET)instance[0];
-                char* buffer = (char*)(array + 3);
-                PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
-              }
-              else {
-                PushInt(-1, op_stack, stack_pos);
-              }
-            }
-            break;
+      {
+        SOCKET sock = (SOCKET)instance[0];
+        char* buffer = (char*)(array + 3);
+        PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
+      }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+    // TODO: implement
+  case SOCK_TCP_IN_CHAR_ARY: {
+  }
+    break;
+            
+  case SOCK_TCP_OUT_BYTE: {
+    long value = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance) {
+      SOCKET sock = (SOCKET)instance[0];
+      IPSocket::WriteByte((char)value, sock);
+      PushInt(1, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
       
-            case SOCK_TCP_OUT_BYTE: {
-              long value = PopInt(op_stack, stack_pos);
-              long* instance = (long*)PopInt(op_stack, stack_pos);
-              if(instance) {
-                SOCKET sock = (SOCKET)instance[0];
-                IPSocket::WriteByte((char)value, sock);
-                PushInt(1, op_stack, stack_pos);
-              }
-              else {
-                PushInt(0, op_stack, stack_pos);
-              }
-            }
-              break;
-      
-            case SOCK_TCP_OUT_BYTE_ARY: {
-              long* array = (long*)PopInt(op_stack, stack_pos);
-              const long num = PopInt(op_stack, stack_pos);
-              const long offset = PopInt(op_stack, stack_pos);
-              long* instance = (long*)PopInt(op_stack, stack_pos);
+  case SOCK_TCP_OUT_BYTE_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
       
 #ifdef _WIN32
-              if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0])
 #else
-                if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0]) {
+    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0])
 #endif
-                  SOCKET sock = (SOCKET)instance[0];
-                  char* buffer = (char*)(array + 3);
-                  PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              } 
-              break;
-      
-              // ---------------- secure socket i/o ----------------
-              case SOCK_TCP_SSL_IN_BYTE: {
-                long* instance = (long*)PopInt(op_stack, stack_pos);
-                if(instance) {
-                  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-                  BIO* bio = (BIO*)instance[1];      
-                  int status;
-                  PushInt(IPSecureSocket::ReadByte(ctx, bio, status), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-	      
-              case SOCK_TCP_SSL_IN_BYTE_ARY: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                const long num = PopInt(op_stack, stack_pos);
-                const long offset = PopInt(op_stack, stack_pos);
-                long* instance = (long*)PopInt(op_stack, stack_pos);
-      
-                if(array && instance && instance[2] && offset + num <= array[2]) {
-                  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-                  BIO* bio = (BIO*)instance[1];
-                  char* buffer = (char*)(array + 3);
-                  PushInt(IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case SOCK_TCP_SSL_OUT_BYTE: {
-                long value = PopInt(op_stack, stack_pos);
-                long* instance = (long*)PopInt(op_stack, stack_pos);
-                if(instance) {
-                  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-                  BIO* bio = (BIO*)instance[1];
-                  IPSecureSocket::WriteByte((char)value, ctx, bio);
-                  PushInt(1, op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case SOCK_TCP_SSL_OUT_BYTE_ARY: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                const long num = PopInt(op_stack, stack_pos);
-                const long offset = PopInt(op_stack, stack_pos);
-                long* instance = (long*)PopInt(op_stack, stack_pos);
-      
-                if(array && instance && instance[2] && offset + num <= array[2]) {
-                  SSL_CTX* ctx = (SSL_CTX*)instance[0];
-                  BIO* bio = (BIO*)instance[1];
-                  char* buffer = (char*)(array + 3);
-                  PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              } 
-                break;
+    {
+      SOCKET sock = (SOCKET)instance[0];
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  } 
+    break;
+    
+    // TODO: implement
+  case SOCK_TCP_OUT_CHAR_ARY: {
+  }
+    break;
+    
+    // ---------------- secure socket i/o ----------------
+  case SOCK_TCP_SSL_IN_BYTE: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];      
+      int status;
+      PushInt(IPSecureSocket::ReadByte(ctx, bio, status), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+  case SOCK_TCP_SSL_IN_BYTE_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(array && instance && instance[2] && offset + num <= array[2]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSecureSocket::ReadBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+    // TODO: implement
+  case SOCK_TCP_SSL_IN_CHAR_ARY: {
+  }
+    break;
+            
+  case SOCK_TCP_SSL_OUT_BYTE: {
+    long value = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      IPSecureSocket::WriteByte((char)value, ctx, bio);
+      PushInt(1, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+  case SOCK_TCP_SSL_OUT_BYTE_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(array && instance && instance[2] && offset + num <= array[2]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, ctx, bio), op_stack, stack_pos);
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  } 
+    break;
+    
+    // TODO: implement
+  case SOCK_TCP_SSL_OUT_CHAR_ARY: {
+  }
+    break;
+    
+    // -------------- file i/o -----------------
+  case FILE_IN_BYTE: {
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if((FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+      if(fgetc(file) == EOF) {
+        PushInt(0, op_stack, stack_pos);
+      } 
+      else {
+        PushInt(1, op_stack, stack_pos);
+      }
+    } 
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+  case FILE_IN_CHAR_ARY: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[2]) {
+      FILE* file = (FILE*)instance[0];
+      wchar_t* out = (wchar_t*)(array + 3);
+              
+      // read from file
+      char* byte_buffer = new char[num + 1];
+      const size_t max = fread(byte_buffer + offset, 1, num, file);
+      byte_buffer[max] = '\0';
+      const wstring in(BytesToUnicode(byte_buffer));
+              
+      // copy
+      wcsncpy(out, in.c_str(), array[2]);	
+              
+      // clean up
+      delete[] byte_buffer;
+      byte_buffer = NULL;
 
-                // -------------- file i/o -----------------
-              case FILE_IN_BYTE: {
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
-                if((FILE*)instance[0]) {
-                  FILE* file = (FILE*)instance[0];
-                  if(fgetc(file) == EOF) {
-                    PushInt(0, op_stack, stack_pos);
-                  } 
-                  else {
-                    PushInt(1, op_stack, stack_pos);
-                  }
-                } 
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_IN_CHAR_ARY: {
-                const long* array = (long*)PopInt(op_stack, stack_pos);
-                const long num = PopInt(op_stack, stack_pos);
-                const long offset = PopInt(op_stack, stack_pos);
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
-      
-                if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[2]) {
-                  FILE* file = (FILE*)instance[0];
-                  wchar_t* out = (wchar_t*)(array + 3);
+      PushInt(max, op_stack, stack_pos);	
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+  case FILE_IN_BYTE_ARY: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[2]) {
+      FILE* file = (FILE*)instance[0];
+      char* buffer = (char*)(array + 3);
+      PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);     
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+  case FILE_OUT_BYTE: {
+    const long value = PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+      if(fputc(value, file) != value) {
+        PushInt(0, op_stack, stack_pos);
+      } 
+      else {
+        PushInt(1, op_stack, stack_pos);
+      }
+              
+    } 
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+            
+  case FILE_OUT_BYTE_ARY: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+            
+    if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num <= array[2]) {
+      FILE* file = (FILE*)instance[0];
+      char* buffer = (char*)(array + 3);
+      PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
 
-                  // read from file
-                  char* byte_buffer = new char[num + 1];
-                  const size_t max = fread(byte_buffer + offset, 1, num, file);
-                  byte_buffer[max] = '\0';
-                  const wstring in(BytesToUnicode(byte_buffer));
+    // TODO: implement
+  case FILE_OUT_CHAR_ARY: {
+  }
+    break;
       
-                  // copy
-                  wcsncpy(out, in.c_str(), array[2]);	
-
-                  // clean up
-                  delete[] byte_buffer;
-                  byte_buffer = NULL;
-
-                  PushInt(max, op_stack, stack_pos);	
-                } 
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              }
-                break;
+  case FILE_SEEK: {
+    long pos = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
       
-              case FILE_IN_BYTE_ARY: {
-                const long* array = (long*)PopInt(op_stack, stack_pos);
-                const long num = PopInt(op_stack, stack_pos);
-                const long offset = PopInt(op_stack, stack_pos);
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+      if(fseek(file, pos, SEEK_CUR) != 0) {
+        PushInt(0, op_stack, stack_pos);
+      } 
+      else {
+        PushInt(1, op_stack, stack_pos);
+      }
+    } 
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
       
-                if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[2]) {
-                  FILE* file = (FILE*)instance[0];
-                  char* buffer = (char*)(array + 3);
-                  PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);     
-                } 
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              }
-                break;
+  case FILE_EOF: {
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      FILE* file = (FILE*)instance[0];
+      PushInt(feof(file) != 0, op_stack, stack_pos);
+    } 
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+    break;
       
-              case FILE_OUT_BYTE: {
-                const long value = PopInt(op_stack, stack_pos);
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
+  case FILE_IS_OPEN: {
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(instance && (FILE*)instance[0]) {
+      PushInt(1, op_stack, stack_pos);
+    } 
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
       
-                if(instance && (FILE*)instance[0]) {
-                  FILE* file = (FILE*)instance[0];
-                  if(fputc(value, file) != value) {
-                    PushInt(0, op_stack, stack_pos);
-                  } 
-                  else {
-                    PushInt(1, op_stack, stack_pos);
-                  }
+  case FILE_EXISTS: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      PushInt(File::FileExists(name.c_str()), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_SIZE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      PushInt(File::FileSize(name.c_str()), op_stack, stack_pos);
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_DELETE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      if(remove(name.c_str()) != 0) {
+        PushInt(0, op_stack, stack_pos);
+      } 
+      else {
+        PushInt(1, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_RENAME: {
+    const long* to = (long*)PopInt(op_stack, stack_pos);
+    const long* from = (long*)PopInt(op_stack, stack_pos);
+      
+    if(!to || !from) {
+      PushInt(0, op_stack, stack_pos);
+      return true;
+    }
+      
+    to = (long*)to[0];
+    const wstring wto_name((wchar_t*)(to + 3));
+      
+    from = (long*)from[0];
+    const wstring wfrom_name((wchar_t*)(from + 3));
+      
+    const string to_name(wto_name.begin(), wto_name.end());
+    const string from_name(wfrom_name.begin(), wfrom_name.end());
+    if(rename(from_name.c_str(), to_name.c_str()) != 0) {
+      PushInt(0, op_stack, stack_pos);
+    } 
+    else {
+      PushInt(1, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_CREATE_TIME: {
+    const long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());	
+      time_t raw_time = File::FileCreatedTime(name.c_str());      
+      if(raw_time > 0) {
+        struct tm* curr_time;
+        if(is_gmt) {
+          curr_time = gmtime(&raw_time);
+        }
+        else {
+          curr_time = localtime(&raw_time);
+        }
+	  
+        frame->mem[3] = curr_time->tm_mday;          // day
+        frame->mem[4] = curr_time->tm_mon + 1;       // month
+        frame->mem[5] = curr_time->tm_year + 1900;   // year
+        frame->mem[6] = curr_time->tm_hour;          // hours
+        frame->mem[7] = curr_time->tm_min;           // mins
+        frame->mem[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+        PushInt(0, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_MODIFIED_TIME: {
+    const long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());	
+      time_t raw_time = File::FileModifiedTime(name.c_str());      
+      if(raw_time > 0) {
+        struct tm* curr_time;
+        if(is_gmt) {
+          curr_time = gmtime(&raw_time);
+        }
+        else {
+          curr_time = localtime(&raw_time);
+        }
+	  
+        frame->mem[3] = curr_time->tm_mday;          // day
+        frame->mem[4] = curr_time->tm_mon + 1;       // month
+        frame->mem[5] = curr_time->tm_year + 1900;   // year
+        frame->mem[6] = curr_time->tm_hour;          // hours
+        frame->mem[7] = curr_time->tm_min;           // mins
+        frame->mem[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+        PushInt(0, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case FILE_ACCESSED_TIME: {
+    const long is_gmt = PopInt(op_stack, stack_pos);
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());	
+      time_t raw_time = File::FileAccessedTime(name.c_str());      
+      if(raw_time > 0) {
+        struct tm* curr_time;
+        if(is_gmt) {
+          curr_time = gmtime(&raw_time);
+        }
+        else {
+          curr_time = localtime(&raw_time);
+        }
+	  
+        frame->mem[3] = curr_time->tm_mday;          // day
+        frame->mem[4] = curr_time->tm_mon + 1;       // month
+        frame->mem[5] = curr_time->tm_year + 1900;   // year
+        frame->mem[6] = curr_time->tm_hour;          // hours
+        frame->mem[7] = curr_time->tm_min;           // mins
+        frame->mem[8] = curr_time->tm_sec;           // secs
+      }
+      else {
+        PushInt(0, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+    //----------- directory functions -----------
+  case DIR_CREATE: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case DIR_EXISTS: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      PushInt(File::IsDir(name.c_str()), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+      
+  case DIR_LIST: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    array = (long*)array[0];
+    if(array) {
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      vector<string> files = File::ListDir(name.c_str());
+	  
+      // create 'System.String' object array
+      const long str_obj_array_size = files.size();
+      const long str_obj_array_dim = 1;
+      long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
+                                                                str_obj_array_dim + 2,
+                                                                INT_TYPE, op_stack,
+                                                                *stack_pos, false);
+      str_obj_array[0] = str_obj_array_size;
+      str_obj_array[1] = str_obj_array_dim;
+      str_obj_array[2] = str_obj_array_size;
+      long* str_obj_array_ptr = str_obj_array + 3;
 	
-                } 
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_OUT_BYTE_ARY: {
-                const long* array = (long*)PopInt(op_stack, stack_pos);
-                const long num = PopInt(op_stack, stack_pos);
-                const long offset = PopInt(op_stack, stack_pos);
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
-      
-                if(array && instance && (FILE*)instance[0] && offset >=0 && offset + num <= array[2]) {
-                  FILE* file = (FILE*)instance[0];
-                  char* buffer = (char*)(array + 3);
-                  PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_SEEK: {
-                long pos = PopInt(op_stack, stack_pos);
-                long* instance = (long*)PopInt(op_stack, stack_pos);
-      
-                if(instance && (FILE*)instance[0]) {
-                  FILE* file = (FILE*)instance[0];
-                  if(fseek(file, pos, SEEK_CUR) != 0) {
-                    PushInt(0, op_stack, stack_pos);
-                  } 
-                  else {
-                    PushInt(1, op_stack, stack_pos);
-                  }
-                } 
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_EOF: {
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
-                if(instance && (FILE*)instance[0]) {
-                  FILE* file = (FILE*)instance[0];
-                  PushInt(feof(file) != 0, op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(1, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_IS_OPEN: {
-                const long* instance = (long*)PopInt(op_stack, stack_pos);
-                if(instance && (FILE*)instance[0]) {
-                  PushInt(1, op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_EXISTS: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  PushInt(File::FileExists(name.c_str()), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_SIZE: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  PushInt(File::FileSize(name.c_str()), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(-1, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_DELETE: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  if(remove(name.c_str()) != 0) {
-                    PushInt(0, op_stack, stack_pos);
-                  } 
-                  else {
-                    PushInt(1, op_stack, stack_pos);
-                  }
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_RENAME: {
-                const long* to = (long*)PopInt(op_stack, stack_pos);
-                const long* from = (long*)PopInt(op_stack, stack_pos);
-      
-                if(!to || !from) {
-                  PushInt(0, op_stack, stack_pos);
-                  return true;
-                }
-      
-                to = (long*)to[0];
-                const wstring wto_name((wchar_t*)(to + 3));
-      
-                from = (long*)from[0];
-                const wstring wfrom_name((wchar_t*)(from + 3));
-      
-                const string to_name(wto_name.begin(), wto_name.end());
-                const string from_name(wfrom_name.begin(), wfrom_name.end());
-                if(rename(from_name.c_str(), to_name.c_str()) != 0) {
-                  PushInt(0, op_stack, stack_pos);
-                } 
-                else {
-                  PushInt(1, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_CREATE_TIME: {
-                const long is_gmt = PopInt(op_stack, stack_pos);
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());	
-                  time_t raw_time = File::FileCreatedTime(name.c_str());      
-                  if(raw_time > 0) {
-                    struct tm* curr_time;
-                    if(is_gmt) {
-                      curr_time = gmtime(&raw_time);
-                    }
-                    else {
-                      curr_time = localtime(&raw_time);
-                    }
-	  
-                    frame->mem[3] = curr_time->tm_mday;          // day
-                    frame->mem[4] = curr_time->tm_mon + 1;       // month
-                    frame->mem[5] = curr_time->tm_year + 1900;   // year
-                    frame->mem[6] = curr_time->tm_hour;          // hours
-                    frame->mem[7] = curr_time->tm_min;           // mins
-                    frame->mem[8] = curr_time->tm_sec;           // secs
-                  }
-                  else {
-                    PushInt(0, op_stack, stack_pos);
-                  }
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_MODIFIED_TIME: {
-                const long is_gmt = PopInt(op_stack, stack_pos);
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());	
-                  time_t raw_time = File::FileModifiedTime(name.c_str());      
-                  if(raw_time > 0) {
-                    struct tm* curr_time;
-                    if(is_gmt) {
-                      curr_time = gmtime(&raw_time);
-                    }
-                    else {
-                      curr_time = localtime(&raw_time);
-                    }
-	  
-                    frame->mem[3] = curr_time->tm_mday;          // day
-                    frame->mem[4] = curr_time->tm_mon + 1;       // month
-                    frame->mem[5] = curr_time->tm_year + 1900;   // year
-                    frame->mem[6] = curr_time->tm_hour;          // hours
-                    frame->mem[7] = curr_time->tm_min;           // mins
-                    frame->mem[8] = curr_time->tm_sec;           // secs
-                  }
-                  else {
-                    PushInt(0, op_stack, stack_pos);
-                  }
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case FILE_ACCESSED_TIME: {
-                const long is_gmt = PopInt(op_stack, stack_pos);
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());	
-                  time_t raw_time = File::FileAccessedTime(name.c_str());      
-                  if(raw_time > 0) {
-                    struct tm* curr_time;
-                    if(is_gmt) {
-                      curr_time = gmtime(&raw_time);
-                    }
-                    else {
-                      curr_time = localtime(&raw_time);
-                    }
-	  
-                    frame->mem[3] = curr_time->tm_mday;          // day
-                    frame->mem[4] = curr_time->tm_mon + 1;       // month
-                    frame->mem[5] = curr_time->tm_year + 1900;   // year
-                    frame->mem[6] = curr_time->tm_hour;          // hours
-                    frame->mem[7] = curr_time->tm_min;           // mins
-                    frame->mem[8] = curr_time->tm_sec;           // secs
-                  }
-                  else {
-                    PushInt(0, op_stack, stack_pos);
-                  }
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-                //----------- directory functions -----------
-              case DIR_CREATE: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case DIR_EXISTS: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                if(array) {
-                  array = (long*)array[0];
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  PushInt(File::IsDir(name.c_str()), op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
-      
-              case DIR_LIST: {
-                long* array = (long*)PopInt(op_stack, stack_pos);
-                array = (long*)array[0];
-                if(array) {
-                  const wstring wname((wchar_t*)(array + 3));
-                  const string name(wname.begin(), wname.end());
-                  vector<string> files = File::ListDir(name.c_str());
-	  
-                  // create 'System.String' object array
-                  const long str_obj_array_size = files.size();
-                  const long str_obj_array_dim = 1;
-                  long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
-                                                                            str_obj_array_dim + 2,
-                                                                            INT_TYPE, op_stack,
-                                                                            *stack_pos, false);
-                  str_obj_array[0] = str_obj_array_size;
-                  str_obj_array[1] = str_obj_array_dim;
-                  str_obj_array[2] = str_obj_array_size;
-                  long* str_obj_array_ptr = str_obj_array + 3;
+      // create and assign 'System.String' instances to array
+      for(size_t i = 0; i < files.size(); ++i) {
+        const wstring wfile(files[i].begin(), files[i].end());
+        str_obj_array_ptr[i] = (long)CreateStringObject(wfile, program, op_stack, stack_pos);
+      }
 	
-                  // create and assign 'System.String' instances to array
-                  for(size_t i = 0; i < files.size(); ++i) {
-                    const wstring wfile(files[i].begin(), files[i].end());
-                    str_obj_array_ptr[i] = (long)CreateStringObject(wfile, program, op_stack, stack_pos);
-                  }
-	
-                  PushInt((long)str_obj_array, op_stack, stack_pos);
-                }
-                else {
-                  PushInt(0, op_stack, stack_pos);
-                }
-              }
-                break;
+      PushInt((long)str_obj_array, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
   
 #ifdef _DEBUG    
-              default:
-                wcerr << L">>> internal error: Unhandled TRAP <<<" << endl;
-                exit(1);
+  default:
+    wcerr << L">>> internal error: Unhandled TRAP <<<" << endl;
+    exit(1);
 #endif
-            }
-      
-              return true;
-          }
+  }
+  
+  return true;
+}
 
 #endif
