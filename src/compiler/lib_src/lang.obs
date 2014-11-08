@@ -3081,7 +3081,7 @@ bundle System.IO {
 		Reads a string until a newline or character return is detected 
 		@return character string
 		~#
-		method : public : ReadString() ~ System.String {
+		method : virtual : public : ReadString() ~ System.String;
 	}
 	
 	#~

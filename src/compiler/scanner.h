@@ -198,6 +198,7 @@ enum ScannerTokenType {
   // file-out
   FILE_OUT_BYTE,
   FILE_OUT_BYTE_ARY,
+  FILE_OUT_CHAR_ARY,
   FILE_OUT_STRING,
   // file-operations
   FILE_EXISTS,
@@ -223,10 +224,12 @@ enum ScannerTokenType {
   // socket-in
   SOCK_TCP_IN_BYTE,
   SOCK_TCP_IN_BYTE_ARY,
+  SOCK_TCP_IN_CHAR_ARY,
   SOCK_TCP_IN_STRING,
   // socket-out
   SOCK_TCP_OUT_BYTE,
   SOCK_TCP_OUT_BYTE_ARY,
+  SOCK_TCP_OUT_CHAR_ARY,
   SOCK_TCP_OUT_STRING,
   SOCK_TCP_HOST_NAME,
   // secure socket operations
@@ -240,10 +243,12 @@ enum ScannerTokenType {
   // secure socket-in
   SOCK_TCP_SSL_IN_BYTE,
   SOCK_TCP_SSL_IN_BYTE_ARY,
+  SOCK_TCP_SSL_IN_CHAR_ARY,
   SOCK_TCP_SSL_IN_STRING,
   // secure socket-out
   SOCK_TCP_SSL_OUT_BYTE,
   SOCK_TCP_SSL_OUT_BYTE_ARY,
+  SOCK_TCP_SSL_OUT_CHAR_ARY,
   SOCK_TCP_SSL_OUT_STRING,
   // serialization
   SERL_CHAR,
