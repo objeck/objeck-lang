@@ -1410,7 +1410,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::FILE_OUT_BYTE_ARY);
       NextToken();
       break;
-
+      
+    case FILE_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_OUT_CHAR_ARY);
+      NextToken();
+      break;
+      
     case FILE_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_OUT_STRING);
@@ -1531,6 +1537,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_IN_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SOCK_TCP_IN_CHAR_ARY);
+      NextToken();
+      break;
+      
     case SOCK_TCP_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SOCK_TCP_OUT_STRING);
@@ -1553,7 +1565,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SOCK_TCP_OUT_BYTE_ARY);
       NextToken();
-      break;   
+      break; 
+      
+    case SOCK_TCP_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SOCK_TCP_OUT_CHAR_ARY);
+      NextToken();
+      break;
 
     case SOCK_TCP_HOST_NAME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
@@ -1609,6 +1627,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_SSL_IN_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SOCK_TCP_SSL_IN_CHAR_ARY);
+      NextToken();
+      break;
+      
     case SOCK_TCP_SSL_OUT_STRING:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SOCK_TCP_SSL_OUT_STRING);
@@ -1632,7 +1656,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::SOCK_TCP_SSL_OUT_BYTE_ARY);
       NextToken();
       break;   
-
+      
+    case SOCK_TCP_SSL_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
+      NextToken();
+      break;   
+      
     case SERL_CHAR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SERL_CHAR);
