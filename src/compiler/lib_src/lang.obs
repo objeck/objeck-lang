@@ -1082,7 +1082,7 @@ bundle System {
 	}
 
 	#~
-	Holds and integer value
+	Holds an integer value
 	~#
 	class IntHolder implements Compare {
 		@value : Int;
@@ -1138,36 +1138,66 @@ bundle System {
 		}
 	}
 
+	#~
+	Holds an integer array
+	~#
 	class IntArrayHolder {
 		@values : Int[];
 
+		#~
+		Copy constructor 
+		@param values integer array
+		~#
 		New(values : Int[]) {
 			Parent();
 			@values := values;
 		}
 
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : Get() ~ Int[] {
 			return @values;
 		}
 	}
 
+	#~
+	Holds a float
+	~#
 	class FloatHolder implements Compare {
 		@value : Float;
 
+		#~
+		Default constructor
+		~#
 		New() {
 			Parent();
 			@value := 0.0;
 		}
 
+		#~
+		Copy constructor 
+		@param value float value
+		~#
 		New(value : Float) {
 			Parent();
 			@value := value;
 		}
 
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : Get() ~ Float {
 			return @value;
 		}
 
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return true if objects are equal, false otherwise
+		~#
 		method : public : native : Compare(rhs : System.Compare) ~ Int {
 			right : FloatHolder := rhs->As(FloatHolder);
 			if(@value = right->Get()) {
@@ -1180,45 +1210,82 @@ bundle System {
 			return 1;
 		}
 		
+		#~
+		Returns a unique hash ID for a float
+		@return hash ID
+		~#
 		method : public : HashID() ~ Int {
 			return @value * 10000.0;
 		}
 	}
 	
+	#~
+	Holds a float array
+	~#
 	class FloatArrayHolder {
 		@values : Float[];
 
+		#~
+		Copy constructor 
+		@param values float array
+		~#
 		New(values : Float[]) {
 			Parent();
 			@values := values;
 		}
 
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : Get() ~ Float[] {
 			return @values;
 		}
 	}
 
+	#~
+	Holds a byte array
+	~#
 	class ByteArrayHolder {
 		@values : Byte[];
 
+		#~
+		Copy constructor 
+		@param values byte array
+		~#
 		New(values : Byte[]) {
 			Parent();
 			@values := values;
 		}
 
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : Get() ~ Byte[] {
 			return @values;
 		}
 	}
 
+	#~
+	Holds a character array
+	~#
 	class CharArrayHolder {
 		@values : Char[];
 
+		#~
+		Copy constructor 
+		@param values character array
+		~#
 		New(values : Char[]) {
 			Parent();
 			@values := values;
 		}
 
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : Get() ~ Char[] {
 			return @values;
 		}
@@ -1252,28 +1319,40 @@ bundle System {
 		}
 	}
 	
-	#~~
-	# Compare interface
-	~~#	
+	#~
+	Used to compare two abstract values
+	~#	
 	interface Compare {
-		#~~
-		# Compares two objects.
-		# @return 1 if greater, -1 if less, otherwise 0
-		~~#
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return true if objects are equal, false otherwise
+		~#
 		method : virtual : public : Compare(rhs : System.Compare) ~ Int;
 
-		#~~
-		# Returns a unique hash ID for the given class
-		# @return hash ID
-		~~#
+		#~
+		Returns a hash ID for the given class
+		@return hash ID
+		~#
 		method : virtual : public : HashID() ~ Int;
 	}
 
+	#~
+	Provides rudimentary compare functionality 
+	~#
 	class BasicCompare implements System.Compare {
+		#~
+		Default constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return true if objects are equal, false otherwise
+		~#
 		method : public : Compare(rhs : System.Compare) ~ Int {
 			if(GetInstanceID() = rhs->GetInstanceID()) {
 				return 0;
@@ -1285,6 +1364,10 @@ bundle System {
 			return -1;
 		}
 
+		#~
+		Returns the class default hash ID
+		@return hash ID
+		~#
 		method : public : HashID() ~ Int {
 			return GetInstanceID();
 		}
@@ -2431,50 +2514,126 @@ bundle System {
 		}
 	}
 	
-	#~~
-	# Runtime system class
-	~~#	
+	#~
+	Provides access to runtime system
+	~#	
 	class Runtime {
+		#~
+		Causes the executing program to halt
+		@param code exit code
+		~#
 		function : Exit(code : Int) ~ Nil {
 			EXIT;
 		}
 		
+		#~
+		Returns an OS platform string
+		@return OS platform string
+		~#
 		function : GetPlatform() ~ String {
 			PLTFRM;
 		}
 		
+		#~
+		Fetches a runtime property 
+		@param key property key
+		@return runtime property 
+		~#
 		function : GetProperty(key : String) ~ String {
 			GET_SYS_PROP;
 		}
 		
+		#~
+		Sets a runtime property 
+		@param key property key
+		@param key property value
+		~#
 		function : SetProperty(key : String, value : String) ~ Nil {
 			SET_SYS_PROP;
 		}
 		
+		#~
+		Returns the current time
+		@return current time
+		~#
 		function : GetTime() ~ Time.Date {
 			return Time.Date->New();
 		}
 		
+		#~
+		Copies data between two byte arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of bytes to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, len : Int) ~ Bool {
 			CPY_BYTE_ARY;
 		}
 		
+		#~
+		Copies data between two character arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of characters to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, len : Int) ~ Bool {
 			CPY_CHAR_ARY;
 		}
 		
+		#~
+		Copies data between two integer arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of values to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, len : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
+		#~
+		Copies data between two Base arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of values to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Base[], dest_offset : Int, src : Base[], src_offset : Int, len : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
+		#~
+		Copies data between two Compare arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of values to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Compare[], dest_offset : Int, src : Compare[], src_offset : Int, len : Int) ~ Bool {
 			CPY_INT_ARY;
 		}
 		
+		#~
+		Copies data between two float arrays
+		@param dest destination array
+		@param dest_offset destination array copy offset
+		@param src source array
+		@param src_offset source array copy offset
+		@param len number of values to copy
+		@return true if successful, false otherwise
+		~#
 		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, len : Int) ~ Bool {
 			CPY_FLOAT_ARY;
 		}
@@ -2535,9 +2694,9 @@ bundle System.API {
 
 #------------ Time ------------
 bundle System.Time {	
-	#~~
-	# Date class
-	~~#	
+	#~
+	Provides date and time functionality 
+	~#	
 	class Date {
 		@day : Int;
 		@month : Int;
@@ -2549,11 +2708,18 @@ bundle System.Time {
 		@week_day : Int;
 		@is_gmt : Bool;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			Parent();
 			SYS_TIME;
 		}
 
+		#~
+		Constructor 
+		@param gmt true of time is in GMT, false for system time zone
+		~#
 		New(gmt : Bool) {
 			Parent();
 			if(gmt) {
@@ -2564,11 +2730,28 @@ bundle System.Time {
 			};
 		}
 		
+		#~
+		Constructor 
+		@param day day of month
+		@param month day of year
+		@param year year
+		@param gmt true of time is in GMT, false for system time zone
+		~#
 		New(day : Int, month : Int, year : Int, gmt : Bool) {
 			Parent();
 			DATE_TIME_SET_1;
 		}
 		
+		#~
+		Constructor 
+		@param day day of month
+		@param month day of year
+		@param year year
+		@hours hours
+		@mins mins
+		@secs secs
+		@param gmt true of time is in GMT, false for system time zone
+		~#
 		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
 			Parent();
 			DATE_TIME_SET_2;
@@ -2581,10 +2764,18 @@ bundle System.Time {
 		}
 ~#
 
+		#~
+		Returns the day
+		@return day
+		~#
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
 
+		#~
+		Returns name of the day
+		@return name of the day
+		~#
 		method : public : GetDayName() ~ String {
 			days_of_week := ["Sunday", "Monday", "Tuesday", "Wednesday","Thursday","Friday","Saturday"];
 			if(@week_day > -1 & @week_day < days_of_week->Size()) {
@@ -2594,10 +2785,18 @@ bundle System.Time {
 			return "";
 		}
 		
+		#~
+		Returns the month 
+		@return month
+		~#
 		method : public : GetMonth() ~ Int {
 			return @month;
 		}
 		
+		#~
+		Returns name of the month
+		@return name of the month
+		~#
 		method : public : GetMonthName() ~ String {
 			days_of_month := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 			if(@month > -1 & @month - 1 < days_of_month->Size()) {
@@ -2607,42 +2806,82 @@ bundle System.Time {
 			return "";
 		}
 
+		#~
+		Returns the year 
+		@return year
+		~#
 		method : public : GetYear() ~ Int {
 			return @year;
 		}
 		
+		#~
+		Returns the hours 
+		@return hours
+		~#
 		method : public : GetHours() ~ Int {
 			return @hours;
 		}
 		
+		#~
+		Returns the minutes  
+		@return minutes
+		~#
 		method : public : GetMinutes() ~ Int {
 			return @mins;
 		}
 		
+		#~
+		Returns the seconds  
+		@return seconds
+		~#
 		method : public : GetSeconds() ~ Int {
 			return @secs;
 		}
 
+		#~
+		Add days to the date
+		@param days to add
+		~#
 		method : public : AddDays(value : Int) ~ Nil {
 			DATE_TIME_ADD_DAYS;
 		}
 
+		#~
+		Add hours to the date
+		@param hours to add
+		~#
 		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
 		}
    
+		#~
+		Add minutes to the date
+		@param minutes to add
+		~#
 		method : public : AddMinutes(value : Int) ~ Nil {
 			DATE_TIME_ADD_MINS;
 		}
 
+		#~
+		Add seconds to the date
+		@param seconds to add
+		~#
 		method : public : AddSeconds(value : Int) ~ Nil {
 			DATE_TIME_ADD_SECS;
 		}
 
+		#~
+		Checks rather the date is in daylight savings time
+		@param true if daylight savings time, false otherwise
+		~#
 		method : public : IsSavingsTime() ~ Bool {
 			return @is_savings;
 		}
 
+		#~
+		Creates a string representation of the date
+		@return string representation of the date
+		~#
 		method : public : ToString() ~ String {
 			out := String->New();
 
@@ -2667,9 +2906,9 @@ bundle System.Time {
 		}
 	}
 	
-	#~~
-	# Timer class
-	~~#	
+	#~
+	Provides elapsed time 
+	~#	
 	class Timer {
 		@elapsed : Int;
 		
@@ -2677,14 +2916,23 @@ bundle System.Time {
 			Parent();
 		}
 		
+		#~
+		Starts the timer
+		~#
 		method : public : Start() ~ Nil {
 			TIMER_START;
 		}
 		
+		#~
+		Ends the timer
+		~#
 		method : public : End() ~ Nil {
 			TIMER_END;
 		}
 		
+		#~
+		Gets the elapsed time
+		~#
 		method : public : GetElapsedTime() ~ Int {
 			return @elapsed;
 		}
@@ -2750,7 +2998,7 @@ bundle System.Concurrency {
 	~~#	
 	class ThreadMutex {
 		@name : String;
-		# hack to hold a mutext struct.  Largest struct 
+		# hack to hold a mutex struct.  Largest struct 
 		# is 64-bytes for x64 POSIX
 		@m0 : Int;
 		@m1 : Int;
