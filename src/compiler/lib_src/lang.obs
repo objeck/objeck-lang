@@ -2692,7 +2692,9 @@ bundle System.API {
 	}
 }
 
-#------------ Time ------------
+#~
+Provides time
+~#	
 bundle System.Time {	
 	#~
 	Provides date and time functionality 
@@ -2939,63 +2941,77 @@ bundle System.Time {
 	}
 }
 
-#------------ Concurrency ------------
+#~
+Provides concurrency
+~#
 bundle System.Concurrency {	
-	#~~
-	# System thread class
-	~~#	
+	#~
+	Abstracts native system thread execution 
+	~#	
 	class Thread {
 		@id : Int;
 		@name : String;
 		@param : System.Base;
 		
+		#~
+		Name of the thread
+		@param name name of the thread
+		~#
 		New(name : String) {
 			Parent();
 			@name := name;
 		}
 		
+		#~
+		Called to execute a new thread 
+		@param param parameter to be passed into the newly executing thread 
+		~#
 		method : public : Execute(param : System.Base) ~ Nil {
 			@param := param;
 			ASYNC_MTHD_CALL;
 		}
 
-		#~~
-		# Sleeps worker thread
-		~~#
+		#~
+		Sleeps the executing thread
+		@param t sleep time in milliseconds
+		~#
 		function : Sleep(t : Int) ~ Nil {
 			THREAD_SLEEP;
 		}
 		
-		#~~
-		# Joins a thread
-		~~#
+		#~
+		Joins the executing thread with the caller
+		~#
 		method : public : Join() ~ Nil {
 			THREAD_JOIN;
 		}
 		
-		#~~
-		# Returns the name
-		~~#
+		#~
+		Returns the thread's name
+		@param thread's name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 		
-		#~~
-		# Returns the run ID
-		~~#
+		#~
+		Returns a unique execution ID
+		@param execution ID
+		~#
 		method : public : GetExecuteID() ~ Int {
 			return @id;
 		}
 		
-		#~~
-		# Method to execute in new worker thread
-		~~#
+		#~
+		Prototype for the thread to be executed
+		@param param parameter to be passed into the thread 
+		~#
 		method : virtual : public : Run(param : System.Base) ~ Nil;
 	}	
 	
-	#~~
-	# System thread class
-	~~#	
+	#~
+	Thread mutex used to protect critical sections 
+	~#	
 	class ThreadMutex {
 		@name : String;
 		# hack to hold a mutex struct.  Largest struct 
@@ -3009,32 +3025,72 @@ bundle System.Concurrency {
 		@m6 : Int;
 		@m7 : Int;
 		
+		#~
+		Name of the mutex
+		@param name name of the mutex
+		~#
 		New(name : String) {
 			Parent();
 			@name := name;
 			THREAD_MUTEX;
 		}
 		
-		#~~
-		# Returns the name
-		~~#
+		#~
+		Name of the mutex
+		@param name name of the mutex
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 	}
 }
 
-#------------ I/O ------------
+#~
+Provides I/O functions
+~#
 bundle System.IO {
+	#~
+	An abstract input stream
+	~#
 	interface InputStream {
+		#~
+		Reads a byte
+		@return byte read
+		~#
 		method : virtual : public : ReadByte() ~ Byte;
+		
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : virtual : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
+		
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
 		method : virtual : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
-		method : virtual : ReadString(buffer : Char[]) ~ Nil;
+		
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
+		method : public : ReadString() ~ System.String {
 	}
 	
+	#~
+	An abstract output stream
+	~#
 	interface OutputStream {
 		method : virtual : public : WriteByte(b : Int) ~ Bool;
 		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
+		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
 		method : virtual : public : WriteString(str : System.String) ~ Nil;
 		method : virtual : public : Flush() ~ Nil;
 	}
