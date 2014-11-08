@@ -185,10 +185,10 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_IN_STRING"] = FILE_IN_STRING;
   ident_map[L"FILE_OUT_BYTE"] = FILE_OUT_BYTE;
   ident_map[L"FILE_OUT_BYTE_ARY"] = FILE_OUT_BYTE_ARY;
+  ident_map[L"FILE_OUT_CHAR_ARY"] = FILE_OUT_CHAR_ARY;
   ident_map[L"FILE_OPEN_WRITE"] = FILE_OPEN_WRITE;
   ident_map[L"FILE_OPEN_READ_WRITE"] = FILE_OPEN_READ_WRITE;
   ident_map[L"FILE_OUT_BYTE"] = FILE_OUT_BYTE;
-  ident_map[L"FILE_OUT_BYTE_ARY"] = FILE_OUT_BYTE_ARY;
   ident_map[L"FILE_OUT_STRING"] = FILE_OUT_STRING;
   ident_map[L"FILE_EXISTS"] = FILE_EXISTS;
   ident_map[L"FILE_SIZE"] = FILE_SIZE;
@@ -233,10 +233,12 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_CLOSE"] = SOCK_TCP_CLOSE;
   ident_map[L"SOCK_TCP_IN_BYTE"] = SOCK_TCP_IN_BYTE;
   ident_map[L"SOCK_TCP_IN_BYTE_ARY"] = SOCK_TCP_IN_BYTE_ARY;
+  ident_map[L"SOCK_TCP_IN_CHAR_ARY"] = SOCK_TCP_IN_CHAR_ARY;
   ident_map[L"SOCK_TCP_OUT_STRING"] = SOCK_TCP_OUT_STRING;
   ident_map[L"SOCK_TCP_IN_STRING"] = SOCK_TCP_IN_STRING;
   ident_map[L"SOCK_TCP_OUT_BYTE"] = SOCK_TCP_OUT_BYTE;
   ident_map[L"SOCK_TCP_OUT_BYTE_ARY"] = SOCK_TCP_OUT_BYTE_ARY;
+  ident_map[L"SOCK_TCP_OUT_CHAR_ARY"] = SOCK_TCP_OUT_CHAR_ARY;
   ident_map[L"SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
   ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
   ident_map[L"SOCK_TCP_LISTEN"] = SOCK_TCP_LISTEN;
@@ -246,10 +248,12 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_SSL_CLOSE"] = SOCK_TCP_SSL_CLOSE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE"] = SOCK_TCP_SSL_IN_BYTE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE_ARY"] = SOCK_TCP_SSL_IN_BYTE_ARY;
+  ident_map[L"SOCK_TCP_SSL_IN_CHAR_ARY"] = SOCK_TCP_SSL_IN_CHAR_ARY;
   ident_map[L"SOCK_TCP_SSL_OUT_STRING"] = SOCK_TCP_SSL_OUT_STRING;
   ident_map[L"SOCK_TCP_SSL_IN_STRING"] = SOCK_TCP_SSL_IN_STRING;
   ident_map[L"SOCK_TCP_SSL_OUT_BYTE"] = SOCK_TCP_SSL_OUT_BYTE;
   ident_map[L"SOCK_TCP_SSL_OUT_BYTE_ARY"] = SOCK_TCP_SSL_OUT_BYTE_ARY;
+  ident_map[L"SOCK_TCP_SSL_OUT_CHAR_ARY"] = SOCK_TCP_SSL_OUT_CHAR_ARY;
   ident_map[L"SOCK_TCP_SSL_BIND"] = SOCK_TCP_SSL_BIND;
   ident_map[L"SOCK_TCP_SSL_LISTEN"] = SOCK_TCP_SSL_LISTEN;
   ident_map[L"SOCK_TCP_SSL_ACCEPT"] = SOCK_TCP_SSL_ACCEPT;
@@ -377,6 +381,7 @@ void Scanner::CheckIdentifier(int index)
     case FILE_OPEN_READ_WRITE:
     case FILE_OUT_BYTE:
     case FILE_OUT_BYTE_ARY:
+    case FILE_OUT_CHAR_ARY:
     case FILE_OUT_STRING:
     case FILE_EXISTS:
     case FILE_SIZE:
@@ -421,10 +426,12 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_CLOSE:
     case SOCK_TCP_IN_BYTE:
     case SOCK_TCP_IN_BYTE_ARY:
+    case SOCK_TCP_IN_CHAR_ARY:
     case SOCK_TCP_IN_STRING:
     case SOCK_TCP_OUT_STRING:
     case SOCK_TCP_OUT_BYTE:
     case SOCK_TCP_OUT_BYTE_ARY:
+    case SOCK_TCP_OUT_CHAR_ARY:
     case SOCK_TCP_HOST_NAME:
     case SOCK_TCP_BIND:
     case SOCK_TCP_LISTEN:
@@ -434,10 +441,12 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_SSL_CLOSE:
     case SOCK_TCP_SSL_IN_BYTE:
     case SOCK_TCP_SSL_IN_BYTE_ARY:
+    case SOCK_TCP_SSL_IN_CHAR_ARY:
     case SOCK_TCP_SSL_IN_STRING:
     case SOCK_TCP_SSL_OUT_STRING:
     case SOCK_TCP_SSL_OUT_BYTE:
     case SOCK_TCP_SSL_OUT_BYTE_ARY:
+    case SOCK_TCP_SSL_OUT_CHAR_ARY:
     case SOCK_TCP_SSL_BIND:
     case SOCK_TCP_SSL_LISTEN:
     case SOCK_TCP_SSL_ACCEPT:
