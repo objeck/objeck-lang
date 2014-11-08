@@ -3711,6 +3711,10 @@ bundle System.IO.File {
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_OUT_BYTE_ARY;
 		}
+		
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			FILE_OUT_CHAR_ARY;
+		}
 
 		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);
@@ -3774,6 +3778,10 @@ bundle System.IO.Net {
 			SOCK_TCP_OUT_BYTE_ARY;
 		}
 		
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_TCP_OUT_CHAR_ARY;
+		}
+		
 		method : public : ReadByte() ~ Byte {
 			SOCK_TCP_IN_BYTE;
 		}
@@ -3783,9 +3791,9 @@ bundle System.IO.Net {
 		}
 		
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-			SOCK_TCP_IN_BYTE_ARY;
+			SOCK_TCP_IN_CHAR_ARY;
 		}
-		
+				
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
 		}
@@ -3849,6 +3857,10 @@ bundle System.IO.Net {
 			SOCK_TCP_SSL_OUT_BYTE_ARY;
 		}
 		
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_TCP_SSL_OUT_CHAR_ARY;
+		}
+		
 		method : public : ReadByte() ~ Byte {
 			SOCK_TCP_SSL_IN_BYTE;
 		}
@@ -3858,7 +3870,7 @@ bundle System.IO.Net {
 		}
 		
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
-			SOCK_TCP_SSL_IN_BYTE_ARY;
+			SOCK_TCP_SSL_IN_CHAR_ARY;
 		}
 		
 		method : public : WriteString(str : System.String) ~ Nil {
