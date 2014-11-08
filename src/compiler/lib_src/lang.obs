@@ -3088,10 +3088,39 @@ bundle System.IO {
 	An abstract output stream
 	~#
 	interface OutputStream {
+		#~
+		Writes a byte
+		@return ture if byte was written, false otherwise
+		~#
 		method : virtual : public : WriteByte(b : Int) ~ Bool;
+		
+		#~
+		Writes bytes from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
 		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
+		
+		#~
+		Writes characters from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
 		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int;
+		
+		#~
+		Writes a character string
+		@param string to be written
+		~#
 		method : virtual : public : WriteString(str : System.String) ~ Nil;
+		
+		#~
+		Flushes the output buffer
+		~#
 		method : virtual : public : Flush() ~ Nil;
 	}
 	
