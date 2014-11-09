@@ -2271,22 +2271,53 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 #else
     if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0])
 #endif
-      {
-        SOCKET sock = (SOCKET)instance[0];
-        char* buffer = (char*)(array + 3);
-        PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
-      }
+    {
+      SOCKET sock = (SOCKET)instance[0];
+      char* buffer = (char*)(array + 3);
+      PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
+    }
     else {
       PushInt(-1, op_stack, stack_pos);
     }
   }
     break;
-            
+    
     // TODO: implement
   case SOCK_TCP_IN_CHAR_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+      
+#ifdef _WIN32    
+    if(array && instance && (SOCKET)instance[0] != INVALID_SOCKET && offset + num < array[0])
+#else
+    if(array && instance && (SOCKET)instance[0] > -1 && offset + num < array[0])
+#endif
+    {
+      SOCKET sock = (SOCKET)instance[0];
+      wchar_t* buffer = (wchar_t*)(array + 3);
+      // allocate temporary buffer
+      char* byte_buffer = (char*)calloc(num - offset + 1, sizeof(char));
+      int read = IPSocket::ReadBytes(byte_buffer + offset, num, sock);      
+      if(read > -1) {
+        wstring in = BytesToUnicode(byte_buffer);
+        wcsncpy(buffer, in.c_str(), in.size());
+        PushInt(in.size(), op_stack, stack_pos);
+      }
+      else {
+        PushInt(-1, op_stack, stack_pos);
+      }
+      // clean up
+      delete[] byte_buffer;
+      byte_buffer = NULL;
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
   }
     break;
-            
+    
   case SOCK_TCP_OUT_BYTE: {
     long value = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);

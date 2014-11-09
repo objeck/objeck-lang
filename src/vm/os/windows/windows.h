@@ -191,31 +191,52 @@ public:
     closesocket(sock);
     return -1;
   }
+  
+  static int WriteByte(char value, SOCKET sock) {
+    int status = send(sock, &value, 1, 0);
+    if(status == SOCKET_ERROR) {
+      return '\0';
+    }
 
-  static void WriteByte(char value, SOCKET sock) {
-    send(sock, &value, 1, 0);
+    return status;
   }
 
   static int WriteBytes(const char* values, int len, SOCKET sock) {
-    return send(sock, values, len, 0);
+    int status = send(sock, values, len, 0);
+    if(status == SOCKET_ERROR) {
+      return -1;
+    }
+    
+    return status;
   }
 
   static char ReadByte(SOCKET sock) {
     char value;
-    recv(sock, &value, 1, 0);
-
+    int status = recv(sock, &value, 1, 0);
+    if(status == SOCKET_ERROR) {
+      return '\0';
+    }
+    
     return value;
   }
 
   static char ReadByte(SOCKET sock, int &status) {
     char value;
     status = recv(sock, &value, 1, 0);
-
+    if(status == SOCKET_ERROR) {
+      return '\0';
+    }
+    
     return value;
   }
 
   static int ReadBytes(char* values, int len, SOCKET sock) {
-    return recv(sock, values, len, 0);
+    int status = recv(sock, values, len, 0);
+    if(status == SOCKET_ERROR) {
+      return -1;
+    }
+    
+    return num;
   }
 
   static void Close(SOCKET sock) {
