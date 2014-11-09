@@ -216,21 +216,25 @@ class IPSocket {
     
     return client;
   }
-
-  static void WriteByte(const char value, SOCKET sock) {
-    send(sock, &value, 1, 0);
+  
+  static int WriteByte(const char value, SOCKET sock) {
+    return send(sock, &value, 1, 0);
   }
-
+  
   static int WriteBytes(const char* values, int len, SOCKET sock) {
     return send(sock, values, len, 0);
   }
-
+  
   static char ReadByte(SOCKET sock, int &status) {
     char value;
     status = recv(sock, &value, 1, 0);
+    if(status < 0) {
+      return '\0';
+    }
+
     return value;
   }
-
+  
   static int ReadBytes(char* values, int len, SOCKET sock) {
     return recv(sock, values, len, 0);
   }
