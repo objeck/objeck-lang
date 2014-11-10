@@ -163,7 +163,7 @@ public:
 * IP socket support class
 ****************************/
 class IPSocket {
-public:
+ public:
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(sock == INVALID_SOCKET) {
