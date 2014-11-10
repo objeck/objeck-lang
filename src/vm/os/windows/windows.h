@@ -1,33 +1,33 @@
 /***************************************************************************
-* Provides runtime support for Windows (Win32) based systems.
-*
-* Copyright (c) 2008-2013, Randy Hollines
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* - Redistributions of source code must retain the above copyright
-* notice, this list of conditions and the following disclaimer.
-* - Redistributions in binary form must reproduce the above copyright
-* notice, this list of conditions and the following disclaimer in
-* the documentation and/or other materials provided with the distribution.
-* - Neither the name of the Objeck Team nor the names of its
-* contributors may be used to endorse or promote products derived
-* from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
-* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ * Provides runtime support for Windows (Win32) based systems.
+ *
+ * Copyright (c) 2008-2013, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the Objeck Team nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
 
 #ifndef __WINDOWS_H__
 #define __WINDOWS_H__
@@ -50,7 +50,7 @@ typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 class File {
-public:
+ public:
   static long FileSize(const char* name) {
     struct _stat buf;
     if(_stat(name, &buf)) {
@@ -160,8 +160,8 @@ public:
 };
 
 /****************************
-* IP socket support class
-****************************/
+ * IP socket support class
+ ****************************/
 class IPSocket {
  public:
   static SOCKET Open(const char* address, int port) {
@@ -289,10 +289,10 @@ class IPSocket {
 };
 
 /****************************
-* IP socket support class
-****************************/
+ * IP socket support class
+ ****************************/
 class IPSecureSocket {
-public:
+ public:
   static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio) {
     ctx = SSL_CTX_new(SSLv23_client_method());
     bio = BIO_new_ssl_connect(ctx);
@@ -300,7 +300,7 @@ public:
       SSL_CTX_free(ctx);
       return false;
     }
-
+    
     SSL* ssl;
     BIO_get_ssl(bio, &ssl);
     SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
@@ -313,7 +313,7 @@ public:
     ssl_address += ":";
     ssl_address += UnicodeToBytes(IntToString(port));
     BIO_set_conn_hostname(bio, ssl_address.c_str());
-
+    
     if(BIO_do_connect(bio) <= 0) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
@@ -325,28 +325,45 @@ public:
       SSL_CTX_free(ctx);
       return false;
     }
-
+    
     return true;
   }
-
+  
   static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
-    BIO_write(bio, &value, 1);
+    int status = BIO_write(bio, &value, 1);
+    if(status < 0) {
+      value = '\0';
+    }
   }
-
+  
   static int WriteBytes(const char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return BIO_write(bio, values, len);
+    int status = BIO_write(bio, values, len);
+    if(status < 0) {
+      return -1;
+    } 
+    
+    return status;
   }
 
   static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
     char value;
     status = BIO_read(bio, &value, 1);
+    if(status < 0) {
+      return '\0';
+    } 
+    
     return value;
   }
-
+  
   static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return BIO_read(bio, values, len);
+    int status = BIO_read(bio, values, len);
+    if(status < 0) {
+      return -1;
+    } 
+    
+    return status;
   }
-
+  
   static void Close(SSL_CTX* ctx, BIO* bio) {
     BIO_free_all(bio);
     SSL_CTX_free(ctx);
@@ -354,10 +371,10 @@ public:
 };
 
 /****************************
-* System operations
-****************************/
+ * System operations
+ ****************************/
 class System {
-public:
+ public:
   static string GetPlatform() {
     string platform;
 
