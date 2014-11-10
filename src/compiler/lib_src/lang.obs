@@ -3636,52 +3636,98 @@ bundle System.IO {
 		@buffer : Byte[];
 		@pos : Int;
 
+		
 		New() {
 			Parent();
 			@buffer := Byte->New[16];
 			@pos := 0;
 		}
 
+		#~
+		Serializes a value
+		@param b value to serialize
+		~#
 		method : public : Write(b : Bool) ~ Nil {
 			SERL_INT;
 		}
 
+		#~
+		Serializes a value
+		@param c value to serialize
+		~#
 		method : public : Write(c : Char) ~ Nil {
 			SERL_CHAR;
 		}
 		
+		#~
+		Serializes a value
+		@param i value to serialize
+		~#
 		method : public : Write(i : Int) ~ Nil {
 			SERL_INT;
 		}
 		
+		#~
+		Serializes a value
+		@param f value to serialize
+		~#
 		method : public : Write(f : Float) ~ Nil {
 			SERL_FLOAT;
 		}
 		
+		#~
+		Serializes a base object
+		@param o value to serialize
+		~#
 		method : public : Write(o : Base) ~ Nil {
 			SERL_OBJ_INST;
 		}
 
+		#~
+		Serializes a base object
+		@param o value to serialize
+		~#
 		method : public : Write(b : Bool[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 
+		#~
+		Serializes a value
+		@param b value to serialize
+		~#
 		method : public : Write(b : Byte[]) ~ Nil {
 			SERL_BYTE_ARY;
 		}
 
+		#~
+		Serializes an array of values
+		@param c value to serialize
+		~#
 		method : public : Write(c : Char[]) ~ Nil {
 			SERL_CHAR_ARY;
 		}
 
+		#~
+		Serializes an array of values
+		@param i value to serialize
+		~#
 		method : public : Write(i : Int[]) ~ Nil {
 			SERL_INT_ARY;
 		}
 		
+		#~
+		Serializes an array of values
+		@param f value to serialize
+		~#
 		method : public : Write(f : Float[]) ~ Nil {
 			SERL_FLOAT_ARY;
 		}
 		
+		#~
+		Create a byte stream of the objects that 
+		have been serialized
+		@return f byte stream of the objects that have been serialized
+		~#
 		method : public : Serialize() ~ Byte[] {
 			temp := Byte->New[@pos];
 			for(i := 0; i < @pos; i += 1;) {
@@ -3692,85 +3738,162 @@ bundle System.IO {
 		}
 	}
 	
+	#~
+	Used to deserialize objects
+	~#
 	class Deserializer  {
 		@buffer : Byte[];
 		@pos : Int;
 		
+		#~
+		Default constructor
+		@param buffer input byte buffer to read from
+		~#
 		New(buffer : Byte[]) {
 			Parent();
 			@buffer := buffer;
 			@pos := 0;
 		}
 
+		#~
+		Reads a value
+		@return value read
+		~#
 		method : public : ReadBool() ~ Bool {
 			DESERL_INT;
 		}
 
+		#~
+		Reads a value
+		@return value read
+		~#
 		method : public : ReadChar() ~ Char {
 			DESERL_CHAR;
 		}
-		
+
+		#~
+		Reads a value
+		@return value read
+		~#		
 		method : public : ReadInt() ~ Int {
 			DESERL_INT;
 		}
-		
+
+		#~
+		Reads a value
+		@return value read
+		~#		
 		method : public : ReadFloat() ~ Float {
 			DESERL_FLOAT;
 		}
 		
+		#~
+		Reads an object
+		@return value read
+		~#
 		method : public : ReadObject() ~ Base {
 			DESERL_OBJ_INST;
 		}
 
+		#~
+		Reads an array of values
+		@return array of values
+		~#
 		method : public : ReadBoolArray() ~ Bool[] {
 			DESERL_INT_ARY;
 		}
 
+		#~
+		Reads an array of values
+		@return array of values
+		~#
 		method : public : ReadByteArray() ~ Byte[] {
 			DESERL_BYTE_ARY;
 		}
 
+		#~
+		Reads an array of values
+		@return array of values
+		~#
 		method : public : ReadCharArray() ~ Char[] {
 			DESERL_CHAR_ARY;
 		}
 
+		#~
+		Reads an array of values
+		@return array of values
+		~#
 		method : public : ReadIntArray() ~ Int[] {
 			DESERL_INT_ARY;
 		}
-		
+
+		#~
+		Reads an array of values
+		@return array of values
+		~#		
 		method : public : ReadFloatArray() ~ Float[] {
 			DESERL_FLOAT_ARY;
 		}
 	}
 }
 
-#------------ File I/O ------------
+#~
+Supports file I/O operations
+~#
 bundle System.IO.File {	
+	#~
+	Provides file operations
+	~#
 	class File {
 		@handle : Int;
 		@name : System.String;
 		
+		#~
+		Default constructor
+		@param name file name
+		~#
 		New(name : System.String) {
 			Parent();
 			@name := name;
 		}
 		
+		#~
+		Checks of the file is open
+		@return ture if the file was opened, false otherwise
+		~#
 		method : public : IsOpen() ~ Bool {
 			FILE_IS_OPEN;
 		}
 
+		#~
+		Seeks to a point in the file
+		@param p seek offset
+		@return ture if operation was successful, false otherwise
+		~#
 		method : public : Seek(p : Int) ~ Bool {
 			FILE_SEEK;
 		}
 		
+		#~
+		Rewinds the seek pointer
+		~#
 		method : public : Rewind() ~ Nil {
 			FILE_REWIND;
 		}
 
+		#~
+		Check if seek pointer is at the end-of-file
+		@return true if at the end-of-file, false otherwise
+		~#
 		method : public : IsEOF() ~ Bool {
 			FILE_EOF;
 		}
 		
+		#~
+		Returns the size of the file
+		@param n file name
+		@return size of the file
+		~#
 		function : Size(n : System.String) ~ Int {
 			FILE_SIZE;
 		}		
@@ -3874,7 +3997,7 @@ bundle System.IO.File {
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
 			if(len > 0) {
-				buffer := Char->New[len];
+				buffer := Char->New[len + 1];
 				in := FileReader->New(name);
 				if(in->IsOpen()) {
 					in->ReadBuffer(0, len, buffer);
