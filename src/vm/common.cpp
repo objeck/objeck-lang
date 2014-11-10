@@ -2254,9 +2254,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       SOCKET sock = (SOCKET)instance[0];
       wchar_t* buffer = (wchar_t*)(array + 3);
       // allocate temporary buffer
-      char* byte_buffer = (char*)calloc(array[0] + 1, sizeof(char));
+      char* byte_buffer = new char[array[0] + 1];
       int read = IPSocket::ReadBytes(byte_buffer + offset, num, sock);      
       if(read > -1) {
+        byte_buffer[read] = '\0';
         wstring in = BytesToUnicode(byte_buffer);
         wcsncpy(buffer, in.c_str(), in.size());
         PushInt(in.size(), op_stack, stack_pos);
@@ -2368,9 +2369,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       wchar_t* buffer = (wchar_t*)(array + 3);
-      char* byte_buffer = (char*)calloc(array[0] + 1, sizeof(char));
+      char* byte_buffer = new char[array[0] + 1];
       int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, ctx, bio);
       if(read > -1) {
+        byte_buffer[read] = '\0';
         wstring in = BytesToUnicode(byte_buffer);
         wcsncpy(buffer, in.c_str(), in.size());
         PushInt(in.size(), op_stack, stack_pos);
@@ -2378,6 +2380,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       else {
         PushInt(-1, op_stack, stack_pos);
       }
+      // clean up
+      delete[] byte_buffer;
+      byte_buffer = NULL;
     }
     else {
       PushInt(-1, op_stack, stack_pos);

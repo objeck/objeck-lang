@@ -151,7 +151,12 @@ class DocParser {
 		bundle_block := BundleBlock->New(block);
 		if(bundle_block->IsParsed()) {
 			SetBundle(bundle_block);
+		}
+		else {
+			IO.Console->Print("Unable to parse bundle block. Text='")->Print(block)->PrintLine("'");
 		};
+
+		block := "";
 	}
 
 	method : public : native : ParseEnum(block : String) ~ Nil {
@@ -166,7 +171,11 @@ class DocParser {
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
 			@bundle_block->AddEnum(enum_block);
+		}
+		else {
+			IO.Console->Print("Unable to parse enum block. Text='")->Print(block)->PrintLine("'");
 		};
+
 		block := "";
 	}
 
@@ -184,12 +193,18 @@ class DocParser {
 			@class_inf_block := ClassBlock->New(block, false);
 			if(@class_inf_block->IsParsed()) {
 				@bundle_block->AddClass(@class_inf_block);
+			}
+			else {
+				IO.Console->Print("Unable to parse class block. Text='")->Print(block)->PrintLine("'");
 			};
 		}
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
 				@bundle_block->AddInterface(@class_inf_block);
+			}
+			else {
+				IO.Console->Print("Unable to parse interface block. Text='")->Print(block)->PrintLine("'");
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
@@ -849,7 +864,7 @@ class FuncBlock from DocBlock {
 					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 						@signature->Append(func_type->GetName());
 						@signature->Append(':');
-						@signature->Append(func_type->GetTypeName());
+						@signature->Append(GetShortName(func_type->GetTypeName()));
 						
 						if(i + 1 < @func_types->Size()) {
 							@signature->Append(", ");

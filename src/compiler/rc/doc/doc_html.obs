@@ -45,13 +45,16 @@ class HtmlMaker {
 			"--- Unable load bundle CSS template ---"->ErrorLine();
 			return false;
 		};
+
+		"..."->PrintLine();
 		
 		# create class list doc
 		CreateClassIndexHtml(@parser->GetBundles(), bundle_header);
 		
 		# create class html docs
 		classes := @parser->GetAllClasses();
-		if(classes <> Nil) {				
+		if(classes <> Nil) {
+			classes->Size()->PrintLine();			
 			each(i : classes) {
 				CreateClassHtml(classes->Get(i)->As(ClassBlock), class_header);			
 			};
@@ -245,7 +248,7 @@ class HtmlMaker {
 		};
 		
 		html += "</body></html>";
-		file_name := "..\\html\\bundles.html";
+		file_name := "../html/bundles.html";
 		out := FileWriter->New(file_name);
 		out->WriteString(html);
 		out->Close();		
