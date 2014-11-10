@@ -216,21 +216,25 @@ class IPSocket {
     
     return client;
   }
-
-  static void WriteByte(const char value, SOCKET sock) {
-    send(sock, &value, 1, 0);
+  
+  static int WriteByte(const char value, SOCKET sock) {
+    return send(sock, &value, 1, 0);
   }
-
+  
   static int WriteBytes(const char* values, int len, SOCKET sock) {
     return send(sock, values, len, 0);
   }
-
+  
   static char ReadByte(SOCKET sock, int &status) {
     char value;
     status = recv(sock, &value, 1, 0);
+    if(status < 0) {
+      return '\0';
+    }
+
     return value;
   }
-
+  
   static int ReadBytes(char* values, int len, SOCKET sock) {
     return recv(sock, values, len, 0);
   }
@@ -282,21 +286,38 @@ class IPSecureSocket {
   }
   
   static void WriteByte(char value, SSL_CTX* ctx, BIO* bio) {
-    BIO_write(bio, &value, 1);
+    int status = BIO_write(bio, &value, 1);
+    if(status < 0) {
+      value = '\0';
+    }
   }
-
+  
   static int WriteBytes(const char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return BIO_write(bio, values, len);
+    int status = BIO_write(bio, values, len);
+    if(status < 0) {
+      return -1;
+    } 
+    
+    return status;
   }
 
   static char ReadByte(SSL_CTX* ctx, BIO* bio, int &status) {
     char value;
     status = BIO_read(bio, &value, 1);
+    if(status < 0) {
+      return '\0';
+    } 
+    
     return value;
   }
   
   static int ReadBytes(char* values, int len, SSL_CTX* ctx, BIO* bio) {
-    return BIO_read(bio, values, len);
+    int status = BIO_read(bio, values, len);
+    if(status < 0) {
+      return -1;
+    } 
+    
+    return status;
   }
   
   static void Close(SSL_CTX* ctx, BIO* bio) {

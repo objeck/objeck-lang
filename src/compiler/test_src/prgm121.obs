@@ -1,0 +1,12 @@
+use System.IO.Net;
+
+class Socket {
+	function : Main(args : String[]) ~ Nil {
+		socket := TCPSocket->New("localhost", 9090);
+		if(socket->IsOpen()) {
+			buffer := Char->New[256];
+			socket->ReadBuffer(0, 255, buffer);
+			buffer->PrintLine();
+		};
+	}
+}
