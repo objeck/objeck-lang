@@ -3124,155 +3124,335 @@ bundle System.IO {
 		method : virtual : public : Flush() ~ Nil;
 	}
 	
- 	#~~
-	# Console class
-	~~#
+ 	#~
+	Provides I/O console access
+	~#
 	class Console {
+		#~
+		Reads a string from STDIN
+		@return string read
+		~#
 		function : ReadString() ~ System.String {
 			console := IO.ConsoleIO->Instance();
 			return console->ReadString();
 		}
 
+		#~
+		Write a byte buffer to STDOUT
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
 			STD_OUT_BYTE_ARY_LEN;	
 		}
 
+		#~
+		Write a character buffer to STDOUT
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
 		function : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
 			STD_OUT_CHAR_ARY_LEN;
 		}
 
+		#~
+		Write a byte buffer to STDERR
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
 		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Bool {
 			STD_ERR_BYTE_ARY;	
 		}
 
+		#~
+		Write a character buffer to STDERR
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return true if successful, false otherwise
+		~#
 		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
 			STD_ERR_BYTE_ARY;
 		}
 		
+		#~
+		Writes a value
+		@param b value
+		@return I/O console instance
+		~#
 		function : Print(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(b);
 		}
 		
+		#~
+		Writes a value
+		@param b value
+		@return I/O console instance
+		~#
 		function : PrintLine(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(b);
 		}
 	
+		#~
+		Writes a value
+		@param b value
+		@return I/O console instance
+		~#
 		function : Print(b : Byte) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(b);
 		}
 	
+		#~
+		Writes a value
+		@param b value
+		@return I/O console instance
+		~#
 		function : PrintLine(b : Byte) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(b);
 		}
 		
+		#~
+		Writes a value
+		@param c value
+		@return I/O console instance
+		~#
 		function : Print(c : Char) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(c);
 		}
 	
+		#~
+		Writes a value
+		@param c value
+		@return I/O console instance
+		~#
 		function : PrintLine(c : Char) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(c);
 		}
 	
+		#~
+		Writes a value
+		@param i value
+		@return I/O console instance
+		~#
 		function : Print(i : Int) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(i);
 		}
 	
+		#~
+		Writes a value
+		@param i value
+		@return I/O console instance
+		~#
 		function : PrintLine(i : Int) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(i);
 		}
 		
+		#~
+		Writes a value
+		@param f value
+		@return I/O console instance
+		~#
 		function : Print(f : Float) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(f);
 		}
 	
+		#~
+		Writes a value
+		@param f value
+		@return I/O console instance
+		~#
 		function : PrintLine(f : Float) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(f);
 		}
 	
+		#~
+		Writes a value
+		@param cc value
+		@return I/O console instance
+		~#
 		function : Print(cc : Char[]) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(cc);
 		}
 	
+		#~
+		Writes a value
+		@param cc value
+		@return I/O console instance
+		~#
 		function : PrintLine(cc : Char[]) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(cc);
 		}
 		
+		#~
+		Writes a value
+		@param s value
+		@return I/O console instance
+		~#
 		function : Print(s : System.String) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Print(s);
 		}
 	
+		#~
+		Writes a value
+		@param s value
+		@return I/O console instance
+		~#
 		function : PrintLine(s : System.String) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine(s);
 		}
 	
+		#~
+		Prints a character return
+		@return I/O console instance
+		~#
 		function : PrintLine() ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->PrintLine();
 		}
 
+		#~
+		Writes an error value
+		@param b value
+		@return I/O console instance
+		~#
 		function : Error(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(b);
 		}
 		
+		#~
+		Writes an error value
+		@param b value
+		@return I/O console instance
+		~#
 		function : ErrorLine(b : Bool) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(b);
 		}
 	
+		#~
+		Writes an error value
+		@param b value
+		@return I/O console instance
+		~#
 		function : Error(b : Byte) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(b);
 		}
 	
+		#~
+		Writes an error value
+		@param b value
+		@return I/O console instance
+		~#
 		function : ErrorLine(b : Byte) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(b);
 		}
 		
+		#~
+		Writes an error value
+		@param c value
+		@return I/O console instance
+		~#
 		function : Error(c : Char) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(c);
 		}
 	
+		#~
+		Writes an error value
+		@param c value
+		@return I/O console instance
+		~#
 		function : ErrorLine(c : Char) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(c);
 		}
 	
+		#~
+		Writes an error value
+		@param i value
+		@return I/O console instance
+		~#
 		function : Error(i : Int) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(i);
 		}
 	
+		#~
+		Writes an error value
+		@param i value
+		@return I/O console instance
+		~#
 		function : ErrorLine(i : Int) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(i);
 		}
 		
+		#~
+		Writes an error value
+		@param f value
+		@return I/O console instance
+		~#
 		function : Error(f : Float) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(f);
 		}
 	
+		#~
+		Writes an error value
+		@param f value
+		@return I/O console instance
+		~#
 		function : ErrorLine(f : Float) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(f);
 		}
 	
+		#~
+		Writes an error value
+		@param cc value
+		@return I/O console instance
+		~#
 		function : Error(cc : Char[]) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(cc);
 		}
 	
+		#~
+		Writes an error value
+		@param cc value
+		@return I/O console instance
+		~#
 		function : ErrorLine(cc : Char[]) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(cc);
 		}
 		
+		#~
+		Writes an error value
+		@param s value
+		@return I/O console instance
+		~#
 		function : Error(s : System.String) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->Error(s);
 		}
 	
+		#~
+		Writes an error value
+		@param s value
+		@return I/O console instance
+		~#
 		function : ErrorLine(s : System.String) ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine(s);
 		}
 	
+		#~
+		Writes an error character return
+		@return I/O console instance
+		~#
 		function : ErrorLine() ~ ConsoleIO {
 			return IO.ConsoleIO->Instance()->ErrorLine();
 		}
 	}
  	
- 	#~~
-	# Support for Console class
-	~~#
+ 	#~
+	Provides support for the Console class
+	~#
  	class ConsoleIO {
 		@console : static : ConsoleIO;
 
@@ -3449,6 +3629,9 @@ bundle System.IO {
 		}
 	}
 	
+	#~
+	Used to serialize objects
+	~#
 	class Serializer  {
 		@buffer : Byte[];
 		@pos : Int;
