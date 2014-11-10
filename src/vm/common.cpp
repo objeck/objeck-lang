@@ -400,21 +400,18 @@ long* ObjectDeserializer::DeserializeObject() {
           long char_array_size = DeserializeInt();
           const long char_array_dim = DeserializeInt();
           long char_array_size_dim = DeserializeInt();
-
           // copy content
           char* in = new char[char_array_size + 1];
           memcpy(in, buffer + buffer_offset, char_array_size);
           buffer_offset += char_array_size;
           in[char_array_size] = '\0';
-	  
           const wstring out = BytesToUnicode(in);
-
           // clean up
           delete[] in;
           in = NULL;
-	  
 #ifdef _DEBUG
-          wcout << L"--- deserialization: char array; value=" << out <<  ", size=" << char_array_size << L" ---" << endl;
+          wcout << L"--- deserialization: char array; value=" << out <<  ", size=" 
+                << char_array_size << L" ---" << endl;
 #endif
           char_array_size = char_array_size_dim = out.size();
           long* char_array = (long*)MemoryManager::AllocateArray(char_array_size +
@@ -2257,7 +2254,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       SOCKET sock = (SOCKET)instance[0];
       wchar_t* buffer = (wchar_t*)(array + 3);
       // allocate temporary buffer
-      char* byte_buffer = (char*)calloc(num - offset + 1, sizeof(char));
+      char* byte_buffer = (char*)calloc(array[0] + 1, sizeof(char));
       int read = IPSocket::ReadBytes(byte_buffer + offset, num, sock);      
       if(read > -1) {
         wstring in = BytesToUnicode(byte_buffer);
@@ -2362,9 +2359,32 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     
     // TODO: implement
   case SOCK_TCP_SSL_IN_CHAR_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    
+    if(array && instance && instance[2] && offset + num < array[0]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      wchar_t* buffer = (wchar_t*)(array + 3);
+      char* byte_buffer = (char*)calloc(array[0] + 1, sizeof(char));
+      int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, ctx, bio);
+      if(read > -1) {
+        wstring in = BytesToUnicode(byte_buffer);
+        wcsncpy(buffer, in.c_str(), in.size());
+        PushInt(in.size(), op_stack, stack_pos);
+      }
+      else {
+        PushInt(-1, op_stack, stack_pos);
+      }
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
   }
     break;
-            
+    
   case SOCK_TCP_SSL_OUT_BYTE: {
     long value = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2386,7 +2406,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
             
-    if(array && instance && instance[2] && offset + num <= array[2]) {
+    if(array && instance && instance[2] && offset + num < array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       char* buffer = (char*)(array + 3);
@@ -2400,6 +2420,21 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     
     // TODO: implement
   case SOCK_TCP_SSL_OUT_CHAR_ARY: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    
+    if(array && instance && instance[2] && offset + num < array[0]) {
+      SSL_CTX* ctx = (SSL_CTX*)instance[0];
+      BIO* bio = (BIO*)instance[1];
+      wchar_t* buffer = (wchar_t*)(array + 3);
+      string buffer_out = UnicodeToBytes(buffer);
+      PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str() + offset, num, ctx, bio), op_stack, stack_pos);
+    } 
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
   }
     break;
     
