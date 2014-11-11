@@ -3898,10 +3898,21 @@ bundle System.IO.File {
 			FILE_SIZE;
 		}		
 		
+		#~
+		Returns the time in which the file was created
+		@param n file name
+		@return create date
+		~#
 		function : CreateTime(n : System.String) ~ Date {
 			return CreateTime(n, false);
 		}
 
+		#~
+		Returns the time in which the file was created
+		@param n file name
+		@param gmt ture if GMT
+		@return create date
+		~#
 		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
 			day : Int; 
 			month : Int; 
@@ -3915,10 +3926,21 @@ bundle System.IO.File {
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}		
 		
+		#~
+		Returns the time in which the file was modified 
+		@param n file name
+		@return modified date
+		~#
 		function : ModifiedTime(n : System.String) ~ Date {
 			return ModifiedTime(n, false);
 		}
 
+		#~
+		Returns the time in which the file was modified 
+		@param n file name
+		@param gmt ture if GMT
+		@return modified date
+		~#
 		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
 			day : Int; 
 			month : Int; 
@@ -3932,10 +3954,21 @@ bundle System.IO.File {
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}		
 
+		#~
+		Returns the time in which the file was accessed 
+		@param n file name
+		@return accessed date
+		~#
 		function : AccessedTime(n : System.String) ~ Date {
 			return AccessedTime(n, false);
 		}
 
+		#~
+		Returns the time in which the file was accessed 
+		@param n file name
+		@param gmt ture if GMT
+		@return accessed date
+		~#
 		function : AccessedTime(n : System.String, gmt : Bool) ~ Date {
 			day : Int;
 			month : Int;
@@ -3949,41 +3982,89 @@ bundle System.IO.File {
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}
 		
+		#~
+		Deletes a file
+		@param n file name
+		@return true if file was deleted
+		~#
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
 		}
 		
+		#~
+		Check to see if a file exists
+		@param n file name
+		@return true if file exists
+		~#
 		function : Exists(n : System.String) ~ Bool {
 			FILE_EXISTS;
 		}
 		
+		#~
+		Renames a file
+		@param o original file name
+		@param o new file name
+		@return true if file was renamed
+		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
 			FILE_RENAME;
 		}
 	}
 
+	#~
+	Support file read operations
+	~#
 	class FileReader from File implements InputStream {
+		#~
+		Default constructor
+		@param name file name
+		~#
 		New(name : System.String) {
 			Parent(name);
 			FILE_OPEN_READ;
 		}	
 		
+		#~
+		Closes the file
+		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
 		}
 
+		#~
+		Reads a byte
+		@return byte read
+		~#
 		method : public : ReadByte() ~ Byte {
 			FILE_IN_BYTE;
 		}
 
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			FILE_IN_CHAR_ARY;
 		}
 
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
 		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_IN_BYTE_ARY;
 		}
 
+		#~
+		Reads a string until a newline or character return is detected 
+		@return character string
+		~#
 		method : public : ReadString() ~ System.String {
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
@@ -3994,6 +4075,11 @@ bundle System.IO.File {
 			FILE_IN_STRING;
 		}
 		
+		#~
+		Reads a file's contents into a string
+		@name file name
+		@return character string
+		~#
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
 			if(len > 0) {
@@ -4010,6 +4096,11 @@ bundle System.IO.File {
 			return Nil;
 		}
 		
+		#~
+		Reads a file's contents into byte array
+		@name file name
+		@return byte array
+		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
 			len := File->Size(name);
 			buffer := Byte->New[len];
@@ -4025,36 +4116,76 @@ bundle System.IO.File {
 		}
 	}
 	
+	#~
+	Support file write operations
+	~#
 	class FileWriter from File implements OutputStream {
+		#~
+		Default constructor
+		@param name file name
+		~#
 		New(name : System.String) {
 			Parent(name);
 			FILE_OPEN_WRITE;
 		}	
 		
+		#~
+		Closes a file
+		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
 		}
 
+		#~
+		Flushes the file buffer
+		~#
 		method : public : Flush() ~ Nil {
 			FILE_FLUSH;
 		}
 
+		#~
+		Writes a byte
+		@return ture if byte was written, false otherwise
+		~#
 		method : public : WriteByte(b : Int) ~ Bool {
 			FILE_OUT_BYTE;
 		}
 
+		#~
+		Writes bytes from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
 			FILE_OUT_BYTE_ARY;
 		}
 		
+		#~
+		Writes characters from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
 		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
 			FILE_OUT_CHAR_ARY;
 		}
 
+		#~
+		Writes characters from a character buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
 		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
+		#~
+		Writes a character string
+		@param string to be written
+		~#
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
 		}
@@ -4064,15 +4195,33 @@ bundle System.IO.File {
 		}
 	}
 	
+	#~
+	Provide file directory operations
+	~#
 	class Directory {
+		#~
+		Creates a directory
+		@param directory name
+		@return true if directory was created 
+		~#
 		function : Create(n : System.String) ~ Bool {
 			DIR_CREATE;
 		}
 		
+		#~
+		Checks to see if the given directory exists
+		@param directory name
+		@return true if directory exists
+		~#
 		function : Exists(n : System.String) ~ Bool {
 			DIR_EXISTS;
 		}
 		
+		#~
+		List of directory content
+		@param directory name
+		@return list of directory content
+		~#
 		function : List(n : System.String) ~ System.String[] {
 			DIR_LIST;
 		}
