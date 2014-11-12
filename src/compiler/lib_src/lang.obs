@@ -4228,13 +4228,23 @@ bundle System.IO.File {
 	}
 }
 
-#------------ Socket I/O ------------
+#~
+Provides network support
+~#
 bundle System.IO.Net {
+	#~
+	TCP/IP socket
+	~#
 	class TCPSocket implements InputStream, OutputStream {
 		@handle : Int;
 		@address : System.String;
 		@port : Int;
 		
+		#~
+		Default constructor
+		@param address network address
+		@param network port
+		~#
 		New(address : System.String, port : Int) {
 			Parent();
 			@address := address;
