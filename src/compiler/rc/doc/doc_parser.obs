@@ -192,6 +192,7 @@ class DocParser {
 		if(name->Equals("class")) {
 			@class_inf_block := ClassBlock->New(block, false);
 			if(@class_inf_block->IsParsed()) {
+				@class_inf_block->SetBundleName(@bundle_block->GetName());
 				@bundle_block->AddClass(@class_inf_block);
 			}
 			else {
@@ -201,6 +202,7 @@ class DocParser {
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
+				@class_inf_block->SetBundleName(@bundle_block->GetName());
 				@bundle_block->AddInterface(@class_inf_block);
 			}
 			else {
@@ -642,6 +644,7 @@ class EnumBlock from DocBlock {
 
 class ClassBlock from DocBlock {
 	@name : String;
+	@block_name : String;
 	@from_class : String;
 	@desc : String;
 	@funcs : StringMap;
@@ -672,7 +675,15 @@ class ClassBlock from DocBlock {
 	method : public : GetName() ~ String {
 		return @name;
 	}
+	
+	method : public : SetBundleName(block_name : String) ~ Nil {
+		@block_name := block_name;
+	}
 
+	method : public : GetBundleName() ~ String {
+		return @block_name;
+	}
+	
 	method : public : GetFrom() ~ String {
 		return GetShortName(@from_class);
 	}
