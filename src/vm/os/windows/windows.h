@@ -236,7 +236,7 @@ class IPSocket {
       return -1;
     }
     
-    return num;
+    return status;
   }
 
   static void Close(SOCKET sock) {

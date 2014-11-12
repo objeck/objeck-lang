@@ -146,6 +146,8 @@ class HtmlMaker {
 		html += "</body></html>";
 	
 		file_name := "../html/";
+		file_name += class_block->GetBundleName()->ToLower();
+		file_name += '-';
 		file_name += class_block->GetName()->ToLower();
 		file_name += ".html";
 		out := FileWriter->New(file_name);
@@ -233,7 +235,10 @@ class HtmlMaker {
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
 						
-						link_name := String->New(class_block->GetName());
+						file_name := class_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += class_block->GetName()->ToLower();
+						link_name := String->New(file_name);
 						link_name += ".html";
 
 						sec_b->Append(link_name->ToLower());
