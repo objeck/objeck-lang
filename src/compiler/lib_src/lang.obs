@@ -3091,6 +3091,7 @@ bundle System.IO {
 	interface OutputStream {
 		#~
 		Writes a byte
+		@param b byte to write
 		@return ture if byte was written, false otherwise
 		~#
 		method : virtual : public : WriteByte(b : Int) ~ Bool;
@@ -3115,7 +3116,7 @@ bundle System.IO {
 		
 		#~
 		Writes a character string
-		@param string to be written
+		@param str string to be written
 		~#
 		method : virtual : public : WriteString(str : System.String) ~ Nil;
 		
@@ -4143,6 +4144,7 @@ bundle System.IO.File {
 
 		#~
 		Writes a byte
+		@param b byte to write
 		@return ture if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
@@ -4182,7 +4184,7 @@ bundle System.IO.File {
 		
 		#~
 		Writes a character string
-		@param string to be written
+		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
@@ -4275,7 +4277,8 @@ bundle System.IO.Net {
 		}
 		
 		#~
-		Writes a byte
+		Writes a byte]
+		@param b byte to write
 		@return ture if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
@@ -4336,7 +4339,7 @@ bundle System.IO.Net {
 		
 		#~
 		Writes a character string
-		@param string to be written
+		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
@@ -4430,6 +4433,7 @@ bundle System.IO.Net {
 		
 		#~
 		Writes a byte
+		@param b byte to write
 		@return ture if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
@@ -4490,7 +4494,7 @@ bundle System.IO.Net {
 		
 		#~
 		Writes a character string
-		@param string to be written
+		@param str string to be written
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
