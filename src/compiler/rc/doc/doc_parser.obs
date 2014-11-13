@@ -1056,7 +1056,7 @@ class FuncBlock from DocBlock {
 			if(rtrn_name->Size() = 0) {
 				return false;
 			};
-			rtrn_name := GetShortName(rtrn_name);
+#			rtrn_name := GetShortName(rtrn_name);
 		
 			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
 			if(rtrn_type <> Nil) {
@@ -1090,10 +1090,10 @@ class FuncBlock from DocBlock {
 		
 			param_type := @types->Find(type_name)->As(IntHolder);
 			if(param_type <> Nil) {
-				return DocType->New(GetShortName(param_name), type_name, param_type->Get()->As(DocType->Type));
+				return DocType->New(param_name, type_name, param_type->Get()->As(DocType->Type));
 			}
 			else {
-				return DocType->New(GetShortName(param_name), type_name, DocType->Type->CLASS);
+				return DocType->New(param_name, type_name, DocType->Type->CLASS);
 			};
 		};
 	}
