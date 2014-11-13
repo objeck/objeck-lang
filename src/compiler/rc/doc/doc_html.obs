@@ -172,54 +172,62 @@ class HtmlMaker {
 	}
 	
 	method : GetTypeLink(type_name : String) ~ String {
-		lookup_bundle : BundleBlock := Nil;
+		class_block : ClassBlock;
+		
 		full_name := type_name;
-		index := type_name->Find('.');
+		index := type_name->FindLast('.');
 		if(index > -1) {
 			bundle_name := type_name->SubString(index);
-			lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);
 			index += 1;
-			type_name := type_name->SubString(index, type_name->Size() - index);
-			full_name := type_name;
-		};
-		
-		index := type_name->Find('[');
-		if(index > -1) {
-			type_name := type_name->SubString(index);
-		};
-	
-		# current bundle
-		if(lookup_bundle = Nil) {
-			lookup_bundle := @bundle_block;
-		};
-		class_type := lookup_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
-		if(class_type = Nil) {
-			# default System bundle
-			lookup_bundle := @parser->GetBundles()->Find("System")->As(BundleBlock);
-# "System"->PrintLine();			
-			if(lookup_bundle = Nil) {
-# "Introspection"->PrintLine();			
-				lookup_bundle := @parser->GetBundles()->Find("Introspection")->As(BundleBlock);
-				if(lookup_bundle = Nil) {
-					return type_name;
-				};
+			class_name := type_name->SubString(index, type_name->Size() - index);
+			type_name := class_name;
+			full_name := class_name;
+			class_block := GetBundleClass(bundle_name, class_name);
+			if(class_block <> Nil) {
+				
 			};
 		};
 		
-		class_type := lookup_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
-		if(class_type = Nil) {
-			return type_name;
+		index := full_name->Find('[');
+		if(index > -1) {
+			type_name := full_name->SubString(index);
 		};
 		
-		file_name := "<a href='";
-		file_name += class_type->GetBundleName()->ToLower();
-		file_name += '-';
-		file_name += class_type->GetName()->ToLower();
-		file_name += ".html' target='main'>";
-		file_name += full_name;
-		file_name += "</a>";
+		if(class_block = Nil) {
+			class_block := GetBundleClass("System", type_name);
+		};
 		
-		return file_name;
+		if(class_block = Nil) {
+type_name->PrintLine();
+			class_block := GetBundleClass("System.Introspection", type_name);
+		};
+		
+		if(class_block <> Nil) {
+			file_name := "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetName()->ToLower();
+			file_name += ".html' target='main'>";
+			file_name += full_name;
+			file_name += "</a>";
+			
+# file_name->PrintLine();			
+			
+			return file_name;
+		}
+		else {
+			return type_name;
+		};
+	}
+	
+	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassBlock {
+		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
+		if(lookup_bundle <> Nil) {
+			return lookup_bundle->GetClasses()->Find(class_name)->As(ClassBlock);
+		}
+		else {
+			return Nil;
+		};
 	}
 	
 	#~
