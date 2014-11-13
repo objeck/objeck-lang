@@ -504,7 +504,6 @@ class BundleBlock from DocBlock {
 
 	method : public : SetName(name : String) ~ Nil {
 		@name := name;
-#		@parsed := true;
 	}
 
 	method: public : AddClass(class_block : ClassBlock) ~ Nil {
