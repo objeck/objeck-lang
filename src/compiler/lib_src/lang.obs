@@ -1298,23 +1298,38 @@ bundle System {
 	enum ClassID {
 	}
 
-	#~~
-	# Provides useful base class functionality
-	~~#	
+	#~
+	Base class for all objects
+	~#	
 	class Base {
+		#~
+		Default constructor
+		~#	
 		New() {
 		}
 
+		#~
+		Returns the class associated with this instance
+		@return associated with this instance
+		~#	
 		method : public : GetClass() ~ Introspection.Class {
 			cls : Class;
 			LOAD_CLS_BY_INST;
 			return cls;
 		}
 		
+		#~
+		Returns the unique class ID
+		@return unique class ID
+		~#
 		method : public : native : GetClassID() ~ ClassID {
 			LOAD_CLS_INST_ID;
 		}
 
+		#~
+		Returns the unique instance ID
+		@return unique instance ID
+		~#
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}

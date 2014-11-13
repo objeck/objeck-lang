@@ -172,14 +172,37 @@ class HtmlMaker {
 	}
 	
 	method : GetTypeLink(type_name : String) ~ String {
+		lookup_bundle : BundleBlock := Nil;
+		full_name := type_name;
+		index := type_name->Find('.');
+		if(index > -1) {
+			bundle_name := type_name->SubString(index);
+			lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);
+			index += 1;
+			type_name := type_name->SubString(index, type_name->Size() - index);
+			full_name := type_name;
+		};
+		
+		index := type_name->Find('[');
+		if(index > -1) {
+			type_name := type_name->SubString(index);
+		};
+	
 		# current bundle
-		lookup_bundle := @bundle_block;
+		if(lookup_bundle = Nil) {
+			lookup_bundle := @bundle_block;
+		};
 		class_type := lookup_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
 		if(class_type = Nil) {
 			# default System bundle
 			lookup_bundle := @parser->GetBundles()->Find("System")->As(BundleBlock);
+# "System"->PrintLine();			
 			if(lookup_bundle = Nil) {
-				return type_name;
+# "Introspection"->PrintLine();			
+				lookup_bundle := @parser->GetBundles()->Find("Introspection")->As(BundleBlock);
+				if(lookup_bundle = Nil) {
+					return type_name;
+				};
 			};
 		};
 		
@@ -193,7 +216,7 @@ class HtmlMaker {
 		file_name += '-';
 		file_name += class_type->GetName()->ToLower();
 		file_name += ".html' target='main'>";
-		file_name += class_type->GetName();
+		file_name += full_name;
 		file_name += "</a>";
 		
 		return file_name;
