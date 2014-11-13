@@ -9,6 +9,7 @@ use Collection;
 class HtmlMaker {
 	@parser : DocParser;
 	@css_path : String;
+	@bundle_block : BundleBlock;
 	
 	New(file : String, css_path : String) {
 		@parser := DocParser->New(file);
@@ -50,16 +51,31 @@ class HtmlMaker {
 		
 		# create class list doc
 		CreateClassIndexHtml(@parser->GetBundles(), bundle_header);
-		
+	
+		# bundles
+		bundles := @parser->GetBundles();
+		bundle_keys := bundles->GetKeys();
+		each(i : bundle_keys) {
+			@bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			classes := @bundle_block->GetClasses();
+			class_keys := classes->GetKeys();
+			each(j : class_keys) {
+				class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+				if(class_block <> Nil) {
+					CreateClassHtml(class_block, class_header);
+				};
+			};
+		};
+#~
 		# create class html docs
 		classes := @parser->GetAllClasses();
 		if(classes <> Nil) {
 			classes->Size()->PrintLine();			
 			each(i : classes) {
-				CreateClassHtml(classes->Get(i)->As(ClassBlock), class_header);			
+							
 			};
 		};
-		
+~#
 		return true;
 	}
 	
@@ -155,13 +171,19 @@ class HtmlMaker {
 		out->Close();
 	}
 	
-	method : GetTypeLink(type_name : String) ~ String {		
-		system_bundle := @parser->GetBundles()->Find("System")->As(BundleBlock);
-		if(type_name = Nil) {
-			return type_name;
+	method : GetTypeLink(type_name : String) ~ String {
+		# current bundle
+		lookup_bundle := @bundle_block;
+		class_type := lookup_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
+		if(class_type = Nil) {
+			# default System bundle
+			lookup_bundle := @parser->GetBundles()->Find("System")->As(BundleBlock);
+			if(lookup_bundle = Nil) {
+				return type_name;
+			};
 		};
-	
-		class_type := system_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
+		
+		class_type := lookup_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
 		if(class_type = Nil) {
 			return type_name;
 		};
