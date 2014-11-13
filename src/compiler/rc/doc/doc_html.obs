@@ -155,6 +155,28 @@ class HtmlMaker {
 		out->Close();
 	}
 	
+	method : GetTypeLink(type_name : String) ~ String {		
+		system_bundle := @parser->GetBundles()->Find("System")->As(BundleBlock);
+		if(type_name = Nil) {
+			return type_name;
+		};
+	
+		class_type := system_bundle->GetClasses()->Find(type_name)->As(ClassBlock);
+		if(class_type = Nil) {
+			return type_name;
+		};
+		
+		file_name := "<a href='";
+		file_name += class_type->GetBundleName()->ToLower();
+		file_name += '-';
+		file_name += class_type->GetName()->ToLower();
+		file_name += ".html' target='main'>";
+		file_name += class_type->GetName();
+		file_name += "</a>";
+		
+		return file_name;
+	}
+	
 	#~
 	DOC ME
 	~#
@@ -190,7 +212,7 @@ class HtmlMaker {
 						if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 							sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
 							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
-							sec_f := sec_f->ReplaceAll("@param_type", param->GetTypeName());
+							sec_f := sec_f->ReplaceAll("@param_type", GetTypeLink(param->GetTypeName()));
 							sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
 						};
 					};
@@ -204,7 +226,7 @@ class HtmlMaker {
 					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'>Return</div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
-					sec_g := sec_g->ReplaceAll("@return_type", func->GetReturnType()->GetTypeName());
+					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
 					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
 					sec_g += "<br/>";
 				};
