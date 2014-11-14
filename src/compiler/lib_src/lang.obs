@@ -3053,7 +3053,7 @@ bundle System.Concurrency {
 		
 		#~
 		Name of the mutex
-		@param name name of the mutex
+		@return name of the mutex
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -4605,7 +4605,8 @@ bundle System.Introspection {
 		#~
 		Creates an instance of the given class. The class must have a 
 		zero-parameter constructor to support this operation.
-		@param class type name
+		@param name class type name
+		@return newly instantiated object instance
 		~#
 		function : Instance(name : System.String) ~ System.Base {
 			LOAD_NEW_OBJ_INST;
