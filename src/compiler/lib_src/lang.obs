@@ -548,6 +548,14 @@ bundle System {
 		}
 		
 		#~
+		Returns the minimum size of an integer
+		@return maximum size of an integer
+		~#
+		function : native : MinSize() ~ Int {
+			return −2147483648;
+		}
+		
+		#~
 		Calculates the factorial of existing value
 		@ignore-param n
 		@return factorial of existing value
@@ -1292,9 +1300,9 @@ bundle System {
 		}
 	}
 
-	#~~
-	# Class identifier
-	~~#	
+	#~
+	Unique ID for each class
+	~#	
 	enum ClassID {
 	}
 
