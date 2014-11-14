@@ -47,8 +47,6 @@ class HtmlMaker {
 			return false;
 		};
 
-		"..."->PrintLine();
-		
 		# create class list doc
 		CreateClassIndexHtml(@parser->GetBundles(), bundle_header);
 	
@@ -66,16 +64,7 @@ class HtmlMaker {
 				};
 			};
 		};
-#~
-		# create class html docs
-		classes := @parser->GetAllClasses();
-		if(classes <> Nil) {
-			classes->Size()->PrintLine();			
-			each(i : classes) {
-							
-			};
-		};
-~#
+		
 		return true;
 	}
 	
@@ -299,9 +288,9 @@ class HtmlMaker {
 				html += bundle_block->GetName();
 				html += "</strong>";
 				
+				sec_b := "<ul>";
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys();			
-				sec_b := "<ul>";
 				each(j : class_keys) {
 					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
 					if(class_block->IsParsed()) {
@@ -319,6 +308,16 @@ class HtmlMaker {
 						sec_b += "</a></li>";
 					};
 				};
+				
+				enums := bundle_block->GetEnums();
+				enum_keys := enums->GetKeys();			
+				each(j : enum_keys) {
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+					sec_b += "<li><i>";
+enum_block->GetName()->PrintLine();					
+					sec_b += enum_block->GetName();
+					sec_b += "</i></li>";	
+				};				
 				sec_b += "</ul>";			
 				html += sec_b;
 			};

@@ -553,6 +553,7 @@ class BundleBlock from DocBlock {
 
 class EnumBlock from DocBlock {
 	@name : String;
+	@id : String;
 	@desc : String;
 	@klass : String;
 	@items : Vector;
@@ -570,6 +571,10 @@ class EnumBlock from DocBlock {
 
 	method : public : GetName() ~ String {
 		return @name;
+	}
+	
+	method : public : GetId() ~ String {
+		return @id;
 	}
 
 	method : public : GetClass() ~ String {
@@ -621,7 +626,19 @@ class EnumBlock from DocBlock {
 			name += @name;
 			@name := name;
 		};
-
+		
+		if(MatchChar(':')) {
+			if(MatchChar('=')) {
+				@id := ParseIdent();
+				if(@id->Size() = 0) {
+					return false;
+				};
+			}
+			else {
+				return false;
+			};
+		};
+		
 		if(<>MatchChar('{')) {
 			return false;
 		};
