@@ -888,7 +888,7 @@ class FuncBlock from DocBlock {
 			}
 			else {
 				@signature->Append(") ~ ");
-				@signature->Append(@return_type->GetTypeName());
+				@signature->Append(GetShortName(@return_type->GetTypeName()));
 			};
 		};
 		

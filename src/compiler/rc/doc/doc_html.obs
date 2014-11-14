@@ -193,12 +193,11 @@ class HtmlMaker {
 			type_name := full_name->SubString(index);
 		};
 		
-		if(class_block = Nil) {
+		if(class_block = Nil) {		
 			class_block := GetBundleClass("System", type_name);
 		};
 		
 		if(class_block = Nil) {
-type_name->PrintLine();
 			class_block := GetBundleClass("System.Introspection", type_name);
 		};
 		
@@ -209,9 +208,7 @@ type_name->PrintLine();
 			file_name += class_block->GetName()->ToLower();
 			file_name += ".html' target='main'>";
 			file_name += full_name;
-			file_name += "</a>";
-			
-# file_name->PrintLine();			
+			file_name += "</a>";	
 			
 			return file_name;
 		}
