@@ -3106,6 +3106,11 @@ bundle System.IO {
 		@return character string
 		~#
 		method : virtual : public : ReadString() ~ System.String;
+		
+		#~
+		Closes the stream
+		~#
+		method : virtual : public : Close() ~ Nil;
 	}
 	
 	#~
@@ -3144,9 +3149,9 @@ bundle System.IO {
 		method : virtual : public : WriteString(str : System.String) ~ Nil;
 		
 		#~
-		Flushes the output buffer
+		Closes the stream
 		~#
-		method : virtual : public : Flush() ~ Nil;
+		method : virtual : public : Close() ~ Nil;
 	}
 	
  	#~
