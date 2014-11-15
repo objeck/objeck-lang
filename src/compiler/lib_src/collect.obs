@@ -1423,7 +1423,7 @@ bundle Collection {
 		}
 
 		#~
-		Get the value that's currently pointed to
+		Gets the value that's currently pointed to
 		@return value value
 		~#
 		method : public : Get() ~ Int {
@@ -1569,73 +1569,136 @@ bundle Collection {
 		}
 	}
 	
+	#~
+	Holds a growable array of float values
+	~#
 	class FloatList {
 		@list : List;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@list := List->New();
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Float) ~ Nil {
 			@list->AddBack(FloatHolder->New(value));
 		}
-
+		
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
 		method : public : AddFront(value : Float) ~ Nil {
 			@list->AddFront(FloatHolder->New(value));
 		}
 
+		#~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
 		method : public : Get() ~ Float {
 			return @list->Get()->As(FloatHolder)->Get();
 		}
 		
+		#~
+		Finds a value in the list and sets the pointer
+		@return ture if found, false otherwise
+		~#
 		method : public : Find(value : Float) ~ Bool {
 			return @list->Find(FloatHolder->New(value)) <> Nil;
 		}
 		
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
 		method : public : Insert(value : Float) ~ Nil {
 			@list->Insert(FloatHolder->New(value));
 		}
 		
+		#~
+		Removes the last value from the list
+		~#
 		method : public : RemoveBack() ~ Nil {
 			@list->RemoveBack();
 		}
 		
+		#~
+		Removes the first value from the list
+		~#
 		method : public : RemoveFront() ~ Nil {
 			@list->RemoveFront();
 		}
 		
+		#~
+		Moves the pointer to the start of the list
+		~#
 		method : public : Rewind() ~ Nil {
 			@list->Rewind();
 		}
 		
+		#~
+		Moves the pointer to the end of the list
+		~#
 		method : public : Forward() ~ Nil {
 			@list->Forward();
 		}
 		
+		#~
+		Advances the pointer
+		~#
 		method : public : Next() ~ Nil {
 			@list->Next();
 		}
 		
+		#~
+		Retreats the pointer
+		~#
 		method : public : Previous() ~ Nil {
 			@list->Previous();
 		}
 		
+		#~
+		Removes the element at the pointer position
+		~#
 		method : public : Remove() ~ Nil {
 			@list->Remove();
 		}
 		
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
 		method : public : IsFront() ~ Bool {
 			return @list->IsFront();
 		}	
 		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
 		}
 		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
 		method : public : More() ~ Bool {
 			return @list->More();
 		}
-
+		
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0.0 if the list is empty
+		~#
 		method : public : Front() ~ Int {
 			holder := @list->Front()->As(FloatHolder);
 			if(holder <> Nil) {
@@ -1645,6 +1708,10 @@ bundle Collection {
 			return 0.0;
 		}	
 
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0.0 if the list is empty
+		~#
 		method : public : Back() ~ Int {
 			holder := @list->Back()->As(FloatHolder);
 			if(holder <> Nil) {
@@ -1654,19 +1721,30 @@ bundle Collection {
 			return 0.0;
 		}
 
+		#~
+		Clears the list
+		~#
 		method : public : Empty() ~ Nil {
 			@list->Empty();
 		}
 		
+		#~
+		Checks to see if the list is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @list->IsEmpty();
 		}
 		
+		#~
+		Size of list
+		@return size of list
+		~#
 		method : public : Size() ~ Int {
 			return @list->Size();
 		}
 	}
-
+	
 	class List {
 		@size : Int;
 		@head : ListNode;
