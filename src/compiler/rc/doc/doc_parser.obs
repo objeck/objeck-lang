@@ -523,7 +523,8 @@ class BundleBlock from DocBlock {
 	}
 
 	method: public : AddInterface(inf_block : ClassBlock) ~ Nil {
-		@interfaces->Insert(inf_block->GetName(), inf_block);
+#		@interfaces->Insert(inf_block->GetName(), inf_block);
+		@classes->Insert(inf_block->GetName(), inf_block);
 	}
 
 	method: public : GetInterfaces() ~ StringMap {
