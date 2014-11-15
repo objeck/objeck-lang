@@ -75,7 +75,13 @@ class HtmlMaker {
 		# class description
 		html := String->New(class_header);
 		
-		sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+		sec_b : String;
+		if(class_block->IsInterface()) {
+			sec_b := "<h2><i>@class_name</i></h2><p>@class_desc</p>";
+		}
+		else {
+			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
+		};
 		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
 		sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
 		html += sec_b;
@@ -304,20 +310,17 @@ class HtmlMaker {
 
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
-						sec_b->Append(class_block->GetName());
+						if(class_block->IsInterface()) {
+							sec_b->Append("<i>");
+							sec_b->Append(class_block->GetName());
+							sec_b->Append("</i>");
+						}
+						else {
+							sec_b->Append(class_block->GetName());
+						};
 						sec_b += "</a></li>";
 					};
-				};
-				
-				enums := bundle_block->GetEnums();
-				enum_keys := enums->GetKeys();			
-				each(j : enum_keys) {
-					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
-					sec_b += "<li><i>";
-enum_block->GetName()->PrintLine();					
-					sec_b += enum_block->GetName();
-					sec_b += "</i></li>";	
-				};				
+				};			
 				sec_b += "</ul>";			
 				html += sec_b;
 			};
