@@ -15,7 +15,7 @@ Collection classes
 ~#
 bundle Collection {
 	#~
-	Holds a growable array of Int values
+	Holds a growable array of integer values
 	~#
 	class IntVector {
 		@values : Int[];
@@ -57,7 +57,7 @@ bundle Collection {
 		}
 
 		#~
-		Adds a Vector of values to the end of the Vector
+		Adds a vector of values to the end of the vector
 		@param values values to append 
 		~#
 		method : public : AddBack(values : IntVector) ~ Nil {
@@ -166,6 +166,10 @@ bundle Collection {
 			@size := 0;
 		}
 		
+		#~
+		Calculates the average of the values in the vector
+		@return calculated average 
+		~#
 		method : public : native : Average() ~ Int {
 			if(@size <= 0) {
 				return 0;
@@ -179,6 +183,10 @@ bundle Collection {
 			return total / @size;
 		}
 		
+		#~
+		Finds the smallest value in the vector
+		@return smallest found value
+		~#
 		method : public : native : Min() ~ Int {
 			if(@size <= 0) {
 				return 0;
@@ -198,6 +206,10 @@ bundle Collection {
 			return min;
 		}
 		
+		#~
+		Finds the largest value in the vector
+		@return largest found value
+		~#
 		method : public : native : Max() ~ Int {
 			if(@size <= 0) {
 				return 0;
@@ -217,6 +229,9 @@ bundle Collection {
 			return max;
 		}
 		
+		#~
+		Sorts the values in the vector
+		~#
 		method : public : native : Sort() ~ Nil {
 			a : Int[] := @values;
 			b : Int[] := Int->New[@size];
@@ -264,6 +279,10 @@ bundle Collection {
 			};
 		}
 		
+		#~
+		Finds a given value in the vector via linear search
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : Find(value : Int) ~ Int {
 			for(i := 0; i < @size; i += 1;) {
 				if(@values[i] = value) {
@@ -274,6 +293,10 @@ bundle Collection {
 			return -1;
 		}
 
+		#~
+		Performs a binary search O(log n)
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : BinarySearch(value : Int) ~ Int {
 			low := 0;
 			high := @size - 1;
@@ -295,12 +318,21 @@ bundle Collection {
 			return -1;
 		}
 		
+		#~
+		Converts the vector into an integer array
+		@return integer array
+		~#
 		method : public : native : ToArray() ~ Int[] {
 			array : Int[] := Int->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 		
+		#~
+		Check of the given value is in the vector
+		@param value value to check for
+		@return true if found, false otherwise
+		~#
 		method : public : Has(value : Int) ~ Bool {
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(@values[i] = value) {
@@ -311,6 +343,10 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Uses the given function to filter out values
+		@return filter vector
+		~#
 		method : public : Filter(f : (Int) ~ Bool) ~ IntVector {
 			filtered := IntVector->New();
 			
@@ -323,6 +359,10 @@ bundle Collection {
 			return filtered;
 		}
 		
+		#~
+		Applies the given function to each value in the vector 
+		@return newly calculated vector
+		~#
 		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
 			array : Int[] := Int->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -337,20 +377,34 @@ bundle Collection {
 		}
 	}
 	
+	#~
+	Holds a growable array of float values
+	~#
 	class FloatVector {
 		@values : Float[];
 		@size : Int;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := Float->New[8];
 			@size := 0;
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : FloatVector) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : Float[]) {
 			@values := Float->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
@@ -365,6 +419,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
 		method : public : AddBack(values : FloatVector) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
@@ -378,12 +436,20 @@ bundle Collection {
 			@size := max;
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Float) ~ Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
 		}
 
+		#~
+		Removes the last value
+		@return value
+		~#
 		method : public : RemoveBack() ~ Float {
 			if(@size > 0) {
 				@size -= 1;
@@ -393,6 +459,11 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Remove(i : Int) ~ Float {
 			if(i > -1 & i < @size) {
 				temp := Float->New[@values->Size()];
@@ -407,6 +478,11 @@ bundle Collection {
 			return 0.0;
 		}
 
+		#~
+		Gets an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Get(index : Int) ~ Float {
 			if(index > -1 & index < @size) {
 				return @values[index];
@@ -415,6 +491,11 @@ bundle Collection {
 			return 0.0;
 		}
 
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
 		method : public : Set(value : Float, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
@@ -424,15 +505,27 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Size of vector
+		@return size of vector
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
 
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : Empty() ~ Nil {
 			@values := Float->New[8];
 			@size := 0;
 		}
 
+		#~
+		Calculates the average of the values in the vector
+		@return calculated average 
+		~#
 		method : public : native : Average() ~ Float {
 			if(@size <= 0) {
 				return 0.0;
@@ -446,6 +539,10 @@ bundle Collection {
 			return total / @size;
 		}
 		
+		#~
+		Finds the smallest value in the vector
+		@return smallest found value
+		~#
 		method : public : native : Min() ~ Float {
 			if(@size <= 0) {
 				return 0.0;
@@ -465,6 +562,10 @@ bundle Collection {
 			return min;
 		}
 		
+		#~
+		Finds the largest value in the vector
+		@return largest found value
+		~#
 		method : public : native : Max() ~ Float {
 			if(@size <= 0) {
 				return 0.0;
@@ -484,6 +585,9 @@ bundle Collection {
 			return max;
 		}
 		
+		#~
+		Sorts the values in the vector
+		~#
 		method : public : native : Sort() ~ Nil {
 			a : Float[] := @values;
 			b : Float[] := Float->New[@size];
@@ -531,6 +635,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Finds a given value in the vector via linear search
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : Find(value : Float) ~ Int {
          for(i := 0; i < @size; i += 1;) {
             if(@values[i] = value) {
@@ -541,6 +649,10 @@ bundle Collection {
          return -1;
       }
 		
+		#~
+		Performs a binary search O(log n)
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : BinarySearch(value : Float) ~ Int {
 			low := 0;
 			high := @size - 1;
@@ -562,12 +674,21 @@ bundle Collection {
 			return -1;
 		}
 
+		#~
+		Converts the vector into an float array
+		@return float array
+		~#
 		method : public : native : ToArray() ~ Float[] {
 			array : Float[] := Float->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
 		
+		#~
+		Check of the given value is in the vector
+		@param value value to check for
+		@return true if found, false otherwise
+		~#
 		method : public : Has(value : Float) ~ Bool {
 		  for(i : Int := 0; i < @size; i += 1;) {
 			  if(@values[i] = value) {
@@ -578,6 +699,10 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Uses the given function to filter out values
+		@return filter vector
+		~#
 		method : public : Filter(f : (Float) ~ Bool) ~ FloatVector {
 			filtered := FloatVector->New();
 			
@@ -590,6 +715,10 @@ bundle Collection {
 			return filtered;
 		}
 
+		#~
+		Applies the given function to each value in the vector 
+		@return newly calculated vector
+		~#
 		method : public : Apply(f : (Float) ~ Float) ~ FloatVector {
 			array : Float[] := Float->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
@@ -602,21 +731,35 @@ bundle Collection {
 		}
 	}
 	
+	#~
+	Holds a growable array of comparable objects
+	~#
 	class CompareVector {
 		@values : Compare[];
 		@size : Int;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := Compare->New[8];
 			@size := 0;
 		}
-
+		
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : Compare[]) {
 			@values := Compare->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : CompareVector) {
 			@values := values->ToArray();
 			@size := values->Size();
@@ -630,6 +773,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
 		method : public : AddBack(values : CompareVector) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
@@ -643,12 +790,20 @@ bundle Collection {
 			@size := max;
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Compare) ~ Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
 		}
 
+		#~
+		Removes the last value
+		@return value
+		~#
 		method : public : RemoveBack() ~ Compare {
 			if(@size > 0) {
 				@size -= 1;
@@ -658,6 +813,11 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Remove(i : Int) ~ Compare {
 			if(i > -1 & i < @size) {
 				temp := Compare->New[@values->Size()];
@@ -672,6 +832,11 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Gets an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Get(index : Int) ~ Compare {
 			if(index > -1 & index < @size) {
 				return @values[index];
@@ -680,6 +845,11 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
 		method : public : Set(value : Compare, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
@@ -689,19 +859,33 @@ bundle Collection {
 			return false;
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values := Compare->New[8];
 			@size := 0;
 		}
 		
+		#~
+		Size of vector
+		@return size of vector
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
-				
+		
+		#~
+		Sorts the values in the vector
+		~#	
 		method : public : native : Sort() ~ Nil {
 			a : Compare[] := @values;
 			b : Compare[] := Compare->New[@size];
@@ -749,6 +933,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Finds a given value in the vector via linear search
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : Find(value : Compare) ~ Int {
          for(i := 0; i < @size; i += 1;) {
             if(@values[i]->Compare(value) = 0) {
@@ -759,6 +947,10 @@ bundle Collection {
          return -1;
       }
 		
+		#~
+		Performs a binary search O(log n)
+		@return index of found value, -1 if not found
+		~#
 		method : public : native : BinarySearch(value : Compare) ~ Int {
 			low := 0;
 			high := @size - 1;
@@ -780,6 +972,11 @@ bundle Collection {
 			return -1;
 		}
 		
+		#~
+		Check of the given value is in the vector
+		@param value value to check for
+		@return true if found, false otherwise
+		~#
 		method : public : Has(value : Compare) ~ Bool {
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(@values[i]->Compare(value) = 0) {
@@ -790,6 +987,10 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Uses the given function to filter out values
+		@return filter vector
+		~#
 		method : public : Filter(f : (Compare) ~ Bool) ~ CompareVector {
 			filtered := CompareVector->New();
 			
@@ -802,6 +1003,10 @@ bundle Collection {
 			return filtered;
 		}
 		
+		#~
+		Converts the vector into an object array
+		@return object array
+		~#
 		method : public : native : ToArray() ~ Compare[] {
 			array : Compare[] := Compare->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
@@ -809,21 +1014,35 @@ bundle Collection {
 		}
 	}
 	
+	#~
+	Holds a growable array of base objects
+	~#
 	class Vector {
 		@values : Base[];
 		@size : Int;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := Base->New[8];
 			@size := 0;
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : Base[]) {
 			@values := Base->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : Vector) {
 			@values := values->ToArray();
 			@size := values->Size();
@@ -837,6 +1056,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
 		method : public : AddBack(values : Vector) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
@@ -850,12 +1073,20 @@ bundle Collection {
 			@size := max;
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Base) ~ Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
 		}
 
+		#~
+		Removes the last value
+		@return value
+		~#
 		method : public : RemoveBack() ~ Base {
 			if(@size > 0) {
 				@size -= 1;
@@ -865,6 +1096,11 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Remove(i : Int) ~ Base {
 			if(i > -1 & i < @size) {
 				temp := Base->New[@values->Size()];
@@ -879,6 +1115,11 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Gets an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Get(index : Int) ~ Base {
 			if(index > -1 & index < @size) {
 				return @values[index];
@@ -887,6 +1128,11 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
 		method : public : Set(value : Base, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
@@ -896,19 +1142,34 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Size of vector
+		@return size of vector
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values := Base->New[8];
 			@size := 0;
 		}
 
+		#~
+		Converts the vector into an object array
+		@return objeck array
+		~#
 		method : public : native : ToArray() ~ Base[] {
 			array : Base[] := Base->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
@@ -916,20 +1177,31 @@ bundle Collection {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Stacks
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Growable integer based stack
+	~#
 	class IntStack {
 		@values : IntVector;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := IntVector->New();
 		}
 		
+		#~
+		Pushes a value onto the stack
+		@value value to push
+		~#
 		method : public: native : Push(value : Int) ~ Nil {
 			@values->AddBack(value);
 		}
 		
+		#~
+		Pushes a value from the stack
+		@return popped valued, 0 if stack is empty
+		~#
 		method : public: native : Pop() ~ Int {
 			if(@values->Size() > 0) {
 				value : Int := @values->Get(@values->Size() - 1);
@@ -941,6 +1213,10 @@ bundle Collection {
 			return 0;
 		}
 		
+		#~
+		Check the top of the stack
+		@return value on the top of stack, 0 if stack is empty
+		~#
 		method : public: native : Top() ~ Int {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
@@ -949,30 +1225,55 @@ bundle Collection {
 			return 0;
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values->Empty();
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
 		}
 		
+		#~
+		Size of stack
+		@return size of stack
+		~#
 		method : public: Size() ~ Int {
 			return @values->Size();
 		}
 	}
 
+	#~
+	Growable float based stack
+	~#
 	class FloatStack {
 		@values : FloatVector;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := FloatVector->New();
 		}
 		
+		#~
+		Pushes a value onto the stack
+		@value value to push
+		~#
 		method : public : native : Push(value : Float) ~ Nil {
 			@values->AddBack(value);
 		}
 		
+		#~
+		Pushes a value from the stack
+		@return popped valued, 0.0 if stack is empty
+		~#
 		method : public: native : Pop() ~ Float {
 			if(@values->Size() > 0) {
 				value : Float := @values->Get(@values->Size() - 1);
@@ -984,6 +1285,10 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Check the top of the stack
+		@return value on the top of stack, 0 if stack is empty
+		~#
 		method : public: native : Top() ~ Float {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
@@ -992,31 +1297,55 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Size of stack
+		@return size of stack
+		~#
 		method : public: Size() ~ Int {
 			return @values->Size();
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values->Empty();
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
 		}
 	}
 	
-	# stacks
+	#~
+	Growable object based stack
+	~#
 	class Stack {
 		@values : Vector;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := Vector->New();
 		}
 		
+		#~
+		Pushes a value onto the stack
+		@value value to push
+		~#
 		method : public: native : Push(value : Base) ~ Nil {
 			@values->AddBack(value);
 		}
 		
+		#~
+		Pushes a value from the stack
+		@return popped valued, Nil if stack is empty
+		~#
 		method : public : native : Pop() ~ Base {
 			if(@values->Size() > 0) {
 				value : Base := @values->Get(@values->Size() - 1);
@@ -1028,6 +1357,10 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Check the top of the stack
+		@return value on the top of stack, Nil if stack is empty
+		~#
 		method : public: native : Top() ~ Base {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
@@ -1036,89 +1369,160 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values->Empty();
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
 		}
 
+		#~
+		Size of stack
+		@return size of stack
+		~#
 		method : public: Size() ~ Int {
 			return @values->Size();
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Lists
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Stores a linked list of integer values
+	~#
 	class IntList {
 		@list : List;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@list := List->New();
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Int) ~ Nil {
 			@list->AddBack(IntHolder->New(value));
 		}
 
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
 		method : public : AddFront(value : Int) ~ Nil {
 			@list->AddFront(IntHolder->New(value));
 		}
 
+		#~
+		Get the value that's currently pointed to
+		@return value value
+		~#
 		method : public : Get() ~ Int {
 			return @list->Get()->As(IntHolder)->Get();
 		}
 		
+		#~
+		Finds a value in the list and sets the pointer
+		@return ture if found, false otherwise
+		~#
 		method : public : Find(value : Int) ~ Bool {
 			return @list->Find(IntHolder->New(value)) <> Nil;
 		}
 		
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
 		method : public : Insert(value : Int) ~ Nil {
 			@list->Insert(IntHolder->New(value));
 		}
 
+		#~
+		Removes the last value from the list
+		~#
 		method : public : RemoveBack() ~ Nil {
 			@list->RemoveBack();
 		}
 		
+		#~
+		Removes the first value from the list
+		~#
 		method : public : RemoveFront() ~ Nil {
 			@list->RemoveFront();
 		}
 		
+		#~
+		Moves the pointer to the start of the list
+		~#
 		method : public : Rewind() ~ Nil {
 			@list->Rewind();
 		}
 		
+		#~
+		Moves the pointer to the end of the list
+		~#
 		method : public : Forward() ~ Nil {
 			@list->Forward();
 		}
 		
+		#~
+		Advances the pointer
+		~#
 		method : public : Next() ~ Nil {
 			@list->Next();
 		}
 		
+		#~
+		Retreats the pointer
+		~#
 		method : public : Previous() ~ Nil {
 			@list->Previous();
 		}
 		
+		#~
+		Removes the element at the pointer position
+		~#
 		method : public : Remove() ~ Nil {
 			@list->Remove();
 		}
 		
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
 		method : public : IsFront() ~ Bool {
 			return @list->IsFront();
 		}	
 		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
 		method : public : IsBack() ~ Bool {
 			return @list->IsBack();
 		}
 		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
 		method : public : More() ~ Bool {
 			return @list->More();
 		}
 
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0 if the list is empty
+		~#
 		method : public : Front() ~ Int {
 			holder := @list->Front()->As(IntHolder);
 			if(holder <> Nil) {
@@ -1128,6 +1532,10 @@ bundle Collection {
 			return 0;
 		}
 
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0 if the list is empty
+		~#
 		method : public : Back() ~ Int {
 			holder := @list->Back()->As(IntHolder);
 			if(holder <> Nil) {
@@ -1137,19 +1545,30 @@ bundle Collection {
 			return 0;
 		}
 		
+		#~
+		Clears the list
+		~#
 		method : public : Empty() ~ Nil {
 			@list->Empty();
 		}
 		
+		#~
+		Checks to see if the list is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @list->IsEmpty();
 		}
 		
+		#~
+		Size of list
+		@return size of list
+		~#
 		method : public : Size() ~ Int {
 			return @list->Size();
 		}
 	}
-
+	
 	class FloatList {
 		@list : List;
 		
