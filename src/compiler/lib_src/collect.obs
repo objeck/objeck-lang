@@ -1607,11 +1607,25 @@ bundle Collection {
 		}
 		
 		#~
-		Finds a value in the list and sets the pointer
-		@return ture if found, false otherwise
+		Searches for a value
+		@return true if value is found, false otherwise
 		~#
-		method : public : Find(value : Float) ~ Bool {
-			return @list->Find(FloatHolder->New(value)) <> Nil;
+		method : public : Has(value : Float) ~ Bool {
+			return @list->Has(FloatHolder->New(value));
+		}
+		
+		#~
+		Finds a value in the list and sets the pointer
+		@return value that's found
+		~#
+		method : public : Find(value : Float) ~ Float {
+			found := @list->Find(FloatHolder->New(value))->As(FloatHolder);
+			if(found <> Nil) {
+				return found->Get();
+			}
+			else {
+				return 0.0;
+			};
 		}
 		
 		#~
@@ -1745,16 +1759,26 @@ bundle Collection {
 		}
 	}
 	
+	#~
+	Stores a linked list of object values
+	~#
 	class List {
 		@size : Int;
 		@head : ListNode;
 		@tail : ListNode;
 		@cursor : ListNode;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@size := 0;
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : native : AddBack(value : Compare) ~ Nil {
 			node := ListNode->New(value);
 			if(@head = Nil) {
@@ -1770,11 +1794,18 @@ bundle Collection {
 			@size += 1;
 		}
 	
+		#~
+		Removes the last value from the list
+		~#
 		method : public : RemoveBack() ~ Nil {
 			Forward();
 			Remove();
 		}
 
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
 		method : public : native : AddFront(value : Compare) ~ Nil {
 			node := ListNode->New(value);
 			if(@head = Nil) {
@@ -1791,31 +1822,50 @@ bundle Collection {
 			@size += 1;
 		}
 		
+		#~
+		Removes the first value from the list
+		~#
 		method : public : RemoveFront() ~ Nil {
 			Rewind();
 			Remove();
 		}
 
+		#~
+		Moves the pointer to the start of the list
+		~#
 		method : public : Rewind() ~ Nil {
 			@cursor := @head;
 		}		
 
+		#~
+		Moves the pointer to the end of the list
+		~#
 		method : public : Forward() ~ Nil {
 			@cursor := @tail;
 		}		
 
+		#~
+		Advances the pointer
+		~#
 		method : public : Next() ~ Nil {
 			if(@cursor <> Nil) {
 				@cursor := @cursor->GetNext();
 			};
 		}
 
+		#~
+		Retreats the pointer
+		~#
 		method : public : Previous() ~ Nil {
 			if(@cursor <> Nil) {
 				@cursor := @cursor->GetPrevious();
 			};
 		}
 
+		#~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
 		method : public : Get() ~ Compare {
 			if(@cursor <> Nil) {
 				return @cursor->Get();
@@ -1824,6 +1874,10 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Searches for a value
+		@return true if value is found, false otherwise
+		~#
 		method : public : Has(value : Compare) ~ Bool {
 			start := @head;
 			end := @tail;
@@ -1847,6 +1901,10 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Finds a value in the list and sets the pointer
+		@return value that's found
+		~#
 		method : public : Find(value : Compare) ~ Compare {
 			@cursor := @head;
 			while(@cursor <> Nil) {
@@ -1859,6 +1917,10 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
 		method : public : native : Insert(value : Compare) ~ Bool {
 			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
 				node := ListNode->New(value);
@@ -1890,6 +1952,9 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Removes the element at the pointer position
+		~#
 		method : public : native : Remove() ~ Nil {
 			if(@cursor <> Nil) {
 				if(@cursor->GetPrevious() <> Nil) {
@@ -1915,18 +1980,34 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
 		method : public : IsFront() ~ Bool {
 			return @cursor = @head;
 		}		
 		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
 		method : public : IsBack() ~ Bool {
 			return @cursor = @tail;
 		}
 		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
 		method : public : More() ~ Bool {
 			return @cursor <> Nil;
 		}
 
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0.0 if the list is empty
+		~#
 		method : public : Front() ~ Compare {
 			if(@head <> Nil) {
 				return @head->Get();
@@ -1935,6 +2016,10 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0.0 if the list is empty
+		~#
 		method : public : Back() ~ Compare {
 			if(@tail <> Nil) {
 				return @tail->Get();
@@ -1943,6 +2028,9 @@ bundle Collection {
 			return Nil;
 		}
 
+		#~
+		Clears the list
+		~#
 		method : public : Empty() ~ Nil {
 			@size := 0;
 			@head := Nil;
@@ -1950,10 +2038,18 @@ bundle Collection {
 			@cursor := Nil;
 		}
 		
+		#~
+		Checks to see if the list is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
 		
+		#~
+		Size of list
+		@return size of list
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
@@ -1993,20 +2089,29 @@ bundle Collection {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# queues
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Queue of float values
+	~#
 	class FloatQueue {
 		@queue : FloatList;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@queue := FloatList->New();
 		}
 		
+		#~
+		Adds a value to the back of the queue
+		~#
 		method : public: native : Add(value : Float) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
+		#~
+		Removes a value from the front of the queue
+		~#
 		method : public : native : Remove() ~ Float {
 			if(@queue->Size() > 0) {
                 value := @queue->Front();
@@ -2017,6 +2122,10 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Get the head of the queue
+		@return head value, 0.0 if queue is empty
+		~#
 		method : public: native : Head() ~ Float {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
@@ -2025,14 +2134,25 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Clears the list
+		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
 		}
 		
+		#~
+		Checks to see if the list is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
 		}
 		
+		#~
+		Size of list
+		@return size of list
+		~#
 		method : public : Size() ~ Int {
 			return @queue->Size();
 		}
