@@ -11,14 +11,14 @@ class HtmlMaker {
 	@css_path : String;
 	@bundle_block : BundleBlock;
 	
-	New(file : String, css_path : String) {
-		@parser := DocParser->New(file);
-		@css_path := css_path;
+	New(args : String[]) {
+		@css_path := args[0];
+		@parser := DocParser->New(args);
 	}
 	
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 2) {
-			maker := HtmlMaker->New(args[0], args[1]);
+		if(args->Size() > 1) {
+			maker := HtmlMaker->New(args);
 			maker->Make();
 		};
 	}
