@@ -10,24 +10,38 @@
 use System.IO.Net; 
 use System.IO.File;
 
+#~
+Collection classes
+~#
 bundle Collection {
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Vectors
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Holds a growable array of Int values
+	~#
 	class IntVector {
 		@values : Int[];
 		@size : Int;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@values := Int->New[8];
 			@size := 0;
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : IntVector) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
 
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
 		New(values : Int[]) {
 			@values := Int->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
@@ -42,6 +56,10 @@ bundle Collection {
 			};
 		}
 
+		#~
+		Adds a Vector of values to the end of the Vector
+		@param values values to append 
+		~#
 		method : public : AddBack(values : IntVector) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
@@ -55,12 +73,20 @@ bundle Collection {
 			@size := max;
 		}
 
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : AddBack(value : Int) ~ Nil {
 			Expand();
 			@values[@size] := value;
 			@size := @size + 1;
 		}
 
+		#~
+		Removes the last value
+		@return value
+		~#
 		method : public : RemoveBack() ~ Int {
 			if(@size > 0) {
 				@size -= 1;
@@ -70,6 +96,11 @@ bundle Collection {
 			return 0;
 		}
 		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Remove(i : Int) ~ Int {
 			if(i > -1 & i < @size) {
 				temp := Int->New[@values->Size()];
@@ -84,6 +115,11 @@ bundle Collection {
 			return 0;
 		}
 
+		#~
+		Gets an indexed value
+		@param i index
+		@return value
+		~#
 		method : public : Get(index : Int) ~ Int {
 			if(index > -1 & index < @size) {
 				return @values[index];
@@ -92,6 +128,11 @@ bundle Collection {
 			return 0;
 		}
 
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
 		method : public : Set(value : Int, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
@@ -101,14 +142,25 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Size of vector
+		@return size of vector
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
 		
+		#~
+		Checks to see if the vector is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
 
+		#~
+		Clears the vector
+		~#
 		method : public : Empty() ~ Nil {
 			@values := Int->New[8];
 			@size := 0;
