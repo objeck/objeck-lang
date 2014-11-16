@@ -2123,7 +2123,7 @@ bundle Collection {
 		}
 		
 		#~
-		Get the head of the queue
+		Get the value from the head of the queue
 		@return head value, 0.0 if queue is empty
 		~#
 		method : public: native : Head() ~ Float {
@@ -2135,14 +2135,14 @@ bundle Collection {
 		}
 		
 		#~
-		Clears the list
+		Clears the queue
 		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
 		}
 		
 		#~
-		Checks to see if the list is empty
+		Checks to see if the queue is empty
 		@return ture if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
@@ -2150,25 +2150,37 @@ bundle Collection {
 		}
 		
 		#~
-		Size of list
-		@return size of list
+		Size of queue
+		@return size of queue
 		~#
 		method : public : Size() ~ Int {
 			return @queue->Size();
 		}
 	}
 	
+	#~
+	Queue of integer values
+	~#
 	class IntQueue {
 		@queue : IntList;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@queue := IntList->New();
 		}
 		
+		#~
+		Adds a value to the back of the queue
+		~#
 		method : public: native : Add(value : Int) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
+		#~
+		Removes a value from the front of the queue
+		~#
 		method : public : native : Remove() ~ Int {
 			if(@queue->Size() > 0) {
                 value := @queue->Front();				
@@ -2179,6 +2191,10 @@ bundle Collection {
 			return 0;
 		}
 		
+		#~
+		Get the value from the head of the queue
+		@return head value, 0 if queue is empty
+		~#
 		method : public: native : Head() ~ Int {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
@@ -2187,30 +2203,53 @@ bundle Collection {
 			return 0;
 		}
 		
+		#~
+		Clears the queue
+		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
 		}
 		
+		#~
+		Checks to see if the queue is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
 		}
 		
+		#~
+		Size of queue
+		@return size of queue
+		~#
 		method : public : Size() ~ Int {
 			return @queue->Size();
 		}
 	}
     
+   #~
+	Queue of objects
+	~#
 	class Queue {
 		@queue : List;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@queue := List->New();
 		}
 		
+		#~
+		Adds a value to the back of the queue
+		~#
 		method : public: native : Add(value : Compare) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
+		#~
+		Removes a value from the front of the queue
+		~#
 		method : public : native : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
 				value := @queue->Front();
@@ -2221,6 +2260,10 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Get the value from the head of the queue
+		@return head value, Nil if queue is empty
+		~#
 		method : public: native : Head() ~ Compare {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
@@ -2229,37 +2272,65 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Clears the queue
+		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
 		}
 		
+		#~
+		Checks to see if the queue is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
 		}
 		
+		#~
+		Size of queue
+		@return size of queue
+		~#
 		method : public : Size() ~ Int {
 			return @queue->Size();
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Maps
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Binary tree of integer values
+	~#
 	class IntMap {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
 		method : public : Insert(key : Int, value : Base) ~ Nil {
 			@map->Insert(IntHolder->New(key), value);
 		}
 		
+		#~
+		Removes a value from the map
+		@param value key for value to remove
+		~#
 		method : public : Remove(key : Int) ~ Nil {
 			@map->Remove(IntHolder->New(key));
 		}
     
+    	#~
+		Searches for a value in a map
+		@param key search key
+		@return found value, 0 if not found
+		~#
 		method : public : Find(key : Int) ~ Base {
 			result : Base := @map->Find(IntHolder->New(key));
 			if(result <> Nil) {
@@ -2269,11 +2340,20 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : Int) ~ Bool {
 			result : IntHolder := @map->Find(IntHolder->New(key))->As(IntHolder);
 			return result <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : native : GetKeys() ~ IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
@@ -2285,42 +2365,81 @@ bundle Collection {
 			return keys;
 		}
     
+    	#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
 		}
 
+		#~
+		Clears the map
+		~#
 		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 		
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : Size() ~ Int {
 			return @map->Size();
 		}
-
+		
+		#~
+		Gets the backing Compre map
+		@return backing Compre map
+		~#
 		method : public : GetMap() ~ Map {
 			return @map;
 		}
 	}
 	
+	#~
+	Binary tree of float values
+	~#
 	class FloatMap {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
 		method : public : Insert(key : Float, value : Base) ~ Nil {
 			@map->Insert(FloatHolder->New(key), value);
 		}
 		
+		#~
+		Removes a value from the map
+		@param value key for value to remove
+		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
 		}
     
+    	#~
+		Searches for a value in a map
+		@param key search key
+		@return found value, 0.0 if not found
+		~#
 		method : public : Find(key : Float) ~ Float {
 			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			if(result <> Nil) {
@@ -2330,11 +2449,20 @@ bundle Collection {
 			return 0.0;
 		}
 		
+		#~
+		Check of the given pair is in the map
+		@param key search key
+		@return true if found
+		~#
 		method : public : Has(key : Float) ~ Bool {
 			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			return result <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public: native : GetKeys() ~ FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
@@ -2346,22 +2474,41 @@ bundle Collection {
 			return keys;
 		}
     
+    	#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
 		}
 
+		#~
+		Clears the map
+		~#
 		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 		
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
+		#~
+		Size of queue
+		@return size of map
+		~#
 		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 
+		#~
+		Gets the backing Compre map
+		@return backing Compre map
+		~#
 		method : public : GetMap() ~ Map {
 			return @map;
 		}
@@ -2437,51 +2584,98 @@ bundle Collection {
 		}
 	}
 
+	#~
+	Binary tree of <code>String<code> values
+	~#
 	class StringMap {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
 		method : public : Insert(key : String, value : Base) ~ Nil {
 			@map->Insert(key, value);
 		}
 		
+		#~
+		Removes a value from the map
+		@param value key for value to remove
+		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
 		}
     
+    	#~
+		Searches for a value in a map
+		@param key search key
+		@return found value, Nil if not found
+		~#
 		method : public : Find(key : String) ~ Base {
 			return @map->Find(key);
 		}
 		
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : String) ~ Bool {
 			result := @map->Find(key);
 			return result <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : GetKeys() ~ Vector {
 			return @map->GetKeys();
 		}
 
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : GetValues() ~ Vector {
 			return @map->GetValues();
 		}
 
+		#~
+		Clears the map
+		~#
 		method : public : native : Empty() ~ Nil {
 			@map->Empty();
 		}
 
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
 	}
 	
+	#~
+	Binary tree of objects values
+	~#
 	class Map {
 		@root : TreeNode;
 		@last : TreeNode;
@@ -2489,6 +2683,9 @@ bundle Collection {
 		@size : Int;
 		@found : Bool;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@root := Nil;
 			@size := 0;	
@@ -2509,14 +2706,25 @@ bundle Collection {
 			return node;
 		}
 
+		#~
+		Size of queue
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @size;
 		}
 		
+		#~
+		Checks to see if the queue is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
 
+		#~
+		Clears the queue
+		~#
 		method : public : native : Empty() ~ Nil {
 			@root := Nil;
 			@last := Nil;
@@ -2543,10 +2751,20 @@ bundle Collection {
 			return node;
 		}
 		
+		#~
+		Searches for a value in a map
+		@param key search key
+		@return found value, Nil if not found
+		~#
 		method : public : Find(key : Compare) ~ Base {
 			return Find(key, @root);
 		}
 		
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : Compare) ~ Bool {
 			return Find(key, @root) <> Nil;
 		}
@@ -2567,6 +2785,10 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : GetKeys() ~  Collection.Vector {
 			vector := Vector->New();
 			GetKeys(@root, vector);
@@ -2586,6 +2808,10 @@ bundle Collection {
 			};
 		}
 		
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : GetValues() ~  Collection.Vector {
 			vector := Vector->New();
 			GetValues(@root, vector);
@@ -2614,6 +2840,11 @@ bundle Collection {
 			};
 		}
 		
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
 		method : native : Insert(key : Compare, value : Base, node :  Collection.TreeNode) ~  Collection.TreeNode {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1);
@@ -2635,7 +2866,11 @@ bundle Collection {
 			
 			return node;
 		}
-
+		
+		#~
+		Removes a value from the map
+		@param value key for value to remove
+		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@found := true;
 			@root := Remove(key, @root);
@@ -2730,29 +2965,49 @@ bundle Collection {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Sets
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Set of float values
+	~#
 	class FloatSet {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
 		method : public : Insert(key : Float) ~ Nil {
 			@map->Insert(FloatHolder->New(key), Base->New());
 		}
 		
+		#~
+		Removes a key from the set
+		@param key value to remove
+		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
 		}
     
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : Float) ~ Bool {
 			result := @map->Find(FloatHolder->New(key))->As(FloatHolder);
 			return result <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public: native : GetKeys() ~ FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
@@ -2763,152 +3018,271 @@ bundle Collection {
 
 			return keys;
 		}
-    
-		method : public : GetValues() ~ Vector {
-			return @map->GetValues();
-		}
 
+		#~
+		Clears the set
+		~#
 		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 		
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
-
-		method : public : GetMap() ~ Map {
-			return @map;
-		}
 	}
 	
+	#~
+	Set of string values
+	~#
 	class StringSet {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
 		method : public : Insert(key : String) ~ Nil {
 			@map->Insert(key, Base->New());
 		}
 		
+		#~
+		Removes a key from the set
+		@param key value to remove
+		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
 		}
     
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : String) ~ Bool {
 			return @map->Find(key) <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : GetKeys() ~ Vector {
 			return @map->GetKeys();
 		}
 
+		#~
+		Clears the set
+		~#
 		method : public : native : Empty() ~ Nil {
 			@map->Empty();
 		}
 
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
 	}
 	
+	#~
+	Set of objects
+	~#
 	class Set {
 		@map : Map;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@map := Map->New();
 		}
 
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
 		method : public : Insert(key : Compare) ~ Nil {
 			@map->Insert(key, Base->New());
 		}
 		
+		#~
+		Removes a key from the set
+		@param key value to remove
+		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@map->Remove(key);
 		}
     
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : Compare) ~ Bool {
 			return @map->Find(key) <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : GetKeys() ~ Vector {
 			return @map->GetKeys();
 		}
 
+		#~
+		Clears the set
+		~#
 		method : public : native : Empty() ~ Nil {
 			@map->Empty();
 		}
 
+		#~
+		Checks to see if the map is empty
+		@return ture if empty, false otherwise
+		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @map->Size();
 		}
 	}
 
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# Hashes
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	Hash table that stores strings
+	~#
 	class StringHash {
 		@hash : Hash;
 
+		#~
+		Default constructor 
+		~#
 		New() {
 			@hash := Hash->New();
 		}
 
+		#~
+		Inserts a value into the hash
+		@param key key
+		@param value value
+		~#
 		method : public : Insert(key : String, value : Base) ~ Nil {
 			@hash->Insert(key, value);
 		}
 		
+		#~
+		Removes a value from the hash
+		@param value key for value to remove
+		~#
 		method : public : Remove(key : String) ~ Nil {
 			@hash->Remove(key);
 		}
     
+    	#~
+		Searches for a value in a hash
+		@param key search key
+		@return found value, Nil if not found
+		~#
 		method : public : Find(key : String) ~ Base {
 			return @hash->Find(key);
 		}
 		
+		#~
+		Checks for a value in a hash
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : Has(key : String) ~ Bool {
 			return @hash->Find(key) <> Nil;
 		}
     
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : GetKeys() ~ Vector {
 			return @hash->GetKeys();
 		}
     
+    	#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : GetValues() ~ Vector {
 			return @hash->GetValues();
 		}
 
+		#~
+		Clears the map
+		~#
 		method : public : native : Empty() ~ Nil {
 			@hash->Empty();
 		}
-
+	
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : native : Size() ~ Int {
 			return @hash->Size();
 		}
 	}
 
+	#~
+	Hash table that stores objects
+	~#
 	class Hash {
 		@buckets : List[];
 		@size : Int;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@buckets := List->New[337];
 			@size := 0;
 		}
 		
+		#~
+		Inserts a value into the hash
+		@param key key
+		@param value value
+		~#
 		method : public : Insert(key : Compare, value : Base) ~ Nil {
 			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
@@ -2920,6 +3294,11 @@ bundle Collection {
 			@size := @size + 1;
 		}
 
+		#~
+		Searches for a value in a hash
+		@param key search key
+		@return found value, Nil if not found
+		~#
 		method : public : native : Find(key : Compare) ~ Base {
 			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
@@ -2939,11 +3318,20 @@ bundle Collection {
 			return Nil;
 		}
 		
+		#~
+		Checks for a value in a hash
+		@param key search key
+		@return true if found, false otherwise
+		~#
 		method : public : native : Has(key : Compare) ~ Bool {
 			result := Find(key);
 			return result <> Nil;
 		}
 		
+		#~
+		Removes a value from the hash
+		@param value key for value to remove
+		~#
 		method : public : native : Remove(key : Compare) ~ Bool {
 			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
@@ -2965,6 +3353,10 @@ bundle Collection {
 			return false;
 		}
 		
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
 		method : public : native : GetKeys() ~ Vector {
 			keys := Vector->New();
 			for(i := 0; i < @buckets->Size(); i += 1;) {
@@ -2982,6 +3374,10 @@ bundle Collection {
 			return keys;
 		}
 		
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
 		method : public : native : GetValues() ~ Vector {
 			values := Vector->New();
 			for(i := 0; i < @buckets->Size(); i += 1;) {
@@ -2999,11 +3395,18 @@ bundle Collection {
 			return values;
 		}
 
+		#~
+		Clears the map
+		~#
 		method : public : Empty() ~ Nil {
 			@buckets := List->New[337];
 			@size := 0;
 		}
 		
+		#~
+		Size of map
+		@return size of queue
+		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
@@ -3037,42 +3440,77 @@ bundle Collection {
 	}
 }
 
+#~
+HTTP support
+~#
 bundle HTTP {
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# HTTP Client
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	HTTP client
+	~#
 	class HttpClient {
-		@headers : Hash;
+		@headers : StringHash;
 		@cookies_enabled : Bool;
 		@cookies: Vector;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@cookies_enabled := false;
 			@cookies := Vector->New();
 		}
 		
-		method : GetHeaders() ~ Hash {
+		#~
+		Gets the HTTP headers
+		@return HTTP headers
+		~#
+		method : GetHeaders() ~ StringHash {
 			return @headers;
 		}
 		
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
 		method : public : CookiesEnabled(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
 		}	
 		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
 		method : public : GetCookies() ~ Vector {
 			return @cookies;
 		}	
 		
+		#~
+		Sets a cookie
+		@param cookie cookie nane and value
+		~#
 		method : public : SetCookie(cookie : String) ~ Nil {
 			@cookies->AddBack(cookie);
 		}	
 		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return vector of read strings
+		~#
 		method : public : Post(url : String, data : String) ~ Vector {
 			return Post(url, "text/plain", data);
 		}
 		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param content_type content type
+		@param data data to post
+		@return vector of read strings
+		~#
 		method : public : Post(url : String, content_type : String, data : String) ~ Vector {
-			@headers := Hash->New();
+			@headers := StringHash->New();
 					
 			content := Vector->New();
 			if(url->StartsWith("http://")) {
@@ -3191,12 +3629,23 @@ bundle HTTP {
 			return content;
 		}
 		
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@return vector of read strings
+		~#
 		method : public : Get(url : String) ~ Vector {
 			return Get(url, "text/plain");
 		}
 		
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@param content_type content type
+		@return vector of read strings
+		~#
 		method : public : Get(url : String, content_type : String) ~ Vector {
-			@headers := Hash->New();
+			@headers := StringHash->New();
 			content := Vector->New();
 			
 			if(url->StartsWith("http://")) {
@@ -3326,39 +3775,71 @@ bundle HTTP {
 		}
 	}
 
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# HTTPS Client - COMBINE WITH ABOVE!!
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	HTTPS client that uses a SSL secure socket
+	~#
 	class HttpsClient {
 		@headers : Hash;
 		@cookies_enabled : Bool;
 		@cookies: Vector;
 		
+		#~
+		Default constructor 
+		~#
 		New() {
 			@cookies_enabled := false;
 			@cookies := Vector->New();
 		}
 		
+		#~
+		Gets the HTTP headers
+		@return HTTP headers
+		~#
 		method : GetHeaders() ~ Hash {
 			return @headers;
 		}
 		
+		#~
+		Sets cookie support
+		@param cookies_enabled true if cookies are enabled, false otherwise
+		~#
 		method : public : CookiesEnabled(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
 		}	
 		
+		#~
+		Gets the cookies
+		@return vector of cookies
+		~#
 		method : public : GetCookies() ~ Vector {
 			return @cookies;
 		}	
 		
+		#~
+		Sets a cookie
+		@param cookie cookie nane and value
+		~#
 		method : public : SetCookie(cookie : String) ~ Nil {
 			@cookies->AddBack(cookie);
 		}	
 		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param data data to post
+		@return vector of read strings
+		~#
 		method : public : Post(url : String, data : String) ~ Vector {
 			return Post(url, "text/plain", data);
 		}
 		
+		#~
+		Performs a HTTP POST
+		@param url URL
+		@param content_type content type
+		@param data data to post
+		@return vector of read strings
+		~#
 		method : public : Post(url : String, content_type : String, data : String) ~ Vector {
 			@headers := Hash->New();
 			
@@ -3479,10 +3960,21 @@ bundle HTTP {
 			return content;
 		}
 		
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@return vector of read strings
+		~#
 		method : public : Get(url : String) ~ Vector {
 			return Get(url, "text/plain");
 		}
 		
+		#~
+		Performs a HTTP GET
+		@param url URL
+		@param content_type content type
+		@return vector of read strings
+		~#
 		method : public : Get(url : String, content_type : String) ~ Vector {
 			@headers := Hash->New();
 			content := Vector->New();
@@ -3615,10 +4107,15 @@ bundle HTTP {
 		}
 	}
 		
-	#~~~~~~~~~~~~~~~~~~~~~~~
-	# HTTP UrlUtility
-	~~~~~~~~~~~~~~~~~~~~~~~#
+	#~
+	HTTP utilities
+	~#
 	class UrlUtility {
+		#~
+		Encodes a HTTP or XML string
+		@param str string to encode 
+		@return encoded string 
+		~#
 		function : native : Encode(str : String) ~ String {
 			buffer := String->New();
 			each(i : str) {
