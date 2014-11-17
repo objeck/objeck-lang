@@ -6,8 +6,13 @@
 
 use Collection;
 
+#~
+Regular expression engine
+~#
 bundle RegEx {
-	# ---------- regular expression matcher ----------
+	#~
+	Regular expression engine
+	~#
 	class RegEx {
 		# parsing
 		@tokens : Char[];
@@ -26,6 +31,10 @@ bundle RegEx {
 		@backtrack_cache : IntMap;
 		@backtrack_positions : IntVector;
         
+		#~
+		Default constructor
+		@param input regex pattern
+		~#
 		New(input : String) {
 			@tokens := input->ToCharArray();
 			@expressions := Vector->New();
@@ -34,16 +43,31 @@ bundle RegEx {
 
 			Parse();
 		}
-
-		# ---------- matching methods ----------
+		
+		#~
+		Looks for an exact regex match
+		@param input string to match against
+		@return true if exact, false otherwise
+		~#
 		method : public : MatchExact(input : String) ~ Bool {
             return Evaluate(input, 0) > -1 & @is_exact;
 		}
-
+		
+		#~
+		Matches as much of the string as possible
+		@param input string to match against
+		@return matched string if found, empty string otherwise
+		~#
 		method : public : Match(input : String) ~ String {
 			return Match(input, 0);
 		}
 		
+		#~
+		Matches as much of the string as possible
+		@param input string to match against
+		@param offset offset into the to match against
+		@return matched string if found, empty string otherwise
+		~#
 		method : public : Match(input : String, offset : Int) ~ String {
 			right := Evaluate(input, 0);
 			if(right > -1) {
@@ -52,7 +76,12 @@ bundle RegEx {
 			
 			return "";
 		}
-
+		
+		#~
+		Matches the first occurrence 
+		@param input string to match against
+		@return matched string if found, empty string otherwise
+		~#
 		method : public : native : FindFirst(input : String) ~ String {
 			matches := Vector->New();
 			left := 0;
@@ -67,6 +96,11 @@ bundle RegEx {
 			return "";
 		}
 
+		#~
+		Finds all occurrences 
+		@param input string to match against
+		@return vector of string matches
+		~#
 		method : public : native : Find(input : String) ~ Vector {
 			matches := Vector->New();
 			left := 0;
@@ -85,6 +119,12 @@ bundle RegEx {
 			return matches;
 		}
 
+		#~
+		Replaces the first occurrence with the given string
+		@param input string to match against
+		@param replace string to replace the match with
+		@return replaced string
+		~#
 		method : public : native : ReplaceFirst(input : String, replace : String) ~ String {
 			left := 0;
 			while(left < input->Size()) {
@@ -106,6 +146,12 @@ bundle RegEx {
 			return input;
 		}
 
+		#~
+		Replaces all occurrences of the given string
+		@param input string to match against
+		@param replace string to replace the match with
+		@return replaced string
+		~#
 		method : public : native : ReplaceAll(input : String, replace : String) ~ String {
 			left := 0;
 			while(left < input->Size()) {
