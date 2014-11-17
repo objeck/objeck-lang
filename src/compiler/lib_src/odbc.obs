@@ -1,6 +1,8 @@
 use Collection;
 use System.API;
-
+#~
+Provides basic data access support
+~#
 bundle ODBC {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
@@ -15,11 +17,16 @@ bundle ODBC {
 	}
 	
 	#~
-	# ODBC connection
+	ODBC database connection
 	~#
 	class Connection {
 		@native_connection : Int;
 		
+		#~
+		Constructor 
+		@param username ODBC connection name
+		@param password ODBC connection password
+		~#
 		New(ds : String, username : String, password : String) {
 			Parent();
 			array_args := Base->New[4];
@@ -34,10 +41,17 @@ bundle ODBC {
 			@native_connection := value->Get();
 		}
       	
+		#~
+		Check rather a connect is open
+		@return true if connected, false otherwise
+		~#
 		method : public : IsOpen() ~ Bool {
 			return @native_connection <> 0;
 		}
 		
+		#~
+		Closes a connection
+		~#
 		method : public : Close() ~ Nil {
 			if(@native_connection <> 0) {
 				array_args := Base->New[1];
@@ -47,6 +61,11 @@ bundle ODBC {
 			};
 		}
 		
+		#~
+		Executes a SQL update statement
+		@param sql SQL statement
+		@return result code
+		~#
 		method : public : Update(sql : String) ~ Int {
 			if(@native_connection <> 0) {
 				array_args := Base->New[3];
@@ -63,6 +82,11 @@ bundle ODBC {
 			return -1;
 		}
 		
+		#~
+		Executes a SQL select statement
+		@param sql SQL statement
+		@return result set
+		~#
 		method : public : Select(sql : String) ~ ResultSet {
 			if(@native_connection <> 0) {
 				array_args := Base->New[5];
@@ -83,8 +107,11 @@ bundle ODBC {
 			return Nil;
 		}
 		
-		# TODO: commit
-		
+		#~
+		Create a parametrized SQL statement 
+		@param sql SQL statement
+		@return result set
+		~#
 		method : public : CreateParameterStatement(sql : String) ~ ParameterStatement {
 			if(@native_connection <> 0) {
 				array_args := Base->New[5];
@@ -107,7 +134,7 @@ bundle ODBC {
 	}
 	
 	#~
-	# ODBC Prepared Statement
+	ODBC parametrized statement that supports SQL variables
 	~#
 	class ParameterStatement {
 		# TODO: store params members so that they're GC'd
@@ -121,6 +148,12 @@ bundle ODBC {
 			@exec_data := exec_data;
 		}
 		
+		#~
+		Sets a bit type
+		@param pos parameter position
+		@param value bit value
+		@return true if set, false otherwise
+		~#
 		method : public : SetBit(pos : Int, value : Bool) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -138,6 +171,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a small integer type
+		@param pos parameter position
+		@param value small integer value
+		@return true if set, false otherwise
+		~#
 		method : public : SetSmallInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -155,6 +194,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a integer type
+		@param pos parameter position
+		@param value integer value
+		@return true if set, false otherwise
+		~#
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -172,6 +217,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a double type
+		@param pos parameter position
+		@param value double value
+		@return true if set, false otherwise
+		~#
 		method : public : SetDouble(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -189,6 +240,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a real type
+		@param pos parameter position
+		@param value real value
+		@return true if set, false otherwise
+		~#
 		method : public : SetReal(pos : Int, value : Float) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -206,6 +263,12 @@ bundle ODBC {
 			return false;
 		}
 
+		#~
+		Sets varchar/string type
+		@param pos parameter position
+		@param value string value
+		@return true if set, false otherwise
+		~#
 		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
