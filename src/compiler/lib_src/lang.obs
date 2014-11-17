@@ -552,7 +552,7 @@ bundle System {
 		@return maximum size of an integer
 		~#
 		function : native : MinSize() ~ Int {
-			return −2147483648;
+			return -2147483648;
 		}
 		
 		#~
