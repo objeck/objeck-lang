@@ -443,7 +443,7 @@ bundle ODBC {
 	}
 	
 	#~
-	ODBC resultset
+	ODBC result set
 	~#
 	class ResultSet {
 		@native_stmt : Int;
@@ -457,6 +457,10 @@ bundle ODBC {
 			@exec_data := exec_data;
 		}
 		
+		#~
+		Moves the cursor to the next row in the result set
+		@return true if cursor was moved, false otherwise
+		~#
 		method : public : Next() ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
@@ -472,10 +476,20 @@ bundle ODBC {
       		return false;
 		}
 		
+		#~
+		Checks to see if the value fetched is NUL. This method should be called
+		after a value is fetched using GetX(column).
+		@return true if NIL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @is_null;
 		}
 		
+		#~
+		Gets an integer value
+		@param column column ID
+		@return integer value
+		~#
 		method : public : GetInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -497,6 +511,11 @@ bundle ODBC {
       		return 0;
 		}
 		
+		#~
+		Gets a small integer value
+		@param column column ID
+		@return small integer value
+		~#
 		method : public : GetSmallInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -518,6 +537,11 @@ bundle ODBC {
       		return 0;
 		}
 		
+		#~
+		Gets a bit value
+		@param column column ID
+		@return bit value
+		~#
 		method : public : GetBit(column : Int) ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -539,6 +563,11 @@ bundle ODBC {
       		return false;
 		}
 		
+		#~
+		Gets a double value
+		@param column column ID
+		@return double value
+		~#
 		method : public : GetDouble(column : Int) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -560,6 +589,11 @@ bundle ODBC {
       		return 0.0;
 		}
 		
+		#~
+		Gets a real value
+		@param column column ID
+		@return real value
+		~#
 		method : public : GetReal(column : Int) ~ Float {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -581,6 +615,11 @@ bundle ODBC {
       		return 0.0;
 		}
 		
+		#~
+		Gets a varchar value
+		@param column column ID
+		@return varchar value
+		~#
 		method : public : GetVarchar(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -602,6 +641,11 @@ bundle ODBC {
       		return "";
 		}
 
+		#~
+		Gets a blob value
+		@param column column ID
+		@param buffer buffer to write into
+		~#
 		method : public : GetBlob(column : Int, buffer : Byte[]) ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -640,7 +684,11 @@ bundle ODBC {
       		return "";
 		}
 ~#
-				
+		#~
+		Gets a date value
+		@param column column ID
+		@return date value
+		~#
 		method : public : GetDate(column : Int) ~ ODBC.Date {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -662,6 +710,11 @@ bundle ODBC {
       		return Nil;
 		}
 		
+		#~
+		Gets a timestamp value
+		@param column column ID
+		@return timestamp value
+		~#
 		method : public : GetTimestamp(column : Int) ~ Timestamp {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
@@ -683,6 +736,9 @@ bundle ODBC {
       		return Nil;
 		}
 		
+		#~
+		Closes a result set 
+		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[2];
@@ -695,7 +751,7 @@ bundle ODBC {
 	}
 	
 	#~
-	# ODBC Date holder
+	ODBC date
 	~#
 	class Date {
 		@buffer : Byte[];
@@ -703,31 +759,58 @@ bundle ODBC {
 		@month : Int;
 		@day : Int;
 		
+		#~
+		Default constructor
+		~#
 		New() {
 			# size of c struct
 			@buffer := Byte->New[6];
 		}
 		
+		#~
+		Gets the year
+		@return year
+		~#
 		method : public : GetYear() ~ Int {
 			return @year;
 		}
 
+		#~
+		Sets the year
+		@param year value
+		~#
 		method : public : SetYear(year : Int) ~ Nil {
 			@year := year;
 		}
 		
+		#~
+		Gets the month
+		@return month
+		~#
 		method : public : GetMonth() ~ Int {
 			return @month;
 		}
 
+		#~
+		Sets the month
+		@param month value
+		~#
 		method : public : SetMonth(month : Int) ~ Nil {
 			@month := month;
 		}
 		
+		#~
+		Gets the day
+		@return day
+		~#
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
 		
+		#~
+		Sets the day
+		@param day value
+		~#
 		method : public : SetDay(day : Int) ~ Nil {
 			@day := day;
 		}
@@ -746,59 +829,114 @@ bundle ODBC {
 		@second : Int;
 		@fraction : Int;
 		
+		#~
+		Default constructor
+		~#
 		New() {
 			# size of c struct
 			@buffer := Byte->New[16];
 		}
 		
+		#~
+		Gets the year
+		@return year
+		~#
 		method : public : GetYear() ~ Int {
 			return @year;
 		}
 
+		#~
+		Sets the year
+		@param year value
+		~#
 		method : public : SetYear(year : Int) ~ Nil {
 			@year := year;
 		}
 		
+		#~
+		Gets the month
+		@return month
+		~#
 		method : public : GetMonth() ~ Int {
 			return @month;
 		}
 
+		#~
+		Sets the month
+		@param month value
+		~#
 		method : public : SetMonth(month : Int) ~ Nil {
 			@month := month;
 		}
 		
+		#~
+		Gets the day
+		@return day
+		~#
 		method : public : GetDay() ~ Int {
 			return @day;
 		}
 		
+		#~
+		Sets the day
+		@param day value
+		~#
 		method : public : SetDay(day : Int) ~ Nil {
 			@day := day;
 		}
 
+		#~
+		Gets the hours
+		@return hours
+		~#
 		method : public : GetHours() ~ Int {
 			return @hours;
 		}
 		
+		#~
+		Sets the hours
+		@param day hours
+		~#
 		method : public : SetHours(hours : Int) ~ Nil {
 			@hours := hours;
 		}
 
+		#~
+		Gets the minutes
+		@return minutes
+		~#
 		method : public : GetMinute() ~ Int {
 			return @minute;
 		}
 		
+		#~
+		Sets the minutes
+		@param day minutes
+		~#
 		method : public : SetMinute(minute : Int) ~ Nil {
 			@minute := minute;
 		}
 
+		#~
+		Gets the seconds
+		@return seconds
+		~#
 		method : public : GetSeconds() ~ Int {
 			return @second;
 		}
 		
+		#~
+		Sets the seconds
+		@param day seconds
+		~#
 		method : public : SetSeconds(second : Int) ~ Nil {
 			@second := second;
 		}
 
+		#~
+		Gets the fraction of seconds
+		@return fraction of seconds
+		~#
 		method : public : GetFraction() ~ Int {
 			return @fraction;
 		}
