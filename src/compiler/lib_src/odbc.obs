@@ -264,7 +264,7 @@ bundle ODBC {
 		}
 
 		#~
-		Sets varchar/string type
+		Sets varchar type
 		@param pos parameter position
 		@param value string value
 		@return true if set, false otherwise
@@ -286,6 +286,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a blob type
+		@param pos parameter position
+		@param buffer byte buffer
+		@return true if set, false otherwise
+		~#
 		method : public : SetBlob(pos : Int, buffer : Byte[]) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[5];
@@ -303,11 +309,18 @@ bundle ODBC {
 			
 			return false;
 		}
-
+		
 		method : public : SetBytes(pos : Int, buffer : Byte[]) ~ Bool {			
 			return SetBytes(pos, buffer, buffer->Size());
 		}
 		
+		#~
+		Sets a stream of bytes
+		@param pos parameter position
+		@param buffer byte buffer
+		@param length number of bytes to write
+		@return true if set, false otherwise
+		~#
 		method : public : SetBytes(pos : Int, buffer : Byte[], length : Int) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				if(length > buffer->Size()) {
@@ -331,6 +344,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a date type
+		@param pos parameter position
+		@param value date value
+		@return true if set, false otherwise
+		~#
 		method : public : SetDate(pos : Int, value : Date) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -348,6 +367,12 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a timestamp type
+		@param pos parameter position
+		@param value timestamp value
+		@return true if set, false otherwise
+		~#
 		method : public : SetTimestamp(pos : Int, value : Timestamp) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[4];
@@ -365,6 +390,11 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Executes a SQL update statement
+		@param sql SQL statement
+		@return result code
+		~#
 		method : public : Update() ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[3];
@@ -381,6 +411,11 @@ bundle ODBC {
       		return -1;
 		}
 		
+		#~
+		Executes a SQL select statement
+		@param sql SQL statement
+		@return result set
+		~#
 		method : public : Select() ~ ResultSet {
 			if(@native_stmt <> 0 & @native_names <> 0) {
 				array_args := Base->New[1];
@@ -394,6 +429,9 @@ bundle ODBC {
 			return Nil;
 		}
 		
+		#~
+		Closes the statement
+		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[1];
@@ -405,7 +443,7 @@ bundle ODBC {
 	}
 	
 	#~
-	# ODBC Resultset
+	ODBC resultset
 	~#
 	class ResultSet {
 		@native_stmt : Int;
